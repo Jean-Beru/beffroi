@@ -17,7 +17,7 @@ $metadata['http://localhost:8081/simplesaml/module.php/saml/idp/metadata'] = [
     'certificate' => 'idp.crt',
 ];
 
-// The model's identity provider, once the exchange has written its metadata (tests/Interop/simplesamlphp/exchange.php):
+// The model's identity provider, once the exchange has written its metadata (tests/saml2-model/Interop/simplesamlphp/exchange.php):
 // the XML the model's MetadataWriter wrote, read by SimpleSAMLphp's own parser, as it is. The service provider that
 // logs in there, for-model, carries its own settings (authsources.php).
 $model = '/var/simplesamlphp/model/model-idp-metadata.xml';

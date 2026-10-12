@@ -18,7 +18,7 @@ $metadata['http://localhost:8082/simplesaml/module.php/saml/sp/metadata/default-
     'certificate' => 'sp.crt',
 ];
 
-// The model's service provider, once the exchange has written its metadata (tests/Interop/simplesamlphp/exchange.php):
+// The model's service provider, once the exchange has written its metadata (tests/saml2-model/Interop/simplesamlphp/exchange.php):
 // the XML the model's MetadataWriter wrote, read by SimpleSAMLphp's own parser, the one its XML metadata sources and
 // its metarefresh module use. Two settings are added to what the XML says, both for this service provider alone:
 // sign.logout, since SimpleSAMLphp signs no logout message by default and the model refuses an unsigned one (M-2,

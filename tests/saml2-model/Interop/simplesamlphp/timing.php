@@ -9,7 +9,7 @@ declare(strict_types=1);
  * times; the median and the 95th percentile are printed in milliseconds.
  *
  * From the root of the repository, on each PHP of the CI:
- *   docker run --rm -v "$PWD:/project:ro" -w /project ghcr.io/spomky-labs/phpqa:8.5 php tests/Interop/simplesamlphp/timing.php
+ *   docker run --rm -v "$PWD:/project:ro" -w /project ghcr.io/spomky-labs/phpqa:8.5 php tests/saml2-model/Interop/simplesamlphp/timing.php
  */
 
 use Beffroi\Saml2\Model\Metadata\MetadataReader;

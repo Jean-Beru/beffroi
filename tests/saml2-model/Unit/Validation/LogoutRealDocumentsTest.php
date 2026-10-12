@@ -25,7 +25,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 9.4: the logout messages of tests/Fixture/real/, bytes as received, validated with a clock frozen at their
+ * Section 9.4: the logout messages of tests/saml2-model/Fixture/real/, bytes as received, validated with a clock frozen at their
  * IssueInstant, each between the two parties of the metadata captured with it. The signed ones are accepted by
  * validate(); SimpleSAMLphp's request, which HTTP-Redirect carried with a signature over the query string that the
  * capture verified and did not keep, by validateAuthenticatedByBinding(); the two that no signature authenticated,

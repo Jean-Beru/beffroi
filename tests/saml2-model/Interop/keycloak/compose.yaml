@@ -1,5 +1,5 @@
 # Keycloak as an identity provider (realm idp) and as a service provider (realm sp), story #14; see README.md.
-#   docker compose -f tests/Interop/keycloak/compose.yaml up -d
+#   docker compose -f tests/saml2-model/Interop/keycloak/compose.yaml up -d
 services:
   keycloak:
     # the manifest of README.md, section Versions: a tag the registry moves never runs here

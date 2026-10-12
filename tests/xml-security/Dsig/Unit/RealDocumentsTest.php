@@ -77,7 +77,7 @@ final class RealDocumentsTest extends TestCase
     /**
      * §9.4, the judge of sub-spike 8a: the response SimpleSAMLphp's own library signed (simplesamlphp/saml2 4.20.3
      * on xmlseclibs 3.1.5, 27 September 2026) verifies with the test certificate; the reverse is in
-     * tests/Dsig/Fixture/real/README.md.
+     * tests/xml-security/Dsig/Fixture/real/README.md.
      */
     #[Test]
     public function itVerifiesTheAssertionSimpleSamlPhpSigned(): void

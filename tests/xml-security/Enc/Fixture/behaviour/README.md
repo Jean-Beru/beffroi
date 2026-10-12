@@ -2,13 +2,13 @@
 
 The documents the encryptor produced, decrypted by xmlsec1 1.3.7 in Alpine 3.22, the implementation that is not
 this one (spec/enc.md section 9.3, row 10). An AES-GCM ciphertext is fresh on every call (E-8), so nothing pins
-these bytes: the test of the encryptor builds the same response through `tests/Enc/Support/Built.php`, encrypts
+these bytes: the test of the encryptor builds the same response through `tests/xml-security/Enc/Support/Built.php`, encrypts
 its assertion, and checks that the decryptor reads its output and reads these files alike.
 
 The two files were produced on 27 September 2026 with PHP 8.4.25 and OpenSSL 3.5.7 by `Encryptor::encrypt()` over
 the assertion of `Built::responseWithAssertion()`, the test certificate in the key's `KeyInfo`, the result put under
 an `EncryptedAssertion` in place of the assertion and serialized by `Core`. The check, run from the root with
-`castor xmlsec-decrypt <file>`, or in `tests/Enc/Fixture/`:
+`castor xml-security-xmlsec-decrypt <file>`, or in `tests/xml-security/Enc/Fixture/`:
 
 ```
 xmlsec1 --decrypt --lax-key-search --privkey-pem keys/test-signing-key.pem behaviour/encrypted-by-the-encryptor-aes256-gcm.xml

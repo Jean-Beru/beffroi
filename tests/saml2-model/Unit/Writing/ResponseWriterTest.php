@@ -447,7 +447,7 @@ final class ResponseWriterTest extends TestCase
 
     /**
      * Section 9.1: the responses the writer signed with the identity provider's test key, committed as
-     * behaviour/response-written-*.xml and verified by xmlsec1 (tests/Fixture/oracle/README.md), are accepted by the
+     * behaviour/response-written-*.xml and verified by xmlsec1 (tests/saml2-model/Fixture/oracle/README.md), are accepted by the
      * validator with its clock frozen at their IssueInstant, under the coverage they were written with.
      */
     #[Test]

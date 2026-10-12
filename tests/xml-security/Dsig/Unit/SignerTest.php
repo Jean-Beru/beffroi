@@ -40,7 +40,7 @@ use function substr;
 /**
  * Section 6.2, D-12: signing on the loaded form of what was built, the Signature after the child the consumer
  * names, verified by the verifier of this namespace and, byte for byte, by what xmlsec1 verified once
- * (tests/Dsig/Fixture/behaviour/README.md).
+ * (tests/xml-security/Dsig/Fixture/behaviour/README.md).
  */
 final class SignerTest extends TestCase
 {

@@ -34,7 +34,7 @@ use const T_SPACESHIP;
 use const T_STRING;
 
 /**
- * Section 8 of spec/model.md, read on the source of src/ itself, next to the PHPStan rules of .ci-tools/phpstan.neon:
+ * Section 8 of spec/model.md, read on the source of src/ itself, next to the PHPStan rules of .ci-tools/phpstan-saml2-model.neon:
  * what PHPStan cannot see. The property reads Text::of() replaces (textContent, nodeValue, innerHTML), the change of
  * the process's time zone, the comparison <=>, and a DateTimeImmutable::createFromFormat() whose format fills the
  * missing fields from the clock. Comments and string literals are not code and are not scanned: a refusal message may

@@ -3,13 +3,13 @@
 The `adversarial-*` files of this directory and of `../behaviour/` are the attempts of the adversarial pass of section
 9.8 of `spec/model.md` (story #12): each row of section 3 attacked with inputs the corpus of 9.2 and 9.3 does not list,
 every attempt a file whatever its outcome, `adversarial-<attempt>-refused.xml` here and
-`adversarial-<attempt>-accepted.xml` in `../behaviour/`. `tests/Unit/AdversarialTest.php` asserts each, refused with the
+`adversarial-<attempt>-accepted.xml` in `../behaviour/`. `tests/saml2-model/Unit/AdversarialTest.php` asserts each, refused with the
 exception and the message it got, or accepted with the values read, and fails when an attempt of the builder is asserted
 by no case.
 
-They are written by `tests/Support/AdversarialFixtureBuilder.php`, never by hand, each a variant of one valid message
+They are written by `tests/saml2-model/Support/AdversarialFixtureBuilder.php`, never by hand, each a variant of one valid message
 with the change its name says, signed with the test keys of `../keys/` through `Beffroi\Xml\Dsig\Signer` wherever the
-attack needs a valid signature. From the root of the repository, after `castor install`:
+attack needs a valid signature. From the root of the repository, after `composer install`:
 
 ```
 docker run --rm -v "$PWD:/project" -w /project ghcr.io/spomky-labs/phpqa:8.5 \
@@ -54,9 +54,9 @@ of the pass, and the adversarial test asserts them too:
 
 | File | Made from | Asserted by |
 |---|---|---|
-| `adversarial-metadata-identity-provider-valid-until-passed-refused.xml`, `../behaviour/adversarial-metadata-role-valid-until-accepted.xml` | `metadata-identity-provider.xml`, a `validUntil` on its role | `tests/Unit/Metadata/MetadataReaderTest.php`, section 6.5 step 4 |
+| `adversarial-metadata-identity-provider-valid-until-passed-refused.xml`, `../behaviour/adversarial-metadata-role-valid-until-accepted.xml` | `metadata-identity-provider.xml`, a `validUntil` on its role | `tests/saml2-model/Unit/Metadata/MetadataReaderTest.php`, section 6.5 step 4 |
 | `adversarial-metadata-service-provider-valid-until-passed-refused.xml` | `metadata-service-provider.xml`, a `validUntil` on its role | the same |
 | `../behaviour/adversarial-metadata-ignored-roles-valid-until-passed-accepted.xml` | `metadata-identity-provider.xml`, a SAML 1.1 role and an attribute authority past their `validUntil` | the same |
-| `adversarial-authn-request-issuer-name-qualifier-refused.xml` | `authn-request-unsigned.xml`, a `NameQualifier` on its Issuer | `tests/Unit/Validation/AuthnRequestValidatorTest.php` and `tests/Unit/AdversarialTest.php`, M-8 |
-| `adversarial-logout-request-issuer-sp-name-qualifier-refused.xml` | `logout-request-written-for-http-redirect.xml`, an `SPNameQualifier` on its Issuer | `tests/Unit/Validation/LogoutRequestValidatorTest.php` and `tests/Unit/AdversarialTest.php`, M-8 |
-| `adversarial-logout-response-issuer-sp-provided-id-refused.xml` | `logout-response-written-for-http-redirect.xml`, an `SPProvidedID` on its Issuer | `tests/Unit/Validation/LogoutResponseValidatorTest.php` and `tests/Unit/AdversarialTest.php`, M-8 |
+| `adversarial-authn-request-issuer-name-qualifier-refused.xml` | `authn-request-unsigned.xml`, a `NameQualifier` on its Issuer | `tests/saml2-model/Unit/Validation/AuthnRequestValidatorTest.php` and `tests/saml2-model/Unit/AdversarialTest.php`, M-8 |
+| `adversarial-logout-request-issuer-sp-name-qualifier-refused.xml` | `logout-request-written-for-http-redirect.xml`, an `SPNameQualifier` on its Issuer | `tests/saml2-model/Unit/Validation/LogoutRequestValidatorTest.php` and `tests/saml2-model/Unit/AdversarialTest.php`, M-8 |
+| `adversarial-logout-response-issuer-sp-provided-id-refused.xml` | `logout-response-written-for-http-redirect.xml`, an `SPProvidedID` on its Issuer | `tests/saml2-model/Unit/Validation/LogoutResponseValidatorTest.php` and `tests/saml2-model/Unit/AdversarialTest.php`, M-8 |

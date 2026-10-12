@@ -25,7 +25,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 9.4: the AuthnRequest documents of tests/Fixture/real/, bytes as received, validated with a clock frozen at
+ * Section 9.4: the AuthnRequest documents of tests/saml2-model/Fixture/real/, bytes as received, validated with a clock frozen at
  * their IssueInstant against the metadata their producers published in the same capture. A request the model refuses
  * is a finding (section 9.4): Keycloak 26.7.4's, under the rule of section 8 as it stands.
  */
@@ -40,7 +40,7 @@ final class RealAuthnRequestsTest extends TestCase
     /**
      * Section 9.4, section 6.8: the AuthnRequest of SimpleSAMLphp 2.5.3.1's service provider, which HTTP-Redirect
      * carried with a signature over its query string that the capture verified under the service provider's metadata
-     * (tests/Interop/simplesamlphp/README.md): accepted as authenticated by the binding, its assertion consumer service
+     * (tests/saml2-model/Interop/simplesamlphp/README.md): accepted as authenticated by the binding, its assertion consumer service
      * the one of its URL.
      */
     #[Test]
@@ -145,7 +145,7 @@ final class RealAuthnRequestsTest extends TestCase
     }
 
     /**
-     * Section 9.4, section 8, finding F1 of tests/Interop/keycloak/README.md: the AuthnRequest of Keycloak 26.7.4's
+     * Section 9.4, section 8, finding F1 of tests/saml2-model/Interop/keycloak/README.md: the AuthnRequest of Keycloak 26.7.4's
      * broker asks for its response over HTTP-Redirect, and is refused by name under the rule as it stands, once its
      * assertion consumer service is resolved to the broker's HTTP-POST one. The identity provider is the model in the
      * place of Keycloak's realm idp, at its single sign-on service, not asking for signed requests as the installation's

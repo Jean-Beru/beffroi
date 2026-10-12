@@ -20,5 +20,5 @@ docker run --rm -v "$PWD:/keys" -w /keys alpine:3.22 sh -c 'apk add -q openssl \
 | `idp-signing-key.pem`, `idp-signing-certificate.pem` | the identity provider: it signs responses, assertions, logout messages and its metadata; its certificate is the one the identity provider's metadata carries | 30 September 2026 to 27 September 2036 | `30:D1:2B:B2:5C:D7:74:63:30:E8:5A:A7:31:61:A5:02:1C:8B:0E:27:98:AD:B4:23:31:60:87:F1:90:C4:72:7B` |
 | `sp-signing-key.pem`, `sp-signing-certificate.pem` | the service provider: it signs authentication requests, logout messages and its metadata; its certificate is the one the service provider's metadata carries | 30 September 2026 to 27 September 2036 | `52:48:FA:3C:DE:44:AE:D4:72:53:D8:D5:FB:1C:08:CE:7D:ED:0B:FF:57:26:34:3C:81:11:9C:12:B6:1A:1D:30` |
 
-The SimpleSAMLphp library of `tests/Interop/simplesamlphp/library/` signs its fixtures with these two pairs. The
-SimpleSAMLphp installation of `tests/Interop/simplesamlphp/installation/` has pairs of its own, next to it.
+The SimpleSAMLphp library of `tests/saml2-model/Interop/simplesamlphp/library/` signs its fixtures with these two pairs. The
+SimpleSAMLphp installation of `tests/saml2-model/Interop/simplesamlphp/installation/` has pairs of its own, next to it.

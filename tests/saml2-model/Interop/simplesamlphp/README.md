@@ -3,7 +3,7 @@
 The judge of sub-spike 9b for this package (section 9.5 of `spec/model.md`), in two halves, reproducible from a clean
 checkout and never a dependency of the package: nothing here is in the root `composer.json`, and no CI job runs it
 (section 12). Each half is run by hand, from the root of the repository, with Docker; what it produced is committed
-under `tests/Fixture/real/` (section 9.4), named with its origin, its version and its date, bytes as written or as
+under `tests/saml2-model/Fixture/real/` (section 9.4), named with its origin, its version and its date, bytes as written or as
 decoded, disposable identities only.
 
 | | |
@@ -11,9 +11,9 @@ decoded, disposable identities only.
 | `library/` | a throwaway Composer project running `simplesamlphp/saml2`, SimpleSAMLphp's SAML 2 library, in a container: `produce.php` writes the fixtures with the test keys, `verify.php` validates what a producer wrote |
 | `installation/` | SimpleSAMLphp installed as an identity provider and as a service provider in containers, and `capture.sh`, which plays a login and a logout with `curl` and keeps every SAML document |
 | `xmlsec1-verify.sh` | verifies every XML signature of a batch with xmlsec1, the implementation independent of both SimpleSAMLphp and the model |
-| `exchange.php` | the exchange of phase 2: the model and the installation, both ways, login and logout, and four probes; it writes the model's documents to `written/` and what SimpleSAMLphp sent to `received/` (both ignored), or to `tests/Fixture/real/` with `--keep` |
+| `exchange.php` | the exchange of phase 2: the model and the installation, both ways, login and logout, and four probes; it writes the model's documents to `written/` and what SimpleSAMLphp sent to `received/` (both ignored), or to `tests/saml2-model/Fixture/real/` with `--keep` |
 | `timing.php` | the figure of section 9.6 of the specification, measured on SimpleSAMLphp's real responses |
-| `.castor/simplesamlphp.php`, at the root | `castor simplesamlphp`: every step above from one task |
+| `.castor/lab/saml2-model.php`, at the root | `castor saml2-model-simplesamlphp`: every step above from one task |
 
 Phase 1 of story #11, on 30 September 2026, built what does not need the model's code: the test keys, the library
 half, the installation half and the captures (sections 1 to 5). Phase 2, the same day, played the exchange with the
@@ -57,7 +57,7 @@ The 6.x library, on `simplesamlphp/xml-security` rather than `xmlseclibs`, is no
 docker run --rm -v "$PWD/tests/Interop/simplesamlphp/library:/app" -w /app ghcr.io/spomky-labs/phpqa:8.4 \
     composer install -n --no-progress
 
-# Write the fixtures into tests/Fixture/real/
+# Write the fixtures into tests/saml2-model/Fixture/real/
 docker run --rm -v "$PWD/tests/Interop/simplesamlphp/library:/app" -v "$PWD/tests/Fixture/keys:/keys:ro" \
     -v "$PWD/tests/Fixture/real:/out" -w /app ghcr.io/spomky-labs/phpqa:8.4 php produce.php
 
@@ -75,12 +75,12 @@ docker run --rm -v "$PWD/tests/Interop/simplesamlphp/library:/app" -v "$PWD/test
 
 # Verify every signature with xmlsec1, each under the certificate of its signer's metadata
 docker run --rm -v "$PWD:/project:ro" -w /project alpine:3.22 sh -c 'apk add -q xmlsec libxml2-utils \
-    && sh tests/Interop/simplesamlphp/xmlsec1-verify.sh tests/Fixture/real "simplesamlphp-saml2-4.20.3-*.xml"'
+    && sh tests/saml2-model/Interop/simplesamlphp/xmlsec1-verify.sh tests/saml2-model/Fixture/real "simplesamlphp-saml2-4.20.3-*.xml"'
 ```
 
 ### `produce.php`
 
-It builds one exchange with the library's objects and signs it with the test keys of `tests/Fixture/keys/`, the
+It builds one exchange with the library's objects and signs it with the test keys of `tests/saml2-model/Fixture/keys/`, the
 identity provider's key for what the identity provider sends, the service provider's for what the service provider
 sends, the certificate in `KeyInfo` as SimpleSAMLphp writes it. Every value is fixed, IDs and times included, and
 RSA PKCS#1 v1.5 signs deterministically: a second run on 30 September 2026 rewrote the nine files byte for byte.
@@ -92,7 +92,7 @@ default (`buildAssertion()` of `modules/saml/src/IdP/SAML2.php`): `NotBefore` 30
 of `assertion.lifetime` for `NotOnOrAfter` and the bearer `NotOnOrAfter`, 8 h of `session.duration` from the
 `AuthnInstant` for `SessionNotOnOrAfter`.
 
-| File under `tests/Fixture/real/` | What | Signed by |
+| File under `tests/saml2-model/Fixture/real/` | What | Signed by |
 |---|---|---|
 | `simplesamlphp-saml2-4.20.3-authnrequest-signed-2026-09-30.xml` | an `AuthnRequest` in its HTTP-POST form, enveloped signature | service provider |
 | `simplesamlphp-saml2-4.20.3-response-signed-assertion-2026-09-30.xml` | a response with its signed assertion, the response unsigned | identity provider |
@@ -107,7 +107,7 @@ of `assertion.lifetime` for `NotOnOrAfter` and the bearer `NotOnOrAfter`, 8 h of
 `php verify.php <directory> [<glob>]` reads every document of the directory that matches the glob (`*.xml` by
 default) with the library, as SimpleSAMLphp reads what a peer sends. The keys come from the metadata of the batch,
 never from a message (M-3): every `md:EntityDescriptor` is read first, each of its certificates must be one of the
-test certificates of `tests/Fixture/keys/`, and a signed one is verified under its own; each message is then
+test certificates of `tests/saml2-model/Fixture/keys/`, and a signed one is verified under its own; each message is then
 verified under the signing certificates of the metadata of its `Issuer`, an assertion under those of its own
 `Issuer`. Every `ds:Signature` a message or an assertion carries as a direct child must validate through the
 object's own `validate()`, the call SimpleSAMLphp makes (`Message::checkSign()`); a message without any signature
@@ -199,11 +199,11 @@ the installation is configured to").
 ### Commands
 
 ```
-# Build, start, play the login and the logout in both configurations, keep the documents in tests/Fixture/real/
-bash tests/Interop/simplesamlphp/installation/capture.sh
+# Build, start, play the login and the logout in both configurations, keep the documents in tests/saml2-model/Fixture/real/
+bash tests/saml2-model/Interop/simplesamlphp/installation/capture.sh
 
 # Stop
-docker compose -f tests/Interop/simplesamlphp/installation/compose.yaml down
+docker compose -f tests/saml2-model/Interop/simplesamlphp/installation/compose.yaml down
 ```
 
 `capture.sh` needs Docker, bash and curl on the machine, and nothing else: it decodes and verifies with PHP inside
@@ -244,7 +244,7 @@ provider accepted both responses, and the probe printed `probe: the service prov
 signature fails, its assertion's holding`. The half took about three quarters of an hour of the three hours it was
 given. A second run rewrites both metadata byte for byte; the messages differ by their IDs and times.
 
-| File under `tests/Fixture/real/` | What | Carried by | Signed |
+| File under `tests/saml2-model/Fixture/real/` | What | Carried by | Signed |
 |---|---|---|---|
 | `simplesamlphp-2.5.3.1-idp-metadata-2026-09-30.xml` | the identity provider's metadata, as served | its URL | no |
 | `simplesamlphp-2.5.3.1-sp-metadata-2026-09-30.xml` | the service provider's metadata, as served | its URL | no |
@@ -276,7 +276,7 @@ On the installation's captures:
 
 ```
 docker run --rm -v "$PWD:/project:ro" -w /project alpine:3.22 sh -c 'apk add -q xmlsec libxml2-utils \
-    && sh tests/Interop/simplesamlphp/xmlsec1-verify.sh tests/Fixture/real "simplesamlphp-2.5.3.1-*.xml"'
+    && sh tests/saml2-model/Interop/simplesamlphp/xmlsec1-verify.sh tests/saml2-model/Fixture/real "simplesamlphp-2.5.3.1-*.xml"'
 ```
 
 On 30 September 2026: three signatures verified under the identity provider's metadata, the assertion's of the
@@ -293,7 +293,7 @@ tables below; the windows are in seconds from the assertion's `IssueInstant`, `S
 
 ```
 docker run --rm -v "$PWD:/project:ro" -w /project ghcr.io/spomky-labs/phpqa:8.4 \
-    php tests/Interop/simplesamlphp/measure.php tests/Fixture/real 'simplesamlphp-*.xml'
+    php tests/saml2-model/Interop/simplesamlphp/measure.php tests/saml2-model/Fixture/real 'simplesamlphp-*.xml'
 ```
 
 | Document | Bytes | Root | XML signatures | Signature, digest, canonicalization | PrefixList | Times, fractional digits | ID | Destination | Issuer Format | Other |
@@ -412,26 +412,26 @@ bounded, the formats are of Core §8.2 and §8.3. The installation's documents g
   that moves its messages to the 6.x library would need both halves run again, which section 12 already asks at
   every change of SimpleSAMLphp's version.
 
-For the repository, outside this directory: nothing marks the fixtures of `tests/Fixture/` as binary, while
+For the repository, outside this directory: nothing marks the fixtures of `tests/saml2-model/Fixture/` as binary, while
 `xml-security` carries `/tests/Core/Fixture/** -text` in its `.gitattributes` (story #3 owns that file; the files
-here were committed without conversion, `core.autocrlf` unset); and `tests/Fixture/real/README.md`, which section 10
+here were committed without conversion, `core.autocrlf` unset); and `tests/saml2-model/Fixture/real/README.md`, which section 10
 asks for, is not written here, its owner can point to this file for the SimpleSAMLphp documents. The PHP of this
 directory runs in its own containers and uses what section 8 bans in the package (`DOMDocument`, `loadXML()`,
 `saveXML()`, `getElementsByTagNameNS()`, `textContent`, `DOMXPath`, `echo`): the toolchain of story #3 has to leave
-`tests/Interop/` out, as `xml-security` leaves its interoperability project out (`excludePaths` of
-`.ci-tools/phpstan.neon` and `withSkip()` of `.ci-tools/rector.php` on `tests/*/Fixture/*`, `excludes` of
+`tests/saml2-model/Interop/` out, as `xml-security` leaves its interoperability project out (`excludePaths` of
+`.ci-tools/phpstan-saml2-model.neon` and `withSkip()` of `.ci-tools/rector.php` on `tests/*/Fixture/*`, `excludes` of
 `mago.toml`), and `library/composer.json` is a Composer project of its own, which a dependency update tool would
 otherwise pick up.
 
 ## 6. Phase 2: the exchange with the model
 
 On 30 September 2026, `exchange.php` played both directions against the installation of section 2 with the package
-of this repository, the test keys of `tests/Fixture/keys/` and the live clock: the model as identity provider behind
+of this repository, the test keys of `tests/saml2-model/Fixture/keys/` and the live clock: the model as identity provider behind
 SimpleSAMLphp's service provider, the model as service provider in front of SimpleSAMLphp's identity provider, login
 and logout both ways. Every step was green on PHP 8.5.10 and on PHP 8.4.25; four probes showed that SimpleSAMLphp
 refuses the model's documents once changed after signing, so that its acceptance of the genuine ones proves a
 signature it verified; `verify.php` and xmlsec1 verified every document the model wrote. What SimpleSAMLphp sent is
-committed under `tests/Fixture/real/` and accepted by `tests/Unit/Interop/SimpleSamlPhpDocumentsTest.php`. The phase
+committed under `tests/saml2-model/Fixture/real/` and accepted by `tests/saml2-model/Unit/Interop/SimpleSamlPhpDocumentsTest.php`. The phase
 took under an hour of the four hours it was given.
 
 ### Commands
@@ -440,27 +440,27 @@ took under an hour of the four hours it was given.
 # The whole exchange from a clean checkout: the package's dependencies and the library half installed when they are
 # missing, the installation up in the configuration of the exchange, the exchange, verify.php and xmlsec1 on every
 # document the model wrote, the installation down. PHP 8.5 by default, PHP_VERSION=8.4 for the other.
-castor simplesamlphp
+castor saml2-model-simplesamlphp
 
-# The same, and what SimpleSAMLphp sent kept in tests/Fixture/real/, dated, instead of received/
-castor simplesamlphp --keep
+# The same, and what SimpleSAMLphp sent kept in tests/saml2-model/Fixture/real/, dated, instead of received/
+castor saml2-model-simplesamlphp --keep
 
 # Each step alone
-castor simplesamlphp --up                 # the installation in the configuration of the exchange, SSP_EXCHANGE=true
-castor simplesamlphp --exchange [--keep]  # the exchange, the installation up
-castor simplesamlphp --verify             # verify.php and xmlsec1 on written/, the model's documents of the last run
-castor simplesamlphp --verify --in=tests/Fixture/real --glob='simplesamlphp-saml2-4.20.3-*.xml'   # section 1's batch
-castor simplesamlphp --produce            # the library writes its fixtures (section 1)
-castor simplesamlphp --capture            # capture.sh (section 2)
-castor simplesamlphp --down
+castor saml2-model-simplesamlphp --up                 # the installation in the configuration of the exchange, SSP_EXCHANGE=true
+castor saml2-model-simplesamlphp --exchange [--keep]  # the exchange, the installation up
+castor saml2-model-simplesamlphp --verify             # verify.php and xmlsec1 on written/, the model's documents of the last run
+castor saml2-model-simplesamlphp --verify --in=tests/saml2-model/Fixture/real --glob='simplesamlphp-saml2-4.20.3-*.xml'   # section 1's batch
+castor saml2-model-simplesamlphp --produce            # the library writes its fixtures (section 1)
+castor saml2-model-simplesamlphp --capture            # capture.sh (section 2)
+castor saml2-model-simplesamlphp --down
 
 # What --exchange runs, from the root of the repository
 docker run --rm --network saml2-model-simplesamlphp_default --user "$(id -u):$(id -g)" \
     -e EXCHANGE_CONNECT_TO=localhost:8081:idp:80,localhost:8082:sp:80 -v "$PWD:/project" -w /project \
-    ghcr.io/spomky-labs/phpqa:8.5 php tests/Interop/simplesamlphp/exchange.php [--keep]
+    ghcr.io/spomky-labs/phpqa:8.5 php tests/saml2-model/Interop/simplesamlphp/exchange.php [--keep]
 
 # The figure of section 9.6, on each PHP of the CI
-docker run --rm -v "$PWD:/project:ro" -w /project ghcr.io/spomky-labs/phpqa:8.5 php tests/Interop/simplesamlphp/timing.php
+docker run --rm -v "$PWD:/project:ro" -w /project ghcr.io/spomky-labs/phpqa:8.5 php tests/saml2-model/Interop/simplesamlphp/timing.php
 ```
 
 The exchange runs in the phpqa image on the network of the installation: `EXCHANGE_CONNECT_TO` pins `localhost:8081`
@@ -486,7 +486,7 @@ there.
 `MetadataWriter` writes both metadata, signed with the key of their role, into `written/`, before the first request:
 SimpleSAMLphp parses its metadata at every request. Every writer signs without `KeyInfo` (`Signing::$certificatePem`
 left `null`). The validators read the clock of the machine; the replay store is `InMemoryReplayGuard` of
-`tests/Support/`.
+`tests/saml2-model/Support/`.
 
 ### Configuration added
 
@@ -509,8 +509,8 @@ metadata, and `default-sp` is left as it was.
 
 ### Results
 
-The run kept, `castor simplesamlphp --keep` on PHP 8.5.10 at 13:07 UTC, its documents issued between 13:07:34 and
-13:07:35; `PHP_VERSION=8.4 castor simplesamlphp` at 13:13 UTC gave the same outcome on PHP 8.4.25, every step green.
+The run kept, `castor saml2-model-simplesamlphp --keep` on PHP 8.5.10 at 13:07 UTC, its documents issued between 13:07:34 and
+13:07:35; `PHP_VERSION=8.4 castor saml2-model-simplesamlphp` at 13:13 UTC gave the same outcome on PHP 8.4.25, every step green.
 
 **The model as identity provider, SimpleSAMLphp's service provider `for-model` in front.**
 
@@ -572,7 +572,7 @@ with a redirect to `session.php`, the identity provider with a redirect to its `
 
 ### The model's documents, verified
 
-`castor simplesamlphp` hands `written/` to the library half and to xmlsec1 once the exchange is over: the seven
+`castor saml2-model-simplesamlphp` hands `written/` to the library half and to xmlsec1 once the exchange is over: the seven
 documents the model wrote in the run, both metadata signed, the response with its signed assertion, the response
 signed over it, the `LogoutResponse`, the `AuthnRequest` and the `LogoutRequest`. On each of the two runs above:
 
@@ -597,7 +597,7 @@ specification already commit what the writers produce.
 What SimpleSAMLphp sent the model in the run kept, bytes as received (HTTP-POST base64-decoded, HTTP-Redirect
 URL-decoded, base64-decoded and raw-inflated, as in section 2), and the two query strings as they appeared in the URL.
 
-| File under `tests/Fixture/real/` | What | Carried by | Signed |
+| File under `tests/saml2-model/Fixture/real/` | What | Carried by | Signed |
 |---|---|---|---|
 | `simplesamlphp-2.5.3.1-idp-metadata-exchange-2026-09-30.xml` | the identity provider's metadata in the third configuration, as served | its URL | no |
 | `simplesamlphp-2.5.3.1-sp-metadata-for-model-2026-09-30.xml` | `for-model`'s metadata, as served | its URL | no |
@@ -606,7 +606,7 @@ URL-decoded, base64-decoded and raw-inflated, as in section 2), and the two quer
 | `simplesamlphp-2.5.3.1-idp-response-to-model-2026-09-30.xml` | the identity provider's response to the model's `AuthnRequest` | HTTP-POST | the assertion, then the response over it |
 | `simplesamlphp-2.5.3.1-idp-logoutresponse-to-model-2026-09-30.xml` | the identity provider's `LogoutResponse` to the model's `LogoutRequest` | HTTP-POST | the `LogoutResponse`, `sign.logout` |
 
-`tests/Unit/Interop/SimpleSamlPhpDocumentsTest.php` accepts them with a clock frozen at their `IssueInstant`: the
+`tests/saml2-model/Unit/Interop/SimpleSamlPhpDocumentsTest.php` accepts them with a clock frozen at their `IssueInstant`: the
 response and the `LogoutResponse` through `validate()`, under the identity provider's metadata; the two requests
 through `validateAuthenticatedByBinding()`, after verifying again the signature of their query string with
 `Verifier::verifyDetached()` under `for-model`'s metadata and checking that the XML kept is what that query string
@@ -614,7 +614,7 @@ carried. xmlsec1 verifies the three signatures of the two HTTP-POST documents un
 
 ```
 docker run --rm -v "$PWD:/project:ro" -w /project alpine:3.22 sh -c 'apk add -q xmlsec libxml2-utils \
-    && sh tests/Interop/simplesamlphp/xmlsec1-verify.sh tests/Fixture/real "simplesamlphp-2.5.3.1-*.xml"'
+    && sh tests/saml2-model/Interop/simplesamlphp/xmlsec1-verify.sh tests/saml2-model/Fixture/real "simplesamlphp-2.5.3.1-*.xml"'
 ```
 
 On 30 September 2026: six signatures verified, the three of section 3 and these three, exit status 0.

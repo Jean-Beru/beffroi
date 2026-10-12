@@ -9,7 +9,7 @@ use RuntimeException;
 use function sprintf;
 
 /**
- * The corpus of section 9 of spec/dsig.md: files, one case per file, under tests/Dsig/Fixture/{vectors,hostile,
+ * The corpus of section 9 of spec/dsig.md: files, one case per file, under tests/xml-security/Dsig/Fixture/{vectors,hostile,
  * behaviour,real,keys}/.
  */
 final class Fixtures

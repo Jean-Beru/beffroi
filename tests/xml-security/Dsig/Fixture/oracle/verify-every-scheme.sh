@@ -1,7 +1,7 @@
 #!/bin/sh
 # Verifies with xmlsec1 both signatures of every document SignerOracleTest wrote into the directory given
 # (spec/dsig.md section 9.3 row 10). Run from the root of the repository, where xmlsec1 is installed:
-#   sh tests/Dsig/Fixture/oracle/verify-every-scheme.sh .ci-tools/oracle
+#   sh tests/xml-security/Dsig/Fixture/oracle/verify-every-scheme.sh var/oracle/xml-security
 set -eu
 
 directory=$1

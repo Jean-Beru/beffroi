@@ -3,7 +3,7 @@
 # file given: the ds:Signature child of the root, and the one of the saml:Assertion child of the root, whichever the
 # file carries, under the certificate given. A file without either is an error. Run from the root of the repository,
 # where xmlsec1 and xmllint are installed (Alpine 3.22: apk add xmlsec libxml2-utils):
-#   sh tests/Fixture/oracle/verify-signatures.sh tests/Fixture/keys/idp-signing-certificate.pem <file>...
+#   sh tests/saml2-model/Fixture/oracle/verify-signatures.sh tests/saml2-model/Fixture/keys/idp-signing-certificate.pem <file>...
 set -eu
 
 certificate=$1

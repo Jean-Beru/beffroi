@@ -5,17 +5,17 @@ dsig.md section 9.1). `verify-signatures.sh` verifies every signature of each fi
 child of the root and the one of its `saml:Assertion` child, whichever the file carries, under the certificate it is
 given, and fails on a file that carries neither.
 
-`tests/Unit/Writing/ResponseWriterOracleTest.php` writes, into the directory `XMLSEC_ORACLE` names, a response signed
+`tests/saml2-model/Unit/Writing/ResponseWriterOracleTest.php` writes, into the directory `XMLSEC_ORACLE` names, a response signed
 with every scheme the build offers, its assertion alone and the response over it, and a signed failure. A PSS
 signature is random, so nothing here is pinned: the documents are written again on every run. The job Oracle of the CI
 signs in the phpqa image of PHP 8.5 and verifies in Alpine 3.22 (xmlsec1 1.3.7, OpenSSL), and every signed document
-the writers committed under `tests/Fixture/behaviour/` (the responses, the `AuthnRequest`, the metadata, the logout
+the writers committed under `tests/saml2-model/Fixture/behaviour/` (the responses, the `AuthnRequest`, the metadata, the logout
 messages), each under its signer's certificate. On the developer's machine:
 
 ```
-PHP_VERSION=8.5 castor xmlsec-oracle   # writes into tmp-phpqa/oracle, which git ignores, then verifies each
-castor xmlsec <file>                   # one file, under the identity provider's test certificate
-castor xmlsec <file> --certificate=tests/Fixture/keys/sp-signing-certificate.pem
+PHP_VERSION=8.5 castor saml2-model-oracle   # writes into var/oracle/saml2-model, which git ignores, then verifies each
+castor saml2-model-xmlsec <file>                   # one file, under the identity provider's test certificate
+castor saml2-model-xmlsec <file> --certificate=tests/saml2-model/Fixture/keys/sp-signing-certificate.pem
 ```
 
 Each runs, in `alpine:3.22` with `apk add xmlsec libxml2-utils`, for each signature the file carries:

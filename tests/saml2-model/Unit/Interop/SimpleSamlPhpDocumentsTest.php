@@ -45,11 +45,11 @@ use function urldecode;
 
 /**
  * Section 9.4, section 9.5: what SimpleSAMLphp 2.5.3.1 sent the model in the exchange of story #11 on 30 September
- * 2026 (tests/Interop/simplesamlphp/README.md, section 4), bytes as received, validated with a clock frozen at their
+ * 2026 (tests/saml2-model/Interop/simplesamlphp/README.md, section 4), bytes as received, validated with a clock frozen at their
  * IssueInstant: its identity provider's response and LogoutResponse to the model's service provider, its service
  * provider for-model's AuthnRequest and LogoutRequest to the model's identity provider, with the query strings
  * HTTP-Redirect carried them in, and the metadata of both parties as they were served. The model's two roles are
- * those the exchange wrote into its metadata (tests/Interop/simplesamlphp/exchange.php).
+ * those the exchange wrote into its metadata (tests/saml2-model/Interop/simplesamlphp/exchange.php).
  */
 final class SimpleSamlPhpDocumentsTest extends TestCase
 {
@@ -353,7 +353,7 @@ final class SimpleSamlPhpDocumentsTest extends TestCase
     }
 
     /**
-     * The parameters of a query string of tests/Fixture/real/, as they appear in the URL, not decoded.
+     * The parameters of a query string of tests/saml2-model/Fixture/real/, as they appear in the URL, not decoded.
      *
      * @return array<string, string>
      */

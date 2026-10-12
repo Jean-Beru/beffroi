@@ -6,9 +6,9 @@
 # Issuer, a signed metadata document under its own certificate. A document holding two signatures, a response
 # signed over its signed assertion, has both verified. A document without an XML signature is listed and skipped:
 # HTTP-Redirect removes the signature from the XML and signs the query string (SAML Bindings section 3.4.4.1).
-# Run in Alpine 3.22 from the root of the repository (tests/Interop/simplesamlphp/README.md):
+# Run in Alpine 3.22 from the root of the repository (tests/saml2-model/Interop/simplesamlphp/README.md):
 #   docker run --rm -v "$PWD:/project:ro" -w /project alpine:3.22 sh -c 'apk add -q xmlsec libxml2-utils \
-#       && sh tests/Interop/simplesamlphp/xmlsec1-verify.sh tests/Fixture/real "simplesamlphp-saml2-4.20.3-*.xml"'
+#       && sh tests/saml2-model/Interop/simplesamlphp/xmlsec1-verify.sh tests/saml2-model/Fixture/real "simplesamlphp-saml2-4.20.3-*.xml"'
 set -eu
 
 directory=$1

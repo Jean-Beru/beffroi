@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /*
- * Writes, with simplesamlphp/saml2 and the test keys of tests/Fixture/keys/, the documents of spec/model.md
+ * Writes, with simplesamlphp/saml2 and the test keys of tests/saml2-model/Fixture/keys/, the documents of spec/model.md
  * section 9.5.1 into /out: a response with a signed assertion, the same response signed over it, a signed
  * AuthnRequest, a signed LogoutRequest, a signed LogoutResponse, and both metadata, unsigned and signed.
  *
@@ -12,7 +12,7 @@ declare(strict_types=1);
  * NotBefore 30 s before the issue instant, 300 s of assertion.lifetime, 8 h of session.duration. The documents hold
  * together as one exchange, so that the model's validators accept them with a clock frozen at ISSUE_INSTANT.
  *
- * Run from the root of the repository (tests/Interop/simplesamlphp/README.md):
+ * Run from the root of the repository (tests/saml2-model/Interop/simplesamlphp/README.md):
  *   docker run --rm -v "$PWD/tests/Interop/simplesamlphp/library:/app" -v "$PWD/tests/Fixture/keys:/keys:ro" \
  *       -v "$PWD/tests/Fixture/real:/out" -w /app ghcr.io/spomky-labs/phpqa:8.4 php produce.php
  */

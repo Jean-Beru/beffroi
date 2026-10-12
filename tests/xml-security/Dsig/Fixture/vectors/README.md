@@ -5,7 +5,7 @@ this one: xmlsec1 1.3.7 on OpenSSL, in Alpine 3.22 (`apk add xmlsec`). Each vect
 byte; nothing reformats it afterwards. The templates carry empty `DigestValue`, `SignatureValue` and
 `X509Certificate` elements that xmlsec1 fills.
 
-The command, run in `tests/Dsig/Fixture/` with the keys of `../keys/`; `--lax-key-search` is what xmlsec1 1.3
+The command, run in `tests/xml-security/Dsig/Fixture/` with the keys of `../keys/`; `--lax-key-search` is what xmlsec1 1.3
 needs when the template's `KeyInfo` does not name the key:
 
 ```

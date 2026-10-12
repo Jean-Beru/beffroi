@@ -25,7 +25,7 @@ use function sprintf;
 /**
  * Section 9.1, M-15: the responses the writer signs with every scheme this build offers, the assertion alone and the
  * response over it, and a signed failure, written into the directory XMLSEC_ORACLE names for xmlsec1 to verify every
- * signature of each (tests/Fixture/oracle/README.md, the job Oracle of the CI). The files are the input of the oracle,
+ * signature of each (tests/saml2-model/Fixture/oracle/README.md, the job Oracle of the CI). The files are the input of the oracle,
  * not fixtures: the test is skipped when the variable is not set.
  */
 #[RequiresEnvironmentVariable('XMLSEC_ORACLE')]

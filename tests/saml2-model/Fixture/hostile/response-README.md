@@ -5,8 +5,8 @@ wrapping corpus of section 9.2 of `spec/model.md`, the envelope and status rows 
 concern a response. Each is a variant of one valid response with the one change its name says, signed with the test
 keys of `../keys/` through `Beffroi\Xml\Dsig\Signer` wherever the attack needs a valid signature.
 
-They are written by `tests/Support/ResponseFixtureBuilder.php`, never by hand. From the root of the repository, after
-`castor install`:
+They are written by `tests/saml2-model/Support/ResponseFixtureBuilder.php`, never by hand. From the root of the repository, after
+`composer install`:
 
 ```
 docker run --rm -v "$PWD:/project" -w /project ghcr.io/spomky-labs/phpqa:8.5 \
@@ -14,7 +14,7 @@ docker run --rm -v "$PWD:/project" -w /project ghcr.io/spomky-labs/phpqa:8.5 \
 ```
 
 RSA PKCS#1 v1.5 signatures are deterministic, so the command writes the committed bytes again: the test of the builder,
-`tests/Unit/Support/ResponseFixtureBuilderTest.php`, compares what it builds with every committed file and fails on
+`tests/saml2-model/Unit/Support/ResponseFixtureBuilderTest.php`, compares what it builds with every committed file and fails on
 the first difference.
 
 The valid response answers the request `_request` of the service provider `https://sp.example.com/saml` at its

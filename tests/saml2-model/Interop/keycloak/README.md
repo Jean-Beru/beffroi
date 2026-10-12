@@ -6,7 +6,7 @@ hand, never in the CI and never a dependency of the package. It reinforces the j
 not a condition of it. The first phase built the installation and captured what two Keycloaks write to each other
 (sections Installation to Findings); the second plays the model against Keycloak, both ways, as an identity provider
 behind realm `sp`'s broker and as a service provider behind realm `idp` (section The exchange with the model and
-after). `castor keycloak` runs both.
+after). `castor saml2-model-keycloak` runs both.
 
 ## Versions
 
@@ -24,7 +24,7 @@ after). `castor keycloak` runs both.
 From the root of the repository:
 
 ```
-docker compose -f tests/Interop/keycloak/compose.yaml up -d
+docker compose -f tests/saml2-model/Interop/keycloak/compose.yaml up -d
 ```
 
 Keycloak imports `realms/idp.json` and `realms/sp.json` on its first start (the log says `Realm 'idp' imported`,
@@ -106,8 +106,8 @@ off), and the broker requires a signed assertion (`wantAssertionsSigned=true`) t
 From the root of the repository, Keycloak started as above:
 
 ```
-bash tests/Interop/keycloak/capture.sh
-docker compose -f tests/Interop/keycloak/compose.yaml down
+bash tests/saml2-model/Interop/keycloak/capture.sh
+docker compose -f tests/saml2-model/Interop/keycloak/compose.yaml down
 ```
 
 `capture.sh` needs bash 3.2 or later, curl and perl with its core modules. It waits for Keycloak (180 s at most), then
@@ -128,7 +128,7 @@ plays the exchange with curl and one cookie jar, following no redirect by itself
 
 A document HTTP-Redirect carries is URL-decoded, base64-decoded and inflated (raw DEFLATE, no zlib header); one
 HTTP-POST carries has the character references of the form value resolved, then is base64-decoded. Each is written
-byte for byte as decoded, into `tests/Fixture/real/keycloak-<version>-<idp|sp>-<document>-<YYYY-MM-DD>.xml`, where
+byte for byte as decoded, into `tests/saml2-model/Fixture/real/keycloak-<version>-<idp|sp>-<document>-<YYYY-MM-DD>.xml`, where
 `idp` or `sp` names the realm that produced it, the version is read from `compose.yaml` and the date is the UTC day
 of the run. The output of the run of 30 September 2026 that produced the committed files:
 
@@ -156,11 +156,11 @@ signs no request under its defaults.
 Every signature of the captured documents is verified by xmlsec1, which shares nothing with Keycloak's Java stack,
 under the signing certificate of the producer's metadata captured in the same run, with the SAML `ID` attributes
 declared (`Response`, `AuthnRequest`, `LogoutRequest`, `LogoutResponse`, `Assertion`, `EntityDescriptor`), the command
-of `xml-security`'s `castor xmlsec` extended to the protocol messages:
+of `xml-security`'s `castor xml-security-xmlsec` extended to the protocol messages:
 
 ```
 docker run --rm -v "$PWD:/project:ro" -w /project alpine:3.22 sh -c \
-    'apk add -q xmlsec libxml2-utils openssl >/dev/null && sh tests/Interop/keycloak/verify.sh tests/Fixture/real'
+    'apk add -q xmlsec libxml2-utils openssl >/dev/null && sh tests/saml2-model/Interop/keycloak/verify.sh tests/saml2-model/Fixture/real'
 ```
 
 `verify.sh` verifies each `ds:Signature` child of the root and of a direct `saml:Assertion` child on its own
@@ -315,52 +315,52 @@ is for the coordinator, who alone edits it.
 16. **The first login.** Removing `Review Profile`, as story #14 asks, is not enough with 26.7.4: the required action
     `VERIFY_PROFILE` asks for the profile at the end of the first login, and is disabled here (settings, above).
 
-## `castor keycloak`
+## `castor saml2-model-keycloak`
 
-The task of `.castor/keycloak.php` runs the whole of this document from the root of the repository:
+The task of `.castor/lab/saml2-model.php` runs the whole of this document from the root of the repository:
 
 ```
-castor keycloak
+castor saml2-model-keycloak
 ```
 
 Without an option it runs every stage in order: `--up` (`docker compose ... up -d`, the realms imported with new
 keys), `--capture` (`capture.sh`, the first phase), `--exchange` (`exchange.php`, below), `--verify` (xmlsec1 over the
 documents the model wrote and over Keycloak's), `--down` (`docker compose ... down`, run even when a stage fails).
 Given one or more of these options, it runs those only. `--output` is where Keycloak's documents go: by default
-`tmp-phpqa/keycloak/`, ignored by git and emptied of its `keycloak-*.xml` before a capture or an exchange, so that a
-run from a clean checkout touches no fixture; the model's documents always go to `tmp-phpqa/keycloak/model/`. To renew
-the fixtures, `--output=tests/Fixture/real` with the stages named, since both scripts name their files by the UTC day
+`var/keycloak/`, ignored by git and emptied of its `keycloak-*.xml` before a capture or an exchange, so that a
+run from a clean checkout touches no fixture; the model's documents always go to `var/keycloak/model/`. To renew
+the fixtures, `--output=tests/saml2-model/Fixture/real` with the stages named, since both scripts name their files by the UTC day
 and rewrite the files of that day: the committed exchange of 30 September 2026 was written by
 
 ```
-docker compose -f tests/Interop/keycloak/compose.yaml up -d        # what castor keycloak --up runs
-castor keycloak --exchange --verify --down --output=tests/Fixture/real
+docker compose -f tests/saml2-model/Interop/keycloak/compose.yaml up -d        # what castor saml2-model-keycloak --up runs
+castor saml2-model-keycloak --exchange --verify --down --output=tests/saml2-model/Fixture/real
 ```
 
 without `--capture`, which would have rewritten the six files of the first phase, captured the same day under the keys
-of an earlier container. The same day, `castor keycloak` without an option ran every stage green from a stopped
-Keycloak into `tmp-phpqa/keycloak/`.
+of an earlier container. The same day, `castor saml2-model-keycloak` without an option ran every stage green from a stopped
+Keycloak into `var/keycloak/`.
 
 The exchange runs in the phpqa image, in the network namespace of the Keycloak container, so that `localhost:8180`
 names Keycloak there as in every URL it builds and checks (`Destination`, `Recipient`, the broker endpoint):
 
 ```
 docker run --rm --init -i --user "$(id -u):$(id -g)" \
-    --network container:$(docker compose -f tests/Interop/keycloak/compose.yaml ps -q keycloak) \
+    --network container:$(docker compose -f tests/saml2-model/Interop/keycloak/compose.yaml ps -q keycloak) \
     -v "$PWD:/project" -w /project -e XDEBUG_MODE=off ghcr.io/spomky-labs/phpqa:8.5 \
-    php tests/Interop/keycloak/exchange.php <output> tmp-phpqa/keycloak/model
+    php tests/saml2-model/Interop/keycloak/exchange.php <output> var/keycloak/model
 ```
 
-It needs the dependencies installed (`castor install`): it loads the package from `vendor/autoload.php`, and
-`InMemoryReplayGuard` from `tests/Support/`.
+It needs the dependencies installed (`composer install`): it loads the package from `vendor/autoload.php`, and
+`InMemoryReplayGuard` from `tests/saml2-model/Support/`.
 
 ## The exchange with the model
 
 Section 9.5's second half, played against Keycloak: every message over HTTP-POST, base64 in a form field, the form
 written in `exchange.php` and not in `saml2-bindings`; curl as the browser, one cookie jar per direction, following no
-redirect by itself; the test keys of `tests/Fixture/keys/`, the identity provider pair for the model's identity
+redirect by itself; the test keys of `tests/saml2-model/Fixture/keys/`, the identity provider pair for the model's identity
 provider, the service provider pair for its service provider; for the two ports of section 5.2, a PSR-20 clock written
-in the script, which reads the machine's time in UTC, and `InMemoryReplayGuard` of `tests/Support/`.
+in the script, which reads the machine's time in UTC, and `InMemoryReplayGuard` of `tests/saml2-model/Support/`.
 
 ### The model's two roles, and what Keycloak makes of their metadata
 
@@ -445,12 +445,12 @@ answered by what the model's identity provider metadata says, read by Keycloak's
 Keycloak's documents are written byte for byte as decoded from the form, into
 `<output>/keycloak-<version>-exchange-<producer>-<document>-<YYYY-MM-DD>.xml`, where the producer is `idp` (realm
 `idp`) or `broker` (realm `sp`'s identity provider `model`); the model's, serialized by `Core`'s `Serializer`, into
-`tmp-phpqa/keycloak/model/model-<idp|sp>-<document>.xml`, with the two configurations read back as JSON. The output of
+`var/keycloak/model/model-<idp|sp>-<document>.xml`, with the two configurations read back as JSON. The output of
 the run of 30 September 2026 that produced the committed files (the two lines of settings are those of the table
 above):
 
 ```
-Keycloak 26.7.4 on http://localhost:8180, exchange of 2026-09-30, Keycloak's documents into tests/Fixture/real, the model's into tmp-phpqa/keycloak/model
+Keycloak 26.7.4 on http://localhost:8180, exchange of 2026-09-30, Keycloak's documents into tests/saml2-model/Fixture/real, the model's into var/keycloak/model
 The model's metadata, given to Keycloak
   realm sp, identity provider model from import-config: addExtensionsElementWithKeyInfo=false, artifactBindingResponse=false, enabledFromMetadata=true, idpEntityId=https://idp.saml2-model.test/metadata, loginHint=false, nameIDPolicyFormat=urn:oasis:names:tc:SAML:2.0:nameid-format:persistent, postBindingAuthnRequest=true, postBindingLogout=true, postBindingResponse=true, signingCertificate=<1156 characters>, singleLogoutServiceUrl=https://idp.saml2-model.test/slo, singleSignOnServiceUrl=https://idp.saml2-model.test/sso, validateSignature=true, wantAuthnRequestsSigned=true
   realm idp, client https://sp.saml2-model.test/metadata from client-description-converter: saml.authnstatement=true, saml.client.signature=true, saml.server.signature=true, saml.server.signature.keyinfo.ext=false, saml.signature.algorithm=RSA_SHA256, saml.signing.certificate=<1156 characters>, saml_assertion_consumer_url_post=https://sp.saml2-model.test/acs, saml_single_logout_service_url_post=https://sp.saml2-model.test/slo
@@ -481,7 +481,7 @@ Both directions completed.
 ```
 
 The IDs of the model's two requests, `_8b44214fbfab0a7dccde575a0028ce774831e27f` and
-`_9f51ef48331c006c5d1afd246989666af224d283`, are those `tests/Unit/Interop/KeycloakDocumentsTest.php` names as what
+`_9f51ef48331c006c5d1afd246989666af224d283`, are those `tests/saml2-model/Unit/Interop/KeycloakDocumentsTest.php` names as what
 realm `idp`'s response and `LogoutResponse` answer.
 
 ### Results
@@ -500,12 +500,12 @@ Keycloak's encrypted assertions are sub-spike 9e's.
 
 ## Verification of the exchange by xmlsec1
 
-**What the model wrote**, the six documents of `tmp-phpqa/keycloak/model/`, each under the test certificate of the
-role that signed it, by `tests/Fixture/oracle/verify-signatures.sh` (`castor xmlsec`'s script):
+**What the model wrote**, the six documents of `var/keycloak/model/`, each under the test certificate of the
+role that signed it, by `tests/saml2-model/Fixture/oracle/verify-signatures.sh` (`castor saml2-model-xmlsec`'s script):
 
 ```
-docker run --rm -i -v "$PWD:/project:ro" -w /project alpine:3.22 sh -c 'apk add -q xmlsec libxml2-utils >/dev/null 2>&1 && xmlsec1 --version && sh tests/Fixture/oracle/verify-signatures.sh tests/Fixture/keys/idp-signing-certificate.pem tmp-phpqa/keycloak/model/model-idp-logout-response.xml tmp-phpqa/keycloak/model/model-idp-metadata.xml tmp-phpqa/keycloak/model/model-idp-response.xml'
-docker run --rm -i -v "$PWD:/project:ro" -w /project alpine:3.22 sh -c 'apk add -q xmlsec libxml2-utils >/dev/null 2>&1 && xmlsec1 --version && sh tests/Fixture/oracle/verify-signatures.sh tests/Fixture/keys/sp-signing-certificate.pem tmp-phpqa/keycloak/model/model-sp-authn-request.xml tmp-phpqa/keycloak/model/model-sp-logout-request.xml tmp-phpqa/keycloak/model/model-sp-metadata.xml'
+docker run --rm -i -v "$PWD:/project:ro" -w /project alpine:3.22 sh -c 'apk add -q xmlsec libxml2-utils >/dev/null 2>&1 && xmlsec1 --version && sh tests/saml2-model/Fixture/oracle/verify-signatures.sh tests/saml2-model/Fixture/keys/idp-signing-certificate.pem var/keycloak/model/model-idp-logout-response.xml var/keycloak/model/model-idp-metadata.xml var/keycloak/model/model-idp-response.xml'
+docker run --rm -i -v "$PWD:/project:ro" -w /project alpine:3.22 sh -c 'apk add -q xmlsec libxml2-utils >/dev/null 2>&1 && xmlsec1 --version && sh tests/saml2-model/Fixture/oracle/verify-signatures.sh tests/saml2-model/Fixture/keys/sp-signing-certificate.pem var/keycloak/model/model-sp-authn-request.xml var/keycloak/model/model-sp-logout-request.xml var/keycloak/model/model-sp-metadata.xml'
 ```
 
 On 30 September 2026, on the documents of the run above:

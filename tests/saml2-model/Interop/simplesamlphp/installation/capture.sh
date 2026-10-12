@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Plays, with curl and one cookie jar as a browser would, a login and a logout started by the SimpleSAMLphp service
 # provider of http://localhost:8082 against the SimpleSAMLphp identity provider of http://localhost:8081, and keeps
-# every SAML document of the exchange in tests/Fixture/real/, byte for byte as decoded:
+# every SAML document of the exchange in tests/saml2-model/Fixture/real/, byte for byte as decoded:
 #   - both metadata, as their URLs serve them;
 #   - the AuthnRequest, the LogoutRequest and the LogoutResponse that HTTP-Redirect carries in the query string,
 #     URL-decoded, base64-decoded and raw-inflated (SAML Bindings section 3.4.4.1), the XML signature removed by the
@@ -11,8 +11,8 @@
 # which answers with what it does of it; nothing of it is kept.
 # Then it restarts the identity provider in the second configuration (SSP_SIGN_RESPONSE=false) and plays the login
 # again to keep the response whose assertion alone is signed, and restores the default configuration.
-# Run from anywhere, with Docker, bash and curl (tests/Interop/simplesamlphp/README.md):
-#   bash tests/Interop/simplesamlphp/installation/capture.sh
+# Run from anywhere, with Docker, bash and curl (tests/saml2-model/Interop/simplesamlphp/README.md):
+#   bash tests/saml2-model/Interop/simplesamlphp/installation/capture.sh
 set -euo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)

@@ -69,7 +69,7 @@ use function str_repeat;
 
 /**
  * Section 9.8, the adversarial pass of 30 September 2026: each row of section 3 attacked with inputs the corpus of 9.2
- * and 9.3 does not list, every attempt a fixture of tests/Support/AdversarialFixtureBuilder whatever its outcome,
+ * and 9.3 does not list, every attempt a fixture of tests/saml2-model/Support/AdversarialFixtureBuilder whatever its outcome,
  * refused with the exception and the message it got, or accepted with the values read. Two attempts bypassed a rule
  * and were reported before their fix: the Issuer of an AuthnRequest, a LogoutRequest or a LogoutResponse carrying a
  * qualifier (M-8), fixed and asserted by the tests of those validators, and a time within a microsecond after its
@@ -81,7 +81,7 @@ final class AdversarialTest extends TestCase
     private const string NOW = '2026-09-30T12:00:00Z';
 
     /**
-     * The attempts written by hand with the fix of the bypass they found (tests/Fixture/hostile/adversarial-README.md),
+     * The attempts written by hand with the fix of the bypass they found (tests/saml2-model/Fixture/hostile/adversarial-README.md),
      * asserted here as the builder's are.
      */
     private const array WRITTEN_BY_HAND = [
@@ -92,7 +92,7 @@ final class AdversarialTest extends TestCase
 
     /**
      * Section 9.8, section 9.7: every adversarial fixture on disk is what the builder writes, byte for byte, so that
-     * the command of tests/Fixture/hostile/adversarial-README.md writes them again.
+     * the command of tests/saml2-model/Fixture/hostile/adversarial-README.md writes them again.
      */
     #[Test]
     public function itBuildsTheCommittedFixtures(): void

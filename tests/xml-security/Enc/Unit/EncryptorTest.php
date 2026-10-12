@@ -57,7 +57,7 @@ use function substr;
 /**
  * Section 6.2: encryption in order, the element canonicalized with comments (E-9), fresh randomness (E-8), a
  * prefixed xenc:EncryptedData returned unattached in the element's document, decrypted by the decryptor of this
- * namespace and by xmlsec1 (tests/Enc/Fixture/behaviour/README.md).
+ * namespace and by xmlsec1 (tests/xml-security/Enc/Fixture/behaviour/README.md).
  */
 final class EncryptorTest extends TestCase
 {
@@ -305,7 +305,7 @@ final class EncryptorTest extends TestCase
     }
 
     /**
-     * §9.3 row 10: what the encryptor produced once, decrypted by xmlsec1 (tests/Enc/Fixture/behaviour/README.md),
+     * §9.3 row 10: what the encryptor produced once, decrypted by xmlsec1 (tests/xml-security/Enc/Fixture/behaviour/README.md),
      * decrypts here too to the built assertion.
      */
     #[Test]

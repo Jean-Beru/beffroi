@@ -7,7 +7,7 @@ byte; nothing reformats it afterwards. A template (`*.template.xml`) is a standa
 `EncryptedAssertion` holds the plain assertion, the element `--node-id` names. xmlsec1 encrypts that element, replaces
 it with the filled template, and writes the data file so changed: the vector.
 
-The command, run in `tests/Enc/Fixture/` with the keys of `keys/`; `--lax-key-search` is what xmlsec1 1.3 needs when
+The command, run in `tests/xml-security/Enc/Fixture/` with the keys of `keys/`; `--lax-key-search` is what xmlsec1 1.3 needs when
 the template's `KeyInfo` does not name the key:
 
 ```

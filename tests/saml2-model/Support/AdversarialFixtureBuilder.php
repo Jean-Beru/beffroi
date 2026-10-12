@@ -31,9 +31,9 @@ use function trim;
  * The fixtures of the adversarial pass of section 9.8 (story #12): each row of section 3 attacked with inputs the
  * corpus of 9.2 and 9.3 does not list, every attempt a file whatever its outcome, hostile/adversarial-<attempt>-refused.xml
  * or behaviour/adversarial-<attempt>-accepted.xml, each a variant of one valid message with the change its name says,
- * signed with the test keys of tests/Fixture/keys/ through Dsig's Signer wherever the attack needs a valid signature.
+ * signed with the test keys of tests/saml2-model/Fixture/keys/ through Dsig's Signer wherever the attack needs a valid signature.
  * RSA PKCS#1 v1.5 is deterministic: the same keys build the same bytes, which the adversarial test checks against the
- * committed files. The command that writes them is in tests/Fixture/hostile/adversarial-README.md.
+ * committed files. The command that writes them is in tests/saml2-model/Fixture/hostile/adversarial-README.md.
  *
  * Every message is issued at 2026-09-30T11:59:59Z, and the tests freeze the clock at 12:00:00Z: the response answers
  * the request _request of the service provider https://sp.example.com/saml at its assertion consumer service
@@ -80,7 +80,7 @@ final class AdversarialFixtureBuilder
     private const string XML_ATTRIBUTES = ' xml:base="https://attacker.example.com/" xml:lang="fr"';
 
     /**
-     * Every fixture, its path under tests/Fixture/ mapped to its bytes.
+     * Every fixture, its path under tests/saml2-model/Fixture/ mapped to its bytes.
      *
      * @return array<string, string>
      */
@@ -101,7 +101,7 @@ final class AdversarialFixtureBuilder
     }
 
     /**
-     * Writes every fixture under $directory, tests/Fixture/ of the repository.
+     * Writes every fixture under $directory, tests/saml2-model/Fixture/ of the repository.
      */
     public static function write(string $directory): void
     {

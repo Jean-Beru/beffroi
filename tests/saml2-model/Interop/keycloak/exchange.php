@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 /*
  * Plays the model against the Keycloak of compose.yaml, both ways (spec/model.md sections 9.4 and 9.5; story #14),
- * with the package of this repository and the test keys of tests/Fixture/keys/:
+ * with the package of this repository and the test keys of tests/saml2-model/Fixture/keys/:
  *
  * 1. the model's two metadata, written by MetadataWriter and signed, given to Keycloak's own importers: realm sp's
  *    identity provider "model" from import-config, realm idp's SAML client from client-description-converter;
@@ -22,10 +22,10 @@ declare(strict_types=1);
  * byte for byte as decoded, keycloak-<version>-exchange-<idp|broker>-<document>-<YYYY-MM-DD>.xml in the output
  * directory; what the model wrote goes to the work directory, for xmlsec1. Run in the phpqa image, inside the network
  * namespace of the Keycloak container so that localhost:8180 names Keycloak as in every URL it builds, from the root
- * of the repository (castor keycloak does it):
- *   docker run --rm --network container:$(docker compose -f tests/Interop/keycloak/compose.yaml ps -q keycloak) \
- *       -v "$PWD:/project" -w /project ghcr.io/spomky-labs/phpqa:8.5 php tests/Interop/keycloak/exchange.php \
- *       [output directory, default tests/Fixture/real] [work directory, default tmp-phpqa/keycloak/model]
+ * of the repository (castor saml2-model-keycloak does it):
+ *   docker run --rm --network container:$(docker compose -f tests/saml2-model/Interop/keycloak/compose.yaml ps -q keycloak) \
+ *       -v "$PWD:/project" -w /project ghcr.io/spomky-labs/phpqa:8.5 php tests/saml2-model/Interop/keycloak/exchange.php \
+ *       [output directory, default tests/saml2-model/Fixture/real] [work directory, default var/keycloak/model]
  */
 
 require __DIR__ . '/../../../../vendor/autoload.php';

@@ -24,7 +24,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Section 9.4: the real documents, what SimpleSAMLphp's library encrypted, decrypted here with the test key
- * (tests/Enc/Fixture/real/README.md); the interoperability is proven, the trust is the metadata layer's business.
+ * (tests/xml-security/Enc/Fixture/real/README.md); the interoperability is proven, the trust is the metadata layer's business.
  */
 final class RealDocumentsTest extends TestCase
 {

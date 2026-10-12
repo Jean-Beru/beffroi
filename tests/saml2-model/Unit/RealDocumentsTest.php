@@ -33,7 +33,7 @@ use function preg_replace;
 use function sprintf;
 
 /**
- * Section 9.4: the real documents of tests/Fixture/real/, bytes as received, read with a clock frozen at their
+ * Section 9.4: the real documents of tests/saml2-model/Fixture/real/, bytes as received, read with a clock frozen at their
  * capture. A real document the model refuses is a finding (section 9.4); none of these is refused.
  */
 final class RealDocumentsTest extends TestCase
@@ -411,7 +411,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * The identity provider of a real metadata of tests/Fixture/real/, read by readTrusted().
+     * The identity provider of a real metadata of tests/saml2-model/Fixture/real/, read by readTrusted().
      */
     private static function identityProviderOf(string $file): IdentityProvider
     {

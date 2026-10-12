@@ -6,7 +6,7 @@ declare(strict_types=1);
  * The exchange of phase 2 of story #11 (README.md of this directory, section 6): the model and the SimpleSAMLphp
  * installation of installation/, both ways, as an identity provider and as a service provider, login and logout, on
  * the running installation, with the package of the repository (its vendor/autoload.php), the test keys of
- * tests/Fixture/keys/ and the live clock.
+ * tests/saml2-model/Fixture/keys/ and the live clock.
  *
  * The script is the model's side of the wire: the browser, which carries every message with one cookie jar per
  * direction, and the HTTP layer of the model's two roles, which nothing provides yet. It stands in for saml2-bindings
@@ -16,17 +16,17 @@ declare(strict_types=1);
  * own.
  *
  * The model's metadata, both roles, and every document the model writes go to written/, from which the installation
- * reads the model's metadata and which castor simplesamlphp hands to verify.php and xmlsec1 afterwards; what
- * SimpleSAMLphp sends goes to received/, or to tests/Fixture/real/ with --keep, named with its version and the date,
+ * reads the model's metadata and which castor saml2-model-simplesamlphp hands to verify.php and xmlsec1 afterwards; what
+ * SimpleSAMLphp sends goes to received/, or to tests/saml2-model/Fixture/real/ with --keep, named with its version and the date,
  * as phase 1 names its captures. Four probes follow the directions: a document of the model changed after signing,
  * posted where its genuine twin was accepted, which SimpleSAMLphp must refuse, so that its acceptance of the genuine
  * one proves a signature it verified (findings F-3 and F-9 of the README). One line per step; the exit status is 1
  * when a step fails.
  *
- * From the root of the repository, the installation up in its third configuration (castor simplesamlphp runs it all):
+ * From the root of the repository, the installation up in its third configuration (castor saml2-model-simplesamlphp runs it all):
  *   docker run --rm --network saml2-model-simplesamlphp_default \
  *       -e EXCHANGE_CONNECT_TO=localhost:8081:idp:80,localhost:8082:sp:80 -v "$PWD:/project" -w /project \
- *       ghcr.io/spomky-labs/phpqa:8.5 php tests/Interop/simplesamlphp/exchange.php [--keep]
+ *       ghcr.io/spomky-labs/phpqa:8.5 php tests/saml2-model/Interop/simplesamlphp/exchange.php [--keep]
  */
 
 use Beffroi\Saml2\Model\Assertion\Assertion;

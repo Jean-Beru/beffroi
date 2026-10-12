@@ -30,7 +30,7 @@ use DateTimeImmutable;
 
 /**
  * The parties, the clock and the messages the logout tests share (sections 6.3, 6.4 and 9.1): an identity provider
- * and a service provider carrying the test keys of tests/Fixture/keys/, the identity provider's request to the service
+ * and a service provider carrying the test keys of tests/saml2-model/Fixture/keys/, the identity provider's request to the service
  * provider and the service provider's response to it, the clock frozen at their IssueInstant.
  */
 final class LogoutFixtures

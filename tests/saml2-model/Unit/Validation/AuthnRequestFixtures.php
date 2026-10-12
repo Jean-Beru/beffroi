@@ -24,7 +24,7 @@ use function implode;
 use function sprintf;
 
 /**
- * The fixtures the AuthnRequest tests share: the two parties of the files authn-request-*.xml of tests/Fixture/, a
+ * The fixtures the AuthnRequest tests share: the two parties of the files authn-request-*.xml of tests/saml2-model/Fixture/, a
  * service provider signing with the test key of its role and an identity provider at two single sign-on services; the
  * validator with a clock frozen at the IssueInstant of those files, or moved from it; the files, and the variants of
  * the unsigned request whose one change is a lexical value (section 9.7), built from the same attributes.
@@ -96,7 +96,7 @@ final class AuthnRequestFixtures
     }
 
     /**
-     * A file of tests/Fixture/, loaded with SamlLoader::create() (M-14) and read before verification (M-1).
+     * A file of tests/saml2-model/Fixture/, loaded with SamlLoader::create() (M-14) and read before verification (M-1).
      */
     public static function load(string $path): UnverifiedAuthnRequest
     {

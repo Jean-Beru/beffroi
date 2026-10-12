@@ -23,7 +23,7 @@ use function str_starts_with;
 use function strlen;
 
 /**
- * Section 9.4: the real documents under tests/Core/Fixture/real/, each loading without refusal with the SAML stack's
+ * Section 9.4: the real documents under tests/xml-security/Core/Fixture/real/, each loading without refusal with the SAML stack's
  * IdAttributes and the default Limits, its IDs indexed, its exclusive canonical form stable across two runs. A
  * real document the loader refuses is a finding.
  */

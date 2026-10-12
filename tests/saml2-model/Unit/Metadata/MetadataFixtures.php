@@ -13,8 +13,8 @@ use function file_get_contents;
 use function preg_replace;
 
 /**
- * The fixtures the metadata tests share: the test keys of tests/Fixture/keys/ (section 9.1) and the files of
- * tests/Fixture/, read as bytes and loaded with the one loader (M-14).
+ * The fixtures the metadata tests share: the test keys of tests/saml2-model/Fixture/keys/ (section 9.1) and the files of
+ * tests/saml2-model/Fixture/, read as bytes and loaded with the one loader (M-14).
  */
 final class MetadataFixtures
 {
@@ -57,7 +57,7 @@ final class MetadataFixtures
     }
 
     /**
-     * The bytes of a file of tests/Fixture/, as they are on disk.
+     * The bytes of a file of tests/saml2-model/Fixture/, as they are on disk.
      */
     public static function bytes(string $path): string
     {
@@ -65,7 +65,7 @@ final class MetadataFixtures
     }
 
     /**
-     * A file of tests/Fixture/ loaded with SamlLoader::create() (M-14).
+     * A file of tests/saml2-model/Fixture/ loaded with SamlLoader::create() (M-14).
      */
     public static function load(string $path): Document
     {

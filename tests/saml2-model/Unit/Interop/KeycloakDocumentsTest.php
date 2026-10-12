@@ -37,10 +37,10 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Section 9.4, section 9.5: what Keycloak 26.7.4 wrote in the exchange with the model of 30 September 2026
- * (tests/Interop/keycloak/README.md), bytes as received, each validated with a clock frozen at its IssueInstant: the
+ * (tests/saml2-model/Interop/keycloak/README.md), bytes as received, each validated with a clock frozen at its IssueInstant: the
  * broker of realm sp configured from the model's identity provider metadata, which signs its requests and posts them,
  * and realm idp answering the model's service provider. The model's own roles are the ones its metadata described in
- * that run, with the test keys of tests/Fixture/keys/; the IDs of the model's requests are those the run printed.
+ * that run, with the test keys of tests/saml2-model/Fixture/keys/; the IDs of the model's requests are those the run printed.
  */
 final class KeycloakDocumentsTest extends TestCase
 {
@@ -106,7 +106,7 @@ final class KeycloakDocumentsTest extends TestCase
     }
 
     /**
-     * Section 6.2, M-2, M-9, finding F1 of tests/Interop/keycloak/README.md: the AuthnRequest the broker posted to the
+     * Section 6.2, M-2, M-9, finding F1 of tests/saml2-model/Interop/keycloak/README.md: the AuthnRequest the broker posted to the
      * model's single sign-on service, signed in XML, asking for its response over HTTP-POST, accepted by validate().
      */
     #[Test]
@@ -149,7 +149,7 @@ final class KeycloakDocumentsTest extends TestCase
     }
 
     /**
-     * Section 6.3, M-2, finding F2 of tests/Interop/keycloak/README.md: the LogoutRequest the broker posted to the
+     * Section 6.3, M-2, finding F2 of tests/saml2-model/Interop/keycloak/README.md: the LogoutRequest the broker posted to the
      * model's single logout service, signed in XML, naming the subject and the session of the model's assertion,
      * accepted by validate().
      */

@@ -30,7 +30,7 @@ use function sprintf;
 /**
  * §9.3 row 10: the assertion of a built response, then the response, signed with every scheme this build offers,
  * exclusive and exclusive with comments, written into the directory XMLSEC_ORACLE names for xmlsec1 to verify
- * both signatures of each (tests/Dsig/Fixture/oracle/README.md, the job Oracle of the CI). The files are the
+ * both signatures of each (tests/xml-security/Dsig/Fixture/oracle/README.md, the job Oracle of the CI). The files are the
  * input of the oracle, not fixtures: the test is skipped when the variable is not set.
  */
 #[RequiresEnvironmentVariable('XMLSEC_ORACLE')]

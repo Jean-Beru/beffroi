@@ -21,7 +21,7 @@ use function sprintf;
 use function str_contains;
 
 /**
- * The assertion fixtures of tests/Fixture/, one case per file, loaded with SamlLoader::create() as the verified
+ * The assertion fixtures of tests/saml2-model/Fixture/, one case per file, loaded with SamlLoader::create() as the verified
  * document would be (section 9.7), and what the rules of an assertion are checked against: the frozen clock at
  * 2026-09-30T12:00:00Z, the bounds of section 7 by default, the identity provider https://idp.example.com/saml, our
  * entity ID https://sp.example.com/saml, the URL of arrival https://sp.example.com/saml/acs, and the request _request.

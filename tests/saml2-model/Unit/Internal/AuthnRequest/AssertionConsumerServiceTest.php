@@ -223,7 +223,7 @@ final class AssertionConsumerServiceTest extends TestCase
 
     /**
      * Section 8: the one place of the rule on the ProtocolBinding, which the maintainer may change after Keycloak's
-     * finding F1 (tests/Interop/keycloak/README.md): HTTP-POST, and nothing else.
+     * finding F1 (tests/saml2-model/Interop/keycloak/README.md): HTTP-POST, and nothing else.
      */
     #[Test]
     public function itAcceptsThePostProtocolBindingOnly(): void

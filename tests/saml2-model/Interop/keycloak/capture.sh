@@ -4,7 +4,7 @@
 # both metadata as served, the documents HTTP-Redirect carries URL-decoded, base64-decoded and raw-inflated, the ones
 # HTTP-POST carries base64-decoded, each written byte for byte as decoded, never reformatted. Run from anywhere once
 # `docker compose up -d` has imported the realms:
-#   bash tests/Interop/keycloak/capture.sh [output directory, default tests/Fixture/real]
+#   bash tests/saml2-model/Interop/keycloak/capture.sh [output directory, default tests/saml2-model/Fixture/real]
 # Needs bash 3.2 or later, curl and perl with its core modules (MIME::Base64, Compress::Raw::Zlib, JSON::PP).
 set -euo pipefail
 

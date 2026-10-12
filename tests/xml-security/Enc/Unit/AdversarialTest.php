@@ -31,7 +31,7 @@ use Throwable;
 
 /**
  * Section 9.7, the adversarial pass of 27 September 2026: each row of section 3 attacked with inputs the corpus of
- * 9.2 does not list, every attempt a fixture whatever its outcome (tests/Enc/Fixture/hostile/derive-adversarial.php),
+ * 9.2 does not list, every attempt a fixture whatever its outcome (tests/xml-security/Enc/Fixture/hostile/derive-adversarial.php),
  * refused with the exception and the message it got, failed in the one way, or decrypted when the attempt changes
  * nothing the cipher covers. None bypassed a rule, and no failing attempt said more than the one message.
  */

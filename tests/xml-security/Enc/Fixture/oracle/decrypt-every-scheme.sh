@@ -2,7 +2,7 @@
 # Decrypts with xmlsec1 every document EncryptorOracleTest wrote into the directory given, and compares what xmlsec1
 # gives back, in its exclusive canonical form with comments, with the document before encryption (spec/enc.md
 # section 9.3 row 10). Run from the root of the repository, where xmlsec1 and xmllint are installed:
-#   sh tests/Enc/Fixture/oracle/decrypt-every-scheme.sh .ci-tools/oracle/enc
+#   sh tests/xml-security/Enc/Fixture/oracle/decrypt-every-scheme.sh var/oracle/xml-security/enc
 set -eu
 
 directory=$1

@@ -5,7 +5,7 @@ producer published, bytes as received, disposable identities.
 
 ## Entra
 
-The common federation metadata of `Core` (`tests/Core/Fixture/real/`), signed by Microsoft; the test passes the
+The common federation metadata of `Core` (`tests/xml-security/Core/Fixture/real/`), signed by Microsoft; the test passes the
 certificate of the `Signature`'s own `KeyInfo` as the trusted key, which proves the signature, not the trust.
 
 ## SimpleSAMLphp
@@ -14,7 +14,7 @@ The judge of sub-spike 8a says: SimpleSAMLphp verifies what this namespace signs
 verifies inside SimpleSAMLphp is its library `simplesamlphp/saml2`, on `robrichards/xmlseclibs`; the exchange below
 ran it directly, in a container, on 27 September 2026 with `simplesamlphp/saml2` 4.20.3 and `xmlseclibs` 3.1.5
 (PHP 8.4.25). Nothing of it is a dependency of this package: `simplesamlphp/` holds a throwaway Composer project
-and the two scripts, run from the root of the repository so that the fixtures of `tests/Dsig/Fixture/` are mounted:
+and the two scripts, run from the root of the repository so that the fixtures of `tests/xml-security/Dsig/Fixture/` are mounted:
 
 ```
 docker run --rm -it -v "$PWD/tests/Dsig/Fixture/real/simplesamlphp:/app" -v "$PWD/tests/Dsig/Fixture:/fixtures:ro" \

@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 /*
  * Prints, as Markdown tables, the measurements of the SAML documents of a directory that match a glob, for the
- * measurements table of tests/Interop/simplesamlphp/README.md: sizes, what is signed and how, the windows against
+ * measurements table of tests/saml2-model/Interop/simplesamlphp/README.md: sizes, what is signed and how, the windows against
  * IssueInstant, the fractional digits of the times, the NameID, the attributes, the audiences, the metadata roles.
  * Plain DOM, by direct children, nothing of SimpleSAMLphp. Run from the root of the repository:
  *   docker run --rm -v "$PWD:/project:ro" -w /project ghcr.io/spomky-labs/phpqa:8.4 \
- *       php tests/Interop/simplesamlphp/measure.php tests/Fixture/real 'simplesamlphp-*.xml'
+ *       php tests/saml2-model/Interop/simplesamlphp/measure.php tests/saml2-model/Fixture/real 'simplesamlphp-*.xml'
  */
 
 const SAMLP = 'urn:oasis:names:tc:SAML:2.0:protocol';

@@ -33,7 +33,7 @@ use function sprintf;
  * §9.3 row 10: the assertion of a built response, a comment in it and a QName value naming a prefix of the response,
  * encrypted under each content method and each hash this build offers, written into the directory XMLSEC_ORACLE
  * names with the document xmlsec1 must give back, in its exclusive canonical form with comments
- * (tests/Enc/Fixture/oracle/README.md, the job Oracle of the CI). The files are the input of the oracle, not
+ * (tests/xml-security/Enc/Fixture/oracle/README.md, the job Oracle of the CI). The files are the input of the oracle, not
  * fixtures: the test is skipped when the variable is not set.
  */
 #[RequiresEnvironmentVariable('XMLSEC_ORACLE')]

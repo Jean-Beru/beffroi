@@ -12,7 +12,7 @@ use Beffroi\Saml2\Model\Tests\Unit\Internal\Assertion\AssertionFixtures;
 use Beffroi\Saml2\Model\Tests\Unit\Metadata\MetadataFixtures;
 
 /**
- * The response fixtures of tests/Fixture/ (tests/Support/ResponseFixtureBuilder.php) and the identity provider they
+ * The response fixtures of tests/saml2-model/Fixture/ (tests/saml2-model/Support/ResponseFixtureBuilder.php) and the identity provider they
  * come from, https://idp.example.com/saml, whose metadata lists the identity provider's test key; the response answers
  * _request at https://sp.example.com/saml/acs for https://sp.example.com/saml, a second before the frozen clock of
  * AssertionFixtures.

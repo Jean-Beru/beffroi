@@ -9,7 +9,7 @@ The judge of sub-spike 8e says: SimpleSAMLphp decrypts what this namespace encry
 and decrypts inside SimpleSAMLphp is its library `simplesamlphp/saml2`, on `robrichards/xmlseclibs`; the exchange
 below ran it directly, in a container, on 27 September 2026 with `simplesamlphp/saml2` 4.20.3 and `xmlseclibs`
 3.1.5 (PHP 8.4.25). Nothing of it is a dependency of this package: `simplesamlphp/` holds a throwaway Composer
-project and the two scripts, run from the root of the repository so that the fixtures of `tests/Enc/Fixture/` are
+project and the two scripts, run from the root of the repository so that the fixtures of `tests/xml-security/Enc/Fixture/` are
 mounted:
 
 ```

@@ -30,10 +30,10 @@ use function substr_count;
 
 /**
  * The response fixtures of sections 9.2 and 9.3 (story #7), each a variant of one valid response with the one change
- * that the case names, signed with the test keys of tests/Fixture/keys/ through Dsig's Signer wherever the attack
- * needs a valid signature, then written as files under tests/Fixture/ (hostile/response-*, behaviour/response-*).
+ * that the case names, signed with the test keys of tests/saml2-model/Fixture/keys/ through Dsig's Signer wherever the attack
+ * needs a valid signature, then written as files under tests/saml2-model/Fixture/ (hostile/response-*, behaviour/response-*).
  * RSA PKCS#1 v1.5 is deterministic: the same keys build the same bytes, which the test of this class checks against
- * the committed files. The command that writes them is in tests/Fixture/hostile/response-README.md.
+ * the committed files. The command that writes them is in tests/saml2-model/Fixture/hostile/response-README.md.
  *
  * The valid response answers the request _request of the service provider https://sp.example.com/saml at its
  * assertion consumer service https://sp.example.com/saml/acs, from the identity provider https://idp.example.com/saml,
@@ -61,7 +61,7 @@ final class ResponseFixtureBuilder
     private const string CONFIRMATION_IN_RESPONSE_TO = 'Recipient="https://sp.example.com/saml/acs" InResponseTo="_request"';
 
     /**
-     * Every fixture, its path under tests/Fixture/ mapped to its bytes.
+     * Every fixture, its path under tests/saml2-model/Fixture/ mapped to its bytes.
      *
      * @return array<string, string>
      */
@@ -71,7 +71,7 @@ final class ResponseFixtureBuilder
     }
 
     /**
-     * Writes every fixture under $directory, tests/Fixture/ of the repository.
+     * Writes every fixture under $directory, tests/saml2-model/Fixture/ of the repository.
      */
     public static function write(string $directory): void
     {

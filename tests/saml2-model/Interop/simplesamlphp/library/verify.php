@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 /*
  * Reads every document of a directory with simplesamlphp/saml2, as SimpleSAMLphp reads what a peer sends, and
- * validates every signature under the test certificates of tests/Fixture/keys/ (spec/model.md section 9.5.1).
+ * validates every signature under the test certificates of tests/saml2-model/Fixture/keys/ (spec/model.md section 9.5.1).
  *
  *   php verify.php <directory> [<glob>]     the glob defaults to *.xml
  *
@@ -15,7 +15,7 @@ declare(strict_types=1);
  * validate(), the call SimpleSAMLphp makes (modules/saml/src/Message.php); a message that carries none fails,
  * metadata without one passes. One line per file, OK or FAIL and why; the exit status is 1 when any file fails.
  *
- * Run from the root of the repository (tests/Interop/simplesamlphp/README.md):
+ * Run from the root of the repository (tests/saml2-model/Interop/simplesamlphp/README.md):
  *   docker run --rm -v "$PWD/tests/Interop/simplesamlphp/library:/app" -v "$PWD/tests/Fixture/keys:/keys:ro" \
  *       -v "$PWD/tests/Fixture/real:/in:ro" -w /app ghcr.io/spomky-labs/phpqa:8.4 \
  *       php verify.php /in 'simplesamlphp-saml2-4.20.3-*.xml'

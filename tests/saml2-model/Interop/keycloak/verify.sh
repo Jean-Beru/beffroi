@@ -10,7 +10,7 @@
 # metadata and not from the KeyInfo of the message, and the check of a copy whose signed IssueInstant (entityID for
 # metadata) is altered. Run from the root of the repository in Alpine 3.22:
 #   docker run --rm -v "$PWD:/project:ro" -w /project alpine:3.22 sh -c \
-#       'apk add -q xmlsec libxml2-utils openssl >/dev/null && sh tests/Interop/keycloak/verify.sh tests/Fixture/real'
+#       'apk add -q xmlsec libxml2-utils openssl >/dev/null && sh tests/saml2-model/Interop/keycloak/verify.sh tests/saml2-model/Fixture/real'
 set -eu
 
 directory=$1

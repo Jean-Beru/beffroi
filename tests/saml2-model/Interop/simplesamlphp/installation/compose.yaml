@@ -1,5 +1,5 @@
 # SimpleSAMLphp as an identity provider on http://localhost:8081 and as a service provider on
-# http://localhost:8082, from one image (tests/Interop/simplesamlphp/README.md). Port 8180 is another story's.
+# http://localhost:8082, from one image (tests/saml2-model/Interop/simplesamlphp/README.md). Port 8180 is another story's.
 # SSP_SIGN_RESPONSE=false starts the second configuration: the identity provider signs the assertion only.
 # SSP_EXCHANGE=true starts the third, the exchange with the model: the identity provider publishes HTTP-POST too.
 # Both parties read the metadata the model wrote from ../written/, mounted read-only, when it is there.
