@@ -695,10 +695,7 @@ final class CanonicalizerTest extends TestCase
         $stack = [$document->root()];
         while ($stack !== []) {
             $element = array_pop($stack);
-            if (
-                $element->namespaceURI === 'http://www.w3.org/2000/09/xmldsig#'
-                && $element->localName === 'Signature'
-            ) {
+            if ($element->namespaceURI === 'http://www.w3.org/2000/09/xmldsig#' && $element->localName === 'Signature') {
                 $signatures[] = $element;
                 continue;
             }

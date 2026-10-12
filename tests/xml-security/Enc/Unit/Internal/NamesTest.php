@@ -36,11 +36,7 @@ final class NamesTest extends TestCase
     public function itNamesTheMgfOfXmlEncryption11(): void
     {
         // Given
-        $document = Loaded::document('<m xmlns:xenc11="'
-        . Names::XMLENC11
-        . '"><xenc11:MGF Algorithm="'
-        . Names::XMLENC11
-        . 'mgf1sha256"/></m>');
+        $document = Loaded::document('<m xmlns:xenc11="' . Names::XMLENC11 . '"><xenc11:MGF Algorithm="' . Names::XMLENC11 . 'mgf1sha256"/></m>');
         $mgf = $document->root()->firstElementChild;
         static::assertNotNull($mgf);
 

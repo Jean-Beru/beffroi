@@ -138,9 +138,7 @@ final class DocumentFactoryTest extends TestCase
     public function itDeclaresTheNamespaceOfARootWithAPrefix(): void
     {
         // When
-        $root = $this->factory
-            ->create(new Name('urn:oasis:names:tc:SAML:2.0:protocol', 'AuthnRequest'), 'samlp')
-            ->root();
+        $root = $this->factory->create(new Name('urn:oasis:names:tc:SAML:2.0:protocol', 'AuthnRequest'), 'samlp')->root();
 
         // Then
         static::assertSame('urn:oasis:names:tc:SAML:2.0:protocol', $root->getAttributeNS(self::XMLNS, 'samlp'));

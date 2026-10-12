@@ -222,9 +222,7 @@ final class SourceGuardTest extends TestCase
         foreach ($this->files() as $file => $source) {
             $code = '';
             foreach (PhpToken::tokenize($source) as $phpToken) {
-                if (
-                    $phpToken->isIgnorable() || $phpToken->is([T_CONSTANT_ENCAPSED_STRING, T_ENCAPSED_AND_WHITESPACE])
-                ) {
+                if ($phpToken->isIgnorable() || $phpToken->is([T_CONSTANT_ENCAPSED_STRING, T_ENCAPSED_AND_WHITESPACE])) {
                     $code .= ' ';
                     continue;
                 }

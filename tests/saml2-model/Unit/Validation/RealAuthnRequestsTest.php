@@ -190,16 +190,12 @@ final class RealAuthnRequestsTest extends TestCase
 
     private function serviceProvider(string $file): ServiceProvider
     {
-        return (
-            $this->metadata($file)->serviceProvider ?? throw new LogicException('The metadata holds a service provider.')
-        );
+        return $this->metadata($file)->serviceProvider ?? throw new LogicException('The metadata holds a service provider.');
     }
 
     private function identityProvider(string $file): IdentityProvider
     {
-        return (
-            $this->metadata($file)->identityProvider ?? throw new LogicException('The metadata holds an identity provider.')
-        );
+        return $this->metadata($file)->identityProvider ?? throw new LogicException('The metadata holds an identity provider.');
     }
 
     /**

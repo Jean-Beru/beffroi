@@ -167,9 +167,7 @@ final class AdversarialFixtureBuilder
                     $original,
                     self::replace(
                         self::CONFIRMATION_DATA,
-                        self::replace('/>', '>', self::CONFIRMATION_DATA)
-                        . $original
-                        . '</saml:SubjectConfirmationData>',
+                        self::replace('/>', '>', self::CONFIRMATION_DATA) . $original . '</saml:SubjectConfirmationData>',
                         $copied,
                     ),
                     $signed,

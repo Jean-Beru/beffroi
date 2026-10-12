@@ -61,8 +61,7 @@ final class Built
         $response->setAttribute('Destination', 'https://sp.example.org/acs');
         self::text($xml, self::child($xml, $response, 'saml:Issuer'), 'https://idp.example.org');
         $status = self::child($xml, $response, 'samlp:Status', Stack::SAML_PROTOCOL);
-        self::child($xml, $status, 'samlp:StatusCode', Stack::SAML_PROTOCOL)
-            ->setAttribute('Value', 'urn:oasis:names:tc:SAML:2.0:status:Success');
+        self::child($xml, $status, 'samlp:StatusCode', Stack::SAML_PROTOCOL)->setAttribute('Value', 'urn:oasis:names:tc:SAML:2.0:status:Success');
         $assertion = self::child($xml, $response, 'saml:Assertion');
         $assertion->setAttribute('ID', self::ASSERTION_ID);
         $assertion->setAttribute('Version', '2.0');

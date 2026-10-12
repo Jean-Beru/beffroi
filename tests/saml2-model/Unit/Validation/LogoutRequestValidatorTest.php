@@ -381,10 +381,7 @@ final class LogoutRequestValidatorTest extends TestCase
         $nameId = '>_7a2f4c1d9e</saml:NameID>';
         yield 'an Issuer with Format unspecified' => [
             [
-                $issuer =>
-                    '<saml:Issuer Format="urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified">'
-                        . LogoutFixtures::IDP
-                        . '</saml:Issuer>',
+                $issuer => '<saml:Issuer Format="urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified">' . LogoutFixtures::IDP . '</saml:Issuer>',
             ],
             IssuerMismatch::class,
             'The Issuer has a Format other than entity (M-8).',
@@ -392,14 +389,7 @@ final class LogoutRequestValidatorTest extends TestCase
         foreach (['NameQualifier', 'SPNameQualifier', 'SPProvidedID'] as $qualifier) {
             yield 'an Issuer with an ' . $qualifier . ' (section 9.8)' => [
                 [
-                    $issuer =>
-                        '<saml:Issuer '
-                            . $qualifier
-                            . '="'
-                            . LogoutFixtures::IDP
-                            . '">'
-                            . LogoutFixtures::IDP
-                            . '</saml:Issuer>',
+                    $issuer => '<saml:Issuer ' . $qualifier . '="' . LogoutFixtures::IDP . '">' . LogoutFixtures::IDP . '</saml:Issuer>',
                 ],
                 IssuerMismatch::class,
                 'The Issuer carries a NameQualifier, an SPNameQualifier or an SPProvidedID, which an entity identifier omits (M-8).',

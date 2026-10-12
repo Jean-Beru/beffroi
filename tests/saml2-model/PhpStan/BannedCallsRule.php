@@ -135,10 +135,7 @@ final class BannedCallsRule implements Rule
     private function ofThePackage(MethodCall|NullsafeMethodCall|StaticCall $node, Scope $scope): bool
     {
         if ($node instanceof StaticCall) {
-            return (
-                $node->class instanceof Name
-                && str_starts_with(strtolower($scope->resolveName($node->class)), self::PACKAGE)
-            );
+            return $node->class instanceof Name && str_starts_with(strtolower($scope->resolveName($node->class)), self::PACKAGE);
         }
 
         return array_any(

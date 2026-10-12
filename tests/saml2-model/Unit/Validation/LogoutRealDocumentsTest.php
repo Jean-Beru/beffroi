@@ -247,16 +247,12 @@ final class LogoutRealDocumentsTest extends TestCase
 
     private function identityProvider(string $file): IdentityProvider
     {
-        return (
-            $this->descriptor($file)->identityProvider ?? throw new LogicException('The metadata holds an identity provider.')
-        );
+        return $this->descriptor($file)->identityProvider ?? throw new LogicException('The metadata holds an identity provider.');
     }
 
     private function serviceProvider(string $file): ServiceProvider
     {
-        return (
-            $this->descriptor($file)->serviceProvider ?? throw new LogicException('The metadata holds a service provider.')
-        );
+        return $this->descriptor($file)->serviceProvider ?? throw new LogicException('The metadata holds a service provider.');
     }
 
     /**

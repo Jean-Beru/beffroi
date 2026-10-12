@@ -105,10 +105,6 @@ final class CipherDataTest extends TestCase
 
     private function cipherData(string $children): Document
     {
-        return Loaded::document('<xenc:CipherData xmlns:xenc="'
-        . Names::XMLENC
-        . '">'
-        . $children
-        . '</xenc:CipherData>');
+        return Loaded::document('<xenc:CipherData xmlns:xenc="' . Names::XMLENC . '">' . $children . '</xenc:CipherData>');
     }
 }

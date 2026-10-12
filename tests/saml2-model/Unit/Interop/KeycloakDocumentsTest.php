@@ -74,8 +74,7 @@ final class KeycloakDocumentsTest extends TestCase
         $document = MetadataFixtures::load('real/keycloak-26.7.4-exchange-broker-metadata-2026-09-30.xml');
 
         // When
-        $broker =
-            $this->reader()->readTrusted($document)->serviceProvider ?? throw new LogicException('The metadata holds a service provider.');
+        $broker = $this->reader()->readTrusted($document)->serviceProvider ?? throw new LogicException('The metadata holds a service provider.');
 
         // Then
         static::assertSame(

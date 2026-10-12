@@ -705,11 +705,7 @@ final class AuthnRequestValidatorTest extends TestCase
     {
         // Given
         $request = AuthnRequestFixtures::request(
-            children: '<saml:Issuer Format="'
-            . NameIdFormat::Entity->value
-            . '">'
-            . AuthnRequestFixtures::SERVICE_PROVIDER
-            . '</saml:Issuer>',
+            children: '<saml:Issuer Format="' . NameIdFormat::Entity->value . '">' . AuthnRequestFixtures::SERVICE_PROVIDER . '</saml:Issuer>',
         );
 
         // When
@@ -1050,8 +1046,7 @@ final class AuthnRequestValidatorTest extends TestCase
         ];
         yield 'a class reference that is not a URI' => [
             [],
-            $issuer
-                . '<samlp:RequestedAuthnContext><saml:AuthnContextClassRef>X509</saml:AuthnContextClassRef></samlp:RequestedAuthnContext>',
+            $issuer . '<samlp:RequestedAuthnContext><saml:AuthnContextClassRef>X509</saml:AuthnContextClassRef></samlp:RequestedAuthnContext>',
             'A URI is not absolute (M-6).',
         ];
     }

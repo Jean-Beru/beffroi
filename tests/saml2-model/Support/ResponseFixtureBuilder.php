@@ -131,8 +131,7 @@ final class ResponseFixtureBuilder
             'behaviour/response-extensions-with-content-accepted.xml' => self::signed(
                 self::replace(
                     "\n  <samlp:Status>",
-                    "\n  <samlp:Extensions><ext:Hint xmlns:ext=\"urn:example:extension\">not read</ext:Hint>"
-                    . "</samlp:Extensions>\n  <samlp:Status>",
+                    "\n  <samlp:Extensions><ext:Hint xmlns:ext=\"urn:example:extension\">not read</ext:Hint></samlp:Extensions>\n  <samlp:Status>",
                     $base,
                 ),
                 ['_assertion'],
@@ -192,9 +191,7 @@ final class ResponseFixtureBuilder
             'hostile/response-assertion-in-advice-refused.xml' => self::signed(
                 self::replace(
                     "</saml:Conditions>\n",
-                    "</saml:Conditions>\n    <saml:Advice>"
-                    . self::replace('ID="_evil"', 'ID="_advised"', $evil)
-                    . "</saml:Advice>\n",
+                    "</saml:Conditions>\n    <saml:Advice>" . self::replace('ID="_evil"', 'ID="_advised"', $evil) . "</saml:Advice>\n",
                     $base,
                 ),
                 ['_assertion'],

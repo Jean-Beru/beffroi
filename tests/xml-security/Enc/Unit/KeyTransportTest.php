@@ -324,11 +324,7 @@ final class KeyTransportTest extends TestCase
     public function itRefusesAnElementOfAForeignDocument(): void
     {
         // Given
-        $root = Foreign::parse('<xenc:EncryptionMethod xmlns:xenc="'
-        . Names::XMLENC
-        . '" Algorithm="'
-        . KeyTransport::RSA_OAEP_MGF1P
-        . '"/>')->documentElement;
+        $root = Foreign::parse('<xenc:EncryptionMethod xmlns:xenc="' . Names::XMLENC . '" Algorithm="' . KeyTransport::RSA_OAEP_MGF1P . '"/>')->documentElement;
         static::assertNotNull($root);
 
         // Then
@@ -345,9 +341,7 @@ final class KeyTransportTest extends TestCase
     public function itRefusesAnElementThatIsNotAnEncryptionMethod(): void
     {
         // Given
-        $document = Loaded::document('<foo:Anything xmlns:foo="urn:foo" Algorithm="'
-        . KeyTransport::RSA_OAEP_MGF1P
-        . '"/>');
+        $document = Loaded::document('<foo:Anything xmlns:foo="urn:foo" Algorithm="' . KeyTransport::RSA_OAEP_MGF1P . '"/>');
 
         // Then
         $this->expectException(MalformedEncryption::class);

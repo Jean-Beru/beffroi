@@ -162,13 +162,7 @@ final class SourceGuardTest extends TestCase
         ));
         $formats = [];
         foreach ($tokens as $index => $token) {
-            if (
-                ! (
-                    $token->is(T_STRING)
-                    && strtolower($token->text) === 'createfromformat'
-                    && ($tokens[$index - 1] ?? null)?->is(T_DOUBLE_COLON) === true
-                )
-            ) {
+            if (! ($token->is(T_STRING) && strtolower($token->text) === 'createfromformat' && ($tokens[$index - 1] ?? null)?->is(T_DOUBLE_COLON) === true)) {
                 continue;
             }
 
@@ -189,8 +183,7 @@ final class SourceGuardTest extends TestCase
         foreach ($this->sources() as $path => $source) {
             $code = '';
             foreach (PhpToken::tokenize($source) as $phpToken) {
-                $code .= $phpToken->isIgnorable()
-                || $phpToken->is([T_CONSTANT_ENCAPSED_STRING, T_ENCAPSED_AND_WHITESPACE])
+                $code .= $phpToken->isIgnorable() || $phpToken->is([T_CONSTANT_ENCAPSED_STRING, T_ENCAPSED_AND_WHITESPACE])
                     ? ' '
                     : $phpToken->text;
             }

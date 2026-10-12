@@ -482,8 +482,7 @@ final class SerializerTest extends TestCase
 
         // Then
         static::assertSame(
-            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-            . '<a xmlns="urn:a" v="1&#10;2&#9;3&#13;4"><![CDATA[a]]]]><![CDATA[>b]]></a>',
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" . '<a xmlns="urn:a" v="1&#10;2&#9;3&#13;4"><![CDATA[a]]]]><![CDATA[>b]]></a>',
             $bytes,
         );
         static::assertSame("1\n2\t3\r4", Loaded::document($bytes)->root()->getAttribute('v'));

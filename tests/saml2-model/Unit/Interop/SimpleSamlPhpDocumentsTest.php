@@ -160,12 +160,7 @@ final class SimpleSamlPhpDocumentsTest extends TestCase
 
         // When
         $key = new Verifier(SamlLoader::create())->verifyDetached(
-            'SAMLRequest='
-            . $parameters['SAMLRequest']
-            . '&RelayState='
-            . $parameters['RelayState']
-            . '&SigAlg='
-            . $parameters['SigAlg'],
+            'SAMLRequest=' . $parameters['SAMLRequest'] . '&RelayState=' . $parameters['RelayState'] . '&SigAlg=' . $parameters['SigAlg'],
             (string) base64_decode(urldecode($parameters['Signature']), true),
             SignatureAlgorithm::fromUri(urldecode($parameters['SigAlg'])),
             $keys,
@@ -370,16 +365,12 @@ final class SimpleSamlPhpDocumentsTest extends TestCase
 
     private function identityProvider(): IdentityProvider
     {
-        return (
-            $this->descriptor(self::IDP_METADATA)->identityProvider ?? throw new LogicException('The metadata holds an identity provider.')
-        );
+        return $this->descriptor(self::IDP_METADATA)->identityProvider ?? throw new LogicException('The metadata holds an identity provider.');
     }
 
     private function serviceProvider(): ServiceProvider
     {
-        return (
-            $this->descriptor(self::SP_METADATA)->serviceProvider ?? throw new LogicException('The metadata holds a service provider.')
-        );
+        return $this->descriptor(self::SP_METADATA)->serviceProvider ?? throw new LogicException('The metadata holds a service provider.');
     }
 
     /**

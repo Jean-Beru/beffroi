@@ -400,10 +400,7 @@ final class MetadataWriterTest extends TestCase
     {
         return array_values(array_filter(
             self::elements($element),
-            static fn (Element $candidate): bool => (
-                $candidate->namespaceURI === self::DSIG
-                && $candidate->localName === $local
-            ),
+            static fn (Element $candidate): bool => $candidate->namespaceURI === self::DSIG && $candidate->localName === $local,
         ));
     }
 

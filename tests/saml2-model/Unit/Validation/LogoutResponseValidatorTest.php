@@ -219,17 +219,11 @@ final class LogoutResponseValidatorTest extends TestCase
         $top = 'urn:oasis:names:tc:SAML:2.0:status:';
         yield 'Responder' => ['<samlp:StatusCode Value="' . $top . 'Responder"/>', new Status(StatusCode::Responder)];
         yield 'Requester, RequestDenied' => [
-            '<samlp:StatusCode Value="'
-                . $top
-                . 'Requester"><samlp:StatusCode Value="'
-                . $top
-                . 'RequestDenied"/></samlp:StatusCode>',
+            '<samlp:StatusCode Value="' . $top . 'Requester"><samlp:StatusCode Value="' . $top . 'RequestDenied"/></samlp:StatusCode>',
             new Status(StatusCode::Requester, SecondLevelStatusCode::RequestDenied),
         ];
         yield 'Responder, a second level SAML Core does not list' => [
-            '<samlp:StatusCode Value="'
-                . $top
-                . 'Responder"><samlp:StatusCode Value="urn:example:status:busy"/></samlp:StatusCode>',
+            '<samlp:StatusCode Value="' . $top . 'Responder"><samlp:StatusCode Value="urn:example:status:busy"/></samlp:StatusCode>',
             new Status(StatusCode::Responder),
         ];
     }
