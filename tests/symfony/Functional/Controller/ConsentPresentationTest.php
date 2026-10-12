@@ -164,11 +164,14 @@ final class ConsentPresentationTest extends BrowserTestCase
     }
 
     /**
-     * CSP Level 3 §6.1: the page loads the logo of the client that is asking and no other image, whatever
-     * else that client registered.
+     * Issue #584: the page carries the policy of its deployment like every other page of this plane, the
+     * origin the logo of the asking client is served from being a directive of that policy completed
+     * where the answer leaves and never a policy the page wrote instead (ConsentPage, Http\ImageSource).
+     * The kernel of this suite writes no policy, so what the page carries is the floor of the plane,
+     * which restricts no image; a deployment that writes one is walked by FormTargetTest.
      */
     #[Test]
-    public function thePageAllowsTheOriginOfTheLogoAndNoOther(): void
+    public function thePageOfAClientThatRegisteredALogoCarriesThePolicyOfItsDeployment(): void
     {
         // Given
         $clientId = $this->registerClient([
@@ -181,31 +184,7 @@ final class ConsentPresentationTest extends BrowserTestCase
         $this->consentPageOf($clientId);
 
         // Then
-        self::assertInteractionHeaders(
-            $this->browser->getResponse(),
-            "img-src 'self' https://cdn.rp.test; frame-ancestors 'none'",
-        );
-    }
-
-    /**
-     * A client that registered no logo leaves a page that loads no image of anybody's.
-     */
-    #[Test]
-    public function thePageOfAClientWithNoLogoNamesNoOrigin(): void
-    {
-        // Given
-        $clientId = $this->registerClient([
-            'policy_uri' => self::POLICY_URI,
-        ]);
-
-        // When
-        $this->consentPageOf($clientId);
-
-        // Then
-        self::assertInteractionHeaders(
-            $this->browser->getResponse(),
-            "img-src 'self'; frame-ancestors 'none'",
-        );
+        self::assertInteractionHeaders($this->browser->getResponse());
     }
 
     /**

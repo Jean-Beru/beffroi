@@ -205,6 +205,16 @@ beffroi:
         native-app:
             redirect_uris: ['http://127.0.0.1/callback']
             token_endpoint_auth_method: none
+        # The one declared client with a logo, and it is served from a host of its own: the consent page
+        # names the origin of that image in the "img-src" of the policy its answer carries, and the origin
+        # of the redirect URI in the "form-action", so the two are read apart from each other
+        # (Beffroi\Bundle\Http\ImageSource, FormTarget). Consent is required of it, which is the default
+        # and what makes the page appear at all.
+        consent-app:
+            client_name: 'Application that asks for consent'
+            logo_uri: 'https://cdn.consent.test/logo.png'
+            redirect_uris: ['https://consent.test/callback']
+            token_endpoint_auth_method: none
         legacy-app:
             client_name: 'Legacy application'
             secret: 'legacy-secret-of-at-least-32-characters-long'

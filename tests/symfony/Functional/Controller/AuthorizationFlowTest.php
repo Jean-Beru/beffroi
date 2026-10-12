@@ -100,7 +100,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
         // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode());
-        self::assertInteractionHeaders($response, "img-src 'self'; frame-ancestors 'none'");
+        self::assertInteractionHeaders($response);
         static::assertStringContainsString('alice', self::string($response->getContent()));
         static::assertSame(['openid', 'profile'], $crawler->filter('li[data-scope]')->extract(['data-scope']));
         static::assertSame($interaction, $crawler->filter('input[name="interaction"]')->attr('value'));

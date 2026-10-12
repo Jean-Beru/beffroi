@@ -4,9 +4,9 @@
 
    Who is asking is what the client registered about itself (OIDC Registration §2, ConsentPage): its name,
    its logo, and the pages a user may read before deciding. The logo is loaded by the browser of the user
-   from the host the client named, with no referrer and under the Content-Security-Policy the module built
-   for this client; the provider never fetches it. A client that registered none of them shows its name
-   alone, no empty image and no empty link.
+   from the host the client named, with no referrer and under the policy of the deployment, whose "img-src"
+   names that host and no other (Http\ImageSource); the provider never fetches it. A client that registered
+   none of them shows its name alone, no empty image and no empty link.
    Overridable by an application under templates/bundles/BeffroiBundle/. #}
 {% extends '@Beffroi/layout.html.twig' %}
 {% trans_default_domain 'beffroi' %}

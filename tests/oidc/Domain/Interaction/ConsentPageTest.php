@@ -85,16 +85,14 @@ final class ConsentPageTest extends TestCase
     }
 
     /**
-     * CSP Level 3 §6.1: the page loads the logo of this client and no other image, and nothing frames it.
+     * CSP Level 3 §6.1, RFC 6454 §3.2: the page shows the logo of this client and no other image, so the
+     * one origin it names is the one that logo is served from.
      */
     #[Test]
-    public function thePolicyAllowsTheLogoOfTheClientAndNoOtherImage(): void
+    public function itNamesTheOriginTheLogoOfTheClientIsServedFrom(): void
     {
-        // When
-        $policy = new ConsentPage(self::presentation())->contentSecurityPolicy();
-
-        // Then
-        static::assertSame("img-src 'self' https://rp.example; frame-ancestors 'none'", $policy);
+        // When / Then
+        static::assertSame(['https://rp.example'], new ConsentPage(self::presentation())->imageOrigins);
     }
 
     /**
@@ -102,13 +100,10 @@ final class ConsentPageTest extends TestCase
      * every deployment that declares its own clients has been served so far.
      */
     #[Test]
-    public function thePolicyOfAClientThatRegisteredNoLogoNamesNoOrigin(): void
+    public function itNamesNoOriginForAClientThatRegisteredNoLogo(): void
     {
-        // When
-        $policy = new ConsentPage(new ClientPresentation('An application'))->contentSecurityPolicy();
-
-        // Then
-        static::assertSame("img-src 'self'; frame-ancestors 'none'", $policy);
+        // When / Then
+        static::assertSame([], new ConsentPage(new ClientPresentation('An application'))->imageOrigins);
     }
 
     /**
@@ -117,15 +112,13 @@ final class ConsentPageTest extends TestCase
      */
     #[Test]
     #[DataProvider('provideLogoUris')]
-    public function thePolicyNamesTheOriginOfTheLogo(string $logoUri, string $origin): void
+    public function itNamesTheOriginOfTheLogoAndNeverItsUrl(string $logoUri, string $origin): void
     {
         // When
-        $policy = new ConsentPage(
-            new ClientPresentation('An application', logoUri: new ClientUri($logoUri)),
-        )->contentSecurityPolicy();
+        $page = new ConsentPage(new ClientPresentation('An application', logoUri: new ClientUri($logoUri)));
 
         // Then
-        static::assertSame("img-src 'self' " . $origin . "; frame-ancestors 'none'", $policy);
+        static::assertSame([$origin], $page->imageOrigins);
     }
 
     /**
@@ -145,20 +138,20 @@ final class ConsentPageTest extends TestCase
     }
 
     /**
-     * Issue #449: the page carries the logo of the tenant as every page of the plane does, so its policy
-     * names where that one is served from as well as the client's.
+     * Issue #449: the page carries the logo of the tenant as every page of the plane does, so it names
+     * where that one is served from as well as the client's.
      */
     #[Test]
-    public function thePolicyAllowsTheLogoOfTheTenantToo(): void
+    public function itNamesTheOriginOfTheLogoOfTheTenantToo(): void
     {
+        // Given
+        $look = new TenantLook(new LogoUri('https://cdn.acme.example/logo.svg'));
+
         // When
-        $policy = new ConsentPage(
-            self::presentation(),
-            new TenantLook(new LogoUri('https://cdn.acme.example/logo.svg')),
-        )->contentSecurityPolicy();
+        $page = new ConsentPage(self::presentation(), $look);
 
         // Then
-        static::assertSame("img-src 'self' https://rp.example https://cdn.acme.example; frame-ancestors 'none'", $policy);
+        static::assertSame(['https://rp.example', 'https://cdn.acme.example'], $page->imageOrigins);
     }
 
     /**
@@ -166,29 +159,29 @@ final class ConsentPageTest extends TestCase
      * client serves its own is named once.
      */
     #[Test]
-    public function anOriginTheTwoLogosShareIsNamedOnce(): void
+    public function itNamesAnOriginTheTwoLogosShareOnce(): void
     {
+        // Given
+        $look = new TenantLook(new LogoUri('https://rp.example/tenant.svg'));
+
         // When
-        $policy = new ConsentPage(
-            self::presentation(),
-            new TenantLook(new LogoUri('https://rp.example/tenant.svg')),
-        )->contentSecurityPolicy();
+        $page = new ConsentPage(self::presentation(), $look);
 
         // Then
-        static::assertSame("img-src 'self' https://rp.example; frame-ancestors 'none'", $policy);
+        static::assertSame(['https://rp.example'], $page->imageOrigins);
     }
 
     #[Test]
-    public function thePolicyOfATenantWithALogoAndAClientWithoutOneNamesTheTenantAlone(): void
+    public function itNamesTheTenantAloneForAClientThatRegisteredNoLogo(): void
     {
+        // Given
+        $look = new TenantLook(new LogoUri('https://cdn.acme.example/logo.svg'));
+
         // When
-        $policy = new ConsentPage(
-            new ClientPresentation('An application'),
-            new TenantLook(new LogoUri('https://cdn.acme.example/logo.svg')),
-        )->contentSecurityPolicy();
+        $page = new ConsentPage(new ClientPresentation('An application'), $look);
 
         // Then
-        static::assertSame("img-src 'self' https://cdn.acme.example; frame-ancestors 'none'", $policy);
+        static::assertSame(['https://cdn.acme.example'], $page->imageOrigins);
     }
 
     private static function presentation(): ClientPresentation
