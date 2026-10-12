@@ -878,7 +878,7 @@ final class UserInfoHandlerTest extends TestCase
                 ),
                 $this->sessions,
                 new RecordedGrants([$this->grants, $this->deviceRecords, $this->backchannelRecords]),
-                Subjects::ofAProvider($users),
+                Subjects::personOfAToken($users),
             ),
             $this->jwts->documents,
             Proofs::verifier(),

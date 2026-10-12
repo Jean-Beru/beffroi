@@ -85,7 +85,7 @@ final class PresentedAccessTokenTypeTest extends TestCase
             ),
             $sessions,
             $this->grants,
-            Subjects::ofAProvider($users),
+            Subjects::personOfAToken($users),
         ));
     }
 

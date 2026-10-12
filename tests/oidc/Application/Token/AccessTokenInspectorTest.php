@@ -10,6 +10,7 @@ use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\SessionEnd;
@@ -35,6 +36,7 @@ use Beffroi\Oidc\Tests\Fixture\Clients;
 use Beffroi\Oidc\Tests\Fixture\Grants;
 use Beffroi\Oidc\Tests\Fixture\Jwts;
 use Beffroi\Oidc\Tests\Fixture\Tokens;
+use Beffroi\Oidc\Tests\Fixture\Shapes;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -48,6 +50,12 @@ use Symfony\Component\Uid\Uuid;
  */
 final class AccessTokenInspectorTest extends TestCase
 {
+    /**
+     * The "sub" of the token a gateway presents at an exchange: a name the client that token was written
+     * for holds, which no kind of this provider resolves for anybody else (OIDC Core §8.1).
+     */
+    private const string SUBJECT_OF_THE_FIRST_CLIENT = 'alice-to-the-first-client';
+
     private Tenant $tenant;
 
     private User $user;
@@ -92,15 +100,21 @@ final class AccessTokenInspectorTest extends TestCase
             ),
             $this->sessions,
             $this->grants,
-            Subjects::ofAProvider($users),
+            Subjects::personOfAToken($users),
         );
     }
 
+    /**
+     * The person is answered for in one way whatever shape the token took (issue #601): the record of an
+     * opaque token names them, an "at+jwt" carries a "sub" read for the client it was written for, and the
+     * resource that asked is handed the same user.
+     */
     #[Test]
-    public function itHandsOverTheVerifiedTokenAndItsUser(): void
+    #[DataProvider('provideAccessTokenShapes')]
+    public function itHandsOverTheVerifiedTokenAndItsUser(string $shape): void
     {
         // Given
-        $token = $this->tokenOf($this->code());
+        $token = $this->tokenOfShape($shape, $this->code());
 
         // When
         $inspected = $this->inspector->inspect($this->tenant, $token, Fixtures::now());
@@ -109,6 +123,55 @@ final class AccessTokenInspectorTest extends TestCase
         static::assertSame($this->user, $inspected->user);
         static::assertSame($this->client, $inspected->token->client);
         static::assertSame('alice-subject', (string) $inspected->token->subject);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideAccessTokenShapes(): iterable
+    {
+        yield 'opaque' => ['opaque'];
+        yield 'at+jwt' => ['jwt'];
+    }
+
+    /**
+     * RFC 8693 §2.2.1, OIDC Core §8.1 and issue #601: the record of an exchanged token keeps the "sub" the
+     * presented token carried, a name only the client that token was written for holds, and the person the
+     * exchange resolved when it read it. The person is read off that record, so the token names a user
+     * under a kind that could never have resolved that "sub" for the client holding it.
+     */
+    #[Test]
+    public function itNamesThePersonTheRecordOfAnExchangedTokenKeeps(): void
+    {
+        // Given
+        $token = $this->exchangedToken($this->code(), $this->user->subject);
+
+        // When
+        $inspected = $this->inspector->inspect($this->tenant, $token, Fixtures::now());
+
+        // Then
+        static::assertSame($this->user, $inspected->user);
+        static::assertSame(self::SUBJECT_OF_THE_FIRST_CLIENT, (string) $inspected->token->subject);
+    }
+
+    /**
+     * A person the provider no longer serves is refused whichever name the token holds them under: the
+     * record names them and the account is read by that name, so a disabled person is refused there as
+     * anywhere else.
+     */
+    #[Test]
+    public function itRefusesAnExchangedTokenOfADisabledPerson(): void
+    {
+        // Given
+        $token = $this->exchangedToken($this->code(), $this->user->subject);
+        $this->user->disable(Fixtures::now());
+
+        // Then
+        $this->expectException(InvalidTokenException::class);
+        $this->expectExceptionMessageIs('invalid_token: The access token names a user this provider no longer serves.');
+
+        // When
+        $this->inspector->inspect($this->tenant, $token, Fixtures::now());
     }
 
     /**
@@ -213,7 +276,7 @@ final class AccessTokenInspectorTest extends TestCase
             ),
             $this->sessions,
             $this->grants,
-            Subjects::ofAProvider(new InMemoryUserRepository()),
+            Subjects::personOfAToken(new InMemoryUserRepository()),
         );
         $token = $this->tokenOf($this->code());
 
@@ -261,15 +324,6 @@ final class AccessTokenInspectorTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{string}>
-     */
-    public static function provideAccessTokenShapes(): iterable
-    {
-        yield 'opaque' => ['opaque'];
-        yield 'at+jwt' => ['jwt'];
-    }
-
-    /**
      * A session the provider no longer keeps is a session it cannot vouch for, as a grant it no longer
      * keeps is.
      */
@@ -292,7 +346,7 @@ final class AccessTokenInspectorTest extends TestCase
             ),
             $sessions,
             $this->grants,
-            Subjects::ofAProvider($users),
+            Subjects::personOfAToken($users),
         );
 
         // Then
@@ -321,6 +375,33 @@ final class AccessTokenInspectorTest extends TestCase
             ),
             Fixtures::now(),
         )->value;
+    }
+
+    /**
+     * RFC 8693 §2.1: the record of a token a gateway was given for the subject of the token it presented,
+     * descending from the same grant and the same sign-in, with the person the exchange resolved then.
+     */
+    private function exchangedToken(AuthorizationCode $code, Subject $person): string
+    {
+        $gateway = Clients::gateway(
+            $this->tenant,
+            new FakePasswordHasher()->hash(Clients::SECRET),
+            'person-gateway',
+            accessTokenShape: Shapes::opaque(),
+        );
+        $this->clients->save($gateway);
+        $value = Secrets::draw();
+        $this->tokens->save(Tokens::storedSubjectAccessToken(
+            $value,
+            $gateway,
+            new Subject(self::SUBJECT_OF_THE_FIRST_CLIENT),
+            Fixtures::now(),
+            grantId: $code->grantId,
+            session: $this->session,
+            person: $person,
+        ));
+
+        return $value;
     }
 
     private function code(): AuthorizationCode
