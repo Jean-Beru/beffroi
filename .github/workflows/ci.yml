@@ -28,7 +28,7 @@ concurrency:
 # to the end whatever the outcome of the previous ones, so that every tool reports its verdict.
 #
 # Nothing waits on a job it reads nothing from: the quality checks, the tests, the key custody, the
-# SAML packages on PHP 8.4 and the xmlsec1 oracle all start as soon as the pre-checks pass, and only
+# SAML packages on PHP 8.4 and the oracles all start as soon as the pre-checks pass, and only
 # the mutations wait, for the coverage the tests upload. The time of a pull request is the longest of
 # them, not their sum.
 #
@@ -103,13 +103,14 @@ jobs:
       # nothing, 6.2 s with one source file changed, on one machine). It compresses to 2.3 MB, so the
       # 10 GB a repository is given is not spent on entries nobody reads.
       # One result cache per analysis: the identity provider's packages, then each SAML package under its own
-      # configuration (castor phpstan runs the three).
+      # configuration (castor phpstan runs the four).
       - uses: actions/cache@v6
         with:
           path: |
             .ci-tools/cache/phpstan/resultCache.php
             .ci-tools/cache/phpstan-xml-security/resultCache.php
             .ci-tools/cache/phpstan-saml2-model/resultCache.php
+            .ci-tools/cache/phpstan-saml2-bindings/resultCache.php
           key: "phpstan-${{ steps.tools.outputs.phpstan }}-${{ hashFiles('.ci-tools/phpstan*.neon') }}-${{ github.sha }}"
           restore-keys: "phpstan-${{ steps.tools.outputs.phpstan }}-${{ hashFiles('.ci-tools/phpstan*.neon') }}-"
       - name: "Static Analysis (PHPStan)"
@@ -179,10 +180,10 @@ jobs:
   saml_php84:
     name: "5️⃣ SAML packages (PHP 8.4)"
     needs: [pre_checks]
-    # The two SAML packages are judged on the PHP 8.4 their composer.json still accepts, which the whole matrix
-    # above does not run: their specifications ask for a green corpus on 8.4 and on 8.5, and what differs between
-    # the two is theirs (the PSS schemes PHP 8.5 gives openssl_sign() and openssl_verify(), spec/dsig.md section
-    # 13). Their two suites only, without coverage: nothing reads it.
+    # The SAML packages are judged on the PHP 8.4 their composer.json still accepts, which the whole matrix above
+    # does not run: their specifications ask for a green corpus on 8.4 and on 8.5, and what differs between the two
+    # is theirs (the PSS schemes PHP 8.5 gives openssl_sign() and openssl_verify(), spec/dsig.md section 13). Their
+    # suites only, without coverage: nothing reads it.
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/spomky-labs/phpqa:8.4
@@ -194,21 +195,25 @@ jobs:
           composer-options: --optimize-autoloader
       - name: "libxml and OpenSSL of this build"
         run: castor libxml
-      - run: castor phpunit -- --no-coverage --testsuite xml-security,saml2-model
+      - run: castor phpunit -- --no-coverage --testsuite xml-security,saml2-model,saml2-bindings
 
   oracle:
-    name: "6️⃣ Oracle (xmlsec1)"
+    name: "6️⃣ Oracles (xmlsec1, OpenSSL)"
     needs: [pre_checks]
     # The signers, the encryptor and the writers of the SAML packages against the implementation that is not this
     # one (spec/dsig.md and spec/enc.md section 9.3 row 10, spec/model.md section 9.1): every scheme of PHP 8.5 signed
     # and encrypted in the phpqa image, then every signature verified and every encrypted document decrypted by
     # xmlsec1 in Alpine, and the signed documents the writers committed verified under their signer's certificate
-    # (SAML2_MODEL_XMLSEC_COMMITTED in .castor/lab/saml2-model.php). Two images, hence Docker on the runner rather than
-    # a job container; "castor xml-security-oracle" and "castor saml2-model-oracle" are the same on a workstation.
+    # (SAML2_MODEL_XMLSEC_COMMITTED in .castor/lab/saml2-model.php). The sender of saml2-bindings against a verifier
+    # that is no SAML library (spec/bindings.md section 9.1): a signed URL for each message under every algorithm of
+    # PHP 8.5, every signature verified by the OpenSSL command line over the octets of the binding built again from the
+    # URL, and every message inflated by Python's zlib to the document the writer wrote. Two images, hence Docker on
+    # the runner rather than a job container; "castor xml-security-oracle", "castor saml2-model-oracle" and
+    # "castor saml2-bindings-oracle" are the same on a workstation.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: "Sign, encrypt and write with every scheme of the build"
+      - name: "Sign, encrypt and write with every scheme and algorithm of the build"
         run: >-
           docker run --rm -v "$PWD:/project" -w /project -e HOME=/tmp ghcr.io/spomky-labs/phpqa:8.5
           sh -c 'composer update --no-interaction --no-progress --quiet
@@ -216,7 +221,9 @@ jobs:
           && XMLSEC_ORACLE=var/oracle/xml-security composer exec -- phpunit --configuration .ci-tools/phpunit.xml.dist
           --no-coverage --testsuite xml-security --filter "SignerOracleTest|EncryptorOracleTest"
           && XMLSEC_ORACLE=var/oracle/saml2-model composer exec -- phpunit --configuration .ci-tools/phpunit.xml.dist
-          --no-coverage --testsuite saml2-model --filter ResponseWriterOracleTest'
+          --no-coverage --testsuite saml2-model --filter ResponseWriterOracleTest
+          && REDIRECT_ORACLE=var/oracle/saml2-bindings composer exec -- phpunit --configuration .ci-tools/phpunit.xml.dist
+          --no-coverage --testsuite saml2-bindings --filter RedirectSenderOracleTest'
       - name: "Verify and decrypt each with xmlsec1"
         run: >-
           docker run --rm -v "$PWD:/project:ro" -w /project alpine:3.22
@@ -230,6 +237,14 @@ jobs:
           && sh tests/saml2-model/Fixture/oracle/verify-signatures.sh tests/saml2-model/Fixture/keys/sp-signing-certificate.pem
           tests/saml2-model/Fixture/behaviour/authn-request-written-and-signed-by-the-writer.xml
           tests/saml2-model/Fixture/behaviour/logout-response-written-and-signed-by-the-writer.xml'
+      - name: "Verify every signed URL with OpenSSL and inflate every message with Python"
+        run: >-
+          docker run --rm -v "$PWD:/project:ro" -w /project alpine:3.22
+          sh -c 'apk add -q openssl python3 && openssl version && python3 --version
+          && sh tests/saml2-bindings/Fixture/oracle/verify-redirect.sh tests/saml2-bindings/Fixture/keys/sp-signing-certificate.pem
+          var/oracle/saml2-bindings/sp-*.url
+          && sh tests/saml2-bindings/Fixture/oracle/verify-redirect.sh tests/saml2-bindings/Fixture/keys/idp-signing-certificate.pem
+          var/oracle/saml2-bindings/idp-*.url'
 
   key_file:
     name: "4️⃣ Key custody (key file)"
@@ -292,7 +307,7 @@ jobs:
       # Infection counts the two cores of the runner and keeps one for itself; both can run mutants.
       # The files the specifications of the SAML packages hold to no escaped mutant, whole, on every run; then the
       # lines added or modified over the whole source.
-      # A coverage of its own, the two SAML suites under Xdebug, rather than the one the tests job measured with pcov
+      # A coverage of its own, the three SAML suites under Xdebug, rather than the one the tests job measured with pcov
       # (see infect() in .castor/stack/qa.php).
       - name: "The files of section 9 of the SAML packages, no escaped mutant"
         run: castor infect --strict --threads=2

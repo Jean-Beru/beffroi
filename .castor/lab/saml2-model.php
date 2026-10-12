@@ -111,7 +111,7 @@ function saml2_model_oracle(): void
  */
 function saml2_model_xmlsec1(array $files, string $certificate): void
 {
-    xmlsec1_in_alpine(
+    in_alpine(
         'apk add -q xmlsec libxml2-utils >/dev/null 2>&1 && xmlsec1 --version && sh tests/saml2-model/Fixture/oracle/verify-signatures.sh '
             . implode(' ', array_map(escapeshellarg(...), [$certificate, ...$files])),
     );
@@ -271,7 +271,7 @@ function saml2_model_simplesamlphp_exchange(bool $keep): void
         getcwd() . ':/project',
         '-w',
         '/project',
-        sprintf('ghcr.io/spomky-labs/phpqa:%s', saml2_model_php_version()),
+        sprintf('ghcr.io/spomky-labs/phpqa:%s', saml2_interop_php_version()),
         'php',
         SAML2_MODEL_SIMPLESAMLPHP . '/exchange.php',
         ...($keep ? ['--keep'] : []),
@@ -284,7 +284,7 @@ function saml2_model_simplesamlphp_exchange(bool $keep): void
 function saml2_model_simplesamlphp_verify(string $in, string $glob): void
 {
     saml2_model_simplesamlphp_library(['php', 'verify.php', '/in', $glob], [$in => '/in:ro']);
-    xmlsec1_in_alpine(
+    in_alpine(
         'apk add -q xmlsec libxml2-utils && sh ' . SAML2_MODEL_SIMPLESAMLPHP . '/xmlsec1-verify.sh ' . escapeshellarg($in) . ' ' . escapeshellarg($glob),
     );
 }
@@ -388,7 +388,7 @@ function saml2_model_keycloak(
             saml2_model_xmlsec1($identityProvider, 'tests/saml2-model/Fixture/keys/idp-signing-certificate.pem');
             saml2_model_xmlsec1($serviceProvider, 'tests/saml2-model/Fixture/keys/sp-signing-certificate.pem');
             io()->section('xmlsec1: the signatures of Keycloak\'s documents in ' . $output);
-            xmlsec1_in_alpine(
+            in_alpine(
                 'apk add -q xmlsec libxml2-utils openssl >/dev/null 2>&1 && xmlsec1 --version && sh tests/saml2-model/Interop/keycloak/verify.sh '
                     . escapeshellarg($output),
             );
@@ -432,7 +432,7 @@ function saml2_model_keycloak_exchange(string $output, string $model): void
         '/project',
         '-e',
         'XDEBUG_MODE=off',
-        sprintf('ghcr.io/spomky-labs/phpqa:%s', saml2_model_php_version()),
+        sprintf('ghcr.io/spomky-labs/phpqa:%s', saml2_interop_php_version()),
         'php',
         'tests/saml2-model/Interop/keycloak/exchange.php',
         $output,
@@ -441,10 +441,10 @@ function saml2_model_keycloak_exchange(string $output, string $model): void
 }
 
 /**
- * The PHP of the image the exchanges run in: the one PHP_VERSION names, as for every task of the repository, 8.5 when
- * it names none, the PHP the README of each judge measured with.
+ * The PHP of the image the exchanges of the SAML judges run in, saml2-model's and saml2-bindings': the one PHP_VERSION
+ * names, as for every task of the repository, 8.5 when it names none, the PHP the README of each judge measured with.
  */
-function saml2_model_php_version(): string
+function saml2_interop_php_version(): string
 {
     return getenv('PHP_VERSION') ?: '8.5';
 }

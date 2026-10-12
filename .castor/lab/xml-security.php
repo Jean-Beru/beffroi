@@ -31,7 +31,7 @@ function xml_security_xmlsec(
     #[AsOption(description: 'An XPath naming the ds:Signature to verify, for one that carries no Id')]
     string $xpath = '',
 ): void {
-    xmlsec1_in_alpine(
+    in_alpine(
         'apk add -q xmlsec >/dev/null 2>&1 && xmlsec1 --verify --lax-key-search --pubkey-cert-pem '
             . escapeshellarg($certificate)
             . ' --id-attr:ID urn:oasis:names:tc:SAML:2.0:assertion:Assertion'
@@ -54,7 +54,7 @@ function xml_security_xmlsec_decrypt(
     #[AsOption(description: 'The private key that unwraps the session key, relative to the working directory')]
     string $key = 'tests/xml-security/Enc/Fixture/keys/test-signing-key.pem',
 ): void {
-    xmlsec1_in_alpine(
+    in_alpine(
         'apk add -q xmlsec >/dev/null 2>&1 && xmlsec1 --decrypt --lax-key-search --privkey-pem ' . escapeshellarg($key) . ' ' . escapeshellarg($file),
     );
 }
@@ -83,7 +83,7 @@ function xml_security_oracle(): void
         ],
         ['XMLSEC_ORACLE' => XML_SECURITY_ORACLE],
     );
-    xmlsec1_in_alpine('apk add -q xmlsec libxml2-utils >/dev/null 2>&1 && xmlsec1 --version'
+    in_alpine('apk add -q xmlsec libxml2-utils >/dev/null 2>&1 && xmlsec1 --version'
     . ' && sh tests/xml-security/Dsig/Fixture/oracle/verify-every-scheme.sh '
     . XML_SECURITY_ORACLE
     . ' && sh tests/xml-security/Enc/Fixture/oracle/decrypt-every-scheme.sh '
@@ -92,9 +92,10 @@ function xml_security_oracle(): void
 }
 
 /**
- * A shell command in Alpine 3.22, where xmlsec1 is installed by the command itself, the repository mounted read-only.
+ * A shell command in Alpine 3.22, the repository mounted read-only: xmlsec1, the OpenSSL command line or Python, which
+ * the command installs itself.
  */
-function xmlsec1_in_alpine(string $command): void
+function in_alpine(string $command): void
 {
     run([
         'docker',

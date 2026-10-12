@@ -409,6 +409,7 @@ const PHPSTAN_CONFIGURATIONS = [
     '.ci-tools/phpstan.neon',
     '.ci-tools/phpstan-xml-security.neon',
     '.ci-tools/phpstan-saml2-model.neon',
+    '.ci-tools/phpstan-saml2-bindings.neon',
 ];
 
 #[AsTask(description: 'Run PHPStan, the identity provider\'s packages and then each SAML package')]
@@ -556,8 +557,8 @@ function regenerate_generated_configuration(): void
 
 /**
  * The files the specifications of the SAML packages accept only with no escaped mutant (section 9 of spec/core.md,
- * spec/dsig.md, spec/enc.md and spec/model.md): "castor infect --strict" mutates them whole, uncovered lines
- * included, and fails under a hundred percent. A file joins the list in the commit that creates it, never before: a
+ * spec/dsig.md, spec/enc.md, spec/model.md and spec/bindings.md): "castor infect --strict" mutates them whole,
+ * uncovered lines included, and fails under a hundred percent. A file joins the list in the commit that creates it, never before: a
  * listed file missing from the tree is an error.
  */
 const INFECTION_STRICT_FILES = [
@@ -708,6 +709,53 @@ const INFECTION_STRICT_FILES = [
     'src/saml2-model/src/Validation/LogoutResponseValidator.php',
     'src/saml2-model/src/Validation/AcceptedLogoutRequest.php',
     'src/saml2-model/src/Validation/AcceptedLogoutResponse.php',
+    // beffroi/saml2-bindings.
+    // Section 5.1: the bounds and their ceilings of section 7 (B-7).
+    'src/saml2-bindings/src/BindingLimits.php',
+    // Section 5.4: the refusals, each naming its rule (B-11).
+    'src/saml2-bindings/src/Exception/BindingRefused.php',
+    'src/saml2-bindings/src/Exception/MalformedParameters.php',
+    'src/saml2-bindings/src/Exception/MalformedEncoding.php',
+    'src/saml2-bindings/src/Exception/InvalidRelayState.php',
+    'src/saml2-bindings/src/Exception/XmlSignatureRefused.php',
+    'src/saml2-bindings/src/Exception/NoVerificationKey.php',
+    'src/saml2-bindings/src/Exception/Unsupported.php',
+    'src/saml2-bindings/src/Exception/LimitExceeded.php',
+    // B-8: the percent codec, the one place a percent-escape is read or written.
+    'src/saml2-bindings/src/Internal/Percent.php',
+    // B-8: base64 in its one form, the one place it is decoded.
+    'src/saml2-bindings/src/Internal/Base64.php',
+    // B-7, B-8: the bounded inflater, raw DEFLATE refused as soon as its output exceeds the bound.
+    'src/saml2-bindings/src/Internal/Inflater.php',
+    // B-8: the deflater, raw DEFLATE.
+    'src/saml2-bindings/src/Internal/Deflater.php',
+    // B-2: the signed octets, the raw values in the binding's order.
+    'src/saml2-bindings/src/Internal/SignedOctets.php',
+    // B-4: the detached signature, verified under the keys of the peer's metadata.
+    'src/saml2-bindings/src/Internal/DetachedSignature.php',
+    // B-1, B-3, B-9, section 6.1 steps 2 to 7: the reading of a query string's parameters.
+    'src/saml2-bindings/src/Internal/QueryParameters.php',
+    // B-1, B-7, B-9, section 6.2 steps 1 to 3: the reading of a form's fields.
+    'src/saml2-bindings/src/Internal/FormFields.php',
+    // B-5, section 5.2: one input read whole, the message and the detached signature of that very input.
+    'src/saml2-bindings/src/Internal/Reception.php',
+    // Sections 6.1 steps 3 and 11, 6.2 steps 2 and 6: the message each service of ours expects.
+    'src/saml2-bindings/src/Internal/Service.php',
+    // Section 6.1: HTTP-Redirect received, in order (B-6, B-7).
+    'src/saml2-bindings/src/RedirectReceiver.php',
+    // Section 6.2: HTTP-POST received, in order (B-7, B-8, B-10).
+    'src/saml2-bindings/src/PostReceiver.php',
+    // Section 6.3: HTTP-Redirect sent, in order (B-2, B-6, B-9, B-10, B-12).
+    'src/saml2-bindings/src/RedirectSender.php',
+    // Section 6.4: HTTP-POST sent, in order (B-7, B-9, B-10, B-12), and the form it returns (section 6.7).
+    'src/saml2-bindings/src/PostSender.php',
+    'src/saml2-bindings/src/PostForm.php',
+    // Section 6.1 step 12: authenticated as the binding says, then validated (B-5).
+    'src/saml2-bindings/src/ReceivedAuthnRequest.php',
+    'src/saml2-bindings/src/ReceivedLogoutRequest.php',
+    'src/saml2-bindings/src/ReceivedLogoutResponse.php',
+    // Section 6.2 step 7: a response, over HTTP-POST only, validated by the model (B-5, B-12).
+    'src/saml2-bindings/src/ReceivedResponse.php',
 ];
 
 #[AsTask(
@@ -719,7 +767,7 @@ function infect(
     #[AsOption(description: 'Mutate only the lines added or modified since --base, committed or not')]
     bool $diff = false,
     #[AsOption(
-        description: 'Mutate the files of INFECTION_STRICT_FILES whole, uncovered lines included, and fail under a hundred percent, whatever --min-msi and --min-covered-msi say, on a coverage of its own: the two SAML suites measured by Xdebug in .ci-tools/coverage-strict',
+        description: 'Mutate the files of INFECTION_STRICT_FILES whole, uncovered lines included, and fail under a hundred percent, whatever --min-msi and --min-covered-msi say, on a coverage of its own: the three SAML suites measured by Xdebug in .ci-tools/coverage-strict',
     )]
     bool $strict = false,
     #[AsOption(
@@ -744,7 +792,7 @@ function infect(
     }
 
     // The XML coverage and the JUnit report of a "castor phpunit" run are what Infection reads from .ci-tools/coverage.
-    // The strict run reads a coverage of its own, the two SAML suites measured by Xdebug: pcov reports no line for a
+    // The strict run reads a coverage of its own, the three SAML suites measured by Xdebug: pcov reports no line for a
     // "continue" statement, so the mutant that turns one into "break" is not covered under it, and the hundred percent
     // the specifications ask for is out of reach on a line every test of the corpus runs.
     $coverage = $strict ? '.ci-tools/coverage-strict' : '.ci-tools/coverage';
@@ -812,7 +860,7 @@ function strict_coverage(): void
             '--configuration',
             '.ci-tools/phpunit.xml.dist',
             '--testsuite',
-            'xml-security,saml2-model',
+            'xml-security,saml2-model,saml2-bindings',
         ],
         ['XDEBUG_MODE' => 'coverage'],
     );
