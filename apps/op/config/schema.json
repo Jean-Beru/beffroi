@@ -11649,6 +11649,7 @@
                 "http_client": {
                     "$ref": "#/$defs/nodes/http_client"
                 },
+                "imports": true,
                 "key_management": {
                     "$ref": "#/$defs/nodes/key_management"
                 },
@@ -11664,6 +11665,7 @@
                 "nelmio_security": {
                     "$ref": "#/$defs/nodes/nelmio_security"
                 },
+                "parameters": true,
                 "property_access": {
                     "$ref": "#/$defs/nodes/property_access"
                 },
@@ -11685,6 +11687,7 @@
                 "serializer": {
                     "$ref": "#/$defs/nodes/serializer"
                 },
+                "services": true,
                 "symfonycasts_tailwind": {
                     "$ref": "#/$defs/nodes/symfonycasts_tailwind"
                 },
@@ -11736,6 +11739,7 @@
                 "http_client": {
                     "$ref": "#/$defs/nodes/http_client"
                 },
+                "imports": true,
                 "key_management": {
                     "$ref": "#/$defs/nodes/key_management"
                 },
@@ -11751,6 +11755,7 @@
                 "nelmio_security": {
                     "$ref": "#/$defs/nodes/nelmio_security"
                 },
+                "parameters": true,
                 "property_access": {
                     "$ref": "#/$defs/nodes/property_access"
                 },
@@ -11772,6 +11777,7 @@
                 "serializer": {
                     "$ref": "#/$defs/nodes/serializer"
                 },
+                "services": true,
                 "symfonycasts_tailwind": {
                     "$ref": "#/$defs/nodes/symfonycasts_tailwind"
                 },

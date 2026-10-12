@@ -3344,12 +3344,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/cache.git",
-                "reference": "5a5e00cd9d59f91f70fa87b7907247a30b4859f0"
+                "reference": "7607f953153bc3a966301a8d9eba5bfa069d3c7b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/cache/zipball/5a5e00cd9d59f91f70fa87b7907247a30b4859f0",
-                "reference": "5a5e00cd9d59f91f70fa87b7907247a30b4859f0",
+                "url": "https://api.github.com/repos/symfony/cache/zipball/7607f953153bc3a966301a8d9eba5bfa069d3c7b",
+                "reference": "7607f953153bc3a966301a8d9eba5bfa069d3c7b",
                 "shasum": ""
             },
             "require": {
@@ -3439,7 +3439,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-09T14:10:13+00:00"
+            "time": "2026-10-11T20:40:40+00:00"
         },
         {
             "name": "symfony/cache-contracts",
@@ -4933,12 +4933,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/framework-bundle.git",
-                "reference": "2357a56ed33af60e13cb27d3e6657b08a0e84df3"
+                "reference": "be8a241a70c96ab24c05e7b4e9eb6da9941d02bf"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/framework-bundle/zipball/2357a56ed33af60e13cb27d3e6657b08a0e84df3",
-                "reference": "2357a56ed33af60e13cb27d3e6657b08a0e84df3",
+                "url": "https://api.github.com/repos/symfony/framework-bundle/zipball/be8a241a70c96ab24c05e7b4e9eb6da9941d02bf",
+                "reference": "be8a241a70c96ab24c05e7b4e9eb6da9941d02bf",
                 "shasum": ""
             },
             "require": {
@@ -5093,7 +5093,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-10T16:32:15+00:00"
+            "time": "2026-10-12T07:26:56+00:00"
         },
         {
             "name": "symfony/hashicorp-vault-key-management",
@@ -5364,12 +5364,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/http-foundation.git",
-                "reference": "b8ac4ee1ab632e8d172b0496d52f2b925326b4cf"
+                "reference": "43b9dd518be6c987875361d77a89ece4b84252db"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/http-foundation/zipball/b8ac4ee1ab632e8d172b0496d52f2b925326b4cf",
-                "reference": "b8ac4ee1ab632e8d172b0496d52f2b925326b4cf",
+                "url": "https://api.github.com/repos/symfony/http-foundation/zipball/43b9dd518be6c987875361d77a89ece4b84252db",
+                "reference": "43b9dd518be6c987875361d77a89ece4b84252db",
                 "shasum": ""
             },
             "require": {
@@ -5439,7 +5439,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-09T14:10:13+00:00"
+            "time": "2026-10-12T07:26:56+00:00"
         },
         {
             "name": "symfony/http-kernel",
@@ -5447,12 +5447,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/http-kernel.git",
-                "reference": "0e0c32b8d226b25bb08b7d582b137f2d3f947f5d"
+                "reference": "d942b1c49d8d930b1cb61fef470ef08d8968d073"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/http-kernel/zipball/0e0c32b8d226b25bb08b7d582b137f2d3f947f5d",
-                "reference": "0e0c32b8d226b25bb08b7d582b137f2d3f947f5d",
+                "url": "https://api.github.com/repos/symfony/http-kernel/zipball/d942b1c49d8d930b1cb61fef470ef08d8968d073",
+                "reference": "d942b1c49d8d930b1cb61fef470ef08d8968d073",
                 "shasum": ""
             },
             "require": {
@@ -5493,6 +5493,7 @@
                 "symfony/http-client": "^7.4|^8.0",
                 "symfony/http-client-contracts": "^2.5|^3",
                 "symfony/lock": "^7.4|^8.0",
+                "symfony/object-mapper": "^7.4|^8.0",
                 "symfony/process": "^7.4|^8.0",
                 "symfony/property-access": "^7.4|^8.0",
                 "symfony/rate-limiter": "^7.4|^8.0",
@@ -5554,7 +5555,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-10T15:27:22+00:00"
+            "time": "2026-10-12T07:16:23+00:00"
         },
         {
             "name": "symfony/intl",
@@ -5752,12 +5753,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/messenger.git",
-                "reference": "8e0078da3900100f134686e3e76efc733be9aef2"
+                "reference": "5c4dd95c4872659d9ffd1436d0d2b2fa5f2b9d1e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/messenger/zipball/8e0078da3900100f134686e3e76efc733be9aef2",
-                "reference": "8e0078da3900100f134686e3e76efc733be9aef2",
+                "url": "https://api.github.com/repos/symfony/messenger/zipball/5c4dd95c4872659d9ffd1436d0d2b2fa5f2b9d1e",
+                "reference": "5c4dd95c4872659d9ffd1436d0d2b2fa5f2b9d1e",
                 "shasum": ""
             },
             "require": {
@@ -5845,7 +5846,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-11T14:39:44+00:00"
+            "time": "2026-10-12T07:45:01+00:00"
         },
         {
             "name": "symfony/monolog-bridge",
@@ -7348,12 +7349,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/security-bundle.git",
-                "reference": "2c459fee9714cb1d2345578bede5aabdc6e1db9a"
+                "reference": "ba2295767d6b530b91277df0f06fdf958b02a82f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/security-bundle/zipball/2c459fee9714cb1d2345578bede5aabdc6e1db9a",
-                "reference": "2c459fee9714cb1d2345578bede5aabdc6e1db9a",
+                "url": "https://api.github.com/repos/symfony/security-bundle/zipball/ba2295767d6b530b91277df0f06fdf958b02a82f",
+                "reference": "ba2295767d6b530b91277df0f06fdf958b02a82f",
                 "shasum": ""
             },
             "require": {
@@ -7447,7 +7448,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-10T15:27:22+00:00"
+            "time": "2026-10-11T20:13:43+00:00"
         },
         {
             "name": "symfony/security-core",
@@ -8874,12 +8875,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/yaml.git",
-                "reference": "2874d1b465669ebe47ec6a0440f2d8091d8c27a8"
+                "reference": "e591a31371cb2ed57251392eeb9004aac673e703"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/yaml/zipball/2874d1b465669ebe47ec6a0440f2d8091d8c27a8",
-                "reference": "2874d1b465669ebe47ec6a0440f2d8091d8c27a8",
+                "url": "https://api.github.com/repos/symfony/yaml/zipball/e591a31371cb2ed57251392eeb9004aac673e703",
+                "reference": "e591a31371cb2ed57251392eeb9004aac673e703",
                 "shasum": ""
             },
             "require": {
@@ -8944,7 +8945,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-11T14:26:56+00:00"
+            "time": "2026-10-12T06:48:27+00:00"
         },
         {
             "name": "symfonycasts/tailwind-bundle",
