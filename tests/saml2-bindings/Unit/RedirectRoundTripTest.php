@@ -17,7 +17,7 @@ use function strlen;
 
 /**
  * Section 9.1 over HTTP-Redirect: every URL RedirectSender writes, its query string received by RedirectReceiver, then
- * validated by the model's validator of the peer's role, the test keys of tests/Fixture/keys/ in the metadata and a
+ * validated by the model's validator of the peer's role, the test keys of tests/saml2-bindings/Fixture/keys/ in the metadata and a
  * clock frozen at the message's IssueInstant: an AuthnRequest signed under every algorithm this build has, and
  * unsigned; a LogoutRequest and a LogoutResponse, always signed (B-12); each without RelayState, with one of exactly
  * 80 bytes and with one of 1 024 bytes, the bound of B-9 (section 8), every byte escaped, returned as it was given. Signed, the message is authenticated by the binding (B-5); unsigned, by

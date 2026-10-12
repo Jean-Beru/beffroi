@@ -51,14 +51,14 @@ use const ZLIB_SYNC_FLUSH;
  * The attempts of the adversarial pass of section 9.8 (story #10): each row of section 3 attacked with query strings and
  * forms the corpus of 9.2 and 9.3 does not list, every attempt a file whatever its outcome,
  * hostile/adversarial-<attempt>-refused.txt or behaviour/adversarial-<attempt>-accepted.txt, each a variant of one valid
- * query string or form with the change its name says, signed with the test keys of tests/Fixture/keys/ wherever the
- * attack needs a valid signature, or a real capture of tests/Fixture/real/ with one change. A query string is written
+ * query string or form with the change its name says, signed with the test keys of tests/saml2-bindings/Fixture/keys/ wherever the
+ * attack needs a valid signature, or a real capture of tests/saml2-bindings/Fixture/real/ with one change. A query string is written
  * as the consumer reads it from QUERY_STRING, without its "?"; a form as the application/x-www-form-urlencoded body a
  * browser posts, which PHP's parser decodes into the fields the consumer gives PostReceiver (section 6.8). Nothing here
  * calls the package: the octets are concatenated by RedirectQuery, the message deflated by zlib and encoded by PHP, so
  * that the attempts judge the receiver rather than mirror it. RSA PKCS#1 v1.5 is deterministic: the same keys build
  * the same bytes, which the adversarial test checks against the committed files. The command that writes them is in
- * tests/Fixture/hostile/adversarial-README.md.
+ * tests/saml2-bindings/Fixture/hostile/adversarial-README.md.
  *
  * The messages are those of ReceptionFixtures: the AuthnRequest of the service provider, signed over the query string
  * with the "sp" test key, its RelayState "state" unless the attempt says otherwise; the LogoutRequest of the identity
@@ -113,7 +113,7 @@ final readonly class AdversarialQueryBuilder
     private const string BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
     /**
-     * Every attempt, its path under tests/Fixture/ mapped to its bytes.
+     * Every attempt, its path under tests/saml2-bindings/Fixture/ mapped to its bytes.
      *
      * @return array<string, string>
      */
@@ -136,7 +136,7 @@ final readonly class AdversarialQueryBuilder
     }
 
     /**
-     * Writes every attempt under $directory, tests/Fixture/ of the repository.
+     * Writes every attempt under $directory, tests/saml2-bindings/Fixture/ of the repository.
      */
     public static function write(string $directory): void
     {

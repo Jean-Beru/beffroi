@@ -1,6 +1,6 @@
 """Reads a signed HTTP-Redirect URL as the OpenSSL oracle needs it (spec/bindings.md section 9.1), with Python alone.
 
-Usage: python3 tests/Fixture/oracle/read-redirect-url.py <file.url> <directory>
+Usage: python3 tests/saml2-bindings/Fixture/oracle/read-redirect-url.py <file.url> <directory>
 
 From the query of the URL, what follows its first "?", split on "&" and each segment on its first "=", it takes the
 raw values of the parameters of the binding by name, whatever their order, and writes into <directory>:

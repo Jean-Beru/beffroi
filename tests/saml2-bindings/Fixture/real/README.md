@@ -1,15 +1,15 @@
 # Real query strings, forms and metadata
 
 Section 9.4 of `spec/bindings.md`: what real implementations sent, bytes as received, named with their origin and the
-date of their capture, verified and validated by `tests/Unit/RealDocumentsTest.php` with a clock frozen at the capture.
-The identities are disposable: the keys are the test keys of `tests/Fixture/keys/`, and the hosts are `localhost`.
+date of their capture, verified and validated by `tests/saml2-bindings/Unit/RealDocumentsTest.php` with a clock frozen at the capture.
+The identities are disposable: the keys are the test keys of `tests/saml2-bindings/Fixture/keys/`, and the hosts are `localhost`.
 
 ## SimpleSAMLphp 2.5.3.1, 30 September 2026
 
-Captured by the harness of `beffroi-php/saml2-model` (its `tests/Interop/simplesamlphp/`, section 4 of its README), in
+Captured by the harness of `beffroi-php/saml2-model` (its `tests/saml2-model/Interop/simplesamlphp/`, section 4 of its README), in
 the exchange between SimpleSAMLphp's service provider `for-model` and the model's identity provider, run with
-`castor simplesamlphp --keep` on PHP 8.5.10 at 13:07 UTC, its documents issued between 13:07:34 and 13:07:35 UTC.
-Committed to the model by c2fa7dd (30 September 2026), and copied here byte for byte from its `tests/Fixture/real/` at
+`castor saml2-bindings-simplesamlphp --keep` on PHP 8.5.10 at 13:07 UTC, its documents issued between 13:07:34 and 13:07:35 UTC.
+Committed to the model by c2fa7dd (30 September 2026), and copied here byte for byte from its `tests/saml2-model/Fixture/real/` at
 commit 9c833c5 of its `main` (1 October 2026), the merge of its stack.
 
 | File | What | Bytes |
@@ -18,14 +18,14 @@ commit 9c833c5 of its `main` (1 October 2026), the merge of its stack.
 | `simplesamlphp-2.5.3.1-sp-logoutrequest-to-model-query-2026-09-30.txt` | the query string of `for-model`'s `LogoutRequest` to `http://localhost:8083/model/idp/slo`, the same four parameters, signed under `sign.logout`, no final line feed | 1 073 |
 | `simplesamlphp-2.5.3.1-sp-metadata-for-model-2026-09-30.xml` | `for-model`'s metadata as it was served, `AuthnRequestsSigned="true"`, the certificate whose key verifies both query strings | 4 384 |
 
-The XML each query string carries is the model's evidence, kept under its own `tests/Fixture/real/`
+The XML each query string carries is the model's evidence, kept under its own `tests/saml2-model/Fixture/real/`
 (`simplesamlphp-2.5.3.1-sp-authnrequest-to-model-2026-09-30.xml`, `...-sp-logoutrequest-to-model-2026-09-30.xml`); the
 query string as it arrived is this package's.
 
 ## SimpleSAMLphp 2.5.3.1, 1 October 2026
 
-Captured by this package's judge (`tests/Interop/simplesamlphp/`, section 9.5 of the specification), run with
-`castor simplesamlphp --keep` on PHP 8.5.10 between 11:03:28 and 11:03:40 UTC, the messages issued between 11:03:33 and
+Captured by this package's judge (`tests/saml2-bindings/Interop/simplesamlphp/`, section 9.5 of the specification), run with
+`castor saml2-bindings-simplesamlphp --keep` on PHP 8.5.10 between 11:03:28 and 11:03:40 UTC, the messages issued between 11:03:33 and
 11:03:37 UTC. Each was kept once this package had read it and the model had validated it, or refused it as the table
 says. A query string is the raw query of the URL SimpleSAMLphp redirected to, after its `?`, as the consumer reads it
 from `QUERY_STRING`; a form is the `application/x-www-form-urlencoded` body a browser posts from the form of the page,
@@ -45,7 +45,7 @@ them.
 | `simplesamlphp-2.5.3.1-idp-logoutresponse-unsigned-refused-query-2026-10-01.txt` | the identity provider's `LogoutResponse` under its defaults, unsigned: read, then refused by the model (`SignatureRequired`, M-2) | 522 |
 
 `exchange.php`: SimpleSAMLphp's two parties and this package's roles at `http://localhost:8093/bindings/`, whose
-metadata the exchange wrote with the test keys of `tests/Fixture/keys/` (`RealDocumentsTest` builds the same roles).
+metadata the exchange wrote with the test keys of `tests/saml2-bindings/Fixture/keys/` (`RealDocumentsTest` builds the same roles).
 
 | File | What | Bytes |
 |---|---|---|
@@ -60,8 +60,8 @@ metadata the exchange wrote with the test keys of `tests/Fixture/keys/` (`RealDo
 
 ## Keycloak 26.7.4, 1 October 2026
 
-Captured by the judge's second target (`tests/Interop/keycloak/`, section 9.5 of the specification), run with
-`castor keycloak --keep` on PHP 8.5.10 between 11:37:23 and 11:37:38 UTC, from a stopped Keycloak, the capture and the
+Captured by the judge's second target (`tests/saml2-bindings/Interop/keycloak/`, section 9.5 of the specification), run with
+`castor saml2-bindings-keycloak --keep` on PHP 8.5.10 between 11:37:23 and 11:37:38 UTC, from a stopped Keycloak, the capture and the
 exchange in one start, the messages issued between 11:37:35.702 and 11:37:37.181 UTC. Keycloak generates the keys of
 its realms at every start: the metadata of this run, kept with its captures, are the ones that verify them. A query
 string and a form are kept as for SimpleSAMLphp above, once this package had read them and the model had validated
@@ -80,7 +80,7 @@ them, or refused them as the table says.
 
 `exchange.php`: realm sp's broker `bindings` and realm idp's client, configured by Keycloak's importers from the
 metadata of this package's roles at `https://idp.saml2-bindings.test/` and `https://sp.saml2-bindings.test/`, written
-with the test keys of `tests/Fixture/keys/` (`RealDocumentsTest` builds the same roles).
+with the test keys of `tests/saml2-bindings/Fixture/keys/` (`RealDocumentsTest` builds the same roles).
 
 | File | What | Bytes |
 |---|---|---|

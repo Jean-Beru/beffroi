@@ -32,12 +32,12 @@ use DateTimeImmutable;
 /**
  * What the tests of HTTP-Redirect and HTTP-POST received share (sections 6.1, 6.2, 9.2, 9.3): the four messages, the
  * two parties and the model's validators with a clock frozen at the messages' IssueInstant. The messages are
- * saml2-model's, copied byte for byte from tests/Fixture/behaviour/ of its main at 9c833c5: an AuthnRequest of the
+ * saml2-model's, copied byte for byte from tests/saml2-bindings/Fixture/behaviour/ of its main at 9c833c5: an AuthnRequest of the
  * service provider to the identity provider, signed with the "sp" test key; a LogoutRequest of the identity provider to
  * the service provider, signed with "idp"; a LogoutResponse of the service provider to the identity provider, signed
  * with "sp"; a samlp:Response of the identity provider to the service provider's assertion consumer service, answering
  * the request _request, its assertion signed with "idp", response-signed-assertion-accepted.xml. The hostile
- * documents of tests/Fixture/hostile/ are copies too, renamed for the refusal they exist for: the AuthnRequest signed
+ * documents of tests/saml2-bindings/Fixture/hostile/ are copies too, renamed for the refusal they exist for: the AuthnRequest signed
  * in XML is the model's behaviour/authn-request-signed.xml, the samlp:Response its
  * behaviour/response-signed-assertion-accepted.xml; the DOCTYPE is the unsigned AuthnRequest with one line added.
  */

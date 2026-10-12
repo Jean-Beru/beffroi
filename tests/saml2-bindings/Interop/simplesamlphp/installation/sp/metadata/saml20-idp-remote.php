@@ -17,7 +17,7 @@ $metadata['http://localhost:8091/simplesaml/module.php/saml/idp/metadata'] = [
     'certificate' => 'idp.crt',
 ];
 
-// This package's identity provider, once the exchange has written its metadata (tests/Interop/simplesamlphp/
+// This package's identity provider, once the exchange has written its metadata (tests/saml2-bindings/Interop/simplesamlphp/
 // exchange.php): the XML the model's MetadataWriter wrote, read by SimpleSAMLphp's own parser, as it is; its
 // WantAuthnRequestsSigned="true" becomes sign.authnrequest (SAMLParser::getMetadata20IdP()). The service provider that
 // logs in there, for-bindings, carries its own settings (authsources.php).

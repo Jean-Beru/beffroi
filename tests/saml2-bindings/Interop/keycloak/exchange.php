@@ -6,7 +6,7 @@ declare(strict_types=1);
  * The exchange (README.md of this directory, section 4): this package and Keycloak's two realms, both ways, login and
  * logout, over HTTP-Redirect wherever Keycloak allows it, then the probes and the measures of section 9.5 of
  * spec/bindings.md, on the running installation, with the package of the repository (its vendor/autoload.php), the test
- * keys of tests/Fixture/keys/ and the live clock.
+ * keys of tests/saml2-bindings/Fixture/keys/ and the live clock.
  *
  * Keycloak is configured from the metadata of this package's two roles, written by the model's MetadataWriter, by its
  * own importers through the admin REST API: realm sp's identity provider "bindings" by import-config, realm idp's SAML
@@ -21,13 +21,13 @@ declare(strict_types=1);
  * RSA-SHA1 signature, a SigAlg off its list, a "+" in a signed RelayState): those are built by signed_by_hand() of
  * ../harness.php, named so, and sent for the measure only.
  *
- * What Keycloak sent goes to received/, or to tests/Fixture/real/ with --keep, named with its version and the date;
+ * What Keycloak sent goes to received/, or to tests/saml2-bindings/Fixture/real/ with --keep, named with its version and the date;
  * the metadata of this package's roles, as given to Keycloak, to written/. One line per step and per measure; the exit
  * status is 1 when a step fails.
  *
- * From the root of the repository, the installation up (castor keycloak runs it all):
- *   docker run --rm --init --network container:$(docker compose -f tests/Interop/keycloak/compose.yaml ps -q keycloak) \
- *       -v "$PWD:/project" -w /project ghcr.io/spomky-labs/phpqa:8.5 php tests/Interop/keycloak/exchange.php [--keep]
+ * From the root of the repository, the installation up (castor saml2-bindings-keycloak runs it all):
+ *   docker run --rm --init --network container:$(docker compose -f tests/saml2-bindings/Interop/keycloak/compose.yaml ps -q keycloak) \
+ *       -v "$PWD:/project" -w /project ghcr.io/spomky-labs/phpqa:8.5 php tests/saml2-bindings/Interop/keycloak/exchange.php [--keep]
  */
 
 use Beffroi\Saml2\Bindings\PostForm;

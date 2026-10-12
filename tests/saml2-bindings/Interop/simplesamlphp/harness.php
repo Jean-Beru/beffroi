@@ -36,7 +36,7 @@ function log_in(Browser $browser): Browser
 
 /**
  * The report of a run of this harness: its captures named with SimpleSAMLphp's version and the date, in received/ or,
- * with --keep, in tests/Fixture/real/.
+ * with --keep, in tests/saml2-bindings/Fixture/real/.
  *
  * @param list<string> $argv
  */

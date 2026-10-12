@@ -6,7 +6,7 @@
 # the URL, <name>.xml for <name>.url. A URL whose signature OpenSSL refuses, whose message is not that document, or
 # that is not signed is an error. Run from the root of the repository, where openssl and python3 are installed
 # (Alpine 3.22: apk add openssl python3):
-#   sh tests/Fixture/oracle/verify-redirect.sh tests/Fixture/keys/sp-signing-certificate.pem <file.url>...
+#   sh tests/saml2-bindings/Fixture/oracle/verify-redirect.sh tests/saml2-bindings/Fixture/keys/sp-signing-certificate.pem <file.url>...
 set -eu
 
 certificate=$1

@@ -18,7 +18,7 @@ $metadata['http://localhost:8092/simplesaml/module.php/saml/sp/metadata/default-
     'certificate' => 'sp.crt',
 ];
 
-// This package's service providers, once the exchange has written their metadata (tests/Interop/simplesamlphp/
+// This package's service providers, once the exchange has written their metadata (tests/saml2-bindings/Interop/simplesamlphp/
 // exchange.php): the XML the model's MetadataWriter wrote, read by SimpleSAMLphp's own parser, the one its XML
 // metadata sources and its metarefresh module use. Its AuthnRequestsSigned="true" becomes validate.authnrequest
 // (SAMLParser::getMetadata20SP()), under which the identity provider refuses an AuthnRequest without a signature; a

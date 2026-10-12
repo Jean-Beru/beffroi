@@ -43,17 +43,17 @@ use function str_pad;
 /**
  * Section 9.4: the query strings and forms SimpleSAMLphp 2.5.3.1 and Keycloak 26.7.4 sent, bytes as received, read by
  * the receivers of this package and validated by the model with a clock frozen at their capture, under the metadata of
- * their sender as it was served (tests/Fixture/real/README.md).
+ * their sender as it was served (tests/saml2-bindings/Fixture/real/README.md).
  *
  * Three captures. On 30 September 2026, saml2-model's harness: its service provider for-model, under sign.authnrequest
  * and sign.logout, to saml2-model's identity provider. On 1 October 2026, this package's judge (section 9.5,
- * tests/Interop/simplesamlphp/README.md): capture.php, a login and a logout between SimpleSAMLphp's own two parties,
+ * tests/saml2-bindings/Interop/simplesamlphp/README.md): capture.php, a login and a logout between SimpleSAMLphp's own two parties,
  * default-sp and its identity provider, as the installation configures them; and exchange.php, SimpleSAMLphp's two
  * parties and this package's roles, at http://localhost:8093/bindings/, whose metadata the exchange wrote with the test
  * keys: an identity provider, and three service providers which the identity provider answers differently at logout
  * (sp under sign.logout, sp-defaults under its defaults, sp-post over HTTP-POST under sign.logout).
  *
- * Keycloak 26.7.4, on 1 October 2026, by the judge's second target (tests/Interop/keycloak/README.md): capture.php, a
+ * Keycloak 26.7.4, on 1 October 2026, by the judge's second target (tests/saml2-bindings/Interop/keycloak/README.md): capture.php, a
  * login and a logout between realm sp's broker "idp" and realm idp, as realms/ configures them; and exchange.php, realm
  * sp's broker "bindings" and realm idp configured by Keycloak's importers from the metadata of this package's roles, at
  * https://idp.saml2-bindings.test/ and https://sp.saml2-bindings.test/, written with the test keys. Realm keys are new
@@ -107,8 +107,8 @@ final class RealDocumentsTest extends TestCase
      * signature over SAMLRequest, RelayState and SigAlg as they arrived verified under the key of its metadata, accepted
      * by the binding's authentication, its RelayState returned as decoded: SimpleSAMLphp's ReturnTo, Keycloak's broker
      * state of 78 bytes; and, beyond the 80 bytes of SAML Bindings §3.4.3, the exception of section 8 (B-9): a ReturnTo
-     * of 105 bytes (finding F-5 of tests/Interop/simplesamlphp/README.md) and the state of 122 bytes the broker writes
-     * for a client whose internal ID is not a UUID (finding K-4 of tests/Interop/keycloak/README.md), both refused on 1
+     * of 105 bytes (finding F-5 of tests/saml2-bindings/Interop/simplesamlphp/README.md) and the state of 122 bytes the broker writes
+     * for a client whose internal ID is not a UUID (finding K-4 of tests/saml2-bindings/Interop/keycloak/README.md), both refused on 1
      * October 2026 and accepted since B-9 reads up to 1 024 bytes (section 12).
      */
     #[Test]
@@ -217,7 +217,7 @@ final class RealDocumentsTest extends TestCase
      * Section 9.4, B-5, SAML Profiles §4.1.2: the AuthnRequest of Keycloak's broker as its importer configures it from
      * an identity provider metadata listing HTTP-Redirect alone, asking for its response over HTTP-Redirect: its
      * signature verified by the binding, then refused by the model, which answers over HTTP-POST only (model.md section
-     * 8; finding K-2 of tests/Interop/keycloak/README.md). The producer is configured so, the rule stands.
+     * 8; finding K-2 of tests/saml2-bindings/Interop/keycloak/README.md). The producer is configured so, the rule stands.
      */
     #[Test]
     public function itRefusesTheAuthnRequestOfKeycloaksBrokerAskingForItsResponseOverHttpRedirect(): void
@@ -782,7 +782,7 @@ final class RealDocumentsTest extends TestCase
 
     /**
      * The model's identity provider as saml2-model's exchange published it (its
-     * tests/Unit/Interop/SimpleSamlPhpDocumentsTest.php).
+     * tests/saml2-bindings/Unit/Interop/SimpleSamlPhpDocumentsTest.php).
      */
     private static function modelIdentityProvider(): IdentityProvider
     {

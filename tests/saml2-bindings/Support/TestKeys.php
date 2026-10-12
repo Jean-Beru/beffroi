@@ -12,7 +12,7 @@ use function preg_replace;
 use function sprintf;
 
 /**
- * The two test key pairs of tests/Fixture/keys/, saml2-model's (section 9.1): the identity provider's and the service
+ * The two test key pairs of tests/saml2-bindings/Fixture/keys/, saml2-model's (section 9.1): the identity provider's and the service
  * provider's, RSA 2048, public by construction and never trusted outside the tests. A signing key is Dsig's PrivateKey,
  * the one signer of the stack; a certificate is the base64 an X509Certificate of metadata carries.
  */

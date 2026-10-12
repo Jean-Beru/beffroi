@@ -1,7 +1,7 @@
 # Keycloak as an identity provider (realm idp) and as a service provider (realm sp), the second target of the judge
-# (tests/Interop/keycloak/README.md), copied from saml2-model's harness at commit 9c833c5 under a compose project and a
+# (tests/saml2-bindings/Interop/keycloak/README.md), copied from saml2-model's harness at commit 9c833c5 under a compose project and a
 # port of this package, so that both harnesses run side by side (saml2-model's answers on 8180).
-#   docker compose -f tests/Interop/keycloak/compose.yaml up -d
+#   docker compose -f tests/saml2-bindings/Interop/keycloak/compose.yaml up -d
 name: saml2-bindings-keycloak
 
 services:

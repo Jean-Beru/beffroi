@@ -105,7 +105,7 @@ final readonly class Form
     }
 
     /**
-     * The body a browser posts for this form, application/x-www-form-urlencoded (tests/Support/BrowserForm.php).
+     * The body a browser posts for this form, application/x-www-form-urlencoded (tests/saml2-bindings/Support/BrowserForm.php).
      */
     public function body(): string
     {

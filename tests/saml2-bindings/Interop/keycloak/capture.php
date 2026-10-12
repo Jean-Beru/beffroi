@@ -11,14 +11,14 @@ declare(strict_types=1);
  * here every line of the binding is this package's: RedirectReceiver for what HTTP-Redirect carries, PostReceiver for
  * the fields of a form, read from the page and encoded as a browser does.
  *
- * Kept, in received/ or, with --keep, in tests/Fixture/real/: both metadata as served; the broker's AuthnRequest and
+ * Kept, in received/ or, with --keep, in tests/saml2-bindings/Fixture/real/: both metadata as served; the broker's AuthnRequest and
  * LogoutRequest, their query strings, unsigned under its defaults and refused by the model (saml2-model's findings 1 and
  * 2); realm idp's response and LogoutResponse, the bodies a browser posts from its forms. One line per step; the exit
  * status is 1 when a step fails.
  *
- * From the root of the repository, the installation up (castor keycloak --capture runs it):
- *   docker run --rm --init --network container:$(docker compose -f tests/Interop/keycloak/compose.yaml ps -q keycloak) \
- *       -v "$PWD:/project" -w /project ghcr.io/spomky-labs/phpqa:8.5 php tests/Interop/keycloak/capture.php [--keep]
+ * From the root of the repository, the installation up (castor saml2-bindings-keycloak --capture runs it):
+ *   docker run --rm --init --network container:$(docker compose -f tests/saml2-bindings/Interop/keycloak/compose.yaml ps -q keycloak) \
+ *       -v "$PWD:/project" -w /project ghcr.io/spomky-labs/phpqa:8.5 php tests/saml2-bindings/Interop/keycloak/capture.php [--keep]
  */
 
 use Beffroi\Saml2\Bindings\PostReceiver;

@@ -6,10 +6,10 @@ provider (realm `idp`) and as a service provider (realm `sp`, whose SAML identit
 and logout. It reinforces the judge, SimpleSAMLphp both ways (`../simplesamlphp/README.md`), without being a condition
 of it, as for `saml2-model`: every refusal either way is a finding below, never a reason to loosen a rule outside the
 specification. Run by hand with Docker, never a dependency of the package and never in the CI (section 12). What it
-captured is committed under `tests/Fixture/real/` and checked by `tests/Unit/RealDocumentsTest.php` on every build
+captured is committed under `tests/saml2-bindings/Fixture/real/` and checked by `tests/saml2-bindings/Unit/RealDocumentsTest.php` on every build
 (section 9.4).
 
-It is `saml2-model`'s Keycloak harness (its `tests/Interop/keycloak/`, story #14 of its epic, at commit 9c833c5 of its
+It is `saml2-model`'s Keycloak harness (its `tests/saml2-model/Interop/keycloak/`, story #14 of its epic, at commit 9c833c5 of its
 `main`, 1 October 2026), which played every message over HTTP-POST, base64 in a form field, and left every HTTP-Redirect
 exchange to this package: here `RedirectSender` writes every URL sent, `PostSender` every form, `RedirectReceiver` reads
 every query string received and `PostReceiver` every form.
@@ -21,7 +21,7 @@ every query string received and `PostReceiver` every form.
 | `capture.php` | realm `sp`'s broker and realm `idp` between themselves, every query string and form read by the package before it is kept (section 3) |
 | `exchange.php` | Keycloak configured from this package's metadata by its own importers, then the package and Keycloak both ways, login and logout, the probes and the measures (section 4) |
 | `../measure.php` | the measures of the captures (section 5) |
-| `.castor/keycloak.php`, at the root | `castor keycloak`: every step above from one task |
+| `.castor/lab/saml2-bindings.php`, at the root | `castor saml2-bindings-keycloak`: every step above from one task |
 
 The judge was played on 1 October 2026: **green both ways**, on PHP 8.5.10 and on PHP 8.4.25, every probe refused by
 Keycloak, its `LogoutResponse` over HTTP-Redirect obtained, verified and accepted. Two settings of Keycloak's console
@@ -62,14 +62,14 @@ Connect client `capture`. `saml2-model`'s README sets out, measured, why the rea
 - `capture.sh`, which decoded what it kept with perl (base64 and raw inflate), is replaced by `capture.php`, which plays
   the same login and logout and reads every message with this package; `verify.sh`, xmlsec1 over Keycloak's XML, is
   not carried over: the XML is the model's to judge, and the independent verifier of this package's signatures is the
-  OpenSSL oracle of section 9.1 (`castor redirect-oracle`).
+  OpenSSL oracle of section 9.1 (`castor saml2-bindings-oracle`).
 - This package's roles answer at `https://idp.saml2-bindings.test/` and `https://sp.saml2-bindings.test/`, where nothing
   listens (`saml2-model`'s answered at `https://idp.saml2-model.test/` and `https://sp.saml2-model.test/`): Keycloak
   redirects or posts there through the browser only, and the exchange reads what it sends.
 
 ### This package's roles, and what Keycloak's importers make of them
 
-Written by `exchange.php` with the model's `MetadataWriter` and the test keys of `tests/Fixture/keys/`, each signed by
+Written by `exchange.php` with the model's `MetadataWriter` and the test keys of `tests/saml2-bindings/Fixture/keys/`, each signed by
 the key of its role, every `KeyInfo` left out, into `written/` (ignored), then given to Keycloak through the admin REST
 API, as an administrator who imports a metadata file in the console:
 
@@ -119,26 +119,26 @@ the model.
 ```
 # The whole run from a clean checkout: the package's dependencies installed when missing, Keycloak up with new realm
 # keys, the capture, the exchange, Keycloak down. PHP 8.5 by default, PHP_VERSION=8.4 for the other.
-castor keycloak
+castor saml2-bindings-keycloak
 
-# The same, and what Keycloak sent kept in tests/Fixture/real/, dated, instead of received/ (ignored); capture and
+# The same, and what Keycloak sent kept in tests/saml2-bindings/Fixture/real/, dated, instead of received/ (ignored); capture and
 # exchange in one start, since the metadata of the run verify its captures
-castor keycloak --keep
+castor saml2-bindings-keycloak --keep
 
 # Each step alone
-castor keycloak --up
-castor keycloak --capture [--keep]
-castor keycloak --exchange [--keep]
-castor keycloak --down
+castor saml2-bindings-keycloak --up
+castor saml2-bindings-keycloak --capture [--keep]
+castor saml2-bindings-keycloak --exchange [--keep]
+castor saml2-bindings-keycloak --down
 
 # What --capture and --exchange run, from the root of the repository
-docker run --rm --init --network container:$(docker compose -f tests/Interop/keycloak/compose.yaml ps -q keycloak) \
+docker run --rm --init --network container:$(docker compose -f tests/saml2-bindings/Interop/keycloak/compose.yaml ps -q keycloak) \
     --user "$(id -u):$(id -g)" -v "$PWD:/project" -w /project ghcr.io/spomky-labs/phpqa:8.5 \
-    php tests/Interop/keycloak/exchange.php [--keep]
+    php tests/saml2-bindings/Interop/keycloak/exchange.php [--keep]
 
 # The measures
 docker run --rm -v "$PWD:/project:ro" -w /project ghcr.io/spomky-labs/phpqa:8.5 \
-    php tests/Interop/measure.php tests/Fixture/real 'keycloak-*.txt'
+    php tests/saml2-bindings/Interop/measure.php tests/saml2-bindings/Fixture/real 'keycloak-*.txt'
 ```
 
 The scripts wait for Keycloak (180 s at most), print one line per step and per measure, and exit with 1 when a step
@@ -210,9 +210,9 @@ live, kept, and read with `readTrusted()`.
 
 ### Results
 
-The run kept, `castor keycloak --keep` on PHP 8.5.10, from a stopped Keycloak, the capture from 11:37:23 UTC and the
+The run kept, `castor saml2-bindings-keycloak --keep` on PHP 8.5.10, from a stopped Keycloak, the capture from 11:37:23 UTC and the
 exchange from 11:37:36 to 11:37:38 UTC on 1 October 2026, the messages issued between 11:37:35.702 and 11:37:37.181 UTC;
-`PHP_VERSION=8.4 castor keycloak` on PHP 8.4.25, from 11:38:01 UTC, gave the same outcome but for the measures of
+`PHP_VERSION=8.4 castor saml2-bindings-keycloak` on PHP 8.4.25, from 11:38:01 UTC, gave the same outcome but for the measures of
 RSASSA-PSS, which that build lacks. Every step green on both, eighteen steps, three of the capture and fifteen of the
 exchange.
 
@@ -298,10 +298,10 @@ more, from a stopped Keycloak, its realm keys new, without `--keep`, what Keyclo
 `received/`:
 
 ```bash
-castor keycloak --up
-castor keycloak --capture && castor keycloak --exchange
-PHP_VERSION=8.4 castor keycloak --capture && PHP_VERSION=8.4 castor keycloak --exchange
-castor keycloak --down
+castor saml2-bindings-keycloak --up
+castor saml2-bindings-keycloak --capture && castor saml2-bindings-keycloak --exchange
+PHP_VERSION=8.4 castor saml2-bindings-keycloak --capture && PHP_VERSION=8.4 castor saml2-bindings-keycloak --exchange
+castor saml2-bindings-keycloak --down
 ```
 
 On PHP 8.5.11, the capture from 13:17:35 UTC and the exchange from 13:17:40 UTC, and on PHP 8.4.25 from 13:17:50 UTC:
@@ -314,7 +314,7 @@ internal ID is not a UUID, its `RelayState` of 122 bytes, is read by `RedirectRe
 
 ## 5. Measurements
 
-`../measure.php` on the captures of `tests/Fixture/real/`, 1 October 2026 (section 2 has the command):
+`../measure.php` on the captures of `tests/saml2-bindings/Fixture/real/`, 1 October 2026 (section 2 has the command):
 
 | Query string | Bytes | Parameters | SigAlg | Escapes | RelayState, bytes | Signature, bytes | Inflated, bytes |
 |---|---|---|---|---|---|---|---|
@@ -421,4 +421,4 @@ section 1, and no rule of the specification had to change for the exchange. What
   finding 21), not played again here.
 
 `RealDocumentsTest` reads every capture of this run with the receivers of this package and validates it with the model
-under a clock frozen at its capture; `tests/Fixture/real/README.md` lists them.
+under a clock frozen at its capture; `tests/saml2-bindings/Fixture/real/README.md` lists them.

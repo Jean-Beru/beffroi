@@ -31,7 +31,7 @@ use function strtolower;
  * the superglobals. A loose comparison, == and != (<> included), and switch, which compares loosely too: a value is
  * compared with === (M-8). A (bool) cast: a boolean of a message is one of its four lexical forms, compared as a string
  * (M-6). A \DateTime or a \DateTimeImmutable built without an explicit time, which reads the clock of the machine: the
- * package needs no time, and the tests read the frozen clock of tests/Support. A constant time string is explicit when
+ * package needs no time, and the tests read the frozen clock of tests/saml2-bindings/Support. A constant time string is explicit when
  * it names a date, a time and the UTC zone, and nothing relative ("now", "today", "+1 day"); a time string known only at
  * runtime passes. A superglobal, $_GET, $_POST and the others of the configuration, $GLOBALS among them, which reads
  * every other one under another name ($GLOBALS['_GET']): the package takes the raw query string and the form's fields

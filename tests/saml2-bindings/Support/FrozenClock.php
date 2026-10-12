@@ -13,7 +13,7 @@ use function sprintf;
  * The clock port of model.md section 5.2, frozen at an instant in UTC: now() returns it however often it is read. The
  * package reads no time; the model's validators the tests drive do, and read this one (section 9.7). A test moves time
  * by taking another clock from movedBy(), never by sleeping; this one never changes. Copied from saml2-model's
- * tests/Support/ at commit 9c833c5.
+ * tests/saml2-bindings/Support/ at commit 9c833c5.
  */
 final readonly class FrozenClock implements ClockInterface
 {

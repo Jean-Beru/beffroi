@@ -12,8 +12,8 @@ declare(strict_types=1);
  * milliseconds. Outside the suite, which reads no clock (section 9.6). saml2-model's timing.php, at its commit
  * 9c833c5, on the inputs of this package.
  *
- * From the root of the repository, on each PHP of the CI (castor simplesamlphp --timing runs it):
- *   docker run --rm -v "$PWD:/project:ro" -w /project ghcr.io/spomky-labs/phpqa:8.5 php tests/Interop/simplesamlphp/timing.php
+ * From the root of the repository, on each PHP of the CI (castor saml2-bindings-simplesamlphp --timing runs it):
+ *   docker run --rm -v "$PWD:/project:ro" -w /project ghcr.io/spomky-labs/phpqa:8.5 php tests/saml2-bindings/Interop/simplesamlphp/timing.php
  */
 
 use Beffroi\Saml2\Bindings\PostReceiver;

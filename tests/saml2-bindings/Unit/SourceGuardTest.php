@@ -41,7 +41,7 @@ use const T_VARIABLE;
 
 /**
  * Section 8 of spec/bindings.md, read on the source of src/ itself, next to the PHPStan rules of
- * .ci-tools/phpstan.neon, as saml2-model reads its own: what PHPStan cannot see. The property reads Core's Text::of()
+ * .ci-tools/phpstan-saml2-bindings.neon, as saml2-model reads its own: what PHPStan cannot see. The property reads Core's Text::of()
  * replaces (textContent, nodeValue, innerHTML), and the comparison <=>; and, next to Deptrac, what would reach HTTP.
  * Comments and string literals are not code and are not scanned: a refusal message may name what it refuses.
  *

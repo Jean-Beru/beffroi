@@ -12,15 +12,15 @@ declare(strict_types=1);
  * here every line of the binding is this package's: RedirectReceiver for what HTTP-Redirect carries, PostReceiver for
  * the fields of a form, read from the page and encoded as a browser does.
  *
- * Kept, in received/ or, with --keep, in tests/Fixture/real/: both metadata as served; default-sp's signed AuthnRequest
+ * Kept, in received/ or, with --keep, in tests/saml2-bindings/Fixture/real/: both metadata as served; default-sp's signed AuthnRequest
  * and LogoutRequest, their query strings; the identity provider's response, the body a browser posts from its form; its
  * LogoutResponse, the query string, unsigned under SimpleSAMLphp's defaults and refused by the model (SignatureRequired,
  * M-2; saml2-model's finding F-1). One line per step; the exit status is 1 when a step fails.
  *
- * From the root of the repository, the installation up (castor simplesamlphp --capture runs it):
+ * From the root of the repository, the installation up (castor saml2-bindings-simplesamlphp --capture runs it):
  *   docker run --rm --network saml2-bindings-simplesamlphp_default \
  *       -e EXCHANGE_CONNECT_TO=localhost:8091:idp:80,localhost:8092:sp:80 -v "$PWD:/project" -w /project \
- *       ghcr.io/spomky-labs/phpqa:8.5 php tests/Interop/simplesamlphp/capture.php [--keep]
+ *       ghcr.io/spomky-labs/phpqa:8.5 php tests/saml2-bindings/Interop/simplesamlphp/capture.php [--keep]
  */
 
 use Beffroi\Saml2\Bindings\PostReceiver;

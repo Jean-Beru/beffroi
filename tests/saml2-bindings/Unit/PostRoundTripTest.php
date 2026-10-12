@@ -22,7 +22,7 @@ use function sprintf;
 /**
  * Section 9.1 over HTTP-POST: every form PostSender writes, its fields posted by a browser and parsed by PHP as the
  * consumer receives them (sections 6.7, 6.8), received by PostReceiver, then validated by the model's validator of the
- * peer's role, the test keys of tests/Fixture/keys/ in the metadata and a clock frozen at the message's IssueInstant:
+ * peer's role, the test keys of tests/saml2-bindings/Fixture/keys/ in the metadata and a clock frozen at the message's IssueInstant:
  * an AuthnRequest signed in XML under every algorithm this build has, and unsigned; a LogoutRequest and a
  * LogoutResponse, always signed (B-12); a response with its assertion signed, with the response signed too, and a
  * failure, signed and unsigned; each without RelayState, with one of exactly 80 bytes and with one of 1 024 bytes, the

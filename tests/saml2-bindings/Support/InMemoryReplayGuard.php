@@ -11,7 +11,7 @@ use DateTimeImmutable;
  * The replay port of model.md section 5.2 in the memory of one process, for the tests only and never shipped: the
  * model's ResponseValidator takes one, and the round trips of section 9.1 drive it. In a pool of workers, a store per
  * process forgets across them. A pair is keyed by its issuer and its ID, never by the ID alone (M-11), and is never
- * forgotten: the tests read when it expires instead. Copied from saml2-model's tests/Support/ at commit 9c833c5.
+ * forgotten: the tests read when it expires instead. Copied from saml2-model's tests/saml2-bindings/Support/ at commit 9c833c5.
  */
 final class InMemoryReplayGuard implements ReplayGuardInterface
 {

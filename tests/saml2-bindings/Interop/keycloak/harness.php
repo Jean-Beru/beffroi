@@ -8,7 +8,7 @@ declare(strict_types=1);
  * URLs, its test user, its login, the OpenID Connect client that starts a login at realm sp, its admin REST API and its
  * error page. Nothing here reads or writes SAML, a query string of a binding or a form of a binding: that is this
  * package's, saml2-bindings, which the two scripts call for every message. The scripts run in the network namespace of
- * the Keycloak container (castor keycloak), where localhost:8190 is Keycloak, as in every URL it builds and checks.
+ * the Keycloak container (castor saml2-bindings-keycloak), where localhost:8190 is Keycloak, as in every URL it builds and checks.
  */
 
 use Beffroi\Saml2\Bindings\Tests\Support\BrowserForm;
@@ -25,7 +25,7 @@ const TEST_PASSWORD = 'alice';
 
 /**
  * The report of a run of this harness: its captures named with Keycloak's version and the date, in received/ or, with
- * --keep, in tests/Fixture/real/.
+ * --keep, in tests/saml2-bindings/Fixture/real/.
  *
  * @param list<string> $argv
  */

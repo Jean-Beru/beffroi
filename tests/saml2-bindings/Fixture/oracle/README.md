@@ -6,7 +6,7 @@ The OpenSSL command line, a verifier that is no SAML library, verifies the detac
 octets are built again from the URL, by name, whatever the order of its parameters, as SAML Bindings §3.4.4.1 says,
 and the message must inflate to the very document the model's writer wrote for it, unsigned and serialized once.
 
-`tests/Unit/RedirectSenderOracleTest.php` writes, into the directory `REDIRECT_ORACLE` names, a signed URL for an
+`tests/saml2-bindings/Unit/RedirectSenderOracleTest.php` writes, into the directory `REDIRECT_ORACLE` names, a signed URL for an
 `AuthnRequest` of the service provider, a `LogoutRequest` of the identity provider and a `LogoutResponse` of the
 service provider, under every algorithm the build has (RSA with SHA-256, SHA-384 and SHA-512, and their RSASSA-PSS
 forms on PHP 8.5 with OpenSSL 3.1), each without `RelayState`, with one of 80 bytes and with one of 1 024 bytes, the
@@ -27,20 +27,20 @@ The job Oracle of the CI writes the URLs in the phpqa image of PHP 8.5 and verif
 developer's machine:
 
 ```
-PHP_VERSION=8.5 castor redirect-oracle   # writes into tmp-phpqa/redirect-oracle, which git ignores, then verifies each
+PHP_VERSION=8.5 castor saml2-bindings-oracle   # writes into var/oracle/saml2-bindings, which git ignores, then verifies each
 ```
 
 which runs, in `alpine:3.22` with `apk add openssl python3`, the repository mounted read-only:
 
 ```
-sh tests/Fixture/oracle/verify-redirect.sh tests/Fixture/keys/sp-signing-certificate.pem tmp-phpqa/redirect-oracle/sp-*.url
-sh tests/Fixture/oracle/verify-redirect.sh tests/Fixture/keys/idp-signing-certificate.pem tmp-phpqa/redirect-oracle/idp-*.url
+sh tests/saml2-bindings/Fixture/oracle/verify-redirect.sh tests/saml2-bindings/Fixture/keys/sp-signing-certificate.pem var/oracle/saml2-bindings/sp-*.url
+sh tests/saml2-bindings/Fixture/oracle/verify-redirect.sh tests/saml2-bindings/Fixture/keys/idp-signing-certificate.pem var/oracle/saml2-bindings/idp-*.url
 ```
 
 and, for each URL, with `public.pem` from `openssl x509 -in <certificate> -pubkey -noout`:
 
 ```
-python3 tests/Fixture/oracle/read-redirect-url.py <file.url> <directory>
+python3 tests/saml2-bindings/Fixture/oracle/read-redirect-url.py <file.url> <directory>
 openssl dgst -sha256 -verify public.pem -signature signature octets                    # RSA-SHA256
 openssl dgst -sha384 -verify public.pem -signature signature octets                    # RSA-SHA384
 openssl dgst -sha512 -verify public.pem -signature signature octets                    # RSA-SHA512
@@ -56,10 +56,10 @@ cmp message.xml <file.xml>
 the `openssl dgst` line chosen by the URI `SigAlg` names. `rsa_pss_saltlen:digest` verifies a salt of exactly the
 digest's length, which RFC 6931 §2.3 requires of these URIs and which OpenSSL 3.1 and later produce by default.
 
-Measured on 1 October 2026, `castor redirect-oracle` on PHP 8.5.10 (OpenSSL 3.5.7 in the phpqa image), verified in
+Measured on 1 October 2026, `castor saml2-bindings-oracle` on PHP 8.5.10 (OpenSSL 3.5.7 in the phpqa image), verified in
 Alpine 3.22 with OpenSSL 3.5.9 and Python 3.12.14: the 37 URLs verified, the PSS ones under
 `rsa_pss_saltlen:digest`. The same scripts refuse a URL whose `RelayState` was changed after signing (OpenSSL's
 `Verification failure`), a document that differs by one byte from the inflated message (`cmp`), and a URL verified
 under the other party's certificate. Measured again on 12 October 2026, once the `RelayState` of 1 024 bytes had joined
-them, `castor redirect-oracle` on PHP 8.5.11 and on PHP 8.4.25 (OpenSSL 3.5.7 in the phpqa images), verified in Alpine
+them, `castor saml2-bindings-oracle` on PHP 8.5.11 and on PHP 8.4.25 (OpenSSL 3.5.7 in the phpqa images), verified in Alpine
 3.22 with OpenSSL 3.5.9 and Python 3.12.15: the 55 URLs and the 28 verified.

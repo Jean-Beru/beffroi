@@ -4,10 +4,10 @@ The judge of sub-spike 9b for this package (section 9.5 of `spec/bindings.md`): 
 sends over HTTP-Redirect and HTTP-POST, and the package accepts what SimpleSAMLphp sends, as an identity provider and
 as a service provider, login and logout. Reproducible from a clean checkout, run by hand with Docker, never a
 dependency of the package (nothing here is in the root `composer.json`) and never in the CI (section 12). What it
-captured is committed under `tests/Fixture/real/` and checked by `tests/Unit/RealDocumentsTest.php` on every build
+captured is committed under `tests/saml2-bindings/Fixture/real/` and checked by `tests/saml2-bindings/Unit/RealDocumentsTest.php` on every build
 (section 9.4).
 
-It is `saml2-model`'s harness (its `tests/Interop/simplesamlphp/`, at commit 9c833c5 of its `main`, 1 October 2026)
+It is `saml2-model`'s harness (its `tests/saml2-model/Interop/simplesamlphp/`, at commit 9c833c5 of its `main`, 1 October 2026)
 with every line that played the binding replaced by this package: that harness inflated, decoded, built the signed
 octets and encoded the forms by hand, since this package did not exist yet; here `RedirectSender` writes every URL
 sent, `PostSender` every form, `RedirectReceiver` reads every query string received and `PostReceiver` every form.
@@ -19,7 +19,7 @@ sent, `PostSender` every form, `RedirectReceiver` reads every query string recei
 | `capture.php` | SimpleSAMLphp's two parties between themselves, every query string and form read by the package before it is kept (section 3) |
 | `exchange.php` | the package and SimpleSAMLphp both ways, login and logout, the probes and the measures (section 4) |
 | `../measure.php`, `timing.php` | the measures of the captures, shared with Keycloak's harness, and the figure of section 9.6 (section 5) |
-| `.castor/simplesamlphp.php`, at the root | `castor simplesamlphp`: every step above from one task |
+| `.castor/lab/saml2-bindings.php`, at the root | `castor saml2-bindings-simplesamlphp`: every step above from one task |
 
 The judge was played on 1 October 2026: **green both ways**, on PHP 8.5.10 and on PHP 8.4.25, every probe refused by
 SimpleSAMLphp. Played again on 12 October 2026, after the `dev-main` of both dependencies moved and B-1 and B-9
@@ -67,7 +67,7 @@ cookies, `logging.handler`, `session.php`. What differs:
   the same login and logout from the phpqa image and reads every message with this package.
 - The model's library half (`library/`) and its `xmlsec1-verify.sh` are not carried over: the XML is the model's to
   judge, and the independent verifier of this package's signatures is the OpenSSL oracle of section 9.1
-  (`castor redirect-oracle`).
+  (`castor saml2-bindings-oracle`).
 
 ### The signing options of SimpleSAMLphp 2.5.3.1, read in its source
 
@@ -110,7 +110,7 @@ Everything else is SimpleSAMLphp's distributed default, kept as `config-dist/` i
 | `saml20-idp-remote.php` | `bindings/idp` | read from `written/bindings-idp-metadata.xml`; `WantAuthnRequestsSigned="true"` becomes `sign.authnrequest` | this package's identity provider |
 | `sp/session.php`, mounted into `public/` | a page | the session of `for-bindings` as JSON, or `401` | the proof that the service provider opened its session with what this package sent |
 
-This package's roles, written by `exchange.php` with the test keys of `tests/Fixture/keys/`, signed by the key of
+This package's roles, written by `exchange.php` with the test keys of `tests/saml2-bindings/Fixture/keys/`, signed by the key of
 their role, every `KeyInfo` left out:
 
 | Role | Entity ID | Endpoints | Flags |
@@ -125,27 +125,27 @@ their role, every `KeyInfo` left out:
 ```
 # The whole judge from a clean checkout: the package's dependencies installed when missing, the image built, the
 # installation up, the capture, the exchange, the installation down. PHP 8.5 by default, PHP_VERSION=8.4 for the other.
-castor simplesamlphp
+castor saml2-bindings-simplesamlphp
 
-# The same, and what SimpleSAMLphp sent kept in tests/Fixture/real/, dated, instead of received/ (ignored)
-castor simplesamlphp --keep
+# The same, and what SimpleSAMLphp sent kept in tests/saml2-bindings/Fixture/real/, dated, instead of received/ (ignored)
+castor saml2-bindings-simplesamlphp --keep
 
 # Each step alone
-castor simplesamlphp --up
-castor simplesamlphp --capture [--keep]
-castor simplesamlphp --exchange [--keep]
-castor simplesamlphp --timing             # section 5, on the PHP of PHP_VERSION
-castor simplesamlphp --down
+castor saml2-bindings-simplesamlphp --up
+castor saml2-bindings-simplesamlphp --capture [--keep]
+castor saml2-bindings-simplesamlphp --exchange [--keep]
+castor saml2-bindings-simplesamlphp --timing             # section 5, on the PHP of PHP_VERSION
+castor saml2-bindings-simplesamlphp --down
 
 # What --capture and --exchange run, from the root of the repository
 docker run --rm --init --network saml2-bindings-simplesamlphp_default --user "$(id -u):$(id -g)" \
     -e EXCHANGE_CONNECT_TO=localhost:8091:idp:80,localhost:8092:sp:80 -v "$PWD:/project" -w /project \
-    ghcr.io/spomky-labs/phpqa:8.5 php tests/Interop/simplesamlphp/exchange.php [--keep]
+    ghcr.io/spomky-labs/phpqa:8.5 php tests/saml2-bindings/Interop/simplesamlphp/exchange.php [--keep]
 
 # The measures and the figure
 docker run --rm -v "$PWD:/project:ro" -w /project ghcr.io/spomky-labs/phpqa:8.5 \
-    php tests/Interop/measure.php tests/Fixture/real 'simplesamlphp-*.txt'
-docker run --rm -v "$PWD:/project:ro" -w /project ghcr.io/spomky-labs/phpqa:8.5 php tests/Interop/simplesamlphp/timing.php
+    php tests/saml2-bindings/Interop/measure.php tests/saml2-bindings/Fixture/real 'simplesamlphp-*.txt'
+docker run --rm -v "$PWD:/project:ro" -w /project ghcr.io/spomky-labs/phpqa:8.5 php tests/saml2-bindings/Interop/simplesamlphp/timing.php
 ```
 
 `EXCHANGE_CONNECT_TO` pins `localhost:8091` and `localhost:8092` to the two containers at the connection, so that the
@@ -211,8 +211,8 @@ browser of its own:
 
 ### Results
 
-The run kept, `castor simplesamlphp --keep` on PHP 8.5.10, from 11:03:28 to 11:03:40 UTC on 1 October 2026, the
-messages issued between 11:03:33 and 11:03:37 UTC; `PHP_VERSION=8.4 castor simplesamlphp` on PHP 8.4.25 from
+The run kept, `castor saml2-bindings-simplesamlphp --keep` on PHP 8.5.10, from 11:03:28 to 11:03:40 UTC on 1 October 2026, the
+messages issued between 11:03:33 and 11:03:37 UTC; `PHP_VERSION=8.4 castor saml2-bindings-simplesamlphp` on PHP 8.4.25 from
 11:08:22 to 11:08:30 UTC gave the same outcome. Every step green on both, nineteen steps, three of the capture and
 sixteen of the exchange.
 
@@ -296,10 +296,10 @@ the six and B-9 to read a `RelayState` of up to 1 024 bytes (section 12 of the s
 once more, without `--keep`, what SimpleSAMLphp sent written to the ignored `received/`:
 
 ```bash
-castor simplesamlphp --up
-castor simplesamlphp --exchange && castor simplesamlphp --capture
-PHP_VERSION=8.4 castor simplesamlphp --exchange && PHP_VERSION=8.4 castor simplesamlphp --capture
-castor simplesamlphp --down
+castor saml2-bindings-simplesamlphp --up
+castor saml2-bindings-simplesamlphp --exchange && castor saml2-bindings-simplesamlphp --capture
+PHP_VERSION=8.4 castor saml2-bindings-simplesamlphp --exchange && PHP_VERSION=8.4 castor saml2-bindings-simplesamlphp --capture
+castor saml2-bindings-simplesamlphp --down
 ```
 
 On PHP 8.5.11 from 13:16:51 UTC and on PHP 8.4.25 from 13:17:12 UTC: **every step green on both**, nineteen steps,
@@ -312,7 +312,7 @@ output changed otherwise.
 
 ## 5. Measurements
 
-`../measure.php` on the captures of `tests/Fixture/real/`, 1 October 2026 (section 2 has the command):
+`../measure.php` on the captures of `tests/saml2-bindings/Fixture/real/`, 1 October 2026 (section 2 has the command):
 
 | Query string | Bytes | Parameters | SigAlg | Escapes | RelayState, bytes | Signature, bytes | Inflated, bytes |
 |---|---|---|---|---|---|---|---|
@@ -411,4 +411,4 @@ the exchange. What was measured, against sections 4, 6, 7, 8 and 12 of the speci
   response's attribute values without `xsi:type` (`saml2-model`'s F-13).
 
 `RealDocumentsTest` reads every capture of this run with the receivers of this package and validates it with the model
-under a clock frozen at its capture; `tests/Fixture/real/README.md` lists them.
+under a clock frozen at its capture; `tests/saml2-bindings/Fixture/real/README.md` lists them.

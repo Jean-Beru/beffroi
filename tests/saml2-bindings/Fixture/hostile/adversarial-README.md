@@ -3,16 +3,16 @@
 The `adversarial-*` files of this directory and of `../behaviour/` are the attempts of the adversarial pass of section
 9.8 of `spec/bindings.md` (story #10): each row of section 3 attacked with query strings and forms the corpus of 9.2 and
 9.3 does not list, every attempt a file whatever its outcome, `adversarial-<attempt>-refused.txt` here and
-`adversarial-<attempt>-accepted.txt` in `../behaviour/`. `tests/Unit/AdversarialTest.php` asserts each, refused with the
+`adversarial-<attempt>-accepted.txt` in `../behaviour/`. `tests/saml2-bindings/Unit/AdversarialTest.php` asserts each, refused with the
 exception and the message it got, or accepted with what validation returned, and fails when an attempt of the builder
 is asserted by no case or under the other outcome.
 
 A query string is written as the consumer reads it from `QUERY_STRING`, without its `?`, no final line feed; a form as
 the `application/x-www-form-urlencoded` body a browser posts, which the test gives to PHP's own parser, the one behind
-the fields a consumer gives `PostReceiver` (section 6.8). They are written by `tests/Support/AdversarialQueryBuilder.php`,
+the fields a consumer gives `PostReceiver` (section 6.8). They are written by `tests/saml2-bindings/Support/AdversarialQueryBuilder.php`,
 never by hand, each a variant of one valid query string or form with the change its name says, signed with the test
 keys of `../keys/` wherever the attack needs a valid signature, or a real capture of `../real/` with one change. From the
-root of the repository, after `castor install`:
+root of the repository, after `composer install`:
 
 ```
 docker run --rm -v "$PWD:/project" -w /project ghcr.io/spomky-labs/phpqa:8.5 \
@@ -24,13 +24,13 @@ compares what the builder writes with every committed file. Run on 1 October 202
 attempt has the same outcome on PHP 8.4.25. Run again on 12 October 2026 on PHP 8.5.11 and 8.4.25, the same bytes, every
 attempt with the outcome its name now says on both.
 
-The messages are those of `tests/Unit/ReceptionFixtures.php`: the `AuthnRequest` of `https://sp.example.com/saml` to
+The messages are those of `tests/saml2-bindings/Unit/ReceptionFixtures.php`: the `AuthnRequest` of `https://sp.example.com/saml` to
 `https://idp.example.com/saml/sso`, issued at `2026-10-01T12:00:00Z`, signed over the query string with the `sp` key,
 its `RelayState` `state` unless the attempt says otherwise; the `LogoutRequest` of the identity provider, signed with
 `idp`; the `LogoutResponse` of the service provider, signed with `sp`; the response of the identity provider, its
 assertion signed in its XML. The forged `AuthnRequest` is the same request under the ID
 `_f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0`, slipped next to the signed one: the ID validation returns says which was
-read, and no accepted attempt returns it. A real capture changed is validated as `tests/Unit/RealDocumentsTest.php`
+read, and no accepted attempt returns it. A real capture changed is validated as `tests/saml2-bindings/Unit/RealDocumentsTest.php`
 validates the capture it comes from.
 
 | Group | Attempts | Refused | Accepted |

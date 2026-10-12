@@ -1,5 +1,5 @@
 # SimpleSAMLphp as an identity provider on http://localhost:8091 and as a service provider on
-# http://localhost:8092, from one image (tests/Interop/simplesamlphp/README.md), copied from saml2-model's harness at
+# http://localhost:8092, from one image (tests/saml2-bindings/Interop/simplesamlphp/README.md), copied from saml2-model's harness at
 # commit 9c833c5 under a compose project and ports of this package, so that both harnesses run side by side
 # (saml2-model's answers on 8081 and 8082). The identity provider publishes its services as SimpleSAMLphp does by
 # default, HTTP-Redirect alone. Both parties read the metadata of this package's roles from ../written/, mounted

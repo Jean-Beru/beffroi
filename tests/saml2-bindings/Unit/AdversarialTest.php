@@ -60,7 +60,7 @@ use function unserialize;
 
 /**
  * Section 9.8, the adversarial pass of 1 October 2026 (story #10): each row of section 3 attacked with query strings and
- * forms the corpus of 9.2 and 9.3 does not list, every attempt a fixture of tests/Support/AdversarialQueryBuilder
+ * forms the corpus of 9.2 and 9.3 does not list, every attempt a fixture of tests/saml2-bindings/Support/AdversarialQueryBuilder
  * whatever its outcome, asserted with the exception and the message it got, or accepted with what validation returned;
  * and, where the attempt is a call and not an input, a named case of a data provider, named after its outcome as a
  * fixture would be. An attempt accepted is the consumer's one path, received then validated: over a signed query
@@ -115,7 +115,7 @@ final class AdversarialTest extends TestCase
 
     /**
      * Section 9.8, section 9.7: every attempt on disk is what the builder writes, byte for byte, so that the command of
-     * tests/Fixture/hostile/adversarial-README.md writes them again.
+     * tests/saml2-bindings/Fixture/hostile/adversarial-README.md writes them again.
      */
     #[Test]
     public function itBuildsTheCommittedFixtures(): void

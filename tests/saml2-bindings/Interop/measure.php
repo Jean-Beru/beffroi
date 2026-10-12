@@ -13,7 +13,7 @@ declare(strict_types=1);
  *
  * From the root of the repository:
  *   docker run --rm -v "$PWD:/project:ro" -w /project ghcr.io/spomky-labs/phpqa:8.5 \
- *       php tests/Interop/measure.php tests/Fixture/real 'simplesamlphp-*.txt'
+ *       php tests/saml2-bindings/Interop/measure.php tests/saml2-bindings/Fixture/real 'simplesamlphp-*.txt'
  * and 'keycloak-*.txt' for Keycloak's.
  */
 

@@ -6,7 +6,7 @@ declare(strict_types=1);
  * The exchange (README.md of this directory, section 4): this package and the SimpleSAMLphp installation of
  * installation/, both ways, as a service provider and as an identity provider, login and logout, then the probes and
  * the measures of section 9.5 of spec/bindings.md, on the running installation, with the package of the repository
- * (its vendor/autoload.php), the test keys of tests/Fixture/keys/ and the live clock.
+ * (its vendor/autoload.php), the test keys of tests/saml2-bindings/Fixture/keys/ and the live clock.
  *
  * The script is the browser and the HTTP layer of this package's roles, which answer at http://localhost:8093/bindings/
  * where nothing listens: it intercepts every message addressed there. It is saml2-model's exchange.php, at its commit
@@ -18,13 +18,13 @@ declare(strict_types=1);
  * signed_by_hand() of ../harness.php, named so, and sent for the measure only.
  *
  * This package's metadata, both roles, written by the model's MetadataWriter, go to written/, from which the
- * installation reads them; what SimpleSAMLphp sent goes to received/, or to tests/Fixture/real/ with --keep, named
+ * installation reads them; what SimpleSAMLphp sent goes to received/, or to tests/saml2-bindings/Fixture/real/ with --keep, named
  * with its version and the date. One line per step and per measure; the exit status is 1 when a step fails.
  *
- * From the root of the repository, the installation up (castor simplesamlphp runs it all):
+ * From the root of the repository, the installation up (castor saml2-bindings-simplesamlphp runs it all):
  *   docker run --rm --network saml2-bindings-simplesamlphp_default \
  *       -e EXCHANGE_CONNECT_TO=localhost:8091:idp:80,localhost:8092:sp:80 -v "$PWD:/project" -w /project \
- *       ghcr.io/spomky-labs/phpqa:8.5 php tests/Interop/simplesamlphp/exchange.php [--keep]
+ *       ghcr.io/spomky-labs/phpqa:8.5 php tests/saml2-bindings/Interop/simplesamlphp/exchange.php [--keep]
  */
 
 use Beffroi\Saml2\Bindings\PostForm;
