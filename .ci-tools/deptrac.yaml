@@ -34,9 +34,14 @@ deptrac:
     - name: 'Bundle'
       collectors:
         - { type: directory, value: '../src/symfony/.*' }
+    # psr/clock is a layer of its own, apart from the other PSR interfaces, because saml2-model may read the time
+    # through it and may not speak HTTP through Psr\Http; every layer that may use the one may use the other.
     - name: 'Psr'
       collectors:
-        - { type: classLike, value: '^Psr\\' }
+        - { type: classLike, value: '^Psr\\(?!Clock\\)' }
+    - name: 'PsrClock'
+      collectors:
+        - { type: classLike, value: '^Psr\\Clock\\' }
     - name: 'KeyManagement'
       collectors:
         - { type: classLike, value: '^Symfony\\Component\\KeyManagement\\(?!Bridge\\Doctrine)' }
@@ -96,20 +101,107 @@ deptrac:
     - name: 'Twig'
       collectors:
         - { type: classLike, value: '^Twig\\' }
+    # The SAML packages, which know nothing of the identity provider's and are known by none of them yet.
+    # beffroi/xml-security (decision 0014): Dsig and Enc depend on Core, never the reverse and never on each other,
+    # Core on nothing of the package. Each namespace is two layers, its Internal one apart, so that saml2-model below
+    # is held to the public classes; within the package the split changes nothing, an Internal layer and the public
+    # one of the same namespace allowing each other.
+    - name: 'XmlCore'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Xml\\Core\\(?!Internal\\)' }
+    - name: 'XmlCoreInternal'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Xml\\Core\\Internal\\' }
+    - name: 'XmlDsig'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Xml\\Dsig\\(?!Internal\\)' }
+    - name: 'XmlDsigInternal'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Xml\\Dsig\\Internal\\' }
+    - name: 'XmlEnc'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Xml\\Enc\\(?!Internal\\)' }
+    - name: 'XmlEncInternal'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Xml\\Enc\\Internal\\' }
+    # beffroi/saml2-model (section 10 of spec/model.md): Value below Assertion, Protocol and Metadata, those below
+    # Validation and Writing; Port beside, Exception and the two classes of the root (Saml, SamlLoader) under all of
+    # them; Internal, the strict readers and the selection of the signed element, between the objects it builds and the
+    # validators that call it. Outside the package, the public classes of Core and Dsig and psr/clock where the
+    # specification uses them. What is forbidden is a layer no rule allows: the Internal namespaces of xml-security,
+    # its Enc namespace until sub-spike 9e (section 6.7), and HTTP (decision 0013), which is in the Symfony and Psr
+    # layers above.
+    - name: 'Saml2ModelRoot'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Saml2\\Model\\[^\\]+$' }
+    - name: 'Saml2ModelException'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Saml2\\Model\\Exception\\' }
+    - name: 'Saml2ModelValue'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Saml2\\Model\\Value\\' }
+    - name: 'Saml2ModelPort'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Saml2\\Model\\Port\\' }
+    - name: 'Saml2ModelAssertion'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Saml2\\Model\\Assertion\\' }
+    - name: 'Saml2ModelProtocol'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Saml2\\Model\\Protocol\\' }
+    - name: 'Saml2ModelMetadata'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Saml2\\Model\\Metadata\\' }
+    # TimeBounds is a value of Validation that MetadataReader takes too (section 5.6): a leaf of its own, so that
+    # Metadata uses it without depending on the validators.
+    - name: 'Saml2ModelTimeBounds'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Saml2\\Model\\Validation\\TimeBounds$' }
+    # Authentication is a value of Validation that the rule of M-2 under Internal returns too (section 5.6): a leaf of
+    # its own, so that Internal names it without depending on the validators.
+    - name: 'Saml2ModelAuthentication'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Saml2\\Model\\Validation\\Authentication$' }
+    - name: 'Saml2ModelValidation'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Saml2\\Model\\Validation\\(?!TimeBounds$|Authentication$)' }
+    - name: 'Saml2ModelWriting'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Saml2\\Model\\Writing\\' }
+    - name: 'Saml2ModelInternal'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Saml2\\Model\\Internal\\' }
+    # beffroi/saml2-bindings (section 10 of spec/bindings.md): Internal below the public classes, Exception beside
+    # them. Outside the package, the public classes of saml2-model (section 6.5), each of its layers above but its
+    # Internal one, and those of Core and Dsig (section 6.6). What is forbidden is a layer no rule allows: the Internal
+    # namespace of saml2-model, the Internal namespaces of xml-security, its Enc namespace (section 11), and HTTP
+    # (B-13, decisions 0007 and 0013), which is in the Symfony and Psr layers above.
+    - name: 'Saml2BindingsPublic'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Saml2\\Bindings\\[^\\]+$' }
+    - name: 'Saml2BindingsException'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Saml2\\Bindings\\Exception\\' }
+    - name: 'Saml2BindingsInternal'
+      collectors:
+        - { type: classLike, value: '^Beffroi\\Saml2\\Bindings\\Internal\\' }
   ruleset:
     CoreDomain:
       - 'Psr'
+      - 'PsrClock'
       - 'Uid'
       - 'Webauthn'
     CorePort:
       - 'CoreDomain'
       - 'Psr'
+      - 'PsrClock'
       - 'Uid'
       - 'Webauthn'
     CoreApplication:
       - 'CoreDomain'
       - 'CorePort'
       - 'Psr'
+      - 'PsrClock'
       - 'Uid'
       - 'Webauthn'
     CoreBridge:
@@ -117,6 +209,7 @@ deptrac:
       - 'CorePort'
       - 'CoreApplication'
       - 'Psr'
+      - 'PsrClock'
       - 'KeyManagement'
       - 'Uid'
       - 'Jose'
@@ -126,12 +219,14 @@ deptrac:
     OidcDomain:
       - 'CoreDomain'
       - 'Psr'
+      - 'PsrClock'
       - 'Uid'
     OidcPort:
       - 'OidcDomain'
       - 'CoreDomain'
       - 'CorePort'
       - 'Psr'
+      - 'PsrClock'
       - 'Uid'
     OidcApplication:
       - 'OidcDomain'
@@ -140,6 +235,7 @@ deptrac:
       - 'CorePort'
       - 'CoreApplication'
       - 'Psr'
+      - 'PsrClock'
       - 'Uid'
     OidcBridge:
       - 'OidcDomain'
@@ -148,6 +244,7 @@ deptrac:
       - 'CoreDomain'
       - 'CorePort'
       - 'Psr'
+      - 'PsrClock'
       - 'Jose'
       - 'Pki'
       - 'Uid'
@@ -161,6 +258,7 @@ deptrac:
       - 'OidcApplication'
       - 'OidcBridge'
       - 'Psr'
+      - 'PsrClock'
       - 'Symfony'
       - 'KeyManagement'
       - 'KeyManagementDoctrine'
@@ -174,3 +272,25 @@ deptrac:
       - 'Serializer'
       - 'Doctrine'
       - 'Twig'
+    XmlCore: ['XmlCoreInternal']
+    XmlCoreInternal: ['XmlCore']
+    XmlDsig: ['XmlCore', 'XmlCoreInternal', 'XmlDsigInternal']
+    XmlDsigInternal: ['XmlCore', 'XmlCoreInternal', 'XmlDsig']
+    XmlEnc: ['XmlCore', 'XmlCoreInternal', 'XmlEncInternal']
+    XmlEncInternal: ['XmlCore', 'XmlCoreInternal', 'XmlEnc']
+    Saml2ModelRoot: ['XmlCore']
+    Saml2ModelException: ['XmlCore', 'Saml2ModelProtocol']
+    Saml2ModelValue: ['Saml2ModelRoot', 'Saml2ModelException', 'XmlCore']
+    Saml2ModelPort: ~
+    Saml2ModelTimeBounds: ~
+    Saml2ModelAuthentication: ~
+    Saml2ModelAssertion: ['Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'XmlCore']
+    Saml2ModelProtocol: ['Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'Saml2ModelAssertion', 'Saml2ModelInternal', 'XmlCore']
+    Saml2ModelMetadata: ['Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'Saml2ModelAssertion', 'Saml2ModelInternal', 'Saml2ModelTimeBounds', 'XmlCore', 'XmlDsig', 'PsrClock']
+    Saml2ModelInternal: ['Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'Saml2ModelAssertion', 'Saml2ModelProtocol', 'Saml2ModelMetadata', 'Saml2ModelTimeBounds', 'Saml2ModelAuthentication', 'XmlCore', 'XmlDsig']
+    Saml2ModelValidation: ['Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'Saml2ModelAssertion', 'Saml2ModelProtocol', 'Saml2ModelMetadata', 'Saml2ModelPort', 'Saml2ModelTimeBounds', 'Saml2ModelAuthentication', 'Saml2ModelInternal', 'XmlCore', 'XmlDsig', 'PsrClock']
+    Saml2ModelWriting: ['Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'Saml2ModelAssertion', 'Saml2ModelProtocol', 'Saml2ModelMetadata', 'Saml2ModelInternal', 'XmlCore', 'XmlDsig']
+    Saml2BindingsPublic: ['Saml2BindingsException', 'Saml2BindingsInternal', 'Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'Saml2ModelPort', 'Saml2ModelAssertion', 'Saml2ModelProtocol', 'Saml2ModelMetadata', 'Saml2ModelTimeBounds', 'Saml2ModelAuthentication', 'Saml2ModelValidation', 'Saml2ModelWriting', 'XmlCore', 'XmlDsig']
+    # BindingRefused extends the RefusedXml of Core (section 5.4)
+    Saml2BindingsException: ['XmlCore']
+    Saml2BindingsInternal: ['Saml2BindingsException', 'Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'Saml2ModelPort', 'Saml2ModelAssertion', 'Saml2ModelProtocol', 'Saml2ModelMetadata', 'Saml2ModelTimeBounds', 'Saml2ModelAuthentication', 'Saml2ModelValidation', 'Saml2ModelWriting', 'XmlCore', 'XmlDsig']

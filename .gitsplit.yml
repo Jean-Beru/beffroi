@@ -1,6 +1,7 @@
 # Split configuration for jderusse/gitsplit. Each directory below is mirrored, read only, into
-# its own repository: the three packages, and the standalone application, which is deployed from
-# a build of apps/op and never installed as a dependency. A mirror carries the maintained
+# its own repository: the three packages of the identity provider, the SAML packages, and the
+# standalone application, which is deployed from a build of apps/op and never installed as a
+# dependency. A mirror carries the maintained
 # branches and the release tags listed under origins, and nothing else; the monorepo is where the
 # work happens.
 #
@@ -20,6 +21,12 @@ splits:
     target: "https://${GH_TOKEN}@github.com/beffroi-php/oidc.git"
   - prefix: "src/symfony"
     target: "https://${GH_TOKEN}@github.com/beffroi-php/symfony-bundle.git"
+  - prefix: "src/xml-security"
+    target: "https://${GH_TOKEN}@github.com/beffroi-php/xml-security.git"
+  - prefix: "src/saml2-model"
+    target: "https://${GH_TOKEN}@github.com/beffroi-php/saml2-model.git"
+  - prefix: "src/saml2-bindings"
+    target: "https://${GH_TOKEN}@github.com/beffroi-php/saml2-bindings.git"
   - prefix: "apps/op"
     target: "https://${GH_TOKEN}@github.com/beffroi-php/op.git"
 

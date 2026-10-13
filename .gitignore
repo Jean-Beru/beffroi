@@ -2,6 +2,7 @@
 /composer.lock
 /.ci-tools/cache/
 /.ci-tools/coverage/
+/.ci-tools/coverage-strict/
 /.ci-tools/.phpunit.cache/
 /.ci-tools/infection.txt
 /infection.json

@@ -2,7 +2,10 @@
     "source": {
         "directories": [
             "src/core/src",
-            "src/oidc/src"
+            "src/oidc/src",
+            "src/xml-security/src",
+            "src/saml2-model/src",
+            "src/saml2-bindings/src"
         ]
     },
     "timeout": 600,
@@ -12,8 +15,19 @@
     "mutators": {
         "@default": true,
         "global-ignoreSourceCodeByRegex": [
-            "\\$this->logger.*"
-        ]
+            "\\$this->logger.*",
+            ".*OPENSSL_VERSION_NUMBER.*"
+        ],
+        "Throw_": {
+            "ignoreSourceCodeByRegex": [
+                "throw new SerializationFailed\\('libxml could not serialize the document \\(I-15\\)\\.'\\);",
+                "throw new AlgorithmUnavailable\\(.*",
+                ".*throw new SigningFailed\\(.*",
+                ".*throw new EncryptionFailed\\(.*",
+                "throw new LogicException\\('zlib could not start an inflation \\(section 6\\.1\\)\\.'\\);",
+                "throw new LogicException\\('zlib could not deflate the message \\(section 6\\.3\\)\\.'\\);"
+            ]
+        }
     },
     "phpUnit": {
         "configDir": ".ci-tools"

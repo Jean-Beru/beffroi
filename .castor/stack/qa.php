@@ -199,6 +199,18 @@ function phpqa_update(): void
     run(['docker', 'pull', 'ghcr.io/spomky-labs/phpqa:' . $phpVersion]);
 }
 
+#[AsTask(
+    description: 'Print the PHP, libxml and OpenSSL versions and whether LIBXML_NO_XXE and OPENSSL_PKCS1_PSS_PADDING are defined: what the corpus of the SAML packages can and cannot exercise on this build (spec/core.md section 12, spec/dsig.md section 10)',
+)]
+function libxml(): void
+{
+    phpqa([
+        'php',
+        '-r',
+        'printf("PHP %s, libxml %s, LIBXML_NO_XXE %s, %s, OPENSSL_PKCS1_PSS_PADDING %s\n", PHP_VERSION, LIBXML_DOTTED_VERSION, defined("LIBXML_NO_XXE") ? "defined" : "undefined", OPENSSL_VERSION_TEXT, defined("OPENSSL_PKCS1_PSS_PADDING") ? "defined" : "undefined");',
+    ]);
+}
+
 #[AsTask(description: 'Run PHPUnit tests with coverage', ignoreValidationErrors: true)]
 function phpunit(
     #[AsOption(
@@ -388,18 +400,32 @@ function rector_fix(): void
     phpqa(['composer', 'exec', '--', 'rector', 'process', '--config', '.ci-tools/rector.php']);
 }
 
-#[AsTask(description: 'Run PHPStan')]
+/**
+ * The configurations PHPStan runs, one analysis each: the identity provider's packages under the baseline, and
+ * each SAML package under its own, with no baseline and the bans of its section 8, which are rules of that
+ * package and not of the others.
+ */
+const PHPSTAN_CONFIGURATIONS = [
+    '.ci-tools/phpstan.neon',
+    '.ci-tools/phpstan-xml-security.neon',
+    '.ci-tools/phpstan-saml2-model.neon',
+    '.ci-tools/phpstan-saml2-bindings.neon',
+];
+
+#[AsTask(description: 'Run PHPStan, the identity provider\'s packages and then each SAML package')]
 function phpstan(): void
 {
-    phpqa([
-        'composer',
-        'exec',
-        '--',
-        'phpstan',
-        'analyse',
-        '--error-format=github',
-        '--configuration=.ci-tools/phpstan.neon',
-    ]);
+    foreach (PHPSTAN_CONFIGURATIONS as $configuration) {
+        phpqa([
+            'composer',
+            'exec',
+            '--',
+            'phpstan',
+            'analyse',
+            '--error-format=github',
+            '--configuration=' . $configuration,
+        ]);
+    }
 }
 
 #[AsTask(description: 'Generate PHPStan baseline')]
@@ -529,8 +555,211 @@ function regenerate_generated_configuration(): void
     ]));
 }
 
+/**
+ * The files the specifications of the SAML packages accept only with no escaped mutant (section 9 of spec/core.md,
+ * spec/dsig.md, spec/enc.md, spec/model.md and spec/bindings.md): "castor infect --strict" mutates them whole,
+ * uncovered lines included, and fails under a hundred percent. A file joins the list in the commit that creates it, never before: a
+ * listed file missing from the tree is an error.
+ */
+const INFECTION_STRICT_FILES = [
+    // beffroi/xml-security. Loader delegates the rules of 6.1 steps 5 and 6 to Internal\Inspector, which is why that
+    // file is held to the same bar.
+    'src/xml-security/src/Core/Loader.php',
+    'src/xml-security/src/Core/Internal/Inspector.php',
+    'src/xml-security/src/Core/Canonicalizer.php',
+    'src/xml-security/src/Core/Text.php',
+    'src/xml-security/src/Core/Children.php',
+    'src/xml-security/src/Core/CanonicalXml.php',
+    'src/xml-security/src/Core/Serializer.php',
+    'src/xml-security/src/Dsig/Signature.php',
+    'src/xml-security/src/Dsig/SignedInfo.php',
+    'src/xml-security/src/Dsig/Reference.php',
+    'src/xml-security/src/Dsig/SignatureAlgorithm.php',
+    'src/xml-security/src/Dsig/DigestAlgorithm.php',
+    'src/xml-security/src/Dsig/Internal/Base64.php',
+    'src/xml-security/src/Dsig/Internal/Structure.php',
+    'src/xml-security/src/Dsig/Internal/Pem.php',
+    'src/xml-security/src/Dsig/Verifier.php',
+    'src/xml-security/src/Dsig/Verified.php',
+    'src/xml-security/src/Dsig/VerificationKey.php',
+    'src/xml-security/src/Dsig/VerificationKeys.php',
+    'src/xml-security/src/Dsig/Signer.php',
+    'src/xml-security/src/Dsig/PrivateKey.php',
+    'src/xml-security/src/Enc/ContentAlgorithm.php',
+    'src/xml-security/src/Enc/OaepHash.php',
+    'src/xml-security/src/Enc/KeyTransport.php',
+    'src/xml-security/src/Enc/EncryptedData.php',
+    'src/xml-security/src/Enc/EncryptedKey.php',
+    'src/xml-security/src/Enc/Internal/Base64.php',
+    'src/xml-security/src/Enc/Internal/Structure.php',
+    'src/xml-security/src/Enc/Internal/CipherData.php',
+    'src/xml-security/src/Enc/Internal/Pem.php',
+    'src/xml-security/src/Enc/Decryptor.php',
+    'src/xml-security/src/Enc/PrivateDecryptionKey.php',
+    'src/xml-security/src/Enc/Encryptor.php',
+    'src/xml-security/src/Enc/PeerKey.php',
+    // beffroi/saml2-model.
+    // Section 5.8: the refusals, and the status a refused response carries (M-13, M-16).
+    'src/saml2-model/src/Exception/MessageRefused.php',
+    'src/saml2-model/src/Exception/MalformedMessage.php',
+    'src/saml2-model/src/Exception/Unsupported.php',
+    'src/saml2-model/src/Exception/SignatureRequired.php',
+    'src/saml2-model/src/Exception/IssuerMismatch.php',
+    'src/saml2-model/src/Exception/AudienceMismatch.php',
+    'src/saml2-model/src/Exception/RecipientMismatch.php',
+    'src/saml2-model/src/Exception/DestinationMismatch.php',
+    'src/saml2-model/src/Exception/UnknownEndpoint.php',
+    'src/saml2-model/src/Exception/InResponseToMismatch.php',
+    'src/saml2-model/src/Exception/Replayed.php',
+    'src/saml2-model/src/Exception/InvalidNameId.php',
+    'src/saml2-model/src/Exception/IndeterminateCondition.php',
+    'src/saml2-model/src/Exception/UnsuccessfulResponse.php',
+    'src/saml2-model/src/Exception/OutsideValidityWindow.php',
+    'src/saml2-model/src/Exception/LimitExceeded.php',
+    'src/saml2-model/src/Protocol/StatusCode.php',
+    'src/saml2-model/src/Protocol/SecondLevelStatusCode.php',
+    'src/saml2-model/src/Protocol/Status.php',
+    // Section 9: the lexical forms of M-6 and SamlId, every file of src/Value/.
+    'src/saml2-model/src/Value/Time.php',
+    'src/saml2-model/src/Value/Boolean.php',
+    'src/saml2-model/src/Value/SamlId.php',
+    'src/saml2-model/src/Value/Uri.php',
+    'src/saml2-model/src/Value/Version.php',
+    'src/saml2-model/src/Value/UnsignedShort.php',
+    'src/saml2-model/src/Value/Counts.php',
+    'src/saml2-model/src/Value/Characters.php',
+    // Section 9: NameId, the rule of each format (M-12).
+    'src/saml2-model/src/Assertion/NameId.php',
+    // Section 9: the bounds of time the validators and the metadata reader share (M-7).
+    'src/saml2-model/src/Validation/TimeBounds.php',
+    // Section 5.6: how a protocol message was authenticated (M-2).
+    'src/saml2-model/src/Validation/Authentication.php',
+    // Section 9: IndexedEndpoints, the default endpoint and the searches of M-9.
+    'src/saml2-model/src/Metadata/IndexedEndpoints.php',
+    // Section 9: the metadata reader (section 6.5).
+    'src/saml2-model/src/Metadata/MetadataReader.php',
+    // Section 9: the one reading model of the SAML schemas, every strict reader's (M-5).
+    'src/saml2-model/src/Internal/Schema.php',
+    'src/saml2-model/src/Internal/Particle.php',
+    // Section 9: the edges of the windows of M-7, which every reader takes.
+    'src/saml2-model/src/Internal/Window.php',
+    // Section 9: the strict readers of metadata and the rules its roles share.
+    'src/saml2-model/src/Internal/Metadata/EndpointReader.php',
+    'src/saml2-model/src/Internal/Metadata/EntityDescriptorReader.php',
+    'src/saml2-model/src/Internal/Metadata/KeyDescriptorReader.php',
+    'src/saml2-model/src/Internal/Metadata/RoleReader.php',
+    'src/saml2-model/src/Internal/Metadata/RoleRules.php',
+    // Section 9: the rule of M-2 for a received protocol message, and the one reader of a samlp:Status (M-5, M-13).
+    'src/saml2-model/src/Internal/Protocol/MessageAuthentication.php',
+    'src/saml2-model/src/Internal/Protocol/StatusReader.php',
+    // Section 9: the strict readers of the assertion and their rules, sections 6.1 steps 7 to 11.
+    'src/saml2-model/src/Internal/Assertion/AssertionContext.php',
+    'src/saml2-model/src/Internal/Assertion/IssuerReader.php',
+    'src/saml2-model/src/Internal/Assertion/NameIdReader.php',
+    'src/saml2-model/src/Internal/Assertion/HeaderReader.php',
+    'src/saml2-model/src/Internal/Assertion/SubjectReader.php',
+    'src/saml2-model/src/Internal/Assertion/ConditionsReader.php',
+    'src/saml2-model/src/Internal/Assertion/AuthnStatementReader.php',
+    'src/saml2-model/src/Internal/Assertion/AttributeStatementReader.php',
+    'src/saml2-model/src/Internal/Assertion/AssertionReader.php',
+    // Section 9: the envelope of a response, its status, and the selection of the signed element, section 6.1 steps 2
+    // to 6.
+    'src/saml2-model/src/Internal/Response/Envelope.php',
+    'src/saml2-model/src/Internal/Response/SignedResponse.php',
+    'src/saml2-model/src/Internal/Response/SignedAssertion.php',
+    'src/saml2-model/src/Internal/Response/EnvelopeReader.php',
+    // Section 9: the validator of a response and what it takes and returns (sections 5.4, 5.5).
+    'src/saml2-model/src/Protocol/UnverifiedResponse.php',
+    'src/saml2-model/src/Protocol/Response.php',
+    'src/saml2-model/src/Validation/ExpectedResponse.php',
+    'src/saml2-model/src/Validation/SignatureCoverage.php',
+    'src/saml2-model/src/Validation/AcceptedAssertion.php',
+    'src/saml2-model/src/Validation/ResponseValidator.php',
+    // Section 9: the strict reader of an AuthnRequest and the resolution of its assertion consumer service (M-9).
+    'src/saml2-model/src/Internal/AuthnRequest/AssertionConsumerService.php',
+    'src/saml2-model/src/Internal/AuthnRequest/AuthnRequestContext.php',
+    'src/saml2-model/src/Internal/AuthnRequest/AuthnRequestReader.php',
+    'src/saml2-model/src/Internal/AuthnRequest/NameIdPolicyReader.php',
+    'src/saml2-model/src/Internal/AuthnRequest/RequestedAuthnContextReader.php',
+    // Section 9: the validator of an AuthnRequest and what it returns (section 6.2).
+    'src/saml2-model/src/Validation/AuthnRequestValidator.php',
+    'src/saml2-model/src/Validation/AcceptedAuthnRequest.php',
+    // Section 6.6: the builders of a response and its assertion, whose output the validator of section 6.1 reads
+    // back (M-15).
+    'src/saml2-model/src/Internal/Writing/Tree.php',
+    'src/saml2-model/src/Internal/Writing/NameIdBuilder.php',
+    'src/saml2-model/src/Internal/Writing/StatusBuilder.php',
+    'src/saml2-model/src/Internal/Writing/AssertionBuilder.php',
+    'src/saml2-model/src/Internal/Writing/ResponseBuilder.php',
+    // Section 6.6: the writer of a response, which checks what the validator would refuse and signs (M-15).
+    'src/saml2-model/src/Writing/SignedParts.php',
+    'src/saml2-model/src/Writing/ResponseWriter.php',
+    // Section 6.6: the writers of the other messages and of metadata, each on the tree builder of the response's.
+    'src/saml2-model/src/Writing/AuthnRequestWriter.php',
+    'src/saml2-model/src/Writing/MetadataWriter.php',
+    'src/saml2-model/src/Writing/LogoutRequestWriter.php',
+    'src/saml2-model/src/Writing/LogoutResponseWriter.php',
+    // Section 9: the strict readers of the two logout messages (sections 6.3, 6.4).
+    'src/saml2-model/src/Internal/Logout/Envelope.php',
+    'src/saml2-model/src/Internal/Logout/LogoutContext.php',
+    'src/saml2-model/src/Internal/Logout/LogoutRequestReader.php',
+    'src/saml2-model/src/Internal/Logout/LogoutResponseReader.php',
+    // Section 9: the logout validators and what they return (section 5.6).
+    'src/saml2-model/src/Validation/LogoutRequestValidator.php',
+    'src/saml2-model/src/Validation/LogoutResponseValidator.php',
+    'src/saml2-model/src/Validation/AcceptedLogoutRequest.php',
+    'src/saml2-model/src/Validation/AcceptedLogoutResponse.php',
+    // beffroi/saml2-bindings.
+    // Section 5.1: the bounds and their ceilings of section 7 (B-7).
+    'src/saml2-bindings/src/BindingLimits.php',
+    // Section 5.4: the refusals, each naming its rule (B-11).
+    'src/saml2-bindings/src/Exception/BindingRefused.php',
+    'src/saml2-bindings/src/Exception/MalformedParameters.php',
+    'src/saml2-bindings/src/Exception/MalformedEncoding.php',
+    'src/saml2-bindings/src/Exception/InvalidRelayState.php',
+    'src/saml2-bindings/src/Exception/XmlSignatureRefused.php',
+    'src/saml2-bindings/src/Exception/NoVerificationKey.php',
+    'src/saml2-bindings/src/Exception/Unsupported.php',
+    'src/saml2-bindings/src/Exception/LimitExceeded.php',
+    // B-8: the percent codec, the one place a percent-escape is read or written.
+    'src/saml2-bindings/src/Internal/Percent.php',
+    // B-8: base64 in its one form, the one place it is decoded.
+    'src/saml2-bindings/src/Internal/Base64.php',
+    // B-7, B-8: the bounded inflater, raw DEFLATE refused as soon as its output exceeds the bound.
+    'src/saml2-bindings/src/Internal/Inflater.php',
+    // B-8: the deflater, raw DEFLATE.
+    'src/saml2-bindings/src/Internal/Deflater.php',
+    // B-2: the signed octets, the raw values in the binding's order.
+    'src/saml2-bindings/src/Internal/SignedOctets.php',
+    // B-4: the detached signature, verified under the keys of the peer's metadata.
+    'src/saml2-bindings/src/Internal/DetachedSignature.php',
+    // B-1, B-3, B-9, section 6.1 steps 2 to 7: the reading of a query string's parameters.
+    'src/saml2-bindings/src/Internal/QueryParameters.php',
+    // B-1, B-7, B-9, section 6.2 steps 1 to 3: the reading of a form's fields.
+    'src/saml2-bindings/src/Internal/FormFields.php',
+    // B-5, section 5.2: one input read whole, the message and the detached signature of that very input.
+    'src/saml2-bindings/src/Internal/Reception.php',
+    // Sections 6.1 steps 3 and 11, 6.2 steps 2 and 6: the message each service of ours expects.
+    'src/saml2-bindings/src/Internal/Service.php',
+    // Section 6.1: HTTP-Redirect received, in order (B-6, B-7).
+    'src/saml2-bindings/src/RedirectReceiver.php',
+    // Section 6.2: HTTP-POST received, in order (B-7, B-8, B-10).
+    'src/saml2-bindings/src/PostReceiver.php',
+    // Section 6.3: HTTP-Redirect sent, in order (B-2, B-6, B-9, B-10, B-12).
+    'src/saml2-bindings/src/RedirectSender.php',
+    // Section 6.4: HTTP-POST sent, in order (B-7, B-9, B-10, B-12), and the form it returns (section 6.7).
+    'src/saml2-bindings/src/PostSender.php',
+    'src/saml2-bindings/src/PostForm.php',
+    // Section 6.1 step 12: authenticated as the binding says, then validated (B-5).
+    'src/saml2-bindings/src/ReceivedAuthnRequest.php',
+    'src/saml2-bindings/src/ReceivedLogoutRequest.php',
+    'src/saml2-bindings/src/ReceivedLogoutResponse.php',
+    // Section 6.2 step 7: a response, over HTTP-POST only, validated by the model (B-5, B-12).
+    'src/saml2-bindings/src/ReceivedResponse.php',
+];
+
 #[AsTask(
-    description: 'Run Infection for mutation testing, on the coverage produced by a fresh PHPUnit run. --diff keeps only the mutants of the lines added or modified since the base branch, the shape of every CI run; without it the whole source is mutated, which takes hours',
+    description: 'Run Infection for mutation testing, on the coverage produced by a fresh PHPUnit run. --diff keeps only the mutants of the lines added or modified since the base branch, the shape of every CI run; --strict mutates the files the specifications of the SAML packages hold to a hundred percent; without either the whole source is mutated, which takes hours',
 )]
 function infect(
     int $minMsi = 0,
@@ -538,31 +767,51 @@ function infect(
     #[AsOption(description: 'Mutate only the lines added or modified since --base, committed or not')]
     bool $diff = false,
     #[AsOption(
+        description: 'Mutate the files of INFECTION_STRICT_FILES whole, uncovered lines included, and fail under a hundred percent, whatever --min-msi and --min-covered-msi say, on a coverage of its own: the three SAML suites measured by Xdebug in .ci-tools/coverage-strict',
+    )]
+    bool $strict = false,
+    #[AsOption(
         description: 'The branch or commit the diff of --diff is taken from; Infection narrows it to the merge base with HEAD. The default is the maintenance branch the clone points at, which a clone sets and "git remote set-head origin -a" restores',
     )]
     string $base = 'origin/HEAD',
     #[AsOption(description: 'Mutant processes run in parallel; "max" is the number of cores minus one')]
     string $threads = 'max',
     #[AsOption(
-        description: 'Reuse the coverage of the last "castor phpunit" in .ci-tools/coverage instead of running the tests again; it must come from the same source and the same paths',
+        description: 'Reuse the coverage of the last "castor phpunit" in .ci-tools/coverage, or with --strict of the last strict run in .ci-tools/coverage-strict, instead of running the tests again; it must come from the same source and the same paths',
     )]
     bool $reuseCoverage = false,
 ): void {
+    if ($diff && $strict) {
+        io()->error('--diff and --strict mutate two different sets: pick one.');
+        exit(1);
+    }
+    $strictFiles = array_values(array_filter(INFECTION_STRICT_FILES, is_file(...)));
+    if ($strict && $strictFiles !== INFECTION_STRICT_FILES) {
+        io()->error(sprintf('Missing from the tree: %s.', implode(', ', array_diff(INFECTION_STRICT_FILES, $strictFiles))));
+        exit(1);
+    }
+
     // The XML coverage and the JUnit report of a "castor phpunit" run are what Infection reads from .ci-tools/coverage.
+    // The strict run reads a coverage of its own, the three SAML suites measured by Xdebug: pcov reports no line for a
+    // "continue" statement, so the mutant that turns one into "break" is not covered under it, and the hundred percent
+    // the specifications ask for is out of reach on a line every test of the corpus runs.
+    $coverage = $strict ? '.ci-tools/coverage-strict' : '.ci-tools/coverage';
     if ($reuseCoverage) {
-        if (! is_file('.ci-tools/coverage/index.xml') || ! is_file('.ci-tools/coverage/junit.xml')) {
-            io()->error('No coverage to reuse in .ci-tools/coverage: run "castor phpunit" first, or drop --reuse-coverage.');
+        if (! is_file($coverage . '/index.xml') || ! is_file($coverage . '/junit.xml')) {
+            io()->error(sprintf('No coverage to reuse in %s: run the tests first, or drop --reuse-coverage.', $coverage));
             exit(1);
         }
+    } elseif ($strict) {
+        strict_coverage();
     } else {
         phpunit();
     }
 
     $options = [
-        '--coverage=.ci-tools/coverage',
+        '--coverage=' . $coverage,
         '--skip-initial-tests',
-        sprintf('--min-msi=%d', $minMsi),
-        sprintf('--min-covered-msi=%d', $minCoveredMsi),
+        sprintf('--min-msi=%d', $strict ? 100 : $minMsi),
+        sprintf('--min-covered-msi=%d', $strict ? 100 : $minCoveredMsi),
         '--threads=' . $threads,
         '--logger-github',
         '-s',
@@ -572,6 +821,11 @@ function infect(
         // as reported by junit.xml, which is why the timeout of infection.json.dist is far above any single run.
         '--only-covering-test-cases',
     ];
+
+    if ($strict) {
+        $options[] = '--filter=' . implode(',', $strictFiles);
+        $options[] = '--with-uncovered';
+    }
 
     if ($diff) {
         // Infection runs "git diff <merge base> -- <source directories>" from the working directory and passes the
@@ -586,6 +840,30 @@ function infect(
     phpqa(['composer', 'exec', '--', 'infection', ...$options], [
         'XDEBUG_MODE' => 'coverage',
     ]);
+}
+
+/**
+ * The coverage the strict mutation run reads: the suites of the SAML packages alone, measured by Xdebug, which counts a
+ * "continue" statement as a line, where pcov does not.
+ */
+function strict_coverage(): void
+{
+    phpqa(
+        [
+            'composer',
+            'exec',
+            '--',
+            'phpunit',
+            '--coverage-xml',
+            '.ci-tools/coverage-strict',
+            '--log-junit=.ci-tools/coverage-strict/junit.xml',
+            '--configuration',
+            '.ci-tools/phpunit.xml.dist',
+            '--testsuite',
+            'xml-security,saml2-model,saml2-bindings',
+        ],
+        ['XDEBUG_MODE' => 'coverage'],
+    );
 }
 
 #[AsTask(description: 'Fix code style and apply Rector rules, then run static analysis.')]

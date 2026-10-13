@@ -17,6 +17,18 @@ php-version = "8.4"
 [source]
 # The paths ECS covered, the configurations of the other tools included.
 paths = ["src", "tests", "castor.php", ".castor", ".ci-tools/rector.php"]
+# The fixtures of the SAML packages are data, byte-exact, and their interoperability projects are
+# throwaway Composer projects run in their own containers against libraries that are not dependencies
+# here (tests/xml-security/*/Fixture/real, tests/saml2-model/Interop, tests/saml2-bindings/Interop).
+excludes = [
+    "tests/xml-security/Core/Fixture",
+    "tests/xml-security/Dsig/Fixture",
+    "tests/xml-security/Enc/Fixture",
+    "tests/saml2-model/Fixture",
+    "tests/saml2-model/Interop",
+    "tests/saml2-bindings/Fixture",
+    "tests/saml2-bindings/Interop",
+]
 # Read, never reported on: what the analyzer needs to resolve a symbol. The second path is where the
 # phpqa image keeps PHPUnit, as phpstan.neon reads it from there too; it simply does not exist outside
 # the image, which is where the quality tasks run.

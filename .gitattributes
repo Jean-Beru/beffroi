@@ -1,5 +1,10 @@
 * text=auto
 
+# The fixtures of the SAML packages are byte-exact: no end-of-line conversion, ever.
+/tests/xml-security/Core/Fixture/** -text
+/tests/saml2-model/Fixture/** -text
+/tests/saml2-bindings/Fixture/** -text
+
 /.ci-tools export-ignore
 /.github export-ignore
 /apps export-ignore
