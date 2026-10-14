@@ -352,7 +352,7 @@ final class SealedBodySerializerTest extends TestCase
 
         // Then
         static::assertSame($encoded['body'], $written['body']);
-        static::assertSame(SomethingHappened::class, $refused->getMessageType($written));
+        static::assertSame(SomethingHappened::class, $written['headers'][SealedBodySerializer::TYPE_HEADER] ?? null);
         static::assertSame(['2026-10-09T12:00:00+00:00'], array_map(
             static fn (RedeliveryStamp $stamp): string => $stamp->getRedeliveredAt()->format(DateTimeImmutable::RFC3339),
             self::stampsOf(RedeliveryStamp::class, $written['headers'][SealedBodySerializer::STAMP_HEADER_PREFIX . RedeliveryStamp::class] ?? ''),

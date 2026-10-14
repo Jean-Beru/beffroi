@@ -8,6 +8,7 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Symfony\Component\KeyManagement\Ciphertext;
 use Symfony\Component\KeyManagement\DataKeyHandle;
 use Symfony\Component\KeyManagement\RewrappableDataKeyStoreInterface;
+use Symfony\Component\KeyManagement\StoredDataKey;
 
 /**
  * The store of the deployment, showing one tenant's keys and no other (decision 0018).
@@ -57,5 +58,10 @@ final readonly class TenantScopedDataKeyStore implements RewrappableDataKeyStore
     public function rewrap(string $reference, Ciphertext $wrapped, string $client): void
     {
         $this->store->rewrap($reference, $wrapped, $client);
+    }
+
+    public function wrappingContextOf(StoredDataKey $row): string
+    {
+        return $this->store->wrappingContextOf($row);
     }
 }

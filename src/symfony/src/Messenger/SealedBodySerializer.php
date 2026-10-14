@@ -26,7 +26,6 @@ use Symfony\Component\Messenger\Exception\MessageDecodingFailedException;
 use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Messenger\Stamp\NonSendableStampInterface;
 use Symfony\Component\Messenger\Stamp\StampInterface;
-use Symfony\Component\Messenger\Transport\Serialization\MessageTypeAwareSerializerInterface;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 use Throwable;
 use function unserialize;
@@ -53,7 +52,7 @@ use function unserialize;
  * envelope: it is why what decides is in the body and never here, and why a stamp that comes back as
  * anything other than what its header names is refused.
  */
-final readonly class SealedBodySerializer implements MessageTypeAwareSerializerInterface, SerializerInterface
+final readonly class SealedBodySerializer implements SerializerInterface
 {
     /**
      * One header per class of stamp, as the serializer of the component names them.
@@ -169,18 +168,6 @@ final readonly class SealedBodySerializer implements MessageTypeAwareSerializerI
         }
 
         return new Envelope($message, $stamps);
-    }
-
-    /**
-     * Read from the headers alone, the body never opened, which is what the contract of this method asks
-     * and what names a message whose scope has been destroyed.
-     */
-    public function getMessageType(array $encodedEnvelope): ?string
-    {
-        /** @var class-string|'' $type what encode() wrote there, which is the class of a message */
-        $type = self::headers($encodedEnvelope)[self::TYPE_HEADER] ?? '';
-
-        return $type === '' ? null : $type;
     }
 
     /**
