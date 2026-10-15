@@ -12,7 +12,6 @@ use Beffroi\Bundle\Key\StagingDelay;
 use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Tenant\TenantFactory;
-use Beffroi\Core\Application\Key\KeyStaging;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Beffroi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
@@ -28,8 +27,8 @@ use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
-use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -109,7 +108,7 @@ final class BeffroiBundleExtensionTest extends TestCase
         ]);
 
         // Then
-        $delay = $container->getDefinition(KeyStaging::class)->getArgument('$stagingDelay');
+        $delay = $container->getDefinition('beffroi.keys.rotation_schedule')->getArgument(0);
         static::assertInstanceOf(Definition::class, $delay);
         $factory = $delay->getFactory();
         static::assertIsArray($factory);
@@ -119,7 +118,7 @@ final class BeffroiBundleExtensionTest extends TestCase
     }
 
     #[Test]
-    public function aConfiguredStagingDelayReachesTheStaging(): void
+    public function aConfiguredStagingDelayReachesTheJoseFamilies(): void
     {
         // When
         $container = self::load([
@@ -132,7 +131,7 @@ final class BeffroiBundleExtensionTest extends TestCase
         ]);
 
         // Then
-        $delay = $container->getDefinition(KeyStaging::class)->getArgument('$stagingDelay');
+        $delay = $container->getDefinition('beffroi.keys.rotation_schedule')->getArgument(0);
         static::assertInstanceOf(Definition::class, $delay);
         static::assertSame([30, 120], $delay->getArguments());
     }
@@ -512,6 +511,99 @@ final class BeffroiBundleExtensionTest extends TestCase
     }
 
     /**
+     * Spec/saml.md S-12, section 7, issue #738: the SAML signing key is a family of its own, published seven days
+     * before it signs and working a year unless the deployment says otherwise, whether the role is enabled or not,
+     * the registry of its keys being wired in both cases.
+     *
+     * @param array<string, mixed> $saml
+     */
+    #[Test]
+    #[DataProvider('provideSamlSchedules')]
+    public function theSamlKeysRotateByASchedule(array $saml, string $stagingDelay, string $age): void
+    {
+        // When
+        $container = self::load([
+            'saml' => $saml,
+        ]);
+
+        // Then
+        static::assertSame(
+            [$stagingDelay, $age],
+            [
+                self::interval($container, 'beffroi.saml.rotation_schedule', 0),
+                self::interval($container, 'beffroi.saml.rotation_schedule', 1),
+            ],
+        );
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, string, string}>
+     */
+    public static function provideSamlSchedules(): iterable
+    {
+        yield 'a deployment that serves no SAML' => [[], 'PT604800S', 'PT31536000S'];
+        yield 'the defaults of the identity provider' => [
+            [
+                'identity_provider' => null,
+            ],
+            'PT604800S',
+            'PT31536000S',
+        ];
+        yield 'figures the deployment sets' => [
+            [
+                'identity_provider' => [
+                    'staging_delay' => 1_209_600,
+                    'age' => 15_552_000,
+                ],
+            ],
+            'PT1209600S',
+            'PT15552000S',
+        ];
+    }
+
+    /**
+     * Spec/saml.md S-12: the metadata is handed its cacheDuration and the staging delay it is shorter than.
+     */
+    #[Test]
+    public function theMetadataIsHandedItsCacheDurationAndTheStagingDelay(): void
+    {
+        // When
+        $container = self::load([
+            'saml' => [
+                'identity_provider' => [
+                    'staging_delay' => 172_800,
+                    'cache_duration' => 3_600,
+                ],
+            ],
+        ]);
+
+        // Then
+        $handler = $container->getDefinition(IdentityProviderMetadataHandler::class);
+        static::assertSame([3_600, 172_800], [$handler->getArgument('$cacheDuration'), $handler->getArgument('$stagingDelay')]);
+    }
+
+    /**
+     * Spec/saml.md S-12: a cacheDuration a service provider would still be inside when the next key signs is refused
+     * when the configuration is read.
+     */
+    #[Test]
+    public function aCacheDurationAsLongAsTheStagingDelayIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIsOrContains('The cacheDuration of the metadata, 86400 s, is shorter than the staging delay of a SAML key, 86400 s, or a service provider that honours it meets the next key before its certificate (spec/saml.md S-12).');
+
+        // When
+        self::load([
+            'saml' => [
+                'identity_provider' => [
+                    'staging_delay' => 86_400,
+                ],
+            ],
+        ]);
+    }
+
+    /**
      * @param array<string, mixed> $config
      */
     private static function load(array $config, ?ContainerBuilder $container = null): ContainerBuilder
@@ -535,7 +627,7 @@ final class BeffroiBundleExtensionTest extends TestCase
         return $container;
     }
 
-    private static function interval(ContainerBuilder $container, string $service, string $argument): string
+    private static function interval(ContainerBuilder $container, string $service, int|string $argument): string
     {
         $definition = $container->getDefinition($service)->getArgument($argument);
         static::assertInstanceOf(Definition::class, $definition);

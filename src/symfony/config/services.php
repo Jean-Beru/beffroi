@@ -273,6 +273,7 @@ use Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaOaep256;
 use Beffroi\Core\Bridge\JwtLibrary\JoseContentEncryptionAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JoseKeyFamily;
 use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
 use Beffroi\Bundle\Saml\RouterIdentityProviderEndpoints;
 use Beffroi\Bundle\Saml\SamlSigning;
@@ -343,6 +344,7 @@ use Beffroi\Core\Port\JweDecrypterInterface;
 use Beffroi\Core\Port\JwsSignerInterface;
 use Beffroi\Core\Port\JwsVerifierInterface;
 use Beffroi\Core\Port\KeyAlgorithmsInterface;
+use Beffroi\Core\Port\RotationSchedulesInterface;
 use Beffroi\Core\Port\KeyEncryptionAlgorithmsInterface;
 use Beffroi\Core\Port\KeyPairGeneratorInterface;
 use Beffroi\Core\Port\KeySealerInterface;
@@ -1189,15 +1191,22 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(MessageBodyOpenerInterface::class, JwtLibraryMessageBodyOpener::class);
     // What a key may be generated for, the registry of each use read as one: the key commands and the key
     // files resolve an algorithm name against this, whatever the key is published for. The order is the
-    // one it lists and the one its refusals are read in, the signatures first
+    // one it lists and the one its refusals are read in, the signatures first.
+    //
+    // Each registry is a family of keys and comes with the schedule its keys rotate by (issue #738): the
+    // JOSE families share the staging delay and the age of "beffroi.keys", the SAML signing key has its
+    // own, counted in days (beffroi/saml, spec/saml.md S-12). The two schedules are built from the
+    // configuration by the sections that own it (KeysSection, SamlSection); the staging and the
+    // succession of a key read the schedule of its family here, and nowhere else.
     $services->set(JoseKeyAlgorithms::class)->args([[
-        service(JoseSignatureAlgorithms::class),
-        service(JoseKeyEncryptionAlgorithms::class),
-        service(JoseApplicationServerAlgorithms::class),
-        service(JoseMessageSealingAlgorithms::class),
-        service(JoseSamlSigningAlgorithms::class),
+        inline_service(JoseKeyFamily::class)->args([service(JoseSignatureAlgorithms::class), service('beffroi.keys.rotation_schedule')]),
+        inline_service(JoseKeyFamily::class)->args([service(JoseKeyEncryptionAlgorithms::class), service('beffroi.keys.rotation_schedule')]),
+        inline_service(JoseKeyFamily::class)->args([service(JoseApplicationServerAlgorithms::class), service('beffroi.keys.rotation_schedule')]),
+        inline_service(JoseKeyFamily::class)->args([service(JoseMessageSealingAlgorithms::class), service('beffroi.keys.rotation_schedule')]),
+        inline_service(JoseKeyFamily::class)->args([service(JoseSamlSigningAlgorithms::class), service('beffroi.saml.rotation_schedule')]),
     ]]);
     $services->alias(KeyAlgorithmsInterface::class, JoseKeyAlgorithms::class);
+    $services->alias(RotationSchedulesInterface::class, JoseKeyAlgorithms::class);
     // The algorithms a section of the configuration leaves off, each tagged by the section that owns it: what the key
     // files read past, so that a key drawn before its capability was turned off waits for it to be turned on again
     $services->set(DormantKeyAlgorithms::class)->args([tagged_iterator(DormantKeyAlgorithms::TAG)]);

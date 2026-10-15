@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Saml;
 
+use Beffroi\Bundle\Key\StagingDelay;
+use Beffroi\Bundle\Message\AdvanceKeyLifecycle;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
 use Beffroi\Core\Domain\Key\KeyStatus;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Port\TenantKeyRepositoryInterface;
+use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
 use Beffroi\Saml2\Model\Metadata\Binding;
 use Beffroi\Saml2\Model\Metadata\EntityDescriptor;
 use Beffroi\Saml2\Model\Metadata\MetadataReader;
@@ -20,11 +23,15 @@ use function chunk_split;
 use function openssl_pkey_get_details;
 use function openssl_pkey_get_public;
 use function openssl_x509_read;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use function preg_match;
+use function sprintf;
 use function strtr;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
  * beffroi/saml, spec/saml.md sections 6.1 and 9: the metadata of the SAML identity provider of the tenant, served on
@@ -109,7 +116,7 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
 
     /**
      * Section 6.1 step 6: served as SAML metadata, cacheable for the max-age of the keys of the tenant, two minutes in
-     * this kernel, which its staging window derives from.
+     * this kernel, so that a service provider that fetches it finds the next certificate within minutes of its staging.
      */
     #[Test]
     public function itIsServedAsSamlMetadataForTheMaxAgeOfTheKeys(): void
@@ -198,6 +205,107 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
+     * S-12, issue #738: a key is staged for the staging delay of its family, seven days for the SAML key, while a key of
+     * the JWK Set waits what it always waited, the max-age of the JWK Set plus the 60 s refetch cooldown of oidc_login:
+     * 180 s on the 120 s max-age of this kernel, 360 s on the default one.
+     */
+    #[Test]
+    #[DataProvider('provideFamilies')]
+    public function aRotationStagesAKeyForTheStagingDelayOfItsFamily(string $algorithm, int $stagingDelay): void
+    {
+        // Given
+        self::console('beffroi:keys:generate', [
+            '--algorithm' => $algorithm,
+        ]);
+        self::aSecondLater();
+
+        // When
+        $staged = self::rotate($algorithm);
+
+        // Then
+        static::assertSame($stagingDelay, $staged->activationDueAt->getTimestamp() - $staged->createdAt->getTimestamp());
+    }
+
+    /**
+     * @return iterable<string, array{string, int}>
+     */
+    public static function provideFamilies(): iterable
+    {
+        yield 'the SAML key, a family of its own' => [SamlSigning::NAME, SamlSigningAlgorithmInterface::STAGING_DELAY];
+        yield 'a key of the JWK Set' => ['RS256', StagingDelay::seconds(null, 120)];
+    }
+
+    /**
+     * S-2, S-12, the acceptance of issue #738: the next certificate is in the metadata for the whole staging delay of
+     * the SAML key before that key signs anything, the scheduled step leaving it staged a second before its week
+     * ends.
+     */
+    #[Test]
+    public function theNextCertificateIsPublishedForTheWholeStagingDelayBeforeItSigns(): void
+    {
+        // Given
+        $current = self::generate();
+        self::aSecondLater();
+        $next = self::rotate(SamlSigning::NAME);
+        self::mockTime($next->activationDueAt->modify('-1 second'));
+        self::tick();
+
+        // When
+        $this->browser->request('GET', self::METADATA);
+
+        // Then
+        static::assertSame(
+            [KeyStatus::Staged, KeyStatus::Active, [self::base64url($current->publicJwk['n']), self::base64url($next->publicJwk['n'])]],
+            [
+                self::key($next->kid)->status,
+                self::key($current->kid)->status,
+                array_map(self::modulusOf(...), $this->servedDescriptor()->identityProvider->signingCertificates ?? []),
+            ],
+        );
+    }
+
+    /**
+     * S-12: once its week has passed, the scheduled step makes the staged SAML key the one that signs.
+     */
+    #[Test]
+    public function theScheduledStepActivatesTheSamlKeyAtTheEndOfItsStagingDelay(): void
+    {
+        // Given
+        $current = self::generate();
+        self::aSecondLater();
+        $next = self::rotate(SamlSigning::NAME);
+        self::mockTime($next->activationDueAt);
+
+        // When
+        self::tick();
+
+        // Then
+        static::assertSame([KeyStatus::Active, KeyStatus::Retiring], [self::key($next->kid)->status, self::key($current->kid)->status]);
+    }
+
+    /**
+     * S-12, the acceptance of issue #738: the metadata says how long a service provider may keep it, and that is
+     * shorter than the window the next SAML key was staged with, so that a service provider that honours it fetches
+     * the next certificate before that key signs.
+     */
+    #[Test]
+    public function theCacheDurationOfTheMetadataIsShorterThanTheStagingDelayOfTheSamlKey(): void
+    {
+        // Given
+        self::generate();
+        self::aSecondLater();
+        $next = self::rotate(SamlSigning::NAME);
+
+        // When
+        $this->browser->request('GET', self::METADATA);
+
+        // Then
+        $cacheDuration = SamlLoader::create()->load(self::string($this->browser->getResponse()->getContent()))->root()->getAttribute('cacheDuration');
+        static::assertSame(1, preg_match('~^PT(\d+)S$~', $cacheDuration ?? '', $seconds), (string) $cacheDuration);
+        static::assertLessThan($next->activationDueAt->getTimestamp() - $next->createdAt->getTimestamp(), (int) $seconds[1]);
+    }
+
+    /**
      * Section 6.1 step 1: a tenant that holds no SAML key has no metadata to serve.
      */
     #[Test]
@@ -221,6 +329,37 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
 
         return self::keys()->findInService(self::tenant())[0] ?? static::fail('The command drew no key.');
+    }
+
+    /**
+     * A rotation as an operator asks for one, which stages the next key of the algorithm beside the active one.
+     */
+    private static function rotate(string $algorithm): TenantKey
+    {
+        $rotation = self::console('beffroi:keys:rotate', [
+            '--algorithm' => $algorithm,
+        ]);
+        static::assertSame(Command::SUCCESS, $rotation->getStatusCode(), $rotation->getDisplay());
+
+        return (
+            array_find(
+                self::keys()->findInService(self::tenant()),
+                static fn (TenantKey $key): bool => $key->isStaged(),
+            ) ?? static::fail('The rotation staged no key.')
+        );
+    }
+
+    /**
+     * What the worker does on a tick: the recurring message of the life of the keys, on the command bus.
+     */
+    private static function tick(): void
+    {
+        self::service('test.beffroi.command_bus', MessageBusInterface::class)->dispatch(new AdvanceKeyLifecycle());
+    }
+
+    private static function key(string $kid): TenantKey
+    {
+        return self::keys()->find(self::tenant(), $kid) ?? static::fail(sprintf('The key "%s" is not stored.', $kid));
     }
 
     private static function keys(): TenantKeyRepositoryInterface

@@ -7,10 +7,16 @@ namespace Beffroi\Bundle\Configuration;
 use Beffroi\Bundle\Key\DormantKeyAlgorithms;
 use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
 use Beffroi\Bundle\Saml\SamlSigning;
+use Beffroi\Core\Domain\Key\RotationSchedule;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
+use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
+use Beffroi\Saml\Domain\Metadata\IdentityProviderMetadata;
 use function is_array;
+use function is_int;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
 /**
@@ -26,6 +32,12 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurat
  * The service providers are declared here and nowhere else, as the clients are (S-5): no request registers one and no
  * page edits one. A declaration is validated when the container is compiled (ServiceProvidersPass); its metadata are
  * read by "beffroi:saml:service-provider:refresh" and by the hourly step of the schedule, and kept in the database.
+ *
+ * The keys of the identity provider are a family of their own (spec/saml.md S-12, issue #738): their staging delay and their age are set here,
+ * counted in days by default, and not by "beffroi.keys", whose figures suit a JWK Set refetched within minutes. The
+ * schedule of the family is built whether the role is enabled or not, the registry of the SAML keys being wired in
+ * both cases, empty in the second; the cacheDuration of the metadata is refused here, when the configuration is read,
+ * unless it is shorter than the staging delay.
  */
 final readonly class SamlSection extends ConfigurationSection
 {
@@ -42,13 +54,44 @@ final readonly class SamlSection extends ConfigurationSection
             ->addDefaultsIfNotSet()
             ->children()
             ->arrayNode('identity_provider')
-            ->info('The tenant as a SAML identity provider (spec/saml.md section 6.1). Disabled, nothing of it is wired: the tenant draws no SAML key and serves no metadata. Enabled, its key is drawn with "beffroi:keys:generate --algorithm=SAML-SIGNING" and rotates as every key of the tenant.')
+            ->info('The tenant as a SAML identity provider (spec/saml.md section 6.1). Disabled, nothing of it is wired: the tenant draws no SAML key and serves no metadata. Enabled, its key is drawn with "beffroi:keys:generate --algorithm=SAML-SIGNING" and rotates as every key of the tenant, by the figures of its own family below.')
             ->canBeEnabled()
             ->children()
             ->booleanNode('want_authn_requests_signed')
             ->info('What the metadata says in WantAuthnRequestsSigned (SAML Metadata section 2.4.3): true asks every service provider to sign its requests, which is what a broker configured from the metadata does (spec/model.md section 6.9). Turned off, the requests of service providers that cannot sign are accepted where their configuration says so, and the logout of a broker that signs only when asked is lost.')
             ->defaultTrue()
             ->end()
+            ->integerNode('staging_delay')
+            ->info('How long a new SAML signing key is published in the metadata before it signs, in seconds (spec/saml.md S-12, section 7): seven days by default, seven times the cacheDuration of the metadata, so that a service provider whose refresh fails a few times still fetches the next certificate before it is used, and a calendar week for an administrator of a service provider that holds an uploaded certificate (Entra without a metadata URL) to put the next one in place; AD FS gives its partners five days. The keys of every other family keep "keys.staging_delay".')
+            ->defaultValue(SamlSigningAlgorithmInterface::STAGING_DELAY)
+            ->min(0)
+            ->end()
+            ->integerNode('age')
+            ->info('How long a SAML signing key works before the planning stages a successor for it, in seconds, counted from its activation (spec/saml.md S-12, section 7): 365 days by default, every rotation being a step for whoever pinned its certificate, and inside the one to three years NIST SP 800-57 Part 1 Rev. 5 §5.3.6 gives a private signature key. The keys of every other family keep "keys.age".')
+            ->defaultValue(SamlSigningAlgorithmInterface::AGE)
+            ->min(1)
+            ->end()
+            ->integerNode('cache_duration')
+            ->info('How long a service provider may keep the metadata before it fetches it again, in seconds, written as its cacheDuration (SAML Metadata section 2.3.2, spec/saml.md S-12): one day by default, how often SimpleSAMLphp\'s metarefresh and a Shibboleth SP refresh it, and strictly shorter than "staging_delay", which the configuration refuses otherwise.')
+            ->defaultValue(IdentityProviderMetadataHandler::DEFAULT_CACHE_DURATION)
+            ->min(1)
+            ->end()
+            ->end()
+            ->validate()
+            ->always(static function (array $identityProvider): array {
+                $cacheDuration = $identityProvider['cache_duration'] ?? null;
+                $stagingDelay = $identityProvider['staging_delay'] ?? null;
+                // an environment placeholder is a number at runtime only, where the handler checks it again
+                if (is_int($cacheDuration) && is_int($stagingDelay)) {
+                    try {
+                        IdentityProviderMetadata::assertCacheDuration($cacheDuration, $stagingDelay);
+                    } catch (InvalidArgumentException $refusal) {
+                        throw new InvalidConfigurationException($refusal->getMessage(), 0, $refusal);
+                    }
+                }
+
+                return $identityProvider;
+            })
             ->end()
             ->end()
             ->arrayNode('service_providers')
@@ -116,6 +159,11 @@ final readonly class SamlSection extends ConfigurationSection
             self::section($this->own($config), 'service_providers'),
         );
         $identityProvider = self::section($this->own($config), 'identity_provider');
+        // the family of the SAML keys exists in every deployment (JoseKeyAlgorithms), so its schedule does too
+        $services->set('beffroi.saml.rotation_schedule', RotationSchedule::class)->args([
+            self::seconds($identityProvider, 'staging_delay'),
+            self::seconds($identityProvider, 'age'),
+        ]);
         if (($identityProvider['enabled'] ?? false) !== true) {
             $services->get(SamlSigning::class)->tag(DormantKeyAlgorithms::TAG);
 
@@ -125,7 +173,10 @@ final readonly class SamlSection extends ConfigurationSection
         $services->get(IdentityProviderMetadataHandler::class)->arg('$wantAuthnRequestsSigned', self::boolean(
             $identityProvider,
             'want_authn_requests_signed',
-        ))->arg('$maxAge', self::integer(self::section($config, 'keys'), 'jwks_max_age'));
+        ))->arg('$maxAge', self::integer(self::section($config, 'keys'), 'jwks_max_age'))->arg('$cacheDuration', self::integer(
+            $identityProvider,
+            'cache_duration',
+        ))->arg('$stagingDelay', self::integer($identityProvider, 'staging_delay'));
     }
 
     /**
