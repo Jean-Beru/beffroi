@@ -36,24 +36,28 @@ final class ConfigurationServiceProvidersTest extends TestCase
     public function aDeclarationIsReadWhole(): void
     {
         // Given
-        $serviceProviders = new ConfigurationServiceProviders('acme', [
-            self::ENTITY_ID => [
-                'metadata' => self::LOCATION,
-                'metadata_signers' => [ServiceProviderDocuments::signer()->base64],
-                'attributes' => [
-                    'urn:oid:0.9.2342.19200300.100.1.3' => [
-                        'claim' => 'email',
-                        'friendly_name' => 'mail',
+        $serviceProviders = new ConfigurationServiceProviders(
+            'acme',
+            [
+                self::ENTITY_ID => [
+                    'metadata' => self::LOCATION,
+                    'metadata_signers' => [ServiceProviderDocuments::signer()->base64],
+                    'attributes' => [
+                        'urn:oid:0.9.2342.19200300.100.1.3' => [
+                            'claim' => 'email',
+                            'friendly_name' => 'mail',
+                        ],
+                        'displayName' => [
+                            'claim' => 'name',
+                            'name_format' => 'basic',
+                        ],
                     ],
-                    'displayName' => [
-                        'claim' => 'name',
-                        'name_format' => 'basic',
-                    ],
+                    'encrypt_assertions' => true,
+                    'signs_authn_requests' => false,
                 ],
-                'encrypt_assertions' => true,
-                'signs_authn_requests' => false,
             ],
-        ], new FixedClaims());
+            new FixedClaims(),
+        );
 
         // When
         $serviceProvider = $serviceProviders->find(Fixtures::tenant(), self::ENTITY_ID);
@@ -82,11 +86,15 @@ final class ConfigurationServiceProvidersTest extends TestCase
     public function aDeclarationLeftOutTakesTheDefaults(): void
     {
         // Given
-        $serviceProviders = new ConfigurationServiceProviders('acme', [
-            self::ENTITY_ID => [
-                'metadata' => self::LOCATION,
+        $serviceProviders = new ConfigurationServiceProviders(
+            'acme',
+            [
+                self::ENTITY_ID => [
+                    'metadata' => self::LOCATION,
+                ],
             ],
-        ], new FixedClaims());
+            new FixedClaims(),
+        );
 
         // When
         $serviceProvider = $serviceProviders->find(Fixtures::tenant(), self::ENTITY_ID);
@@ -103,14 +111,18 @@ final class ConfigurationServiceProvidersTest extends TestCase
     public function theServiceProvidersAreListedInTheOrderOfTheDeclaration(): void
     {
         // Given
-        $serviceProviders = new ConfigurationServiceProviders('acme', [
-            'https://b.example.com/saml' => [
-                'metadata' => self::LOCATION,
+        $serviceProviders = new ConfigurationServiceProviders(
+            'acme',
+            [
+                'https://b.example.com/saml' => [
+                    'metadata' => self::LOCATION,
+                ],
+                'https://a.example.com/saml' => [
+                    'metadata' => self::LOCATION,
+                ],
             ],
-            'https://a.example.com/saml' => [
-                'metadata' => self::LOCATION,
-            ],
-        ], new FixedClaims());
+            new FixedClaims(),
+        );
 
         // When
         $listed = $serviceProviders->of(Fixtures::tenant());
@@ -127,11 +139,15 @@ final class ConfigurationServiceProvidersTest extends TestCase
     public function anotherTenantListsNone(): void
     {
         // Given
-        $serviceProviders = new ConfigurationServiceProviders('acme', [
-            self::ENTITY_ID => [
-                'metadata' => self::LOCATION,
+        $serviceProviders = new ConfigurationServiceProviders(
+            'acme',
+            [
+                self::ENTITY_ID => [
+                    'metadata' => self::LOCATION,
+                ],
             ],
-        ], new FixedClaims());
+            new FixedClaims(),
+        );
 
         // When / Then
         static::assertSame([], $serviceProviders->of(Fixtures::tenant('other')));
@@ -145,11 +161,15 @@ final class ConfigurationServiceProvidersTest extends TestCase
     public function anotherTenantFindsNone(): void
     {
         // Given
-        $serviceProviders = new ConfigurationServiceProviders('acme', [
-            self::ENTITY_ID => [
-                'metadata' => self::LOCATION,
+        $serviceProviders = new ConfigurationServiceProviders(
+            'acme',
+            [
+                self::ENTITY_ID => [
+                    'metadata' => self::LOCATION,
+                ],
             ],
-        ], new FixedClaims());
+            new FixedClaims(),
+        );
 
         // When / Then
         static::assertNull($serviceProviders->find(Fixtures::tenant('other'), self::ENTITY_ID));
@@ -163,11 +183,15 @@ final class ConfigurationServiceProvidersTest extends TestCase
     public function anEntityIdNobodyDeclaredIsFoundNowhere(): void
     {
         // Given
-        $serviceProviders = new ConfigurationServiceProviders('acme', [
-            self::ENTITY_ID => [
-                'metadata' => self::LOCATION,
+        $serviceProviders = new ConfigurationServiceProviders(
+            'acme',
+            [
+                self::ENTITY_ID => [
+                    'metadata' => self::LOCATION,
+                ],
             ],
-        ], new FixedClaims());
+            new FixedClaims(),
+        );
 
         // When / Then
         static::assertNull($serviceProviders->find(Fixtures::tenant(), self::ENTITY_ID . '/'));
@@ -188,9 +212,13 @@ final class ConfigurationServiceProvidersTest extends TestCase
         $this->expectExceptionMessageIs('The service provider "https://sp.example.com/saml": ' . $message);
 
         // When
-        new ConfigurationServiceProviders('acme', [
-            self::ENTITY_ID => $definition,
-        ], new FixedClaims());
+        new ConfigurationServiceProviders(
+            'acme',
+            [
+                self::ENTITY_ID => $definition,
+            ],
+            new FixedClaims(),
+        );
     }
 
     /**

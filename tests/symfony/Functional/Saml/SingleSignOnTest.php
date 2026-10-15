@@ -27,7 +27,6 @@ use Beffroi\Saml2\Model\Validation\AcceptedAssertion;
 use Beffroi\Saml2\Model\Validation\ExpectedResponse;
 use Beffroi\Saml2\Model\Validation\ResponseValidator;
 use Beffroi\Saml2\Model\Validation\SignatureCoverage;
-use Beffroi\Saml2\Model\Value\SamlId;
 use Beffroi\Saml2\Model\Writing\Signing;
 use function array_combine;
 use function array_map;
@@ -66,14 +65,15 @@ final class SingleSignOnTest extends ConsoleTestCase
             '--algorithm' => SamlSigning::NAME,
         ]);
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        self::service('test.beffroi.saml_accepted_metadata', AcceptedMetadataRepositoryInterface::class)->save(new AcceptedMetadata(
-            Uuid::v7(),
-            self::tenant(),
-            self::SERVICE_PROVIDER,
-            ServiceProviderDocuments::exampleOrg(),
-            null,
-            self::currentSecond(),
-        ));
+        self::service('test.beffroi.saml_accepted_metadata', AcceptedMetadataRepositoryInterface::class)
+            ->save(new AcceptedMetadata(
+                Uuid::v7(),
+                self::tenant(),
+                self::SERVICE_PROVIDER,
+                ServiceProviderDocuments::exampleOrg(),
+                null,
+                self::currentSecond(),
+            ));
         $this->alice = self::userWithPassword('alice', self::PASSWORD);
         $this->alice->changeEmail(new EmailAddress('alice@example.com'), true, self::currentSecond());
         $this->alice->updateProfile(new Profile(name: 'Alice Liddell'), self::currentSecond());
@@ -420,20 +420,24 @@ final class SingleSignOnTest extends ConsoleTestCase
         $form = $this->form();
         static::assertSame(self::ASSERTION_CONSUMER, $form['action']);
 
-        return new PostReceiver(SamlLoader::create())->response($form['fields'])->validate(
-            new ResponseValidator(SamlLoader::create(), new MockClock(self::currentSecond()), new InMemoryReplayGuard()),
-            $this->identityProvider(),
-            ExpectedResponse::toRequest(self::requestId(), self::ASSERTION_CONSUMER, self::SERVICE_PROVIDER),
-        );
+        return new PostReceiver(SamlLoader::create())
+            ->response($form['fields'])
+            ->validate(
+                new ResponseValidator(SamlLoader::create(), new MockClock(self::currentSecond()), new InMemoryReplayGuard()),
+                $this->identityProvider(),
+                ExpectedResponse::toRequest(self::requestId(), self::ASSERTION_CONSUMER, self::SERVICE_PROVIDER),
+            );
     }
 
     private function identityProvider(): IdentityProvider
     {
         $this->browser->request('GET', '/saml/metadata');
 
-        return new MetadataReader(SamlLoader::create(), new MockClock())->readTrusted(
-            SamlLoader::create()->load(self::string($this->browser->getResponse()->getContent())),
-        )->identityProvider ?? static::fail('The tenant serves no identity provider.');
+        return (
+            new MetadataReader(SamlLoader::create(), new MockClock())->readTrusted(
+                SamlLoader::create()->load(self::string($this->browser->getResponse()->getContent())),
+            )->identityProvider ?? static::fail('The tenant serves no identity provider.')
+        );
     }
 
     private static function request(): AuthnRequest

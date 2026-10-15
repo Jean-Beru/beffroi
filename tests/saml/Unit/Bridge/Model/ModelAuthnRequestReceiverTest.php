@@ -116,17 +116,20 @@ final class ModelAuthnRequestReceiverTest extends TestCase
         $request = $this->receiver()->post($this->tenant, $form->fields);
 
         // Then
-        static::assertEquals(new SignOnRequest(
-            ServiceProviderDocuments::SIGNED,
-            SignOnRequests::ID,
-            SignOnRequests::ASSERTION_CONSUMER,
-            null,
-            true,
-            true,
-            'urn:oasis:names:tc:SAML:2.0:nameid-format:transient',
-            true,
-            Fixtures::now(),
-        ), $request);
+        static::assertEquals(
+            new SignOnRequest(
+                ServiceProviderDocuments::SIGNED,
+                SignOnRequests::ID,
+                SignOnRequests::ASSERTION_CONSUMER,
+                null,
+                true,
+                true,
+                'urn:oasis:names:tc:SAML:2.0:nameid-format:transient',
+                true,
+                Fixtures::now(),
+            ),
+            $request,
+        );
     }
 
     /**
@@ -254,11 +257,15 @@ final class ModelAuthnRequestReceiverTest extends TestCase
     private function receiver(): ModelAuthnRequestReceiver
     {
         return new ModelAuthnRequestReceiver(
-            new ConfigurationServiceProviders('acme', [
-                ServiceProviderDocuments::SIGNED => [
-                    'metadata' => '/etc/saml/sp.xml',
+            new ConfigurationServiceProviders(
+                'acme',
+                [
+                    ServiceProviderDocuments::SIGNED => [
+                        'metadata' => '/etc/saml/sp.xml',
+                    ],
                 ],
-            ], new FixedClaims()),
+                new FixedClaims(),
+            ),
             $this->accepted,
             new ModelServiceProviderMetadataReader($this->clock),
             new FixedEndpoints(),

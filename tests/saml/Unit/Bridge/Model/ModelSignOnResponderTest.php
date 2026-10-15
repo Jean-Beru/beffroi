@@ -196,7 +196,10 @@ final class ModelSignOnResponderTest extends TestCase
     public function aFailureCarriesItsStatus(): void
     {
         // Given
-        $form = $this->responder()->failure($this->tenant, new SignOnFailure(self::IDENTITY_PROVIDER, SignOnRequests::request(), SignOnStatus::NoPassive, Fixtures::now()));
+        $form = $this->responder()->failure(
+            $this->tenant,
+            new SignOnFailure(self::IDENTITY_PROVIDER, SignOnRequests::request(), SignOnStatus::NoPassive, Fixtures::now()),
+        );
 
         // When
         try {
@@ -218,7 +221,10 @@ final class ModelSignOnResponderTest extends TestCase
     public function aFailureGivesTheRelayStateBack(): void
     {
         // When
-        $form = $this->responder()->failure($this->tenant, new SignOnFailure(self::IDENTITY_PROVIDER, SignOnRequests::request(), SignOnStatus::InvalidNameIdPolicy, Fixtures::now()));
+        $form = $this->responder()->failure(
+            $this->tenant,
+            new SignOnFailure(self::IDENTITY_PROVIDER, SignOnRequests::request(), SignOnStatus::InvalidNameIdPolicy, Fixtures::now()),
+        );
 
         // Then
         static::assertSame([SignOnRequests::ASSERTION_CONSUMER, 'state-1'], [$form->action, $form->fields['RelayState'] ?? null]);
@@ -285,10 +291,12 @@ final class ModelSignOnResponderTest extends TestCase
     public static function provideAnswers(): iterable
     {
         yield 'a success' => [static fn (ModelSignOnResponder $responder, Tenant $tenant): PostedForm => $responder->success($tenant, self::response())];
-        yield 'a failure' => [static fn (ModelSignOnResponder $responder, Tenant $tenant): PostedForm => $responder->failure(
-            $tenant,
-            new SignOnFailure(self::IDENTITY_PROVIDER, SignOnRequests::request(), SignOnStatus::NoPassive, Fixtures::now()),
-        )];
+        yield 'a failure' => [
+            static fn (ModelSignOnResponder $responder, Tenant $tenant): PostedForm => $responder->failure(
+                $tenant,
+                new SignOnFailure(self::IDENTITY_PROVIDER, SignOnRequests::request(), SignOnStatus::NoPassive, Fixtures::now()),
+            ),
+        ];
     }
 
     /**
@@ -299,7 +307,15 @@ final class ModelSignOnResponderTest extends TestCase
      */
     private function keyOf(array $publicJwk, array $privateJwk, string $kid): void
     {
-        $key = new TenantKey($kid, $this->tenant, SamlKeys::algorithm(), $publicJwk, Keys::sealer()->seal($this->tenant, $privateJwk), Fixtures::now(), Fixtures::now());
+        $key = new TenantKey(
+            $kid,
+            $this->tenant,
+            SamlKeys::algorithm(),
+            $publicJwk,
+            Keys::sealer()->seal($this->tenant, $privateJwk),
+            Fixtures::now(),
+            Fixtures::now(),
+        );
         $key->activate(Fixtures::now());
         $this->keys = new InMemoryTenantKeyRepository();
         $this->keys->save($key);
@@ -314,13 +330,20 @@ final class ModelSignOnResponderTest extends TestCase
     {
         $certificate = new SelfSignedCertificateIssuer()->selfSigned(SamlKeys::opened($this->key));
 
-        return new PostReceiver(SamlLoader::create())->response($form->fields)->validate(
-            new ResponseValidator(SamlLoader::create(), new FrozenClock(Fixtures::now()), new InMemoryReplayGuard()),
-            new IdentityProvider(self::IDENTITY_PROVIDER, [$certificate->base64], [], [
-                new Endpoint(Binding::HttpRedirect, 'https://id.acme.example/saml/sso'),
-            ]),
-            ExpectedResponse::toRequest(SignOnRequests::ID, SignOnRequests::ASSERTION_CONSUMER, ServiceProviderDocuments::SIGNED),
-        );
+        return new PostReceiver(SamlLoader::create())
+            ->response($form->fields)
+            ->validate(
+                new ResponseValidator(SamlLoader::create(), new FrozenClock(Fixtures::now()), new InMemoryReplayGuard()),
+                new IdentityProvider(
+                    self::IDENTITY_PROVIDER,
+                    [$certificate->base64],
+                    [],
+                    [
+                        new Endpoint(Binding::HttpRedirect, 'https://id.acme.example/saml/sso'),
+                    ],
+                ),
+                ExpectedResponse::toRequest(SignOnRequests::ID, SignOnRequests::ASSERTION_CONSUMER, ServiceProviderDocuments::SIGNED),
+            );
     }
 
     private static function response(): SignOnResponse

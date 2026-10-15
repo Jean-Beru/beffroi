@@ -102,7 +102,10 @@ final class AttributeValueTest extends TestCase
         yield 'an integer' => [1_789_000_000, ['1789000000']];
         yield 'true' => [true, ['true']];
         yield 'false' => [false, ['false']];
-        yield 'a list' => [['admins', 7, false], ['admins', '7', 'false']];
+        yield 'a list' => [
+            ['admins', 7,   false],
+            ['admins', '7', 'false'],
+        ];
         yield 'an empty list' => [[], []];
     }
 

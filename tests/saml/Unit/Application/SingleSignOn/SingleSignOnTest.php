@@ -100,15 +100,18 @@ final class SingleSignOnTest extends TestCase
         $form = $this->singleSignOn()->answer($this->tenant, $request, $session);
 
         // Then
-        static::assertEquals(new SignOnResponse(
-            'https://id.acme.example' . FixedEndpoints::METADATA,
-            $request,
-            PersistentNameId::derive(ServiceProviderDocuments::SIGNED, $session->user->subject, FixedSalt::SALT),
-            [new ReleasedAttribute('urn:oid:0.9.2342.19200300.100.1.3', AttributeNameFormat::Uri, 'mail', [new AttributeValue('alice@example.com')])],
-            $session->id->toRfc4122(),
-            $session->authenticatedAt(),
-            Fixtures::now(),
-        ), $this->responder->response);
+        static::assertEquals(
+            new SignOnResponse(
+                'https://id.acme.example' . FixedEndpoints::METADATA,
+                $request,
+                PersistentNameId::derive(ServiceProviderDocuments::SIGNED, $session->user->subject, FixedSalt::SALT),
+                [new ReleasedAttribute('urn:oid:0.9.2342.19200300.100.1.3', AttributeNameFormat::Uri, 'mail', [new AttributeValue('alice@example.com')])],
+                $session->id->toRfc4122(),
+                $session->authenticatedAt(),
+                Fixtures::now(),
+            ),
+            $this->responder->response,
+        );
         static::assertEquals(new PostedForm(SignOnRequests::ASSERTION_CONSUMER, ['SAMLResponse' => 'success']), $form);
     }
 
@@ -225,7 +228,12 @@ final class SingleSignOnTest extends TestCase
 
         // Then
         static::assertEquals(
-            new SignOnFailure('https://id.acme.example' . FixedEndpoints::METADATA, SignOnRequests::request(authnContextRequested: true), SignOnStatus::NoAuthnContext, Fixtures::now()),
+            new SignOnFailure(
+                'https://id.acme.example' . FixedEndpoints::METADATA,
+                SignOnRequests::request(authnContextRequested: true),
+                SignOnStatus::NoAuthnContext,
+                Fixtures::now(),
+            ),
             $this->responder->failure,
         );
     }
@@ -342,21 +350,25 @@ final class SingleSignOnTest extends TestCase
         return new SingleSignOn(
             new GivenRequests($received ?? SignOnRequests::request()),
             $this->responder,
-            new ConfigurationServiceProviders('acme', [
-                ServiceProviderDocuments::SIGNED => [
-                    'metadata' => '/etc/saml/sp.xml',
-                    'attributes' => [
-                        'urn:oid:0.9.2342.19200300.100.1.3' => [
-                            'claim' => 'email',
-                            'friendly_name' => 'mail',
+            new ConfigurationServiceProviders(
+                'acme',
+                [
+                    ServiceProviderDocuments::SIGNED => [
+                        'metadata' => '/etc/saml/sp.xml',
+                        'attributes' => [
+                            'urn:oid:0.9.2342.19200300.100.1.3' => [
+                                'claim' => 'email',
+                                'friendly_name' => 'mail',
+                            ],
                         ],
                     ],
+                    self::ENCRYPTING => [
+                        'metadata' => '/etc/saml/encrypting.xml',
+                        'encrypt_assertions' => true,
+                    ],
                 ],
-                self::ENCRYPTING => [
-                    'metadata' => '/etc/saml/encrypting.xml',
-                    'encrypt_assertions' => true,
-                ],
-            ], new FixedClaims()),
+                new FixedClaims(),
+            ),
             new AttributeRelease(new FixedClaims(['email' => 'alice@example.com']), new RecordingLogger()),
             new FixedSalt(),
             new FixedEndpoints(),

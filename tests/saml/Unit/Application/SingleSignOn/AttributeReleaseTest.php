@@ -51,10 +51,13 @@ final class AttributeReleaseTest extends TestCase
         $released = $release->of(self::declaration(), Fixtures::user());
 
         // Then
-        static::assertEquals([
-            new ReleasedAttribute(self::MAIL, AttributeNameFormat::Uri, 'mail', [new AttributeValue('alice@example.com')]),
-            new ReleasedAttribute(self::DISPLAY_NAME, AttributeNameFormat::Uri, 'displayName', [new AttributeValue('Alice Liddell')]),
-        ], $released);
+        static::assertEquals(
+            [
+                new ReleasedAttribute(self::MAIL, AttributeNameFormat::Uri, 'mail', [new AttributeValue('alice@example.com')]),
+                new ReleasedAttribute(self::DISPLAY_NAME, AttributeNameFormat::Uri, 'displayName', [new AttributeValue('Alice Liddell')]),
+            ],
+            $released,
+        );
     }
 
     /**
@@ -119,15 +122,18 @@ final class AttributeReleaseTest extends TestCase
         $release->of(self::declaration(), Fixtures::user());
 
         // Then
-        static::assertEquals([[
-            'level' => LogLevel::WARNING,
-            'message' => 'The claim "{claim}" is not sent to the SAML service provider "{service_provider}": {rule}',
-            'context' => [
-                'claim' => 'name',
-                'service_provider' => ServiceProviderDocuments::SIGNED,
-                'rule' => 'An attribute value holds only the characters of XML 1.0, in UTF-8: no NUL, no other control character but the tab, the line feed and the carriage return, no surrogate, no U+FFFE or U+FFFF (spec/saml.md S-16).',
-            ],
-        ]], $this->logger->records);
+        static::assertEquals(
+            [[
+                'level' => LogLevel::WARNING,
+                'message' => 'The claim "{claim}" is not sent to the SAML service provider "{service_provider}": {rule}',
+                'context' => [
+                    'claim' => 'name',
+                    'service_provider' => ServiceProviderDocuments::SIGNED,
+                    'rule' => 'An attribute value holds only the characters of XML 1.0, in UTF-8: no NUL, no other control character but the tab, the line feed and the carriage return, no surrogate, no U+FFFE or U+FFFF (spec/saml.md S-16).',
+                ],
+            ]],
+            $this->logger->records,
+        );
     }
 
     /**
@@ -176,9 +182,14 @@ final class AttributeReleaseTest extends TestCase
      */
     private static function declaration(?array $attributes = null): ServiceProvider
     {
-        return new ServiceProvider(ServiceProviderDocuments::SIGNED, new MetadataLocation('/etc/saml/sp.xml'), [], $attributes ?? [
-            new AttributeMapping('email', self::MAIL, AttributeNameFormat::Uri, 'mail'),
-            new AttributeMapping('name', self::DISPLAY_NAME, AttributeNameFormat::Uri, 'displayName'),
-        ]);
+        return new ServiceProvider(
+            ServiceProviderDocuments::SIGNED,
+            new MetadataLocation('/etc/saml/sp.xml'),
+            [],
+            $attributes ?? [
+                new AttributeMapping('email', self::MAIL, AttributeNameFormat::Uri, 'mail'),
+                new AttributeMapping('name', self::DISPLAY_NAME, AttributeNameFormat::Uri, 'displayName'),
+            ],
+        );
     }
 }
