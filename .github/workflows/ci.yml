@@ -103,7 +103,7 @@ jobs:
       # nothing, 6.2 s with one source file changed, on one machine). It compresses to 2.3 MB, so the
       # 10 GB a repository is given is not spent on entries nobody reads.
       # One result cache per analysis: the identity provider's packages, then each SAML package under its own
-      # configuration (castor phpstan runs the four).
+      # configuration, beffroi/saml among them (castor phpstan runs the five).
       - uses: actions/cache@v6
         with:
           path: |
@@ -111,6 +111,7 @@ jobs:
             .ci-tools/cache/phpstan-xml-security/resultCache.php
             .ci-tools/cache/phpstan-saml2-model/resultCache.php
             .ci-tools/cache/phpstan-saml2-bindings/resultCache.php
+            .ci-tools/cache/phpstan-saml/resultCache.php
           key: "phpstan-${{ steps.tools.outputs.phpstan }}-${{ hashFiles('.ci-tools/phpstan*.neon') }}-${{ github.sha }}"
           restore-keys: "phpstan-${{ steps.tools.outputs.phpstan }}-${{ hashFiles('.ci-tools/phpstan*.neon') }}-"
       - name: "Static Analysis (PHPStan)"
