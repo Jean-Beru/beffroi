@@ -19,6 +19,8 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class EndSessionControllerTest extends BrowserTestCase
 {
+    use TokensOfASession;
+
     /**
      * §4: a logout request from a browser that holds no session is honoured as is.
      */
@@ -143,6 +145,29 @@ final class EndSessionControllerTest extends BrowserTestCase
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         static::assertSame('https://demo.test/', $response->headers->get('Location'));
         self::assertInteractionHeaders($response);
+    }
+
+    /**
+     * Issue #741, decision 0006: the tokens issued under the session the endpoint ends are revoked with it,
+     * on the event every end of a session announces and not by the endpoint itself.
+     */
+    #[Test]
+    public function aLogoutRevokesTheTokensIssuedUnderTheSession(): void
+    {
+        // Given
+        self::signingKey();
+        $session = $this->signIn(self::user('alice'));
+        $tokens = self::tokensIssuedIn($session);
+        $idToken = $this->idTokenOfTheBoundBrowser();
+
+        // When
+        $this->browser->request('GET', '/logout', [
+            'id_token_hint' => $idToken,
+            'post_logout_redirect_uri' => 'https://demo.test/',
+        ]);
+
+        // Then
+        self::assertTheTokensAreRevoked($tokens);
     }
 
     /**

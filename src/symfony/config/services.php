@@ -467,6 +467,7 @@ use Beffroi\Oidc\Application\Dpop\DpopProofValidator;
 use Beffroi\Oidc\Application\Dpop\DpopProofVerifier;
 use Beffroi\Oidc\Application\EndSession\BackChannelLogout;
 use Beffroi\Oidc\Application\EndSession\EndSessionHandler;
+use Beffroi\Oidc\Application\EndSession\SessionTokensRevocation;
 use Beffroi\Oidc\Application\EndSession\EndSessionRequestParser;
 use Beffroi\Oidc\Application\EndSession\FrontChannelLogout;
 use Beffroi\Oidc\Application\EndSession\LogoutTokenIssuer;
@@ -609,6 +610,7 @@ use Beffroi\Oidc\Port\ServedGrantsInterface;
 use Beffroi\Oidc\Port\CompactJwtReaderInterface;
 use Beffroi\Oidc\Port\ConsentRepositoryInterface;
 use Beffroi\Oidc\Port\CanRevokeAccessTokensByConsentInterface;
+use Beffroi\Oidc\Port\CanRevokeAccessTokensBySessionInterface;
 use Beffroi\Oidc\Port\RefreshTokensOfAConsentInterface;
 use Beffroi\Oidc\Port\DpopProofReplayGuardInterface;
 use Beffroi\Oidc\Port\EndpointLocatorInterface;
@@ -1134,6 +1136,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(DoctrineAccessTokenRepository::class)->tag('beffroi.dead_records');
     $services->alias(AccessTokenRepositoryInterface::class, DoctrineAccessTokenRepository::class);
     $services->alias(CanRevokeAccessTokensByConsentInterface::class, DoctrineAccessTokenRepository::class);
+    $services->alias(CanRevokeAccessTokensBySessionInterface::class, DoctrineAccessTokenRepository::class);
     $services->set(DoctrineConsentRepository::class);
     $services->alias(ConsentRepositoryInterface::class, DoctrineConsentRepository::class);
     // what the page of the account lists, read past the profiler: it is no interaction
@@ -1917,6 +1920,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(EndSessionHandler::class);
     $services->set(LogoutTokenIssuer::class);
     $services->set(BackChannelLogout::class);
+    $services->set(SessionTokensRevocation::class);
     $services->set(FrontChannelLogout::class);
     // The two ways of telling a client that a session ended (architecture §4.9): one class per channel,
     // and what is tagged is what the discovery document announces, never an enumeration kept beside it
