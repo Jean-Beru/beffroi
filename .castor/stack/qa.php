@@ -872,6 +872,7 @@ const INFECTION_STRICT_FILES = [
     'src/saml2-model/src/Internal/Logout/LogoutContext.php',
     'src/saml2-model/src/Internal/Logout/LogoutRequestReader.php',
     'src/saml2-model/src/Internal/Logout/LogoutResponseReader.php',
+    'src/saml2-model/src/Internal/Logout/ReplayWindow.php',
     // Section 9: the logout validators and what they return (section 5.6).
     'src/saml2-model/src/Validation/LogoutRequestValidator.php',
     'src/saml2-model/src/Validation/LogoutResponseValidator.php',
