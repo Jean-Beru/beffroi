@@ -61,10 +61,16 @@ beffroi:
     # metadata is served at /saml/metadata, the certificate of each key in service in it. Every service provider is
     # asked to sign its requests, which is the default and the setting a broker configured from that metadata signs
     # its requests by (spec/model.md section 6.9); a deployment that serves no SAML drops this section, and its
-    # tenant then draws no SAML key and serves no metadata.
+    # tenant then draws no SAML key and serves no metadata. Its key is a family of its own (issue
+    # beffroi-php/beffroi#738, spec/saml.md S-12): a rotation publishes the next certificate seven days before it
+    # signs, the key works a year, and the metadata tells a service provider to fetch it again every day; the keys of
+    # the JWK Set keep the figures of "keys".
     saml:
         identity_provider:
             want_authn_requests_signed: true
+            staging_delay: 604800
+            age: 31536000
+            cache_duration: 86400
     webauthn:
         # The FIDO metadata the passkey ceremonies check an attestation against, next to the keys: filled by hand
         # with "beffroi:webauthn:mds-refresh" (the blob of the FIDO Alliance, verified under its root) and
