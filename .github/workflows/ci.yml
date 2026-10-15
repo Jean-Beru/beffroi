@@ -196,7 +196,7 @@ jobs:
           composer-options: --optimize-autoloader
       - name: "libxml and OpenSSL of this build"
         run: castor libxml
-      - run: castor phpunit -- --no-coverage --testsuite xml-security,saml2-model,saml2-bindings
+      - run: castor phpunit -- --no-coverage --testsuite xml-security,saml2-model,saml2-bindings,saml
 
   oracle:
     name: "6️⃣ Oracles (xmlsec1, OpenSSL)"
