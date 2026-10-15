@@ -132,6 +132,40 @@ final class AcceptedMetadataTest extends TestCase
         static::assertEquals(Fixtures::now(), $metadata->acceptedAt);
     }
 
+    /**
+     * S-6: the validUntil is kept to the second, as its column keeps it.
+     */
+    #[Test]
+    public function theValidUntilIsKeptToTheSecond(): void
+    {
+        // When
+        $metadata = self::accepted(new DateTimeImmutable('2026-10-01T00:00:00.600000Z'));
+
+        // Then
+        static::assertEquals(new DateTimeImmutable('2026-10-01T00:00:00Z'), $metadata->validUntil);
+    }
+
+    /**
+     * S-6: a document whose validUntil is in the same second as the accepted one's is not older, whatever their
+     * fractions, the column keeping neither.
+     */
+    #[Test]
+    public function aValidUntilWithAFractionOfTheSameSecondIsNotOlder(): void
+    {
+        // Given
+        $metadata = self::accepted(new DateTimeImmutable('2026-10-01T00:00:00.600000Z'));
+
+        // When
+        $metadata->replaceWith(
+            new ServiceProviderMetadata(self::ENTITY_ID, new DateTimeImmutable('2026-10-01T00:00:00.300000Z'), []),
+            self::NEWER,
+            Fixtures::now(),
+        );
+
+        // Then
+        static::assertEquals(new DateTimeImmutable('2026-10-01T00:00:00Z'), $metadata->validUntil);
+    }
+
     #[Test]
     public function aDocumentOfAnotherEntityIsAProgrammingError(): void
     {
