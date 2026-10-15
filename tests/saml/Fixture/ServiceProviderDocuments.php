@@ -40,9 +40,10 @@ final readonly class ServiceProviderDocuments
     public const string SIGNED = 'https://sp.example.org/saml';
 
     /**
-     * The entity ID of Entra's SAML federation of guests.
+     * The entity ID of Entra's SAML federation of guests, the tenanted issuer of the AuthnRequest Entra sends for a new
+     * federation, the tenant ID the placeholder of Microsoft's documentation (spec/saml.md section 7).
      */
-    public const string ENTRA = 'urn:federation:MicrosoftOnline';
+    public const string ENTRA = 'https://login.microsoftonline.com/aaaabbbb-0000-cccc-1111-dddd2222eeee/';
 
     /**
      * Where Entra's SAML federation of guests receives the assertion.

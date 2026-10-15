@@ -19,7 +19,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class AuthnRequestSigningTest extends TestCase
 {
-    private const string ENTITY_ID = 'urn:federation:MicrosoftOnline';
+    private const string ENTITY_ID = 'https://login.microsoftonline.com/aaaabbbb-0000-cccc-1111-dddd2222eeee/';
 
     /**
      * S-9, the table of section 6.3 step 2: a request is unsigned only where the declaration says the provider does
