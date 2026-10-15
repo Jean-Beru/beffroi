@@ -1015,3 +1015,11 @@ when@test:
                         'urn:oid:2.16.840.1.113730.3.1.241':
                             claim: name
                             friendly_name: displayName
+                # Entra's SAML federation of guests (issue #736, spec/saml.md section 7): its metadata the ones an
+                # administrator writes by hand, no key, its requests unsigned; the one claim it requires.
+                'https://login.microsoftonline.com/aaaabbbb-0000-cccc-1111-dddd2222eeee/':
+                    metadata: '%kernel.project_dir%/../saml/Fixture/metadata/entra-guest-federation-sp.xml'
+                    signs_authn_requests: false
+                    attributes:
+                        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress':
+                            claim: email
