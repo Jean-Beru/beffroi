@@ -862,9 +862,12 @@ function saml_sp_logged_out_by_the_provider(array $journey, string $issuer, stri
         parse_url($issuer, \PHP_URL_PORT) === null ? '' : ':' . parse_url($issuer, \PHP_URL_PORT),
     );
 
+    saml_sp_participation_recorded($cookies, $ca, $source);
+
     [$status, , $page] = demo_request($cookies, $ca, 'GET', $issuer . '/logout');
     demo_expect($status === 200, sprintf('the end session endpoint of the provider asks the browser to confirm (got %d)', $status));
-    $form = demo_form_with($page, '_token', 'with the form of the confirmation and its token');
+    $form = demo_form_with($page, 'confirm', 'with the form of the confirmation');
+    demo_expect(str_contains($form, 'name="_token"'), 'and its token');
     demo_expect(preg_match('/action="([^"]+)"/', $form, $action) === 1, 'which posts back to the end session endpoint');
     [$status, $request] = demo_request($cookies, $ca, 'POST', $origin . html_entity_decode($action[1]), [...demo_form_fields($form), 'confirm' => 'yes']);
     demo_expect(
@@ -944,6 +947,42 @@ function saml_sp_logged_out_by_the_provider(array $journey, string $issuer, stri
     );
 
     return $answered;
+}
+
+/**
+ * The part of SimpleSAMLphp in the session of the provider, which the provider records from the queue of its events
+ * (spec/saml.md S-26) and which its logout reads to tell it (S-30): the walk signs out within a second of the sign-on,
+ * faster than a worker may have written the row, so it waits for the row, by the session index SimpleSAMLphp holds, up to
+ * thirty seconds, and says how long it waited. A row that never comes is a failure of the walk, named as such, and not a
+ * chain that would end without telling anybody.
+ *
+ * @param array<string, array<string, string>> $cookies
+ */
+function saml_sp_participation_recorded(array $cookies, string $ca, string $source): void
+{
+    [$status, , $body] = demo_request($cookies, $ca, 'GET', SAML_SP_URL . '/simplesaml/status.php?as=' . $source);
+    $session = json_decode($body, true);
+    $sessionIndex = is_array($session) ? (string) ($session['sessionIndex'] ?? '') : '';
+    demo_expect(
+        $status === 200 && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/', $sessionIndex) === 1,
+        sprintf('SimpleSAMLphp holds the session index of the assertion, the ID of the session of the provider (got %d %s)', $status, $sessionIndex),
+    );
+    for ($waited = 0; $waited < 30; ++$waited) {
+        $count = op_console(
+            ['dbal:run-sql', sprintf("SELECT COUNT(*) AS participants FROM beffroi_saml_session_participant WHERE session_id = '%s'", $sessionIndex)],
+            context()->withQuiet()->withAllowFailure(),
+        );
+        if ($count->isSuccessful() && preg_match('/^\s*([0-9]+)\s*$/m', $count->getOutput(), $rows) === 1 && (int) $rows[1] > 0) {
+            demo_expect(true, sprintf(
+                'the provider recorded the part of SimpleSAMLphp in the session from the queue of its events, after %d s (S-26)',
+                $waited,
+            ));
+
+            return;
+        }
+        sleep(1);
+    }
+    demo_expect(false, 'the provider recorded the part of SimpleSAMLphp in the session within 30 s (S-26): is the worker consuming the events?');
 }
 
 /**
