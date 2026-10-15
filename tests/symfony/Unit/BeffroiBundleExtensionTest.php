@@ -8,6 +8,8 @@ use DateInterval;
 use Beffroi\Bundle\BeffroiBundle;
 use Beffroi\Bundle\Key\FileTenantKeyRepository;
 use Beffroi\Bundle\Key\StagingDelay;
+use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
+use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Tenant\TenantFactory;
 use Beffroi\Core\Application\Key\KeyStaging;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
@@ -22,6 +24,8 @@ use Beffroi\Oidc\Application\Token\OpaqueAccessTokenVerifier;
 use Beffroi\Oidc\Application\Token\TokenIssuer;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
+use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -284,6 +288,82 @@ final class BeffroiBundleExtensionTest extends TestCase
         $encrypter = $container->getDefinition('beffroi.personal_data.encrypter');
         static::assertTrue($encrypter->isLazy());
         static::assertTrue($encrypter->isPublic());
+    }
+
+    /**
+     * beffroi/saml, spec/saml.md section 5.1: a deployment that does not enable the SAML identity provider draws no
+     * SAML key, its algorithm being wired by nothing.
+     */
+    #[Test]
+    public function aDeploymentWithoutTheSamlIdentityProviderDrawsNoSamlKey(): void
+    {
+        // When
+        $container = self::load([]);
+
+        // Then
+        static::assertFalse($container->getDefinition(SamlSigning::class)->hasTag(JoseSamlSigningAlgorithms::TAG));
+    }
+
+    /**
+     * Spec/saml.md section 5.1, S-1, S-2: enabled, the algorithm of the SAML key is wired with the others, so that
+     * the key commands and the scheduled step treat it as every key of the tenant.
+     */
+    #[Test]
+    public function enablingTheSamlIdentityProviderWiresItsKey(): void
+    {
+        // When
+        $container = self::load([
+            'saml' => [
+                'identity_provider' => null,
+            ],
+        ]);
+
+        // Then
+        static::assertTrue($container->getDefinition(SamlSigning::class)->hasTag(JoseSamlSigningAlgorithms::TAG));
+    }
+
+    /**
+     * Spec/saml.md S-4, section 6.1 steps 4 and 6: WantAuthnRequestsSigned true unless the tenant says otherwise, and
+     * the metadata cacheable for the max-age of its keys.
+     *
+     * @param array<string, mixed> $identityProvider
+     */
+    #[Test]
+    #[DataProvider('provideIdentityProviders')]
+    public function theSettingsOfTheIdentityProviderReachItsMetadata(array $identityProvider, bool $wantAuthnRequestsSigned): void
+    {
+        // When
+        $container = self::load([
+            'keys' => [
+                'kms' => 'op',
+                'key_id' => 'signing',
+                'jwks_max_age' => 90,
+            ],
+            'saml' => [
+                'identity_provider' => $identityProvider,
+            ],
+        ]);
+
+        // Then
+        $handler = $container->getDefinition(IdentityProviderMetadataHandler::class);
+        static::assertSame(
+            [$wantAuthnRequestsSigned, 90],
+            [$handler->getArgument('$wantAuthnRequestsSigned'), $handler->getArgument('$maxAge')],
+        );
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, bool}>
+     */
+    public static function provideIdentityProviders(): iterable
+    {
+        yield 'the default' => [[], true];
+        yield 'signed requests turned off' => [
+            [
+                'want_authn_requests_signed' => false,
+            ],
+            false,
+        ];
     }
 
     /**

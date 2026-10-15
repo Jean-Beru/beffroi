@@ -323,6 +323,12 @@ deptrac:
       - 'OidcPort'
       - 'OidcApplication'
       - 'OidcBridge'
+      # beffroi/saml, which the bundle wires and serves the routes of (spec/saml.md section 2): its four layers, never
+      # the SAML stack under them, which is the Bridge's
+      - 'SamlDomain'
+      - 'SamlPort'
+      - 'SamlApplication'
+      - 'SamlBridge'
       - 'Psr'
       - 'PsrClock'
       - 'Symfony'

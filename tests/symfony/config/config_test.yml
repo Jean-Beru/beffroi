@@ -188,6 +188,11 @@ beffroi:
     # subject is what wires it, here as in any deployment (architecture §5.6).
     web_push:
         subject: 'mailto:operator@op.test'
+    # The tenant of the tests is a SAML identity provider (beffroi/saml, spec/saml.md section 6.1): its key is
+    # drawn by the key commands under SAML-SIGNING, as every key of the tenant, and its metadata is served at
+    # /saml/metadata, WantAuthnRequestsSigned left at its default.
+    saml:
+        identity_provider: ~
     mutual_tls:
         # The host whose listener asks for a client certificate (RFC 8705 §5): the same application, the
         # aliases of the discovery document pointing at it.
