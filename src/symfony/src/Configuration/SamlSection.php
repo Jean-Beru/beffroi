@@ -95,7 +95,7 @@ final readonly class SamlSection extends ConfigurationSection
             ->defaultFalse()
             ->end()
             ->booleanNode('signs_authn_requests')
-            ->info('This service provider signs its authentication requests. Turned off for one that cannot, Entra among them, whose unsigned requests are then the only ones accepted (issue #730); there is no switch for the tenant or for the deployment.')
+            ->info('This service provider signs its authentication requests. Turned off for one that cannot, Entra among them, whose unsigned requests are then the only ones accepted (issue #730); a provider that signs is refused while its metadata hold no key for signing (S-11); there is no switch for the tenant or for the deployment.')
             ->defaultTrue()
             ->end()
             ->end()

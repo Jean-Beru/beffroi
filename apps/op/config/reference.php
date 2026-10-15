@@ -1711,7 +1711,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *                 friendly_name?: scalar|Param|null, // A name a person reads (Core section 2.7.3.1), which nothing compares. // Default: null
  *             }>,
  *             encrypt_assertions?: bool|Param, // The assertions of this service provider are encrypted to a key of its metadata, which must then hold one for encryption, or the metadata are refused (spec/saml.md S-7). // Default: false
- *             signs_authn_requests?: bool|Param, // This service provider signs its authentication requests. Turned off for one that cannot, Entra among them, whose unsigned requests are then the only ones accepted (issue #730); there is no switch for the tenant or for the deployment. // Default: true
+ *             signs_authn_requests?: bool|Param, // This service provider signs its authentication requests. Turned off for one that cannot, Entra among them, whose unsigned requests are then the only ones accepted (issue #730); a provider that signs is refused while its metadata hold no key for signing (S-11); there is no switch for the tenant or for the deployment. // Default: true
  *         }>,
  *     },
  * }
