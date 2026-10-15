@@ -19,10 +19,14 @@ declare(strict_types=1);
  * The walk is the browser, as the walks of demo.php are: one request at a time, no redirect followed, a cookie jar per
  * host, the page of the provider read with the eyes of a person. Every document it captures goes to var/saml-sp/captured/.
  *
+ * With --encrypted (issue #733, spec/saml.md S-19 to S-21), the walk plays the second service provider of the same
+ * SimpleSAMLphp, "beffroi-encrypted": its configuration sets "assertion.encryption", so that it refuses an assertion in
+ * clear, and its declaration in apps/op/config/packages/beffroi.yaml sets "encrypt_assertions". The Response captured is
+ * checked to carry its assertion encrypted, under aes256-gcm and rsa-oaep-mgf1p and nothing in CBC; xmlsec1 decrypts it
+ * under var/saml-sp/sp.pem, and the assertion it gives back joins the documents saml_sp_verify_responses() verifies, its
+ * signature under the metadata of the provider, as the signature of the Response over the ciphertext is.
+ *
  * What the next stories attach to, each at the place named, and nothing of it is built before its story:
- *   #733 (assertion encrypted)  the declaration in apps/op/config/packages/beffroi.yaml gets "encrypt_assertions: true";
- *                               saml_sp_sign_on_at_the_provider() decrypts the Response with xml-security-xmlsec-decrypt
- *                               under var/saml-sp/sp.pem before saml_sp_verify_responses() reads it
  *   #734, #735 (Single Logout)  a saml_sp_log_out() beside saml_sp_sign_on_at_the_provider(), played on the journeys
  *                               saml_sp() holds once they are signed in: the SP starts it at
  *                               /simplesaml/module.php/saml/sp/logout/beffroi, the provider starts it for the
@@ -31,6 +35,7 @@ declare(strict_types=1);
 
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
+use function Castor\capture;
 use function Castor\context;
 use function Castor\io;
 use function Castor\load_dot_env;
@@ -52,6 +57,25 @@ const SAML_SP_ENTITY_ID = SAML_SP_URL . '/simplesaml/module.php/saml/sp/metadata
 const SAML_SP_DIRECTORY = 'var/saml-sp';
 
 const SAML_SP_METADATA_FILE = SAML_SP_DIRECTORY . '/metadata/sp-metadata.xml';
+
+/**
+ * The two service providers of the one SimpleSAMLphp, by the name of their authentication source
+ * (docker/saml-sp/config/authsources.php), and the file the metadata of each are written to, which the declaration of
+ * each in apps/op/config/packages/beffroi.yaml names: "beffroi" takes its assertion in clear, "beffroi-encrypted"
+ * demands it encrypted (issue #733).
+ */
+const SAML_SP_SOURCES = [
+    'beffroi' => SAML_SP_METADATA_FILE,
+    'beffroi-encrypted' => SAML_SP_DIRECTORY . '/metadata/sp-encrypted-metadata.xml',
+];
+
+/**
+ * What the encrypted assertion is encrypted under (spec/saml.md S-20), as the EncryptionMethod elements name it.
+ */
+const SAML_SP_ENCRYPTION = [
+    'content' => 'http://www.w3.org/2009/xmlenc11#aes256-gcm',
+    'key' => 'http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p',
+];
 
 const SAML_SP_CAPTURED = SAML_SP_DIRECTORY . '/captured';
 
@@ -75,6 +99,8 @@ function saml_sp(
     bool $redirect = false,
     #[AsOption(description: 'Play the HTTP-POST binding alone')]
     bool $post = false,
+    #[AsOption(description: 'Play the service provider that demands its assertion encrypted, "beffroi-encrypted" (issue #733): the assertion on the wire checked to be encrypted, then decrypted by xmlsec1 before its signature is verified')]
+    bool $encrypted = false,
     #[AsOption(description: 'Stop the service provider')]
     bool $stop = false,
 ): void {
@@ -94,6 +120,7 @@ function saml_sp(
     }
     $issuer = rtrim($env['BEFFROI_ISSUER'], '/');
     $bindings = $redirect || $post ? array_keys(array_filter(['redirect' => $redirect, 'post' => $post])) : array_keys(SAML_SP_BINDINGS);
+    $source = $encrypted ? 'beffroi-encrypted' : 'beffroi';
 
     io()->section('The service provider');
     $ca = saml_sp_start();
@@ -102,7 +129,7 @@ function saml_sp(
     $endpoint = saml_sp_reads_the_metadata($issuer, $ca);
 
     io()->section('The provider registers it');
-    saml_sp_register($ca);
+    saml_sp_register($ca, $source);
     if ($up) {
         io()->success(sprintf('%s serves SimpleSAMLphp, which reads %s/saml/metadata; the provider holds its metadata.', SAML_SP_URL, $issuer));
 
@@ -112,7 +139,7 @@ function saml_sp(
     io()->section('The AuthnRequests of the service provider');
     $journeys = [];
     foreach ($bindings as $binding) {
-        $journeys[$binding] = saml_sp_requests_sign_on($binding, $ca, $endpoint);
+        $journeys[$binding] = saml_sp_requests_sign_on($binding, $ca, $endpoint, $source);
     }
     // the service provider goes back to playing whatever the metadata say, for whoever uses it by hand
     file_put_contents(SAML_SP_DIRECTORY . '/sso-binding', '');
@@ -125,10 +152,11 @@ function saml_sp(
     saml_sp_verify_responses($journeys);
 
     io()->success(sprintf(
-        'SimpleSAMLphp signed %s in at %s over %s, and every document that crossed was verified.',
+        'SimpleSAMLphp signed %s in at %s over %s%s, and every document that crossed was verified.',
         DEV_USERNAME,
         $issuer,
         implode(' and ', array_map(static fn (string $binding): string => SAML_SP_BINDINGS[$binding], array_keys($journeys))),
+        $encrypted ? ', its assertion encrypted' : '',
     ));
 }
 
@@ -256,23 +284,34 @@ function saml_sp_reads_the_metadata(string $issuer, string $ca): array
 }
 
 /**
+ * The entity ID of a service provider of the SimpleSAMLphp, by its authentication source, as its own metadata carry it
+ * and as beffroi.saml.service_providers declares it.
+ */
+function saml_sp_entity_id(string $source): string
+{
+    return SAML_SP_URL . '/simplesaml/module.php/saml/sp/metadata/' . $source;
+}
+
+/**
  * The metadata of the service provider written where the development configuration says the provider reads them, then
  * registered with the console command a deployment uses: the same object the schedule runs every hour.
  */
-function saml_sp_register(string $ca): void
+function saml_sp_register(string $ca, string $source = 'beffroi'): void
 {
     $cookies = [];
-    [$status, , $metadata] = demo_request($cookies, $ca, 'GET', SAML_SP_ENTITY_ID);
+    $entityId = saml_sp_entity_id($source);
+    $file = SAML_SP_SOURCES[$source];
+    [$status, , $metadata] = demo_request($cookies, $ca, 'GET', $entityId);
     demo_expect(
-        $status === 200 && str_contains($metadata, 'entityID="' . SAML_SP_ENTITY_ID . '"') && str_contains($metadata, 'SPSSODescriptor'),
-        sprintf('%s serves the metadata of the service provider (got %d)', SAML_SP_ENTITY_ID, $status),
+        $status === 200 && str_contains($metadata, 'entityID="' . $entityId . '"') && str_contains($metadata, 'SPSSODescriptor'),
+        sprintf('%s serves the metadata of the service provider (got %d)', $entityId, $status),
     );
-    file_put_contents(SAML_SP_METADATA_FILE . '.tmp', $metadata);
-    rename(SAML_SP_METADATA_FILE . '.tmp', SAML_SP_METADATA_FILE);
+    file_put_contents($file . '.tmp', $metadata);
+    rename($file . '.tmp', $file);
     file_put_contents(SAML_SP_CAPTURED . '/sp-metadata.xml', $metadata);
-    io()->text(' <info>✓</info> written to ' . SAML_SP_METADATA_FILE . ', which op reads at /saml-sp/sp-metadata.xml');
+    io()->text(sprintf(' <info>✓</info> written to %s, which op reads at /saml-sp/%s', $file, basename($file)));
 
-    $refresh = op_console(['beffroi:saml:service-provider:refresh', SAML_SP_ENTITY_ID], context()->withAllowFailure());
+    $refresh = op_console(['beffroi:saml:service-provider:refresh', $entityId], context()->withAllowFailure());
     demo_expect($refresh->isSuccessful(), 'beffroi:saml:service-provider:refresh registers it (its output above says why not)');
 }
 
@@ -282,23 +321,24 @@ function saml_sp_register(string $ca): void
  * to. Nothing is sent to the provider: that is the next section's, and what is captured here is verified first.
  *
  * @param array{sso: string, entityId: string} $endpoint
- * @return array{binding: string, cookies: array<string, array<string, string>>, request: array{method: string, url: string, fields: array<string, string>}, ssoUrl: string}
+ * @return array{binding: string, source: string, cookies: array<string, array<string, string>>, request: array{method: string, url: string, fields: array<string, string>}, ssoUrl: string}
  */
-function saml_sp_requests_sign_on(string $binding, string $ca, array $endpoint): array
+function saml_sp_requests_sign_on(string $binding, string $ca, array $endpoint, string $source = 'beffroi'): array
 {
     // SimpleSAMLphp sends the request to the HTTP-Redirect service whenever the metadata list one: the file narrows the
     // single sign-on service it sees to the binding being played (docker/saml-sp/metadata/saml20-idp-remote.php)
     file_put_contents(SAML_SP_DIRECTORY . '/sso-binding', $binding);
     $cookies = [];
-    $returnTo = SAML_SP_URL . '/simplesaml/status.php';
+    $returnTo = SAML_SP_URL . '/simplesaml/status.php?as=' . $source;
     [$status, $location, $page] = demo_request(
         $cookies,
         $ca,
         'GET',
-        SAML_SP_URL . '/simplesaml/module.php/saml/sp/login/beffroi?ReturnTo=' . rawurlencode($returnTo),
+        SAML_SP_URL . '/simplesaml/module.php/saml/sp/login/' . $source . '?ReturnTo=' . rawurlencode($returnTo),
     );
     $journey = [
         'binding' => $binding,
+        'source' => $source,
         'cookies' => $cookies,
         'ssoUrl' => $endpoint['sso'],
     ];
@@ -434,11 +474,12 @@ function saml_sp_in_phpqa(string $script, string $argument): void
  * (spec/saml.md S-18) and is resumed into the page that posts the Response, in the binding the metadata name for it
  * (HTTP-POST, SAML Bindings §3.5).
  *
- * @param array{binding: string, cookies: array<string, array<string, string>>, request: array{method: string, url: string, fields: array<string, string>}, ssoUrl: string} $journey
+ * @param array{binding: string, source?: string, cookies: array<string, array<string, string>>, request: array{method: string, url: string, fields: array<string, string>}, ssoUrl: string} $journey
  * @return array{binding: string, cookies: array<string, array<string, string>>, response?: string}
  */
 function saml_sp_sign_on_at_the_provider(array $journey, string $issuer, string $password, string $ca): array
 {
+    $source = $journey['source'] ?? 'beffroi';
     $cookies = $journey['cookies'];
     $request = $journey['request'];
     $binding = SAML_SP_BINDINGS[$journey['binding']];
@@ -465,20 +506,23 @@ function saml_sp_sign_on_at_the_provider(array $journey, string $issuer, string 
     demo_expect($status === 200, sprintf('the provider answers with the page that posts the Response (got %d %s)', $status, substr($location, 0, 120)));
     $form = saml_sp_page_form($page);
     demo_expect(
-        str_starts_with($form['action'], SAML_SP_URL . '/simplesaml/module.php/saml/sp/saml2-acs.php/beffroi') && isset($form['fields']['SAMLResponse']),
+        $form['action'] === SAML_SP_URL . '/simplesaml/module.php/saml/sp/saml2-acs.php/' . $source && isset($form['fields']['SAMLResponse']),
         sprintf('which posts SAMLResponse to the assertion consumer service of the service provider (it posts to %s)', $form['action']),
     );
     $response = base64_decode($form['fields']['SAMLResponse'], true);
     demo_expect($response !== false, 'a base64 Response');
     $name = sprintf('response-%s.xml', $journey['binding']);
     file_put_contents(SAML_SP_CAPTURED . '/' . $name, $response);
+    if ($source === 'beffroi-encrypted') {
+        saml_sp_encrypted_on_the_wire($response);
+    }
 
     [$status, $location] = demo_request($cookies, $ca, 'POST', $form['action'], $form['fields']);
     demo_expect(
         in_array($status, [302, 303], true) && str_starts_with($location, SAML_SP_URL . '/simplesaml/status.php'),
         sprintf('SimpleSAMLphp accepts it and sends the browser back to where it came from (got %d %s)', $status, substr($location, 0, 120)),
     );
-    [$status, , $body] = demo_request($cookies, $ca, 'GET', SAML_SP_URL . '/simplesaml/status.php');
+    [$status, , $body] = demo_request($cookies, $ca, 'GET', SAML_SP_URL . '/simplesaml/status.php?as=' . $source);
     $session = json_decode($body, true);
     demo_expect($status === 200 && is_array($session) && ($session['authenticated'] ?? false) === true, 'its session is open');
 
@@ -511,6 +555,65 @@ function saml_sp_verify_responses(array $journeys): void
     if (array_filter($journeys, static fn (array $journey): bool => isset($journey['response'])) === []) {
         return;
     }
+    foreach (glob(SAML_SP_CAPTURED . '/response-*.xml') ?: [] as $file) {
+        if (str_contains((string) file_get_contents($file), 'EncryptedAssertion')) {
+            saml_sp_decrypt($file);
+        }
+    }
     io()->text('xmlsec1, the signatures of the Responses:');
     saml_sp_xmlsec1();
+}
+
+/**
+ * The acceptance of issue #733 on the wire (spec/saml.md S-19, S-20): the Response carries one saml:EncryptedAssertion
+ * and no assertion in clear, its content under aes256-gcm and its key under rsa-oaep-mgf1p, and nothing of it names
+ * CBC.
+ */
+function saml_sp_encrypted_on_the_wire(string $response): void
+{
+    $dom = new DOMDocument();
+    demo_expect($dom->loadXML($response), 'the Response is well-formed XML');
+    $xpath = new DOMXPath($dom);
+    $xpath->registerNamespace('samlp', 'urn:oasis:names:tc:SAML:2.0:protocol');
+    $xpath->registerNamespace('saml', 'urn:oasis:names:tc:SAML:2.0:assertion');
+    $xpath->registerNamespace('xenc', 'http://www.w3.org/2001/04/xmlenc#');
+    $xpath->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
+    demo_expect(
+        (int) $xpath->evaluate('count(/samlp:Response/saml:EncryptedAssertion)') === 1
+        && (int) $xpath->evaluate('count(//saml:Assertion)') === 0,
+        'its assertion is encrypted: one saml:EncryptedAssertion, no saml:Assertion in clear',
+    );
+    demo_expect(
+        (string) $xpath->evaluate('string(/samlp:Response/saml:EncryptedAssertion/xenc:EncryptedData/xenc:EncryptionMethod/@Algorithm)') === SAML_SP_ENCRYPTION['content']
+        && (string) $xpath->evaluate('string(/samlp:Response/saml:EncryptedAssertion/xenc:EncryptedData/ds:KeyInfo/xenc:EncryptedKey/xenc:EncryptionMethod/@Algorithm)') === SAML_SP_ENCRYPTION['key'],
+        sprintf('under %s, its key under %s', SAML_SP_ENCRYPTION['content'], SAML_SP_ENCRYPTION['key']),
+    );
+    demo_expect(stripos($response, 'cbc') === false, 'nothing of it names CBC');
+}
+
+/**
+ * xmlsec1, which is not the provider and not SimpleSAMLphp, decrypts the assertion of a Response captured with the
+ * private key of the service provider, and the assertion it gives back is written beside it, so that
+ * saml_sp_xmlsec1() verifies its signature as a document of its own.
+ */
+function saml_sp_decrypt(string $file): void
+{
+    $assertion = capture([
+        'docker',
+        'run',
+        '--rm',
+        '-v',
+        getcwd() . ':/project:ro',
+        '-w',
+        '/project',
+        'alpine:3.22',
+        'sh',
+        '-c',
+        'apk add -q xmlsec libxml2-utils >/dev/null 2>&1'
+            . ' && xmlsec1 --decrypt --lax-key-search --privkey-pem ' . SAML_SP_DIRECTORY . '/sp.pem --output /tmp/decrypted.xml ' . escapeshellarg($file)
+            . ' && xmllint --xpath \'/*/*[local-name()="EncryptedAssertion"]/*[local-name()="Assertion"]\' /tmp/decrypted.xml',
+    ]);
+    $name = basename($file, '.xml') . '.decrypted-assertion.xml';
+    file_put_contents(SAML_SP_CAPTURED . '/' . $name, $assertion);
+    demo_expect(str_contains($assertion, ':Assertion') && str_contains($assertion, 'Signature'), sprintf('xmlsec1 decrypts %s into a signed assertion, %s', basename($file), $name));
 }
