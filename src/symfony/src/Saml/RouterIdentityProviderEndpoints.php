@@ -16,8 +16,9 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * of a request (spec/saml.md section 6.1 step 3, S-4), as RouterEndpointLocator locates those of the provider.
  *
  * The path of the metadata is the router's, compared with the one the issuer makes a reader expect: routes mounted
- * elsewhere are refused at the first request. The two services are under the same prefix, at the paths of
- * IdentityProviderRoutes, until the stories that serve them route them (issues #731, #734 and #735).
+ * elsewhere are refused at the first request. The single sign-on service is the router's too, under the same prefix
+ * (issue #731); the single logout service is at the path of IdentityProviderRoutes until the stories that serve it
+ * route it (issues #734 and #735).
  */
 final readonly class RouterIdentityProviderEndpoints implements IdentityProviderEndpointsInterface
 {
@@ -42,7 +43,7 @@ final readonly class RouterIdentityProviderEndpoints implements IdentityProvider
 
         return new IdentityProviderEndpoints(
             $metadata,
-            $issuer . IdentityProviderRoutes::SINGLE_SIGN_ON_PATH,
+            $tenant->issuer->origin() . $this->router->generate(IdentityProviderRoutes::SINGLE_SIGN_ON, [], UrlGeneratorInterface::ABSOLUTE_PATH),
             $issuer . IdentityProviderRoutes::SINGLE_LOGOUT_PATH,
         );
     }
