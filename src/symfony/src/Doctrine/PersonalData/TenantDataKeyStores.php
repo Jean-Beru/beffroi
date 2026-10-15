@@ -11,6 +11,7 @@ use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\DataKeyStore;
 use Symfony\Component\KeyManagement\Ciphertext;
 use Symfony\Component\KeyManagement\DataKeyHandle;
 use Symfony\Component\KeyManagement\RewrappableDataKeyStoreInterface;
+use Symfony\Component\KeyManagement\StoredDataKey;
 
 /**
  * One data key store per tenant, behind one reader (decision 0018).
@@ -99,6 +100,15 @@ final class TenantDataKeyStores implements RewrappableDataKeyStoreInterface
     public function rewrap(string $reference, Ciphertext $wrapped, string $client): void
     {
         $this->reader()->rewrap($reference, $wrapped, $client);
+    }
+
+    /**
+     * A read of the row like the two above, so the reader answers: every store of this router binds the
+     * same context, the default of the bridge, whatever the tenant whose master key wraps the row.
+     */
+    public function wrappingContextOf(StoredDataKey $row): string
+    {
+        return $this->reader()->wrappingContextOf($row);
     }
 
     /**
