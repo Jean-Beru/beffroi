@@ -599,9 +599,23 @@ function saml_sp_sign_on_again(array $first, string $issuer, string $ca, array $
         'body' => $request['fields'],
     ]);
     $status = $response->getStatusCode();
+    // the cookies the page sets, less the two the profiler of a stack in debug sets on every answer of a firewall
+    // that is not stateless, to link the profiles of a sign-in and a sign-out (SecurityDataCollector): they are the
+    // instrumentation's, not the provider's, and no stack that collects no profile sets them
+    $set = array_values(array_filter(
+        array_map(
+            static fn (string $cookie): string => trim(explode('=', $cookie, 2)[0]),
+            $response->getHeaders(false)['set-cookie'] ?? [],
+        ),
+        static fn (string $name): bool => preg_match('/_(de)?auth_profile_token$/', $name) !== 1,
+    ));
     demo_expect(
-        $status === 200 && ! isset($response->getHeaders(false)['set-cookie']),
-        sprintf('the provider answers the post that came without its cookie with a page of its own, which sets no cookie (got %d)', $status),
+        $status === 200 && $set === [],
+        sprintf(
+            'the provider answers the post that came without its cookie with a page of its own, which sets no cookie (got %d%s)',
+            $status,
+            $set === [] ? '' : ', setting ' . implode(', ', $set),
+        ),
     );
     $form = saml_sp_page_form($response->getContent(false));
     $path = (string) parse_url($request['url'], \PHP_URL_PATH);
