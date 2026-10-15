@@ -27,10 +27,10 @@ declare(strict_types=1);
  * signature under the metadata of the provider, as the signature of the Response over the ciphertext is.
  *
  * What the next stories attach to, each at the place named, and nothing of it is built before its story:
- *   #734, #735 (Single Logout)  a saml_sp_log_out() beside saml_sp_sign_on_at_the_provider(), played on the journeys
- *                               saml_sp() holds once they are signed in: the SP starts it at
- *                               /simplesaml/module.php/saml/sp/logout/beffroi, the provider starts it for the
- *                               session index the status page shows
+ *   #735 (Single Logout started by the provider)  beside saml_sp_log_out() (#734, which SimpleSAMLphp starts at
+ *                               /simplesaml/module.php/core/logout/beffroi), played on the journeys saml_sp() holds
+ *                               once they are signed in: the provider starts it for the session index the status page
+ *                               shows
  */
 
 use Castor\Attribute\AsOption;
@@ -90,7 +90,7 @@ const SAML_SP_BINDINGS = [
 
 #[AsTask(
     name: 'saml-sp',
-    description: 'The SAML identity provider of the stack judged by SimpleSAMLphp 2.5.3.1 (issue #732): the service provider is started on https://saml-sp.localhost, reads the metadata of the provider and is registered at it by a metadata file and "beffroi:saml:service-provider:refresh"; then single sign-on is played in HTTP-Redirect and in HTTP-POST as a browser plays it, as the development user, and the attributes SimpleSAMLphp received are printed. Every AuthnRequest is verified by xmlsec1 or by OpenSSL and Python (the detached signature of the redirect) and accepted by the model; every Response by xmlsec1. Each journey is a browser of its own, which signs in at the provider',
+    description: 'The SAML identity provider of the stack judged by SimpleSAMLphp 2.5.3.1 (issue #732): the service provider is started on https://saml-sp.localhost, reads the metadata of the provider and is registered at it by a metadata file and "beffroi:saml:service-provider:refresh"; then single sign-on is played in HTTP-Redirect and in HTTP-POST as a browser plays it, as the development user, and the attributes SimpleSAMLphp received are printed. Every AuthnRequest is verified by xmlsec1 or by OpenSSL and Python (the detached signature of the redirect) and accepted by the model; every Response by xmlsec1. Each journey is a browser of its own, which signs in at the provider; then SimpleSAMLphp signs it out (issue #734): its LogoutRequest, verified by OpenSSL and Python, ends the session of the provider, the LogoutResponse comes back signed to its single logout service and SimpleSAMLphp accepts it, the browser is sent to the login when it asks to sign in again, and the same LogoutRequest presented again is refused',
 )]
 function saml_sp(
     #[AsOption(description: 'Only start the service provider, read the metadata of the provider and register it: no sign-on')]
@@ -153,8 +153,14 @@ function saml_sp(
     }
     saml_sp_verify_responses($journeys);
 
+    io()->section('Single Logout started by the service provider');
+    foreach ($journeys as $binding => $journey) {
+        saml_sp_log_out($journey, $issuer, $ca);
+    }
+    saml_sp_verify_logout_requests($journeys);
+
     io()->success(sprintf(
-        'SimpleSAMLphp signed %s in at %s over %s%s, and every document that crossed was verified.',
+        'SimpleSAMLphp signed %s in at %s over %s%s and out again, and every document that crossed was verified.',
         DEV_USERNAME,
         $issuer,
         implode(' and ', array_map(static fn (string $binding): string => SAML_SP_BINDINGS[$binding], array_keys($journeys))),
@@ -477,7 +483,7 @@ function saml_sp_in_phpqa(string $script, string $argument): void
  * (HTTP-POST, SAML Bindings §3.5).
  *
  * @param array{binding: string, source?: string, cookies: array<string, array<string, string>>, request: array{method: string, url: string, fields: array<string, string>}, ssoUrl: string} $journey
- * @return array{binding: string, cookies: array<string, array<string, string>>, response?: string}
+ * @return array{binding: string, source: string, cookies: array<string, array<string, string>>, response?: string}
  */
 function saml_sp_sign_on_at_the_provider(array $journey, string $issuer, string $password, string $ca): array
 {
@@ -541,6 +547,7 @@ function saml_sp_sign_on_at_the_provider(array $journey, string $issuer, string 
 
     return [
         'binding' => $journey['binding'],
+        'source' => $source,
         'cookies' => $cookies,
         'response' => $name,
     ];
@@ -629,5 +636,103 @@ function saml_sp_decrypt(string $file): void
     demo_expect(
         str_contains($assertion, ':Assertion') && str_contains($assertion, 'Signature'),
         sprintf('xmlsec1 decrypts %s into a signed assertion, %s', basename($file), $name),
+    );
+}
+
+/**
+ * Single Logout started by the service provider (issue #734, spec/saml.md section 6.5), on a journey signed in: the
+ * browser asks SimpleSAMLphp to sign it out, carries the LogoutRequest it is given to the single logout service of the
+ * provider, and the LogoutResponse the provider answers with back to the single logout service of SimpleSAMLphp, which
+ * verifies its signature under the metadata of the provider (validate.logout, docker/saml-sp/config/authsources.php).
+ * Then what the provider kept of it: the same browser asking SimpleSAMLphp to sign it in again is sent to the login of
+ * the provider, its session having ended (S-25); and the same LogoutRequest presented again is refused, with the page
+ * of a refusal and no answer (S-23, issue #708).
+ *
+ * @param array{binding: string, source?: string, cookies: array<string, array<string, string>>, response?: string} $journey
+ */
+function saml_sp_log_out(array $journey, string $issuer, string $ca): void
+{
+    $cookies = $journey['cookies'];
+    $source = $journey['source'] ?? 'beffroi';
+    $returnTo = SAML_SP_URL . '/simplesaml/status.php?as=' . $source;
+    [$status, $request] = demo_request(
+        $cookies,
+        $ca,
+        'GET',
+        SAML_SP_URL . '/simplesaml/module.php/core/logout/' . $source . '?ReturnTo=' . rawurlencode($returnTo),
+    );
+    demo_expect(
+        in_array($status, [302, 303], true) && strtok($request, '?') === $issuer . '/saml/slo',
+        sprintf('SimpleSAMLphp sends the browser to the single logout service of the provider (got %d %s)', $status, substr($request, 0, 120)),
+    );
+    parse_str((string) parse_url($request, \PHP_URL_QUERY), $query);
+    demo_expect(isset($query['SAMLRequest'], $query['SigAlg'], $query['Signature']), 'with a LogoutRequest signed over the query string');
+    $inflated = gzinflate((string) base64_decode((string) $query['SAMLRequest'], true));
+    demo_expect($inflated !== false, 'whose SAMLRequest is base64 over raw DEFLATE');
+    // no newline: the oracle of 9b reads the file whole, and one would end the Signature parameter
+    file_put_contents(sprintf('%s/logout-request-%s.url', SAML_SP_CAPTURED, $journey['binding']), $request);
+    file_put_contents(sprintf('%s/logout-request-%s.xml', SAML_SP_CAPTURED, $journey['binding']), $inflated);
+
+    [$status, $answer, $page] = demo_request($cookies, $ca, 'GET', $request);
+    demo_expect(
+        $status === 302 && str_starts_with($answer, SAML_SP_URL . '/simplesaml/module.php/saml/sp/saml2-logout.php/' . $source . '?'),
+        sprintf(
+            'the provider answers at the single logout service of the metadata of SimpleSAMLphp (got %d %s %s)',
+            $status,
+            substr($answer, 0, 120),
+            $status === 302 ? '' : substr(strip_tags($page), 0, 300),
+        ),
+    );
+    parse_str((string) parse_url($answer, \PHP_URL_QUERY), $query);
+    demo_expect(isset($query['SAMLResponse'], $query['SigAlg'], $query['Signature']), 'with a LogoutResponse signed over the query string');
+    $response = gzinflate((string) base64_decode((string) $query['SAMLResponse'], true));
+    demo_expect($response !== false && str_contains($response, 'urn:oasis:names:tc:SAML:2.0:status:Success'), 'which says Success');
+    file_put_contents(sprintf('%s/logout-response-%s.url', SAML_SP_CAPTURED, $journey['binding']), $answer);
+    file_put_contents(sprintf('%s/logout-response-%s.xml', SAML_SP_CAPTURED, $journey['binding']), $response);
+
+    [$status, $back] = demo_request($cookies, $ca, 'GET', $answer);
+    demo_expect(
+        in_array($status, [302, 303], true) && str_starts_with($back, $returnTo),
+        sprintf('SimpleSAMLphp accepts the LogoutResponse, its signature verified, and sends the browser back (got %d %s)', $status, substr($back, 0, 120)),
+    );
+    [$status] = demo_request($cookies, $ca, 'GET', $returnTo);
+    demo_expect($status === 401, sprintf('its session is closed (got %d)', $status));
+
+    [$status, $sso] = demo_request(
+        $cookies,
+        $ca,
+        'GET',
+        SAML_SP_URL . '/simplesaml/module.php/saml/sp/login/' . $source . '?ReturnTo=' . rawurlencode($returnTo),
+    );
+    demo_expect(in_array($status, [302, 303], true), sprintf('SimpleSAMLphp asks the provider to sign the browser in again (got %d)', $status));
+    [$status, $login] = demo_request($cookies, $ca, 'GET', $sso);
+    demo_expect(
+        $status === 302 && strtok($login, '?') === $issuer . '/login',
+        sprintf('the provider sends the browser to its login: its session has ended (got %d %s)', $status, substr($login, 0, 120)),
+    );
+
+    [$status, $replayed] = demo_request($cookies, $ca, 'GET', $request);
+    demo_expect(
+        $status === 400 && $replayed === '',
+        sprintf('the same LogoutRequest presented again is refused, without an answer (got %d %s)', $status, substr($replayed, 0, 120)),
+    );
+}
+
+/**
+ * Every LogoutRequest SimpleSAMLphp sent, by OpenSSL and Python, which verify its detached signature under the
+ * certificate of the service provider and inflate its message, as for the AuthnRequest of the redirect.
+ *
+ * @param array<string, array{binding: string}> $journeys
+ */
+function saml_sp_verify_logout_requests(array $journeys): void
+{
+    $urls = array_map(
+        static fn (array $journey): string => sprintf('%s/logout-request-%s.url', SAML_SP_CAPTURED, $journey['binding']),
+        array_values($journeys),
+    );
+    io()->text('OpenSSL and Python, the signature of each LogoutRequest over its query string and the message it carries:');
+    in_alpine(
+        'apk add -q openssl python3 >/dev/null 2>&1 && sh tests/saml2-bindings/Fixture/oracle/verify-redirect.sh ' . SAML_SP_DIRECTORY . '/sp.crt '
+            . implode(' ', $urls),
     );
 }
