@@ -13,6 +13,7 @@ use Beffroi\Saml2\Model\Metadata\Binding;
 use Beffroi\Saml2\Model\Metadata\EntityDescriptor;
 use Beffroi\Saml2\Model\Metadata\MetadataReader;
 use Beffroi\Saml2\Model\SamlLoader;
+use function array_find;
 use function array_map;
 use function base64_decode;
 use function chunk_split;
@@ -21,7 +22,7 @@ use function openssl_pkey_get_public;
 use function openssl_x509_read;
 use PHPUnit\Framework\Attributes\Test;
 use function strtr;
-use Symfony\Component\Clock\NativeClock;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -131,11 +132,16 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
     {
         // Given
         $current = self::generate();
+        // a key created later, so that the creation order of the two is the order they were drawn in
+        self::aSecondLater();
         $rotation = self::console('beffroi:keys:rotate', [
             '--algorithm' => SamlSigning::NAME,
         ]);
         static::assertSame(Command::SUCCESS, $rotation->getStatusCode(), $rotation->getDisplay());
-        $next = self::keys()->findInService(self::tenant())[1] ?? static::fail('The rotation staged no key.');
+        $next = array_find(
+            self::keys()->findInService(self::tenant()),
+            static fn (TenantKey $key): bool => $key->isStaged(),
+        ) ?? static::fail('The rotation staged no key.');
 
         // When
         $this->browser->request('GET', self::METADATA);
@@ -183,7 +189,7 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode());
 
-        return new MetadataReader(SamlLoader::create(), new NativeClock())->readTrusted(SamlLoader::create()->load(self::string($response->getContent())));
+        return new MetadataReader(SamlLoader::create(), new MockClock())->readTrusted(SamlLoader::create()->load(self::string($response->getContent())));
     }
 
     private static function modulusOf(string $certificate): string
