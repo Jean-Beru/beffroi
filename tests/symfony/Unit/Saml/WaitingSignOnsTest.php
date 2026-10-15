@@ -44,17 +44,31 @@ final class WaitingSignOnsTest extends TestCase
     }
 
     /**
-     * S-18: the reference is 32 bytes drawn from random_bytes(), in base64url, and another at every request.
+     * S-18: the reference is 32 bytes drawn from random_bytes(), in base64url.
+     */
+    #[Test]
+    public function aReferenceIsThirtyTwoBytesInBase64Url(): void
+    {
+        // When
+        $reference = new WaitingSignOns()->keep($this->httpSession, $this->tenant, SignOnRequests::request());
+
+        // Then
+        static::assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/', $reference);
+    }
+
+    /**
+     * S-18: a reference is drawn again for each request.
      */
     #[Test]
     public function aReferenceIsDrawnForEachRequest(): void
     {
-        // When
+        // Given
         $first = new WaitingSignOns()->keep($this->httpSession, $this->tenant, SignOnRequests::request());
+
+        // When
         $second = new WaitingSignOns()->keep($this->httpSession, $this->tenant, SignOnRequests::request());
 
         // Then
-        static::assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/', $first);
         static::assertNotSame($first, $second);
     }
 
