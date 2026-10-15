@@ -1033,3 +1033,327 @@ function saml_sp_verify_provider_logout(array $answer): void
     io()->text('xmlsec1, every XML signature captured, the Response of this sign-on and a LogoutResponse that was posted among them:');
     saml_sp_xmlsec1();
 }
+
+/*
+ * The Entra judge (issue #736, spec/saml.md sections 7 and 12): Entra's SAML federation of guests, set up without a
+ * domain in the maintainer's test tenant, federating the identity provider of the stack. Entra is configured by hand in
+ * its portal, by the maintainer and by nobody else; this task prints what the portal takes, registers the service
+ * provider the development configuration declares for it, and reads back, once the sign-in was played, what the provider
+ * received from Entra.
+ *
+ * What was received is read from the profiler of the development stack, which collects every request while
+ * APP_PROFILER is 1, its default (apps/op/config/packages/web_profiler.yaml): the raw query string of HTTP-Redirect, the
+ * fields and the raw body of HTTP-POST, before anything validated them, a request refused included. Nothing is added to
+ * the provider for it, and a deployment, which collects no profile, has nothing of it.
+ */
+
+/**
+ * The test tenant of the maintainer, Entra ID Free (beffroilaboutlook.onmicrosoft.com).
+ */
+const SAML_ENTRA_TENANT = '20a6e528-cf9e-4f79-8949-bbd59006eff5';
+
+/**
+ * The tenanted issuer of the AuthnRequest Entra sends for a new federation, the trailing slash included, as
+ * apps/op/config/packages/beffroi.yaml declares it and apps/op/config/saml/entra-guest-federation-sp.xml names it.
+ */
+const SAML_ENTRA_ENTITY_ID = 'https://login.microsoftonline.com/' . SAML_ENTRA_TENANT . '/';
+
+/**
+ * Under the ignored var/ of the repository: the metadata of the provider as Entra's portal can parse them, its signing
+ * certificate as the portal takes it, and every document received from Entra.
+ */
+const SAML_ENTRA_DIRECTORY = 'var/saml-entra';
+
+const SAML_ENTRA_RECEIVED = SAML_ENTRA_DIRECTORY . '/received';
+
+/**
+ * Run by the PHP of the op container on the profiler storage of its kernel: the requests profiled at the paths given
+ * since the instant given, oldest first, as JSON.
+ */
+const SAML_ENTRA_PROFILE_READER = <<<'PHP'
+    <?php
+
+    declare(strict_types=1);
+
+    require '/app/vendor/autoload.php';
+
+    $storage = new Symfony\Component\HttpKernel\Profiler\FileProfilerStorage('file:/app/var/cache/dev/profiler');
+    $rows = [];
+    foreach (array_slice($argv, 2) as $path) {
+        foreach ($storage->find(null, $path, 500, null, (int) $argv[1]) as $row) {
+            $rows['t' . $row['token']] = $row;
+        }
+    }
+    $found = [];
+    foreach ($rows as $row) {
+        $profile = $storage->read((string) $row['token']);
+        if ($profile === null || ! $profile->hasCollector('request')) {
+            continue;
+        }
+        $request = $profile->getCollector('request');
+        $server = $request->getRequestServer(true)->all();
+        $found[] = [
+            'token' => (string) $row['token'],
+            'time' => $profile->getTime(),
+            'method' => $request->getMethod(),
+            'url' => $profile->getUrl(),
+            'status' => $profile->getStatusCode(),
+            'query' => is_string($server['QUERY_STRING'] ?? null) ? $server['QUERY_STRING'] : '',
+            'fields' => array_map(
+                static fn (mixed $value): mixed => $value instanceof Symfony\Component\VarDumper\Cloner\Data ? $value->getValue(true) : $value,
+                $request->getRequestRequest()->all(),
+            ),
+            'body' => is_string($request->getContent()) ? $request->getContent() : '',
+            'secFetchSite' => is_string($server['HTTP_SEC_FETCH_SITE'] ?? null) ? $server['HTTP_SEC_FETCH_SITE'] : null,
+        ];
+    }
+    usort($found, static fn (array $a, array $b): int => $a['time'] <=> $b['time']);
+    echo json_encode($found, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+    PHP;
+
+#[AsTask(
+    name: 'saml-entra',
+    description: 'The Entra judge (issue #736): registers the service provider declared for Entra\'s SAML federation of guests, then prints what the portal of Entra takes (Issuer URI, passive authentication endpoint, signing certificate) and the invitation redirect URL carrying the domain_hint; with --received, lists what the provider received from Entra, read from the profiler of the stack, and writes each document to var/saml-entra/received/ for the corpus',
+)]
+function saml_entra(
+    #[AsOption(
+        description: 'List what the provider received from Entra at its single sign-on and single logout services, and write each document to var/saml-entra/received/',
+    )]
+    bool $received = false,
+    #[AsOption(description: 'With --received: how far back the profiles are read, in minutes')]
+    int $minutes = 180,
+    #[AsOption(description: 'The address the guest is invited with, the email of the user of the provider who signs in')]
+    string $email = DEV_USERNAME . '@op.localhost',
+): void {
+    io()->title('Entra federating the SAML identity provider of the stack');
+    $env = load_dot_env(getcwd() . '/apps/op/.env');
+    if (($env['BEFFROI_ISSUER'] ?? '') === '') {
+        io()->error('BEFFROI_ISSUER is empty: run "castor provision" first.');
+        exit(1);
+    }
+    $issuer = rtrim($env['BEFFROI_ISSUER'], '/');
+    foreach ([SAML_ENTRA_DIRECTORY, SAML_ENTRA_RECEIVED] as $directory) {
+        if (! is_dir($directory) && ! mkdir($directory, 0o777, true) && ! is_dir($directory)) {
+            io()->error(sprintf('Cannot create %s.', $directory));
+            exit(1);
+        }
+    }
+    if ($received) {
+        saml_entra_received($issuer, $minutes);
+
+        return;
+    }
+
+    io()->section('The metadata of the provider');
+    $ca = caddy_ca(getcwd() . '/' . SAML_ENTRA_DIRECTORY . '/caddy-root.crt');
+    $cookies = [];
+    [$status, , $document] = demo_request($cookies, $ca, 'GET', $issuer . '/saml/metadata');
+    demo_expect($status === 200 && str_contains($document, 'IDPSSODescriptor'), sprintf('%s/saml/metadata serves them (got %d)', $issuer, $status));
+    file_put_contents(SAML_ENTRA_DIRECTORY . '/op-idp-metadata.xml', $document);
+    $dom = new DOMDocument();
+    demo_expect($dom->loadXML($document, \LIBXML_NONET), 'which are well-formed XML');
+    $xpath = new DOMXPath($dom);
+    $xpath->registerNamespace('md', 'urn:oasis:names:tc:SAML:2.0:metadata');
+    $xpath->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
+    $entityId = (string) $xpath->evaluate('string(/md:EntityDescriptor/@entityID)');
+    $singleSignOn = (string) $xpath->evaluate(sprintf(
+        'string(/md:EntityDescriptor/md:IDPSSODescriptor/md:SingleSignOnService[@Binding="%s"]/@Location)',
+        SAML_SP_BINDINGS['post'],
+    ));
+    demo_expect(
+        str_starts_with($singleSignOn, 'https://'),
+        sprintf('its single sign-on service over HTTP-POST is %s, in https as Entra requires', $singleSignOn),
+    );
+    $certificates = [];
+    foreach ($xpath->query('/md:EntityDescriptor/md:IDPSSODescriptor/md:KeyDescriptor[not(@use) or @use="signing"]//ds:X509Certificate')
+        ?: [] as $certificate) {
+        $certificates[] = (string) preg_replace('/\s+/', '', $certificate->textContent);
+    }
+    demo_expect($certificates !== [], sprintf('they hold %d signing certificate(s)', count($certificates)));
+
+    io()->section('The provider registers Entra');
+    $refresh = op_console(['beffroi:saml:service-provider:refresh', SAML_ENTRA_ENTITY_ID], context()->withAllowFailure());
+    demo_expect($refresh->isSuccessful(), sprintf('beffroi:saml:service-provider:refresh registers %s (its output above says why not)', SAML_ENTRA_ENTITY_ID));
+
+    io()->section('What the portal of Entra takes (External Identities, All identity providers, Custom, Add new, SAML/WS-Fed)');
+    io()->writeln(sprintf('<comment>Issuer URI</comment> (also the domain_hint):%s%s%s', \PHP_EOL, $entityId, \PHP_EOL));
+    io()->writeln(sprintf('<comment>Passive authentication endpoint:</comment>%s%s%s', \PHP_EOL, $singleSignOn, \PHP_EOL));
+    foreach ($certificates as $index => $certificate) {
+        $file = SAML_ENTRA_DIRECTORY . sprintf('/signing-certificate-%d.txt', $index + 1);
+        file_put_contents($file, $certificate);
+        io()->writeln(sprintf(
+            '<comment>Certificate</comment> %d of %d, the base64 of its DER on one line, also in %s (pbcopy < %s):%s%s%s',
+            $index + 1,
+            count($certificates),
+            $file,
+            $file,
+            \PHP_EOL,
+            $certificate,
+            \PHP_EOL,
+        ));
+    }
+    if (count($certificates) > 1) {
+        io()->warning('The metadata publish more than one signing certificate (a key staged or retiring beside the active one, S-2), and Entra holds one: give it the certificate of the active key, which "castor console beffroi:keys:list" names.');
+    }
+    io()->writeln(sprintf('<comment>Metadata URL:</comment> empty, Microsoft cannot reach %s.%s', $issuer, \PHP_EOL));
+    io()->writeln(sprintf('<comment>Or "Parse metadata file":</comment> %s%s', SAML_ENTRA_DIRECTORY . '/op-idp-metadata.xml', \PHP_EOL));
+    $redirect = sprintf('https://myapps.microsoft.com/?tenantid=%s&domain_hint=%s', SAML_ENTRA_TENANT, rawurlencode($entityId));
+    io()->writeln(sprintf('<comment>Invitation redirect URL</comment> (domain_hint, the Issuer URI):%s%s%s', \PHP_EOL, $redirect, \PHP_EOL));
+    io()->writeln(sprintf(
+        '<comment>The invitation</comment>, POST https://graph.microsoft.com/v1.0/invitations in Graph Explorer, the portal taking no redirect URL; its answer carries the "inviteRedeemUrl" the guest opens:%s%s%s',
+        \PHP_EOL,
+        json_encode(
+            [
+                'invitedUserEmailAddress' => $email,
+                'inviteRedirectUrl' => $redirect,
+                'sendInvitationMessage' => false,
+            ],
+            \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_THROW_ON_ERROR,
+        ),
+        \PHP_EOL,
+    ));
+    io()->success(sprintf('%s is registered; once the sign-in is played, "castor saml-entra --received" lists what Entra sent.', SAML_ENTRA_ENTITY_ID));
+}
+
+/**
+ * What the provider received from Entra since the minutes given, read from the profiles of the stack: each message
+ * written to var/saml-entra/received/, the document decoded and the bytes as they came, and described as it arrived.
+ * A message posted again by the provider from its own origin (S-28) is the one Entra posted, and is written once.
+ */
+function saml_entra_received(string $issuer, int $minutes): void
+{
+    io()->section(sprintf('What the provider received from Entra in the last %d minutes', $minutes));
+    $read = run(
+        ['docker', 'compose', 'exec', '-T', 'op', 'php', '--', (string) (time() - ($minutes * 60)), '/saml/sso', '/saml/slo'],
+        context: context()->withInput(SAML_ENTRA_PROFILE_READER)->withQuiet()->withAllowFailure(),
+    );
+    if (! $read->isSuccessful()) {
+        io()->error(sprintf('The profiles of the op container cannot be read: %s', trim($read->getErrorOutput()) ?: '"castor start" first.'));
+        exit(1);
+    }
+    /** @var list<array{token: string, time: int, method: string, url: string, status: int, query: string, fields: array<string, mixed>, body: string, secFetchSite: ?string}> $profiled */
+    $profiled = json_decode($read->getOutput(), true, 512, \JSON_THROW_ON_ERROR);
+    $written = [];
+    foreach ($profiled as $request) {
+        $message = saml_entra_message($request);
+        if ($message === null || ! saml_entra_is_entra($message['issuer'])) {
+            continue;
+        }
+        $digest = hash('sha256', $message['document']);
+        $profile = sprintf('%s/_profiler/%s', $issuer, $request['token']);
+        if (isset($written[$digest])) {
+            io()->text(sprintf(
+                ' the same %s, posted again from the origin of the provider (S-28), answered %d: %s',
+                $message['root'],
+                $request['status'],
+                $profile,
+            ));
+            continue;
+        }
+        $base = sprintf('%s/%s-%s-%s', SAML_ENTRA_RECEIVED, date('Ymd\THis', $request['time']), $message['binding'], $message['root']);
+        file_put_contents($base . '.xml', $message['document']);
+        file_put_contents($base . '.raw.txt', $message['raw']);
+        $written[$digest] = $base;
+        io()->section(sprintf('%s, %s over %s, answered %d', date('c', $request['time']), $message['root'], $message['binding'], $request['status']));
+        io()->listing([
+            sprintf(
+                'Issuer: %s%s',
+                $message['issuer'],
+                $message['issuer'] === SAML_ENTRA_ENTITY_ID ? ', the entity ID declared' : ', NOT the entity ID declared (' . SAML_ENTRA_ENTITY_ID . ')',
+            ),
+            sprintf('Signed: %s', $message['signed'] ? 'yes' : 'no'),
+            sprintf('From another site: %s', $request['secFetchSite'] ?? 'not said'),
+            ...array_map(
+                static fn (string $name, string $value): string => sprintf('%s: %s', $name, $value),
+                array_keys($message['facts']),
+                array_values($message['facts']),
+            ),
+            sprintf('Written to %s.xml and %s.raw.txt', $base, $base),
+            sprintf('Profile: %s', $profile),
+        ]);
+        io()->writeln($message['document']);
+    }
+    if ($written === []) {
+        io()->warning(sprintf(
+            'Nothing from Entra was profiled in the last %d minutes: --minutes reads further back; a stack started with --conformance collects no profile.',
+            $minutes,
+        ));
+
+        return;
+    }
+    io()->success(sprintf('%d document(s) received from Entra written to %s/: they go to the corpus (issue #665).', count($written), SAML_ENTRA_RECEIVED));
+}
+
+/**
+ * The SAML message a profiled request carried, decoded as its binding encodes it: the raw query string of
+ * HTTP-Redirect, its message deflated (SAML Bindings §3.4.4.1), or the field of HTTP-POST (§3.5.4); null when it
+ * carries none, or one that does not decode to XML.
+ *
+ * @param array{method: string, query: string, fields: array<string, mixed>, body: string} $request
+ * @return array{binding: string, raw: string, document: string, root: string, issuer: string, signed: bool, facts: array<string, string>}|null
+ */
+function saml_entra_message(array $request): ?array
+{
+    if ($request['method'] === 'GET') {
+        parse_str($request['query'], $parameters);
+        $binding = 'redirect';
+        $raw = $request['query'];
+    } else {
+        $parameters = $request['fields'];
+        $binding = 'post';
+        $raw = $request['body'];
+    }
+    $encoded = $parameters['SAMLRequest'] ?? $parameters['SAMLResponse'] ?? null;
+    if (! is_string($encoded)) {
+        return null;
+    }
+    $bytes = base64_decode($encoded, true);
+    $document = $bytes === false ? false : ($binding === 'redirect' ? @gzinflate($bytes) : $bytes);
+    $dom = new DOMDocument();
+    if (! is_string($document) || ! @$dom->loadXML($document, \LIBXML_NONET) || ! $dom->documentElement instanceof DOMElement) {
+        return null;
+    }
+    $xpath = new DOMXPath($dom);
+    $xpath->registerNamespace('saml', 'urn:oasis:names:tc:SAML:2.0:assertion');
+    $xpath->registerNamespace('samlp', 'urn:oasis:names:tc:SAML:2.0:protocol');
+    $xpath->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
+    $root = $dom->documentElement;
+    $facts = [];
+    foreach (['Destination', 'AssertionConsumerServiceURL', 'AssertionConsumerServiceIndex', 'ProtocolBinding', 'ForceAuthn', 'IsPassive'] as $attribute) {
+        $facts[$attribute] = $root->hasAttribute($attribute) ? $root->getAttribute($attribute) : 'absent';
+    }
+    $policy = $xpath->query('samlp:NameIDPolicy', $root)?->item(0);
+    $facts['NameIDPolicy'] = $policy instanceof DOMElement
+        ? sprintf('Format %s, AllowCreate %s', $policy->getAttribute('Format') ?: 'absent', $policy->getAttribute('AllowCreate') ?: 'absent')
+        : 'absent';
+    $contexts = array_map(
+        static fn (DOMNode $reference): string => trim($reference->textContent),
+        iterator_to_array($xpath->query('samlp:RequestedAuthnContext/saml:AuthnContextClassRef', $root) ?: []),
+    );
+    $facts['RequestedAuthnContext'] = $xpath->query('samlp:RequestedAuthnContext', $root)?->length
+        ? sprintf(
+            'Comparison %s, %s',
+            $xpath->evaluate('string(samlp:RequestedAuthnContext/@Comparison)', $root) ?: 'absent',
+            implode(', ', $contexts) ?: 'no class',
+        )
+        : 'absent';
+
+    return [
+        'binding' => $binding,
+        'raw' => $raw,
+        'document' => $document,
+        'root' => $root->localName,
+        'issuer' => trim((string) $xpath->evaluate('string(saml:Issuer)', $root)),
+        'signed' => isset($parameters['Signature']) || $xpath->query('ds:Signature', $root)?->length > 0,
+        'facts' => $facts,
+    ];
+}
+
+/**
+ * Whether an issuer is one of Entra's: the tenanted entity ID of a new federation, any other tenant of the same host,
+ * or the global entity ID of the federations made before (spec/saml.md section 7).
+ */
+function saml_entra_is_entra(string $issuer): bool
+{
+    return str_starts_with($issuer, 'https://login.microsoftonline.com/') || $issuer === 'urn:federation:MicrosoftOnline';
+}
