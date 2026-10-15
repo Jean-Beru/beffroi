@@ -865,6 +865,22 @@ const INFECTION_STRICT_FILES = [
     'src/saml/src/Bridge/Model/ModelAuthnRequestReceiver.php',
     'src/saml/src/Bridge/Model/ModelIdentityProvider.php',
     'src/saml/src/Bridge/Model/ModelSignOnResponder.php',
+    // beffroi/saml, section 9: Single Logout started by a service provider, the request accepted once, the sessions
+    // ended and the answer signed (section 6.5), and each service provider's part in a session (S-26).
+    'src/saml/src/Domain/SingleLogout/SignOutRequest.php',
+    'src/saml/src/Domain/SingleLogout/SignOutStatus.php',
+    'src/saml/src/Domain/SingleLogout/SignOutResponse.php',
+    'src/saml/src/Domain/SingleLogout/RedirectedMessage.php',
+    'src/saml/src/Domain/SingleLogout/SessionParticipation.php',
+    'src/saml/src/Domain/SingleLogout/RememberedLogoutMessage.php',
+    'src/saml/src/Domain/Event/ServiceProviderSignedIn.php',
+    'src/saml/src/Application/SingleLogout/SingleLogout.php',
+    'src/saml/src/Application/SingleLogout/SessionParticipants.php',
+    'src/saml/src/Bridge/Model/DeclaredServiceProviderReader.php',
+    'src/saml/src/Bridge/Model/ModelLogoutRequestReceiver.php',
+    'src/saml/src/Bridge/Model/ModelSignOutResponder.php',
+    'src/saml/src/Bridge/Model/TenantReplayGuard.php',
+    'src/saml/src/Bridge/Model/TenantSigning.php',
     'src/saml2-model/src/Writing/LogoutRequestWriter.php',
     'src/saml2-model/src/Writing/LogoutResponseWriter.php',
     // Section 9: the strict readers of the two logout messages (sections 6.3, 6.4).

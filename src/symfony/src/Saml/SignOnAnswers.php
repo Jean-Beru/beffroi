@@ -6,6 +6,7 @@ namespace Beffroi\Bundle\Saml;
 
 use Beffroi\Bundle\Http\BrowserSession;
 use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\RequestContextFactory;
 use Beffroi\Bundle\Http\LoginTarget;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\KeyNotFoundException;
@@ -36,6 +37,7 @@ final readonly class SignOnAnswers
         private LoginTarget $loginTargets,
         private InteractionPages $pages,
         private SamlPostPage $page,
+        private RequestContextFactory $contexts,
     ) {
     }
 
@@ -45,7 +47,12 @@ final readonly class SignOnAnswers
     public function answer(Request $request, Tenant $tenant, SignOnRequest $signOn, ?string $reference = null): Response
     {
         try {
-            $form = $this->singleSignOn->answer($tenant, $signOn, $this->browser->authenticationSession($request, $tenant));
+            $form = $this->singleSignOn->answer(
+                $tenant,
+                $signOn,
+                $this->browser->authenticationSession($request, $tenant),
+                $this->contexts->fromRequest($request),
+            );
         } catch (SignOnRefusedException $exception) {
             if ($reference !== null) {
                 $this->waiting->forget($request->getSession(), $reference);

@@ -285,6 +285,18 @@ use Beffroi\Core\Port\KeptSigningKeyProviderInterface;
 use Beffroi\Saml\Application\SingleSignOn\AttributeRelease;
 use Beffroi\Saml\Application\SingleSignOn\SingleSignOn;
 use Beffroi\Saml\Bridge\Model\ModelAuthnRequestReceiver;
+use Beffroi\Saml\Bridge\Model\DeclaredServiceProviderReader;
+use Beffroi\Saml\Bridge\Model\ModelLogoutRequestReceiver;
+use Beffroi\Saml\Bridge\Model\ModelSignOutResponder;
+use Beffroi\Saml\Bridge\Model\TenantSigning;
+use Beffroi\Saml\Application\SingleLogout\SessionParticipants;
+use Beffroi\Saml\Application\SingleLogout\SingleLogout;
+use Beffroi\Saml\Port\LogoutReplayStoreInterface;
+use Beffroi\Saml\Port\LogoutRequestReceiverInterface;
+use Beffroi\Saml\Port\SessionParticipationRepositoryInterface;
+use Beffroi\Saml\Port\SignOutResponderInterface;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineLogoutReplayStore;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineSessionParticipationRepository;
 use Beffroi\Saml\Bridge\Model\ModelSignOnResponder;
 use Beffroi\Saml\Port\AuthnRequestReceiverInterface;
 use Beffroi\Saml\Port\PersistentIdentifierSaltInterface;
@@ -1867,11 +1879,13 @@ return static function (ContainerConfigurator $container): void {
     // the model, answered from the session of the browser or after its login, the request waiting in its HTTP session
     // (S-18); the assertion signed by the active SAML key of the tenant, opened by the KMS once per process (S-15), its
     // NameID computed with the salt of the pairwise subjects (S-13), its attributes from the claims OpenID Connect serves
+    $services->set(DeclaredServiceProviderReader::class);
     $services->set(ModelAuthnRequestReceiver::class);
     $services->alias(AuthnRequestReceiverInterface::class, ModelAuthnRequestReceiver::class);
-    $services->set(ModelSignOnResponder::class)->args([
+    $services->set(TenantSigning::class)->args([
         '$algorithm' => service(SamlSigning::class),
     ]);
+    $services->set(ModelSignOnResponder::class);
     $services->alias(SignOnResponderInterface::class, ModelSignOnResponder::class);
     $services->set(TenantPersistentIdentifierSalt::class);
     $services->alias(PersistentIdentifierSaltInterface::class, TenantPersistentIdentifierSalt::class);
@@ -1880,6 +1894,21 @@ return static function (ContainerConfigurator $container): void {
     $services->set(WaitingSignOns::class);
     $services->set(SamlPostPage::class);
     $services->set(SignOnAnswers::class);
+    // beffroi/saml: Single Logout started by a service provider (spec/saml.md section 6.5), a request received over
+    // either binding, validated by the model and remembered in a store every worker shares, written atomically (S-23);
+    // the sessions it names ended by the core as every session ends (S-25) and the answer signed by the SAML key of
+    // the tenant (S-27); each service provider's part in a session recorded from the event single sign-on announces,
+    // on the lane of the events (S-26)
+    $services->set(DoctrineLogoutReplayStore::class);
+    $services->alias(LogoutReplayStoreInterface::class, DoctrineLogoutReplayStore::class);
+    $services->set(ModelLogoutRequestReceiver::class);
+    $services->alias(LogoutRequestReceiverInterface::class, ModelLogoutRequestReceiver::class);
+    $services->set(ModelSignOutResponder::class);
+    $services->alias(SignOutResponderInterface::class, ModelSignOutResponder::class);
+    $services->set(SingleLogout::class);
+    $services->set(DoctrineSessionParticipationRepository::class);
+    $services->alias(SessionParticipationRepositoryInterface::class, DoctrineSessionParticipationRepository::class);
+    $services->set(SessionParticipants::class);
     $services->set(EndSessionRequestParser::class);
     $services->set(EndSessionHandler::class);
     $services->set(LogoutTokenIssuer::class);
