@@ -23,7 +23,8 @@ use function str_replace;
 /**
  * The metadata documents of a service provider the tests of spec/saml.md section 6.2 read: the one a SimpleSAMLphp
  * 2.5.3.1 service provider published on 30 September 2026 (tests/saml2-model/Fixture/real/), as it is or with one
- * change a test names, and a document the model's writer signs with the test key of a service provider.
+ * change a test names, a document the model's writer signs with the test key of a service provider, and the document
+ * an administrator writes by hand for Entra's SAML federation of guests, which publishes none (spec/saml.md S-9).
  */
 final readonly class ServiceProviderDocuments
 {
@@ -36,6 +37,16 @@ final readonly class ServiceProviderDocuments
      * The entity ID of the document the model's writer signs.
      */
     public const string SIGNED = 'https://sp.example.org/saml';
+
+    /**
+     * The entity ID of Entra's SAML federation of guests.
+     */
+    public const string ENTRA = 'urn:federation:MicrosoftOnline';
+
+    /**
+     * Where Entra's SAML federation of guests receives the assertion.
+     */
+    public const string ENTRA_ASSERTION_CONSUMER = 'https://login.microsoftonline.com/login.srf';
 
     public static function path(): string
     {
@@ -77,6 +88,27 @@ final readonly class ServiceProviderDocuments
     public static function simpleSamlPhpWithCertificate(string $base64): string
     {
         return (string) preg_replace('~(<ds:X509Certificate>)[^<]+(</ds:X509Certificate>)~', '${1}' . $base64 . '${2}', self::simpleSamlPhp());
+    }
+
+    /**
+     * The metadata of Entra's SAML federation of guests as an administrator writes them: no key, no
+     * AuthnRequestsSigned, its assertion consumer service on HTTP-POST.
+     */
+    public static function entra(): string
+    {
+        return (string) file_get_contents(__DIR__ . '/metadata/entra-guest-federation-sp.xml');
+    }
+
+    /**
+     * The Entra document saying AuthnRequestsSigned="true", which contradicts a declaration that says it does not sign.
+     */
+    public static function entraSigningItsRequests(): string
+    {
+        return str_replace(
+            'protocolSupportEnumeration=',
+            'AuthnRequestsSigned="true" protocolSupportEnumeration=',
+            self::entra(),
+        );
     }
 
     /**
