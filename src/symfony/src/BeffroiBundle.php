@@ -247,6 +247,13 @@ final class BeffroiBundle extends AbstractBundle
                             'prefix' => 'Beffroi\\Oidc\\Domain',
                             'alias' => 'BeffroiOidc',
                         ],
+                        'BeffroiSaml' => [
+                            'type' => 'xml',
+                            'is_bundle' => false,
+                            'dir' => $bundleDir . '/config/doctrine/saml',
+                            'prefix' => 'Beffroi\\Saml\\Domain',
+                            'alias' => 'BeffroiSaml',
+                        ],
                     ],
                 ],
             ]);

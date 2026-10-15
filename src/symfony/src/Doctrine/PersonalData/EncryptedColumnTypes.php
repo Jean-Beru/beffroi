@@ -85,6 +85,7 @@ final readonly class EncryptedColumnTypes
         'personal_archive' => ['text'],
         'claim_change' => ['string', 'beffroi_request_context'],
         'disclosure' => ['beffroi_scopes', 'beffroi_claims_request', 'beffroi_authorization_details'],
+        'saml_service_provider' => ['text'],
     ];
 
     /**

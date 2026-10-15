@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+    <!--
+      The newest metadata document accepted for a service provider of a tenant (beffroi/saml, spec/saml.md
+      S-6 and S-8): one row per service provider, found by its entity ID, unique under its tenant. The
+      declaration of the service provider is in the configuration of the deployment and never here (S-5):
+      what a row holds is what was read of it, the document as its bytes, never written again, its
+      validUntil, which the rule against a rollback compares, and when it was accepted.
+
+      The document is sealed under the data key of its tenant, in the `saml_service_provider` family
+      (decisions 0011 and 0018): an `md:ContactPerson` names people, their electronic addresses and their
+      telephone numbers. Nothing looks a service provider up by a member of its document, so nothing is
+      lost with the query the ciphertext takes away. The entity ID names a service and is what a row is
+      found by, in the clear.
+    -->
+    <entity name="Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata" table="beffroi_saml_service_provider">
+        <unique-constraints>
+            <unique-constraint name="beffroi_saml_service_provider_entity" columns="tenant_id,entity_id"/>
+        </unique-constraints>
+        <id name="id" type="uuid" column="id"/>
+        <many-to-one field="tenant" target-entity="Beffroi\Core\Domain\Tenant\Tenant">
+            <join-column name="tenant_id" referenced-column-name="id" nullable="false"/>
+        </many-to-one>
+        <field name="entityId" type="string" column="entity_id" length="1024"/>
+        <field name="document" type="beffroi_encrypted_saml_service_provider_text" column="document"/>
+        <!-- To the second, as the column keeps it, which is what the rule against a rollback compares (S-6). -->
+        <field name="validUntil" type="datetime_immutable" column="valid_until" nullable="true"/>
+        <field name="acceptedAt" type="datetime_immutable" column="accepted_at"/>
+    </entity>
+</doctrine-mapping>

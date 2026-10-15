@@ -283,6 +283,15 @@ use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
 use Beffroi\Saml\Port\CertificateIssuerInterface;
 use Beffroi\Saml\Port\IdentityProviderEndpointsInterface;
 use Beffroi\Saml\Port\MetadataWriterInterface;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineAcceptedMetadataRepository;
+use Beffroi\Bundle\Saml\MetadataFetcher;
+use Beffroi\Saml\Application\ServiceProvider\ServiceProviderMetadataRefresh;
+use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
+use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataReader;
+use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
+use Beffroi\Saml\Port\MetadataFetcherInterface;
+use Beffroi\Saml\Port\ServiceProviderMetadataReaderInterface;
+use Beffroi\Saml\Port\ServiceProvidersInterface;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyEncryptionAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseMessageSealingAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
@@ -1802,6 +1811,21 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(IdentityProviderEndpointsInterface::class, RouterIdentityProviderEndpoints::class);
     $services->set(SigningCertificates::class);
     $services->set(IdentityProviderMetadataHandler::class);
+    // beffroi/saml: the service providers of the tenant, declared in the configuration, which the SAML section hands
+    // the declarations and the slug of the tenant (S-5); their metadata read by the model, fetched from a file or an
+    // https URL, and the newest document accepted kept in the database, sealed (spec/saml.md section 6.2)
+    $services->set(ConfigurationServiceProviders::class)->args([
+        '$tenantSlug' => '',
+        '$definitions' => [],
+    ]);
+    $services->alias(ServiceProvidersInterface::class, ConfigurationServiceProviders::class);
+    $services->set(ModelServiceProviderMetadataReader::class);
+    $services->alias(ServiceProviderMetadataReaderInterface::class, ModelServiceProviderMetadataReader::class);
+    $services->set(MetadataFetcher::class);
+    $services->alias(MetadataFetcherInterface::class, MetadataFetcher::class);
+    $services->set(DoctrineAcceptedMetadataRepository::class);
+    $services->alias(AcceptedMetadataRepositoryInterface::class, DoctrineAcceptedMetadataRepository::class);
+    $services->set(ServiceProviderMetadataRefresh::class);
     $services->set(EndSessionRequestParser::class);
     $services->set(EndSessionHandler::class);
     $services->set(LogoutTokenIssuer::class);
