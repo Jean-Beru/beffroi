@@ -41,6 +41,8 @@ $builder->withSkip([
     __DIR__ . '/../tests/saml2-model/Interop/*',
     __DIR__ . '/../tests/saml2-bindings/Fixture/*',
     __DIR__ . '/../tests/saml2-bindings/Interop/*',
+    // The fixture of the bans of beffroi/saml is code written to be refused, one line per banned form.
+    __DIR__ . '/../tests/saml/PhpStan/Fixture/*',
     // The source guard tests of the SAML packages list the banned class names of their section 8 as tokens to search
     // for, never to reference: turning 'Dom\XPath' into XPath::class is the very thing the ban catches.
     StringClassNameToClassConstantRector::class => [
