@@ -568,8 +568,9 @@ function saml_sp_verify_responses(array $journeys): void
 
 /**
  * The acceptance of issue #733 on the wire (spec/saml.md S-19, S-20): the Response carries one saml:EncryptedAssertion
- * and no assertion in clear, its content under aes256-gcm and its key under rsa-oaep-mgf1p, and nothing of it names
- * CBC.
+ * and no assertion in clear, its content under aes256-gcm and its key under rsa-oaep-mgf1p, and no algorithm of it in
+ * CBC. The algorithms are what is read, the Algorithm of every element that names one, and not the text of the
+ * document: an ID, a digest or a ciphertext is hexadecimal or base64 drawn at random, and holds "cbc" in some runs.
  */
 function saml_sp_encrypted_on_the_wire(string $response): void
 {
@@ -591,7 +592,11 @@ function saml_sp_encrypted_on_the_wire(string $response): void
             === SAML_SP_ENCRYPTION['key'],
         sprintf('under %s, its key under %s', SAML_SP_ENCRYPTION['content'], SAML_SP_ENCRYPTION['key']),
     );
-    demo_expect(stripos($response, 'cbc') === false, 'nothing of it names CBC');
+    $algorithms = array_map(static fn (DOMAttr $algorithm): string => $algorithm->value, iterator_to_array($xpath->query('//@Algorithm') ?: []));
+    demo_expect(
+        array_filter($algorithms, static fn (string $algorithm): bool => stripos($algorithm, 'cbc') !== false) === [],
+        sprintf('no algorithm of it is in CBC (%s)', implode(', ', array_unique($algorithms))),
+    );
 }
 
 /**
