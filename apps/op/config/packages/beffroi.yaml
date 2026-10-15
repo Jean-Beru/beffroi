@@ -215,6 +215,21 @@ when@dev:
                         'urn:oid:2.16.840.1.113730.3.1.241':
                             claim: name
                             friendly_name: displayName
+                # The service provider of the Entra judge (issue beffroi-php/beffroi#736): the SAML federation of
+                # guests of the maintainer's test tenant, Entra ID Free, set up without a domain. Its entity ID is
+                # the tenanted issuer of the AuthnRequest Entra sends for a new federation, the trailing slash
+                # included, which is also the Audience it expects (spec/saml.md section 7). Entra publishes no
+                # metadata for it, so they are written by hand from Microsoft's documentation and committed
+                # (config/saml/), mounted with the application into op and the worker: no key, since Entra signs no
+                # request of a guest federation, hence "signs_authn_requests: false" (S-9, S-11); no encryption,
+                # which it does not ask for; the one claim it requires, the email address, under its WS-Federation
+                # claim type. "castor saml-entra" registers it and prints what the portal of Entra takes.
+                'https://login.microsoftonline.com/20a6e528-cf9e-4f79-8949-bbd59006eff5/':
+                    metadata: '%kernel.project_dir%/config/saml/entra-guest-federation-sp.xml'
+                    signs_authn_requests: false
+                    attributes:
+                        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress':
+                            claim: email
         # The issuer of the development stack whose signature the tenant trusts (RFC 7523 §3, issue #299),
         # which "castor demo --assertion" signs with. Whoever holds its key can name a user of this tenant,
         # so everything about it is written here and nothing is asked for: the keys are the ones below and
