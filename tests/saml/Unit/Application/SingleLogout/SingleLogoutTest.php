@@ -14,8 +14,14 @@ use Beffroi\Core\Exception\KeyNotFoundException;
 use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Saml\Application\SingleLogout\ProviderLogout;
 use Beffroi\Saml\Application\SingleLogout\SingleLogout;
+use Beffroi\Saml\Domain\SingleLogout\LogoutChain;
+use Beffroi\Saml\Domain\SingleLogout\LogoutChainEnded;
+use Beffroi\Saml\Domain\SingleLogout\LogoutChainStarted;
+use Beffroi\Saml\Domain\SingleLogout\LogoutProgress;
 use Beffroi\Saml\Domain\SingleLogout\RedirectedMessage;
+use Beffroi\Saml\Domain\SingleLogout\SignOutAnswer;
 use Beffroi\Saml\Domain\SingleLogout\SignOutRequest;
 use Beffroi\Saml\Domain\SingleLogout\SignOutResponse;
 use Beffroi\Saml\Domain\SingleLogout\SignOutStatus;
@@ -23,6 +29,9 @@ use Beffroi\Saml\Domain\SingleSignOn\PersistentNameId;
 use Beffroi\Saml\Tests\Fixture\FixedEndpoints;
 use Beffroi\Saml\Tests\Fixture\FixedSalt;
 use Beffroi\Saml\Tests\Fixture\GivenSignOutRequests;
+use Beffroi\Saml\Tests\Fixture\InMemoryLogoutChains;
+use Beffroi\Saml\Tests\Fixture\InMemorySessionParticipations;
+use Beffroi\Saml\Tests\Fixture\RecordingSignOutNotifier;
 use Beffroi\Saml\Tests\Fixture\RecordingSignOutResponder;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
 use Beffroi\Saml\Tests\Fixture\SignOutRequests;
@@ -34,7 +43,9 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * spec/saml.md section 6.5 steps 2 to 4: the sessions a logout request accepted names, ended when their user is the
- * principal it names, as every session of the core ends, and the answer written with the status that says so.
+ * principal it names, as every session of the core ends, and the answer written with the status that says so, after
+ * the chain of the other service providers when sessions ended (S-34); the answer of a service provider handed to the
+ * chain it answers (section 6.6 step 4).
  */
 final class SingleLogoutTest extends TestCase
 {
@@ -52,6 +63,8 @@ final class SingleLogoutTest extends TestCase
 
     private AuthenticationSession $session;
 
+    private InMemoryLogoutChains $chains;
+
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
@@ -61,6 +74,7 @@ final class SingleLogoutTest extends TestCase
         $this->responder = new RecordingSignOutResponder();
         $this->session = Fixtures::session(Fixtures::user($this->tenant));
         $this->sessions->save($this->session);
+        $this->chains = new InMemoryLogoutChains();
     }
 
     /**
@@ -94,22 +108,41 @@ final class SingleLogoutTest extends TestCase
     }
 
     /**
-     * S-24, S-27, section 6.5 step 4: the answer is written from the request, Success, issued by the identity provider
-     * of the tenant at the instant of the clock, and is what the browser carries back.
+     * S-29, S-34, section 6.5 step 3: a request that ended a session begins the chain of the other service providers of
+     * that session, its answer waiting for its end: nothing is answered yet, and the chain is to be resumed for the
+     * session ended.
      */
     #[Test]
-    public function theAnswerSaysSuccess(): void
+    public function aRequestThatEndedASessionBeginsTheChain(): void
+    {
+        // When
+        $answer = $this->singleLogout($this->request())->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context());
+
+        // Then
+        static::assertInstanceOf(LogoutChainStarted::class, $answer);
+        static::assertSame([[$this->session], null], [$answer->sessions, $this->responder->response]);
+    }
+
+    /**
+     * S-24, S-27, S-34, section 6.5 step 4: once the chain is resumed and nobody else is to be told, the answer is
+     * written from the request, Success, issued by the identity provider of the tenant at the instant of the clock,
+     * and is what the browser carries back.
+     */
+    #[Test]
+    public function theAnswerSaysSuccessAtTheEndOfTheChain(): void
     {
         // Given
         $request = $this->request();
+        $started = $this->singleLogout($request)->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context());
+        static::assertInstanceOf(LogoutChainStarted::class, $started);
 
         // When
-        $answer = $this->singleLogout($request)->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context());
+        $answer = $this->providerLogout()->resume($this->tenant, $started->reference);
 
         // Then
         static::assertEquals(
             [
-                new SignOutResponse(self::IDENTITY_PROVIDER, $request, SignOutStatus::Success, Fixtures::now()),
+                new SignOutResponse(self::IDENTITY_PROVIDER, $request->requester(), SignOutStatus::Success, Fixtures::now()),
                 new RedirectedMessage(SignOutRequests::SINGLE_LOGOUT . '?SAMLResponse=answered'),
             ],
             [$this->responder->response, $answer],
@@ -129,7 +162,31 @@ final class SingleLogoutTest extends TestCase
         $this->singleLogout($request)->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context());
 
         // Then
-        static::assertSame(SignOutStatus::Success, $this->responder->response?->status);
+        static::assertTrue($this->session->hasEnded());
+    }
+
+    /**
+     * Section 6.6 step 4, S-33: the answer of a service provider is handed to the chain it answers, which ends here,
+     * nobody else being left to tell and nobody to answer.
+     */
+    #[Test]
+    public function anAnswerOfAServiceProviderMovesTheChainOn(): void
+    {
+        // Given
+        $chain = new LogoutChain(
+            LogoutChain::digestOf('reference'),
+            $this->tenant,
+            '_request-1',
+            new LogoutProgress([$this->session->id], [], ServiceProviderDocuments::SIGNED, false, null, 'https://demo.example/'),
+            Fixtures::now()->modify('+600 seconds'),
+        );
+        $this->chains->save($chain);
+
+        // When
+        $answer = $this->singleLogout(new SignOutAnswer($chain, true))->redirect($this->tenant, 'SAMLResponse=given', Fixtures::context());
+
+        // Then
+        static::assertEquals(new LogoutChainEnded('https://demo.example/'), $answer);
     }
 
     /**
@@ -368,13 +425,28 @@ final class SingleLogoutTest extends TestCase
         }
     }
 
-    private function singleLogout(SignOutRequest|GivenSignOutRequests $received): SingleLogout
+    private function singleLogout(SignOutRequest|SignOutAnswer|GivenSignOutRequests $received): SingleLogout
     {
         return new SingleLogout(
             $received instanceof GivenSignOutRequests ? $received : new GivenSignOutRequests($received),
             $this->responder,
             $this->sessions,
             new SessionTerminator($this->sessions, $this->clock, $this->events),
+            new FixedSalt(),
+            new FixedEndpoints(),
+            $this->clock,
+            $this->providerLogout(),
+        );
+    }
+
+    private function providerLogout(): ProviderLogout
+    {
+        return new ProviderLogout(
+            new InMemorySessionParticipations(),
+            $this->chains,
+            $this->sessions,
+            new RecordingSignOutNotifier(),
+            $this->responder,
             new FixedSalt(),
             new FixedEndpoints(),
             $this->clock,

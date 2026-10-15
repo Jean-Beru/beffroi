@@ -139,7 +139,8 @@ final class ModelSignOutResponderTest extends TestCase
     }
 
     /**
-     * S-24, Core §3.2.2.2: the status of the answer, Success alone, or Requester above the code of the refusal.
+     * S-24, S-34, Core §3.2.2.2: the status of the answer, Success alone, Success above PartialLogout, or Requester
+     * above the code of the refusal.
      */
     #[Test]
     #[DataProvider('provideStatuses')]
@@ -158,6 +159,10 @@ final class ModelSignOutResponderTest extends TestCase
     public static function provideStatuses(): iterable
     {
         yield 'every session ended' => [SignOutStatus::Success, new Status(StatusCode::Success)];
+        yield 'a service provider of the session not told' => [
+            SignOutStatus::PartialLogout,
+            new Status(StatusCode::Success, SecondLevelStatusCode::PartialLogout),
+        ];
         yield 'another principal' => [SignOutStatus::UnknownPrincipal, new Status(StatusCode::Requester, SecondLevelStatusCode::UnknownPrincipal)];
         yield 'no session index' => [SignOutStatus::RequestUnsupported, new Status(StatusCode::Requester, SecondLevelStatusCode::RequestUnsupported)];
     }
@@ -319,7 +324,13 @@ final class ModelSignOutResponderTest extends TestCase
     ): SignOutResponse {
         return new SignOutResponse(
             self::IDENTITY_PROVIDER,
-            SignOutRequests::request('alice-at-sp', ['the-session'], relayState: $relayState, answerBinding: $answerBinding, answerLocation: $answerLocation),
+            SignOutRequests::request(
+                'alice-at-sp',
+                ['the-session'],
+                relayState: $relayState,
+                answerBinding: $answerBinding,
+                answerLocation: $answerLocation,
+            )->requester(),
             $status,
             Fixtures::now(),
         );

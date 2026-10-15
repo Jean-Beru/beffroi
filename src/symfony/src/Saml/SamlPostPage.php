@@ -49,7 +49,7 @@ final readonly class SamlPostPage
                 'Content-Security-Policy' => sprintf(
                     "default-src 'none'; script-src '%s'; form-action %s; base-uri 'none'; frame-ancestors 'none'",
                     new InlineScript(self::SCRIPT)->cspHashSource(),
-                    self::origin($form->action),
+                    self::originOf($form->action),
                 ),
                 'Cache-Control' => 'no-cache, no-store',
                 'Pragma' => 'no-cache',
@@ -60,7 +60,7 @@ final readonly class SamlPostPage
     /**
      * The scheme, the host and the port of the URL, which a "form-action" names (CSP Level 3 §2.3.1).
      */
-    private static function origin(string $url): string
+    public static function originOf(string $url): string
     {
         $port = parse_url($url, PHP_URL_PORT);
 
