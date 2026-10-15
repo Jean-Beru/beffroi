@@ -558,7 +558,7 @@ function regenerate_generated_configuration(): void
 
 /**
  * The files the specifications of the SAML packages accept only with no escaped mutant (section 9 of spec/core.md,
- * spec/dsig.md, spec/enc.md, spec/model.md and spec/bindings.md): "castor infect --strict" mutates them whole,
+ * spec/dsig.md, spec/enc.md, spec/model.md, spec/bindings.md and spec/saml.md): "castor infect --strict" mutates them whole,
  * uncovered lines included, and fails under a hundred percent. A file joins the list in the commit that creates it, never before: a
  * listed file missing from the tree is an error.
  */
@@ -698,6 +698,14 @@ const INFECTION_STRICT_FILES = [
     // Section 6.6: the writers of the other messages and of metadata, each on the tree builder of the response's.
     'src/saml2-model/src/Writing/AuthnRequestWriter.php',
     'src/saml2-model/src/Writing/MetadataWriter.php',
+    // beffroi/saml, section 9: what the metadata of the identity provider of a tenant says, the certificates it keeps
+    // and forgets, and the handler and the writer that build it (section 6.1).
+    'src/saml/src/Domain/Metadata/Certificate.php',
+    'src/saml/src/Domain/Metadata/IdentityProviderDescription.php',
+    'src/saml/src/Domain/Metadata/IdentityProviderMetadata.php',
+    'src/saml/src/Application/Metadata/SigningCertificates.php',
+    'src/saml/src/Application/Metadata/IdentityProviderMetadataHandler.php',
+    'src/saml/src/Bridge/Model/ModelMetadataWriter.php',
     'src/saml2-model/src/Writing/LogoutRequestWriter.php',
     'src/saml2-model/src/Writing/LogoutResponseWriter.php',
     // Section 9: the strict readers of the two logout messages (sections 6.3, 6.4).
@@ -768,7 +776,7 @@ function infect(
     #[AsOption(description: 'Mutate only the lines added or modified since --base, committed or not')]
     bool $diff = false,
     #[AsOption(
-        description: 'Mutate the files of INFECTION_STRICT_FILES whole, uncovered lines included, and fail under a hundred percent, whatever --min-msi and --min-covered-msi say, on a coverage of its own: the three SAML suites measured by Xdebug in .ci-tools/coverage-strict',
+        description: 'Mutate the files of INFECTION_STRICT_FILES whole, uncovered lines included, and fail under a hundred percent, whatever --min-msi and --min-covered-msi say, on a coverage of its own: the suites of the SAML packages measured by Xdebug in .ci-tools/coverage-strict',
     )]
     bool $strict = false,
     #[AsOption(
@@ -793,7 +801,7 @@ function infect(
     }
 
     // The XML coverage and the JUnit report of a "castor phpunit" run are what Infection reads from .ci-tools/coverage.
-    // The strict run reads a coverage of its own, the three SAML suites measured by Xdebug: pcov reports no line for a
+    // The strict run reads a coverage of its own, the suites of the SAML packages measured by Xdebug: pcov reports no line for a
     // "continue" statement, so the mutant that turns one into "break" is not covered under it, and the hundred percent
     // the specifications ask for is out of reach on a line every test of the corpus runs.
     $coverage = $strict ? '.ci-tools/coverage-strict' : '.ci-tools/coverage';
@@ -861,7 +869,7 @@ function strict_coverage(): void
             '--configuration',
             '.ci-tools/phpunit.xml.dist',
             '--testsuite',
-            'xml-security,saml2-model,saml2-bindings',
+            'xml-security,saml2-model,saml2-bindings,saml',
         ],
         ['XDEBUG_MODE' => 'coverage'],
     );
