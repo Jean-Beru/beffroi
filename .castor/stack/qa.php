@@ -725,6 +725,8 @@ const INFECTION_STRICT_FILES = [
     'src/saml2-bindings/src/Internal/Percent.php',
     // B-8: base64 in its one form, the one place it is decoded.
     'src/saml2-bindings/src/Internal/Base64.php',
+    // Sections 6.3 and 6.4 step 1: the scheme of a Destination, http or https.
+    'src/saml2-bindings/src/Internal/DestinationScheme.php',
     // B-7, B-8: the bounded inflater, raw DEFLATE refused as soon as its output exceeds the bound.
     'src/saml2-bindings/src/Internal/Inflater.php',
     // B-8: the deflater, raw DEFLATE.
