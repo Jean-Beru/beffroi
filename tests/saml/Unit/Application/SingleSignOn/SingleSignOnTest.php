@@ -13,6 +13,8 @@ use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Saml\Application\SingleSignOn\AttributeRelease;
 use Beffroi\Saml\Application\SingleSignOn\SingleSignOn;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
+use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataReader;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
 use Beffroi\Saml\Domain\ServiceProvider\AttributeNameFormat;
 use Beffroi\Saml\Domain\SingleSignOn\AttributeValue;
 use Beffroi\Saml\Domain\SingleSignOn\PersistentNameId;
@@ -27,6 +29,7 @@ use Beffroi\Saml\Tests\Fixture\FixedClaims;
 use Beffroi\Saml\Tests\Fixture\FixedEndpoints;
 use Beffroi\Saml\Tests\Fixture\FixedSalt;
 use Beffroi\Saml\Tests\Fixture\GivenRequests;
+use Beffroi\Saml\Tests\Fixture\InMemoryAcceptedMetadata;
 use Beffroi\Saml\Tests\Fixture\RecordingLogger;
 use Beffroi\Saml\Tests\Fixture\RecordingResponder;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
@@ -37,6 +40,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * spec/saml.md section 6.4: what a request accepted is answered with, from the session the browser holds, after a
@@ -44,7 +48,10 @@ use Symfony\Component\Clock\MockClock;
  */
 final class SingleSignOnTest extends TestCase
 {
-    private const string ENCRYPTING = 'https://encrypting.example.org/saml';
+    /**
+     * The service provider declared with encrypt_assertions: the SimpleSAMLphp one, whose metadata hold a key for it.
+     */
+    private const string ENCRYPTING = ServiceProviderDocuments::SIMPLESAMLPHP;
 
     private Tenant $tenant;
 
@@ -52,11 +59,14 @@ final class SingleSignOnTest extends TestCase
 
     private RecordingResponder $responder;
 
+    private InMemoryAcceptedMetadata $acceptedMetadata;
+
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
         $this->clock = new MockClock(Fixtures::now());
         $this->responder = new RecordingResponder();
+        $this->acceptedMetadata = new InMemoryAcceptedMetadata();
     }
 
     /**
@@ -303,17 +313,125 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * S-7, section 6.4 step 2, issue #733: nothing is sent in clear to a service provider that asks for encryption.
+     * S-7, S-19, section 6.4 step 2: a request of a service provider that asks for encryption, its accepted document
+     * holding no key for it, is refused when it arrives, before anybody signs in.
      */
     #[Test]
-    public function aServiceProviderThatAsksForEncryptionIsRefused(): void
+    public function aServiceProviderThatAsksForEncryptionWithoutAKeyIsRefused(): void
     {
+        // Given
+        $this->accepted(ServiceProviderDocuments::simpleSamlPhpWithoutEncryptionKey());
+
         // Then
         $this->expectException(SignOnRefusedException::class);
-        $this->expectExceptionMessageIs('The service provider asks for its assertions encrypted, which this identity provider does not do yet: none is sent in clear (spec/saml.md S-7).');
+        $this->expectExceptionMessageIs('The service provider asks for its assertions encrypted and no key for encryption is read back from its accepted metadata: none is sent in clear (spec/saml.md S-19).');
 
         // When
         $this->singleSignOn(SignOnRequests::request(serviceProvider: self::ENCRYPTING))->receiveRedirect($this->tenant, 'SAMLRequest=x');
+    }
+
+    /**
+     * S-7, S-19, section 6.4 step 2: the same request is received when the accepted document holds a key for
+     * encryption.
+     */
+    #[Test]
+    public function aServiceProviderThatAsksForEncryptionWithAKeyIsReceived(): void
+    {
+        // Given
+        $this->accepted(ServiceProviderDocuments::simpleSamlPhp());
+        $request = SignOnRequests::request(serviceProvider: self::ENCRYPTING);
+
+        // When / Then
+        static::assertEquals($request, $this->singleSignOn($request)->receiveRedirect($this->tenant, 'SAMLRequest=x'));
+    }
+
+    /**
+     * S-19, section 6.4 step 7: the answer to a service provider that asks for encryption names the first certificate
+     * for encryption of its accepted document.
+     */
+    #[Test]
+    public function theAnswerToAServiceProviderThatAsksForEncryptionNamesTheKeyOfItsMetadata(): void
+    {
+        // Given
+        $this->accepted(ServiceProviderDocuments::simpleSamlPhp());
+
+        // When
+        $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(serviceProvider: self::ENCRYPTING), $this->session());
+
+        // Then
+        static::assertEquals(
+            new ModelServiceProviderMetadataReader($this->clock)->readTrusted(ServiceProviderDocuments::simpleSamlPhp())->encryptionCertificates[0],
+            $this->responder->response?->encryptFor,
+        );
+    }
+
+    /**
+     * S-19, section 6.4 step 7: the accepted document is read back when the request is answered, so that a key a
+     * refresh put in place while the request waited is the one the assertion is encrypted for.
+     */
+    #[Test]
+    public function theKeyIsReadAgainWhenTheRequestIsAnswered(): void
+    {
+        // Given
+        $this->accepted(ServiceProviderDocuments::simpleSamlPhp());
+        $request = $this->singleSignOn(SignOnRequests::request(serviceProvider: self::ENCRYPTING))->receiveRedirect($this->tenant, 'SAMLRequest=x');
+        $this->accepted(ServiceProviderDocuments::simpleSamlPhpWithCertificate(ServiceProviderDocuments::signer()->base64));
+
+        // When
+        $this->singleSignOn()->answer($this->tenant, $request, $this->session());
+
+        // Then
+        static::assertEquals(ServiceProviderDocuments::signer(), $this->responder->response?->encryptFor);
+    }
+
+    /**
+     * S-19, section 6.4 step 7: a service provider that asks for encryption is refused at the answer when no key is
+     * read back from its accepted metadata by then, and nothing is written for it.
+     */
+    #[Test]
+    #[DataProvider('provideDocumentsWithoutAKey')]
+    public function anAnswerWithoutAKeyIsRefused(?string $document): void
+    {
+        // Given
+        if ($document !== null) {
+            $this->accepted($document);
+        }
+
+        // When
+        try {
+            $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(serviceProvider: self::ENCRYPTING), $this->session());
+        } catch (SignOnRefusedException) {
+        }
+
+        // Then
+        static::assertNull($this->responder->response);
+    }
+
+    /**
+     * @return iterable<string, array{?string}>
+     */
+    public static function provideDocumentsWithoutAKey(): iterable
+    {
+        yield 'no accepted document' => [null];
+        yield 'a document without a key for encryption' => [ServiceProviderDocuments::simpleSamlPhpWithoutEncryptionKey()];
+        yield 'a document that expired since it was accepted' => [ServiceProviderDocuments::simpleSamlPhpValidUntil('2026-09-15T09:00:00Z')];
+    }
+
+    /**
+     * S-7, S-19: a service provider whose declaration does not ask for encryption is answered in clear, whatever keys
+     * its metadata hold.
+     */
+    #[Test]
+    public function aServiceProviderThatDoesNotAskIsAnsweredInClear(): void
+    {
+        // Given
+        $this->accepted(ServiceProviderDocuments::signed(null), ServiceProviderDocuments::SIGNED);
+
+        // When
+        $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(), $this->session());
+
+        // Then
+        static::assertNull($this->responder->response?->encryptFor);
     }
 
     /**
@@ -351,11 +469,14 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * Section 6.4 step 2: the declaration is read again when the request is posted too.
+     * S-19, section 6.4 step 2: the key is looked for when the request is posted too.
      */
     #[Test]
-    public function aRequestPostedForAServiceProviderThatAsksForEncryptionIsRefused(): void
+    public function aRequestPostedForAServiceProviderThatAsksForEncryptionWithoutAKeyIsRefused(): void
     {
+        // Given
+        $this->accepted(ServiceProviderDocuments::simpleSamlPhpWithoutEncryptionKey());
+
         // Then
         $this->expectException(SignOnRefusedException::class);
 
@@ -381,7 +502,7 @@ final class SingleSignOnTest extends TestCase
                         ],
                     ],
                     self::ENCRYPTING => [
-                        'metadata' => '/etc/saml/encrypting.xml',
+                        'metadata' => '/etc/saml/simplesamlphp.xml',
                         'encrypt_assertions' => true,
                     ],
                 ],
@@ -391,7 +512,17 @@ final class SingleSignOnTest extends TestCase
             new FixedSalt(),
             new FixedEndpoints(),
             $this->clock,
+            $this->acceptedMetadata,
+            new ModelServiceProviderMetadataReader($this->clock),
         );
+    }
+
+    /**
+     * The document accepted for a service provider of the tenant, the one that asks for encryption by default.
+     */
+    private function accepted(string $document, string $entityId = self::ENCRYPTING): void
+    {
+        $this->acceptedMetadata->save(new AcceptedMetadata(Uuid::v7(), $this->tenant, $entityId, $document, null, Fixtures::now()));
     }
 
     /**

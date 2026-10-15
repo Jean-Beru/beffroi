@@ -287,9 +287,10 @@ deptrac:
       - 'PsrClock'
       - 'Uid'
     # The SAML stack is a brick of the module, as JOSE is of beffroi/oidc: its Bridge implements the ports on it, and
-    # sees each public layer of saml2-model, saml2-bindings and xml-security, never one of their Internal namespaces,
-    # nor Enc until the assertion is encrypted (issue #733); pki-framework for the self-signed certificate around a
-    # tenant's key (decision 0013).
+    # sees each public layer of saml2-model, saml2-bindings and xml-security, never one of their Internal namespaces;
+    # Enc for the key of the service provider an assertion is encrypted for and the scheme it is encrypted under, which
+    # it hands the model's writer (spec/saml.md S-19, S-20, issue #733); pki-framework for the self-signed certificate
+    # around a tenant's key (decision 0013).
     SamlBridge:
       - 'SamlDomain'
       - 'SamlPort'
@@ -315,6 +316,7 @@ deptrac:
       - 'Saml2BindingsException'
       - 'XmlCore'
       - 'XmlDsig'
+      - 'XmlEnc'
     Bundle:
       - 'CoreDomain'
       - 'CorePort'
