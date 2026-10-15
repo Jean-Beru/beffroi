@@ -14,6 +14,7 @@ use Castor\Context;
 use function Castor\context;
 use function Castor\io;
 use function Castor\run;
+use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
 
 /**
@@ -54,10 +55,35 @@ const KMS_FILE_DIRECTORY = '/app/var/kms';
 const COMPOSE_PROFILES = ['conformance', 'vault', 'aws'];
 
 /**
- * Where Caddy keeps the root of the authority it signs the certificates of the stack with, inside the op
- * container (its data directory, XDG_DATA_HOME of the FrankenPHP image).
+ * Where the op container publishes the root of the authority that signed the certificate it serves, in its
+ * data directory (XDG_DATA_HOME of the FrankenPHP image): a copy of the mkcert root, or a link to the root
+ * of the internal CA of Caddy (docker/op/entrypoint.sh).
  */
-const CADDY_ROOT_CERTIFICATE = '/data/caddy/pki/authorities/local/root.crt';
+const CADDY_ROOT_CERTIFICATE = '/data/beffroi/root.crt';
+
+/**
+ * Every name the stack serves over HTTPS, by the variable of compose.yaml that can rename it, and the one
+ * list the certificate mkcert issues for the stack is drawn from (stack_certificate()). A site the stack
+ * comes to serve is one line here.
+ *
+ * @var array<string, string>
+ */
+const STACK_HOSTS = [
+    'SERVER_NAME' => 'op.localhost',
+    'MTLS_SERVER_NAME' => 'mtls.op.localhost',
+];
+
+/**
+ * Where castor keeps the certificate mkcert issues for the stack, its key and a copy of the mkcert root
+ * (the certificate, never its key), relative to the root of the repository: under var/, which git ignores,
+ * and mounted read-only in the op container by compose.yaml.
+ */
+const STACK_CERTIFICATE_DIRECTORY = 'var/stack-certificate';
+
+/**
+ * How long before it expires the certificate of the stack is issued again.
+ */
+const STACK_CERTIFICATE_RENEWAL_DAYS = 30;
 
 /**
  * The sidecars that carry the loopback port 8443 of the suite into the network namespace of another
@@ -108,6 +134,13 @@ function start(
     if ($accessTokenFormat !== null) {
         $environment['CONFORMANCE_ACCESS_TOKEN_FORMAT'] = $accessTokenFormat;
     }
+    $certificate = stack_certificate();
+    if ($certificate !== null) {
+        $environment['BEFFROI_STACK_CERTIFICATE'] = $certificate;
+        // Caddy reads the certificate when it starts: one issued again is a configuration compose sees
+        // change, so the op container is created again rather than left serving the one it read.
+        $environment['BEFFROI_STACK_CERTIFICATE_FINGERPRINT'] = stack_certificate_fingerprint($certificate);
+    }
     $command = [...$command, 'up', '-d', '--remove-orphans', '--wait'];
     if ($build) {
         $command[] = '--build';
@@ -121,10 +154,142 @@ function start(
     };
     io()->success(
         'OP: https://op.localhost'
+        . ($certificate === null ? ' (internal CA of Caddy)' : ' (certificate of the mkcert CA of the machine)')
         . ($conformance ? ', conformance suite: https://localhost:8443, profiler off' : '')
         . ($accessTokenFormat === null ? '' : sprintf(', %s access tokens for the clients of the suite', $accessTokenFormat))
         . $started,
     );
+}
+
+/**
+ * The names of STACK_HOSTS, each one renamed by its variable when the environment sets it, as compose.yaml
+ * does.
+ *
+ * @return list<string>
+ */
+function stack_hosts(): array
+{
+    $hosts = [];
+    foreach (STACK_HOSTS as $variable => $default) {
+        $value = getenv($variable);
+        $hosts[] = is_string($value) && $value !== '' ? $value : $default;
+    }
+
+    return $hosts;
+}
+
+/**
+ * The directory of the mkcert CA of the machine, when it holds a root and its key, and null otherwise (no
+ * mkcert, as on a CI runner, or a root without its key). Nothing of it is configured by hand, and nothing
+ * here installs anything in a trust store.
+ */
+function mkcert_caroot(): ?string
+{
+    $mkcert = new ExecutableFinder()->find('mkcert');
+    if ($mkcert === null) {
+        return null;
+    }
+    $caroot = run([$mkcert, '-CAROOT'], context: context()->withQuiet()->withAllowFailure());
+    if (! $caroot->isSuccessful()) {
+        return null;
+    }
+    $directory = trim($caroot->getOutput());
+    if ($directory === '' || ! is_file($directory . '/rootCA.pem') || ! is_file($directory . '/rootCA-key.pem')) {
+        return null;
+    }
+
+    return $directory;
+}
+
+/**
+ * The directory of the certificate the stack serves for every name of stack_hosts(), issued by mkcert on
+ * this machine, or null when the machine has no mkcert CA and Caddy keeps its internal one, as on a CI
+ * runner. The key of the mkcert root stays where mkcert keeps it: what the op container is given is the
+ * certificate of the stack, its key and a copy of the root certificate, which is what the walks and the
+ * conformance suite trust (docker/op/entrypoint.sh). The certificate is issued again when it is missing,
+ * when it expires within STACK_CERTIFICATE_RENEWAL_DAYS, when the names it covers are not the names of the
+ * stack, or when the root beside it is no longer the root of mkcert.
+ */
+function stack_certificate(): ?string
+{
+    $caroot = mkcert_caroot();
+    if ($caroot === null) {
+        return null;
+    }
+    $directory = context()->workingDirectory . '/' . STACK_CERTIFICATE_DIRECTORY;
+    $hosts = stack_hosts();
+    if (stack_certificate_is_current($directory, $hosts, $caroot . '/rootCA.pem')) {
+        return $directory;
+    }
+    if (! is_dir($directory) && ! mkdir($directory, 0o700, true) && ! is_dir($directory)) {
+        io()->error(sprintf('Cannot create %s.', $directory));
+        exit(1);
+    }
+    run(
+        [
+            'mkcert',
+            '-cert-file',
+            $directory . '/cert.pem',
+            '-key-file',
+            $directory . '/key.pem',
+            ...$hosts,
+        ],
+        context: context()->withQuiet(),
+    );
+    if (! copy($caroot . '/rootCA.pem', $directory . '/root.pem')) {
+        io()->error(sprintf('Cannot copy the mkcert root to %s.', $directory));
+        exit(1);
+    }
+    io()->note(sprintf('The certificate of the stack was issued by mkcert for %s.', implode(', ', $hosts)));
+
+    return $directory;
+}
+
+/**
+ * The SHA-256 fingerprint of the certificate kept in this directory.
+ */
+function stack_certificate_fingerprint(string $directory): string
+{
+    $certificate = file_get_contents($directory . '/cert.pem');
+    $fingerprint = $certificate === false ? false : openssl_x509_fingerprint($certificate, 'sha256');
+    if ($fingerprint === false) {
+        io()->error(sprintf('Cannot read the certificate of the stack in %s.', $directory));
+        exit(1);
+    }
+
+    return $fingerprint;
+}
+
+/**
+ * Whether the certificate kept in this directory covers exactly these names, is valid for longer than
+ * STACK_CERTIFICATE_RENEWAL_DAYS, and sits beside a copy of this root.
+ *
+ * @param list<string> $hosts
+ */
+function stack_certificate_is_current(string $directory, array $hosts, string $root): bool
+{
+    $certificate = @file_get_contents($directory . '/cert.pem');
+    $copy = @file_get_contents($directory . '/root.pem');
+    if ($certificate === false || $copy === false || ! is_file($directory . '/key.pem') || $copy !== file_get_contents($root)) {
+        return false;
+    }
+    $parsed = openssl_x509_parse($certificate);
+    if ($parsed === false || ! is_int($parsed['validTo_time_t'] ?? null)) {
+        return false;
+    }
+    if ($parsed['validTo_time_t'] < (time() + (STACK_CERTIFICATE_RENEWAL_DAYS * 86_400))) {
+        return false;
+    }
+    $alternativeNames = $parsed['extensions']['subjectAltName'] ?? null;
+    if (! is_string($alternativeNames)) {
+        return false;
+    }
+    $covered = array_map(static fn (string $name): string => trim(str_replace('DNS:', '', $name)), explode(',', $alternativeNames));
+    $expected = $hosts;
+    sort($covered);
+    sort($expected);
+
+    return $covered === $expected;
 }
 
 /**
@@ -170,11 +335,12 @@ function compose_running_services(): array
 }
 
 /**
- * The internal CA of Caddy, copied out of the op container to a file of the host and left there: the
- * certificate the stack serves on https://op.localhost is signed by an authority that exists only inside
- * it, so curl and the PHP of the machine trust that file and nothing else (mtls.php, demo.php). Every walk
- * of the laboratory asks for it here, so that the path is written once and a stack that is not up is said
- * in one wording instead of being an exit code under a quiet process.
+ * The root of the certificate the stack serves, copied out of the op container to a file of the host and
+ * left there: the mkcert root when "castor start" found one, or an authority that exists only inside the
+ * container, so curl and the PHP of the machine trust that file and nothing else (mtls.php, demo.php),
+ * whichever of the two the stack was started with. Every walk of the laboratory asks for it here, so that
+ * the path is written once and a stack that is not up is said in one wording instead of being an exit code
+ * under a quiet process.
  */
 function caddy_ca(string $destination): string
 {
@@ -184,10 +350,17 @@ function caddy_ca(string $destination): string
         exit(1);
     }
     if (! in_array('op', compose_running_services(), true)) {
-        io()->error('The op container is not running, so there is no internal CA of Caddy to read: run "castor start" first.');
+        io()->error('The op container is not running, so there is no CA of Caddy to read: run "castor start" first.');
         exit(1);
     }
-    $copy = run(['docker', 'compose', 'cp', 'op:' . CADDY_ROOT_CERTIFICATE, $destination], context: context()->withQuiet()->withAllowFailure());
+    $copy = run([
+        'docker',
+        'compose',
+        'cp',
+        '--follow-link',
+        'op:' . CADDY_ROOT_CERTIFICATE,
+        $destination,
+    ], context: context()->withQuiet()->withAllowFailure());
     if (! $copy->isSuccessful() || ! is_file($destination)) {
         io()->error(sprintf(
             'Cannot read %s from the op container, which is running: "docker compose exec op ls %s" says what it holds.',
