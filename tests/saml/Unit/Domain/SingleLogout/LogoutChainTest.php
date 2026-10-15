@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Beffroi\Saml\Tests\Unit\Domain\SingleLogout;
 
+use Beffroi\Core\Domain\PersonalData\NoPersonalDatum;
+use Beffroi\Core\Domain\PersonalData\Reason;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Saml\Domain\SingleLogout\LogoutChain;
 use Beffroi\Saml\Domain\SingleLogout\LogoutProgress;
@@ -47,6 +49,27 @@ final class LogoutChainTest extends TestCase
     {
         // When / Then
         static::assertSame('52367a6622b19f08825e915fad80c542ad4f4c34dbcebad9f5007994b3e39208', LogoutChain::digestOf('reference'));
+    }
+
+    /**
+     * S-32, decision 0011: a row names no person, a digest, its tenant, a request ID drawn at random, where the chain
+     * stands and when it closes.
+     */
+    #[Test]
+    public function aRowNamesNoPerson(): void
+    {
+        // When / Then
+        static::assertEquals(
+            [
+                'reference' => new NoPersonalDatum(Reason::HASHED),
+                'tenant' => new NoPersonalDatum(Reason::THE_TENANT),
+                'awaitingRequest' => new NoPersonalDatum(Reason::DRAWN_AT_RANDOM),
+                'progress' =>
+                    new NoPersonalDatum('sessions by their identifiers drawn at random, service providers, which are applications, and where the chain ends: a URI a client registered with the state it drew, or the ID and the RelayState a service provider drew for its own request'),
+                'expiresAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            ],
+            LogoutChain::classifiedFields(),
+        );
     }
 
     /**

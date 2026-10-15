@@ -8,6 +8,7 @@ use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Beffroi\Core\Bridge\Key\SealedKeyProvider;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
@@ -210,6 +211,47 @@ final class ModelSignOutNotifierTest extends TestCase
         yield 'a service provider nobody declared' => [self::UNREGISTERED . '/nobody', false];
         yield 'a service provider with no accepted document' => [self::UNREGISTERED, false];
         yield 'a service provider with no single logout service' => [ServiceProviderDocuments::SIGNED, true];
+    }
+
+    /**
+     * D-16, S-31: a key Dsig refuses to sign with, under 2 048 bits, signs no request, over either binding.
+     */
+    #[Test]
+    #[DataProvider('provideBindings')]
+    public function aKeyDsigRefusesSignsNothing(Binding $binding): void
+    {
+        // Given
+        $this->accept([new Endpoint($binding, self::SINGLE_LOGOUT)]);
+        $weak = SamlKeys::weakPair();
+        $key = new TenantKey(
+            $weak->kid,
+            $this->tenant,
+            SamlKeys::algorithm(),
+            $weak->publicJwk,
+            Keys::sealer()->seal($this->tenant, $weak->privateJwk),
+            Fixtures::now(),
+            Fixtures::now(),
+        );
+        $key->activate(Fixtures::now());
+        $this->keys = new InMemoryTenantKeyRepository();
+        $this->keys->save($key);
+
+        // Then
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageIs('The logout request of the identity provider is one its own reader refuses (spec/saml.md S-31).');
+        $this->expectExceptionCode(0);
+
+        // When
+        $this->notifier()->notify($this->tenant, self::notice());
+    }
+
+    /**
+     * @return iterable<string, array{Binding}>
+     */
+    public static function provideBindings(): iterable
+    {
+        yield 'HTTP-Redirect' => [Binding::HttpRedirect];
+        yield 'HTTP-POST' => [Binding::HttpPost];
     }
 
     /**
