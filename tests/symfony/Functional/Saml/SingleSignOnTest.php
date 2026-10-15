@@ -30,6 +30,7 @@ use Beffroi\Saml2\Model\Validation\SignatureCoverage;
 use Beffroi\Saml2\Model\Writing\Signing;
 use function array_combine;
 use function array_map;
+use function http_build_query;
 use function parse_url;
 use const PHP_URL_PATH;
 use const PHP_URL_QUERY;
@@ -113,6 +114,45 @@ final class SingleSignOnTest extends ConsoleTestCase
 
         // Then
         static::assertSame(SignatureCoverage::AssertionAndResponse, $this->accepted()->coverage);
+    }
+
+    /**
+     * The acceptance of issue #739, S-28: a signed-in browser whose service provider posts its request from its own
+     * site, without the session cookie, is answered from the session it holds once the page of the provider has posted
+     * the request again, without a login, its RelayState given back.
+     */
+    #[Test]
+    public function aRequestPostedFromAnotherSiteIsAnsweredFromTheSession(): void
+    {
+        // Given
+        $this->signIn($this->alice);
+        $this->postedFromAnotherSite('/saml/sso', $this->postedBody("a state <with> \"quotes\", & spaces, \u{e9}"));
+
+        // When
+        $this->postedAgain();
+
+        // Then
+        static::assertSame(
+            ["a state <with> \"quotes\", & spaces, \u{e9}", SignatureCoverage::AssertionAndResponse],
+            [$this->form()['fields']['RelayState'] ?? null, $this->accepted()->coverage],
+        );
+    }
+
+    /**
+     * S-28: a browser that holds no session gets the page all the same, the provider not knowing it holds none, and is
+     * sent to the login by the second post, which is not posted a third time.
+     */
+    #[Test]
+    public function aBrowserWithoutASessionIsSentToTheLoginByTheSecondPost(): void
+    {
+        // Given
+        $this->postedFromAnotherSite('/saml/sso', $this->postedBody('state-1'));
+
+        // When
+        $this->postedAgain();
+
+        // Then
+        static::assertTrue($this->browser->getResponse()->isRedirect('/login'), (string) $this->browser->getResponse()->headers->get('Location'));
     }
 
     /**
@@ -411,6 +451,14 @@ final class SingleSignOnTest extends ConsoleTestCase
     {
         $form = new PostSender()->authnRequest(self::request(), self::signing(), $relayState);
         $this->browser->request('POST', '/saml/sso', $form->fields, [], ['CONTENT_TYPE' => 'application/x-www-form-urlencoded']);
+    }
+
+    /**
+     * The body a page of the service provider posts, as a browser encodes the form PostSender returned.
+     */
+    private function postedBody(string $relayState): string
+    {
+        return http_build_query(new PostSender()->authnRequest(self::request(), self::signing(), $relayState)->fields);
     }
 
     /**

@@ -1529,6 +1529,18 @@
         <source>act.enrolment_ticket.issued</source>
         <target>Un lien pour poser un moyen de connexion a été émis pour ce compte</target>
       </trans-unit>
+      <trans-unit id="post_again.title" resname="post_again.title">
+        <source>post_again.title</source>
+        <target>Connexion en cours</target>
+      </trans-unit>
+      <trans-unit id="post_again.explanation" resname="post_again.explanation">
+        <source>post_again.explanation</source>
+        <target>Votre navigateur arrive d’un autre site sans votre session. Utilisez le bouton ci-dessous pour continuer.</target>
+      </trans-unit>
+      <trans-unit id="post_again.continue" resname="post_again.continue">
+        <source>post_again.continue</source>
+        <target>Continuer</target>
+      </trans-unit>
       <trans-unit id="saml_post.title" resname="saml_post.title">
         <source>saml_post.title</source>
         <target>Retour vers l’application</target>
