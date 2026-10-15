@@ -1824,7 +1824,7 @@
                                                 "$ref": "#/$defs/types/integer",
                                                 "minimum": 0,
                                                 "default": 604800,
-                                                "description": "How long a new SAML signing key is published in the metadata before it signs, in seconds (spec/saml.md S-12, section 7): seven days by default, seven times the cacheDuration of the metadata, so that a service provider whose refresh fails a few times still fetches the next certificate before it is used, and a calendar week for an administrator of a service provider that holds an uploaded certificate (Entra without a metadata URL) to put the next one in place; AD FS gives its partners five days. The keys of every other family keep \"keys.staging_delay\"."
+                                                "description": "How long a new SAML signing key is published in the metadata before it signs, in seconds (spec/saml.md S-12, section 7): seven days by default, seven times the cacheDuration of the metadata, so that a service provider whose refresh fails a few times still fetches the next certificate before it is used, and a calendar week for an administrator of a service provider that holds an uploaded certificate (Entra without a metadata URL) to put the next one in place; AD FS, in the sample of its documentation, gives its partners five days. The keys of every other family keep \"keys.staging_delay\"."
                                             },
                                             "age": {
                                                 "$ref": "#/$defs/types/integer",

@@ -62,7 +62,7 @@ final readonly class SamlSection extends ConfigurationSection
             ->defaultTrue()
             ->end()
             ->integerNode('staging_delay')
-            ->info('How long a new SAML signing key is published in the metadata before it signs, in seconds (spec/saml.md S-12, section 7): seven days by default, seven times the cacheDuration of the metadata, so that a service provider whose refresh fails a few times still fetches the next certificate before it is used, and a calendar week for an administrator of a service provider that holds an uploaded certificate (Entra without a metadata URL) to put the next one in place; AD FS gives its partners five days. The keys of every other family keep "keys.staging_delay".')
+            ->info('How long a new SAML signing key is published in the metadata before it signs, in seconds (spec/saml.md S-12, section 7): seven days by default, seven times the cacheDuration of the metadata, so that a service provider whose refresh fails a few times still fetches the next certificate before it is used, and a calendar week for an administrator of a service provider that holds an uploaded certificate (Entra without a metadata URL) to put the next one in place; AD FS, in the sample of its documentation, gives its partners five days. The keys of every other family keep "keys.staging_delay".')
             ->defaultValue(SamlSigningAlgorithmInterface::STAGING_DELAY)
             ->min(0)
             ->end()
