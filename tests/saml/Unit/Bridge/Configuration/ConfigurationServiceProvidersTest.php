@@ -1,0 +1,215 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Beffroi\Saml\Tests\Unit\Bridge\Configuration;
+
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
+use Beffroi\Saml\Domain\ServiceProvider\AttributeMapping;
+use Beffroi\Saml\Domain\ServiceProvider\AttributeNameFormat;
+use Beffroi\Saml\Domain\ServiceProvider\MetadataLocation;
+use Beffroi\Saml\Domain\ServiceProvider\ServiceProvider;
+use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * spec/saml.md S-5, section 5.2, section 6.2 step 1: the service providers the configuration of the deployment
+ * declares, keyed by entity ID, validated at boot, those of one tenant.
+ */
+final class ConfigurationServiceProvidersTest extends TestCase
+{
+    private const string ENTITY_ID = 'https://sp.example.com/saml';
+
+    private const string LOCATION = 'https://sp.example.com/saml/metadata';
+
+    #[Test]
+    public function aDeclarationIsReadWhole(): void
+    {
+        // Given
+        $serviceProviders = new ConfigurationServiceProviders('acme', [
+            self::ENTITY_ID => [
+                'metadata' => self::LOCATION,
+                'metadata_signers' => [ServiceProviderDocuments::signer()->base64],
+                'attributes' => [
+                    'urn:oid:0.9.2342.19200300.100.1.3' => [
+                        'claim' => 'email',
+                        'friendly_name' => 'mail',
+                    ],
+                    'displayName' => [
+                        'claim' => 'name',
+                        'name_format' => 'basic',
+                    ],
+                ],
+                'encrypt_assertions' => true,
+                'signs_authn_requests' => false,
+            ],
+        ]);
+
+        // When
+        $serviceProvider = $serviceProviders->find(Fixtures::tenant(), self::ENTITY_ID);
+
+        // Then
+        static::assertEquals(
+            new ServiceProvider(
+                self::ENTITY_ID,
+                new MetadataLocation(self::LOCATION),
+                [ServiceProviderDocuments::signer()],
+                [
+                    new AttributeMapping('email', 'urn:oid:0.9.2342.19200300.100.1.3', AttributeNameFormat::Uri, 'mail'),
+                    new AttributeMapping('name', 'displayName', AttributeNameFormat::Basic),
+                ],
+                true,
+                false,
+            ),
+            $serviceProvider,
+        );
+    }
+
+    /**
+     * S-7 and issue #730: what a declaration leaves out is no encryption and requests signed.
+     */
+    #[Test]
+    public function aDeclarationLeftOutTakesTheDefaults(): void
+    {
+        // Given
+        $serviceProviders = new ConfigurationServiceProviders('acme', [
+            self::ENTITY_ID => [
+                'metadata' => self::LOCATION,
+            ],
+        ]);
+
+        // When
+        $serviceProvider = $serviceProviders->find(Fixtures::tenant(), self::ENTITY_ID);
+
+        // Then
+        static::assertEquals(new ServiceProvider(self::ENTITY_ID, new MetadataLocation(self::LOCATION)), $serviceProvider);
+    }
+
+    #[Test]
+    public function theServiceProvidersAreListedInTheOrderOfTheDeclaration(): void
+    {
+        // Given
+        $serviceProviders = new ConfigurationServiceProviders('acme', [
+            'https://b.example.com/saml' => [
+                'metadata' => self::LOCATION,
+            ],
+            'https://a.example.com/saml' => [
+                'metadata' => self::LOCATION,
+            ],
+        ]);
+
+        // When
+        $listed = $serviceProviders->of(Fixtures::tenant());
+
+        // Then
+        static::assertSame(['https://b.example.com/saml', 'https://a.example.com/saml'], [$listed[0]->entityId, $listed[1]->entityId]);
+        static::assertCount(2, $listed);
+    }
+
+    #[Test]
+    public function anotherTenantListsNone(): void
+    {
+        // Given
+        $serviceProviders = new ConfigurationServiceProviders('acme', [
+            self::ENTITY_ID => [
+                'metadata' => self::LOCATION,
+            ],
+        ]);
+
+        // When / Then
+        static::assertSame([], $serviceProviders->of(Fixtures::tenant('other')));
+    }
+
+    #[Test]
+    public function anotherTenantFindsNone(): void
+    {
+        // Given
+        $serviceProviders = new ConfigurationServiceProviders('acme', [
+            self::ENTITY_ID => [
+                'metadata' => self::LOCATION,
+            ],
+        ]);
+
+        // When / Then
+        static::assertNull($serviceProviders->find(Fixtures::tenant('other'), self::ENTITY_ID));
+    }
+
+    #[Test]
+    public function anEntityIdNobodyDeclaredIsFoundNowhere(): void
+    {
+        // Given
+        $serviceProviders = new ConfigurationServiceProviders('acme', [
+            self::ENTITY_ID => [
+                'metadata' => self::LOCATION,
+            ],
+        ]);
+
+        // When / Then
+        static::assertNull($serviceProviders->find(Fixtures::tenant(), self::ENTITY_ID . '/'));
+    }
+
+    /**
+     * Section 6.2 step 1: a declaration that does not hold together fails at boot, naming its service provider.
+     *
+     * @param array<array-key, mixed> $definition
+     */
+    #[Test]
+    #[DataProvider('provideDeclarationsThatAreNotOne')]
+    public function aDeclarationThatIsNotOneFailsAtBoot(mixed $definition, string $message): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The service provider "https://sp.example.com/saml": ' . $message);
+
+        // When
+        new ConfigurationServiceProviders('acme', [
+            self::ENTITY_ID => $definition,
+        ]);
+    }
+
+    /**
+     * @return iterable<string, array{mixed, string}>
+     */
+    public static function provideDeclarationsThatAreNotOne(): iterable
+    {
+        yield 'not a map' => ['https://sp.example.com/saml/metadata', 'a declaration is a map (spec/saml.md section 5.2).'];
+        yield 'no metadata' => [[], '"metadata" is a string.'];
+        yield 'a plain http location' => [
+            ['metadata' => 'http://sp.example.com/saml/metadata'],
+            'The metadata of a service provider are read from an https URL or from the absolute path of a file (spec/saml.md S-5).',
+        ];
+        yield 'a signer that is not a string' => [['metadata' => self::LOCATION, 'metadata_signers' => [1]], '"metadata_signers" is a string.'];
+        yield 'a signer that is not base64' => [
+            ['metadata' => self::LOCATION, 'metadata_signers' => ['not base64']],
+            'A certificate is the base64 of its DER, in the alphabet of RFC 4648 section 4 (spec/saml.md section 5.1).',
+        ];
+        yield 'signers that are not a list' => [['metadata' => self::LOCATION, 'metadata_signers' => 'MIIBAA=='], '"metadata_signers" is a map.'];
+        yield 'attributes that are not a map' => [['metadata' => self::LOCATION, 'attributes' => 'email'], '"attributes" is a map.'];
+        yield 'an attribute that is not a map' => [
+            ['metadata' => self::LOCATION, 'attributes' => ['mail' => 'email']],
+            'an attribute is a map (spec/saml.md section 5.2).',
+        ];
+        yield 'an attribute without a claim' => [['metadata' => self::LOCATION, 'attributes' => ['urn:oid:2.5.4.3' => []]], '"claim" is a string.'];
+        yield 'an unknown name format' => [
+            ['metadata' => self::LOCATION, 'attributes' => ['mail' => ['claim' => 'email', 'name_format' => 'x500']]],
+            '"x500" is not a name format of Core section 8.2: uri, basic or unspecified.',
+        ];
+        yield 'a name format that is not a string' => [
+            ['metadata' => self::LOCATION, 'attributes' => ['mail' => ['claim' => 'email', 'name_format' => true]]],
+            '"name_format" is a string.',
+        ];
+        yield 'a friendly name that is not a string' => [
+            ['metadata' => self::LOCATION, 'attributes' => ['urn:oid:2.5.4.3' => ['claim' => 'name', 'friendly_name' => 1]]],
+            '"friendly_name" is a string.',
+        ];
+        yield 'an encryption that is not a boolean' => [['metadata' => self::LOCATION, 'encrypt_assertions' => 'yes'], '"encrypt_assertions" is a boolean.'];
+        yield 'a signing of requests that is not a boolean' => [
+            ['metadata' => self::LOCATION, 'signs_authn_requests' => 1],
+            '"signs_authn_requests" is a boolean.',
+        ];
+    }
+}

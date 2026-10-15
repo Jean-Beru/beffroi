@@ -1,0 +1,191 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Beffroi\Saml\Tests\Unit\Domain\ServiceProvider;
+
+use Beffroi\Core\Domain\PersonalData\Sealed;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Domain\ServiceProvider\ServiceProviderMetadata;
+use Beffroi\Saml\Exception\MetadataRefusedException;
+use DateTimeImmutable;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
+
+/**
+ * spec/saml.md S-6, S-8, section 6.2 step 6: the newest document accepted for a service provider is kept, and an
+ * older one refused.
+ */
+final class AcceptedMetadataTest extends TestCase
+{
+    private const string ENTITY_ID = 'https://sp.example.com/saml';
+
+    private const string ACCEPTED = '<md:EntityDescriptor/>';
+
+    private const string NEWER = '<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"/>';
+
+    #[Test]
+    public function itHoldsTheBytesThatWereRead(): void
+    {
+        // Given
+        $accepted = self::accepted(new DateTimeImmutable('2026-10-01T00:00:00Z'));
+
+        // When / Then
+        static::assertTrue($accepted->holds(self::ACCEPTED));
+    }
+
+    #[Test]
+    public function itDoesNotHoldOtherBytes(): void
+    {
+        // Given
+        $accepted = self::accepted(null);
+
+        // When / Then
+        static::assertFalse($accepted->holds(self::ACCEPTED . "\n"));
+    }
+
+    #[Test]
+    #[DataProvider('provideNewerDocuments')]
+    public function aDocumentThatIsNotOlderTakesItsPlace(?DateTimeImmutable $accepted, ?DateTimeImmutable $newer): void
+    {
+        // Given
+        $metadata = self::accepted($accepted);
+        $at = Fixtures::now()->modify('+1 hour');
+
+        // When
+        $metadata->replaceWith(new ServiceProviderMetadata(self::ENTITY_ID, $newer, []), self::NEWER, $at);
+
+        // Then
+        static::assertSame(self::NEWER, $metadata->document);
+        static::assertEquals($newer, $metadata->validUntil);
+        static::assertSame($at, $metadata->acceptedAt);
+    }
+
+    /**
+     * @return iterable<string, array{?DateTimeImmutable, ?DateTimeImmutable}>
+     */
+    public static function provideNewerDocuments(): iterable
+    {
+        yield 'a later validUntil' => [new DateTimeImmutable('2026-10-01T00:00:00Z'), new DateTimeImmutable('2026-10-01T00:00:01Z')];
+        yield 'the same validUntil' => [new DateTimeImmutable('2026-10-01T00:00:00Z'), new DateTimeImmutable('2026-10-01T00:00:00Z')];
+        yield 'a validUntil where the accepted one had none' => [null, new DateTimeImmutable('2026-10-01T00:00:00Z')];
+        yield 'neither has one, the two cannot be told apart' => [null, null];
+    }
+
+    /**
+     * S-6, the acceptance of issue #729: a document older than the one accepted is refused, the accepted one kept.
+     */
+    #[Test]
+    #[DataProvider('provideOlderDocuments')]
+    public function anOlderDocumentIsRefused(?DateTimeImmutable $older, string $message): void
+    {
+        // Given
+        $metadata = self::accepted(new DateTimeImmutable('2026-10-01T00:00:00Z'));
+
+        // Then
+        $this->expectException(MetadataRefusedException::class);
+        $this->expectExceptionMessageIs($message);
+
+        // When
+        $metadata->replaceWith(new ServiceProviderMetadata(self::ENTITY_ID, $older, []), self::NEWER, Fixtures::now());
+    }
+
+    /**
+     * @return iterable<string, array{?DateTimeImmutable, string}>
+     */
+    public static function provideOlderDocuments(): iterable
+    {
+        yield 'an earlier validUntil' => [
+            new DateTimeImmutable('2026-09-30T23:59:59Z'),
+            'The metadata are valid until an earlier instant than the document accepted, so they are older (spec/saml.md S-6).',
+        ];
+        yield 'no validUntil where the accepted one had one' => [
+            null,
+            'The metadata carry no validUntil where the document accepted carries one, so they cannot be shown not to be older (spec/saml.md S-6).',
+        ];
+    }
+
+    #[Test]
+    public function anOlderDocumentLeavesTheAcceptedOneAsItWas(): void
+    {
+        // Given
+        $validUntil = new DateTimeImmutable('2026-10-01T00:00:00Z');
+        $metadata = self::accepted($validUntil);
+
+        // When
+        try {
+            $metadata->replaceWith(
+                new ServiceProviderMetadata(self::ENTITY_ID, $validUntil->modify('-1 day'), []),
+                self::NEWER,
+                Fixtures::now()->modify('+1 hour'),
+            );
+        } catch (MetadataRefusedException) {
+        }
+
+        // Then
+        static::assertSame(self::ACCEPTED, $metadata->document);
+        static::assertSame($validUntil, $metadata->validUntil);
+        static::assertEquals(Fixtures::now(), $metadata->acceptedAt);
+    }
+
+    #[Test]
+    public function aDocumentOfAnotherEntityIsAProgrammingError(): void
+    {
+        // Given
+        $metadata = self::accepted(null);
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('An accepted metadata document is replaced by a document of its own entity (spec/saml.md section 6.2 step 6).');
+
+        // When
+        $metadata->replaceWith(new ServiceProviderMetadata('https://other.example.com/saml', null, []), self::NEWER, Fixtures::now());
+    }
+
+    #[Test]
+    public function anEmptyDocumentIsNotAccepted(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('An accepted metadata document holds the bytes that were read (spec/saml.md S-8).');
+
+        // When
+        new AcceptedMetadata(Uuid::v7(), Fixtures::tenant(), self::ENTITY_ID, '', null, Fixtures::now());
+    }
+
+    #[Test]
+    public function anEmptyDocumentDoesNotReplaceTheAcceptedOne(): void
+    {
+        // Given
+        $metadata = self::accepted(null);
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('An accepted metadata document holds the bytes that were read (spec/saml.md S-8).');
+
+        // When
+        $metadata->replaceWith(new ServiceProviderMetadata(self::ENTITY_ID, null, []), '', Fixtures::now());
+    }
+
+    /**
+     * S-8: the document is sealed in the family of its own table.
+     */
+    #[Test]
+    public function theDocumentIsSealedInTheFamilyOfItsTable(): void
+    {
+        // When
+        $fields = AcceptedMetadata::classifiedFields();
+
+        // Then
+        static::assertEquals(new Sealed('saml_service_provider'), $fields['document']);
+    }
+
+    private static function accepted(?DateTimeImmutable $validUntil): AcceptedMetadata
+    {
+        return new AcceptedMetadata(Uuid::v7(), Fixtures::tenant(), self::ENTITY_ID, self::ACCEPTED, $validUntil, Fixtures::now());
+    }
+}
