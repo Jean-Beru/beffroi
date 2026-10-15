@@ -12,6 +12,7 @@ use Beffroi\Saml\Application\ServiceProvider\ServiceProviderMetadataRefresh;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataReader;
 use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Tests\Fixture\FixedClaims;
 use Beffroi\Saml\Tests\Fixture\FixedMetadataFetcher;
 use Beffroi\Saml\Tests\Fixture\InMemoryAcceptedMetadata;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
@@ -606,7 +607,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     private function refresh(array $definitions): ServiceProviderMetadataRefresh
     {
         return new ServiceProviderMetadataRefresh(
-            new ConfigurationServiceProviders($this->tenant->slug, $definitions),
+            new ConfigurationServiceProviders($this->tenant->slug, $definitions, new FixedClaims()),
             $this->fetcher,
             new ModelServiceProviderMetadataReader($this->clock),
             $this->accepted,

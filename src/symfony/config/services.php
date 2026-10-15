@@ -275,6 +275,7 @@ use Beffroi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyFamily;
 use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
+use Beffroi\Bundle\Saml\ProviderServedClaims;
 use Beffroi\Bundle\Saml\RouterIdentityProviderEndpoints;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
@@ -294,6 +295,7 @@ use Beffroi\Saml\Port\CanForgetAcceptedMetadataInterface;
 use Beffroi\Saml\Application\ServiceProvider\AcceptedMetadataForgetting;
 use Beffroi\Saml\Port\MetadataFetcherInterface;
 use Beffroi\Saml\Port\ServiceProviderMetadataReaderInterface;
+use Beffroi\Saml\Port\ServedClaimsInterface;
 use Beffroi\Saml\Port\ServiceProvidersInterface;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyEncryptionAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseMessageSealingAlgorithms;
@@ -1825,6 +1827,9 @@ return static function (ContainerConfigurator $container): void {
     // beffroi/saml: the service providers of the tenant, declared in the configuration, which the SAML section hands
     // the declarations and the slug of the tenant (S-5); their metadata read by the model, fetched from a file or an
     // https URL, and the newest document accepted kept in the database, sealed (spec/saml.md section 6.2)
+    // the claims an attribute is mapped from, those OpenID Connect serves (spec/saml.md S-16)
+    $services->set(ProviderServedClaims::class);
+    $services->alias(ServedClaimsInterface::class, ProviderServedClaims::class);
     $services->set(ConfigurationServiceProviders::class)->args([
         '$tenantSlug' => '',
         '$definitions' => [],

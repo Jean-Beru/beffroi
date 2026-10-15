@@ -11,6 +11,7 @@ use Beffroi\Saml\Domain\ServiceProvider\AttributeMapping;
 use Beffroi\Saml\Domain\ServiceProvider\AttributeNameFormat;
 use Beffroi\Saml\Domain\ServiceProvider\MetadataLocation;
 use Beffroi\Saml\Domain\ServiceProvider\ServiceProvider;
+use Beffroi\Saml\Tests\Fixture\FixedClaims;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -52,7 +53,7 @@ final class ConfigurationServiceProvidersTest extends TestCase
                 'encrypt_assertions' => true,
                 'signs_authn_requests' => false,
             ],
-        ]);
+        ], new FixedClaims());
 
         // When
         $serviceProvider = $serviceProviders->find(Fixtures::tenant(), self::ENTITY_ID);
@@ -85,7 +86,7 @@ final class ConfigurationServiceProvidersTest extends TestCase
             self::ENTITY_ID => [
                 'metadata' => self::LOCATION,
             ],
-        ]);
+        ], new FixedClaims());
 
         // When
         $serviceProvider = $serviceProviders->find(Fixtures::tenant(), self::ENTITY_ID);
@@ -109,7 +110,7 @@ final class ConfigurationServiceProvidersTest extends TestCase
             'https://a.example.com/saml' => [
                 'metadata' => self::LOCATION,
             ],
-        ]);
+        ], new FixedClaims());
 
         // When
         $listed = $serviceProviders->of(Fixtures::tenant());
@@ -130,7 +131,7 @@ final class ConfigurationServiceProvidersTest extends TestCase
             self::ENTITY_ID => [
                 'metadata' => self::LOCATION,
             ],
-        ]);
+        ], new FixedClaims());
 
         // When / Then
         static::assertSame([], $serviceProviders->of(Fixtures::tenant('other')));
@@ -148,7 +149,7 @@ final class ConfigurationServiceProvidersTest extends TestCase
             self::ENTITY_ID => [
                 'metadata' => self::LOCATION,
             ],
-        ]);
+        ], new FixedClaims());
 
         // When / Then
         static::assertNull($serviceProviders->find(Fixtures::tenant('other'), self::ENTITY_ID));
@@ -166,7 +167,7 @@ final class ConfigurationServiceProvidersTest extends TestCase
             self::ENTITY_ID => [
                 'metadata' => self::LOCATION,
             ],
-        ]);
+        ], new FixedClaims());
 
         // When / Then
         static::assertNull($serviceProviders->find(Fixtures::tenant(), self::ENTITY_ID . '/'));
@@ -189,7 +190,7 @@ final class ConfigurationServiceProvidersTest extends TestCase
         // When
         new ConfigurationServiceProviders('acme', [
             self::ENTITY_ID => $definition,
-        ]);
+        ], new FixedClaims());
     }
 
     /**
@@ -226,6 +227,10 @@ final class ConfigurationServiceProvidersTest extends TestCase
         yield 'a friendly name that is not a string' => [
             ['metadata' => self::LOCATION, 'attributes' => ['urn:oid:2.5.4.3' => ['claim' => 'name', 'friendly_name' => 1]]],
             '"friendly_name" is a string.',
+        ];
+        yield 'a claim the provider does not serve (S-16)' => [
+            ['metadata' => self::LOCATION, 'attributes' => ['urn:oid:2.5.4.10' => ['claim' => 'organization']]],
+            'the attribute "urn:oid:2.5.4.10" maps the claim "organization", which this provider does not serve (spec/saml.md S-16).',
         ];
         yield 'an encryption that is not a boolean' => [['metadata' => self::LOCATION, 'encrypt_assertions' => 'yes'], '"encrypt_assertions" is a boolean.'];
         yield 'a signing of requests that is not a boolean' => [

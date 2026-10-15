@@ -270,4 +270,49 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
         // When
         $this->reader->readSigned(ServiceProviderDocuments::signed(new DateTimeImmutable('2026-10-01T00:00:00Z')), []);
     }
+
+    /**
+     * Section 6.3 step 1: the accepted document read back once, into what the signature of a request needs and into
+     * the model's role, which holds the assertion consumer services (S-10).
+     */
+    #[Test]
+    public function itReadsAnAcceptedDocumentOnceIntoBothReadings(): void
+    {
+        // When
+        $read = $this->reader->readAccepted(ServiceProviderDocuments::simpleSamlPhp());
+
+        // Then
+        static::assertSame(
+            [ServiceProviderDocuments::SIMPLESAMLPHP, ServiceProviderDocuments::SIMPLESAMLPHP, true, true],
+            [$read->metadata->entityId, $read->role->entityId, $read->metadata->authnRequestsSigned, $read->role->authnRequestsSigned],
+        );
+    }
+
+    /**
+     * Section 6.3 step 1: an accepted document the reading refuses now is refused.
+     */
+    #[Test]
+    public function itRefusesAnAcceptedDocumentPastItsValidity(): void
+    {
+        // Then
+        $this->expectException(MetadataRefusedException::class);
+        $this->expectExceptionMessageIsOrContains('(M-7)');
+
+        // When
+        $this->reader->readAccepted(ServiceProviderDocuments::simpleSamlPhpValidUntil('2026-09-01T00:00:00Z'));
+    }
+
+    /**
+     * S-5: an accepted document that holds no service provider role is refused.
+     */
+    #[Test]
+    public function itRefusesAnAcceptedDocumentWithoutAServiceProviderRole(): void
+    {
+        // Then
+        $this->expectException(MetadataRefusedException::class);
+        $this->expectExceptionMessageIs('The metadata hold no service provider role of SAML 2.0 (spec/saml.md S-5).');
+
+        // When
+        $this->reader->readAccepted(ServiceProviderDocuments::identityProvider());
+    }
 }

@@ -18,6 +18,7 @@ use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
 use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
 use Beffroi\Saml\Tests\Fixture\FixedEndpoints;
 use Beffroi\Saml\Tests\Fixture\SamlKeys;
+use Beffroi\Saml2\Model\Assertion\NameIdFormat;
 use Beffroi\Saml2\Model\Metadata\Binding;
 use Beffroi\Saml2\Model\Metadata\Endpoint;
 use Beffroi\Saml2\Model\Metadata\EntityDescriptor;
@@ -49,8 +50,8 @@ final class IdentityProviderMetadataHandlerTest extends TestCase
 
     /**
      * Section 6.1 steps 3 to 5, S-4: the entity ID is the URL of the metadata, each service is listed with
-     * HTTP-Redirect then HTTP-POST at its URL under the issuer, the certificate of the key is a signing one, and
-     * WantAuthnRequestsSigned is true when the tenant says nothing.
+     * HTTP-Redirect then HTTP-POST at its URL under the issuer, the certificate of the key is a signing one, the one
+     * NameID format is the persistent one of S-13, and WantAuthnRequestsSigned is true when the tenant says nothing.
      */
     #[Test]
     public function itIsReadBackByTheMetadataReaderOfTheModel(): void
@@ -76,6 +77,7 @@ final class IdentityProviderMetadataHandlerTest extends TestCase
                 new Endpoint(Binding::HttpRedirect, self::ISSUER . FixedEndpoints::SINGLE_LOGOUT),
                 new Endpoint(Binding::HttpPost, self::ISSUER . FixedEndpoints::SINGLE_LOGOUT),
             ],
+            [NameIdFormat::Persistent],
             wantAuthnRequestsSigned: true,
         )), self::read($metadata->document));
     }
