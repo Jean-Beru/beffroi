@@ -1030,6 +1030,12 @@ function saml_sp_verify_provider_logout(array $answer): void
         . SAML_SP_CAPTURED
         . '/sp-logout-response.url');
     }
+    // the Response of this sign-on came after saml_sp_verify_responses() decrypted the others: its assertion, when
+    // encrypted, is decrypted here, so that xmlsec1 verifies its signature as it does theirs
+    $response = SAML_SP_CAPTURED . '/response-provider-logout.xml';
+    if (str_contains((string) file_get_contents($response), 'EncryptedAssertion')) {
+        saml_sp_decrypt($response);
+    }
     io()->text('xmlsec1, every XML signature captured, the Response of this sign-on and a LogoutResponse that was posted among them:');
     saml_sp_xmlsec1();
 }
