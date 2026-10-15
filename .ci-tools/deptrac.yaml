@@ -144,9 +144,10 @@ deptrac:
     # Validation and Writing; Port beside, Exception and the two classes of the root (Saml, SamlLoader) under all of
     # them; Internal, the strict readers and the selection of the signed element, between the objects it builds and the
     # validators that call it. Outside the package, the public classes of Core and Dsig and psr/clock where the
-    # specification uses them. What is forbidden is a layer no rule allows: the Internal namespaces of xml-security,
-    # its Enc namespace until sub-spike 9e (section 6.7), and HTTP (decision 0013), which is in the Symfony and Psr
-    # layers above.
+    # specification uses them, and the public classes of Enc for Writing alone, whose response writer encrypts the
+    # assertion for the service provider that asks for it (section 6.7, issue #733). What is forbidden is a layer no
+    # rule allows: the Internal namespaces of xml-security, Enc anywhere but Writing until the service provider role
+    # decrypts (section 6.7), and HTTP (decision 0013), which is in the Symfony and Psr layers above.
     - name: 'Saml2ModelRoot'
       collectors:
         - { type: classLike, value: '^Beffroi\\Saml2\\Model\\[^\\]+$' }
@@ -361,7 +362,7 @@ deptrac:
     Saml2ModelMetadata: ['Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'Saml2ModelAssertion', 'Saml2ModelInternal', 'Saml2ModelTimeBounds', 'XmlCore', 'XmlDsig', 'PsrClock']
     Saml2ModelInternal: ['Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'Saml2ModelAssertion', 'Saml2ModelProtocol', 'Saml2ModelMetadata', 'Saml2ModelTimeBounds', 'Saml2ModelAuthentication', 'XmlCore', 'XmlDsig']
     Saml2ModelValidation: ['Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'Saml2ModelAssertion', 'Saml2ModelProtocol', 'Saml2ModelMetadata', 'Saml2ModelPort', 'Saml2ModelTimeBounds', 'Saml2ModelAuthentication', 'Saml2ModelInternal', 'XmlCore', 'XmlDsig', 'PsrClock']
-    Saml2ModelWriting: ['Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'Saml2ModelAssertion', 'Saml2ModelProtocol', 'Saml2ModelMetadata', 'Saml2ModelInternal', 'XmlCore', 'XmlDsig']
+    Saml2ModelWriting: ['Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'Saml2ModelAssertion', 'Saml2ModelProtocol', 'Saml2ModelMetadata', 'Saml2ModelInternal', 'XmlCore', 'XmlDsig', 'XmlEnc']
     Saml2BindingsPublic: ['Saml2BindingsException', 'Saml2BindingsInternal', 'Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'Saml2ModelPort', 'Saml2ModelAssertion', 'Saml2ModelProtocol', 'Saml2ModelMetadata', 'Saml2ModelTimeBounds', 'Saml2ModelAuthentication', 'Saml2ModelValidation', 'Saml2ModelWriting', 'XmlCore', 'XmlDsig']
     # BindingRefused extends the RefusedXml of Core (section 5.4)
     Saml2BindingsException: ['XmlCore']
