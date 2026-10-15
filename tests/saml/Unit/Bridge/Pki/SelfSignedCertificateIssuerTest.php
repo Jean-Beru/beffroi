@@ -14,6 +14,7 @@ use Beffroi\Core\Tests\Fixture\Keys;
 use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
 use Beffroi\Saml\Tests\Fixture\SamlKeys;
 use function base64_decode;
+use function bin2hex;
 use DateTimeImmutable;
 use function hash;
 use function openssl_pkey_get_details;
@@ -116,6 +117,26 @@ final class SelfSignedCertificateIssuerTest extends TestCase
                 $tbs->validity()->notBefore()->dateTime()->format(DATE_ATOM),
                 $tbs->validity()->notAfter()->dateTime()->format(DATE_ATOM),
                 $tbs->signature()->oid(),
+            ],
+        );
+    }
+
+    /**
+     * Section 6.1 step 2, RFC 4055 §5: the certificate is signed sha256WithRSAEncryption, its parameters NULL, which a
+     * producer must write, in the certificate and in what it signed.
+     */
+    #[Test]
+    public function itIsSignedSha256WithRsaEncryptionWithNullParameters(): void
+    {
+        // When
+        $certificate = $this->certificateOf($this->key);
+
+        // Then
+        static::assertSame(
+            ['300d06092a864886f70d01010b0500', '300d06092a864886f70d01010b0500'],
+            [
+                bin2hex($certificate->signatureAlgorithm()->toASN1()->toDER()),
+                bin2hex($certificate->tbsCertificate()->signature()->toASN1()->toDER()),
             ],
         );
     }
