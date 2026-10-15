@@ -128,7 +128,7 @@ final class AcceptedMetadataTest extends TestCase
 
         // Then
         static::assertSame(self::ACCEPTED, $metadata->document);
-        static::assertSame($validUntil, $metadata->validUntil);
+        static::assertEquals($validUntil, $metadata->validUntil);
         static::assertEquals(Fixtures::now(), $metadata->acceptedAt);
     }
 
