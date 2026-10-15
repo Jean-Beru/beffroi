@@ -82,6 +82,15 @@ final readonly class ServiceProviderDocuments
     }
 
     /**
+     * The SimpleSAMLphp document without its md:KeyDescriptor for signing, its encryption key left and its
+     * AuthnRequestsSigned="true" with it.
+     */
+    public static function simpleSamlPhpWithoutSigningKey(): string
+    {
+        return (string) preg_replace('~\s*<md:KeyDescriptor use="signing">.*?</md:KeyDescriptor>~s', '', self::simpleSamlPhp());
+    }
+
+    /**
      * The SimpleSAMLphp document whose certificates are the given base64, which the model reads with its whitespace
      * removed and checks by building its key.
      */

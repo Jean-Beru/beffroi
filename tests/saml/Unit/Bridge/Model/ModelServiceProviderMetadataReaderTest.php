@@ -75,6 +75,46 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
         static::assertSame([], $metadata->encryptionCertificates);
     }
 
+    /**
+     * S-11, section 6.2 step 3: the signing certificates of a document are those of its `KeyDescriptor` for signing.
+     */
+    #[Test]
+    public function itReadsTheSigningCertificatesOfADocument(): void
+    {
+        // When
+        $metadata = $this->reader->readTrusted(ServiceProviderDocuments::simpleSamlPhp());
+
+        // Then
+        static::assertCount(1, $metadata->signingCertificates);
+    }
+
+    /**
+     * S-11, section 6.2 step 3: a `KeyDescriptor` for encryption is not a key for signing.
+     */
+    #[Test]
+    public function itDoesNotReadAnEncryptionCertificateAsASigningOne(): void
+    {
+        // When
+        $metadata = $this->reader->readTrusted(ServiceProviderDocuments::simpleSamlPhpWithoutSigningKey());
+
+        // Then
+        static::assertSame([], $metadata->signingCertificates);
+        static::assertCount(1, $metadata->encryptionCertificates);
+    }
+
+    /**
+     * S-11, section 6.2 step 3: a document without a key, as Entra's is written, has no signing certificate.
+     */
+    #[Test]
+    public function itReadsADocumentWithoutAKeyAsHoldingNoSigningCertificate(): void
+    {
+        // When
+        $metadata = $this->reader->readTrusted(ServiceProviderDocuments::entra());
+
+        // Then
+        static::assertSame([], $metadata->signingCertificates);
+    }
+
     #[Test]
     public function itReadsTheValidUntilOfADocument(): void
     {

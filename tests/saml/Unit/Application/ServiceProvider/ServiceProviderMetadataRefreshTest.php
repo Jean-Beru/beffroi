@@ -247,6 +247,97 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
+     * S-11, the acceptance of issue #730: Entra's guest federation, which publishes no key, declared without
+     * `signs_authn_requests: false` is refused at its registration.
+     */
+    #[Test]
+    public function aServiceProviderThatSignsWithoutAKeyInItsMetadataIsRefusedAtRegistration(): void
+    {
+        // Given
+        $this->fetcher->answer(self::LOCATION, ServiceProviderDocuments::entra());
+
+        // When
+        $refreshment = $this->refreshEntra(signs: true);
+
+        // Then
+        static::assertTrue($refreshment->refused);
+        static::assertStringEndsWith(
+            'The requests of the service provider need a signature and its metadata hold no key for signing (spec/saml.md S-11).',
+            $refreshment->what,
+        );
+        static::assertNull($this->accepted->find($this->tenant, ServiceProviderDocuments::ENTRA));
+    }
+
+    /**
+     * S-11, S-9: Entra's guest federation declared unsigned, its metadata saying nothing of a signature, needs no key.
+     */
+    #[Test]
+    public function aServiceProviderDeclaredUnsignedNeedsNoKeyInItsMetadata(): void
+    {
+        // Given
+        $this->fetcher->answer(self::LOCATION, ServiceProviderDocuments::entra());
+
+        // When
+        $refreshment = $this->refreshEntra(signs: false);
+
+        // Then
+        static::assertFalse($refreshment->refused, $refreshment->what);
+    }
+
+    /**
+     * S-11, S-9: a provider declared unsigned whose metadata say `AuthnRequestsSigned="true"` needs a signature all the
+     * same, so a key to verify it by.
+     */
+    #[Test]
+    public function aServiceProviderDeclaredUnsignedWhoseMetadataSayItSignsIsRefusedWithoutAKey(): void
+    {
+        // Given
+        $this->fetcher->answer(self::LOCATION, ServiceProviderDocuments::entraSigningItsRequests());
+
+        // When
+        $refreshment = $this->refreshEntra(signs: false);
+
+        // Then
+        static::assertTrue($refreshment->refused);
+        static::assertNull($this->accepted->find($this->tenant, ServiceProviderDocuments::ENTRA));
+    }
+
+    /**
+     * S-11: a service provider that signs, whose metadata hold the key for it, is registered.
+     */
+    #[Test]
+    public function aServiceProviderThatSignsWithAKeyInItsMetadataIsRegistered(): void
+    {
+        // Given
+        $this->fetcher->answer(self::LOCATION, ServiceProviderDocuments::simpleSamlPhp());
+
+        // When
+        $refreshment = $this->refreshSimpleSamlPhp();
+
+        // Then
+        static::assertFalse($refreshment->refused, $refreshment->what);
+    }
+
+    /**
+     * S-11: a refresh that drops the key for signing is refused, the accepted document kept.
+     */
+    #[Test]
+    public function aRefreshThatDropsTheSigningKeyIsRefused(): void
+    {
+        // Given
+        $this->fetcher->answer(self::LOCATION, ServiceProviderDocuments::simpleSamlPhp());
+        $this->refreshSimpleSamlPhp();
+        $this->fetcher->answer(self::LOCATION, ServiceProviderDocuments::simpleSamlPhpWithoutSigningKey());
+
+        // When
+        $refreshment = $this->refreshSimpleSamlPhp();
+
+        // Then
+        static::assertTrue($refreshment->refused);
+        static::assertSame(ServiceProviderDocuments::simpleSamlPhp(), $this->acceptedSimpleSamlPhp()->document);
+    }
+
+    /**
      * A service provider that does not ask for encryption needs no key for it.
      */
     #[Test]
@@ -492,6 +583,16 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     private function refreshSimpleSamlPhp(bool $encrypt = false): MetadataRefreshment
     {
         return $this->refresh(self::simpleSamlPhpDeclaration($encrypt))->refreshAll($this->tenant)[0];
+    }
+
+    private function refreshEntra(bool $signs): MetadataRefreshment
+    {
+        return $this->refresh([
+            ServiceProviderDocuments::ENTRA => [
+                'metadata' => self::LOCATION,
+                'signs_authn_requests' => $signs,
+            ],
+        ])->refreshAll($this->tenant)[0];
     }
 
     private function acceptedSimpleSamlPhp(): AcceptedMetadata
