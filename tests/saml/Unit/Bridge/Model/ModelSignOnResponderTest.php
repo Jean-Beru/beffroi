@@ -523,19 +523,18 @@ final class ModelSignOnResponderTest extends TestCase
     {
         $certificate = new SelfSignedCertificateIssuer()->selfSigned(SamlKeys::opened($this->key));
 
-        return new ResponseValidator(SamlLoader::create(), new FrozenClock(Fixtures::now()), new InMemoryReplayGuard())
-            ->validate(
-                $response,
-                new IdentityProvider(
-                    self::IDENTITY_PROVIDER,
-                    [$certificate->base64],
-                    [],
-                    [
-                        new Endpoint(Binding::HttpRedirect, 'https://id.acme.example/saml/sso'),
-                    ],
-                ),
-                ExpectedResponse::toRequest(SignOnRequests::ID, SignOnRequests::ASSERTION_CONSUMER, ServiceProviderDocuments::SIGNED),
-            );
+        return new ResponseValidator(SamlLoader::create(), new FrozenClock(Fixtures::now()), new InMemoryReplayGuard())->validate(
+            $response,
+            new IdentityProvider(
+                self::IDENTITY_PROVIDER,
+                [$certificate->base64],
+                [],
+                [
+                    new Endpoint(Binding::HttpRedirect, 'https://id.acme.example/saml/sso'),
+                ],
+            ),
+            ExpectedResponse::toRequest(SignOnRequests::ID, SignOnRequests::ASSERTION_CONSUMER, ServiceProviderDocuments::SIGNED),
+        );
     }
 
     private static function response(bool $encrypted = false): SignOnResponse

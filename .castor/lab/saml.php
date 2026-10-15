@@ -99,7 +99,9 @@ function saml_sp(
     bool $redirect = false,
     #[AsOption(description: 'Play the HTTP-POST binding alone')]
     bool $post = false,
-    #[AsOption(description: 'Play the service provider that demands its assertion encrypted, "beffroi-encrypted" (issue #733): the assertion on the wire checked to be encrypted, then decrypted by xmlsec1 before its signature is verified')]
+    #[AsOption(
+        description: 'Play the service provider that demands its assertion encrypted, "beffroi-encrypted" (issue #733): the assertion on the wire checked to be encrypted, then decrypted by xmlsec1 before its signature is verified',
+    )]
     bool $encrypted = false,
     #[AsOption(description: 'Stop the service provider')]
     bool $stop = false,
@@ -579,13 +581,14 @@ function saml_sp_encrypted_on_the_wire(string $response): void
     $xpath->registerNamespace('xenc', 'http://www.w3.org/2001/04/xmlenc#');
     $xpath->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
     demo_expect(
-        (int) $xpath->evaluate('count(/samlp:Response/saml:EncryptedAssertion)') === 1
-        && (int) $xpath->evaluate('count(//saml:Assertion)') === 0,
+        (int) $xpath->evaluate('count(/samlp:Response/saml:EncryptedAssertion)') === 1 && (int) $xpath->evaluate('count(//saml:Assertion)') === 0,
         'its assertion is encrypted: one saml:EncryptedAssertion, no saml:Assertion in clear',
     );
     demo_expect(
-        (string) $xpath->evaluate('string(/samlp:Response/saml:EncryptedAssertion/xenc:EncryptedData/xenc:EncryptionMethod/@Algorithm)') === SAML_SP_ENCRYPTION['content']
-        && (string) $xpath->evaluate('string(/samlp:Response/saml:EncryptedAssertion/xenc:EncryptedData/ds:KeyInfo/xenc:EncryptedKey/xenc:EncryptionMethod/@Algorithm)') === SAML_SP_ENCRYPTION['key'],
+        (string) $xpath->evaluate('string(/samlp:Response/saml:EncryptedAssertion/xenc:EncryptedData/xenc:EncryptionMethod/@Algorithm)')
+            === SAML_SP_ENCRYPTION['content']
+        && (string) $xpath->evaluate('string(/samlp:Response/saml:EncryptedAssertion/xenc:EncryptedData/ds:KeyInfo/xenc:EncryptedKey/xenc:EncryptionMethod/@Algorithm)')
+            === SAML_SP_ENCRYPTION['key'],
         sprintf('under %s, its key under %s', SAML_SP_ENCRYPTION['content'], SAML_SP_ENCRYPTION['key']),
     );
     demo_expect(stripos($response, 'cbc') === false, 'nothing of it names CBC');
@@ -610,10 +613,16 @@ function saml_sp_decrypt(string $file): void
         'sh',
         '-c',
         'apk add -q xmlsec libxml2-utils >/dev/null 2>&1'
-            . ' && xmlsec1 --decrypt --lax-key-search --privkey-pem ' . SAML_SP_DIRECTORY . '/sp.pem --output /tmp/decrypted.xml ' . escapeshellarg($file)
+            . ' && xmlsec1 --decrypt --lax-key-search --privkey-pem '
+            . SAML_SP_DIRECTORY
+            . '/sp.pem --output /tmp/decrypted.xml '
+            . escapeshellarg($file)
             . ' && xmllint --xpath \'/*/*[local-name()="EncryptedAssertion"]/*[local-name()="Assertion"]\' /tmp/decrypted.xml',
     ]);
     $name = basename($file, '.xml') . '.decrypted-assertion.xml';
     file_put_contents(SAML_SP_CAPTURED . '/' . $name, $assertion);
-    demo_expect(str_contains($assertion, ':Assertion') && str_contains($assertion, 'Signature'), sprintf('xmlsec1 decrypts %s into a signed assertion, %s', basename($file), $name));
+    demo_expect(
+        str_contains($assertion, ':Assertion') && str_contains($assertion, 'Signature'),
+        sprintf('xmlsec1 decrypts %s into a signed assertion, %s', basename($file), $name),
+    );
 }

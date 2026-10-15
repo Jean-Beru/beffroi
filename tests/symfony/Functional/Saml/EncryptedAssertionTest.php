@@ -43,7 +43,6 @@ use function preg_replace;
 use function preg_replace_callback;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
@@ -157,7 +156,6 @@ final class EncryptedAssertionTest extends ConsoleTestCase
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
         $field = $this->browser->getCrawler()->filter('input[name="SAMLResponse"]')->first();
-        static::assertInstanceOf(Crawler::class, $field);
 
         return SamlLoader::create()->load((string) base64_decode((string) $field->attr('value'), true));
     }
