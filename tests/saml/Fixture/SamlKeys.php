@@ -26,6 +26,8 @@ final class SamlKeys
 
     private static ?GeneratedKeyPair $otherPair = null;
 
+    private static ?GeneratedKeyPair $weakPair = null;
+
     public static function algorithm(): SamlSigning
     {
         return new SamlSigning();
@@ -42,6 +44,14 @@ final class SamlKeys
     public static function otherPair(): GeneratedKeyPair
     {
         return self::$otherPair ??= self::generate();
+    }
+
+    /**
+     * A pair of 1 024 bits, under the floor of D-16, which Dsig refuses to sign with.
+     */
+    public static function weakPair(): GeneratedKeyPair
+    {
+        return self::$weakPair ??= self::generate(1024);
     }
 
     /**
@@ -87,10 +97,10 @@ final class SamlKeys
         return new UnsealedKey($key, Keys::sealer()->unseal($key->tenant, $key->sealedPrivateJwk));
     }
 
-    private static function generate(): GeneratedKeyPair
+    private static function generate(int $bits = 2048): GeneratedKeyPair
     {
         $algorithm = self::algorithm();
-        $private = JWKFactory::createRSAKey(2048, [
+        $private = JWKFactory::createRSAKey($bits, [
             'alg' => $algorithm->name(),
             'use' => $algorithm->keyUse()->value,
         ]);

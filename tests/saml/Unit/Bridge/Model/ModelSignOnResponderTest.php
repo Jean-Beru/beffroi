@@ -10,6 +10,7 @@ use Beffroi\Core\Bridge\Key\SealedKeyProvider;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\KeyNotFoundException;
+use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
 use Beffroi\Saml\Bridge\Model\ModelSignOnResponder;
@@ -43,6 +44,8 @@ use Beffroi\Saml2\Model\Validation\AcceptedAssertion;
 use Beffroi\Saml2\Model\Validation\ExpectedResponse;
 use Beffroi\Saml2\Model\Validation\ResponseValidator;
 use Beffroi\Saml2\Model\Validation\SignatureCoverage;
+use Closure;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -235,6 +238,71 @@ final class ModelSignOnResponderTest extends TestCase
 
         // When
         $this->responder()->success($this->tenant, self::response());
+    }
+
+    /**
+     * S-1, section 6.1 step 2: a private half that is not the one of the public JWK signs nothing, success or failure.
+     */
+    #[Test]
+    #[DataProvider('provideAnswers')]
+    public function aPrivateHalfThatIsNotTheKeysSignsNothing(Closure $answer): void
+    {
+        // Given
+        $this->keyOf(SamlKeys::pair()->publicJwk, SamlKeys::otherPair()->privateJwk, SamlKeys::pair()->kid);
+
+        // Then
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageIsOrContains('one its own reader refuses (spec/saml.md section 6.4 step 7).');
+        $this->expectExceptionCode(0);
+
+        // When
+        $answer($this->responder(), $this->tenant);
+    }
+
+    /**
+     * D-16: a key Dsig refuses to sign with, under 2 048 bits, signs nothing, success or failure.
+     */
+    #[Test]
+    #[DataProvider('provideAnswers')]
+    public function aKeyDsigRefusesSignsNothing(Closure $answer): void
+    {
+        // Given
+        $weak = SamlKeys::weakPair();
+        $this->keyOf($weak->publicJwk, $weak->privateJwk, $weak->kid);
+
+        // Then
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageIsOrContains('one its own reader refuses (spec/saml.md section 6.4 step 7).');
+        $this->expectExceptionCode(0);
+
+        // When
+        $answer($this->responder(), $this->tenant);
+    }
+
+    /**
+     * @return iterable<string, array{Closure(ModelSignOnResponder, Tenant): PostedForm}>
+     */
+    public static function provideAnswers(): iterable
+    {
+        yield 'a success' => [static fn (ModelSignOnResponder $responder, Tenant $tenant): PostedForm => $responder->success($tenant, self::response())];
+        yield 'a failure' => [static fn (ModelSignOnResponder $responder, Tenant $tenant): PostedForm => $responder->failure(
+            $tenant,
+            new SignOnFailure(self::IDENTITY_PROVIDER, SignOnRequests::request(), SignOnStatus::NoPassive, Fixtures::now()),
+        )];
+    }
+
+    /**
+     * The only active SAML key of the tenant, on the halves given.
+     *
+     * @param array<string, string> $publicJwk
+     * @param array<string, string> $privateJwk
+     */
+    private function keyOf(array $publicJwk, array $privateJwk, string $kid): void
+    {
+        $key = new TenantKey($kid, $this->tenant, SamlKeys::algorithm(), $publicJwk, Keys::sealer()->seal($this->tenant, $privateJwk), Fixtures::now(), Fixtures::now());
+        $key->activate(Fixtures::now());
+        $this->keys = new InMemoryTenantKeyRepository();
+        $this->keys->save($key);
     }
 
     private function responder(): ModelSignOnResponder

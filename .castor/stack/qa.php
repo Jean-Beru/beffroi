@@ -724,6 +724,21 @@ const INFECTION_STRICT_FILES = [
     // (section 6.3).
     'src/saml/src/Domain/ServiceProvider/AuthnRequestSigning.php',
     'src/saml/src/Bridge/Model/ModelAuthnRequestParties.php',
+    // beffroi/saml, section 9: single sign-on, the values it keeps and writes, the use case, the attributes released,
+    // the request received and validated, and the answer written and signed (section 6.4).
+    'src/saml/src/Domain/SingleSignOn/AttributeValue.php',
+    'src/saml/src/Domain/SingleSignOn/PersistentNameId.php',
+    'src/saml/src/Domain/SingleSignOn/PostedForm.php',
+    'src/saml/src/Domain/SingleSignOn/ReleasedAttribute.php',
+    'src/saml/src/Domain/SingleSignOn/SignOnFailure.php',
+    'src/saml/src/Domain/SingleSignOn/SignOnRequest.php',
+    'src/saml/src/Domain/SingleSignOn/SignOnResponse.php',
+    'src/saml/src/Domain/SingleSignOn/SignOnStatus.php',
+    'src/saml/src/Application/SingleSignOn/AttributeRelease.php',
+    'src/saml/src/Application/SingleSignOn/SingleSignOn.php',
+    'src/saml/src/Bridge/Model/ModelAuthnRequestReceiver.php',
+    'src/saml/src/Bridge/Model/ModelIdentityProvider.php',
+    'src/saml/src/Bridge/Model/ModelSignOnResponder.php',
     'src/saml2-model/src/Writing/LogoutRequestWriter.php',
     'src/saml2-model/src/Writing/LogoutResponseWriter.php',
     // Section 9: the strict readers of the two logout messages (sections 6.3, 6.4).
