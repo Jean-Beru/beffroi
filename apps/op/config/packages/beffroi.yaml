@@ -56,6 +56,15 @@ beffroi:
     # "mailto:" or "https:" URI at which a push service can reach the operator (RFC 8292 §2.1).
     web_push:
         subject: 'mailto:operator@op.localhost'
+    # The tenant is a SAML identity provider (beffroi/saml, issue beffroi-php/beffroi#728): its signing key is drawn
+    # by "castor provision" under SAML-SIGNING, kept by the KMS and rotated as every key of the tenant, and its
+    # metadata is served at /saml/metadata, the certificate of each key in service in it. Every service provider is
+    # asked to sign its requests, which is the default and the setting a broker configured from that metadata signs
+    # its requests by (spec/model.md section 6.9); a deployment that serves no SAML drops this section, and its
+    # tenant then draws no SAML key and serves no metadata.
+    saml:
+        identity_provider:
+            want_authn_requests_signed: true
     webauthn:
         # The FIDO metadata the passkey ceremonies check an attestation against, next to the keys: filled by hand
         # with "beffroi:webauthn:mds-refresh" (the blob of the FIDO Alliance, verified under its root) and
