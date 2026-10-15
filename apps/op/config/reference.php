@@ -1702,6 +1702,17 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             enabled?: bool|Param, // Default: false
  *             want_authn_requests_signed?: bool|Param, // What the metadata says in WantAuthnRequestsSigned (SAML Metadata section 2.4.3): true asks every service provider to sign its requests, which is what a broker configured from the metadata does (spec/model.md section 6.9). Turned off, the requests of service providers that cannot sign are accepted where their configuration says so, and the logout of a broker that signs only when asked is lost. // Default: true
  *         },
+ *         service_providers?: array<string, array{ // Default: []
+ *             metadata?: scalar|Param|null, // Where the metadata are read from: an https URL, fetched without following a redirect, or the absolute path of a file of the deployment. Nothing else, a plain http URL included. The channel is what vouches for them unless metadata_signers pins who signs them.
+ *             metadata_signers?: list<scalar|Param|null>,
+ *             attributes?: array<string, array{ // Default: []
+ *                 claim?: scalar|Param|null, // The name of the claim, as the provider names it (OIDC Core section 5.1).
+ *                 name_format?: "uri"|"basic"|"unspecified"|Param, // The name format of the attribute (Core section 8.2): "uri", the default the SAML V2.0 interoperability profiles ask for, under which the name is an absolute URI; "basic"; or "unspecified". // Default: "uri"
+ *                 friendly_name?: scalar|Param|null, // A name a person reads (Core section 2.7.3.1), which nothing compares. // Default: null
+ *             }>,
+ *             encrypt_assertions?: bool|Param, // The assertions of this service provider are encrypted to a key of its metadata, which must then hold one for encryption, or the metadata are refused (spec/saml.md S-7). // Default: false
+ *             signs_authn_requests?: bool|Param, // This service provider signs its authentication requests. Turned off for one that cannot, Entra among them, whose unsigned requests are then the only ones accepted (issue #730); there is no switch for the tenant or for the deployment. // Default: true
+ *         }>,
  *     },
  * }
  * @psalm-type SymfonycastsTailwindConfig = array{

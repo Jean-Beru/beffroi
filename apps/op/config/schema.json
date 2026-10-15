@@ -1834,6 +1834,72 @@
                                     "want_authn_requests_signed": true
                                 },
                                 "description": "The tenant as a SAML identity provider (spec/saml.md section 6.1). Disabled, nothing of it is wired: the tenant draws no SAML key and serves no metadata. Enabled, its key is drawn with \"beffroi:keys:generate --algorithm=SAML-SIGNING\" and rotates as every key of the tenant."
+                            },
+                            "service_providers": {
+                                "$ref": "#/$defs/types/object_null",
+                                "additionalProperties": {
+                                    "$ref": "#/$defs/types/object_null",
+                                    "properties": {
+                                        "metadata": {
+                                            "$ref": "#/$defs/types/scalar",
+                                            "description": "Where the metadata are read from: an https URL, fetched without following a redirect, or the absolute path of a file of the deployment. Nothing else, a plain http URL included. The channel is what vouches for them unless metadata_signers pins who signs them."
+                                        },
+                                        "metadata_signers": {
+                                            "$ref": "#/$defs/types/array_null",
+                                            "items": {
+                                                "$ref": "#/$defs/types/scalar"
+                                            },
+                                            "description": "The certificates the metadata are signed by, each the base64 of its DER as an X509Certificate carries it, sixteen at most: the metadata are then verified under them and carry a validUntil (spec/saml.md S-5, S-6). Left empty, they are trusted by the channel they come through."
+                                        },
+                                        "attributes": {
+                                            "$ref": "#/$defs/types/object_null",
+                                            "additionalProperties": {
+                                                "$ref": "#/$defs/types/object_null",
+                                                "properties": {
+                                                    "claim": {
+                                                        "$ref": "#/$defs/types/scalar",
+                                                        "description": "The name of the claim, as the provider names it (OIDC Core section 5.1)."
+                                                    },
+                                                    "name_format": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "uri",
+                                                                    "basic",
+                                                                    "unspecified"
+                                                                ]
+                                                            },
+                                                            {
+                                                                "$ref": "#/$defs/types/param"
+                                                            }
+                                                        ],
+                                                        "default": "uri",
+                                                        "description": "The name format of the attribute (Core section 8.2): \"uri\", the default the SAML V2.0 interoperability profiles ask for, under which the name is an absolute URI; \"basic\"; or \"unspecified\"."
+                                                    },
+                                                    "friendly_name": {
+                                                        "$ref": "#/$defs/types/scalar",
+                                                        "default": null,
+                                                        "description": "A name a person reads (Core section 2.7.3.1), which nothing compares."
+                                                    }
+                                                },
+                                                "additionalProperties": false
+                                            },
+                                            "description": "The claims of the provider sent to this service provider, keyed by the name of the SAML attribute each one is sent as (Core section 2.7.3.1), 256 at most. A claim may be sent under several names."
+                                        },
+                                        "encrypt_assertions": {
+                                            "$ref": "#/$defs/types/boolean",
+                                            "default": false,
+                                            "description": "The assertions of this service provider are encrypted to a key of its metadata, which must then hold one for encryption, or the metadata are refused (spec/saml.md S-7)."
+                                        },
+                                        "signs_authn_requests": {
+                                            "$ref": "#/$defs/types/boolean",
+                                            "default": true,
+                                            "description": "This service provider signs its authentication requests. Turned off for one that cannot, Entra among them, whose unsigned requests are then the only ones accepted (issue #730); there is no switch for the tenant or for the deployment."
+                                        }
+                                    },
+                                    "additionalProperties": false
+                                },
+                                "description": "The service providers of the tenant, keyed by entity ID, compared exactly with the one of their metadata (spec/saml.md S-5). Their metadata are read by \"beffroi:saml:service-provider:refresh\" and every hour after, refused when expired, older than the document accepted, or without a key for encryption where the declaration asks for encryption (S-6, S-7). Declared only for a tenant that is an identity provider."
                             }
                         },
                         "additionalProperties": false,
@@ -1841,7 +1907,8 @@
                             "identity_provider": {
                                 "enabled": false,
                                 "want_authn_requests_signed": true
-                            }
+                            },
+                            "service_providers": []
                         },
                         "description": "SAML 2.0 (beffroi/saml, decision 0013): the roles the tenant of this deployment plays."
                     }
