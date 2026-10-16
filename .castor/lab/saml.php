@@ -1043,9 +1043,9 @@ function saml_sp_verify_provider_logout(array $answer): void
 /*
  * The Entra judge (issue #736, spec/saml.md sections 7 and 12): Entra's SAML federation of guests, set up without a
  * domain in the maintainer's test tenant, federating the identity provider of the stack. Entra is configured by hand in
- * its portal, by the maintainer and by nobody else; this task prints what the portal takes, registers the service
- * provider the development configuration declares for it, and reads back, once the sign-in was played, what the provider
- * received from Entra.
+ * its portal, by the maintainer and by nobody else; this task prints what the portal takes and the authorization request
+ * through which the guest signs in, registers the service provider the development configuration declares for it, and
+ * reads back, once the sign-in was played, what the provider received from Entra.
  *
  * What was received is read from the profiler of the development stack, which collects every request while
  * APP_PROFILER is 1, its default (apps/op/config/packages/web_profiler.yaml): the raw query string of HTTP-Redirect, the
@@ -1063,6 +1063,22 @@ const SAML_ENTRA_TENANT = '20a6e528-cf9e-4f79-8949-bbd59006eff5';
  * apps/op/config/packages/beffroi.yaml declares it and apps/op/config/saml/entra-guest-federation-sp.xml names it.
  */
 const SAML_ENTRA_ENTITY_ID = 'https://login.microsoftonline.com/' . SAML_ENTRA_TENANT . '/';
+
+/**
+ * Where the guest signs in (spec/saml.md section 7): an authorization request sent to the tenant itself, whose
+ * domain_hint, the Issuer URI of the federation, sends the browser to the identity provider, where the invitation
+ * redemption URL and My Apps fall back to a one-time passcode by email.
+ */
+const SAML_ENTRA_AUTHORIZE = 'https://login.microsoftonline.com/' . SAML_ENTRA_TENANT . '/oauth2/v2.0/authorize';
+
+/**
+ * The client of that request: Azure CLI, a public client of Microsoft that every tenant knows and whose redirection URI
+ * http://localhost takes any port. Nothing listens on the port: the last redirection ends on an error page of the
+ * browser, whose address carries the answer of Entra in its query.
+ */
+const SAML_ENTRA_SIGN_IN_CLIENT = '04b07795-8ddb-461a-bbee-02f9e1bf7b46';
+
+const SAML_ENTRA_SIGN_IN_REDIRECT = 'http://localhost:65000';
 
 /**
  * Under the ignored var/ of the repository: the metadata of the provider as Entra's portal can parse them, its signing
@@ -1119,7 +1135,7 @@ const SAML_ENTRA_PROFILE_READER = <<<'PHP'
 
 #[AsTask(
     name: 'saml-entra',
-    description: 'The Entra judge (issue #736): registers the service provider declared for Entra\'s SAML federation of guests, then prints what the portal of Entra takes (Issuer URI, passive authentication endpoint, signing certificate) and the invitation redirect URL carrying the domain_hint; with --received, lists what the provider received from Entra, read from the profiler of the stack, and writes each document to var/saml-entra/received/ for the corpus',
+    description: 'The Entra judge (issue #736): registers the service provider declared for Entra\'s SAML federation of guests, then prints what the portal of Entra takes (Issuer URI, passive authentication endpoint, signing certificate), the invitation Microsoft Graph creates and the authorization request to the tenant, carrying the domain_hint, through which the guest signs in and redeems it; with --received, lists what the provider received from Entra, read from the profiler of the stack, and writes each document to var/saml-entra/received/ for the corpus',
 )]
 function saml_entra(
     #[AsOption(
@@ -1204,9 +1220,8 @@ function saml_entra(
     io()->writeln(sprintf('<comment>Metadata URL:</comment> empty, Microsoft cannot reach %s.%s', $issuer, \PHP_EOL));
     io()->writeln(sprintf('<comment>Or "Parse metadata file":</comment> %s%s', SAML_ENTRA_DIRECTORY . '/op-idp-metadata.xml', \PHP_EOL));
     $redirect = sprintf('https://myapps.microsoft.com/?tenantid=%s&domain_hint=%s', SAML_ENTRA_TENANT, rawurlencode($entityId));
-    io()->writeln(sprintf('<comment>Invitation redirect URL</comment> (domain_hint, the Issuer URI):%s%s%s', \PHP_EOL, $redirect, \PHP_EOL));
     io()->writeln(sprintf(
-        '<comment>The invitation</comment>, POST https://graph.microsoft.com/v1.0/invitations in Graph Explorer, the portal taking no redirect URL; its answer carries the "inviteRedeemUrl" the guest opens:%s%s%s',
+        '<comment>The invitation</comment>, POST https://graph.microsoft.com/v1.0/invitations in Graph Explorer, the portal taking no redirect URL; neither the "inviteRedeemUrl" it answers with nor its "inviteRedirectUrl" sends the browser to the provider, Entra falling back to a one-time passcode:%s%s%s',
         \PHP_EOL,
         json_encode(
             [
@@ -1216,6 +1231,29 @@ function saml_entra(
             ],
             \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_THROW_ON_ERROR,
         ),
+        \PHP_EOL,
+    ));
+    $signIn =
+        SAML_ENTRA_AUTHORIZE
+        . '?'
+        . http_build_query(
+            [
+                'client_id' => SAML_ENTRA_SIGN_IN_CLIENT,
+                'response_type' => 'code',
+                'redirect_uri' => SAML_ENTRA_SIGN_IN_REDIRECT,
+                'scope' => 'openid',
+                'domain_hint' => $entityId,
+            ],
+            '',
+            '&',
+            \PHP_QUERY_RFC3986,
+        );
+    io()->writeln(sprintf(
+        '<comment>The sign-in</comment>, opened in the browser by the guest, who signs in at the provider as the user whose email is %s and so redeems the invitation: an authorization request to the tenant, its domain_hint the Issuer URI, for Azure CLI; it ends on an error page of the browser, %s answering nothing, whose address carries the result:%s%s%s',
+        $email,
+        SAML_ENTRA_SIGN_IN_REDIRECT,
+        \PHP_EOL,
+        $signIn,
         \PHP_EOL,
     ));
     io()->success(sprintf('%s is registered; once the sign-in is played, "castor saml-entra --received" lists what Entra sent.', SAML_ENTRA_ENTITY_ID));
