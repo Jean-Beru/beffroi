@@ -12,6 +12,7 @@ use Beffroi\Core\Port\UserRepositoryInterface;
 use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
+use Beffroi\Saml\Tests\Fixture\SignatureCertificates;
 use Beffroi\Saml2\Bindings\PostReceiver;
 use Beffroi\Saml2\Bindings\PostSender;
 use Beffroi\Saml2\Bindings\RedirectSender;
@@ -180,6 +181,25 @@ final class EntraGuestFederationTest extends ConsoleTestCase
             [2.0, 'http://www.w3.org/2000/09/xmldsig#enveloped-signature', 'http://www.w3.org/2001/10/xml-exc-c14n#'],
         ];
         static::assertSame(['count' => 2.0, 'Response' => $expected, 'Assertion' => $expected], $signatures);
+    }
+
+    /**
+     * Section 7, S-37: the signature of the response and the one of the assertion each carry, in their KeyInfo, the
+     * certificate the metadata of the tenant serve, without which Entra answers AADSTS5000810.
+     */
+    #[Test]
+    public function eachSignatureCarriesTheCertificateOfTheMetadataServed(): void
+    {
+        // Given
+        $this->signIn($this->alice);
+        $served = $this->identityProvider()->signingCertificates;
+
+        // When
+        $this->redirected();
+
+        // Then
+        $response = SamlLoader::create()->load(self::string(base64_decode($this->form()['fields']['SAMLResponse'] ?? '', true)));
+        static::assertSame([$served, $served], SignatureCertificates::of($response));
     }
 
     /**

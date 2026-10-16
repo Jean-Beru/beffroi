@@ -6,6 +6,7 @@ namespace Beffroi\Saml\Tests\Unit\Domain\Metadata;
 
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Domain\Metadata\Certificate;
+use Beffroi\Saml2\Model\Tests\Unit\Metadata\MetadataFixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -21,6 +22,16 @@ final class CertificateTest extends TestCase
     {
         // When / Then
         static::assertSame('MIIBAA==', new Certificate('MIIBAA==')->base64);
+    }
+
+    /**
+     * S-37, RFC 7468 §5: the certificate as a PEM, in lines of 64 characters, as OpenSSL writes it.
+     */
+    #[Test]
+    public function itIsWrittenAsAPem(): void
+    {
+        // When / Then
+        static::assertSame(MetadataFixtures::certificatePem('sp'), new Certificate(MetadataFixtures::certificate('sp'))->pem());
     }
 
     #[Test]

@@ -4,13 +4,20 @@ declare(strict_types=1);
 
 namespace Beffroi\Saml\Tests\Fixture;
 
+use Beffroi\Core\Bridge\Key\SealedKeyProvider;
 use Beffroi\Core\Domain\Key\GeneratedKeyPair;
 use Beffroi\Core\Domain\Key\KeyAlgorithmInterface;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Domain\Key\UnsealedKey;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
+use Beffroi\Saml\Application\Metadata\SigningCertificates;
+use Beffroi\Saml\Bridge\Model\TenantSigning;
+use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
+use Beffroi\Saml\Domain\Metadata\Certificate;
+use function array_map;
 use DateTimeImmutable;
 use function is_string;
 use Jose\Component\Core\JWK;
@@ -95,6 +102,32 @@ final class SamlKeys
     public static function opened(TenantKey $key): UnsealedKey
     {
         return new UnsealedKey($key, Keys::sealer()->unseal($key->tenant, $key->sealedPrivateJwk));
+    }
+
+    /**
+     * What signs for the tenants whose keys the repository holds, as the bundle wires it: their active SAML key opened
+     * by the KMS of the suite, and its certificate, the one the metadata publish (S-37).
+     */
+    public static function signing(TenantKeyRepositoryInterface $keys): TenantSigning
+    {
+        return new TenantSigning(
+            new SealedKeyProvider($keys, Keys::opened()),
+            self::algorithm(),
+            new SigningCertificates($keys, Keys::sealer(), new SelfSignedCertificateIssuer()),
+        );
+    }
+
+    /**
+     * The base64 of each certificate the metadata of the tenant publish, in the creation order of the keys (S-2, S-3).
+     *
+     * @return list<string>
+     */
+    public static function published(TenantKeyRepositoryInterface $keys, Tenant $tenant): array
+    {
+        return array_map(
+            static fn (Certificate $certificate): string => $certificate->base64,
+            new SigningCertificates($keys, Keys::sealer(), new SelfSignedCertificateIssuer())->of($tenant),
+        );
     }
 
     private static function generate(int $bits = 2048): GeneratedKeyPair
