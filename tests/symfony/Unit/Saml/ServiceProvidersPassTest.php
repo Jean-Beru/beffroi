@@ -103,6 +103,33 @@ final class ServiceProvidersPassTest extends TestCase
     }
 
     /**
+     * S-16, section 6.2 step 1: the claims the provider serves are those of the running deployment, so the claim of a
+     * mapping is left to the first use of the service, the rest of its declaration built at the compilation.
+     */
+    #[Test]
+    public function theClaimOfAMappingIsLeftToTheFirstUse(): void
+    {
+        // Given
+        $container = self::container([
+            self::ENTITY_ID => [
+                'metadata' => '/srv/saml/sp-metadata.xml',
+                'attributes' => [
+                    'urn:oid:1.3.6.1.4.1.5923.1.1.1.6' => [
+                        'claim' => 'a_claim_no_provider_serves',
+                    ],
+                ],
+            ],
+        ]);
+        $written = self::declarations($container);
+
+        // When
+        new ServiceProvidersPass()->process($container);
+
+        // Then
+        static::assertSame($written, self::declarations($container));
+    }
+
+    /**
      * Section 6.2 step 1: what an environment variable says is known to the running deployment only, so a declaration
      * that holds one is left to its first use.
      */

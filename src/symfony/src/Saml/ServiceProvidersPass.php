@@ -20,7 +20,9 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
  * The checks are the constructors of the declaration, run by building the same object the container builds later, so
  * that no rule is written twice; none of them opens a file or reaches the network, a container being built before
  * the metadata it names exist. A declaration that holds an environment variable is left to its first use: what the
- * variable says is known to the running deployment only.
+ * variable says is known to the running deployment only. So is the claim of a mapping (S-16): the claims the provider
+ * serves come from the claims providers the container builds, so the declarations are built here with every claim
+ * they map served (DeclaredClaims), and a claim the provider does not serve is refused at the first use.
  */
 final class ServiceProvidersPass implements CompilerPassInterface
 {
@@ -48,7 +50,7 @@ final class ServiceProvidersPass implements CompilerPassInterface
         }
         try {
             // the slug of the tenant plays no part in what a declaration is
-            new ConfigurationServiceProviders('', $literal);
+            new ConfigurationServiceProviders('', $literal, DeclaredClaims::mappedBy($literal));
         } catch (InvalidArgumentException $exception) {
             throw new InvalidConfigurationException(sprintf('Invalid configuration for path "%s": %s', self::PATH, $exception->getMessage()), 0, $exception);
         }
