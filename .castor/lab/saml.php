@@ -1201,7 +1201,7 @@ function saml_entra(
     io()->writeln(sprintf('<comment>Issuer URI</comment> (also the domain_hint):%s%s%s', \PHP_EOL, $entityId, \PHP_EOL));
     io()->writeln(sprintf('<comment>Passive authentication endpoint:</comment>%s%s%s', \PHP_EOL, $singleSignOn, \PHP_EOL));
     foreach ($certificates as $index => $certificate) {
-        $file = SAML_ENTRA_DIRECTORY . sprintf('/signing-certificate-%d.txt', $index + 1);
+        $file = sprintf('%s/signing-certificate-%d.txt', SAML_ENTRA_DIRECTORY, $index + 1);
         file_put_contents($file, $certificate);
         io()->writeln(sprintf(
             '<comment>Certificate</comment> %d of %d, the base64 of its DER on one line, also in %s (pbcopy < %s):%s%s%s',
@@ -1352,7 +1352,10 @@ function saml_entra_message(array $request): ?array
         return null;
     }
     $bytes = base64_decode($encoded, true);
-    $document = $bytes === false ? false : ($binding === 'redirect' ? @gzinflate($bytes) : $bytes);
+    $document = $bytes;
+    if ($bytes !== false && $binding === 'redirect') {
+        $document = @gzinflate($bytes);
+    }
     $dom = new DOMDocument();
     if (! is_string($document) || ! @$dom->loadXML($document, \LIBXML_NONET) || ! $dom->documentElement instanceof DOMElement) {
         return null;
