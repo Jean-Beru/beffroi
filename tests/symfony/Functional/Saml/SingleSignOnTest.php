@@ -34,6 +34,7 @@ use function parse_url;
 use const PHP_URL_PATH;
 use const PHP_URL_QUERY;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\DomCrawler\Crawler;
@@ -196,6 +197,47 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
+     * S-17, Core §3.4.1: a request that says ForceAuthn, from a browser whose session was opened before it, does not
+     * rely on that session, and the browser goes to the login of the provider.
+     */
+    #[Test]
+    public function aForcedRequestSendsABrowserSignedInBeforeItToTheLogin(): void
+    {
+        // Given
+        $this->signIn($this->alice);
+        self::aSecondLater();
+
+        // When
+        $this->redirected('state-1', forceAuthn: true);
+
+        // Then
+        static::assertTrue($this->browser->getResponse()->isRedirect('/login'), (string) $this->browser->getResponse()->headers->get('Location'));
+    }
+
+    /**
+     * S-17, Core §3.4.1, section 6.4 step 7: the browser a forced request sent to the login signs in there again, on
+     * the session it already held, and is answered with the instant of that login, not before the request.
+     */
+    #[Test]
+    public function aForcedRequestIsAnsweredWithTheLoginTypedAfterIt(): void
+    {
+        // Given
+        $this->signIn($this->alice);
+        self::aSecondLater();
+        $receivedAt = Clock::get()->now();
+        $this->redirected('state-1', forceAuthn: true);
+
+        // When
+        $this->logIn();
+
+        // Then
+        static::assertGreaterThanOrEqual(
+            $receivedAt->getTimestamp(),
+            $this->accepted()->assertion->authnStatement->authnInstant->getTimestamp(),
+        );
+    }
+
+    /**
      * The acceptance of issue #731, S-17: a user signed in through the authorization endpoint of OpenID Connect is not
      * asked to sign in again, the SAML user and the OpenID Connect user being one user of the core.
      */
@@ -355,9 +397,9 @@ final class SingleSignOnTest extends ConsoleTestCase
      * The request the service provider redirects the browser with, to the path of the single sign-on service on the
      * host of the browser, which holds its cookies.
      */
-    private function redirected(string $relayState): void
+    private function redirected(string $relayState, bool $forceAuthn = false): void
     {
-        $this->browser->request('GET', self::pathOf(new RedirectSender()->authnRequest(self::request(), self::signing(), $relayState)));
+        $this->browser->request('GET', self::pathOf(new RedirectSender()->authnRequest(self::request($forceAuthn), self::signing(), $relayState)));
     }
 
     private static function pathOf(string $url): string
@@ -440,9 +482,16 @@ final class SingleSignOnTest extends ConsoleTestCase
         );
     }
 
-    private static function request(): AuthnRequest
+    private static function request(bool $forceAuthn = false): AuthnRequest
     {
-        return new AuthnRequest(self::requestId(), self::currentSecond(), new Issuer(self::SERVICE_PROVIDER), self::SINGLE_SIGN_ON, self::ASSERTION_CONSUMER);
+        return new AuthnRequest(
+            self::requestId(),
+            self::currentSecond(),
+            new Issuer(self::SERVICE_PROVIDER),
+            self::SINGLE_SIGN_ON,
+            self::ASSERTION_CONSUMER,
+            forceAuthn: $forceAuthn,
+        );
     }
 
     private static function requestId(): string
