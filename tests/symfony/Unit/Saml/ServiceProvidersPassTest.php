@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Tests\Unit\Saml;
 
 use Beffroi\Bundle\BeffroiBundle;
+use Beffroi\Bundle\Saml\MappedClaimsWarmer;
 use Beffroi\Bundle\Saml\ServiceProvidersPass;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -16,7 +17,8 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 /**
  * Spec/saml.md section 6.2 step 1: the service providers the configuration declares are built when the container is
  * compiled, from what the extension hands their service, so that a declaration that does not hold together fails the
- * build of the deployment and not its first refresh or its first login.
+ * build of the deployment and not its first refresh or its first login; the claim of a mapping is left to the warmer
+ * the pass hands them to, which checks it right after, in the same build.
  */
 final class ServiceProvidersPassTest extends TestCase
 {
@@ -103,11 +105,12 @@ final class ServiceProvidersPassTest extends TestCase
     }
 
     /**
-     * S-16, section 6.2 step 1: the claims the provider serves are those of the running deployment, so the claim of a
-     * mapping is left to the first use of the service, the rest of its declaration built at the compilation.
+     * S-16, section 6.2 step 1: the claims the provider serves come from the claims providers the container builds, so
+     * a mapping of a claim no provider serves compiles, and its declaration is handed to the warmer, which checks the
+     * claim right after the compilation.
      */
     #[Test]
-    public function theClaimOfAMappingIsLeftToTheFirstUse(): void
+    public function theClaimOfAMappingIsLeftToTheWarmer(): void
     {
         // Given
         $container = self::container([
@@ -126,7 +129,7 @@ final class ServiceProvidersPassTest extends TestCase
         new ServiceProvidersPass()->process($container);
 
         // Then
-        static::assertSame($written, self::declarations($container));
+        static::assertSame($written, self::warmed($container));
     }
 
     /**
@@ -150,6 +153,31 @@ final class ServiceProvidersPassTest extends TestCase
 
         // Then
         static::assertSame($location, self::declarations($container)[self::ENTITY_ID]['metadata'] ?? null);
+    }
+
+    /**
+     * Section 6.2 step 1: a declaration that holds an environment variable is left to its first use by the warmer too,
+     * which is handed the others.
+     */
+    #[Test]
+    public function aDeclarationThatHoldsAnEnvironmentVariableIsNotHandedToTheWarmer(): void
+    {
+        // Given
+        $container = new ContainerBuilder();
+        $container = self::container([
+            'https://env.example.com/saml' => [
+                'metadata' => $container->getParameterBag()->get('env(SP_METADATA)'),
+            ],
+            self::ENTITY_ID => [
+                'metadata' => '/srv/saml/sp-metadata.xml',
+            ],
+        ], $container);
+
+        // When
+        new ServiceProvidersPass()->process($container);
+
+        // Then
+        static::assertSame([self::ENTITY_ID], \array_keys(self::warmed($container)));
     }
 
     /**
@@ -252,6 +280,19 @@ final class ServiceProvidersPassTest extends TestCase
         static::assertIsArray($declarations);
 
         /** @var array<array-key, array<array-key, mixed>> $declarations */
+        return $declarations;
+    }
+
+    /**
+     * The declarations the pass handed the warmer.
+     *
+     * @return array<array-key, mixed>
+     */
+    private static function warmed(ContainerBuilder $container): array
+    {
+        $declarations = $container->getDefinition(MappedClaimsWarmer::class)->getArgument('$declarations');
+        static::assertIsArray($declarations);
+
         return $declarations;
     }
 }

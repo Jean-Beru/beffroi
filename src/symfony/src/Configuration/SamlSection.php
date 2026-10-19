@@ -30,8 +30,10 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurat
  * and the scheduled step stages its successors, as every key of the tenant.
  *
  * The service providers are declared here and nowhere else, as the clients are (S-5): no request registers one and no
- * page edits one. A declaration is validated when the container is compiled (ServiceProvidersPass); its metadata are
- * read by "beffroi:saml:service-provider:refresh" and by the hourly step of the schedule, and kept in the database.
+ * page edits one. A declaration is validated when the container is compiled (ServiceProvidersPass), the claim of a
+ * mapping right after, in the same build (MappedClaimsWarmer), and one holding an environment variable at its first
+ * use; its metadata are read by "beffroi:saml:service-provider:refresh" and by the hourly step of the schedule, and kept
+ * in the database.
  *
  * The keys of the identity provider are a family of their own (spec/saml.md S-12, issue #738): their staging delay and their age are set here,
  * counted in days by default, and not by "beffroi.keys", whose figures suit a JWK Set refetched within minutes. The

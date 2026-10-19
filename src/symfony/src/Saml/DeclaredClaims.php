@@ -11,10 +11,10 @@ use function is_string;
 
 /**
  * The claims the declarations of service providers map, served as they are named (beffroi/saml, spec/saml.md S-16,
- * section 6.2 step 1). What the provider serves is known to the running deployment only, from the claims providers its
- * container builds: ServiceProvidersPass builds the declarations with this when the container is compiled, so that
- * every other rule of a declaration fails the build, and the claim of a mapping is checked against the claims of the
- * provider when the container builds the service, at its first use. It reads no user and gives no value.
+ * section 6.2 step 1). What the provider serves comes from the claims providers the container builds, which a compiler
+ * pass has not built: ServiceProvidersPass builds the declarations with this when the container is compiled, so that
+ * every other rule of a declaration fails the compilation, and MappedClaimsWarmer checks the claim of a mapping against
+ * the claims of the provider right after, in the same build. It reads no user and gives no value.
  */
 final readonly class DeclaredClaims implements ServedClaimsInterface
 {

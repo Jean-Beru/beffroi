@@ -275,6 +275,7 @@ use Beffroi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyFamily;
 use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
+use Beffroi\Bundle\Saml\MappedClaimsWarmer;
 use Beffroi\Bundle\Saml\ProviderServedClaims;
 use Beffroi\Bundle\Saml\SamlPostPage;
 use Beffroi\Bundle\Saml\SignOnAnswers;
@@ -1848,6 +1849,11 @@ return static function (ContainerConfigurator $container): void {
         '$definitions' => [],
     ]);
     $services->alias(ServiceProvidersInterface::class, ConfigurationServiceProviders::class);
+    // the claim of each mapping checked against the claims the provider serves right after the compilation, in the
+    // same build; ServiceProvidersPass hands it the declarations it built (spec/saml.md S-16, section 6.2 step 1)
+    $services->set(MappedClaimsWarmer::class)->args([
+        '$declarations' => [],
+    ]);
     $services->set(ModelServiceProviderMetadataReader::class);
     $services->alias(ServiceProviderMetadataReaderInterface::class, ModelServiceProviderMetadataReader::class);
     $services->set(MetadataFetcher::class);
