@@ -102,25 +102,38 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-1, S-3: the certificate served is around the public half of the SAML key the tenant holds, and that key is not
-     * in the JWK Set.
+     * S-3, section 6.1 step 2: the certificate served is around the public half of the SAML key the tenant holds.
      */
     #[Test]
-    public function theCertificateIsAroundTheSamlKeyWhichTheJwkSetDoesNotCarry(): void
+    public function theCertificateIsAroundTheSamlKeyOfTheTenant(): void
     {
         // Given
         $key = self::generate();
+
+        // When
         $this->browser->request('GET', self::METADATA);
-        $certificates = $this->servedDescriptor()->identityProvider->signingCertificates ?? [];
+
+        // Then
+        static::assertSame(
+            [self::base64url($key->publicJwk['n'])],
+            array_map(self::modulusOf(...), $this->servedDescriptor()->identityProvider->signingCertificates ?? []),
+        );
+    }
+
+    /**
+     * S-1: the SAML key the tenant holds is not in its JWK Set.
+     */
+    #[Test]
+    public function theJwkSetDoesNotCarryTheSamlKey(): void
+    {
+        // Given
+        self::generate();
 
         // When
         $this->browser->request('GET', '/jwks');
 
         // Then
-        static::assertSame(
-            [[self::base64url($key->publicJwk['n'])], []],
-            [array_map(self::modulusOf(...), $certificates), self::json($this->browser->getResponse())['keys'] ?? null],
-        );
+        static::assertSame([], self::json($this->browser->getResponse())['keys'] ?? null);
     }
 
     /**
