@@ -22,6 +22,19 @@ final class CrossSitePostTest extends BrowserTestCase
 {
     private const string POSTED_AGAIN = '/authorize?' . CrossSitePost::MARKER . '=1';
 
+    private const string ENGLISH_BROWSER = 'en-US,en;q=0.9';
+
+    /**
+     * What the page says in French: its language, its title, the sentence and the button a browser without scripting
+     * is shown.
+     */
+    private const array FRENCH_PAGE = [
+        'fr',
+        'Connexion en cours',
+        "Votre navigateur arrive d\u{2019}un autre site sans votre session. Utilisez le bouton ci-dessous pour continuer.",
+        'Continuer',
+    ];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -111,6 +124,62 @@ final class CrossSitePostTest extends BrowserTestCase
                 $this->browser->getCrawler()->filter('noscript button[type="submit"]')->count(),
             ],
         );
+    }
+
+    /**
+     * S-28, architecture §5.7: the page speaks the language the browser asks for ("Accept-Language"), as every page of
+     * the interaction plane does.
+     */
+    #[Test]
+    public function thePageSpeaksTheLanguageOfTheBrowser(): void
+    {
+        // When
+        $this->postedFromAnotherSite('/authorize', self::body(), ['HTTP_ACCEPT_LANGUAGE' => 'fr']);
+
+        // Then
+        static::assertSame(self::FRENCH_PAGE, $this->words());
+    }
+
+    /**
+     * S-28, OIDC Core §3.1.2.1, architecture §5.7: the "ui_locales" of the posted body comes before the language of
+     * the browser, as it does for the pages of the interaction it opens.
+     */
+    #[Test]
+    public function theUiLocalesOfThePostedBodyComeBeforeTheBrowser(): void
+    {
+        // When
+        $this->postedFromAnotherSite(
+            '/authorize',
+            http_build_query(self::authorizationParameters('oidc-demo', ['ui_locales' => 'fr'])),
+            ['HTTP_ACCEPT_LANGUAGE' => self::ENGLISH_BROWSER],
+        );
+
+        // Then
+        static::assertSame(self::FRENCH_PAGE, $this->words());
+    }
+
+    /**
+     * S-28: a "ui_locales" the endpoint would refuse leaves the page in the language of the browser, and the refusal
+     * to the second post, which reads the body as it came.
+     */
+    #[Test]
+    #[DataProvider('provideUiLocalesTheEndpointRefuses')]
+    public function aUiLocalesTheEndpointRefusesLeavesTheLanguageOfTheBrowser(string $tail): void
+    {
+        // When
+        $this->postedFromAnotherSite('/authorize', self::body() . $tail, ['HTTP_ACCEPT_LANGUAGE' => 'fr']);
+
+        // Then
+        static::assertSame(self::FRENCH_PAGE, $this->words());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideUiLocalesTheEndpointRefuses(): iterable
+    {
+        yield 'a value that is no language tag' => ['&ui_locales=en_GB'];
+        yield 'a repeated parameter' => ['&ui_locales=en&ui_locales=en'];
     }
 
     /**
@@ -330,6 +399,25 @@ final class CrossSitePostTest extends BrowserTestCase
         );
 
         return [(string) $form->attr('action'), $fields];
+    }
+
+    /**
+     * The words of the page: its language, its title, and what a browser without scripting reads.
+     *
+     * @return array{string, string, string, string}
+     */
+    private function words(): array
+    {
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
+        $crawler = $this->browser->getCrawler();
+
+        return [
+            (string) $crawler->filter('html')->attr('lang'),
+            $crawler->filter('title')->text(),
+            $crawler->filter('noscript p')->text(),
+            $crawler->filter('noscript button')->text(),
+        ];
     }
 
     private static function body(): string

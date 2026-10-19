@@ -12,8 +12,11 @@ use Beffroi\Bundle\Http\CrossSitePost;
 use Beffroi\Bundle\Http\InteractionLocale;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\RequestContextFactory;
+use Beffroi\Bundle\Http\RequestParameters;
 use Beffroi\Oidc\Application\Authorization\AuthorizationHandler;
 use Beffroi\Oidc\Application\Authorization\AuthorizationRequestParser;
+use Beffroi\Oidc\Application\Request\RequestParameters as OidcRequestParameters;
+use Beffroi\Oidc\Exception\InvalidRequestException;
 use Beffroi\Oidc\Exception\OAuth2Exception;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -49,7 +52,7 @@ final readonly class AuthorizationController
     #[Route('/authorize', name: 'beffroi_interaction_authorize', methods: ['GET', 'POST'])]
     public function __invoke(Request $request): Response
     {
-        $again = $this->crossSitePost->postAgain($request);
+        $again = $this->crossSitePost->postAgain($request, self::postedUiLocales($request));
         if ($again !== null) {
             return $again;
         }
@@ -76,5 +79,21 @@ final readonly class AuthorizationController
         }
 
         return $this->responder->respond($request, $decision);
+    }
+
+    /**
+     * The "ui_locales" of a posted body (OIDC Core §3.1.2.1), which the page that posts it again speaks (S-28): read
+     * as this endpoint reads it, and none when it would refuse it, which the second post then does. Nothing else of
+     * the request is resolved for it, a pushed request being spent by whoever reads its reference.
+     *
+     * @return list<string> most preferred first
+     */
+    private static function postedUiLocales(Request $request): array
+    {
+        try {
+            return OidcRequestParameters::of(RequestParameters::ofForm($request))->uiLocales();
+        } catch (InvalidRequestException) {
+            return [];
+        }
     }
 }

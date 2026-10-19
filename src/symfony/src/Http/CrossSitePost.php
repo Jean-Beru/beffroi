@@ -38,6 +38,10 @@ use function urldecode;
  *
  * Nothing here reads or starts the HTTP session: a cookie set on this answer would replace the one the browser holds,
  * which is what the page exists to avoid. Each endpoint opts in by asking first.
+ *
+ * The page speaks the language every page of the interaction plane chooses (InteractionLocale, architecture §5.7):
+ * the hint the endpoint read in the body, "ui_locales" for the authorization endpoint, then "Accept-Language". It is
+ * chosen here because the endpoint has not chosen it yet, the page coming before anything reads the request.
  */
 final readonly class CrossSitePost
 {
@@ -73,13 +77,17 @@ final readonly class CrossSitePost
 
     public function __construct(
         private InteractionPages $pages,
+        private InteractionLocale $locale,
     ) {
     }
 
     /**
      * The page that posts the request again, or null when the endpoint serves the request as it came.
+     *
+     * @param list<string> $uiLocales the languages the posted body asks for, most preferred first (OIDC Core
+     *                                §3.1.2.1), none for a request that names none
      */
-    public function postAgain(Request $request): ?Response
+    public function postAgain(Request $request, array $uiLocales = []): ?Response
     {
         if (
             ! $request->isMethod(Request::METHOD_POST)
@@ -95,6 +103,7 @@ final readonly class CrossSitePost
             return null;
         }
         $action = $request->getRequestUri();
+        $this->locale->apply($request, $this->locale->choose($request, $uiLocales));
 
         return $this->pages->render(
             self::TEMPLATE,

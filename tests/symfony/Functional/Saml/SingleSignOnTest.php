@@ -139,6 +139,34 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
+     * S-28, architecture §5.7: the page that posts the request again speaks the language the browser asks for
+     * ("Accept-Language"), a request of SAML naming none of its own.
+     */
+    #[Test]
+    public function aRequestPostedFromAnotherSiteIsPostedAgainInTheLanguageOfTheBrowser(): void
+    {
+        // When
+        $this->postedFromAnotherSite('/saml/sso', $this->postedBody('state-1'), ['HTTP_ACCEPT_LANGUAGE' => 'fr']);
+
+        // Then
+        $crawler = $this->browser->getCrawler();
+        static::assertSame(
+            [
+                'fr',
+                'Connexion en cours',
+                "Votre navigateur arrive d\u{2019}un autre site sans votre session. Utilisez le bouton ci-dessous pour continuer.",
+                'Continuer',
+            ],
+            [
+                (string) $crawler->filter('html')->attr('lang'),
+                $crawler->filter('title')->text(),
+                $crawler->filter('noscript p')->text(),
+                $crawler->filter('noscript button')->text(),
+            ],
+        );
+    }
+
+    /**
      * S-28: a browser that holds no session gets the page all the same, the provider not knowing it holds none, and is
      * sent to the login by the second post, which is not posted a third time.
      */
