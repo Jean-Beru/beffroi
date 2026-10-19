@@ -26,6 +26,11 @@ final class ConfigurationServiceProvidersTest extends TestCase
 
     private const string LOCATION = 'https://sp.example.com/saml/metadata';
 
+    /**
+     * S-5, section 5.2: a declaration is read whole into its ServiceProvider, its entity ID, its metadata location,
+     * the certificates that sign its metadata, its attribute mappings with their name format and friendly name,
+     * encryptAssertions and signsAuthnRequests.
+     */
     #[Test]
     public function aDeclarationIsReadWhole(): void
     {
@@ -89,6 +94,10 @@ final class ConfigurationServiceProvidersTest extends TestCase
         static::assertEquals(new ServiceProvider(self::ENTITY_ID, new MetadataLocation(self::LOCATION)), $serviceProvider);
     }
 
+    /**
+     * Section 5.2: ServiceProvidersInterface::of() lists the service providers of the tenant in the order of the
+     * declaration, the order in which refreshAll() reads them (section 6.2).
+     */
     #[Test]
     public function theServiceProvidersAreListedInTheOrderOfTheDeclaration(): void
     {
@@ -110,6 +119,9 @@ final class ConfigurationServiceProvidersTest extends TestCase
         static::assertCount(2, $listed);
     }
 
+    /**
+     * Section 5.2: the declarations are those of one tenant, named by its slug, so another tenant lists none.
+     */
     #[Test]
     public function anotherTenantListsNone(): void
     {
@@ -124,6 +136,10 @@ final class ConfigurationServiceProvidersTest extends TestCase
         static::assertSame([], $serviceProviders->of(Fixtures::tenant('other')));
     }
 
+    /**
+     * Section 5.2: the declarations are those of one tenant, named by its slug, so another tenant finds none of them,
+     * even by an entity ID declared for the first.
+     */
     #[Test]
     public function anotherTenantFindsNone(): void
     {
@@ -138,6 +154,10 @@ final class ConfigurationServiceProvidersTest extends TestCase
         static::assertNull($serviceProviders->find(Fixtures::tenant('other'), self::ENTITY_ID));
     }
 
+    /**
+     * S-5, section 5.2: a service provider is the one the configuration declares, found by its entity ID compared
+     * exactly, so an entity ID that differs by a character finds none.
+     */
     #[Test]
     public function anEntityIdNobodyDeclaredIsFoundNowhere(): void
     {
