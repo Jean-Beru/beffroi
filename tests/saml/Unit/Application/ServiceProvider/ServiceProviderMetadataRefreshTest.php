@@ -6,6 +6,7 @@ namespace Beffroi\Saml\Tests\Unit\Application\ServiceProvider;
 
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Saml\Application\ServiceProvider\AcceptedMetadataForgetting;
 use Beffroi\Saml\Application\ServiceProvider\MetadataRefreshment;
 use Beffroi\Saml\Application\ServiceProvider\ServiceProviderMetadataRefresh;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
@@ -163,6 +164,27 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
         );
         static::assertEquals(new DateTimeImmutable('2026-10-08T00:00:00Z'), $this->acceptedSimpleSamlPhp()->validUntil);
         static::assertSame(1, $this->accepted->saves);
+    }
+
+    /**
+     * S-6, section 6.2, forgotten: a service provider that went back to a document without validUntil after one that
+     * had one is registered again from it once an operator forgot the document accepted.
+     */
+    #[Test]
+    public function aServiceProviderForgottenIsRegisteredAgainFromADocumentWithoutValidUntil(): void
+    {
+        // Given
+        $this->fetcher->answer(self::LOCATION, ServiceProviderDocuments::simpleSamlPhpValidUntil('2026-10-08T00:00:00Z'));
+        $this->refreshSimpleSamlPhp();
+        $this->fetcher->answer(self::LOCATION, ServiceProviderDocuments::simpleSamlPhp());
+        new AcceptedMetadataForgetting($this->accepted, $this->accepted)->forget($this->tenant, ServiceProviderDocuments::SIMPLESAMLPHP);
+
+        // When
+        $refreshment = $this->refreshSimpleSamlPhp();
+
+        // Then
+        static::assertSame(\sprintf('The service provider "%s" is registered from its metadata.', ServiceProviderDocuments::SIMPLESAMLPHP), $refreshment->what);
+        static::assertNull($this->acceptedSimpleSamlPhp()->validUntil);
     }
 
     /**

@@ -717,6 +717,7 @@ const INFECTION_STRICT_FILES = [
     'src/saml/src/Domain/ServiceProvider/ServiceProviderMetadata.php',
     'src/saml/src/Application/ServiceProvider/MetadataRefreshment.php',
     'src/saml/src/Application/ServiceProvider/ServiceProviderMetadataRefresh.php',
+    'src/saml/src/Application/ServiceProvider/AcceptedMetadataForgetting.php',
     'src/saml/src/Bridge/Model/ModelServiceProviderMetadataReader.php',
     'src/saml/src/Bridge/Configuration/ConfigurationServiceProviders.php',
     'src/saml2-model/src/Writing/LogoutRequestWriter.php',

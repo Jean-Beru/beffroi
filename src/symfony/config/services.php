@@ -289,6 +289,8 @@ use Beffroi\Saml\Application\ServiceProvider\ServiceProviderMetadataRefresh;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataReader;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
+use Beffroi\Saml\Port\CanForgetAcceptedMetadataInterface;
+use Beffroi\Saml\Application\ServiceProvider\AcceptedMetadataForgetting;
 use Beffroi\Saml\Port\MetadataFetcherInterface;
 use Beffroi\Saml\Port\ServiceProviderMetadataReaderInterface;
 use Beffroi\Saml\Port\ServiceProvidersInterface;
@@ -1825,7 +1827,9 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(MetadataFetcherInterface::class, MetadataFetcher::class);
     $services->set(DoctrineAcceptedMetadataRepository::class);
     $services->alias(AcceptedMetadataRepositoryInterface::class, DoctrineAcceptedMetadataRepository::class);
+    $services->alias(CanForgetAcceptedMetadataInterface::class, DoctrineAcceptedMetadataRepository::class);
     $services->set(ServiceProviderMetadataRefresh::class);
+    $services->set(AcceptedMetadataForgetting::class);
     $services->set(EndSessionRequestParser::class);
     $services->set(EndSessionHandler::class);
     $services->set(LogoutTokenIssuer::class);

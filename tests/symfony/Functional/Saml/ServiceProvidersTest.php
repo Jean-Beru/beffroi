@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Saml;
 
+use Beffroi\Bundle\Command\SamlServiceProviderForgetCommand;
 use Beffroi\Bundle\Command\SamlServiceProviderRefreshCommand;
 use Beffroi\Bundle\Message\RefreshTheServiceProviderMetadata;
 use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
@@ -137,6 +138,77 @@ final class ServiceProvidersTest extends ConsoleTestCase
         // Then
         static::assertSame(Command::INVALID, $tester->getStatusCode());
         static::assertStringContainsString('The tenant declares no service provider "https://sp.example.com/saml"', self::flattened($tester));
+    }
+
+    /**
+     * S-6, section 6.2, forgotten: the operator forgets the document accepted for a service provider, and its row goes.
+     */
+    #[Test]
+    public function theForgetCommandRemovesTheAcceptedDocument(): void
+    {
+        // Given
+        self::publish(ServiceProviderDocuments::simpleSamlPhpValidUntil('2026-10-08T00:00:00Z'));
+        self::console(SamlServiceProviderRefreshCommand::NAME);
+
+        // When
+        $tester = self::console(SamlServiceProviderForgetCommand::NAME, [
+            'entity-id' => ServiceProviderDocuments::SIMPLESAMLPHP,
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertStringContainsString(
+            sprintf('The metadata accepted for the service provider "%s" are forgotten;', ServiceProviderDocuments::SIMPLESAMLPHP),
+            self::flattened($tester),
+        );
+        static::assertNull(self::accepted());
+    }
+
+    /**
+     * S-6, section 6.2, forgotten: a service provider that went back to a document without validUntil after one that
+     * had one, refused for it, is registered from it again once the operator forgot the document accepted.
+     */
+    #[Test]
+    public function aForgottenServiceProviderIsRegisteredAgainFromADocumentWithoutValidUntil(): void
+    {
+        // Given
+        self::publish(ServiceProviderDocuments::simpleSamlPhpValidUntil('2026-10-08T00:00:00Z'));
+        self::console(SamlServiceProviderRefreshCommand::NAME);
+        self::publish(ServiceProviderDocuments::simpleSamlPhp());
+        self::console(SamlServiceProviderForgetCommand::NAME, [
+            'entity-id' => ServiceProviderDocuments::SIMPLESAMLPHP,
+        ]);
+
+        // When
+        $tester = self::console(SamlServiceProviderRefreshCommand::NAME);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertStringContainsString(
+            sprintf('The service provider "%s" is registered from its metadata.', ServiceProviderDocuments::SIMPLESAMLPHP),
+            self::flattened($tester),
+        );
+        static::assertSame(ServiceProviderDocuments::simpleSamlPhp(), self::accepted()?->document);
+    }
+
+    /**
+     * Section 6.2, forgotten: an entity ID nothing is accepted for is refused as invalid, so that a mistyped one is
+     * never taken for a service provider forgotten.
+     */
+    #[Test]
+    public function forgettingAnEntityIdNothingIsAcceptedForIsRefused(): void
+    {
+        // When
+        $tester = self::console(SamlServiceProviderForgetCommand::NAME, [
+            'entity-id' => ServiceProviderDocuments::SIMPLESAMLPHP,
+        ]);
+
+        // Then
+        static::assertSame(Command::INVALID, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertStringContainsString(
+            sprintf('No metadata are accepted for the service provider "%s": nothing is forgotten.', ServiceProviderDocuments::SIMPLESAMLPHP),
+            self::flattened($tester),
+        );
     }
 
     /**
