@@ -10,6 +10,8 @@ use Beffroi\Core\Domain\Event\AuthenticationSessionEnded;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\SessionEnd;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\KeyNotFoundException;
+use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Saml\Application\SingleLogout\SingleLogout;
@@ -259,6 +261,55 @@ final class SingleLogoutTest extends TestCase
     }
 
     /**
+     * S-25, S-27, section 6.5 step 1: the key that signs the answer is opened before anything ends, so that a tenant
+     * without its key, or a KMS that does not answer, ends no session.
+     */
+    #[Test]
+    #[DataProvider('provideKeysThatCannotBeOpened')]
+    public function aKeyThatCannotBeOpenedEndsNothing(KeyNotFoundException|KmsUnavailableException $unopened, string $binding): void
+    {
+        // Given
+        $this->responder = new RecordingSignOutResponder($unopened);
+
+        // When
+        $this->failToLogOut($binding, new GivenSignOutRequests($this->request()));
+
+        // Then
+        static::assertSame(
+            [false, []],
+            [$this->session->hasEnded(), $this->events->of(AuthenticationSessionEnded::class)],
+        );
+    }
+
+    /**
+     * S-23, section 6.5 step 1: the key is opened before the request is read, so that a tenant without its key, or a
+     * KMS that does not answer, remembers nothing, and the same request is accepted once the key or the KMS is back.
+     */
+    #[Test]
+    #[DataProvider('provideKeysThatCannotBeOpened')]
+    public function aKeyThatCannotBeOpenedRemembersNothing(KeyNotFoundException|KmsUnavailableException $unopened, string $binding): void
+    {
+        // Given
+        $this->responder = new RecordingSignOutResponder($unopened);
+        $receiver = new GivenSignOutRequests($this->request());
+
+        // When
+        $this->failToLogOut($binding, $receiver);
+
+        // Then
+        static::assertSame(0, $receiver->received);
+    }
+
+    /**
+     * @return iterable<string, array{KeyNotFoundException|KmsUnavailableException, string}>
+     */
+    public static function provideKeysThatCannotBeOpened(): iterable
+    {
+        yield 'no active key, over HTTP-Redirect' => [new KeyNotFoundException('Tenant "acme" has no active SAML-SIGNING key to sign with.'), 'redirect'];
+        yield 'a KMS that does not answer, over HTTP-POST' => [new KmsUnavailableException('The sealed key could not be opened.'), 'post'];
+    }
+
+    /**
      * The request of the service provider of the fixtures for the session of setUp(), its NameID the one S-13
      * computes for the user of that session unless the test says otherwise.
      *
@@ -301,10 +352,26 @@ final class SingleLogoutTest extends TestCase
         return [$session->id->toRfc4122()];
     }
 
-    private function singleLogout(SignOutRequest $received): SingleLogout
+    /**
+     * A logout over the binding named, which the key that cannot be opened refuses.
+     */
+    private function failToLogOut(string $binding, GivenSignOutRequests $receiver): void
+    {
+        $singleLogout = $this->singleLogout($receiver);
+        try {
+            if ($binding === 'post') {
+                $singleLogout->post($this->tenant, ['SAMLRequest' => 'given'], Fixtures::context());
+            } else {
+                $singleLogout->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context());
+            }
+        } catch (KeyNotFoundException|KmsUnavailableException) {
+        }
+    }
+
+    private function singleLogout(SignOutRequest|GivenSignOutRequests $received): SingleLogout
     {
         return new SingleLogout(
-            new GivenSignOutRequests($received),
+            $received instanceof GivenSignOutRequests ? $received : new GivenSignOutRequests($received),
             $this->responder,
             $this->sessions,
             new SessionTerminator($this->sessions, $this->clock, $this->events),

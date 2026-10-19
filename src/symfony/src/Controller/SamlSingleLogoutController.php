@@ -29,7 +29,9 @@ use function trim;
  * of a form and nothing else (spec/saml.md section 6.8). A request refused ends nothing and gets the page of a refusal
  * and no SAML answer (S-22, S-23); one accepted ends the sessions it names and is answered at the single logout service
  * of the metadata of its service provider, a 302 over HTTP-Redirect with the caching headers of the binding (SAML
- * Bindings §3.4.5.1), the page that posts the form over HTTP-POST (S-27).
+ * Bindings §3.4.5.1), the page that posts the form over HTTP-POST (S-27). A tenant whose SAML key cannot be opened,
+ * which is opened before the request is read, ends nothing and remembers nothing, whatever the request: a 404 when it
+ * holds no active key, the 503 of KmsUnavailableListener when the KMS does not answer (S-23, S-27).
  *
  * The browser that held a session it ended finds none at its next request, the session of the core having ended.
  */

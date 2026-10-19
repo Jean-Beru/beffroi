@@ -6,6 +6,7 @@ namespace Beffroi\Saml\Tests\Unit\Bridge\Model;
 
 use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Beffroi\Core\Bridge\Key\SealedKeyProvider;
+use Beffroi\Core\Domain\Key\GeneratedKeyPair;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\KeyNotFoundException;
@@ -172,6 +173,59 @@ final class ModelSignOutResponderTest extends TestCase
 
         // When
         $this->responder()->answer(Fixtures::tenant('globex', 'https://id.globex.example'), self::response());
+    }
+
+    /**
+     * S-27, section 6.5 step 1: a tenant without an active SAML key has none to open, before any request is read.
+     */
+    #[Test]
+    public function aTenantWithoutAnActiveKeyHasNoneToOpen(): void
+    {
+        // Then
+        $this->expectException(KeyNotFoundException::class);
+
+        // When
+        $this->responder()->open(Fixtures::tenant('globex', 'https://id.globex.example'));
+    }
+
+    /**
+     * D-16, S-1, section 6.5 step 1: a key that cannot sign, one Dsig refuses under 2 048 bits or one whose private half
+     * is not the one of its public JWK, is refused when it is opened, before any request is read.
+     */
+    #[Test]
+    #[DataProvider('provideKeysThatCannotSign')]
+    public function aKeyThatCannotSignIsRefusedWhenItIsOpened(GeneratedKeyPair $public, GeneratedKeyPair $private): void
+    {
+        // Given
+        $key = new TenantKey(
+            $public->kid,
+            $this->tenant,
+            SamlKeys::algorithm(),
+            $public->publicJwk,
+            Keys::sealer()->seal($this->tenant, $private->privateJwk),
+            Fixtures::now(),
+            Fixtures::now(),
+        );
+        $key->activate(Fixtures::now());
+        $this->keys = new InMemoryTenantKeyRepository();
+        $this->keys->save($key);
+
+        // Then
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageIs('The active SAML key of the tenant is one Dsig refuses to sign with (spec/saml.md section 6.5 step 1).');
+        $this->expectExceptionCode(0);
+
+        // When
+        $this->responder()->open($this->tenant);
+    }
+
+    /**
+     * @return iterable<string, array{GeneratedKeyPair, GeneratedKeyPair}>
+     */
+    public static function provideKeysThatCannotSign(): iterable
+    {
+        yield 'a key under 2 048 bits' => [SamlKeys::weakPair(), SamlKeys::weakPair()];
+        yield 'a private half that is not the key\'s' => [SamlKeys::pair(), SamlKeys::otherPair()];
     }
 
     /**

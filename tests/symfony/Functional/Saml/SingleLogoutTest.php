@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Saml;
 
+use Beffroi\Bundle\Key\KmsUnavailableListener;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
+use Beffroi\Bundle\Tests\Functional\Key\KmsOutage;
 use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\SessionEnd;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use Beffroi\Oidc\Domain\Event\LogoutTokenIssued;
 use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
 use Beffroi\Saml\Domain\SingleLogout\SessionParticipation;
@@ -44,6 +47,7 @@ use Beffroi\Saml2\Model\Validation\LogoutResponseValidator;
 use Beffroi\Saml2\Model\Validation\ResponseValidator;
 use Beffroi\Saml2\Model\Writing\Signing;
 use function array_map;
+use Closure;
 use function explode;
 use function parse_url;
 use const PHP_URL_HOST;
@@ -63,7 +67,7 @@ use Symfony\Component\Uid\Uuid;
  * in over HTTP-Redirect, then sends the LogoutRequest its assertion lets it write, signed with the test key of a
  * service provider of saml2-model: the session of the provider ends, and the LogoutResponse comes back signed to the
  * single logout service of the metadata, which saml2-model's validator accepts under the certificate the metadata of
- * the tenant publish.
+ * the tenant publish. The KMS of the kernel is behind the switch of KmsOutage, up unless a test takes it down.
  */
 final class SingleLogoutTest extends ConsoleTestCase
 {
@@ -83,8 +87,11 @@ final class SingleLogoutTest extends ConsoleTestCase
 
     private User $alice;
 
+    private KmsOutage $kms;
+
     protected function setUp(): void
     {
+        $this->kms = new KmsOutage();
         parent::setUp();
         $tester = self::console('beffroi:keys:generate', [
             '--algorithm' => SamlSigning::NAME,
@@ -103,6 +110,11 @@ final class SingleLogoutTest extends ConsoleTestCase
                 self::currentSecond(),
             ));
         $this->alice = self::userWithPassword('alice', 'correct horse battery staple');
+    }
+
+    protected function configureContainer(): Closure
+    {
+        return $this->kms->takeOver(...);
     }
 
     /**
@@ -300,6 +312,102 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
+     * S-25, S-27, section 6.5 step 1: a tenant whose SAML key is no longer active ends no session, the key that would
+     * sign the answer being opened before the request is read; the page of a tenant that serves no identity provider.
+     */
+    #[Test]
+    public function aTenantWithoutItsKeyEndsNoSession(): void
+    {
+        // Given
+        $assertion = $this->signedOn();
+        self::withoutActiveKey();
+
+        // When
+        $this->browser->request('GET', self::pathOf($this->logoutUrl($assertion)));
+
+        // Then
+        static::assertSame(
+            [Response::HTTP_NOT_FOUND, false],
+            [$this->browser->getResponse()->getStatusCode(), $this->sessionOf($assertion)->hasEnded()],
+        );
+    }
+
+    /**
+     * S-23, section 6.5 step 1: a request a tenant without its key could not answer was not remembered, and the same URL
+     * is answered Success once the tenant holds an active key again.
+     */
+    #[Test]
+    public function theSameRequestIsAnsweredOnceTheKeyIsBack(): void
+    {
+        // Given
+        $url = self::pathOf($this->logoutUrl($this->signedOn()));
+        self::withoutActiveKey();
+        $this->browser->request('GET', $url);
+        $tester = self::console('beffroi:keys:generate', [
+            '--algorithm' => SamlSigning::NAME,
+        ]);
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+
+        // When
+        $this->browser->request('GET', $url);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(
+            [Response::HTTP_FOUND, StatusCode::Success],
+            [$response->getStatusCode(), $this->answer($response->headers->get('Location') ?? '')[0]->response->status->code],
+        );
+    }
+
+    /**
+     * S-25, S-27, section 6.5 step 1, architecture §5.4: a KMS that does not answer to open the SAML key, one this
+     * process has not opened yet, ends no session: a 503 with a Retry-After.
+     */
+    #[Test]
+    public function aKmsThatDoesNotAnswerEndsNoSession(): void
+    {
+        // Given
+        $assertion = $this->signedOn();
+        self::withAKeyNotOpenedYet();
+        $this->kms->down = true;
+
+        // When
+        $this->browser->request('GET', self::pathOf($this->logoutUrl($assertion)));
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(
+            [Response::HTTP_SERVICE_UNAVAILABLE, (string) KmsUnavailableListener::RETRY_AFTER, false],
+            [$response->getStatusCode(), $response->headers->get('Retry-After'), $this->sessionOf($assertion)->hasEnded()],
+        );
+    }
+
+    /**
+     * S-23, section 6.5 step 1: a request the KMS left unanswered was not remembered, and the same URL is answered
+     * Success once the KMS is back.
+     */
+    #[Test]
+    public function theSameRequestIsAnsweredOnceTheKmsIsBack(): void
+    {
+        // Given
+        $url = self::pathOf($this->logoutUrl($this->signedOn()));
+        self::withAKeyNotOpenedYet();
+        $this->kms->down = true;
+        $this->browser->request('GET', $url);
+        $this->kms->down = false;
+
+        // When
+        $this->browser->request('GET', $url);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(
+            [Response::HTTP_FOUND, StatusCode::Success],
+            [$response->getStatusCode(), $this->answer($response->headers->get('Location') ?? '')[0]->response->status->code],
+        );
+    }
+
+    /**
      * S-26: the sign-on recorded the service provider's part in the session, which the logout the identity provider
      * starts reads (issue #735).
      */
@@ -396,6 +504,30 @@ final class SingleLogoutTest extends ConsoleTestCase
             $location,
             self::LOGOUT_REQUEST_ID,
         );
+    }
+
+    /**
+     * The active SAML key of the tenant retiring, with no key active in its place: what the tenant holds once an
+     * operator took it out without a successor.
+     */
+    private static function withoutActiveKey(): void
+    {
+        $keys = self::service('test.beffroi.keys', TenantKeyRepositoryInterface::class);
+        $key = $keys->findActive(self::tenant(), new SamlSigning()) ?? static::fail('The tenant holds no active SAML key.');
+        $key->startRetiring(self::currentSecond(), self::currentSecond()->modify('+1 day'));
+        $keys->save($key);
+    }
+
+    /**
+     * A second SAML key generated after the sign-on, active at once: the process opened the key that signed the
+     * assertion, and has not opened this one.
+     */
+    private static function withAKeyNotOpenedYet(): void
+    {
+        $tester = self::console('beffroi:keys:generate', [
+            '--algorithm' => SamlSigning::NAME,
+        ]);
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
     }
 
     private function sessionOf(AcceptedAssertion $assertion): AuthenticationSession
