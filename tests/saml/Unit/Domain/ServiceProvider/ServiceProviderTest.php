@@ -71,6 +71,31 @@ final class ServiceProviderTest extends TestCase
     }
 
     /**
+     * Section 6.2 step 1, Core §8.3.6, the entityIDType of Metadata §2.2.1: an entity ID is at most 1024 characters,
+     * counted as characters and not as the bytes UTF-8 writes them in.
+     */
+    #[Test]
+    #[DataProvider('provideEntityIdsOf1024Characters')]
+    public function anEntityIdOf1024CharactersIsAccepted(string $entityId): void
+    {
+        // When
+        $serviceProvider = new ServiceProvider($entityId, self::location());
+
+        // Then
+        static::assertSame($entityId, $serviceProvider->entityId);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideEntityIdsOf1024Characters(): iterable
+    {
+        yield 'ASCII' => ['https://' . str_repeat('a', 1016)];
+        yield 'two bytes each in UTF-8' => [str_repeat('é', 1024)];
+        yield 'three bytes each in UTF-8' => ['urn:' . str_repeat('€', 1020)];
+    }
+
+    /**
      * @param list<Certificate> $signers
      * @param list<AttributeMapping> $attributes
      */
@@ -95,6 +120,8 @@ final class ServiceProviderTest extends TestCase
         yield 'an empty entity ID' => ['', [], [], $entityId];
         yield 'an entity ID with a trailing space' => [self::ENTITY_ID . ' ', [], [], $entityId];
         yield 'an entity ID of 1025 characters' => ['https://' . str_repeat('a', 1017), [], [], $entityId];
+        yield 'an entity ID of 1025 characters that are not ASCII' => [str_repeat('é', 1025), [], [], $entityId];
+        yield 'an entity ID that is not UTF-8' => ["https://sp.example.com/\xC3", [], [], $entityId];
         yield 'seventeen signers' => [
             self::ENTITY_ID,
             self::signers(17),
