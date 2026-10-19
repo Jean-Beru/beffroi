@@ -34,7 +34,7 @@ final class AuthnRequestSigningTest extends TestCase
     ): void {
         // Given
         $declaration = new ServiceProvider(self::ENTITY_ID, new MetadataLocation('/etc/beffroi/entra.xml'), signsAuthnRequests: $signsAuthnRequests);
-        $metadata = new ServiceProviderMetadata(self::ENTITY_ID, null, [], $authnRequestsSigned);
+        $metadata = new ServiceProviderMetadata(self::ENTITY_ID, null, [], $authnRequestsSigned, []);
 
         // When
         $signing = AuthnRequestSigning::of($declaration, $metadata);
@@ -63,7 +63,7 @@ final class AuthnRequestSigningTest extends TestCase
     {
         // Given
         $declaration = new ServiceProvider(self::ENTITY_ID, new MetadataLocation('/etc/beffroi/entra.xml'), signsAuthnRequests: false);
-        $metadata = new ServiceProviderMetadata('https://sp.example.com/saml', null, []);
+        $metadata = new ServiceProviderMetadata('https://sp.example.com/saml', null, [], false, []);
 
         // Then
         $this->expectException(InvalidArgumentException::class);

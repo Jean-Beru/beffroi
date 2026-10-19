@@ -70,7 +70,7 @@ final class AcceptedMetadataTest extends TestCase
         $at = Fixtures::now()->modify('+1 hour');
 
         // When
-        $metadata->replaceWith(new ServiceProviderMetadata(self::ENTITY_ID, $newer, []), self::NEWER, $at);
+        $metadata->replaceWith(new ServiceProviderMetadata(self::ENTITY_ID, $newer, [], false, []), self::NEWER, $at);
 
         // Then
         static::assertSame(self::NEWER, $metadata->document);
@@ -104,7 +104,7 @@ final class AcceptedMetadataTest extends TestCase
         $this->expectExceptionMessageIs($message);
 
         // When
-        $metadata->replaceWith(new ServiceProviderMetadata(self::ENTITY_ID, $older, []), self::NEWER, Fixtures::now());
+        $metadata->replaceWith(new ServiceProviderMetadata(self::ENTITY_ID, $older, [], false, []), self::NEWER, Fixtures::now());
     }
 
     /**
@@ -136,7 +136,7 @@ final class AcceptedMetadataTest extends TestCase
         // When
         try {
             $metadata->replaceWith(
-                new ServiceProviderMetadata(self::ENTITY_ID, $validUntil->modify('-1 day'), []),
+                new ServiceProviderMetadata(self::ENTITY_ID, $validUntil->modify('-1 day'), [], false, []),
                 self::NEWER,
                 Fixtures::now()->modify('+1 hour'),
             );
@@ -174,7 +174,7 @@ final class AcceptedMetadataTest extends TestCase
 
         // When
         $metadata->replaceWith(
-            new ServiceProviderMetadata(self::ENTITY_ID, new DateTimeImmutable('2026-10-01T00:00:00.300000Z'), []),
+            new ServiceProviderMetadata(self::ENTITY_ID, new DateTimeImmutable('2026-10-01T00:00:00.300000Z'), [], false, []),
             self::NEWER,
             Fixtures::now(),
         );
@@ -199,7 +199,7 @@ final class AcceptedMetadataTest extends TestCase
         $this->expectExceptionMessageIs('An accepted metadata document is replaced by a document of its own entity (spec/saml.md section 6.2 step 6).');
 
         // When
-        $metadata->replaceWith(new ServiceProviderMetadata('https://other.example.com/saml', null, []), self::NEWER, Fixtures::now());
+        $metadata->replaceWith(new ServiceProviderMetadata('https://other.example.com/saml', null, [], false, []), self::NEWER, Fixtures::now());
     }
 
     /**
@@ -230,7 +230,7 @@ final class AcceptedMetadataTest extends TestCase
         $this->expectExceptionMessageIs('An accepted metadata document holds the bytes that were read (spec/saml.md S-8).');
 
         // When
-        $metadata->replaceWith(new ServiceProviderMetadata(self::ENTITY_ID, null, []), '', Fixtures::now());
+        $metadata->replaceWith(new ServiceProviderMetadata(self::ENTITY_ID, null, [], false, []), '', Fixtures::now());
     }
 
     /**
