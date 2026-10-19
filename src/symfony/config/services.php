@@ -1890,8 +1890,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set(AcceptedMetadataForgetting::class);
     // beffroi/saml: single sign-on (spec/saml.md section 6.4), a request received over either binding and validated by
     // the model, answered from the session of the browser or after its login, the request waiting in its HTTP session
-    // (S-18); the assertion signed by the active SAML key of the tenant, opened by the KMS once per process (S-15), its
-    // NameID computed with the salt of the pairwise subjects (S-13), its attributes from the claims OpenID Connect serves
+    // (S-18); the assertion signed by the active SAML key of the tenant, opened by the KMS once per process to sign,
+    // besides once for its certificate when the metadata are served first (S-3, S-15), its NameID computed with the
+    // salt of the pairwise subjects (S-13), its attributes from the claims OpenID Connect serves
     $services->set(DeclaredServiceProviderReader::class);
     $services->set(ModelAuthnRequestReceiver::class);
     $services->alias(AuthnRequestReceiverInterface::class, ModelAuthnRequestReceiver::class);
