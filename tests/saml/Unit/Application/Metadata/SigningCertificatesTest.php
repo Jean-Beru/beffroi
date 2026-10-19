@@ -8,6 +8,7 @@ use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Beffroi\Core\Bridge\Key\OpenedKeys;
 use Beffroi\Core\Bridge\Key\SealedKeyProvider;
 use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Key\UnsealedKey;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\KeySealerInterface;
 use Beffroi\Core\Tests\Fixture\Algorithms;
@@ -18,7 +19,11 @@ use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
 use Beffroi\Saml\Domain\Metadata\Certificate;
 use Beffroi\Saml\Tests\Fixture\CountingKeySealer;
 use Beffroi\Saml\Tests\Fixture\SamlKeys;
+use function array_intersect_key;
 use function array_map;
+use function in_array;
+use function is_array;
+use function is_object;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -184,6 +189,26 @@ final class SigningCertificatesTest extends TestCase
         static::assertSame(2, $sealer->unsealed);
     }
 
+    /**
+     * S-1, S-3: what SigningCertificates keeps between two calls is certificates. Once of() has built them, nothing it
+     * holds, its collaborators aside, is a key the KMS opened or a private member of one (RFC 7518 section 6.3.2).
+     */
+    #[Test]
+    public function theCertificatesKeepNoPrivateMember(): void
+    {
+        // Given
+        $this->keys->save(SamlKeys::activeKey($this->tenant));
+        $sealer = Keys::sealer();
+        $issuer = new SelfSignedCertificateIssuer();
+        $certificates = new SigningCertificates($this->keys, $sealer, $issuer);
+
+        // When
+        $certificates->of($this->tenant);
+
+        // Then
+        static::assertSame([], self::privateHalvesIn($certificates, [$this->keys, $sealer, $issuer]));
+    }
+
     private function certificates(): SigningCertificates
     {
         return new SigningCertificates($this->keys, Keys::sealer(), new SelfSignedCertificateIssuer());
@@ -212,5 +237,35 @@ final class SigningCertificatesTest extends TestCase
     private static function base64(array $certificates): array
     {
         return array_map(static fn (Certificate $certificate): string => $certificate->base64, $certificates);
+    }
+
+    /**
+     * What a value holds of the private half of the SAML pair: an opened key, or the value of one of its private
+     * members, looked for through every property of every object, whatever its visibility, as an array cast reads
+     * them, and through every array, the collaborators named left out.
+     *
+     * @param list<object> $collaborators
+     *
+     * @return list<string>
+     */
+    private static function privateHalvesIn(mixed $value, array $collaborators): array
+    {
+        if ($value instanceof UnsealedKey) {
+            return ['a key the KMS opened'];
+        }
+        if (is_object($value) && in_array($value, $collaborators, true)) {
+            return [];
+        }
+        if (is_object($value) || is_array($value)) {
+            $found = [];
+            foreach ((array) $value as $held) {
+                $found = [...$found, ...self::privateHalvesIn($held, $collaborators)];
+            }
+
+            return $found;
+        }
+        $private = array_intersect_key(SamlKeys::pair()->privateJwk, ['d' => 0, 'p' => 0, 'q' => 0, 'dp' => 0, 'dq' => 0, 'qi' => 0]);
+
+        return in_array($value, $private, true) ? ['a private member of the key'] : [];
     }
 }
