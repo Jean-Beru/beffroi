@@ -18,7 +18,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * spec/saml.md S-5, section 5.2, section 6.2 step 1: the service providers the configuration of the deployment
- * declares, keyed by entity ID, validated at boot, those of one tenant.
+ * declares, keyed by entity ID, validated when they are built, those of one tenant.
  */
 final class ConfigurationServiceProvidersTest extends TestCase
 {
@@ -153,7 +153,8 @@ final class ConfigurationServiceProvidersTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 1: a declaration that does not hold together fails at boot, naming its service provider.
+     * Section 6.2 step 1: a declaration that does not hold together fails where it is built, naming its service
+     * provider.
      *
      * @param array<array-key, mixed> $definition
      */

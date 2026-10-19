@@ -24,8 +24,8 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurat
  * and the scheduled step stages its successors, as every key of the tenant.
  *
  * The service providers are declared here and nowhere else, as the clients are (S-5): no request registers one and no
- * page edits one. A declaration is validated when the deployment boots; its metadata are read by
- * "beffroi:saml:service-provider:refresh" and by the hourly step of the schedule, and kept in the database.
+ * page edits one. A declaration is validated when the container is compiled (ServiceProvidersPass); its metadata are
+ * read by "beffroi:saml:service-provider:refresh" and by the hourly step of the schedule, and kept in the database.
  */
 final readonly class SamlSection extends ConfigurationSection
 {
