@@ -28,6 +28,10 @@ final class AcceptedMetadataTest extends TestCase
 
     private const string NEWER = '<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"/>';
 
+    /**
+     * S-8, section 6.2 step 6: the accepted document is the bytes that were read, so a refresh that reads them again
+     * writes nothing.
+     */
     #[Test]
     public function itHoldsTheBytesThatWereRead(): void
     {
@@ -38,6 +42,10 @@ final class AcceptedMetadataTest extends TestCase
         static::assertTrue($accepted->holds(self::ACCEPTED));
     }
 
+    /**
+     * S-8, section 6.2 step 6: bytes that differ by one are another document, compared as they were read and never
+     * normalised.
+     */
     #[Test]
     public function itDoesNotHoldOtherBytes(): void
     {
@@ -48,6 +56,11 @@ final class AcceptedMetadataTest extends TestCase
         static::assertFalse($accepted->holds(self::ACCEPTED . "\n"));
     }
 
+    /**
+     * S-6, section 6.2 step 6: a document that is not older than the accepted one takes its place, its bytes, its
+     * validUntil and the instant of the clock; two without validUntil cannot be told apart, and the newer reading
+     * replaces the older (section 12).
+     */
     #[Test]
     #[DataProvider('provideNewerDocuments')]
     public function aDocumentThatIsNotOlderTakesItsPlace(?DateTimeImmutable $accepted, ?DateTimeImmutable $newer): void
@@ -109,6 +122,10 @@ final class AcceptedMetadataTest extends TestCase
         ];
     }
 
+    /**
+     * S-6, section 6.2 step 6: an older document refused leaves the accepted one as it was, its bytes, its validUntil
+     * and the instant it was accepted.
+     */
     #[Test]
     public function anOlderDocumentLeavesTheAcceptedOneAsItWas(): void
     {
@@ -166,6 +183,11 @@ final class AcceptedMetadataTest extends TestCase
         static::assertEquals(new DateTimeImmutable('2026-10-01T00:00:00Z'), $metadata->validUntil);
     }
 
+    /**
+     * Section 6.2 steps 4 and 6: the refresh compares the entity ID of the document to the declared one before it
+     * replaces anything (S-5), so a document of another entity reaching the accepted one is a fault of the caller and
+     * not a refusal.
+     */
     #[Test]
     public function aDocumentOfAnotherEntityIsAProgrammingError(): void
     {
@@ -180,6 +202,9 @@ final class AcceptedMetadataTest extends TestCase
         $metadata->replaceWith(new ServiceProviderMetadata('https://other.example.com/saml', null, []), self::NEWER, Fixtures::now());
     }
 
+    /**
+     * S-8: an accepted document holds the bytes that were read, which are never none.
+     */
     #[Test]
     public function anEmptyDocumentIsNotAccepted(): void
     {
@@ -191,6 +216,9 @@ final class AcceptedMetadataTest extends TestCase
         new AcceptedMetadata(Uuid::v7(), Fixtures::tenant(), self::ENTITY_ID, '', null, Fixtures::now());
     }
 
+    /**
+     * S-8, section 6.2 step 6: an empty document replaces nothing, the accepted one holding the bytes that were read.
+     */
     #[Test]
     public function anEmptyDocumentDoesNotReplaceTheAcceptedOne(): void
     {
