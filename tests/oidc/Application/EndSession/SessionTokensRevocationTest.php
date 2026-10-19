@@ -66,7 +66,7 @@ final class SessionTokensRevocationTest extends TestCase
         $current = $this->refreshToken('current', $this->session, $family, '+2 days');
 
         // When
-        $this->revocation->sessionEnded($this->session, $this->endedAt);
+        $this->revocation->sessionEnded($this->session->id, $this->endedAt);
 
         // Then
         static::assertEquals([$this->endedAt, $this->endedAt], [$rotated->revokedAt, $current->revokedAt]);
@@ -79,7 +79,7 @@ final class SessionTokensRevocationTest extends TestCase
         $elsewhere = $this->refreshToken('elsewhere', Fixtures::session($this->alice));
 
         // When
-        $this->revocation->sessionEnded($this->session, $this->endedAt);
+        $this->revocation->sessionEnded($this->session->id, $this->endedAt);
 
         // Then
         static::assertFalse($elsewhere->isRevoked());
@@ -98,7 +98,7 @@ final class SessionTokensRevocationTest extends TestCase
         $this->accessTokens->save($elsewhere);
 
         // When
-        $this->revocation->sessionEnded($this->session, $this->endedAt);
+        $this->revocation->sessionEnded($this->session->id, $this->endedAt);
 
         // Then
         static::assertSame([$elsewhere], $this->accessTokens->all());
