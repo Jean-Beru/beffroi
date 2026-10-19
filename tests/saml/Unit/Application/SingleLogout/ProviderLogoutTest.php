@@ -398,6 +398,30 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
+     * S-32, section 6.5 step 4, section 6.6 step 2: a chain that ends at the route that resumes it, where step 1 of
+     * section 6.5 does not run, has its answer open the key; a key that cannot be opened then fails the step after the
+     * chain was taken, and the chain is written back as it was taken.
+     */
+    #[Test]
+    public function aKeyThatCannotBeOpenedForTheAnswerWritesTheChainBack(): void
+    {
+        // Given
+        $alone = $this->sessionSignedInAt([self::REQUESTER]);
+        $begun = $this->logout()->begin($this->tenant, [$alone], self::requester(), null);
+        $taken = $this->chains->all();
+        $this->responder = new RecordingSignOutResponder(self::outage());
+
+        // When
+        try {
+            $this->resumed($begun);
+        } catch (KmsUnavailableException) {
+        }
+
+        // Then
+        static::assertEquals($taken, $this->chains->all());
+    }
+
+    /**
      * S-32, section 6.6 step 2: the failure of a step resumed by its reference goes up, for the bundle to answer.
      */
     #[Test]
