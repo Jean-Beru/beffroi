@@ -148,6 +148,24 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
+     * S-17: the core keeps a proof to the second, so the login a forced request waited for, typed in the second the
+     * request was received in, reads back as that second and answers it.
+     */
+    #[Test]
+    public function aForcedRequestIsAnsweredFromAProofOfTheSecondItWasReceivedIn(): void
+    {
+        // Given
+        $session = $this->session(Fixtures::now());
+        $request = SignOnRequests::request(forceAuthn: true, receivedAt: Fixtures::now()->modify('+500 milliseconds'));
+
+        // When
+        $this->singleSignOn($request)->answer($this->tenant, $request, $session);
+
+        // Then
+        static::assertSame($session->id->toRfc4122(), $this->responder->response?->sessionIndex);
+    }
+
+    /**
      * S-17: a session that has ended, or one of another tenant, answers nothing.
      *
      * @param Closure(Tenant): AuthenticationSession $session
