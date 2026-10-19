@@ -18,7 +18,9 @@ use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * spec/saml.md section 6.2: the metadata of a service provider registered the first time and refreshed every time
@@ -375,6 +377,99 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
                 [ServiceProviderDocuments::SIGNED,        false],
             ],
             \array_map(static fn (MetadataRefreshment $refreshment): array => [$refreshment->entityId, $refreshment->refused], $refreshments),
+        );
+    }
+
+    /**
+     * Section 6.2 step 6: another process, the console and the hourly step at the same minute, registered the service
+     * provider between the reading of the accepted document and the write; the unique index keeps its row, and this
+     * reading is skipped rather than refused.
+     */
+    #[Test]
+    public function aServiceProviderRegisteredByAnotherProcessMeanwhileIsSkipped(): void
+    {
+        // Given
+        $this->fetcher->answer(self::LOCATION, ServiceProviderDocuments::simpleSamlPhpValidUntil('2026-10-08T00:00:00Z'));
+        $theOther = new AcceptedMetadata(
+            Uuid::v7(),
+            $this->tenant,
+            ServiceProviderDocuments::SIMPLESAMLPHP,
+            ServiceProviderDocuments::simpleSamlPhp(),
+            null,
+            Fixtures::now(),
+        );
+        $this->accepted->registeredMeanwhile($theOther);
+
+        // When
+        $refreshment = $this->refreshSimpleSamlPhp();
+
+        // Then
+        static::assertFalse($refreshment->refused);
+        static::assertSame(
+            \sprintf(
+                'The service provider "%s" was registered by another process meanwhile; this reading is skipped.',
+                ServiceProviderDocuments::SIMPLESAMLPHP,
+            ),
+            $refreshment->what,
+        );
+        static::assertSame($theOther, $this->acceptedSimpleSamlPhp());
+    }
+
+    /**
+     * Section 6.2: a service provider whose reading throws what no rule refuses, a store or a fetcher that fails, does
+     * not stop the ones declared after it.
+     */
+    #[Test]
+    public function aServiceProviderThatFailsDoesNotStopTheNextOne(): void
+    {
+        // Given
+        $this->fetcher->fail(self::LOCATION, new RuntimeException('The store is gone.'));
+        $this->fetcher->answer(self::SIGNED_LOCATION, ServiceProviderDocuments::signed(new DateTimeImmutable('2026-10-01T00:00:00Z')));
+        $refresh = $this->refresh([
+            ServiceProviderDocuments::SIMPLESAMLPHP => [
+                'metadata' => self::LOCATION,
+            ],
+            ServiceProviderDocuments::SIGNED => [
+                'metadata' => self::SIGNED_LOCATION,
+                'metadata_signers' => [ServiceProviderDocuments::signer()->base64],
+            ],
+        ]);
+
+        // When
+        $refreshments = $refresh->refreshAll($this->tenant);
+
+        // Then
+        static::assertSame(
+            [
+                [ServiceProviderDocuments::SIMPLESAMLPHP, true],
+                [ServiceProviderDocuments::SIGNED,        false],
+            ],
+            \array_map(static fn (MetadataRefreshment $refreshment): array => [$refreshment->entityId, $refreshment->refused], $refreshments),
+        );
+        static::assertInstanceOf(AcceptedMetadata::class, $this->accepted->find($this->tenant, ServiceProviderDocuments::SIGNED));
+    }
+
+    /**
+     * Section 6.2, M-16: a failure is named by the class of what was thrown, never by its message, which may carry a
+     * value of the document or of a query.
+     */
+    #[Test]
+    public function aFailureIsNamedByItsClassAndNotByItsMessage(): void
+    {
+        // Given
+        $this->fetcher->fail(self::LOCATION, new RuntimeException('INSERT INTO beffroi_saml_service_provider VALUES (grace.hopper@sp.example.org)'));
+
+        // When
+        $refreshment = $this->refreshSimpleSamlPhp();
+
+        // Then
+        static::assertTrue($refreshment->refused);
+        static::assertSame(
+            \sprintf(
+                'The metadata of the service provider "%s" could not be refreshed, the document accepted kept: RuntimeException was thrown.',
+                ServiceProviderDocuments::SIMPLESAMLPHP,
+            ),
+            $refreshment->what,
         );
     }
 

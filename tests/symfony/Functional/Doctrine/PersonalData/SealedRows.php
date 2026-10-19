@@ -295,7 +295,7 @@ final readonly class SealedRows
             null,
             $this->now,
         );
-        $this->service('test.beffroi.saml_accepted_metadata', AcceptedMetadataRepositoryInterface::class)->save($metadata);
+        $this->service('test.beffroi.saml_accepted_metadata', AcceptedMetadataRepositoryInterface::class)->register($metadata);
 
         return $metadata;
     }
