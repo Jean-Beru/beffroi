@@ -77,6 +77,37 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
+     * S-4, section 6.1 step 3: a request that names another host is served the metadata of the tenant, its entity ID
+     * and its services under the issuer, never under the Host header of the request.
+     */
+    #[Test]
+    public function theEndpointsAreUnderTheIssuerNotUnderTheRequestHost(): void
+    {
+        // Given
+        self::generate();
+
+        // When
+        $this->browser->request('GET', self::METADATA, server: [
+            'HTTP_HOST' => 'attacker.example',
+        ]);
+
+        // Then
+        $descriptor = $this->servedDescriptor();
+        static::assertSame(
+            [
+                'https://op.test/saml/metadata',
+                ['https://op.test/saml/sso', 'https://op.test/saml/sso'],
+                ['https://op.test/saml/slo', 'https://op.test/saml/slo'],
+            ],
+            [
+                $descriptor->entityId,
+                array_map(static fn ($endpoint): string => $endpoint->location, $descriptor->identityProvider->singleSignOnServices ?? []),
+                array_map(static fn ($endpoint): string => $endpoint->location, $descriptor->identityProvider->singleLogoutServices ?? []),
+            ],
+        );
+    }
+
+    /**
      * Section 6.1 step 6: served as SAML metadata, cacheable for the max-age of the keys of the tenant, two minutes in
      * this kernel, which its staging window derives from.
      */
