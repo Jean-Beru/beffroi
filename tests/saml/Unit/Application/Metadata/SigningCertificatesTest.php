@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Tests\Unit\Application\Metadata;
 
 use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
+use Beffroi\Core\Bridge\Key\OpenedKeys;
+use Beffroi\Core\Bridge\Key\SealedKeyProvider;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\KeySealerInterface;
@@ -14,6 +16,7 @@ use Beffroi\Core\Tests\Fixture\Keys;
 use Beffroi\Saml\Application\Metadata\SigningCertificates;
 use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
 use Beffroi\Saml\Domain\Metadata\Certificate;
+use Beffroi\Saml\Tests\Fixture\CountingKeySealer;
 use Beffroi\Saml\Tests\Fixture\SamlKeys;
 use function array_map;
 use PHPUnit\Framework\Attributes\Test;
@@ -158,6 +161,27 @@ final class SigningCertificatesTest extends TestCase
 
         // Then
         static::assertCount(1, $certificates->of($other));
+    }
+
+    /**
+     * S-1, S-3: the private half opened to build a certificate is dropped at once, the active key's as any other, so
+     * that the memory of the core holds nothing once the metadata is served: the first signature of the process opens
+     * the active key for itself.
+     */
+    #[Test]
+    public function theCertificatesLeaveNoPrivateHalfOpen(): void
+    {
+        // Given
+        $this->keys->save(SamlKeys::activeKey($this->tenant));
+        $sealer = new CountingKeySealer();
+        $signingKeys = new SealedKeyProvider($this->keys, new OpenedKeys($sealer));
+        new SigningCertificates($this->keys, $sealer, new SelfSignedCertificateIssuer())->of($this->tenant);
+
+        // When
+        $signingKeys->activeKeptSigningKey($this->tenant, SamlKeys::algorithm());
+
+        // Then
+        static::assertSame(2, $sealer->unsealed);
     }
 
     private function certificates(): SigningCertificates
