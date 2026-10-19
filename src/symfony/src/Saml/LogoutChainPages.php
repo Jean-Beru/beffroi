@@ -115,7 +115,7 @@ final readonly class LogoutChainPages
             ]);
         }
         if ($step instanceof PostedForm) {
-            return $this->postPage->render($step);
+            return $this->postPage->logoutMessage($step);
         }
         if ($step->continueTo !== null) {
             return $this->pages->redirect($step->continueTo);

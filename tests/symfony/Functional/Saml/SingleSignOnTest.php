@@ -381,8 +381,9 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * Section 6.8, bindings.md section 6.7, SAML Bindings §3.5.5.1: the page names its one script by its hash, posts
-     * to the origin of the assertion consumer service and nowhere else, and is never cached.
+     * Section 6.8, S-36, bindings.md section 6.7, SAML Bindings §3.5.5.1: the page names its one script by its hash,
+     * loads nothing, is framed by nothing, names no "form-action", the assertion consumer service sending the browser
+     * on to where its application lives, and is never cached.
      */
     #[Test]
     public function thePageCarriesItsPolicyAndTheCachingOfTheBinding(): void
@@ -397,7 +398,7 @@ final class SingleSignOnTest extends ConsoleTestCase
         $response = $this->browser->getResponse();
         static::assertSame(
             [
-                "default-src 'none'; script-src 'sha256-8lDeP0UDwCO6/RhblgeH/ctdBzjVpJxrXizsnIk3cEQ='; form-action https://sp.example.org; base-uri 'none'; frame-ancestors 'none'",
+                "default-src 'none'; script-src 'sha256-8lDeP0UDwCO6/RhblgeH/ctdBzjVpJxrXizsnIk3cEQ='; base-uri 'none'; frame-ancestors 'none'",
                 true,
                 true,
                 'no-cache',

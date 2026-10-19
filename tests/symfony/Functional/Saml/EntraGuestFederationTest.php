@@ -221,11 +221,12 @@ final class EntraGuestFederationTest extends ConsoleTestCase
     }
 
     /**
-     * Section 6.8, section 12 (the redirects of login.srf): the page posts to the origin of login.srf and nowhere
-     * else.
+     * Section 7, S-36, section 12 (what login.srf does after the post): the page names no "form-action", so that the
+     * redirection by which login.srf sends the browser on to the client that asked Entra is followed, and keeps the
+     * rest of its policy.
      */
     #[Test]
-    public function thePagePostsToTheOriginOfLoginSrfAlone(): void
+    public function thePageLetsLoginSrfSendTheBrowserOn(): void
     {
         // Given
         $this->signIn($this->alice);
@@ -234,9 +235,9 @@ final class EntraGuestFederationTest extends ConsoleTestCase
         $this->redirected();
 
         // Then
-        static::assertStringContainsString(
-            '; form-action https://login.microsoftonline.com; ',
-            (string) $this->browser->getResponse()->headers->get('Content-Security-Policy'),
+        static::assertSame(
+            "default-src 'none'; script-src 'sha256-8lDeP0UDwCO6/RhblgeH/ctdBzjVpJxrXizsnIk3cEQ='; base-uri 'none'; frame-ancestors 'none'",
+            $this->browser->getResponse()->headers->get('Content-Security-Policy'),
         );
     }
 

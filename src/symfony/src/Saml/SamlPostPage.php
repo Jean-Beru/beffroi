@@ -18,16 +18,22 @@ use function sprintf;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The page that posts a SAML response to the assertion consumer service (beffroi/saml, spec/saml.md section 6.8,
- * spec/bindings.md section 6.7): the form PostSender returned, from a template an application may override, submitted
- * by one script its Content-Security-Policy names by its hash (CSP Level 3 §6.6.2.2), as the page of the form post
- * response mode names its own; nothing loads, nothing frames it, and the form posts to the origin of the assertion
- * consumer service and nowhere else. The caching headers are those of the binding (SAML Bindings §3.5.5.1).
+ * The page that posts a form of SAML (beffroi/saml, spec/saml.md section 6.8, spec/bindings.md section 6.7): the form
+ * PostSender returned, from a template an application may override, submitted by one script its
+ * Content-Security-Policy names by its hash (CSP Level 3 §6.6.2.2), as the page of the form post response mode names
+ * its own; nothing loads and nothing frames it. The caching headers are those of the binding (SAML Bindings
+ * §3.5.5.1). Two renderings, one per kind of endpoint the form posts to, since where its submission goes next is not
+ * the same (S-36):
  *
- * The same page posts a LogoutRequest of a chain to the single logout service of a service provider (spec/saml.md
- * S-36): a browser checks "form-action" over every redirection of the submission, and that service provider may answer
- * by a redirection of it back to the provider, which carries the chain on by redirections, so the policy names the
- * origin of each URL the form reaches as well.
+ * - a response of single sign-on, to an assertion consumer service, names no "form-action": that service answers the
+ *   post with a redirection to where its application lives, often another origin nobody states (Entra's login.srf
+ *   sends the browser on to the client that asked it), a browser checks the directive over every redirection of the
+ *   submission, and the directive does not fall back to "default-src" (CSP Level 2 §7.6). This is where the page
+ *   parts from the page of the form post response mode, which names the origin of the redirection URI;
+ * - a message of Single Logout, to a single logout service, names in its "form-action" the origin of its action and
+ *   of each URL the form reaches: a LogoutRequest of a chain may be answered by a redirection of the submission back
+ *   to the provider, which carries the chain on by redirections; a LogoutResponse, which nobody answers, reaches
+ *   nothing more.
  */
 final readonly class SamlPostPage
 {
@@ -44,7 +50,30 @@ final readonly class SamlPostPage
     ) {
     }
 
-    public function render(PostedForm $form): Response
+    /**
+     * A response of single sign-on, a success or a failure, posted to the assertion consumer service.
+     */
+    public function signOnResponse(PostedForm $form): Response
+    {
+        return $this->render($form, sprintf(
+            "default-src 'none'; script-src '%s'; base-uri 'none'; frame-ancestors 'none'",
+            new InlineScript(self::SCRIPT)->cspHashSource(),
+        ));
+    }
+
+    /**
+     * A LogoutRequest or a LogoutResponse, posted to the single logout service of a service provider.
+     */
+    public function logoutMessage(PostedForm $form): Response
+    {
+        return $this->render($form, sprintf(
+            "default-src 'none'; script-src '%s'; form-action %s; base-uri 'none'; frame-ancestors 'none'",
+            new InlineScript(self::SCRIPT)->cspHashSource(),
+            implode(' ', array_unique(array_map(self::originOf(...), [$form->action, ...$form->reaches]))),
+        ));
+    }
+
+    private function render(PostedForm $form, string $policy): Response
     {
         return $this->pages->render(
             self::TEMPLATE,
@@ -54,11 +83,7 @@ final readonly class SamlPostPage
                 'script' => self::SCRIPT,
             ],
             headers: [
-                'Content-Security-Policy' => sprintf(
-                    "default-src 'none'; script-src '%s'; form-action %s; base-uri 'none'; frame-ancestors 'none'",
-                    new InlineScript(self::SCRIPT)->cspHashSource(),
-                    implode(' ', array_unique(array_map(self::originOf(...), [$form->action, ...$form->reaches]))),
-                ),
+                'Content-Security-Policy' => $policy,
                 'Cache-Control' => 'no-cache, no-store',
                 'Pragma' => 'no-cache',
             ],
