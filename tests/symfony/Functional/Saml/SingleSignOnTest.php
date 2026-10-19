@@ -139,6 +139,23 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
+     * S-28: a request posted from another site with the session cookie, by a browser that sends it all the same, is
+     * answered from the session at once, with a response to the assertion consumer service, and not posted again.
+     */
+    #[Test]
+    public function aRequestPostedFromAnotherSiteWithTheCookieIsAnsweredDirectly(): void
+    {
+        // Given
+        $this->signIn($this->alice);
+
+        // When
+        $this->postedFromAnotherSiteWithTheCookie('/saml/sso', $this->postedBody('state-1'));
+
+        // Then
+        static::assertSame(SignatureCoverage::AssertionAndResponse, $this->accepted()->coverage);
+    }
+
+    /**
      * S-28, architecture §5.7: the page that posts the request again speaks the language the browser asks for
      * ("Accept-Language"), a request of SAML naming none of its own.
      */

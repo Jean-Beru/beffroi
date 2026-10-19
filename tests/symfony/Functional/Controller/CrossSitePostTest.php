@@ -223,21 +223,14 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28: a post from another site that carries the session cookie is served from the session at once.
+     * S-28: a form posted from another site that carries the session cookie, its body as the other site encoded it, is
+     * served from the session at once, and not posted again.
      */
     #[Test]
     public function aPostCarryingTheCookieIsServedDirectly(): void
     {
         // When
-        $this->browser->request(
-            'POST',
-            '/authorize',
-            self::authorizationParameters('oidc-demo'),
-            [],
-            [
-                'HTTP_SEC_FETCH_SITE' => 'cross-site',
-            ],
-        );
+        $this->postedFromAnotherSiteWithTheCookie('/authorize', self::body());
 
         // Then
         static::assertStringStartsWith(

@@ -490,6 +490,21 @@ abstract class BrowserTestCase extends DatabaseTestCase
         $jar = $this->browser->getCookieJar();
         $cookies = $jar->all();
         $jar->clear();
+        $this->postedFromAnotherSiteWithTheCookie($uri, $body, $server);
+        foreach ($cookies as $cookie) {
+            $jar->set($cookie);
+        }
+    }
+
+    /**
+     * The same post from a browser that sends the cookies of this provider with it all the same, a browser that does
+     * not apply "SameSite" or a cookie that does not say "Lax".
+     *
+     * @param string $body the body as the other site encoded it, which the provider reads as it came
+     * @param array<string, string|null> $server what replaces the headers of a cross-site post, null removing one
+     */
+    protected function postedFromAnotherSiteWithTheCookie(string $uri, string $body, array $server = []): void
+    {
         parse_str($body, $fields);
         $this->browser->request(
             'POST',
@@ -506,9 +521,6 @@ abstract class BrowserTestCase extends DatabaseTestCase
             ),
             $body,
         );
-        foreach ($cookies as $cookie) {
-            $jar->set($cookie);
-        }
     }
 
     /**
