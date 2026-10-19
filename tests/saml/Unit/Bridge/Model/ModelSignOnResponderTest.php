@@ -198,19 +198,20 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * S-15: valid five minutes from its issue, without NotBefore.
+     * S-15: valid five minutes from its issue, the NotBefore of its Conditions its IssueInstant, which Entra requires
+     * (section 7).
      */
     #[Test]
-    public function theAssertionIsValidFiveMinutes(): void
+    public function theAssertionIsValidFiveMinutesFromItsIssue(): void
     {
         // When
         $assertion = $this->accepted($this->responder()->success($this->tenant, self::response()))->assertion;
 
         // Then
         static::assertSame(
-            [null, '2026-09-15T10:05:00+00:00', '2026-09-15T10:05:00+00:00', '2026-09-15T10:00:00+00:00'],
+            ['2026-09-15T10:00:00+00:00', '2026-09-15T10:05:00+00:00', '2026-09-15T10:05:00+00:00', '2026-09-15T10:00:00+00:00'],
             [
-                $assertion->conditions->notBefore,
+                $assertion->conditions->notBefore?->format('c'),
                 $assertion->conditions->notOnOrAfter?->format('c'),
                 $assertion->confirmation->notOnOrAfter->format('c'),
                 $assertion->issueInstant->format('c'),

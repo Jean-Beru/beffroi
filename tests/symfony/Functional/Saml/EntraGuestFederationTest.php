@@ -124,6 +124,24 @@ final class EntraGuestFederationTest extends ConsoleTestCase
     }
 
     /**
+     * Section 7, S-15: the Conditions of the assertion Entra receives begin at its IssueInstant, their NotBefore,
+     * without which Entra answers AADSTS500089.
+     */
+    #[Test]
+    public function theConditionsOfTheAssertionBeginAtItsIssue(): void
+    {
+        // Given
+        $this->signIn($this->alice);
+
+        // When
+        $this->redirected();
+
+        // Then
+        $assertion = $this->accepted()->assertion;
+        static::assertSame($assertion->issueInstant->format('c'), $assertion->conditions->notBefore?->format('c'));
+    }
+
+    /**
      * Section 7, S-28: the same request posted from the site of Entra without the cookie of the provider, which
      * Microsoft's documentation of the federation of a domain says Entra does, is posted again from the origin of the
      * provider and answered from the session, both signed.
