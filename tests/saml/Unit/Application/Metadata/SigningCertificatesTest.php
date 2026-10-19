@@ -15,6 +15,7 @@ use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
 use Beffroi\Saml\Application\Metadata\SigningCertificates;
+use Beffroi\Saml\Bridge\Model\TenantSigning;
 use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
 use Beffroi\Saml\Domain\Metadata\Certificate;
 use Beffroi\Saml\Port\CertificateIssuerInterface;
@@ -30,7 +31,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * spec/saml.md section 6.1 step 2, S-1, S-2, S-3: the certificate of each SAML key of a tenant in service, in creation
- * order, each key opened by the KMS once per process.
+ * order, each key opened by the KMS at most once per process.
  */
 final class SigningCertificatesTest extends TestCase
 {
@@ -188,6 +189,31 @@ final class SigningCertificatesTest extends TestCase
 
         // Then
         static::assertSame(2, $sealer->unsealed);
+    }
+
+    /**
+     * Section 5.3, S-3, S-37: a process that signs before it serves the metadata opens the active key once, the
+     * certificate the metadata list built from the key the signature opened.
+     */
+    #[Test]
+    public function aProcessThatSignsFirstOpensTheActiveKeyOnce(): void
+    {
+        // Given
+        $this->keys->save(SamlKeys::activeKey($this->tenant));
+        $sealer = new CountingKeySealer();
+        $certificates = new SigningCertificates($this->keys, $sealer, new SelfSignedCertificateIssuer());
+        $signing = new TenantSigning(
+            new SealedKeyProvider($this->keys, new OpenedKeys($sealer)),
+            SamlKeys::algorithm(),
+            $certificates,
+        );
+        $signing->of($this->tenant);
+
+        // When
+        $certificates->of($this->tenant);
+
+        // Then
+        static::assertSame(1, $sealer->unsealed);
     }
 
     /**
