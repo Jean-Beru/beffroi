@@ -8,6 +8,7 @@ use function array_map;
 use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Saml\Application\SingleLogout\ProviderLogout;
 use Beffroi\Saml\Domain\SingleLogout\LogoutChain;
@@ -337,6 +338,150 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
+     * S-30, section 6.6 step 3: a service provider whose request cannot be written, a single logout service the sender
+     * refuses among the reasons, is passed over, and the next one told.
+     */
+    #[Test]
+    public function aServiceProviderWhoseRequestCannotBeWrittenIsPassedOver(): void
+    {
+        // Given
+        $this->notifier = new RecordingSignOutNotifier(refusing: [self::FIRST]);
+
+        // When
+        $step = $this->resumed($this->logout()->begin($this->tenant, [$this->session], self::requester(), null));
+
+        // Then
+        static::assertEquals(
+            [new RedirectedMessage(self::SECOND . '/slo?SAMLRequest=told'), true],
+            [$step, $this->chains->all()[0]->progress->partial],
+        );
+    }
+
+    /**
+     * S-30, S-34, Core §3.7.3.2: a service provider whose request could not be written counts as one that did not
+     * answer Success, the one that asked answered PartialLogout once the others answered Success.
+     */
+    #[Test]
+    public function aServiceProviderWhoseRequestCannotBeWrittenMakesTheAnswerPartial(): void
+    {
+        // Given
+        $this->notifier = new RecordingSignOutNotifier(refusing: [self::FIRST]);
+        $this->resumed($this->logout()->begin($this->tenant, [$this->session], self::requester(), null));
+
+        // When
+        $this->logout()->answered($this->tenant, new SignOutAnswer($this->chains->all()[0], true));
+
+        // Then
+        static::assertSame(SignOutStatus::PartialLogout, $this->responder->response?->status);
+    }
+
+    /**
+     * S-32, section 6.6 step 2: a step that fails once it took the chain, the KMS not answering, writes the chain back
+     * as it took it.
+     */
+    #[Test]
+    public function aStepThatFailsWritesTheChainBackAsItWasTaken(): void
+    {
+        // Given
+        $begun = $this->logout()->begin($this->tenant, [$this->session], self::requester(), null);
+        $taken = $this->chains->all();
+        $this->notifier->failure = self::outage();
+
+        // When
+        try {
+            $this->resumed($begun);
+        } catch (KmsUnavailableException) {
+        }
+
+        // Then
+        static::assertEquals($taken, $this->chains->all());
+    }
+
+    /**
+     * S-32, section 6.6 step 2: the failure of a step resumed by its reference goes up, for the bundle to answer.
+     */
+    #[Test]
+    public function theFailureOfAStepResumedByItsReferenceGoesUp(): void
+    {
+        // Given
+        $begun = $this->logout()->begin($this->tenant, [$this->session], self::requester(), null);
+        $this->notifier->failure = self::outage();
+
+        // Then
+        $this->expectException(KmsUnavailableException::class);
+        $this->expectExceptionMessageIs('The KMS did not answer.');
+
+        // When
+        $this->resumed($begun);
+    }
+
+    /**
+     * S-32, section 6.6 step 2: once the KMS answers, the same reference plays the step that failed.
+     */
+    #[Test]
+    public function aStepThatFailedIsPlayedAgainByTheSameReference(): void
+    {
+        // Given
+        $begun = $this->logout()->begin($this->tenant, [$this->session], self::requester(), null);
+        $this->notifier->failure = self::outage();
+        try {
+            $this->resumed($begun);
+        } catch (KmsUnavailableException) {
+        }
+        $this->notifier->failure = null;
+
+        // When
+        $step = $this->resumed($begun);
+
+        // Then
+        static::assertEquals(new RedirectedMessage(self::FIRST . '/slo?SAMLRequest=told'), $step);
+    }
+
+    /**
+     * S-32, section 6.6 step 4: a next step that fails after an answer, which cannot be read again, hands the chain on
+     * under a new reference, the answer counted, waiting for nothing, its ten minutes unchanged.
+     */
+    #[Test]
+    public function aNextStepThatFailsAfterAnAnswerHandsTheChainOnUnderANewReference(): void
+    {
+        // Given
+        $this->resumed($this->logout()->begin($this->tenant, [$this->session], self::requester(), null));
+        $chain = $this->chains->all()[0];
+        $this->notifier->failure = self::outage();
+        $this->clock->modify('+30 seconds');
+
+        // When
+        $handed = $this->logout()->answered($this->tenant, new SignOutAnswer($chain, false));
+
+        // Then
+        static::assertInstanceOf(LogoutChainStarted::class, $handed);
+        static::assertEquals(
+            [[], [new LogoutChain(LogoutChain::digestOf($handed->reference), $this->tenant, null, $chain->progress->answered(false), $chain->expiresAt)]],
+            [$handed->sessions, $this->chains->all()],
+        );
+    }
+
+    /**
+     * S-32, S-35: the chain an answer handed on is resumed by its new reference once the KMS answers, the next service
+     * provider told.
+     */
+    #[Test]
+    public function theChainAnAnswerHandedOnIsResumedByItsNewReference(): void
+    {
+        // Given
+        $this->resumed($this->logout()->begin($this->tenant, [$this->session], self::requester(), null));
+        $this->notifier->failure = self::outage();
+        $handed = $this->logout()->answered($this->tenant, new SignOutAnswer($this->chains->all()[0], true));
+        $this->notifier->failure = null;
+
+        // When
+        $step = $this->resumed($handed);
+
+        // Then
+        static::assertEquals(new RedirectedMessage(self::SECOND . '/slo?SAMLRequest=told'), $step);
+    }
+
+    /**
      * S-30, section 6.6 step 3: a session no longer stored is passed over: no NameID can be computed for it.
      */
     #[Test]
@@ -480,7 +625,7 @@ final class ProviderLogoutTest extends TestCase
         return $session;
     }
 
-    private function resumed(LogoutChainStarted|LogoutChainEnded $begun): PostedForm|RedirectedMessage|LogoutChainEnded
+    private function resumed(PostedForm|RedirectedMessage|LogoutChainStarted|LogoutChainEnded $begun): PostedForm|RedirectedMessage|LogoutChainEnded
     {
         static::assertInstanceOf(LogoutChainStarted::class, $begun);
 
@@ -504,6 +649,14 @@ final class ProviderLogoutTest extends TestCase
     private static function requester(): LogoutRequester
     {
         return new LogoutRequester(self::REQUESTER, SignOutRequests::ID, 'state-1', SignOutRequests::REDIRECT, self::REQUESTER . '/slo');
+    }
+
+    /**
+     * The KMS that does not answer, as the notifier meets it opening the key that signs (S-32).
+     */
+    private static function outage(): KmsUnavailableException
+    {
+        return new KmsUnavailableException('The KMS did not answer.');
     }
 
     private static function progress(): LogoutProgress

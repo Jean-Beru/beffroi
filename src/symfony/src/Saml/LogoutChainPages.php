@@ -7,10 +7,10 @@ namespace Beffroi\Bundle\Saml;
 use Beffroi\Bundle\EndSession\FrontChannelLogoutRenderer;
 use Beffroi\Bundle\Http\FormTarget;
 use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Key\KmsUnavailableListener;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\KeyNotFoundException;
-use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Saml\Application\SingleLogout\ProviderLogout;
 use Beffroi\Saml\Domain\SingleLogout\LogoutChainEnded;
@@ -22,6 +22,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Throwable;
 
 /**
  * What the browser is given once it has ended the sessions it held (beffroi/saml, spec/saml.md S-29 to S-36): the page
@@ -53,7 +54,6 @@ final readonly class LogoutChainPages
      *
      * @throws LogoutRefusedException when another request took the chain first
      * @throws KeyNotFoundException when the tenant holds no active SAML key
-     * @throws KmsUnavailableException when the KMS does not answer
      * @throws RuntimeException when the salt of the tenant can neither be read nor drawn
      */
     public function begin(Tenant $tenant, array $sessions, ?string $continueTo): ?Response
@@ -68,24 +68,36 @@ final readonly class LogoutChainPages
 
     /**
      * A chain written (S-35): the page of Front-Channel Logout 1.0 for its sessions, which resumes it at the route of
-     * the provider, or, when no client of them is loaded by such a page, the chain resumed at once.
+     * the provider, or, when no client of them is loaded by such a page, the chain resumed at once. A first step that
+     * meets a KMS that does not answer has written the chain back (S-32): the browser is sent to that route with its
+     * reference, where a request played again plays the step again, and where the outage is a 503.
      *
      * @throws LogoutRefusedException when another request took the chain first
      * @throws KeyNotFoundException
-     * @throws KmsUnavailableException
      * @throws RuntimeException
      */
     public function started(Tenant $tenant, LogoutChainStarted $started): Response
     {
-        $page = $this->frontChannel->render($started->sessions, $this->urls->generate(
+        $continue = $this->urls->generate(
             IdentityProviderRoutes::SINGLE_LOGOUT_CONTINUE,
             [
                 IdentityProviderRoutes::CHAIN_PARAMETER => $started->reference,
             ],
             UrlGeneratorInterface::ABSOLUTE_URL,
-        ));
+        );
+        $page = $this->frontChannel->render($started->sessions, $continue);
+        if ($page !== null) {
+            return $page;
+        }
+        try {
+            return $this->step($this->logout->resume($tenant, $started->reference));
+        } catch (Throwable $failure) {
+            if (KmsUnavailableListener::outageBehind($failure) === null) {
+                throw $failure;
+            }
 
-        return $page ?? $this->step($this->logout->resume($tenant, $started->reference));
+            return $this->pages->redirect($continue);
+        }
     }
 
     /**

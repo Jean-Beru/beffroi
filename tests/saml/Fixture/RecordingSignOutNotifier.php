@@ -10,14 +10,17 @@ use Beffroi\Saml\Domain\SingleLogout\RedirectedMessage;
 use Beffroi\Saml\Domain\SingleLogout\SentSignOutNotice;
 use Beffroi\Saml\Domain\SingleLogout\SignOutNotice;
 use Beffroi\Saml\Domain\SingleSignOn\PostedForm;
+use Beffroi\Saml\Exception\SignOutNoticeRefusedException;
 use Beffroi\Saml\Port\SignOutNotifierInterface;
 use function in_array;
 use function sprintf;
+use Throwable;
 
 /**
  * A notifier that keeps the notices it was handed, and tells every service provider but the ones a test says it cannot
  * reach, at "<entity ID>/slo", over HTTP-Redirect or, for the ones a test says, by a form over HTTP-POST, the IDs of
- * its requests numbered in their order.
+ * its requests numbered in their order; it refuses to write the request of the ones a test says, and fails as the KMS
+ * fails while a test holds it down.
  */
 final class RecordingSignOutNotifier implements SignOutNotifierInterface
 {
@@ -27,12 +30,19 @@ final class RecordingSignOutNotifier implements SignOutNotifierInterface
     public private(set) array $notices = [];
 
     /**
+     * What every call to notify() throws while it is set: an outage of the KMS, a failure that is no service provider's.
+     */
+    public ?Throwable $failure = null;
+
+    /**
      * @param list<string> $unreachable
      * @param list<string> $posting the service providers told over HTTP-POST
+     * @param list<string> $refusing the service providers whose request cannot be written
      */
     public function __construct(
         private readonly array $unreachable = [],
         private readonly array $posting = [],
+        private readonly array $refusing = [],
     ) {
     }
 
@@ -43,6 +53,12 @@ final class RecordingSignOutNotifier implements SignOutNotifierInterface
 
     public function notify(Tenant $tenant, SignOutNotice $notice): ?SentSignOutNotice
     {
+        if ($this->failure !== null) {
+            throw $this->failure;
+        }
+        if (in_array($notice->serviceProvider, $this->refusing, true)) {
+            throw new SignOutNoticeRefusedException('The logout request of the identity provider is one its own reader refuses (spec/saml.md S-31).');
+        }
         $destination = $this->destination($tenant, $notice->serviceProvider);
         if ($destination === null) {
             return null;

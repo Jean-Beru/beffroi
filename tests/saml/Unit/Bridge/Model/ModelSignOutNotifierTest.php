@@ -8,7 +8,7 @@ use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Beffroi\Core\Bridge\Key\SealedKeyProvider;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Domain\Tenant\Tenant;
-use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Saml\Exception\SignOutNoticeRefusedException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
@@ -214,7 +214,8 @@ final class ModelSignOutNotifierTest extends TestCase
     }
 
     /**
-     * D-16, S-31: a key Dsig refuses to sign with, under 2 048 bits, signs no request, over either binding.
+     * D-16, S-30, S-31: a key Dsig refuses to sign with, under 2 048 bits, signs no request, over either binding: a
+     * request the notifier cannot write, which passes its service provider over.
      */
     #[Test]
     #[DataProvider('provideBindings')]
@@ -237,7 +238,7 @@ final class ModelSignOutNotifierTest extends TestCase
         $this->keys->save($key);
 
         // Then
-        $this->expectException(RuntimeException::class);
+        $this->expectException(SignOutNoticeRefusedException::class);
         $this->expectExceptionMessageIs('The logout request of the identity provider is one its own reader refuses (spec/saml.md S-31).');
         $this->expectExceptionCode(0);
 
