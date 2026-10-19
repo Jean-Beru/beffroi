@@ -173,7 +173,7 @@ final class SingleSignOnTest extends TestCase
         $request = SignOnRequests::request(forceAuthn: true, receivedAt: Fixtures::now()->modify('+500 milliseconds'));
 
         // When
-        $this->singleSignOn($request)->answer($this->tenant, $request, $session);
+        $this->singleSignOn($request)->answer($this->tenant, $request, $session, Fixtures::context());
 
         // Then
         static::assertSame($session->id->toRfc4122(), $this->responder->response?->sessionIndex);
