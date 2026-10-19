@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Configuration;
 
+use Beffroi\Bundle\Key\DormantKeyAlgorithms;
 use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
@@ -15,8 +16,10 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurat
  * whether it wants the requests it receives signed.
  *
  * A deployment that does not enable it wires nothing: the tenant draws no SAML key, and the route of the metadata
- * answers that there is none. Enabled, the algorithm of the SAML signing key is wired with the others, so that the key
- * commands draw, list and rotate it, and the scheduled step stages its successors, as every key of the tenant.
+ * answers that there is none. The algorithm is left dormant instead, so that a key the tenant drew before the
+ * deployment turned it off stays in the key directory, read by nothing, and the other keys go on without it. Enabled,
+ * the algorithm of the SAML signing key is wired with the others, so that the key commands draw, list and rotate it,
+ * and the scheduled step stages its successors, as every key of the tenant.
  */
 final readonly class SamlSection extends ConfigurationSection
 {
@@ -50,6 +53,8 @@ final readonly class SamlSection extends ConfigurationSection
     {
         $identityProvider = self::section($this->own($config), 'identity_provider');
         if (($identityProvider['enabled'] ?? false) !== true) {
+            $services->get(SamlSigning::class)->tag(DormantKeyAlgorithms::TAG);
+
             return;
         }
         $services->get(SamlSigning::class)->tag(JoseSamlSigningAlgorithms::TAG);

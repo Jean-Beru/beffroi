@@ -141,6 +141,7 @@ use Beffroi\Bundle\Http\TotpProvisioningSealer;
 use Beffroi\Bundle\Http\TotpProvisioningStore;
 use Beffroi\Bundle\Http\TwoFactorPage;
 use Beffroi\Bundle\Key\FilePairwiseSalt;
+use Beffroi\Bundle\Key\DormantKeyAlgorithms;
 use Beffroi\Bundle\Key\FileTenantKeyRepository;
 use Beffroi\Bundle\Key\KmsUnavailableListener;
 use Beffroi\Bundle\Load\LoadBudget;
@@ -1147,7 +1148,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(JoseEncryptionAlgorithms::class);
     // The algorithms of the keys the tenant hands out itself rather than publishing in its JWK Set
     // (RFC 8292 §2): wired by the deployment that reaches its users by push and by no other, so that a
-    // deployment that does not draws no such key and has no page that would hand one out (§5.6).
+    // deployment that does not draws no such key and has no page that would hand one out (§5.6); the
+    // web push section leaves it dormant otherwise.
     $services->set(Vapid::class);
     $services->set(JoseApplicationServerAlgorithms::class)->args([tagged_iterator('beffroi.application_server_algorithm')]);
     $services->alias(ApplicationServerAlgorithmsInterface::class, JoseApplicationServerAlgorithms::class);
@@ -1166,7 +1168,8 @@ return static function (ContainerConfigurator $container): void {
     // The algorithm of the key the tenant signs its SAML messages with (beffroi/saml, spec/saml.md S-1): an RSA pair
     // of the size above, kept out of the JWK Set and published as a certificate in the metadata of its identity
     // provider. The SAML section of the configuration tags it when the deployment enables the identity provider, and
-    // nothing else does, so that a deployment that serves no SAML draws no such key.
+    // nothing else does, so that a deployment that serves no SAML draws no such key; the section leaves it dormant
+    // otherwise.
     $services->set(SamlSigning::class)->args([service(RsaKeyBits::class)]);
     $services->set(JoseSamlSigningAlgorithms::class)->args([tagged_iterator(JoseSamlSigningAlgorithms::TAG)]);
     $services->set(JwtLibraryMessageBodySealer::class);
@@ -1184,6 +1187,9 @@ return static function (ContainerConfigurator $container): void {
         service(JoseSamlSigningAlgorithms::class),
     ]]);
     $services->alias(KeyAlgorithmsInterface::class, JoseKeyAlgorithms::class);
+    // The algorithms a section of the configuration leaves off, each tagged by the section that owns it: what the key
+    // files read past, so that a key drawn before its capability was turned off waits for it to be turned on again
+    $services->set(DormantKeyAlgorithms::class)->args([tagged_iterator(DormantKeyAlgorithms::TAG)]);
     $services->set(JwtLibraryKeyPairGenerator::class);
     $services->alias(KeyPairGeneratorInterface::class, JwtLibraryKeyPairGenerator::class);
     $services->set(JwtLibraryJwsSigner::class);

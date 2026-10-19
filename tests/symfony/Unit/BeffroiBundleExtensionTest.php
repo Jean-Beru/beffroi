@@ -6,12 +6,14 @@ namespace Beffroi\Bundle\Tests\Unit;
 
 use DateInterval;
 use Beffroi\Bundle\BeffroiBundle;
+use Beffroi\Bundle\Key\DormantKeyAlgorithms;
 use Beffroi\Bundle\Key\FileTenantKeyRepository;
 use Beffroi\Bundle\Key\StagingDelay;
 use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Tenant\TenantFactory;
 use Beffroi\Core\Application\Key\KeyStaging;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Beffroi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
 use Beffroi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
@@ -320,6 +322,73 @@ final class BeffroiBundleExtensionTest extends TestCase
 
         // Then
         static::assertTrue($container->getDefinition(SamlSigning::class)->hasTag(JoseSamlSigningAlgorithms::TAG));
+    }
+
+    /**
+     * Spec/saml.md section 5.1: the algorithm of a capability a deployment leaves off is dormant, so that a key the
+     * tenant drew while it was on is read by nothing rather than refused as a fault of the storage.
+     *
+     * @param class-string $algorithm
+     */
+    #[Test]
+    #[DataProvider('provideCapabilitiesLeftOff')]
+    public function theAlgorithmOfACapabilityLeftOffIsDormant(string $algorithm): void
+    {
+        // When
+        $container = self::load([]);
+
+        // Then
+        static::assertTrue($container->getDefinition($algorithm)->hasTag(DormantKeyAlgorithms::TAG));
+    }
+
+    /**
+     * @return iterable<string, array{class-string}>
+     */
+    public static function provideCapabilitiesLeftOff(): iterable
+    {
+        yield 'the SAML identity provider' => [SamlSigning::class];
+        yield 'web push' => [Vapid::class];
+    }
+
+    /**
+     * Spec/saml.md section 5.1: turned on, the algorithm of the capability is not dormant, so that the key the tenant
+     * drew is in service as it was.
+     *
+     * @param array<string, mixed> $config
+     * @param class-string $algorithm
+     */
+    #[Test]
+    #[DataProvider('provideCapabilitiesTurnedOn')]
+    public function theAlgorithmOfACapabilityTurnedOnIsNotDormant(array $config, string $algorithm): void
+    {
+        // When
+        $container = self::load($config);
+
+        // Then
+        static::assertFalse($container->getDefinition($algorithm)->hasTag(DormantKeyAlgorithms::TAG));
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, class-string}>
+     */
+    public static function provideCapabilitiesTurnedOn(): iterable
+    {
+        yield 'the SAML identity provider' => [
+            [
+                'saml' => [
+                    'identity_provider' => null,
+                ],
+            ],
+            SamlSigning::class,
+        ];
+        yield 'web push' => [
+            [
+                'web_push' => [
+                    'subject' => 'mailto:operator@op.test',
+                ],
+            ],
+            Vapid::class,
+        ];
     }
 
     /**

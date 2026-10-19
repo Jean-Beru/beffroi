@@ -16,8 +16,9 @@ use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * The metadata of the SAML identity provider of the tenant (beffroi/saml, spec/saml.md section 6.1): its entity ID,
- * the certificate of each of its signing keys in service and its endpoints. A tenant that holds no SAML key, which is
- * every tenant of a deployment that does not enable "beffroi.saml.identity_provider", has none to serve.
+ * the certificate of each of its signing keys in service and its endpoints. A tenant that holds no SAML key has none to
+ * serve, and neither has any tenant of a deployment that does not enable "beffroi.saml.identity_provider": the key such
+ * a tenant drew while it was enabled is dormant, read by nothing (DormantKeyAlgorithms).
  */
 #[AsController]
 final readonly class SamlMetadataController
