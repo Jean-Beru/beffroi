@@ -46,6 +46,7 @@ use Beffroi\Saml2\Model\Validation\LogoutResponseValidator;
 use Beffroi\Saml2\Model\Validation\ResponseValidator;
 use Beffroi\Saml2\Model\Writing\Signing;
 use function parse_url;
+use function sprintf;
 use const PHP_URL_HOST;
 use const PHP_URL_PATH;
 use const PHP_URL_QUERY;
@@ -86,6 +87,11 @@ final class ProviderLogoutTest extends ConsoleTestCase
     private const string LOGOUT_REQUEST_ID = '_0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b';
 
     private const string AFTER_LOGOUT = 'https://demo.test/?state=after-logout';
+
+    /**
+     * The policy of the page that posts a form (spec/saml.md section 6.8), its "form-action" left to the test.
+     */
+    private const string POLICY = "default-src 'none'; script-src 'sha256-8lDeP0UDwCO6/RhblgeH/ctdBzjVpJxrXizsnIk3cEQ='; form-action %s; base-uri 'none'; frame-ancestors 'none'";
 
     private User $alice;
 
@@ -318,6 +324,67 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
+     * S-36, section 6.8: the other service provider, told over HTTP-POST, is posted its request by the page whose
+     * "form-action" names the origin of its single logout service, of the single logout service of the tenant, where
+     * its answer comes back, and of the single logout service of the service provider that asked, where the chain ends.
+     */
+    #[Test]
+    public function thePagePostingARequestNamesWhereTheChainGoesInItsPolicy(): void
+    {
+        // Given
+        $assertion = $this->signedOnAtBoth(Binding::HttpPost);
+
+        // When
+        $this->browser->request('GET', self::pathOf($this->logoutUrl($assertion)));
+
+        // Then
+        static::assertSame(
+            sprintf(self::POLICY, 'https://default-sp.test https://op.test https://sp.example.org'),
+            $this->browser->getResponse()->headers->get('Content-Security-Policy'),
+        );
+    }
+
+    /**
+     * S-36: at the end session endpoint, the other service provider, told over HTTP-POST once the first answered, is
+     * posted its request by the page whose "form-action" names where the client asked the chain to end.
+     */
+    #[Test]
+    public function thePagePostingARequestNamesWhereTheStarterOfTheLogoutGoes(): void
+    {
+        // Given
+        $this->signedOnAtBoth(Binding::HttpPost);
+        $this->logOut();
+
+        // When
+        $this->browser->request('GET', self::pathOf($this->answered($this->told(self::SINGLE_LOGOUT), self::SERVICE_PROVIDER, 'sp')));
+
+        // Then
+        static::assertSame(
+            sprintf(self::POLICY, 'https://default-sp.test https://op.test https://demo.test'),
+            $this->browser->getResponse()->headers->get('Content-Security-Policy'),
+        );
+    }
+
+    /**
+     * S-30, S-33, S-34: the other service provider, told over HTTP-POST, answers over HTTP-Redirect, and the chain goes
+     * on to the service provider that asked, answered Success.
+     */
+    #[Test]
+    public function aServiceProviderToldOverHttpPostCarriesTheChainOnWithItsAnswer(): void
+    {
+        // Given
+        $assertion = $this->signedOnAtBoth(Binding::HttpPost);
+        $this->browser->request('GET', self::pathOf($this->logoutUrl($assertion)));
+        $told = $this->postedTo(self::OTHER_SINGLE_LOGOUT, self::OTHER);
+
+        // When
+        $this->browser->request('GET', self::pathOf($this->answered($told, self::OTHER, 'idp')));
+
+        // Then
+        static::assertEquals(new Status(StatusCode::Success), $this->answerToTheRequester()->response->status);
+    }
+
+    /**
      * The metadata of a service provider accepted for the tenant.
      */
     private function accept(string $entityId, string $document): void
@@ -357,12 +424,13 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * signedOn(), and the other service provider signed in to the same session after it.
+     * signedOn(), and the other service provider signed in to the same session after it, its single logout service on
+     * $binding.
      */
-    private function signedOnAtBoth(): AcceptedAssertion
+    private function signedOnAtBoth(Binding $binding = Binding::HttpRedirect): AcceptedAssertion
     {
         $assertion = $this->signedOn();
-        $this->accept(self::OTHER, ServiceProviderDocuments::of(self::OTHER, 'idp', [new Endpoint(Binding::HttpRedirect, self::OTHER_SINGLE_LOGOUT)]));
+        $this->accept(self::OTHER, ServiceProviderDocuments::of(self::OTHER, 'idp', [new Endpoint($binding, self::OTHER_SINGLE_LOGOUT)]));
         self::service('test.beffroi.saml_session_participants', SessionParticipationRepositoryInterface::class)
             ->record(new SessionParticipation(Uuid::v7(), self::tenant(), $this->sessionOf($assertion), self::OTHER, self::currentSecond()));
 
@@ -393,6 +461,29 @@ final class ProviderLogoutTest extends ConsoleTestCase
             parse_url($redirected, PHP_URL_SCHEME) . '://' . parse_url($redirected, PHP_URL_HOST) . parse_url($redirected, PHP_URL_PATH),
         );
         $received = new RedirectReceiver(SamlLoader::create())->logoutMessage((string) parse_url($redirected, PHP_URL_QUERY));
+        static::assertInstanceOf(ReceivedLogoutRequest::class, $received);
+
+        return $received->validate(
+            new LogoutRequestValidator(SamlLoader::create(), new MockClock(self::currentSecond()), new InMemoryReplayGuard()),
+            $this->identityProvider(),
+            self::role($entityId, $location),
+            $location,
+        );
+    }
+
+    /**
+     * The LogoutRequest the page of the provider posts to $location, as the service provider $entityId validates it at
+     * that single logout service, under the certificate the tenant publishes.
+     */
+    private function postedTo(string $location, string $entityId): AcceptedLogoutRequest
+    {
+        $form = $this->browser->getCrawler()->filter('form')->first();
+        static::assertSame($location, $form->attr('action'));
+        $fields = [];
+        $form->filter('input[type="hidden"]')->each(static function (Crawler $input) use (&$fields): void {
+            $fields[(string) $input->attr('name')] = (string) $input->attr('value');
+        });
+        $received = new PostReceiver(SamlLoader::create())->logoutMessage($fields);
         static::assertInstanceOf(ReceivedLogoutRequest::class, $received);
 
         return $received->validate(

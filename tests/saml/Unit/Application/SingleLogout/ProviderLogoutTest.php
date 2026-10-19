@@ -46,6 +46,8 @@ final class ProviderLogoutTest extends TestCase
 {
     private const string IDENTITY_PROVIDER = 'https://id.acme.example' . FixedEndpoints::METADATA;
 
+    private const string SINGLE_LOGOUT = 'https://id.acme.example' . FixedEndpoints::SINGLE_LOGOUT;
+
     private const string FIRST = 'https://first.example.org/saml';
 
     private const string SECOND = 'https://second.example.org/saml';
@@ -193,6 +195,57 @@ final class ProviderLogoutTest extends TestCase
                 $chain->expiresAt->getTimestamp(),
             ],
         );
+    }
+
+    /**
+     * S-36, section 6.6 step 3: a request posted over HTTP-POST reaches the single logout service of the tenant, where
+     * its answer comes back, the single logout service of each service provider left to tell, and where the chain ends.
+     *
+     * @param list<string> $ends
+     */
+    #[Test]
+    #[DataProvider('provideEnds')]
+    public function aRequestPostedReachesWhereTheChainGoesFromThere(?LogoutRequester $requester, ?string $continueTo, array $ends): void
+    {
+        // Given
+        $this->notifier = new RecordingSignOutNotifier(posting: [self::FIRST]);
+        $session = $this->sessionSignedInAt([self::FIRST, self::SECOND]);
+
+        // When
+        $step = $this->resumed($this->logout()->begin($this->tenant, [$session], $requester, $continueTo));
+
+        // Then
+        static::assertEquals(
+            new PostedForm(self::FIRST . '/slo', ['SAMLRequest' => 'told'], [self::SINGLE_LOGOUT, self::SECOND . '/slo', ...$ends]),
+            $step,
+        );
+    }
+
+    /**
+     * @return iterable<string, array{LogoutRequester|null, string|null, list<string>}>
+     */
+    public static function provideEnds(): iterable
+    {
+        yield 'the service provider that asked' => [self::requester(), null, [self::REQUESTER . '/slo']];
+        yield 'where the starter named' => [null, self::CONTINUE_TO, [self::CONTINUE_TO]];
+        yield 'the page that says the browser is signed out' => [null, null, []];
+    }
+
+    /**
+     * S-36: a service provider left to tell that the notifier cannot tell is not reached.
+     */
+    #[Test]
+    public function aRequestPostedDoesNotReachAServiceProviderThatCannotBeTold(): void
+    {
+        // Given
+        $this->notifier = new RecordingSignOutNotifier([self::SECOND], [self::FIRST]);
+        $session = $this->sessionSignedInAt([self::FIRST, self::SECOND]);
+
+        // When
+        $step = $this->resumed($this->logout()->begin($this->tenant, [$session], null, null));
+
+        // Then
+        static::assertEquals(new PostedForm(self::FIRST . '/slo', ['SAMLRequest' => 'told'], [self::SINGLE_LOGOUT]), $step);
     }
 
     /**

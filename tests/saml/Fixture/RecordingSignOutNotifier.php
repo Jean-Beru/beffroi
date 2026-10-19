@@ -9,13 +9,15 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Saml\Domain\SingleLogout\RedirectedMessage;
 use Beffroi\Saml\Domain\SingleLogout\SentSignOutNotice;
 use Beffroi\Saml\Domain\SingleLogout\SignOutNotice;
+use Beffroi\Saml\Domain\SingleSignOn\PostedForm;
 use Beffroi\Saml\Port\SignOutNotifierInterface;
 use function in_array;
 use function sprintf;
 
 /**
  * A notifier that keeps the notices it was handed, and tells every service provider but the ones a test says it cannot
- * reach, at "<entity ID>/slo", the IDs of its requests numbered in their order.
+ * reach, at "<entity ID>/slo", over HTTP-Redirect or, for the ones a test says, by a form over HTTP-POST, the IDs of
+ * its requests numbered in their order.
  */
 final class RecordingSignOutNotifier implements SignOutNotifierInterface
 {
@@ -26,9 +28,11 @@ final class RecordingSignOutNotifier implements SignOutNotifierInterface
 
     /**
      * @param list<string> $unreachable
+     * @param list<string> $posting the service providers told over HTTP-POST
      */
     public function __construct(
         private readonly array $unreachable = [],
+        private readonly array $posting = [],
     ) {
     }
 
@@ -44,8 +48,12 @@ final class RecordingSignOutNotifier implements SignOutNotifierInterface
             return null;
         }
         $this->notices[] = $notice;
+        $id = self::idOf(count($this->notices));
+        if (in_array($notice->serviceProvider, $this->posting, true)) {
+            return new SentSignOutNotice($id, new PostedForm($destination, ['SAMLRequest' => 'told']));
+        }
 
-        return new SentSignOutNotice(self::idOf(count($this->notices)), new RedirectedMessage($destination . '?SAMLRequest=told'));
+        return new SentSignOutNotice($id, new RedirectedMessage($destination . '?SAMLRequest=told'));
     }
 
     /**
