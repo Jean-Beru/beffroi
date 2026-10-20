@@ -7,12 +7,12 @@ namespace Beffroi\Bundle\Tests\Functional\Saml;
 use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
-use Beffroi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
 use Beffroi\Core\Domain\Key\GeneratedKeyPair;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Port\KeySealerInterface;
 use Beffroi\Core\Port\TenantKeyRepositoryInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Clock\Clock;
@@ -160,7 +160,7 @@ final class DisabledIdentityProviderTest extends ConsoleTestCase
     {
         $algorithm = new SamlSigning();
         $pair =
-            self::$samlPair ??= new JwtLibraryKeyPairGenerator(new JoseKeyAlgorithms([
+            self::$samlPair ??= new JwtLibraryKeyPairGenerator(Algorithms::readAsOne([
                 new JoseSamlSigningAlgorithms([$algorithm]),
             ]))->generate($algorithm);
         $tenant = self::tenant();

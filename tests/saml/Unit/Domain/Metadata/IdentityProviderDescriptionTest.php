@@ -25,7 +25,7 @@ final class IdentityProviderDescriptionTest extends TestCase
     public function itsEntityIdIsTheUrlOfItsMetadata(): void
     {
         // Given
-        $description = new IdentityProviderDescription(self::endpoints(), [new Certificate('MIIBAA==')], true);
+        $description = new IdentityProviderDescription(self::endpoints(), [new Certificate('MIIBAA==')], true, 86_400);
 
         // When / Then
         static::assertSame(self::METADATA, $description->entityId());
@@ -42,7 +42,7 @@ final class IdentityProviderDescriptionTest extends TestCase
         $this->expectExceptionMessageIs('The metadata of an identity provider carries the certificate of a key at least (spec/saml.md section 6.1 step 1).');
 
         // When
-        new IdentityProviderDescription(self::endpoints(), [], true);
+        new IdentityProviderDescription(self::endpoints(), [], true, 86_400);
     }
 
     private static function endpoints(): IdentityProviderEndpoints

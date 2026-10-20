@@ -15,6 +15,7 @@ use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
 use Beffroi\Saml\Application\Metadata\SigningCertificates;
 use Beffroi\Saml\Bridge\Model\ModelMetadataWriter;
 use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
+use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
 use Beffroi\Saml\Tests\Fixture\FixedEndpoints;
 use Beffroi\Saml\Tests\Fixture\SamlKeys;
 use Beffroi\Saml2\Model\Metadata\Binding;
@@ -23,6 +24,7 @@ use Beffroi\Saml2\Model\Metadata\EntityDescriptor;
 use Beffroi\Saml2\Model\Metadata\IdentityProvider;
 use Beffroi\Saml2\Model\Metadata\MetadataReader;
 use Beffroi\Saml2\Model\SamlLoader;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -167,9 +169,78 @@ final class IdentityProviderMetadataHandlerTest extends TestCase
         $this->handler(maxAge: -1);
     }
 
+    /**
+     * S-12, section 6.1 step 5: unless the deployment says otherwise, a service provider may keep the metadata a day,
+     * written on the md:EntityDescriptor as the xs:duration of its seconds.
+     */
+    #[Test]
+    public function aServiceProviderMayKeepItADayByDefault(): void
+    {
+        // Given
+        $this->keys->save(SamlKeys::activeKey($this->tenant));
+        $handler = new IdentityProviderMetadataHandler(
+            new SigningCertificates($this->keys, Keys::sealer(), new SelfSignedCertificateIssuer()),
+            new FixedEndpoints(),
+            new ModelMetadataWriter(),
+        );
+
+        // When
+        $metadata = $handler->handle($this->tenant);
+
+        // Then
+        static::assertSame('PT86400S', self::cacheDurationOf($metadata->document));
+    }
+
+    /**
+     * S-12: the shortest cacheDuration a deployment may set is one second, under a staging delay one second longer.
+     */
+    #[Test]
+    public function aCacheDurationOneSecondShortOfTheStagingDelayIsWritten(): void
+    {
+        // Given
+        $this->keys->save(SamlKeys::activeKey($this->tenant));
+
+        // When
+        $metadata = $this->handler(cacheDuration: 1, stagingDelay: 2)->handle($this->tenant);
+
+        // Then
+        static::assertSame('PT1S', self::cacheDurationOf($metadata->document));
+    }
+
+    /**
+     * S-12: a cacheDuration under one second, or one a service provider would still be inside when the next key signs,
+     * is refused when the handler is built, so that a deployment learns it at boot.
+     */
+    #[Test]
+    #[DataProvider('provideCacheDurationsRefused')]
+    public function itRefusesACacheDurationTheStagingDelayDoesNotOutlast(int $cacheDuration, int $stagingDelay, string $message): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs($message);
+
+        // When
+        $this->handler(cacheDuration: $cacheDuration, stagingDelay: $stagingDelay);
+    }
+
+    /**
+     * @return iterable<string, array{int, int, string}>
+     */
+    public static function provideCacheDurationsRefused(): iterable
+    {
+        yield 'no second' => [0, 10, 'The cacheDuration of the metadata is a number of seconds, one at least (spec/saml.md S-12).'];
+        yield 'as long as the staging delay' => [
+            604_800,
+            604_800,
+            'The cacheDuration of the metadata, 604800 s, is shorter than the staging delay of a SAML key, 604800 s, or a service provider that honours it meets the next key before its certificate (spec/saml.md S-12).',
+        ];
+    }
+
     private function handler(
         bool $wantAuthnRequestsSigned = true,
         int $maxAge = IdentityProviderMetadataHandler::DEFAULT_MAX_AGE,
+        int $cacheDuration = IdentityProviderMetadataHandler::DEFAULT_CACHE_DURATION,
+        int $stagingDelay = SamlSigningAlgorithmInterface::STAGING_DELAY,
     ): IdentityProviderMetadataHandler {
         return new IdentityProviderMetadataHandler(
             new SigningCertificates($this->keys, Keys::sealer(), new SelfSignedCertificateIssuer()),
@@ -177,7 +248,14 @@ final class IdentityProviderMetadataHandlerTest extends TestCase
             new ModelMetadataWriter(),
             $wantAuthnRequestsSigned,
             $maxAge,
+            $cacheDuration,
+            $stagingDelay,
         );
+    }
+
+    private static function cacheDurationOf(string $document): string
+    {
+        return SamlLoader::create()->load($document)->root()->getAttribute('cacheDuration') ?? '';
     }
 
     private function certificateOf(TenantKey $key): string
