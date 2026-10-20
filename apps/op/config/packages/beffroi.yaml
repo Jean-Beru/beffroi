@@ -56,6 +56,21 @@ beffroi:
     # "mailto:" or "https:" URI at which a push service can reach the operator (RFC 8292 §2.1).
     web_push:
         subject: 'mailto:operator@op.localhost'
+    # The tenant is a SAML identity provider (beffroi/saml, issue beffroi-php/beffroi#728): its signing key is drawn
+    # by "castor provision" under SAML-SIGNING, kept by the KMS and rotated as every key of the tenant, and its
+    # metadata is served at /saml/metadata, the certificate of each key in service in it. Every service provider is
+    # asked to sign its requests, which is the default and the setting a broker configured from that metadata signs
+    # its requests by (spec/model.md section 6.9); a deployment that serves no SAML drops this section, and its
+    # tenant then draws no SAML key and serves no metadata. Its key is a family of its own (issue
+    # beffroi-php/beffroi#738, spec/saml.md S-12): a rotation publishes the next certificate seven days before it
+    # signs, the key works a year, and the metadata tells a service provider to fetch it again every day; the keys of
+    # the JWK Set keep the figures of "keys".
+    saml:
+        identity_provider:
+            want_authn_requests_signed: true
+            staging_delay: 604800
+            age: 31536000
+            cache_duration: 86400
     webauthn:
         # The FIDO metadata the passkey ceremonies check an attestation against, next to the keys: filled by hand
         # with "beffroi:webauthn:mds-refresh" (the blob of the FIDO Alliance, verified under its root) and
@@ -163,6 +178,58 @@ when@dev:
                 'https://attestation.demo.localhost':
                     jwks: '%env(json:base64:DEMO_ATTESTATION_JWKS)%'
                     signing_algorithms: ['ES256']
+        # The service provider of the SAML judge (issue beffroi-php/beffroi#732), in development only: the
+        # SimpleSAMLphp that "castor saml-sp" serves on https://saml-sp.localhost. Its entity ID is the one its own
+        # metadata carry, compared exactly (spec/saml.md S-5). Its metadata are a file, the one that task writes from
+        # the service provider itself into the directory compose.yaml mounts into the op container and the worker, and
+        # that "beffroi:saml:service-provider:refresh" reads; the channel is the machine, so no signer is pinned.
+        # Three claims of "alice" are sent under the OID names (urn:oid, the "uri" format the SAML V2.0
+        # interoperability profiles ask for) the way a SimpleSAMLphp or a Shibboleth expects them.
+        saml:
+            service_providers:
+                'https://saml-sp.localhost/simplesaml/module.php/saml/sp/metadata/beffroi':
+                    metadata: '/saml-sp/sp-metadata.xml'
+                    attributes:
+                        'urn:oid:0.9.2342.19200300.100.1.1':
+                            claim: preferred_username
+                            friendly_name: uid
+                        'urn:oid:0.9.2342.19200300.100.1.3':
+                            claim: email
+                            friendly_name: mail
+                        'urn:oid:2.16.840.1.113730.3.1.241':
+                            claim: name
+                            friendly_name: displayName
+                # The same SimpleSAMLphp as a second service provider that demands its assertion encrypted ("castor
+                # saml-sp --encrypted", issue beffroi-php/beffroi#733): encrypted for the first key for encryption
+                # of its metadata, under aes256-gcm and rsa-oaep-mgf1p (spec/saml.md S-19, S-20).
+                'https://saml-sp.localhost/simplesaml/module.php/saml/sp/metadata/beffroi-encrypted':
+                    metadata: '/saml-sp/sp-encrypted-metadata.xml'
+                    encrypt_assertions: true
+                    attributes:
+                        'urn:oid:0.9.2342.19200300.100.1.1':
+                            claim: preferred_username
+                            friendly_name: uid
+                        'urn:oid:0.9.2342.19200300.100.1.3':
+                            claim: email
+                            friendly_name: mail
+                        'urn:oid:2.16.840.1.113730.3.1.241':
+                            claim: name
+                            friendly_name: displayName
+                # The service provider of the Entra judge (issue beffroi-php/beffroi#736): the SAML federation of
+                # guests of the maintainer's test tenant, Entra ID Free, set up without a domain. Its entity ID is
+                # the tenanted issuer of the AuthnRequest Entra sends for a new federation, the trailing slash
+                # included, which is also the Audience it expects (spec/saml.md section 7). Entra publishes no
+                # metadata for it, so they are written by hand from Microsoft's documentation and committed
+                # (config/saml/), mounted with the application into op and the worker: no key, since Entra signs no
+                # request of a guest federation, hence "signs_authn_requests: false" (S-9, S-11); no encryption,
+                # which it does not ask for; the one claim it requires, the email address, under its WS-Federation
+                # claim type. "castor saml-entra" registers it and prints what the portal of Entra takes.
+                'https://login.microsoftonline.com/20a6e528-cf9e-4f79-8949-bbd59006eff5/':
+                    metadata: '%kernel.project_dir%/config/saml/entra-guest-federation-sp.xml'
+                    signs_authn_requests: false
+                    attributes:
+                        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress':
+                            claim: email
         # The issuer of the development stack whose signature the tenant trusts (RFC 7523 §3, issue #299),
         # which "castor demo --assertion" signs with. Whoever holds its key can name a user of this tenant,
         # so everything about it is written here and nothing is asked for: the keys are the ones below and

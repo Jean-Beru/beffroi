@@ -107,6 +107,8 @@ use Beffroi\Bundle\Http\AuthorizationRequestReaderInterface;
 use Beffroi\Bundle\Http\AuthorizationResponder;
 use Beffroi\Bundle\Http\AuthorizationResponderInterface;
 use Beffroi\Bundle\Http\BrowserSession;
+use Beffroi\Bundle\Http\CrossSitePost;
+use Beffroi\Bundle\Http\CrossSiteSessionCookie;
 use Beffroi\Bundle\Http\BrowserPreferences;
 use Beffroi\Bundle\Http\ApplicationPage;
 use Beffroi\Bundle\Http\InteractionLocale;
@@ -141,6 +143,7 @@ use Beffroi\Bundle\Http\TotpProvisioningSealer;
 use Beffroi\Bundle\Http\TotpProvisioningStore;
 use Beffroi\Bundle\Http\TwoFactorPage;
 use Beffroi\Bundle\Key\FilePairwiseSalt;
+use Beffroi\Bundle\Key\DormantKeyAlgorithms;
 use Beffroi\Bundle\Key\FileTenantKeyRepository;
 use Beffroi\Bundle\Key\KmsUnavailableListener;
 use Beffroi\Bundle\Load\LoadBudget;
@@ -272,6 +275,62 @@ use Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaOaep256;
 use Beffroi\Core\Bridge\JwtLibrary\JoseContentEncryptionAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JoseKeyFamily;
+use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
+use Beffroi\Bundle\Saml\MappedClaimsWarmer;
+use Beffroi\Bundle\Saml\ProviderServedClaims;
+use Beffroi\Bundle\Saml\SamlPostPage;
+use Beffroi\Bundle\Saml\SignOnAnswers;
+use Beffroi\Bundle\Saml\TenantPersistentIdentifierSalt;
+use Beffroi\Bundle\Saml\WaitingSignOns;
+use Beffroi\Core\Port\KeptSigningKeyProviderInterface;
+use Beffroi\Saml\Application\SingleSignOn\AttributeRelease;
+use Beffroi\Saml\Application\SingleSignOn\SingleSignOn;
+use Beffroi\Saml\Bridge\Model\ModelAuthnRequestReceiver;
+use Beffroi\Saml\Bridge\Model\DeclaredServiceProviderReader;
+use Beffroi\Saml\Bridge\Model\ModelLogoutMessageReceiver;
+use Beffroi\Saml\Bridge\Model\ModelSignOutNotifier;
+use Beffroi\Saml\Bridge\Model\ModelSignOutResponder;
+use Beffroi\Saml\Bridge\Model\TenantSigning;
+use Beffroi\Saml\Application\SingleLogout\ProviderLogout;
+use Beffroi\Saml\Application\SingleLogout\SessionParticipants;
+use Beffroi\Saml\Application\SingleLogout\SingleLogout;
+use Beffroi\Saml\Port\LogoutReplayStoreInterface;
+use Beffroi\Saml\Port\LogoutChainRepositoryInterface;
+use Beffroi\Saml\Port\LogoutMessageReceiverInterface;
+use Beffroi\Saml\Port\SignOutNotifierInterface;
+use Beffroi\Saml\Port\SessionParticipationRepositoryInterface;
+use Beffroi\Saml\Port\SignOutResponderInterface;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineLogoutReplayStore;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineSessionParticipationRepository;
+use Beffroi\Saml\Bridge\Model\ModelSignOnResponder;
+use Beffroi\Saml\Port\AuthnRequestReceiverInterface;
+use Beffroi\Saml\Port\PersistentIdentifierSaltInterface;
+use Beffroi\Saml\Port\SignOnResponderInterface;
+use Beffroi\Bundle\Saml\RouterIdentityProviderEndpoints;
+use Beffroi\Bundle\Saml\SamlSigning;
+use Beffroi\Bundle\Saml\LogoutChainCookie;
+use Beffroi\Bundle\Saml\LogoutChainPages;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineLogoutChainRepository;
+use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
+use Beffroi\Saml\Application\Metadata\SigningCertificates;
+use Beffroi\Saml\Bridge\Model\ModelMetadataWriter;
+use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
+use Beffroi\Saml\Port\CertificateIssuerInterface;
+use Beffroi\Saml\Port\IdentityProviderEndpointsInterface;
+use Beffroi\Saml\Port\MetadataWriterInterface;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineAcceptedMetadataRepository;
+use Beffroi\Bundle\Saml\MetadataFetcher;
+use Beffroi\Saml\Application\ServiceProvider\ServiceProviderMetadataRefresh;
+use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
+use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataReader;
+use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
+use Beffroi\Saml\Port\CanForgetAcceptedMetadataInterface;
+use Beffroi\Saml\Application\ServiceProvider\AcceptedMetadataForgetting;
+use Beffroi\Saml\Port\MetadataFetcherInterface;
+use Beffroi\Saml\Port\ServiceProviderMetadataReaderInterface;
+use Beffroi\Saml\Port\ServedClaimsInterface;
+use Beffroi\Saml\Port\ServiceProvidersInterface;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyEncryptionAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseMessageSealingAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
@@ -321,6 +380,7 @@ use Beffroi\Core\Port\JweDecrypterInterface;
 use Beffroi\Core\Port\JwsSignerInterface;
 use Beffroi\Core\Port\JwsVerifierInterface;
 use Beffroi\Core\Port\KeyAlgorithmsInterface;
+use Beffroi\Core\Port\RotationSchedulesInterface;
 use Beffroi\Core\Port\KeyEncryptionAlgorithmsInterface;
 use Beffroi\Core\Port\KeyPairGeneratorInterface;
 use Beffroi\Core\Port\KeySealerInterface;
@@ -415,6 +475,7 @@ use Beffroi\Oidc\Application\Dpop\DpopProofValidator;
 use Beffroi\Oidc\Application\Dpop\DpopProofVerifier;
 use Beffroi\Oidc\Application\EndSession\BackChannelLogout;
 use Beffroi\Oidc\Application\EndSession\EndSessionHandler;
+use Beffroi\Oidc\Application\EndSession\SessionTokensRevocation;
 use Beffroi\Oidc\Application\EndSession\EndSessionRequestParser;
 use Beffroi\Oidc\Application\EndSession\FrontChannelLogout;
 use Beffroi\Oidc\Application\EndSession\LogoutTokenIssuer;
@@ -557,6 +618,7 @@ use Beffroi\Oidc\Port\ServedGrantsInterface;
 use Beffroi\Oidc\Port\CompactJwtReaderInterface;
 use Beffroi\Oidc\Port\ConsentRepositoryInterface;
 use Beffroi\Oidc\Port\CanRevokeAccessTokensByConsentInterface;
+use Beffroi\Oidc\Port\CanRevokeAccessTokensBySessionInterface;
 use Beffroi\Oidc\Port\RefreshTokensOfAConsentInterface;
 use Beffroi\Oidc\Port\DpopProofReplayGuardInterface;
 use Beffroi\Oidc\Port\EndpointLocatorInterface;
@@ -650,6 +712,13 @@ return static function (ContainerConfigurator $container): void {
     $services->set(FapiInteractionId::class);
     $services->set(BrowserSession::class);
     $services->set(InteractionPages::class);
+    // what a browser posted from another site without the session cookie, posted again from this provider's own
+    // origin, which the cookie accompanies (beffroi/saml S-28): asked first by each endpoint a party posts a browser
+    // to from another site, the single sign-on and single logout services, the authorization and end session endpoints
+    $services->set(CrossSitePost::class);
+    // and the cookie of a session started for such a request taken off its answer, on every endpoint of this plane,
+    // so that no page of another site replaces the session cookie the browser holds (S-28)
+    $services->set(CrossSiteSessionCookie::class);
     // what a page of this plane adds to the policy its answer carries, the deployment writing the rest
     // (PolicyCompletion): the origin of the client the page is answering, named in "form-action", without
     // which a browser refuses the redirection that takes the code there (FormTarget), and the origins of
@@ -1079,6 +1148,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(DoctrineAccessTokenRepository::class)->tag('beffroi.dead_records');
     $services->alias(AccessTokenRepositoryInterface::class, DoctrineAccessTokenRepository::class);
     $services->alias(CanRevokeAccessTokensByConsentInterface::class, DoctrineAccessTokenRepository::class);
+    $services->alias(CanRevokeAccessTokensBySessionInterface::class, DoctrineAccessTokenRepository::class);
     $services->set(DoctrineConsentRepository::class);
     $services->alias(ConsentRepositoryInterface::class, DoctrineConsentRepository::class);
     // what the page of the account lists, read past the profiler: it is no interaction
@@ -1101,6 +1171,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(DecryptionKeyProviderInterface::class, SealedKeyProvider::class);
     $services->alias(PublicKeySetProviderInterface::class, SealedKeyProvider::class);
     $services->alias(ApplicationServerKeyProviderInterface::class, SealedKeyProvider::class);
+    $services->alias(KeptSigningKeyProviderInterface::class, SealedKeyProvider::class);
     $services->alias(MessageKeyProviderInterface::class, SealedKeyProvider::class);
     // The algorithms the provider signs with: one class per algorithm, tagged; the first tagged one is
     // the default, the one an access token, a signed introspection response and a client that registered
@@ -1137,7 +1208,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(JoseEncryptionAlgorithms::class);
     // The algorithms of the keys the tenant hands out itself rather than publishing in its JWK Set
     // (RFC 8292 §2): wired by the deployment that reaches its users by push and by no other, so that a
-    // deployment that does not draws no such key and has no page that would hand one out (§5.6).
+    // deployment that does not draws no such key and has no page that would hand one out (§5.6); the
+    // web push section leaves it dormant otherwise.
     $services->set(Vapid::class);
     $services->set(JoseApplicationServerAlgorithms::class)->args([tagged_iterator('beffroi.application_server_algorithm')]);
     $services->alias(ApplicationServerAlgorithmsInterface::class, JoseApplicationServerAlgorithms::class);
@@ -1153,20 +1225,38 @@ return static function (ContainerConfigurator $container): void {
         ->tag('beffroi.message_sealing_algorithm');
     $services->set(JoseMessageSealingAlgorithms::class)->args([tagged_iterator('beffroi.message_sealing_algorithm')]);
     $services->alias(MessageSealingAlgorithmsInterface::class, JoseMessageSealingAlgorithms::class);
+    // The algorithm of the key the tenant signs its SAML messages with (beffroi/saml, spec/saml.md S-1): an RSA pair
+    // of the size above, kept out of the JWK Set and published as a certificate in the metadata of its identity
+    // provider. The SAML section of the configuration tags it when the deployment enables the identity provider, and
+    // nothing else does, so that a deployment that serves no SAML draws no such key; the section leaves it dormant
+    // otherwise.
+    $services->set(SamlSigning::class)->args([service(RsaKeyBits::class)]);
+    $services->set(JoseSamlSigningAlgorithms::class)->args([tagged_iterator(JoseSamlSigningAlgorithms::TAG)]);
     $services->set(JwtLibraryMessageBodySealer::class);
     $services->alias(MessageBodySealerInterface::class, JwtLibraryMessageBodySealer::class);
     $services->set(JwtLibraryMessageBodyOpener::class);
     $services->alias(MessageBodyOpenerInterface::class, JwtLibraryMessageBodyOpener::class);
     // What a key may be generated for, the registry of each use read as one: the key commands and the key
     // files resolve an algorithm name against this, whatever the key is published for. The order is the
-    // one it lists and the one its refusals are read in, the signatures first
+    // one it lists and the one its refusals are read in, the signatures first.
+    //
+    // Each registry is a family of keys and comes with the schedule its keys rotate by (issue #738): the
+    // JOSE families share the staging delay and the age of "beffroi.keys", the SAML signing key has its
+    // own, counted in days (beffroi/saml, spec/saml.md S-12). The two schedules are built from the
+    // configuration by the sections that own it (KeysSection, SamlSection); the staging and the
+    // succession of a key read the schedule of its family here, and nowhere else.
     $services->set(JoseKeyAlgorithms::class)->args([[
-        service(JoseSignatureAlgorithms::class),
-        service(JoseKeyEncryptionAlgorithms::class),
-        service(JoseApplicationServerAlgorithms::class),
-        service(JoseMessageSealingAlgorithms::class),
+        inline_service(JoseKeyFamily::class)->args([service(JoseSignatureAlgorithms::class), service('beffroi.keys.rotation_schedule')]),
+        inline_service(JoseKeyFamily::class)->args([service(JoseKeyEncryptionAlgorithms::class), service('beffroi.keys.rotation_schedule')]),
+        inline_service(JoseKeyFamily::class)->args([service(JoseApplicationServerAlgorithms::class), service('beffroi.keys.rotation_schedule')]),
+        inline_service(JoseKeyFamily::class)->args([service(JoseMessageSealingAlgorithms::class), service('beffroi.keys.rotation_schedule')]),
+        inline_service(JoseKeyFamily::class)->args([service(JoseSamlSigningAlgorithms::class), service('beffroi.saml.rotation_schedule')]),
     ]]);
     $services->alias(KeyAlgorithmsInterface::class, JoseKeyAlgorithms::class);
+    $services->alias(RotationSchedulesInterface::class, JoseKeyAlgorithms::class);
+    // The algorithms a section of the configuration leaves off, each tagged by the section that owns it: what the key
+    // files read past, so that a key drawn before its capability was turned off waits for it to be turned on again
+    $services->set(DormantKeyAlgorithms::class)->args([tagged_iterator(DormantKeyAlgorithms::TAG)]);
     $services->set(JwtLibraryKeyPairGenerator::class);
     $services->alias(KeyPairGeneratorInterface::class, JwtLibraryKeyPairGenerator::class);
     $services->set(JwtLibraryJwsSigner::class);
@@ -1768,10 +1858,94 @@ return static function (ContainerConfigurator $container): void {
         '$contributors' => tagged_iterator('beffroi.oidc.metadata'),
     ]);
     $services->set(JwksHandler::class);
+    // beffroi/saml: the identity provider of the tenant, its certificates, built once per process from keys the KMS
+    // opens (S-1, S-3), and its metadata under the issuer (spec/saml.md section 6.1); the SAML section of the
+    // configuration gives the handler what the tenant set
+    $services->set(SelfSignedCertificateIssuer::class);
+    $services->alias(CertificateIssuerInterface::class, SelfSignedCertificateIssuer::class);
+    $services->set(ModelMetadataWriter::class);
+    $services->alias(MetadataWriterInterface::class, ModelMetadataWriter::class);
+    $services->set(RouterIdentityProviderEndpoints::class);
+    $services->alias(IdentityProviderEndpointsInterface::class, RouterIdentityProviderEndpoints::class);
+    $services->set(SigningCertificates::class);
+    $services->set(IdentityProviderMetadataHandler::class);
+    // beffroi/saml: the service providers of the tenant, declared in the configuration, which the SAML section hands
+    // the declarations and the slug of the tenant (S-5); their metadata read by the model, fetched from a file or an
+    // https URL, and the newest document accepted kept in the database, sealed (spec/saml.md section 6.2)
+    // the claims an attribute is mapped from, those OpenID Connect serves (spec/saml.md S-16)
+    $services->set(ProviderServedClaims::class);
+    $services->alias(ServedClaimsInterface::class, ProviderServedClaims::class);
+    $services->set(ConfigurationServiceProviders::class)->args([
+        '$tenantSlug' => '',
+        '$definitions' => [],
+    ]);
+    $services->alias(ServiceProvidersInterface::class, ConfigurationServiceProviders::class);
+    // the claim of each mapping checked against the claims the provider serves right after the compilation, in the
+    // same build; ServiceProvidersPass hands it the declarations it built (spec/saml.md S-16, section 6.2 step 1)
+    $services->set(MappedClaimsWarmer::class)->args([
+        '$declarations' => [],
+    ]);
+    $services->set(ModelServiceProviderMetadataReader::class);
+    $services->alias(ServiceProviderMetadataReaderInterface::class, ModelServiceProviderMetadataReader::class);
+    $services->set(MetadataFetcher::class);
+    $services->alias(MetadataFetcherInterface::class, MetadataFetcher::class);
+    $services->set(DoctrineAcceptedMetadataRepository::class);
+    $services->alias(AcceptedMetadataRepositoryInterface::class, DoctrineAcceptedMetadataRepository::class);
+    $services->alias(CanForgetAcceptedMetadataInterface::class, DoctrineAcceptedMetadataRepository::class);
+    $services->set(ServiceProviderMetadataRefresh::class);
+    $services->set(AcceptedMetadataForgetting::class);
+    // beffroi/saml: single sign-on (spec/saml.md section 6.4), a request received over either binding and validated by
+    // the model, answered from the session of the browser or after its login, the request waiting in its HTTP session
+    // (S-18); the assertion signed by the active SAML key of the tenant, opened by the KMS once per process to sign,
+    // besides once for its certificate when the metadata are served first (S-3, S-15), its NameID computed with the
+    // salt of the pairwise subjects (S-13), its attributes from the claims OpenID Connect serves
+    $services->set(DeclaredServiceProviderReader::class);
+    $services->set(ModelAuthnRequestReceiver::class);
+    $services->alias(AuthnRequestReceiverInterface::class, ModelAuthnRequestReceiver::class);
+    $services->set(TenantSigning::class)->args([
+        '$algorithm' => service(SamlSigning::class),
+    ]);
+    $services->set(ModelSignOnResponder::class);
+    $services->alias(SignOnResponderInterface::class, ModelSignOnResponder::class);
+    $services->set(TenantPersistentIdentifierSalt::class);
+    $services->alias(PersistentIdentifierSaltInterface::class, TenantPersistentIdentifierSalt::class);
+    $services->set(AttributeRelease::class);
+    $services->set(SingleSignOn::class);
+    $services->set(WaitingSignOns::class);
+    $services->set(SamlPostPage::class);
+    $services->set(SignOnAnswers::class);
+    // beffroi/saml: Single Logout started by a service provider (spec/saml.md section 6.5), a request received over
+    // either binding, validated by the model and remembered in a store every worker shares, written atomically (S-23);
+    // the sessions it names ended by the core as every session ends (S-25) and the answer signed by the SAML key of
+    // the tenant (S-27); each service provider's part in a session recorded from the event single sign-on announces,
+    // on the lane of the events (S-26)
+    $services->set(DoctrineLogoutReplayStore::class);
+    $services->alias(LogoutReplayStoreInterface::class, DoctrineLogoutReplayStore::class);
+    $services->set(ModelLogoutMessageReceiver::class);
+    $services->alias(LogoutMessageReceiverInterface::class, ModelLogoutMessageReceiver::class);
+    $services->set(ModelSignOutResponder::class);
+    $services->alias(SignOutResponderInterface::class, ModelSignOutResponder::class);
+    $services->set(SingleLogout::class);
+    $services->set(DoctrineSessionParticipationRepository::class);
+    $services->alias(SessionParticipationRepositoryInterface::class, DoctrineSessionParticipationRepository::class);
+    $services->set(SessionParticipants::class);
+    // beffroi/saml: Single Logout started by the identity provider (spec/saml.md section 6.6), every service provider
+    // of the sessions a browser ended told through that browser, by a request signed by the SAML key of the tenant
+    // (S-31), its answer read at the single logout service (S-33); the chain kept in a store every worker shares,
+    // taken by one request at each step and played by the browser that began it alone, which a cookie of the provider
+    // binds it to (S-32); the page of Front-Channel Logout 1.0 put before it (S-35)
+    $services->set(DoctrineLogoutChainRepository::class);
+    $services->alias(LogoutChainRepositoryInterface::class, DoctrineLogoutChainRepository::class);
+    $services->set(ModelSignOutNotifier::class);
+    $services->alias(SignOutNotifierInterface::class, ModelSignOutNotifier::class);
+    $services->set(ProviderLogout::class);
+    $services->set(LogoutChainCookie::class);
+    $services->set(LogoutChainPages::class);
     $services->set(EndSessionRequestParser::class);
     $services->set(EndSessionHandler::class);
     $services->set(LogoutTokenIssuer::class);
     $services->set(BackChannelLogout::class);
+    $services->set(SessionTokensRevocation::class);
     $services->set(FrontChannelLogout::class);
     // The two ways of telling a client that a session ended (architecture §4.9): one class per channel,
     // and what is tagged is what the discovery document announces, never an enumeration kept beside it

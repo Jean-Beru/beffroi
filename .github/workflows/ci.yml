@@ -103,7 +103,8 @@ jobs:
       # nothing, 6.2 s with one source file changed, on one machine). It compresses to 2.3 MB, so the
       # 10 GB a repository is given is not spent on entries nobody reads.
       # One result cache per analysis: the identity provider's packages, then each SAML package under its own
-      # configuration (castor phpstan runs the four).
+      # configuration, beffroi/saml among them (castor phpstan runs the five, then proves the bans of beffroi/saml on
+      # their fixture, a sixth run of one file whose result is read as it is made and not kept).
       - uses: actions/cache@v6
         with:
           path: |
@@ -111,6 +112,7 @@ jobs:
             .ci-tools/cache/phpstan-xml-security/resultCache.php
             .ci-tools/cache/phpstan-saml2-model/resultCache.php
             .ci-tools/cache/phpstan-saml2-bindings/resultCache.php
+            .ci-tools/cache/phpstan-saml/resultCache.php
           key: "phpstan-${{ steps.tools.outputs.phpstan }}-${{ hashFiles('.ci-tools/phpstan*.neon') }}-${{ github.sha }}"
           restore-keys: "phpstan-${{ steps.tools.outputs.phpstan }}-${{ hashFiles('.ci-tools/phpstan*.neon') }}-"
       - name: "Static Analysis (PHPStan)"
@@ -195,7 +197,7 @@ jobs:
           composer-options: --optimize-autoloader
       - name: "libxml and OpenSSL of this build"
         run: castor libxml
-      - run: castor phpunit -- --no-coverage --testsuite xml-security,saml2-model,saml2-bindings
+      - run: castor phpunit -- --no-coverage --testsuite xml-security,saml2-model,saml2-bindings,saml
 
   oracle:
     name: "6️⃣ Oracles (xmlsec1, OpenSSL)"
@@ -307,7 +309,7 @@ jobs:
       # Infection counts the two cores of the runner and keeps one for itself; both can run mutants.
       # The files the specifications of the SAML packages hold to no escaped mutant, whole, on every run; then the
       # lines added or modified over the whole source.
-      # A coverage of its own, the three SAML suites under Xdebug, rather than the one the tests job measured with pcov
+      # A coverage of its own, the suites of the SAML packages under Xdebug, rather than the one the tests job measured with pcov
       # (see infect() in .castor/stack/qa.php).
       - name: "The files of section 9 of the SAML packages, no escaped mutant"
         run: castor infect --strict --threads=2

@@ -6,10 +6,13 @@ namespace Beffroi\Bundle\Tests\Unit;
 
 use DateInterval;
 use Beffroi\Bundle\BeffroiBundle;
+use Beffroi\Bundle\Key\DormantKeyAlgorithms;
 use Beffroi\Bundle\Key\FileTenantKeyRepository;
 use Beffroi\Bundle\Key\StagingDelay;
+use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
+use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Tenant\TenantFactory;
-use Beffroi\Core\Application\Key\KeyStaging;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Beffroi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
 use Beffroi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
@@ -22,6 +25,10 @@ use Beffroi\Oidc\Application\Token\OpaqueAccessTokenVerifier;
 use Beffroi\Oidc\Application\Token\TokenIssuer;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
+use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
+use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -101,7 +108,7 @@ final class BeffroiBundleExtensionTest extends TestCase
         ]);
 
         // Then
-        $delay = $container->getDefinition(KeyStaging::class)->getArgument('$stagingDelay');
+        $delay = $container->getDefinition('beffroi.keys.rotation_schedule')->getArgument(0);
         static::assertInstanceOf(Definition::class, $delay);
         $factory = $delay->getFactory();
         static::assertIsArray($factory);
@@ -111,7 +118,7 @@ final class BeffroiBundleExtensionTest extends TestCase
     }
 
     #[Test]
-    public function aConfiguredStagingDelayReachesTheStaging(): void
+    public function aConfiguredStagingDelayReachesTheJoseFamilies(): void
     {
         // When
         $container = self::load([
@@ -124,7 +131,7 @@ final class BeffroiBundleExtensionTest extends TestCase
         ]);
 
         // Then
-        $delay = $container->getDefinition(KeyStaging::class)->getArgument('$stagingDelay');
+        $delay = $container->getDefinition('beffroi.keys.rotation_schedule')->getArgument(0);
         static::assertInstanceOf(Definition::class, $delay);
         static::assertSame([30, 120], $delay->getArguments());
     }
@@ -287,6 +294,316 @@ final class BeffroiBundleExtensionTest extends TestCase
     }
 
     /**
+     * beffroi/saml, spec/saml.md section 5.1: a deployment that does not enable the SAML identity provider draws no
+     * SAML key, its algorithm being wired by nothing.
+     */
+    #[Test]
+    public function aDeploymentWithoutTheSamlIdentityProviderDrawsNoSamlKey(): void
+    {
+        // When
+        $container = self::load([]);
+
+        // Then
+        static::assertFalse($container->getDefinition(SamlSigning::class)->hasTag(JoseSamlSigningAlgorithms::TAG));
+    }
+
+    /**
+     * Spec/saml.md section 5.1, S-1, S-2: enabled, the algorithm of the SAML key is wired with the others, so that
+     * the key commands and the scheduled step treat it as every key of the tenant.
+     */
+    #[Test]
+    public function enablingTheSamlIdentityProviderWiresItsKey(): void
+    {
+        // When
+        $container = self::load([
+            'saml' => [
+                'identity_provider' => null,
+            ],
+        ]);
+
+        // Then
+        static::assertTrue($container->getDefinition(SamlSigning::class)->hasTag(JoseSamlSigningAlgorithms::TAG));
+    }
+
+    /**
+     * Spec/saml.md section 5.1: the algorithm of a capability a deployment leaves off is dormant, so that a key the
+     * tenant drew while it was on is read by nothing rather than refused as a fault of the storage.
+     *
+     * @param class-string $algorithm
+     */
+    #[Test]
+    #[DataProvider('provideCapabilitiesLeftOff')]
+    public function theAlgorithmOfACapabilityLeftOffIsDormant(string $algorithm): void
+    {
+        // When
+        $container = self::load([]);
+
+        // Then
+        static::assertTrue($container->getDefinition($algorithm)->hasTag(DormantKeyAlgorithms::TAG));
+    }
+
+    /**
+     * @return iterable<string, array{class-string}>
+     */
+    public static function provideCapabilitiesLeftOff(): iterable
+    {
+        yield 'the SAML identity provider' => [SamlSigning::class];
+        yield 'web push' => [Vapid::class];
+    }
+
+    /**
+     * Spec/saml.md section 5.1: turned on, the algorithm of the capability is not dormant, so that the key the tenant
+     * drew is in service as it was.
+     *
+     * @param array<string, mixed> $config
+     * @param class-string $algorithm
+     */
+    #[Test]
+    #[DataProvider('provideCapabilitiesTurnedOn')]
+    public function theAlgorithmOfACapabilityTurnedOnIsNotDormant(array $config, string $algorithm): void
+    {
+        // When
+        $container = self::load($config);
+
+        // Then
+        static::assertFalse($container->getDefinition($algorithm)->hasTag(DormantKeyAlgorithms::TAG));
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, class-string}>
+     */
+    public static function provideCapabilitiesTurnedOn(): iterable
+    {
+        yield 'the SAML identity provider' => [
+            [
+                'saml' => [
+                    'identity_provider' => null,
+                ],
+            ],
+            SamlSigning::class,
+        ];
+        yield 'web push' => [
+            [
+                'web_push' => [
+                    'subject' => 'mailto:operator@op.test',
+                ],
+            ],
+            Vapid::class,
+        ];
+    }
+
+    /**
+     * Spec/saml.md S-4, section 6.1 steps 4 and 6: WantAuthnRequestsSigned true unless the tenant says otherwise, and
+     * the metadata cacheable for the max-age of its keys.
+     *
+     * @param array<string, mixed> $identityProvider
+     */
+    #[Test]
+    #[DataProvider('provideIdentityProviders')]
+    public function theSettingsOfTheIdentityProviderReachItsMetadata(array $identityProvider, bool $wantAuthnRequestsSigned): void
+    {
+        // When
+        $container = self::load([
+            'keys' => [
+                'kms' => 'op',
+                'key_id' => 'signing',
+                'jwks_max_age' => 90,
+            ],
+            'saml' => [
+                'identity_provider' => $identityProvider,
+            ],
+        ]);
+
+        // Then
+        $handler = $container->getDefinition(IdentityProviderMetadataHandler::class);
+        static::assertSame(
+            [$wantAuthnRequestsSigned, 90],
+            [$handler->getArgument('$wantAuthnRequestsSigned'), $handler->getArgument('$maxAge')],
+        );
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, bool}>
+     */
+    public static function provideIdentityProviders(): iterable
+    {
+        yield 'the default' => [[], true];
+        yield 'signed requests turned off' => [
+            [
+                'want_authn_requests_signed' => false,
+            ],
+            false,
+        ];
+    }
+
+    /**
+     * Spec/saml.md S-5, section 5.2: the service providers the configuration declares reach the declarations of the
+     * tenant whose slug the configuration names, each with what a declaration leaves out filled in.
+     */
+    #[Test]
+    public function theServiceProvidersReachTheDeclarationsOfTheTenant(): void
+    {
+        // When
+        $container = self::load([
+            'tenant' => [
+                'issuer' => 'https://op.test',
+                'slug' => 'acme',
+            ],
+            'saml' => [
+                'identity_provider' => null,
+                'service_providers' => [
+                    'https://sp.example.com/saml' => [
+                        'metadata' => 'https://sp.example.com/saml/metadata',
+                        'attributes' => [
+                            'urn:oid:0.9.2342.19200300.100.1.3' => [
+                                'claim' => 'email',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        // Then
+        $declarations = $container->getDefinition(ConfigurationServiceProviders::class);
+        static::assertSame('acme', $declarations->getArgument('$tenantSlug'));
+        static::assertSame(
+            [
+                'https://sp.example.com/saml' => [
+                    'metadata' => 'https://sp.example.com/saml/metadata',
+                    'attributes' => [
+                        'urn:oid:0.9.2342.19200300.100.1.3' => [
+                            'claim' => 'email',
+                            'name_format' => 'uri',
+                            'friendly_name' => null,
+                        ],
+                    ],
+                    'metadata_signers' => [],
+                    'encrypt_assertions' => false,
+                    'signs_authn_requests' => true,
+                ],
+            ],
+            $declarations->getArgument('$definitions'),
+        );
+    }
+
+    /**
+     * Spec/saml.md section 5.2: a tenant that is no identity provider serves no service provider, and a deployment
+     * that declares one for it is refused at boot rather than left with a declaration nothing reads.
+     */
+    #[Test]
+    public function aServiceProviderOfATenantThatIsNoIdentityProviderIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIsOrContains('Service providers are declared for a tenant that is a SAML identity provider: enable "beffroi.saml.identity_provider", or remove "beffroi.saml.service_providers".');
+
+        // When
+        self::load([
+            'saml' => [
+                'service_providers' => [
+                    'https://sp.example.com/saml' => [
+                        'metadata' => 'https://sp.example.com/saml/metadata',
+                    ],
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Spec/saml.md S-12, section 7, issue #738: the SAML signing key is a family of its own, published seven days
+     * before it signs and working a year unless the deployment says otherwise, whether the role is enabled or not,
+     * the registry of its keys being wired in both cases.
+     *
+     * @param array<string, mixed> $saml
+     */
+    #[Test]
+    #[DataProvider('provideSamlSchedules')]
+    public function theSamlKeysRotateByASchedule(array $saml, string $stagingDelay, string $age): void
+    {
+        // When
+        $container = self::load([
+            'saml' => $saml,
+        ]);
+
+        // Then
+        static::assertSame(
+            [$stagingDelay, $age],
+            [
+                self::interval($container, 'beffroi.saml.rotation_schedule', 0),
+                self::interval($container, 'beffroi.saml.rotation_schedule', 1),
+            ],
+        );
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, string, string}>
+     */
+    public static function provideSamlSchedules(): iterable
+    {
+        yield 'a deployment that serves no SAML' => [[], 'PT604800S', 'PT31536000S'];
+        yield 'the defaults of the identity provider' => [
+            [
+                'identity_provider' => null,
+            ],
+            'PT604800S',
+            'PT31536000S',
+        ];
+        yield 'figures the deployment sets' => [
+            [
+                'identity_provider' => [
+                    'staging_delay' => 1_209_600,
+                    'age' => 15_552_000,
+                ],
+            ],
+            'PT1209600S',
+            'PT15552000S',
+        ];
+    }
+
+    /**
+     * Spec/saml.md S-12: the metadata is handed its cacheDuration and the staging delay it is shorter than.
+     */
+    #[Test]
+    public function theMetadataIsHandedItsCacheDurationAndTheStagingDelay(): void
+    {
+        // When
+        $container = self::load([
+            'saml' => [
+                'identity_provider' => [
+                    'staging_delay' => 172_800,
+                    'cache_duration' => 3_600,
+                ],
+            ],
+        ]);
+
+        // Then
+        $handler = $container->getDefinition(IdentityProviderMetadataHandler::class);
+        static::assertSame([3_600, 172_800], [$handler->getArgument('$cacheDuration'), $handler->getArgument('$stagingDelay')]);
+    }
+
+    /**
+     * Spec/saml.md S-12: a cacheDuration a service provider would still be inside when the next key signs is refused
+     * when the configuration is read.
+     */
+    #[Test]
+    public function aCacheDurationAsLongAsTheStagingDelayIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIsOrContains('The cacheDuration of the metadata, 86400 s, is shorter than the staging delay of a SAML key, 86400 s, or a service provider that honours it meets the next key before its certificate (spec/saml.md S-12).');
+
+        // When
+        self::load([
+            'saml' => [
+                'identity_provider' => [
+                    'staging_delay' => 86_400,
+                ],
+            ],
+        ]);
+    }
+
+    /**
      * @param array<string, mixed> $config
      */
     private static function load(array $config, ?ContainerBuilder $container = null): ContainerBuilder
@@ -310,7 +627,7 @@ final class BeffroiBundleExtensionTest extends TestCase
         return $container;
     }
 
-    private static function interval(ContainerBuilder $container, string $service, string $argument): string
+    private static function interval(ContainerBuilder $container, string $service, int|string $argument): string
     {
         $definition = $container->getDefinition($service)->getArgument($argument);
         static::assertInstanceOf(Definition::class, $definition);

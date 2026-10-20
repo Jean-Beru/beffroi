@@ -308,6 +308,41 @@ final class ClientRegistrationTest extends BrowserTestCase
             'invalid_redirect_uri',
             'must not carry a fragment',
         ];
+
+        yield 'a redirection URI whose host carries a directive of a policy (RFC 3986 section 3.2.2)' => [
+            [
+                'redirect_uris' => ['https://registered.test;sandbox/callback'],
+            ],
+            'invalid_redirect_uri',
+            'must name a host of letters, digits, hyphens and dots, or an IP address',
+        ];
+
+        yield 'a post-logout redirection URI whose host carries a second policy' => [
+            [
+                'redirect_uris' => [self::REDIRECT_URI],
+                'post_logout_redirect_uris' => ['https://registered.test,sandbox/'],
+            ],
+            'invalid_redirect_uri',
+            'must name a host of letters, digits, hyphens and dots, or an IP address',
+        ];
+
+        yield 'a front-channel logout URI whose host carries a directive of a policy' => [
+            [
+                'redirect_uris' => [self::REDIRECT_URI],
+                'frontchannel_logout_uri' => 'https://registered.test;sandbox/frontchannel-logout',
+            ],
+            'invalid_client_metadata',
+            'must name a host of letters, digits, hyphens and dots, or an IP address',
+        ];
+
+        yield 'a logo served from a name outside ASCII' => [
+            [
+                'redirect_uris' => [self::REDIRECT_URI],
+                'logo_uri' => 'https://bücher.example/logo.png',
+            ],
+            'invalid_client_metadata',
+            'must name a host of letters, digits, hyphens and dots, or an IP address',
+        ];
     }
 
     /**
