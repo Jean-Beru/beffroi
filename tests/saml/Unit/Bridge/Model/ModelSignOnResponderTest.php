@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Tests\Unit\Bridge\Model;
 
 use function array_map;
+use function base64_decode;
 use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Beffroi\Core\Bridge\Key\SealedKeyProvider;
 use Beffroi\Core\Domain\Key\TenantKey;
@@ -15,6 +16,7 @@ use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
 use Beffroi\Saml\Bridge\Model\ModelSignOnResponder;
 use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
+use Beffroi\Saml\Domain\Metadata\Certificate;
 use Beffroi\Saml\Domain\ServiceProvider\AttributeNameFormat;
 use Beffroi\Saml\Domain\SingleSignOn\AttributeValue;
 use Beffroi\Saml\Domain\SingleSignOn\PersistentNameId;
@@ -37,17 +39,34 @@ use Beffroi\Saml2\Model\Metadata\Endpoint;
 use Beffroi\Saml2\Model\Metadata\IdentityProvider;
 use Beffroi\Saml2\Model\Protocol\SecondLevelStatusCode;
 use Beffroi\Saml2\Model\Protocol\StatusCode;
+use Beffroi\Saml2\Model\Protocol\UnverifiedResponse;
 use Beffroi\Saml2\Model\SamlLoader;
 use Beffroi\Saml2\Model\Tests\Support\FrozenClock;
 use Beffroi\Saml2\Model\Tests\Support\InMemoryReplayGuard;
+use Beffroi\Saml2\Model\Tests\Unit\Metadata\MetadataFixtures;
 use Beffroi\Saml2\Model\Validation\AcceptedAssertion;
 use Beffroi\Saml2\Model\Validation\ExpectedResponse;
 use Beffroi\Saml2\Model\Validation\ResponseValidator;
 use Beffroi\Saml2\Model\Validation\SignatureCoverage;
+use Beffroi\Xml\Core\Attributes;
+use Beffroi\Xml\Core\Children;
+use Beffroi\Xml\Core\Document;
+use Beffroi\Xml\Core\Name;
+use Beffroi\Xml\Core\Serializer;
+use Beffroi\Xml\Dsig\Exception\DigestMismatch;
+use Beffroi\Xml\Dsig\VerificationKey;
+use Beffroi\Xml\Dsig\VerificationKeys;
+use Beffroi\Xml\Dsig\Verifier;
+use Beffroi\Xml\Enc\Decryptor;
+use Beffroi\Xml\Enc\PrivateDecryptionKey;
 use Closure;
+use Dom\Element;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function preg_replace;
+use function preg_replace_callback;
+use function str_contains;
 
 /**
  * spec/saml.md section 6.4 step 7, S-13 to S-16: the answer written with the model's objects, signed by the SAML key of
@@ -57,6 +76,12 @@ use PHPUnit\Framework\TestCase;
 final class ModelSignOnResponderTest extends TestCase
 {
     private const string IDENTITY_PROVIDER = 'https://id.acme.example/saml/metadata';
+
+    private const string ASSERTION = 'urn:oasis:names:tc:SAML:2.0:assertion';
+
+    private const string XMLENC = 'http://www.w3.org/2001/04/xmlenc#';
+
+    private const string DSIG = 'http://www.w3.org/2000/09/xmldsig#';
 
     private Tenant $tenant;
 
@@ -300,6 +325,117 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
+     * S-19, S-21: for a response that names the certificate of a service provider, the response holds one
+     * saml:EncryptedAssertion and no saml:Assertion, its own signature after its Issuer.
+     */
+    #[Test]
+    public function theAssertionIsEncryptedForTheCertificateNamed(): void
+    {
+        // When
+        $response = $this->posted($this->responder()->success($this->tenant, self::response(encrypted: true)));
+
+        // Then
+        static::assertSame(
+            ['saml:Issuer', 'ds:Signature', 'samlp:Status', 'saml:EncryptedAssertion'],
+            array_map(static fn (Element $child): string => $child->nodeName, Children::all($response->root())),
+        );
+    }
+
+    /**
+     * S-20: the content under aes256-gcm, the session key under rsa-oaep-mgf1p, nothing in CBC anywhere in the
+     * response.
+     */
+    #[Test]
+    public function theAssertionIsEncryptedUnderOneSchemeAndNothingInCbc(): void
+    {
+        // When
+        $response = $this->posted($this->responder()->success($this->tenant, self::response(encrypted: true)));
+
+        // Then
+        $data = self::encryptedData($response);
+        static::assertSame(
+            ['http://www.w3.org/2009/xmlenc11#aes256-gcm', 'http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p', false],
+            [
+                Attributes::required(Children::one($data, new Name(self::XMLENC, 'EncryptionMethod')), new Name(null, 'Algorithm')),
+                Attributes::required(Children::one(self::encryptedKey($data), new Name(self::XMLENC, 'EncryptionMethod')), new Name(null, 'Algorithm')),
+                str_contains(new Serializer()->serialize($response), 'cbc'),
+            ],
+        );
+    }
+
+    /**
+     * S-19: the EncryptedKey carries no KeyInfo, the service provider decrypting with the key it holds.
+     */
+    #[Test]
+    public function theEncryptedKeyCarriesNoKeyInfo(): void
+    {
+        // When
+        $response = $this->posted($this->responder()->success($this->tenant, self::response(encrypted: true)));
+
+        // Then
+        static::assertNull(Children::optional(self::encryptedKey(self::encryptedData($response)), new Name(self::DSIG, 'KeyInfo')));
+    }
+
+    /**
+     * S-19, S-21, SAML Core §6.2: decrypted with the private key of the certificate named, the assertion is the one the
+     * tenant signed for the service provider: put back in place of its ciphertext, the signature of the response taken
+     * off, the model's validator accepts it, the assertion covering itself.
+     */
+    #[Test]
+    public function theDecryptedAssertionIsTheOneTheTenantSigned(): void
+    {
+        // Given
+        $response = $this->posted($this->responder()->success($this->tenant, self::response(encrypted: true)));
+
+        // When
+        $accepted = $this->validate(UnverifiedResponse::of(SamlLoader::create()->load(self::decryptedInPlace($response))));
+
+        // Then
+        static::assertEquals(
+            [SignatureCoverage::Assertion, new NameId('alice-at-sp', NameIdFormat::Persistent, self::IDENTITY_PROVIDER, ServiceProviderDocuments::SIGNED)],
+            [$accepted->coverage, $accepted->assertion->nameId],
+        );
+    }
+
+    /**
+     * S-21: the signature of the response verifies under the certificate of the tenant over the ciphertext.
+     */
+    #[Test]
+    public function theSignatureOfTheResponseVerifiesOverTheCiphertext(): void
+    {
+        // Given
+        $response = $this->posted($this->responder()->success($this->tenant, self::response(encrypted: true)));
+
+        // When
+        $verified = new Verifier(SamlLoader::create())->verify($response->root(), $this->tenantKeys());
+
+        // Then
+        static::assertCount(1, Children::named($verified->document->root(), new Name(self::ASSERTION, 'EncryptedAssertion')));
+    }
+
+    /**
+     * S-21: a byte of the ciphertext changed, the signature of the response no longer holds, so that the service
+     * provider refuses it before it decrypts anything.
+     */
+    #[Test]
+    public function theSignatureOfTheResponseCoversTheCiphertext(): void
+    {
+        // Given
+        $bytes = (string) base64_decode($this->responder()->success($this->tenant, self::response(encrypted: true))->fields['SAMLResponse'], true);
+        $altered = SamlLoader::create()->load((string) preg_replace_callback(
+            '~(</ds:KeyInfo><xenc:CipherData><xenc:CipherValue>)(.)~',
+            static fn (array $match): string => $match[1] . ($match[2] === 'A' ? 'B' : 'A'),
+            $bytes,
+        ));
+
+        // Then
+        $this->expectException(DigestMismatch::class);
+
+        // When
+        new Verifier(SamlLoader::create())->verify($altered->root(), $this->tenantKeys());
+    }
+
+    /**
      * The only active SAML key of the tenant, on the halves given.
      *
      * @param array<string, string> $publicJwk
@@ -328,25 +464,80 @@ final class ModelSignOnResponderTest extends TestCase
 
     private function accepted(PostedForm $form): AcceptedAssertion
     {
-        $certificate = new SelfSignedCertificateIssuer()->selfSigned(SamlKeys::opened($this->key));
-
-        return new PostReceiver(SamlLoader::create())
-            ->response($form->fields)
-            ->validate(
-                new ResponseValidator(SamlLoader::create(), new FrozenClock(Fixtures::now()), new InMemoryReplayGuard()),
-                new IdentityProvider(
-                    self::IDENTITY_PROVIDER,
-                    [$certificate->base64],
-                    [],
-                    [
-                        new Endpoint(Binding::HttpRedirect, 'https://id.acme.example/saml/sso'),
-                    ],
-                ),
-                ExpectedResponse::toRequest(SignOnRequests::ID, SignOnRequests::ASSERTION_CONSUMER, ServiceProviderDocuments::SIGNED),
-            );
+        return $this->validate(new PostReceiver(SamlLoader::create())->response($form->fields)->response);
     }
 
-    private static function response(): SignOnResponse
+    /**
+     * The response the form posts, loaded as the service provider loads it.
+     */
+    private function posted(PostedForm $form): Document
+    {
+        return SamlLoader::create()->load((string) base64_decode($form->fields['SAMLResponse'], true));
+    }
+
+    /**
+     * The certificate the metadata of the tenant publish, as Dsig verifies under it.
+     */
+    private function tenantKeys(): VerificationKeys
+    {
+        return new VerificationKeys([VerificationKey::fromCertificateBase64(
+            new SelfSignedCertificateIssuer()->selfSigned(SamlKeys::opened($this->key))->base64,
+        )]);
+    }
+
+    /**
+     * The response as the service provider reads it once it decrypted its assertion with the test key of a service
+     * provider of saml2-model: the plaintext in place of the saml:EncryptedAssertion, the signature of the response,
+     * which covered the ciphertext, taken off.
+     */
+    private static function decryptedInPlace(Document $response): string
+    {
+        $plaintext = new Decryptor(SamlLoader::create())->decrypt(
+            self::encryptedData($response),
+            PrivateDecryptionKey::fromPem(MetadataFixtures::bytes('keys/sp-signing-key.pem')),
+        );
+        $assertion = (string) preg_replace('~^<\?xml[^>]*\?>\s*~', '', new Serializer()->serialize($plaintext));
+        $bytes = (string) preg_replace('~(</saml:Issuer>)<ds:Signature\b.*?</ds:Signature>~s', '$1', new Serializer()->serialize($response), 1);
+
+        return (string) preg_replace_callback(
+            '~<saml:EncryptedAssertion\b.*</saml:EncryptedAssertion>~s',
+            static fn (): string => $assertion,
+            $bytes,
+        );
+    }
+
+    private static function encryptedData(Document $response): Element
+    {
+        return Children::one(
+            Children::one($response->root(), new Name(self::ASSERTION, 'EncryptedAssertion')),
+            new Name(self::XMLENC, 'EncryptedData'),
+        );
+    }
+
+    private static function encryptedKey(Element $data): Element
+    {
+        return Children::one(Children::one($data, new Name(self::DSIG, 'KeyInfo')), new Name(self::XMLENC, 'EncryptedKey'));
+    }
+
+    private function validate(UnverifiedResponse $response): AcceptedAssertion
+    {
+        $certificate = new SelfSignedCertificateIssuer()->selfSigned(SamlKeys::opened($this->key));
+
+        return new ResponseValidator(SamlLoader::create(), new FrozenClock(Fixtures::now()), new InMemoryReplayGuard())->validate(
+            $response,
+            new IdentityProvider(
+                self::IDENTITY_PROVIDER,
+                [$certificate->base64],
+                [],
+                [
+                    new Endpoint(Binding::HttpRedirect, 'https://id.acme.example/saml/sso'),
+                ],
+            ),
+            ExpectedResponse::toRequest(SignOnRequests::ID, SignOnRequests::ASSERTION_CONSUMER, ServiceProviderDocuments::SIGNED),
+        );
+    }
+
+    private static function response(bool $encrypted = false): SignOnResponse
     {
         return new SignOnResponse(
             self::IDENTITY_PROVIDER,
@@ -359,6 +550,7 @@ final class ModelSignOnResponderTest extends TestCase
             'the-session',
             Fixtures::now()->modify('-30 minutes'),
             Fixtures::now(),
+            $encrypted ? new Certificate(MetadataFixtures::certificate('sp')) : null,
         );
     }
 }

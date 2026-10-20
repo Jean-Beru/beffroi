@@ -29,7 +29,8 @@ if (isset($_GET['idp'])) {
     return;
 }
 
-$as = new \SimpleSAML\Auth\Simple('beffroi');
+// ?as= names the service provider whose session is read, "beffroi" unless it is "beffroi-encrypted" (issue #733)
+$as = new \SimpleSAML\Auth\Simple(($_GET['as'] ?? '') === 'beffroi-encrypted' ? 'beffroi-encrypted' : 'beffroi');
 if (!$as->isAuthenticated()) {
     http_response_code(401);
     echo json_encode(['authenticated' => false]);

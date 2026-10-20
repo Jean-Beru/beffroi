@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Saml2\Bindings\Tests\Unit;
 
 use function array_keys;
+use function array_map;
 use function base64_decode;
 use function base64_encode;
 use Beffroi\Saml2\Bindings\BindingLimits;
@@ -14,13 +15,17 @@ use Beffroi\Saml2\Bindings\PostSender;
 use Beffroi\Saml2\Bindings\Tests\Support\BrowserForm;
 use Beffroi\Saml2\Model\SamlLoader;
 use Beffroi\Saml2\Model\Writing\AuthnRequestWriter;
+use Beffroi\Saml2\Model\Writing\Encryption;
 use Beffroi\Saml2\Model\Writing\LogoutRequestWriter;
 use Beffroi\Saml2\Model\Writing\LogoutResponseWriter;
 use Beffroi\Saml2\Model\Writing\ResponseWriter;
 use Beffroi\Saml2\Model\Writing\SignedParts;
 use Beffroi\Saml2\Model\Writing\Signing;
+use Beffroi\Xml\Core\Children;
 use Beffroi\Xml\Core\Serializer;
 use Beffroi\Xml\Dsig\SigningKeyInterface;
+use Beffroi\Xml\Enc\PeerKey;
+use function file_get_contents;
 use function get_class_methods;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -393,6 +398,29 @@ final class PostSenderTest extends TestCase
 
         // Then
         static::assertSame(self::AUTHN_REQUEST_ID, $received->response->inResponseTo);
+    }
+
+    /**
+     * §9.3 row 15, section 6.4 step 2, section 11, model.md section 6.7: the Encryption given is the writer's, whose
+     * response then holds a saml:EncryptedAssertion in place of its assertion.
+     */
+    #[Test]
+    public function itHandsTheEncryptionToTheWriter(): void
+    {
+        // Given
+        $encryption = new Encryption(PeerKey::fromCertificatePem(
+            (string) file_get_contents(__DIR__ . '/../Fixture/keys/sp-signing-certificate.pem'),
+        ));
+
+        // When
+        $form = self::postSender()->response(self::response(), self::signing('idp'), SignedParts::Assertion, null, $encryption);
+
+        // Then
+        $response = SamlLoader::create()->load((string) base64_decode($form->fields['SAMLResponse'], true));
+        static::assertSame(
+            ['saml:Issuer', 'samlp:Status', 'saml:EncryptedAssertion'],
+            array_map(static fn ($child): string => $child->nodeName, Children::all($response->root())),
+        );
     }
 
     /**
