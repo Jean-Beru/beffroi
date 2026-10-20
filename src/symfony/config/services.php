@@ -287,13 +287,17 @@ use Beffroi\Saml\Application\SingleSignOn\AttributeRelease;
 use Beffroi\Saml\Application\SingleSignOn\SingleSignOn;
 use Beffroi\Saml\Bridge\Model\ModelAuthnRequestReceiver;
 use Beffroi\Saml\Bridge\Model\DeclaredServiceProviderReader;
-use Beffroi\Saml\Bridge\Model\ModelLogoutRequestReceiver;
+use Beffroi\Saml\Bridge\Model\ModelLogoutMessageReceiver;
+use Beffroi\Saml\Bridge\Model\ModelSignOutNotifier;
 use Beffroi\Saml\Bridge\Model\ModelSignOutResponder;
 use Beffroi\Saml\Bridge\Model\TenantSigning;
+use Beffroi\Saml\Application\SingleLogout\ProviderLogout;
 use Beffroi\Saml\Application\SingleLogout\SessionParticipants;
 use Beffroi\Saml\Application\SingleLogout\SingleLogout;
 use Beffroi\Saml\Port\LogoutReplayStoreInterface;
-use Beffroi\Saml\Port\LogoutRequestReceiverInterface;
+use Beffroi\Saml\Port\LogoutChainRepositoryInterface;
+use Beffroi\Saml\Port\LogoutMessageReceiverInterface;
+use Beffroi\Saml\Port\SignOutNotifierInterface;
 use Beffroi\Saml\Port\SessionParticipationRepositoryInterface;
 use Beffroi\Saml\Port\SignOutResponderInterface;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineLogoutReplayStore;
@@ -304,6 +308,8 @@ use Beffroi\Saml\Port\PersistentIdentifierSaltInterface;
 use Beffroi\Saml\Port\SignOnResponderInterface;
 use Beffroi\Bundle\Saml\RouterIdentityProviderEndpoints;
 use Beffroi\Bundle\Saml\SamlSigning;
+use Beffroi\Bundle\Saml\LogoutChainPages;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineLogoutChainRepository;
 use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
 use Beffroi\Saml\Application\Metadata\SigningCertificates;
 use Beffroi\Saml\Bridge\Model\ModelMetadataWriter;
@@ -1908,14 +1914,24 @@ return static function (ContainerConfigurator $container): void {
     // on the lane of the events (S-26)
     $services->set(DoctrineLogoutReplayStore::class);
     $services->alias(LogoutReplayStoreInterface::class, DoctrineLogoutReplayStore::class);
-    $services->set(ModelLogoutRequestReceiver::class);
-    $services->alias(LogoutRequestReceiverInterface::class, ModelLogoutRequestReceiver::class);
+    $services->set(ModelLogoutMessageReceiver::class);
+    $services->alias(LogoutMessageReceiverInterface::class, ModelLogoutMessageReceiver::class);
     $services->set(ModelSignOutResponder::class);
     $services->alias(SignOutResponderInterface::class, ModelSignOutResponder::class);
     $services->set(SingleLogout::class);
     $services->set(DoctrineSessionParticipationRepository::class);
     $services->alias(SessionParticipationRepositoryInterface::class, DoctrineSessionParticipationRepository::class);
     $services->set(SessionParticipants::class);
+    // beffroi/saml: Single Logout started by the identity provider (spec/saml.md section 6.6), every service provider
+    // of the sessions a browser ended told through that browser, by a request signed by the SAML key of the tenant
+    // (S-31), its answer read at the single logout service (S-33); the chain kept in a store every worker shares,
+    // taken by one request at each step (S-32); the page of Front-Channel Logout 1.0 put before it (S-35)
+    $services->set(DoctrineLogoutChainRepository::class);
+    $services->alias(LogoutChainRepositoryInterface::class, DoctrineLogoutChainRepository::class);
+    $services->set(ModelSignOutNotifier::class);
+    $services->alias(SignOutNotifierInterface::class, ModelSignOutNotifier::class);
+    $services->set(ProviderLogout::class);
+    $services->set(LogoutChainPages::class);
     $services->set(EndSessionRequestParser::class);
     $services->set(EndSessionHandler::class);
     $services->set(LogoutTokenIssuer::class);

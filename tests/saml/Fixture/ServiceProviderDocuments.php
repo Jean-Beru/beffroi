@@ -182,6 +182,28 @@ final readonly class ServiceProviderDocuments
     }
 
     /**
+     * The metadata of another service provider, $entityId, whose signing and encryption key is the test key $key of
+     * saml2-model, its assertion consumer service on HTTP-POST at $entityId/acs, and the single logout services given:
+     * a second service provider of one session (spec/saml.md S-30).
+     *
+     * @param 'idp'|'sp' $key
+     * @param list<Endpoint> $singleLogoutServices
+     */
+    public static function of(string $entityId, string $key, array $singleLogoutServices): string
+    {
+        return new Serializer()->serialize(new MetadataWriter()->write(
+            new EntityDescriptor($entityId, null, serviceProvider: new ServiceProvider(
+                $entityId,
+                [MetadataFixtures::certificate($key)],
+                [MetadataFixtures::certificate($key)],
+                new IndexedEndpoints([new IndexedEndpoint(Binding::HttpPost, $entityId . '/acs', 0)]),
+                $singleLogoutServices,
+            )),
+            new Signing(MetadataFixtures::signingKey($key)),
+        ));
+    }
+
+    /**
      * The certificate of a test key of saml2-model, as a declaration pins it.
      *
      * @param 'idp'|'sp' $key

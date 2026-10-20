@@ -15,7 +15,8 @@ use PHPUnit\Framework\TestCase;
 final class SignOutStatusTest extends TestCase
 {
     /**
-     * Core §3.2.2.2: Success is a top-level code alone; a refusal is Requester above its second-level code.
+     * Core §3.2.2.2, spec/saml.md S-34: Success is a top-level code alone; a partial logout is Success above
+     * PartialLogout; a refusal is Requester above its second-level code.
      */
     #[Test]
     #[DataProvider('provideCodes')]
@@ -31,6 +32,11 @@ final class SignOutStatusTest extends TestCase
     public static function provideCodes(): iterable
     {
         yield 'every session named ended' => [SignOutStatus::Success, 'urn:oasis:names:tc:SAML:2.0:status:Success', null];
+        yield 'a service provider of the sessions not told' => [
+            SignOutStatus::PartialLogout,
+            'urn:oasis:names:tc:SAML:2.0:status:Success',
+            'urn:oasis:names:tc:SAML:2.0:status:PartialLogout',
+        ];
         yield 'a session of another principal' => [
             SignOutStatus::UnknownPrincipal,
             'urn:oasis:names:tc:SAML:2.0:status:Requester',

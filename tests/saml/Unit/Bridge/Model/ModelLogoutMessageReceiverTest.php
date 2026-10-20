@@ -9,14 +9,19 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use Beffroi\Saml\Bridge\Model\DeclaredServiceProviderReader;
-use Beffroi\Saml\Bridge\Model\ModelLogoutRequestReceiver;
+use Beffroi\Saml\Bridge\Model\ModelLogoutMessageReceiver;
 use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataReader;
 use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Domain\SingleLogout\LogoutChain;
+use Beffroi\Saml\Domain\SingleLogout\LogoutProgress;
+use Beffroi\Saml\Domain\SingleLogout\SignOutAnswer;
+use Beffroi\Saml\Domain\SingleLogout\SignOutRequest;
 use Beffroi\Saml\Domain\SingleSignOn\PersistentNameId;
 use Beffroi\Saml\Exception\LogoutRefusedException;
 use Beffroi\Saml\Tests\Fixture\FixedClaims;
 use Beffroi\Saml\Tests\Fixture\FixedEndpoints;
 use Beffroi\Saml\Tests\Fixture\InMemoryAcceptedMetadata;
+use Beffroi\Saml\Tests\Fixture\InMemoryLogoutChains;
 use Beffroi\Saml\Tests\Fixture\InMemoryLogoutReplayStore;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
 use Beffroi\Saml\Tests\Fixture\SignOutRequests;
@@ -30,14 +35,18 @@ use Beffroi\Saml2\Model\Metadata\Endpoint;
 use Beffroi\Saml2\Model\Protocol\LogoutRequest;
 use Beffroi\Saml2\Model\Protocol\LogoutResponse;
 use Beffroi\Saml2\Model\Protocol\Status;
+use Beffroi\Saml2\Model\Protocol\SecondLevelStatusCode;
 use Beffroi\Saml2\Model\Protocol\StatusCode;
 use Beffroi\Saml2\Model\Tests\Unit\Metadata\MetadataFixtures;
 use Beffroi\Saml2\Model\Writing\LogoutRequestWriter;
+use Beffroi\Saml2\Model\Writing\LogoutResponseWriter;
 use Beffroi\Saml2\Model\Writing\Signing;
 use Beffroi\Xml\Core\Serializer;
 use function explode;
 use function parse_url;
+use function str_replace;
 use const PHP_URL_QUERY;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -46,10 +55,11 @@ use Symfony\Component\Uid\Uuid;
 /**
  * spec/saml.md section 6.5 step 1, S-22, S-23, S-27: a logout request of a declared service provider received over
  * either binding, validated by the model at the URL of the single logout service of the tenant, remembered once, and
- * the single logout service its answer goes to resolved among those of the accepted metadata; anything else refused
- * without a SAML answer.
+ * the single logout service its answer goes to resolved among those of the accepted metadata. Section 6.6 step 4, S-33:
+ * the logout response of the request an open chain waits for, validated the same way under the metadata of the
+ * service provider that request went to. Anything else refused without a SAML answer.
  */
-final class ModelLogoutRequestReceiverTest extends TestCase
+final class ModelLogoutMessageReceiverTest extends TestCase
 {
     private const string ISSUER = 'https://id.acme.example';
 
@@ -61,6 +71,10 @@ final class ModelLogoutRequestReceiverTest extends TestCase
 
     private const string POST_RESPONSE_LOCATION = ServiceProviderDocuments::SIGNED . '/slo/post/response';
 
+    private const string AWAITED = '_7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b1a0f9e8d';
+
+    private const string RESPONSE_ID = '_1f2e3d4c5b6a7f8e9d0c1b2a3f4e5d6c7b8a9f0e';
+
     private Tenant $tenant;
 
     private InMemoryAcceptedMetadata $accepted;
@@ -69,12 +83,15 @@ final class ModelLogoutRequestReceiverTest extends TestCase
 
     private MockClock $clock;
 
+    private InMemoryLogoutChains $chains;
+
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant('acme', self::ISSUER);
         $this->accepted = new InMemoryAcceptedMetadata();
         $this->replay = new InMemoryLogoutReplayStore();
         $this->clock = new MockClock(Fixtures::now());
+        $this->chains = new InMemoryLogoutChains();
         $this->accept([
             new Endpoint(Binding::HttpRedirect, SignOutRequests::SINGLE_LOGOUT),
             new Endpoint(Binding::HttpPost, self::POST_LOCATION, self::POST_RESPONSE_LOCATION),
@@ -112,7 +129,7 @@ final class ModelLogoutRequestReceiverTest extends TestCase
     public function aRequestSignedOverHttpPostIsAnsweredAtTheResponseLocation(): void
     {
         // When
-        $request = $this->receiver()->post($this->tenant, $this->posted());
+        $request = self::acceptedRequest($this->receiver()->post($this->tenant, $this->posted()));
 
         // Then
         static::assertSame(
@@ -131,7 +148,7 @@ final class ModelLogoutRequestReceiverTest extends TestCase
         $this->accept([new Endpoint(Binding::HttpPost, self::POST_LOCATION)]);
 
         // When
-        $request = $this->receiver()->redirect($this->tenant, $this->redirected());
+        $request = self::acceptedRequest($this->receiver()->redirect($this->tenant, $this->redirected()));
 
         // Then
         static::assertSame([SignOutRequests::POST, self::POST_LOCATION], [$request->answerBinding, $request->answerLocation]);
@@ -151,7 +168,7 @@ final class ModelLogoutRequestReceiverTest extends TestCase
         ]);
 
         // When
-        $request = $this->receiver()->redirect($this->tenant, $this->redirected());
+        $request = self::acceptedRequest($this->receiver()->redirect($this->tenant, $this->redirected()));
 
         // Then
         static::assertSame([SignOutRequests::REDIRECT, SignOutRequests::SINGLE_LOGOUT], [$request->answerBinding, $request->answerLocation]);
@@ -279,30 +296,174 @@ final class ModelLogoutRequestReceiverTest extends TestCase
     }
 
     /**
-     * S-22, issue #735: a LogoutResponse answers a request the identity provider has not sent.
+     * S-33, B-2, section 6.6 step 4: the LogoutResponse of the request a chain waits for, signed over its query string
+     * by the service provider that request went to, is accepted as the answer of that chain, Success.
      */
     #[Test]
-    public function aLogoutResponseIsRefused(): void
+    public function theAnswerOfTheRequestAwaitedOverHttpRedirectIsAccepted(): void
     {
         // Given
+        $chain = $this->awaiting();
+
+        // When
+        $answer = $this->receiver()->redirect($this->tenant, self::answeredOverRedirect(self::response()));
+
+        // Then
+        static::assertEquals(new SignOutAnswer($chain, true), $answer);
+    }
+
+    /**
+     * S-33, M-2, model.md section 6.4: the answer signed in its XML over HTTP-POST, its status other than Success, is
+     * an answer and not a refusal.
+     */
+    #[Test]
+    public function anAnswerOverHttpPostThatIsNotSuccessIsAccepted(): void
+    {
+        // Given
+        $chain = $this->awaiting();
+        $response = self::response(new Status(StatusCode::Responder, SecondLevelStatusCode::PartialLogout));
+
+        // When
+        $answer = $this->receiver()->post($this->tenant, new PostSender()->logoutResponse($response, self::signing())->fields);
+
+        // Then
+        static::assertEquals(new SignOutAnswer($chain, false), $answer);
+    }
+
+    /**
+     * S-33: an answer naming no request is refused before any key is read.
+     */
+    #[Test]
+    public function anAnswerNamingNoRequestIsRefused(): void
+    {
+        // Given
+        $this->awaiting();
+        $document = new Serializer()->serialize(new LogoutResponseWriter()->write(self::response(), null));
+
+        // Then
+        $this->expectException(LogoutRefusedException::class);
+        $this->expectExceptionMessageIs('The LogoutResponse answers no request an open chain of logout waits for (spec/saml.md S-33).');
+
+        // When
+        $this->receiver()->post($this->tenant, ['SAMLResponse' => base64_encode(str_replace(' InResponseTo="' . self::AWAITED . '"', '', $document))]);
+    }
+
+    /**
+     * S-33, S-32: an answer naming a request no chain waits for, and the answer of a chain past its ten minutes, are
+     * refused before any key is read.
+     */
+    #[Test]
+    #[DataProvider('provideAnswersNobodyWaitsFor')]
+    public function anAnswerNoOpenChainWaitsForIsRefused(string $inResponseTo, string $later): void
+    {
+        // Given
+        $this->awaiting();
+        $this->clock->modify($later);
         $response = new LogoutResponse(
-            '_1f2e3d4c5b6a7f8e9d0c1b2a3f4e5d6c7b8a9f0e',
+            self::RESPONSE_ID,
             Fixtures::now(),
             new Issuer(ServiceProviderDocuments::SIGNED),
             self::SINGLE_LOGOUT,
-            SignOutRequests::ID,
+            $inResponseTo,
             new Status(StatusCode::Success),
         );
 
         // Then
         $this->expectException(LogoutRefusedException::class);
-        $this->expectExceptionMessageIs('A LogoutResponse answers a request this identity provider has not sent: it sends none before issue #735 (spec/saml.md S-22).');
+        $this->expectExceptionMessageIs('The LogoutResponse answers no request an open chain of logout waits for (spec/saml.md S-33).');
 
         // When
-        $this->receiver()->redirect(
-            $this->tenant,
-            (string) parse_url(new RedirectSender()->logoutResponse($response, self::signing()), PHP_URL_QUERY),
+        $this->receiver()->redirect($this->tenant, self::answeredOverRedirect($response));
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideAnswersNobodyWaitsFor(): iterable
+    {
+        yield 'an answer to a request nobody waits for' => [SignOutRequests::ID, '+1 second'];
+        yield 'the answer of a chain past its ten minutes' => [self::AWAITED, '+600 seconds'];
+    }
+
+    /**
+     * S-33, M-8: an answer whose Issuer is another service provider than the one the request went to, signed by a key
+     * of that other one, is refused.
+     */
+    #[Test]
+    public function anAnswerOfAnotherIssuerIsRefused(): void
+    {
+        // Given
+        $this->awaiting();
+        $response = new LogoutResponse(
+            self::RESPONSE_ID,
+            Fixtures::now(),
+            new Issuer(self::UNREGISTERED),
+            self::SINGLE_LOGOUT,
+            self::AWAITED,
+            new Status(StatusCode::Success),
         );
+
+        // Then
+        $this->expectException(LogoutRefusedException::class);
+        $this->expectExceptionMessageIsOrContains('(M-8)');
+
+        // When
+        $this->receiver()->redirect($this->tenant, self::answeredOverRedirect($response));
+    }
+
+    /**
+     * S-33, M-2, SAML Profiles §4.4.4.2: an answer whose query string carries no signature, and none in its XML.
+     */
+    #[Test]
+    public function anUnsignedAnswerIsRefused(): void
+    {
+        // Given
+        $this->awaiting();
+        [$query] = explode('&SigAlg=', self::answeredOverRedirect(self::response()));
+
+        // Then
+        $this->expectException(LogoutRefusedException::class);
+        $this->expectExceptionMessageIs('The message carries no ds:Signature, which the profile requires (M-2).');
+
+        // When
+        $this->receiver()->redirect($this->tenant, $query);
+    }
+
+    /**
+     * S-33, M-11: the same answer received twice is refused the second time, by the store of S-23.
+     */
+    #[Test]
+    public function theSameAnswerIsRefusedTheSecondTime(): void
+    {
+        // Given
+        $this->awaiting();
+        $query = self::answeredOverRedirect(self::response());
+        $this->receiver()->redirect($this->tenant, $query);
+
+        // Then
+        $this->expectException(LogoutRefusedException::class);
+        $this->expectExceptionMessageIs('The logout message was already accepted from its issuer (M-11).');
+
+        // When
+        $this->receiver()->redirect($this->tenant, $query);
+    }
+
+    /**
+     * S-33, section 6.3 step 1: the service provider the request went to, its metadata no longer accepted, cannot
+     * verify an answer.
+     */
+    #[Test]
+    public function anAnswerOfAServiceProviderWithoutAcceptedMetadataIsRefused(): void
+    {
+        // Given
+        $this->awaiting(self::UNREGISTERED);
+
+        // Then
+        $this->expectException(LogoutRefusedException::class);
+        $this->expectExceptionMessageIs('The service provider of the request has no metadata accepted yet (spec/saml.md section 6.3 step 1).');
+
+        // When
+        $this->receiver()->redirect($this->tenant, self::answeredOverRedirect(self::response()));
     }
 
     /**
@@ -363,9 +524,53 @@ final class ModelLogoutRequestReceiverTest extends TestCase
         return new PostSender()->logoutRequest(self::request(), self::signing(), 'state-1')->fields;
     }
 
-    private function receiver(): ModelLogoutRequestReceiver
+    /**
+     * An open chain of the tenant waiting for the answer of the request AWAITED, sent to $serviceProvider.
+     */
+    private function awaiting(string $serviceProvider = ServiceProviderDocuments::SIGNED): LogoutChain
     {
-        return new ModelLogoutRequestReceiver(
+        $chain = new LogoutChain(
+            LogoutChain::digestOf('reference'),
+            $this->tenant,
+            self::AWAITED,
+            new LogoutProgress([], [], $serviceProvider, false, null, null),
+            Fixtures::now()->modify('+600 seconds'),
+        );
+        $this->chains->save($chain);
+
+        return $chain;
+    }
+
+    private static function response(Status $status = new Status(StatusCode::Success)): LogoutResponse
+    {
+        return new LogoutResponse(
+            self::RESPONSE_ID,
+            Fixtures::now(),
+            new Issuer(ServiceProviderDocuments::SIGNED),
+            self::SINGLE_LOGOUT,
+            self::AWAITED,
+            $status,
+        );
+    }
+
+    private static function answeredOverRedirect(LogoutResponse $response): string
+    {
+        return (string) parse_url(new RedirectSender()->logoutResponse($response, self::signing()), PHP_URL_QUERY);
+    }
+
+    /**
+     * The message received, a request as the tests of section 6.5 step 1 expect it.
+     */
+    private static function acceptedRequest(SignOutRequest|SignOutAnswer $received): SignOutRequest
+    {
+        static::assertInstanceOf(SignOutRequest::class, $received);
+
+        return $received;
+    }
+
+    private function receiver(): ModelLogoutMessageReceiver
+    {
+        return new ModelLogoutMessageReceiver(
             new DeclaredServiceProviderReader(
                 new ConfigurationServiceProviders(
                     'acme',
@@ -385,6 +590,7 @@ final class ModelLogoutRequestReceiverTest extends TestCase
             new FixedEndpoints(),
             $this->replay,
             $this->clock,
+            $this->chains,
         );
     }
 

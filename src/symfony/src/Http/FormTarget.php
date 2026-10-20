@@ -48,7 +48,16 @@ final readonly class FormTarget
      */
     public function mayEndAt(Request $request, RedirectUri $uri): void
     {
-        $this->completion->mayReach($request, $uri->origin);
+        $this->mayReach($request, $uri->origin);
+    }
+
+    /**
+     * Named by a page whose submission may be answered with redirections through this origin, once per origin: the
+     * single logout service of a SAML service provider a chain of logout goes to (beffroi/saml S-36).
+     */
+    public function mayReach(Request $request, string $origin): void
+    {
+        $this->completion->mayReach($request, $origin);
     }
 
     #[AsEventListener(event: ResponseEvent::class, priority: PolicyCompletion::AFTER_THE_POLICY_IS_WRITTEN)]

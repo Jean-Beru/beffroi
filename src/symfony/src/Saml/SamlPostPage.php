@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Saml;
 
+use function array_map;
+use function array_unique;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Oidc\Domain\Page\InlineScript;
 use Beffroi\Saml\Domain\SingleSignOn\PostedForm;
+use function implode;
 use function parse_url;
 use const PHP_URL_HOST;
 use const PHP_URL_PORT;
@@ -20,6 +23,11 @@ use Symfony\Component\HttpFoundation\Response;
  * by one script its Content-Security-Policy names by its hash (CSP Level 3 §6.6.2.2), as the page of the form post
  * response mode names its own; nothing loads, nothing frames it, and the form posts to the origin of the assertion
  * consumer service and nowhere else. The caching headers are those of the binding (SAML Bindings §3.5.5.1).
+ *
+ * The same page posts a LogoutRequest of a chain to the single logout service of a service provider (spec/saml.md
+ * S-36): a browser checks "form-action" over every redirection of the submission, and that service provider may answer
+ * by a redirection of it back to the provider, which carries the chain on by redirections, so the policy names the
+ * origin of each URL the form reaches as well.
  */
 final readonly class SamlPostPage
 {
@@ -49,7 +57,7 @@ final readonly class SamlPostPage
                 'Content-Security-Policy' => sprintf(
                     "default-src 'none'; script-src '%s'; form-action %s; base-uri 'none'; frame-ancestors 'none'",
                     new InlineScript(self::SCRIPT)->cspHashSource(),
-                    self::origin($form->action),
+                    implode(' ', array_unique(array_map(self::originOf(...), [$form->action, ...$form->reaches]))),
                 ),
                 'Cache-Control' => 'no-cache, no-store',
                 'Pragma' => 'no-cache',
@@ -60,7 +68,7 @@ final readonly class SamlPostPage
     /**
      * The scheme, the host and the port of the URL, which a "form-action" names (CSP Level 3 §2.3.1).
      */
-    private static function origin(string $url): string
+    public static function originOf(string $url): string
     {
         $port = parse_url($url, PHP_URL_PORT);
 

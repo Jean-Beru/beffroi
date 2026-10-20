@@ -38,6 +38,6 @@ final class RecordingSignOutResponder implements SignOutResponderInterface
         }
         $this->response = $response;
 
-        return new RedirectedMessage($response->request->answerLocation . '?SAMLResponse=answered');
+        return new RedirectedMessage($response->requester->answerLocation . '?SAMLResponse=answered');
     }
 }

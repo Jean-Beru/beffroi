@@ -51,6 +51,7 @@ use function array_map;
 use Closure;
 use function explode;
 use function parse_url;
+use function sprintf;
 use const PHP_URL_HOST;
 use const PHP_URL_PATH;
 use const PHP_URL_QUERY;
@@ -87,6 +88,11 @@ final class SingleLogoutTest extends ConsoleTestCase
     private const string IDENTITY_PROVIDER_SINGLE_LOGOUT = 'https://op.test/saml/slo';
 
     private const string LOGOUT_REQUEST_ID = '_0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b';
+
+    /**
+     * The policy of the page that posts a form (spec/saml.md section 6.8), its "form-action" left to the test.
+     */
+    private const string POLICY = "default-src 'none'; script-src 'sha256-8lDeP0UDwCO6/RhblgeH/ctdBzjVpJxrXizsnIk3cEQ='; form-action %s; base-uri 'none'; frame-ancestors 'none'";
 
     private User $alice;
 
@@ -288,6 +294,27 @@ final class SingleLogoutTest extends ConsoleTestCase
         static::assertSame(
             [self::SINGLE_LOGOUT_POST, StatusCode::Success],
             [$posted['action'], $this->validated($response, self::SINGLE_LOGOUT_POST)->response->status->code],
+        );
+    }
+
+    /**
+     * S-36, section 6.8: the page that posts the LogoutResponse over HTTP-POST, a response nobody answers, names in its
+     * "form-action" the origin of the single logout service it posts to and nothing else.
+     */
+    #[Test]
+    public function thePagePostingTheResponseNamesTheOriginOfItsActionAloneInItsPolicy(): void
+    {
+        // Given
+        $assertion = $this->signedOn();
+        $form = new PostSender()->logoutRequest($this->logoutRequest($assertion), self::signing(), 'state-2');
+
+        // When
+        $this->browser->request('POST', '/saml/slo', $form->fields, [], ['CONTENT_TYPE' => 'application/x-www-form-urlencoded']);
+
+        // Then
+        static::assertSame(
+            sprintf(self::POLICY, 'https://sp.example.org'),
+            $this->browser->getResponse()->headers->get('Content-Security-Policy'),
         );
     }
 

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Controller;
 
 use Beffroi\Bundle\Doctrine\TenantProvider;
-use Beffroi\Bundle\EndSession\FrontChannelLogoutRenderer;
 use Beffroi\Bundle\Http\BrowserSession;
 use Beffroi\Bundle\Http\FormTarget;
 use Beffroi\Bundle\Http\InteractionLocale;
@@ -13,6 +12,7 @@ use Beffroi\Bundle\Http\FormToken;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\RequestContextFactory;
 use Beffroi\Bundle\Http\RequestParameters;
+use Beffroi\Bundle\Saml\LogoutChainPages;
 use Beffroi\Oidc\Application\EndSession\EndSessionHandler;
 use Beffroi\Oidc\Application\EndSession\EndSessionRequestParser;
 use Beffroi\Oidc\Domain\EndSession\LoggedOut;
@@ -31,7 +31,8 @@ use Symfony\Component\Routing\Attribute\Route;
  * redirection (§4). The confirmation page re-submits the same parameters with the answer and the CSRF
  * token; a "no" ends nothing and sends the user nowhere. A session that ended and whose clients
  * registered a front-channel logout URI leaves through the page that loads them (Front-Channel Logout
- * 1.0 §3), which is what then sends the browser back to the client that asked.
+ * 1.0 §3), then through the SAML service providers it signed in, each told in turn (beffroi/saml S-29 to
+ * S-35), which is what then sends the browser back to the client that asked.
  */
 #[AsController]
 final readonly class EndSessionController
@@ -56,7 +57,7 @@ final readonly class EndSessionController
         private InteractionPages $pages,
         private FormToken $formTokens,
         private InteractionLocale $locale,
-        private FrontChannelLogoutRenderer $frontChannel,
+        private LogoutChainPages $logoutChain,
         private FormTarget $formTargets,
     ) {
     }
@@ -99,6 +100,9 @@ final readonly class EndSessionController
                 // the browser to follow the redirection that goes there (FormTarget)
                 $this->formTargets->mayEndAt($request, $postLogoutRedirectUri);
             }
+            // and the confirmed logout goes through the SAML service providers of the session first,
+            // redirections of the same submission (beffroi/saml S-36)
+            $this->logoutChain->mayEnd($request, $decision->session);
 
             return $this->pages->render('logout.html.twig', [
                 'client' => $decision->request->client,
@@ -112,9 +116,10 @@ final readonly class EndSessionController
         }
         if ($decision->endedSession !== null) {
             $this->browser->unbind($request->getSession());
-            // Front-Channel Logout 1.0 §3: the frames of the clients of the session, before the browser
-            // is sent back to the one that asked; a session no client of that kind signed in has none
-            $page = $this->frontChannel->render($decision->endedSession, $decision->redirect?->toUri());
+            // Front-Channel Logout 1.0 §3: the frames of the clients of the session, then each SAML
+            // service provider it signed in (beffroi/saml S-35), before the browser is sent back to the
+            // one that asked; a session nobody of those kinds signed in has none of it
+            $page = $this->logoutChain->begin($tenant, [$decision->endedSession], $decision->redirect?->toUri());
             if ($page !== null) {
                 return $page;
             }
