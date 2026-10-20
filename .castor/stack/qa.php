@@ -440,8 +440,16 @@ const PHPSTAN_SAML_RULES_CONFIGURATION = '.ci-tools/phpstan-saml-rules.neon';
 
 const PHPSTAN_SAML_RULES_REPORT = '.ci-tools/cache/phpstan-saml-rules/report.json';
 
-/** The identifier of the errors BannedCallsRule and BannedCallablesRule report: the only ones this task reads. */
-const PHPSTAN_SAML_RULES_IDENTIFIER = 'beffroi.bannedCall';
+/**
+ * The identifiers of the errors the rules of section 8 report, the only ones this task reads: BannedCallsRule and
+ * BannedCallablesRule, BannedNamesRule, and the function list and the statements of ekino/phpstan-banned-code.
+ */
+const PHPSTAN_SAML_RULES_IDENTIFIERS = [
+    'beffroi.bannedCall',
+    'beffroi.bannedName',
+    'ekinoBannedCode.function',
+    'ekinoBannedCode.expression',
+];
 
 #[AsTask(
     description: 'Prove the bans of beffroi/saml (section 8): PHPStan with its rules on tests/saml/PhpStan/Fixture, whose lines say what each must report; fails on a refusal missing and on one nobody expected',
@@ -483,7 +491,7 @@ function phpstan_saml_rules(): void
         foreach ($result['messages'] ?? [] as $message) {
             $identifier = (string) ($message['identifier'] ?? '');
             $line = sprintf('%s:%d %s', phpstan_saml_rules_relative((string) $file), $message['line'] ?? 0, $message['message']);
-            if ($identifier === PHPSTAN_SAML_RULES_IDENTIFIER) {
+            if (in_array($identifier, PHPSTAN_SAML_RULES_IDENTIFIERS, true)) {
                 // A set and not a count: PHPStan visits a nullsafe call twice, and what is asked is whether the line is refused.
                 $reported[$line] = true;
             } elseif ($identifier === '' || str_starts_with($identifier, 'phpstan.')) {
