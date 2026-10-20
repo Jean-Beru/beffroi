@@ -7,6 +7,7 @@ namespace Beffroi\Bundle\Tests\Functional\Saml;
 use Beffroi\Bundle\Key\KmsUnavailableListener;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
+use Beffroi\Bundle\Tests\Functional\Controller\TokensOfASession;
 use Beffroi\Bundle\Tests\Functional\Key\KmsOutage;
 use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Beffroi\Core\Domain\Identity\User;
@@ -71,6 +72,8 @@ use Symfony\Component\Uid\Uuid;
  */
 final class SingleLogoutTest extends ConsoleTestCase
 {
+    use TokensOfASession;
+
     private const string SERVICE_PROVIDER = ServiceProviderDocuments::SIGNED;
 
     private const string ASSERTION_CONSUMER = ServiceProviderDocuments::SIGNED . '/acs';
@@ -220,6 +223,24 @@ final class SingleLogoutTest extends ConsoleTestCase
             }
         }
         static::assertSame([['oidc-demo', self::sessionIndex($assertion)]], $told);
+    }
+
+    /**
+     * Issue #741, S-25: the tokens of OpenID Connect issued under the session a service provider ends are
+     * revoked with it, as those of a session ended at the end session endpoint are.
+     */
+    #[Test]
+    public function theTokensIssuedUnderTheSessionAreRevoked(): void
+    {
+        // Given
+        $assertion = $this->signedOn();
+        $tokens = self::tokensIssuedIn($this->sessionOf($assertion));
+
+        // When
+        $this->browser->request('GET', self::pathOf($this->logoutUrl($assertion)));
+
+        // Then
+        self::assertTheTokensAreRevoked($tokens);
     }
 
     /**
