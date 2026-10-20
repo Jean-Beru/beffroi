@@ -1545,6 +1545,10 @@
         <source>error.saml_request_refused</source>
         <target>L’application a envoyé une demande de connexion que ce fournisseur ne peut pas accepter. Recommencez depuis l’application.</target>
       </trans-unit>
+      <trans-unit id="error.saml_logout_refused" resname="error.saml_logout_refused">
+        <source>error.saml_logout_refused</source>
+        <target>L’application a envoyé une demande de déconnexion que ce fournisseur ne peut pas accepter. Déconnectez-vous à nouveau depuis l’application.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

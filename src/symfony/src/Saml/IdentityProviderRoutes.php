@@ -6,9 +6,9 @@ namespace Beffroi\Bundle\Saml;
 
 /**
  * The routes of the SAML identity provider of a tenant, their names and their paths under the prefix the bundle is
- * mounted at, which is the path of the issuer (spec/saml.md section 5.1). The metadata names the three, and two are
- * served today, the metadata and the single sign-on service (issue #731), beside the route where the login sends back
- * a request that waited for it; the single logout service is issues #734 and #735's. The controllers take their route
+ * mounted at, which is the path of the issuer (spec/saml.md section 5.1). The metadata names the three, all served: the
+ * metadata, the single sign-on service (issue #731), beside the route where the login sends back a request that waited
+ * for it, and the single logout service (issue #734). The controllers take their route
  * from here, so that what the metadata announced is where they answer.
  *
  * The metadata is read server to server, the protocol plane; both services are reached by the browser, the plane of

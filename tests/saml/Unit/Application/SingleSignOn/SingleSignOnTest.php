@@ -10,9 +10,11 @@ use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\SessionEnd;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Saml\Application\SingleSignOn\AttributeRelease;
 use Beffroi\Saml\Application\SingleSignOn\SingleSignOn;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
+use Beffroi\Saml\Domain\Event\ServiceProviderSignedIn;
 use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataReader;
 use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
 use Beffroi\Saml\Domain\ServiceProvider\AttributeNameFormat;
@@ -60,6 +62,7 @@ final class SingleSignOnTest extends TestCase
     private RecordingResponder $responder;
 
     private InMemoryAcceptedMetadata $acceptedMetadata;
+    private RecordingEventDispatcher $events;
 
     protected function setUp(): void
     {
@@ -67,6 +70,7 @@ final class SingleSignOnTest extends TestCase
         $this->clock = new MockClock(Fixtures::now());
         $this->responder = new RecordingResponder();
         $this->acceptedMetadata = new InMemoryAcceptedMetadata();
+        $this->events = new RecordingEventDispatcher();
     }
 
     /**
@@ -76,7 +80,7 @@ final class SingleSignOnTest extends TestCase
     public function aBrowserWithoutASessionSignsInFirst(): void
     {
         // When
-        $form = $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(), null);
+        $form = $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(), null, Fixtures::context());
 
         // Then
         static::assertNull($form);
@@ -89,7 +93,7 @@ final class SingleSignOnTest extends TestCase
     public function aPassiveRequestWithoutASessionIsNoPassive(): void
     {
         // When
-        $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(isPassive: true), null);
+        $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(isPassive: true), null, Fixtures::context());
 
         // Then
         static::assertSame(SignOnStatus::NoPassive, $this->responder->failure?->status);
@@ -107,7 +111,7 @@ final class SingleSignOnTest extends TestCase
         $request = SignOnRequests::request();
 
         // When
-        $form = $this->singleSignOn()->answer($this->tenant, $request, $session);
+        $form = $this->singleSignOn()->answer($this->tenant, $request, $session, Fixtures::context());
 
         // Then
         static::assertEquals(
@@ -135,7 +139,7 @@ final class SingleSignOnTest extends TestCase
         $session = $this->session(Fixtures::now()->modify('-1 second'));
 
         // When
-        $form = $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(forceAuthn: true), $session);
+        $form = $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(forceAuthn: true), $session, Fixtures::context());
 
         // Then
         static::assertNull($form);
@@ -151,7 +155,7 @@ final class SingleSignOnTest extends TestCase
         $session = $this->session(Fixtures::now());
 
         // When
-        $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(forceAuthn: true), $session);
+        $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(forceAuthn: true), $session, Fixtures::context());
 
         // Then
         static::assertSame($session->id->toRfc4122(), $this->responder->response?->sessionIndex);
@@ -169,7 +173,7 @@ final class SingleSignOnTest extends TestCase
         $request = SignOnRequests::request(forceAuthn: true, receivedAt: Fixtures::now()->modify('+500 milliseconds'));
 
         // When
-        $this->singleSignOn($request)->answer($this->tenant, $request, $session);
+        $this->singleSignOn($request)->answer($this->tenant, $request, $session, Fixtures::context());
 
         // Then
         static::assertSame($session->id->toRfc4122(), $this->responder->response?->sessionIndex);
@@ -185,7 +189,7 @@ final class SingleSignOnTest extends TestCase
     public function aSessionThatDoesNotAnswerAsksForALogin(Closure $session): void
     {
         // When
-        $form = $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(), $session($this->tenant));
+        $form = $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(), $session($this->tenant), Fixtures::context());
 
         // Then
         static::assertNull($form);
@@ -216,6 +220,7 @@ final class SingleSignOnTest extends TestCase
             $this->tenant,
             SignOnRequests::request(nameIdFormat: 'urn:oasis:names:tc:SAML:2.0:nameid-format:transient'),
             $this->session(),
+            Fixtures::context(),
         );
 
         // Then
@@ -230,7 +235,7 @@ final class SingleSignOnTest extends TestCase
     public function aNameIdPolicyThePersistentIdentifierSatisfiesIsAnswered(string $format): void
     {
         // When
-        $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(nameIdFormat: $format), $this->session());
+        $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(nameIdFormat: $format), $this->session(), Fixtures::context());
 
         // Then
         static::assertInstanceOf(SignOnResponse::class, $this->responder->response);
@@ -252,7 +257,7 @@ final class SingleSignOnTest extends TestCase
     public function aRequestedAuthenticationContextIsNoAuthnContext(): void
     {
         // When
-        $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(authnContextRequested: true), $this->session());
+        $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(authnContextRequested: true), $this->session(), Fixtures::context());
 
         // Then
         static::assertEquals(
@@ -273,7 +278,7 @@ final class SingleSignOnTest extends TestCase
     public function aFailureIsAnsweredBeforeALogin(): void
     {
         // When
-        $form = $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(authnContextRequested: true), null);
+        $form = $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(authnContextRequested: true), null, Fixtures::context());
 
         // Then
         static::assertEquals(new PostedForm(SignOnRequests::ASSERTION_CONSUMER, ['SAMLResponse' => 'failure']), $form);
@@ -293,7 +298,7 @@ final class SingleSignOnTest extends TestCase
         $this->expectExceptionMessageIs('The request waited longer than the ten minutes it may wait for a login (spec/saml.md S-18).');
 
         // When
-        $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(), $this->session());
+        $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(), $this->session(), Fixtures::context());
     }
 
     /**
@@ -306,7 +311,7 @@ final class SingleSignOnTest extends TestCase
         $this->clock->modify('+599 seconds');
 
         // When
-        $form = $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(), $this->session());
+        $form = $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(), $this->session(), Fixtures::context());
 
         // Then
         static::assertNotNull($form);
@@ -356,7 +361,7 @@ final class SingleSignOnTest extends TestCase
         $this->accepted(ServiceProviderDocuments::simpleSamlPhp());
 
         // When
-        $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(serviceProvider: self::ENCRYPTING), $this->session());
+        $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(serviceProvider: self::ENCRYPTING), $this->session(), Fixtures::context());
 
         // Then
         static::assertEquals(
@@ -378,7 +383,7 @@ final class SingleSignOnTest extends TestCase
         $this->accepted(ServiceProviderDocuments::simpleSamlPhpWithCertificate(ServiceProviderDocuments::signer()->base64));
 
         // When
-        $this->singleSignOn()->answer($this->tenant, $request, $this->session());
+        $this->singleSignOn()->answer($this->tenant, $request, $this->session(), Fixtures::context());
 
         // Then
         static::assertEquals(ServiceProviderDocuments::signer(), $this->responder->response?->encryptFor);
@@ -399,7 +404,7 @@ final class SingleSignOnTest extends TestCase
 
         // When
         try {
-            $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(serviceProvider: self::ENCRYPTING), $this->session());
+            $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(serviceProvider: self::ENCRYPTING), $this->session(), Fixtures::context());
         } catch (SignOnRefusedException) {
         }
 
@@ -428,7 +433,7 @@ final class SingleSignOnTest extends TestCase
         $this->accepted(ServiceProviderDocuments::signed(null), ServiceProviderDocuments::SIGNED);
 
         // When
-        $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(), $this->session());
+        $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(), $this->session(), Fixtures::context());
 
         // Then
         static::assertNull($this->responder->response?->encryptFor);
@@ -445,7 +450,12 @@ final class SingleSignOnTest extends TestCase
         $this->expectExceptionMessageIs('The service provider of the request is no longer declared (spec/saml.md section 6.4 step 2).');
 
         // When
-        $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(serviceProvider: 'https://gone.example.org/saml'), $this->session());
+        $this->singleSignOn()->answer(
+            $this->tenant,
+            SignOnRequests::request(serviceProvider: 'https://gone.example.org/saml'),
+            $this->session(),
+            Fixtures::context(),
+        );
     }
 
     /**
@@ -514,7 +524,48 @@ final class SingleSignOnTest extends TestCase
             $this->clock,
             $this->acceptedMetadata,
             new ModelServiceProviderMetadataReader($this->clock),
+            $this->events,
         );
+    }
+
+    /**
+     * S-26: an assertion written from a session announces the service provider's part in it, the session by its ID,
+     * the service provider by its entity ID and the person by their subject, with the context of the request.
+     */
+    #[Test]
+    public function anAnswerFromASessionAnnouncesTheServiceProviderOfTheSession(): void
+    {
+        // Given
+        $session = $this->session();
+
+        // When
+        $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(), $session, Fixtures::context());
+
+        // Then
+        static::assertEquals(
+            [new ServiceProviderSignedIn(
+                Fixtures::now(),
+                $this->tenant,
+                $session->id,
+                ServiceProviderDocuments::SIGNED,
+                $session->user->subject,
+                Fixtures::context(),
+            )],
+            $this->events->events,
+        );
+    }
+
+    /**
+     * S-26: a failure is written from no session, and announces nothing.
+     */
+    #[Test]
+    public function aFailureAnnouncesNothing(): void
+    {
+        // When
+        $this->singleSignOn()->answer($this->tenant, SignOnRequests::request(isPassive: true), null, Fixtures::context());
+
+        // Then
+        static::assertSame([], $this->events->events);
     }
 
     /**

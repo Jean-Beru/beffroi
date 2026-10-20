@@ -6,6 +6,7 @@ namespace Beffroi\Saml\Tests\Fixture;
 
 use Beffroi\Saml\Domain\Metadata\Certificate;
 use Beffroi\Saml2\Model\Metadata\Binding;
+use Beffroi\Saml2\Model\Metadata\Endpoint;
 use Beffroi\Saml2\Model\Metadata\EntityDescriptor;
 use Beffroi\Saml2\Model\Metadata\IndexedEndpoint;
 use Beffroi\Saml2\Model\Metadata\IndexedEndpoints;
@@ -110,6 +111,27 @@ final readonly class ServiceProviderDocuments
     }
 
     /**
+     * The metadata of exampleOrg() listing the single logout services given, before its assertion consumer service as
+     * the schema orders them (SAML Metadata §2.4.2, §2.4.4), each a Binding, a Location and a ResponseLocation.
+     *
+     * @param list<array{string, string, ?string}> $services
+     */
+    public static function exampleOrgWithSingleLogout(array $services): string
+    {
+        $elements = '';
+        foreach ($services as [$binding, $location, $responseLocation]) {
+            $elements .= sprintf(
+                '<md:SingleLogoutService Binding="%s" Location="%s"%s/>',
+                $binding,
+                $location,
+                $responseLocation === null ? '' : sprintf(' ResponseLocation="%s"', $responseLocation),
+            );
+        }
+
+        return str_replace('<md:AssertionConsumerService ', $elements . '<md:AssertionConsumerService ', self::exampleOrg());
+    }
+
+    /**
      * The metadata of Entra's SAML federation of guests as an administrator writes them: no key, no
      * AuthnRequestsSigned, its assertion consumer service on HTTP-POST.
      */
@@ -139,11 +161,13 @@ final readonly class ServiceProviderDocuments
     }
 
     /**
-     * A service provider document signed by a test key of saml2-model, its validUntil given.
+     * A service provider document signed by a test key of saml2-model, its validUntil given, and the single logout
+     * services given (spec/saml.md S-27).
      *
      * @param 'idp'|'sp' $key
+     * @param list<Endpoint> $singleLogoutServices
      */
-    public static function signed(?DateTimeImmutable $validUntil, string $key = 'sp'): string
+    public static function signed(?DateTimeImmutable $validUntil, string $key = 'sp', array $singleLogoutServices = []): string
     {
         return new Serializer()->serialize(new MetadataWriter()->write(
             new EntityDescriptor(self::SIGNED, $validUntil, serviceProvider: new ServiceProvider(
@@ -151,6 +175,7 @@ final readonly class ServiceProviderDocuments
                 [MetadataFixtures::certificate('sp')],
                 [MetadataFixtures::certificate('sp')],
                 new IndexedEndpoints([new IndexedEndpoint(Binding::HttpPost, self::SIGNED . '/acs', 0)]),
+                $singleLogoutServices,
             )),
             new Signing(MetadataFixtures::signingKey($key)),
         ));

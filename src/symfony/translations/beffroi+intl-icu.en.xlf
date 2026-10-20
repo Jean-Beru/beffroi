@@ -1545,6 +1545,10 @@
         <source>error.saml_request_refused</source>
         <target>The application sent a sign-in request this provider cannot accept. Start again from the application.</target>
       </trans-unit>
+      <trans-unit id="error.saml_logout_refused" resname="error.saml_logout_refused">
+        <source>error.saml_logout_refused</source>
+        <target>The application sent a request to sign out that this provider cannot accept. Sign out again from the application.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

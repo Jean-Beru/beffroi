@@ -15,6 +15,7 @@ use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
 use Beffroi\Saml\Bridge\Model\ModelSignOnResponder;
+use Beffroi\Saml\Bridge\Model\TenantSigning;
 use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
 use Beffroi\Saml\Domain\Metadata\Certificate;
 use Beffroi\Saml\Domain\ServiceProvider\AttributeNameFormat;
@@ -459,7 +460,7 @@ final class ModelSignOnResponderTest extends TestCase
 
     private function responder(): ModelSignOnResponder
     {
-        return new ModelSignOnResponder(new SealedKeyProvider($this->keys, Keys::opened()), SamlKeys::algorithm());
+        return new ModelSignOnResponder(new TenantSigning(new SealedKeyProvider($this->keys, Keys::opened()), SamlKeys::algorithm()));
     }
 
     private function accepted(PostedForm $form): AcceptedAssertion

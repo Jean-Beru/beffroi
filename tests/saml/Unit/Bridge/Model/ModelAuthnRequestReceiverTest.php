@@ -7,6 +7,7 @@ namespace Beffroi\Saml\Tests\Unit\Bridge\Model;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
+use Beffroi\Saml\Bridge\Model\DeclaredServiceProviderReader;
 use Beffroi\Saml\Bridge\Model\ModelAuthnRequestReceiver;
 use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataReader;
 use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
@@ -257,17 +258,19 @@ final class ModelAuthnRequestReceiverTest extends TestCase
     private function receiver(): ModelAuthnRequestReceiver
     {
         return new ModelAuthnRequestReceiver(
-            new ConfigurationServiceProviders(
-                'acme',
-                [
-                    ServiceProviderDocuments::SIGNED => [
-                        'metadata' => '/etc/saml/sp.xml',
+            new DeclaredServiceProviderReader(
+                new ConfigurationServiceProviders(
+                    'acme',
+                    [
+                        ServiceProviderDocuments::SIGNED => [
+                            'metadata' => '/etc/saml/sp.xml',
+                        ],
                     ],
-                ],
-                new FixedClaims(),
+                    new FixedClaims(),
+                ),
+                $this->accepted,
+                new ModelServiceProviderMetadataReader($this->clock),
             ),
-            $this->accepted,
-            new ModelServiceProviderMetadataReader($this->clock),
             new FixedEndpoints(),
             $this->clock,
         );
