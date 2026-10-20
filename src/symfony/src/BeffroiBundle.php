@@ -71,6 +71,7 @@ use Beffroi\Bundle\Doctrine\Type\ScopesType;
 use Beffroi\Bundle\Doctrine\Type\SectorIdentifierType;
 use Beffroi\Bundle\Doctrine\Type\SubjectType;
 use Beffroi\Bundle\Key\KmsClientPass;
+use Beffroi\Bundle\Saml\ServiceProvidersPass;
 use Beffroi\Bundle\Plane\Plane;
 use Beffroi\Bundle\Security\CorePasswordHasher;
 use Beffroi\Bundle\Security\RateLimitedAttempts;
@@ -206,15 +207,18 @@ final class BeffroiBundle extends AbstractBundle
     }
 
     /**
-     * The one pass of the bundle: the KMS client it seals with is named in its own configuration and
+     * The passes of the bundle. The KMS client it seals with is named in its own configuration and
      * registered in the framework's, so nothing but a pass can tell a name that answers from one that
-     * does not.
+     * does not. The service providers of the tenant are built when the container is compiled, so that a
+     * declaration that does not hold together fails the build and not the first login (spec/saml.md
+     * section 6.2 step 1), which only a pass can do while leaving aside the values of the environment.
      */
     public function build(ContainerBuilder $container): void
     {
         parent::build($container);
 
         $container->addCompilerPass(new KmsClientPass());
+        $container->addCompilerPass(new ServiceProvidersPass());
     }
 
     /**
@@ -246,6 +250,13 @@ final class BeffroiBundle extends AbstractBundle
                             'dir' => $bundleDir . '/config/doctrine/oidc',
                             'prefix' => 'Beffroi\\Oidc\\Domain',
                             'alias' => 'BeffroiOidc',
+                        ],
+                        'BeffroiSaml' => [
+                            'type' => 'xml',
+                            'is_bundle' => false,
+                            'dir' => $bundleDir . '/config/doctrine/saml',
+                            'prefix' => 'Beffroi\\Saml\\Domain',
+                            'alias' => 'BeffroiSaml',
                         ],
                     ],
                 ],

@@ -68,6 +68,10 @@ use Beffroi\Core\Domain\Event\UserAuthenticated;
 use Beffroi\Core\Domain\Journal\JournalEntry;
 use Beffroi\Core\Port\JournalInterface;
 use Symfony\Component\Uid\Uuid;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
+use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
+use function str_replace;
 
 /**
  * One row of every family of columns the classification declares sealed, written with the values declared
@@ -170,6 +174,11 @@ final readonly class SealedRows
         'beffroi_pushed_authorization_request' => [
             'parameters' => 'ada@example.org',
         ],
+        // the metadata a service provider of the tenant published (beffroi/saml, issue #729), whose
+        // md:ContactPerson names the person who answers for it
+        'beffroi_saml_service_provider' => [
+            'document' => 'grace.hopper@sp.example.org',
+        ],
         'beffroi_client' => [
             'metadata' => 'The Difference Engine',
             'assigned_metadata' => 'urn:example:scope:assigned-by-the-policy',
@@ -261,6 +270,34 @@ final readonly class SealedRows
         $this->archive($user);
         $this->change($user);
         $this->disclosure($user, $client);
+        $this->serviceProviderMetadata();
+    }
+
+    /**
+     * The metadata document accepted for a service provider (beffroi/saml, issue #729), sealed in a scope of its
+     * own: the one a SimpleSAMLphp service provider published, with the technical contact a deployment of it
+     * declares.
+     */
+    public function serviceProviderMetadata(): AcceptedMetadata
+    {
+        $metadata = new AcceptedMetadata(
+            Uuid::v7(),
+            $this->tenant,
+            ServiceProviderDocuments::SIMPLESAMLPHP,
+            str_replace(
+                '</md:EntityDescriptor>',
+                sprintf(
+                    '<md:ContactPerson contactType="technical"><md:GivenName>Grace</md:GivenName><md:EmailAddress>mailto:%s</md:EmailAddress></md:ContactPerson></md:EntityDescriptor>',
+                    self::VALUES['beffroi_saml_service_provider']['document'],
+                ),
+                ServiceProviderDocuments::simpleSamlPhp(),
+            ),
+            null,
+            $this->now,
+        );
+        $this->service('test.beffroi.saml_accepted_metadata', AcceptedMetadataRepositoryInterface::class)->register($metadata);
+
+        return $metadata;
     }
 
     /**

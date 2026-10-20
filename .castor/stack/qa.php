@@ -706,6 +706,20 @@ const INFECTION_STRICT_FILES = [
     'src/saml/src/Application/Metadata/SigningCertificates.php',
     'src/saml/src/Application/Metadata/IdentityProviderMetadataHandler.php',
     'src/saml/src/Bridge/Model/ModelMetadataWriter.php',
+    // beffroi/saml, section 9: the service providers of a tenant, their declaration, the reading of their metadata and
+    // the document kept against a rollback (section 6.2).
+    'src/saml/src/Domain/ServiceProvider/AcceptedMetadata.php',
+    'src/saml/src/Domain/ServiceProvider/AttributeMapping.php',
+    'src/saml/src/Domain/ServiceProvider/AttributeNameFormat.php',
+    'src/saml/src/Domain/ServiceProvider/Lexical.php',
+    'src/saml/src/Domain/ServiceProvider/MetadataLocation.php',
+    'src/saml/src/Domain/ServiceProvider/ServiceProvider.php',
+    'src/saml/src/Domain/ServiceProvider/ServiceProviderMetadata.php',
+    'src/saml/src/Application/ServiceProvider/MetadataRefreshment.php',
+    'src/saml/src/Application/ServiceProvider/ServiceProviderMetadataRefresh.php',
+    'src/saml/src/Application/ServiceProvider/AcceptedMetadataForgetting.php',
+    'src/saml/src/Bridge/Model/ModelServiceProviderMetadataReader.php',
+    'src/saml/src/Bridge/Configuration/ConfigurationServiceProviders.php',
     'src/saml2-model/src/Writing/LogoutRequestWriter.php',
     'src/saml2-model/src/Writing/LogoutResponseWriter.php',
     // Section 9: the strict readers of the two logout messages (sections 6.3, 6.4).

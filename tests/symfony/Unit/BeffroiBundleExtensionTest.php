@@ -27,6 +27,8 @@ use Beffroi\Oidc\Application\Token\TokenIssuer;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
+use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -433,6 +435,80 @@ final class BeffroiBundleExtensionTest extends TestCase
             ],
             false,
         ];
+    }
+
+    /**
+     * Spec/saml.md S-5, section 5.2: the service providers the configuration declares reach the declarations of the
+     * tenant whose slug the configuration names, each with what a declaration leaves out filled in.
+     */
+    #[Test]
+    public function theServiceProvidersReachTheDeclarationsOfTheTenant(): void
+    {
+        // When
+        $container = self::load([
+            'tenant' => [
+                'issuer' => 'https://op.test',
+                'slug' => 'acme',
+            ],
+            'saml' => [
+                'identity_provider' => null,
+                'service_providers' => [
+                    'https://sp.example.com/saml' => [
+                        'metadata' => 'https://sp.example.com/saml/metadata',
+                        'attributes' => [
+                            'urn:oid:0.9.2342.19200300.100.1.3' => [
+                                'claim' => 'email',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        // Then
+        $declarations = $container->getDefinition(ConfigurationServiceProviders::class);
+        static::assertSame('acme', $declarations->getArgument('$tenantSlug'));
+        static::assertSame(
+            [
+                'https://sp.example.com/saml' => [
+                    'metadata' => 'https://sp.example.com/saml/metadata',
+                    'attributes' => [
+                        'urn:oid:0.9.2342.19200300.100.1.3' => [
+                            'claim' => 'email',
+                            'name_format' => 'uri',
+                            'friendly_name' => null,
+                        ],
+                    ],
+                    'metadata_signers' => [],
+                    'encrypt_assertions' => false,
+                    'signs_authn_requests' => true,
+                ],
+            ],
+            $declarations->getArgument('$definitions'),
+        );
+    }
+
+    /**
+     * Spec/saml.md section 5.2: a tenant that is no identity provider serves no service provider, and a deployment
+     * that declares one for it is refused at boot rather than left with a declaration nothing reads.
+     */
+    #[Test]
+    public function aServiceProviderOfATenantThatIsNoIdentityProviderIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIsOrContains('Service providers are declared for a tenant that is a SAML identity provider: enable "beffroi.saml.identity_provider", or remove "beffroi.saml.service_providers".');
+
+        // When
+        self::load([
+            'saml' => [
+                'service_providers' => [
+                    'https://sp.example.com/saml' => [
+                        'metadata' => 'https://sp.example.com/saml/metadata',
+                    ],
+                ],
+            ],
+        ]);
     }
 
     /**
