@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Http;
 
 use Beffroi\Oidc\Domain\Client\RedirectUri;
+use LogicException;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
@@ -54,6 +55,8 @@ final readonly class FormTarget
     /**
      * Named by a page whose submission may be answered with redirections through this origin, once per origin: the
      * single logout service of a SAML service provider a chain of logout goes to (beffroi/saml S-36).
+     *
+     * @throws LogicException when the value is not an origin (SourceOrigin)
      */
     public function mayReach(Request $request, string $origin): void
     {

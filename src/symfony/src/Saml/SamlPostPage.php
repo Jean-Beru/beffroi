@@ -7,9 +7,11 @@ namespace Beffroi\Bundle\Saml;
 use function array_map;
 use function array_unique;
 use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\SourceOrigin;
 use Beffroi\Oidc\Domain\Page\InlineScript;
 use Beffroi\Saml\Domain\SingleSignOn\PostedForm;
 use function implode;
+use LogicException;
 use function parse_url;
 use const PHP_URL_HOST;
 use const PHP_URL_PORT;
@@ -91,17 +93,20 @@ final readonly class SamlPostPage
     }
 
     /**
-     * The scheme, the host and the port of the URL, which a "form-action" names (CSP Level 3 §2.3.1).
+     * The scheme, the host and the port of the URL, which a "form-action" names (CSP Level 3 §2.3.1), and nothing that
+     * would split the policy it is written into (SourceOrigin, S-36).
+     *
+     * @throws LogicException when the URL has no such origin, which the reading of the metadata refuses first (S-11)
      */
     public static function originOf(string $url): string
     {
         $port = parse_url($url, PHP_URL_PORT);
 
-        return sprintf(
+        return SourceOrigin::of(sprintf(
             '%s://%s%s',
             (string) parse_url($url, PHP_URL_SCHEME),
             (string) parse_url($url, PHP_URL_HOST),
             $port === null || $port === false ? '' : ':' . $port,
-        );
+        ));
     }
 }
