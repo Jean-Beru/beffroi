@@ -8,9 +8,11 @@
 #   docker compose --profile saml-sp up -d        plus the SimpleSAMLphp service provider of the SAML judge on https://saml-sp.localhost (castor saml-sp)
 #
 # The OP answers on op.localhost for the browser (every *.localhost name is loopback) and for the
-# conformance suite container (network alias). Caddy issues the certificate from its internal CA;
-# that CA is imported into the Java truststore of the suite at start-up (tests/conformance/server-entrypoint.sh),
-# with the certificate of the suite's own nginx, for the scripted browser of the suite (tests/conformance/README.md).
+# conformance suite container (network alias). Its certificate is the one mkcert issued on the machine
+# when "castor start" found an mkcert CA (BEFFROI_STACK_CERTIFICATE, docker/op/entrypoint.sh), and one
+# Caddy issues from its internal CA otherwise. Either root is imported into the Java truststore of the
+# suite at start-up (tests/conformance/server-entrypoint.sh), with the certificate of the suite's own
+# nginx, for the scripted browser of the suite (tests/conformance/README.md).
 services:
   op:
     build:
@@ -40,6 +42,10 @@ services:
       # The name the suite's nginx answers on, set by "castor start --conformance" and by nothing else:
       # it is what tells the entrypoint that there is a certificate to trust (docker/conformance/trust-nginx.sh).
       CONFORMANCE_NGINX_HOST: ${CONFORMANCE_NGINX_HOST:-}
+      # The fingerprint of the certificate mkcert issued for the stack (the volume of /stack-certificate
+      # below), read by nothing in the container: Caddy loads the certificate once, at start, and a value
+      # that changes is what has compose create this container again when "castor start" issued a new one.
+      BEFFROI_STACK_CERTIFICATE_FINGERPRINT: ${BEFFROI_STACK_CERTIFICATE_FINGERPRINT:-}
       # Worker mode, as in production (architecture §3.3, §6): the kernel, and with it the opened signing key,
       # lives for every request a worker serves; the KMS is asked once per key and per worker, not once per
       # signature. The workers restart when a source file of the application or of the packages changes,
@@ -95,6 +101,11 @@ services:
       - geoip_data:/app/var/geoip
       - caddy_data:/data
       - caddy_config:/config
+      # The certificate mkcert issued on the machine for every name of the stack, its key and a copy of the
+      # mkcert root, which "castor start" names when the machine has an mkcert CA (STACK_HOSTS of
+      # .castor/stack/stack.php); the directory of mkcert itself, and the key of its root, are mounted
+      # nowhere. Without it, a directory with no certificate in it, and Caddy keeps its internal CA.
+      - ${BEFFROI_STACK_CERTIFICATE:-./docker/op/without-mkcert}:/stack-certificate:ro
     ports:
       - target: 80
         published: ${HTTP_PORT:-80}
@@ -334,6 +345,10 @@ services:
       OIDC_GOOGLE_SECRET: google-secret
       OIDC_GITLAB_CLIENTID: gitlab-client
       OIDC_GITLAB_SECRET: gitlab-secret
+      # Read by nothing in the container, as on the op container: the suite imports the root of what the OP
+      # serves once, at start, so a stack that changes certificate, or goes from mkcert to the internal CA of
+      # Caddy, creates the suite again too.
+      BEFFROI_STACK_CERTIFICATE_FINGERPRINT: ${BEFFROI_STACK_CERTIFICATE_FINGERPRINT:-}
     entrypoint: ["/bin/sh", "/entrypoint/server-entrypoint.sh"]
     volumes:
       - ./tests/conformance/server-entrypoint.sh:/entrypoint/server-entrypoint.sh:ro

@@ -54,10 +54,10 @@ composer install                  # monorepo (packages, tests)
 (cd apps/op && composer install)  # the application, path repositories to ../../src/*
 ```
 
-**The stack.**
+**The stack.** Install mkcert once (`brew install mkcert && mkcert -install`): a stack is then trusted by the browser from any folder, and the internal CA of Caddy no longer needs to be trusted by hand.
 
 ```bash
-castor start                      # https://op.localhost (FrankenPHP worker), PostgreSQL (published on the loopback address, where the suite of the application reads it), RabbitMQ, and https://mtls.op.localhost behind a listener that asks for a client certificate
+castor start                      # https://op.localhost (FrankenPHP worker), PostgreSQL (published on the loopback address, where the suite of the application reads it), RabbitMQ, and https://mtls.op.localhost behind a listener that asks for a client certificate; on a machine with mkcert, every name of STACK_HOSTS is served under one certificate mkcert issues there (var/stack-certificate, issued again 30 days before it expires or when the names change; the key of the mkcert root is mounted in no container), and without it Caddy keeps its internal CA
 castor start --conformance        # plus the OpenID conformance suite on https://localhost:8443, profiler off
 castor start --kms vault|aws      # plus HashiCorp Vault (dev mode) or LocalStack 4.14.0, KMS only; both initialised at every start
 castor provision [--kms sodium|file|vault|aws]  # apps/op/.env.local, the migrations, the tenant, the signing key and the encryption key, the user "alice", what the tenant holds in data keys, and the self-signed client certificate of var/mtls/
