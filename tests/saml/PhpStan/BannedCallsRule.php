@@ -34,12 +34,12 @@ use function strtolower;
  * authentication stays the word of beffroi/saml2-bindings alone and nothing builds a class of its Internal\ namespace
  * outside it (bindings.md section 6.8, B-5).
  *
- * validateAuthenticatedByBinding() of the model's validators and __unserialize(), whatever the receiver; unserialize();
- * bind(), bindTo() and call() of a Closure, statically or not; and Reflection: a class of the Reflection API, or one
- * that extends it, instantiated or called statically, and a method of an object of one, however it was obtained. The
- * ban holds in the whole package and not on the classes of Internal\ alone: what such a call reaches is known at
- * runtime only (unserialize() names no class, Closure::bind() takes its scope as a value), so that a ban scoped by
- * type would have a way around it.
+ * validateAuthenticatedByBinding() of the model's validators, __unserialize() and unserialize(), whatever the receiver;
+ * the functions unserialize() and session_decode(); bind(), bindTo() and call() of a Closure, statically or not; and
+ * Reflection: a class of the Reflection API, or one that extends it, instantiated or called statically, and a method of
+ * an object of one, however it was obtained. The ban holds in the whole package and not on the classes of Internal\
+ * alone: what such a call reaches is known at runtime only (unserialize() names no class, Closure::bind() takes its
+ * scope as a value), so that a ban scoped by type would have a way around it.
  *
  * A function, a method or a class given as a value rather than a name is read as PHPStan knows it: a constant string
  * or a constant callable array naming one of the above is that call, and a string PHPStan cannot read in place of a

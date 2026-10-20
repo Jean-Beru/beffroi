@@ -70,6 +70,10 @@ final class BannedForms
         string $reflectionClass,
         callable $callable,
         array $unread,
+        \ArrayObject $arrayObject,
+        \ArrayIterator $iterator,
+        \SplObjectStorage $storage,
+        \SplDoublyLinkedList $list,
     ): void {
         // the methods banned on any receiver
         $validator->validateAuthenticatedByBinding(); // error: validateAuthenticatedByBinding() is never called: section 8 of the specification bans it.
@@ -82,6 +86,14 @@ final class BannedForms
         unserialize(''); // error: unserialize() is never called: section 8 of the specification bans it.
         \unserialize(''); // error: unserialize() is never called: section 8 of the specification bans it.
         \UNSERIALIZE(''); // error: unserialize() is never called: section 8 of the specification bans it.
+        session_decode(''); // error: session_decode() is never called: section 8 of the specification bans it.
+
+        // the unserializer under the method PHP also gives it, on any receiver: the Serializable half of ArrayObject,
+        // ArrayIterator, SplObjectStorage and SplDoublyLinkedList
+        $arrayObject->unserialize(''); // error: unserialize() is never called: section 8 of the specification bans it.
+        $iterator->unserialize(''); // error: unserialize() is never called: section 8 of the specification bans it.
+        $storage->unserialize(''); // error: unserialize() is never called: section 8 of the specification bans it.
+        $list->unserialize(''); // error: unserialize() is never called: section 8 of the specification bans it.
 
         // the methods of Closure, statically and on an instance
         \Closure::bind($closure, null); // error: Closure::bind() is never called: section 8 of the specification bans it.
@@ -114,6 +126,7 @@ final class BannedForms
         [$validator, 'validateAuthenticatedByBinding'](); // error: validateAuthenticatedByBinding() is never called: section 8 of the specification bans it.
         [$closure, 'bindTo'](null); // error: Closure::bindTo() is never called: section 8 of the specification bans it.
         ['Closure', 'bind']($closure, null); // error: Closure::bind() is never called: section 8 of the specification bans it.
+        [$storage, 'unserialize'](''); // error: unserialize() is never called: section 8 of the specification bans it.
 
         // the same, as an argument of any call
         array_map('unserialize', ['']); // error: unserialize() is never called: section 8 of the specification bans it.
@@ -130,6 +143,8 @@ final class BannedForms
         $first = \Closure::bind(...); // error: Closure::bind() is never called: section 8 of the specification bans it.
         $first = Validator::validateAuthenticatedByBinding(...); // error: validateAuthenticatedByBinding() is never called: section 8 of the specification bans it.
         $first = $closure->bindTo(...); // error: Closure::bindTo() is never called: section 8 of the specification bans it.
+        $first = $arrayObject->unserialize(...); // error: unserialize() is never called: section 8 of the specification bans it.
+        $first = session_decode(...); // error: session_decode() is never called: section 8 of the specification bans it.
 
         // what PHPStan cannot read
         $name(); // error: A call whose function PHPStan cannot read escapes the review: name the function.

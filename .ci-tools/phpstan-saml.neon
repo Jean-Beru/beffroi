@@ -26,15 +26,19 @@ parameters:
 	treatPhpDocTypesAsCertain: false
 	# The functions never called (section 8): unserialize() builds an object of any class, one of
 	# Beffroi\Saml2\Bindings\Internal\ among them, without its constructor (finding 3 of the security review of
-	# saml2-bindings).
+	# saml2-bindings); session_decode() is the same unserializer, fed the bytes of a session.
 	bannedFunctions:
 		- unserialize
+		- session_decode
 	# The methods never called, whatever the receiver (section 8). validateAuthenticatedByBinding(): the binding's
 	# authentication is the word of saml2-bindings only (B-5, bindings.md section 6.8). __unserialize(): the other half
-	# of unserialize().
+	# of unserialize(). unserialize(): the same unserializer, under the method of the Serializable half of ArrayObject,
+	# ArrayIterator, SplObjectStorage and SplDoublyLinkedList, banned on any receiver as the function is (D-1 of the
+	# security review of sub-spike 9c).
 	bannedMethods:
 		- validateAuthenticatedByBinding
 		- __unserialize
+		- unserialize
 	# The methods of Closure never called (section 8): a closure bound to the scope of Internal\Reception builds a
 	# Reception that pairs the message of one input with the signature of another (bindings.md sections 6.8 and 12).
 	closureMethods:
