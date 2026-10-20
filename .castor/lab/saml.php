@@ -205,7 +205,8 @@ function saml_sp_start(): string
     foreach (glob(SAML_SP_CAPTURED . '/*') ?: [] as $file) {
         unlink($file);
     }
-    if (! is_file(SAML_SP_DIRECTORY . '/sp.pem') || ! is_file(SAML_SP_DIRECTORY . '/sp.crt')) {
+    $drawn = ! is_file(SAML_SP_DIRECTORY . '/sp.pem') || ! is_file(SAML_SP_DIRECTORY . '/sp.crt');
+    if ($drawn) {
         run([
             'openssl',
             'req',
@@ -223,14 +224,16 @@ function saml_sp_start(): string
             '-out',
             SAML_SP_DIRECTORY . '/sp.crt',
         ], context: context()->withQuiet());
-        // read by www-data in the container, the file belonging to whoever runs the task
-        chmod(SAML_SP_DIRECTORY . '/sp.pem', 0o644);
     }
+    // Its owner's alone: the container reads it as root, whatever uid owns it here, and hands www-data a copy of its
+    // own (compose.yaml), so that no other account of the machine reads the key the judge signs with.
+    chmod(SAML_SP_DIRECTORY . '/sp.pem', 0o600);
     file_put_contents(SAML_SP_DIRECTORY . '/sso-binding', '');
-    run(['docker', 'compose', '--profile', 'saml-sp', 'up', '-d', '--wait', '--build', 'saml-sp']);
+    // A container that copied the key of an earlier pair holds it until it is created again.
+    run(['docker', 'compose', '--profile', 'saml-sp', 'up', '-d', '--wait', '--build', ...($drawn ? ['--force-recreate'] : []), 'saml-sp']);
 
     $ca = caddy_ca(getcwd() . '/' . SAML_SP_DIRECTORY . '/caddy-root.crt');
-    // read by www-data in the container, as the key above
+    // read by www-data in the container, a certificate and no secret
     chmod($ca, 0o644);
     $cookies = [];
     for ($attempt = 0; $attempt < 30; ++$attempt) {
