@@ -379,8 +379,8 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * S-20: the content under aes256-gcm, the session key under rsa-oaep-mgf1p, nothing in CBC anywhere in the
-     * response.
+     * S-20: the content under aes256-gcm, the session key under rsa-oaep-mgf1p, no Algorithm of the response naming
+     * CBC.
      */
     #[Test]
     public function theAssertionIsEncryptedUnderOneSchemeAndNothingInCbc(): void
@@ -391,11 +391,11 @@ final class ModelSignOnResponderTest extends TestCase
         // Then
         $data = self::encryptedData($response);
         static::assertSame(
-            ['http://www.w3.org/2009/xmlenc11#aes256-gcm', 'http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p', false],
+            ['http://www.w3.org/2009/xmlenc11#aes256-gcm', 'http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p', []],
             [
                 Attributes::required(Children::one($data, new Name(self::XMLENC, 'EncryptionMethod')), new Name(null, 'Algorithm')),
                 Attributes::required(Children::one(self::encryptedKey($data), new Name(self::XMLENC, 'EncryptionMethod')), new Name(null, 'Algorithm')),
-                str_contains(new Serializer()->serialize($response), 'cbc'),
+                self::cbcAlgorithms($response->root()),
             ],
         );
     }
@@ -554,6 +554,25 @@ final class ModelSignOnResponderTest extends TestCase
     private static function encryptedKey(Element $data): Element
     {
         return Children::one(Children::one($data, new Name(self::DSIG, 'KeyInfo')), new Name(self::XMLENC, 'EncryptedKey'));
+    }
+
+    /**
+     * The Algorithm attributes under the root that name CBC, read from the attributes and never from the serialized
+     * response, whose base64 spells any three letters at random.
+     *
+     * @return list<string>
+     */
+    private static function cbcAlgorithms(Element $root): array
+    {
+        $named = [];
+        foreach ($root->getElementsByTagName('*') as $element) {
+            $algorithm = $element->getAttribute('Algorithm');
+            if ($algorithm !== null && str_contains($algorithm, 'cbc')) {
+                $named[] = $algorithm;
+            }
+        }
+
+        return $named;
     }
 
     private function validate(UnverifiedResponse $response): AcceptedAssertion
