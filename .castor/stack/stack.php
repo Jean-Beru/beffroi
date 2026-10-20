@@ -51,7 +51,7 @@ const KMS_FILE_DIRECTORY = '/app/var/kms';
 /**
  * The compose profiles a task that stops or reads the whole stack must name.
  */
-const COMPOSE_PROFILES = ['conformance', 'vault', 'aws'];
+const COMPOSE_PROFILES = ['conformance', 'vault', 'aws', 'saml-sp'];
 
 /**
  * Where Caddy keeps the root of the authority it signs the certificates of the stack with, inside the op
@@ -107,6 +107,12 @@ function start(
     }
     if ($accessTokenFormat !== null) {
         $environment['CONFORMANCE_ACCESS_TOKEN_FORMAT'] = $accessTokenFormat;
+    }
+    // The directory compose.yaml mounts into op and worker for the metadata of the SAML judge: made here by whoever
+    // runs the task, or Docker makes it as root and "castor saml-sp" cannot write the file into it.
+    if (! is_dir('var/saml-sp/metadata') && ! mkdir('var/saml-sp/metadata', 0o777, true) && ! is_dir('var/saml-sp/metadata')) {
+        io()->error('Cannot create var/saml-sp/metadata.');
+        exit(1);
     }
     $command = [...$command, 'up', '-d', '--remove-orphans', '--wait'];
     if ($build) {
