@@ -44,6 +44,7 @@ use function Castor\http_request;
 use function Castor\io;
 use function Castor\load_dot_env;
 use function Castor\run;
+use Symfony\Component\Console\Formatter\OutputFormatter;
 use Symfony\Contracts\HttpClient\Exception\ExceptionInterface as HttpClientException;
 
 const SAML_SP_URL = 'https://saml-sp.localhost';
@@ -1049,8 +1050,10 @@ function saml_sp_verify_provider_logout(array $answer): void
  *
  * What was received is read from the profiler of the development stack, which collects every request while
  * APP_PROFILER is 1, its default (apps/op/config/packages/web_profiler.yaml): the raw query string of HTTP-Redirect, the
- * fields and the raw body of HTTP-POST, before anything validated them, a request refused included. Nothing is added to
- * the provider for it, and a deployment, which collects no profile, has nothing of it.
+ * fields and the raw body of HTTP-POST, before anything validated them, a request refused included, from whoever sent
+ * it. What is kept of them is a message of the entity ID declared for Entra that the provider accepted, and what is
+ * printed of it is text. Nothing is added to the provider for it, and a deployment, which collects no profile, has
+ * nothing of it.
  */
 
 /**
@@ -1087,6 +1090,13 @@ const SAML_ENTRA_SIGN_IN_REDIRECT = 'http://localhost:65000';
 const SAML_ENTRA_DIRECTORY = 'var/saml-entra';
 
 const SAML_ENTRA_RECEIVED = SAML_ENTRA_DIRECTORY . '/received';
+
+/**
+ * The parameter the page that posts a form from another site again adds to the query of its action (S-28), the MARKER
+ * of Beffroi\Bundle\Http\CrossSitePost, which the tasks do not load: a profiled post that carries it is the one the
+ * provider read.
+ */
+const SAML_ENTRA_POSTED_AGAIN = '_beffroi_posted_again';
 
 /**
  * Run by the PHP of the op container on the profiler storage of its kernel: the requests profiled at the paths given
@@ -1135,11 +1145,11 @@ const SAML_ENTRA_PROFILE_READER = <<<'PHP'
 
 #[AsTask(
     name: 'saml-entra',
-    description: 'The Entra judge (issue #736): registers the service provider declared for Entra\'s SAML federation of guests, then prints what the portal of Entra takes (Issuer URI, passive authentication endpoint, signing certificate), the invitation Microsoft Graph creates and the authorization request to the tenant, carrying the domain_hint, through which the guest signs in and redeems it; with --received, lists what the provider received from Entra, read from the profiler of the stack, and writes each document to var/saml-entra/received/ for the corpus',
+    description: 'The Entra judge (issue #736): registers the service provider declared for Entra\'s SAML federation of guests, then prints what the portal of Entra takes (Issuer URI, passive authentication endpoint, signing certificate), the invitation Microsoft Graph creates and the authorization request to the tenant, carrying the domain_hint, through which the guest signs in and redeems it; with --received, lists what the provider accepted from the entity ID declared for Entra, read from the profiler of the stack, and writes each document to var/saml-entra/received/ for the corpus',
 )]
 function saml_entra(
     #[AsOption(
-        description: 'List what the provider received from Entra at its single sign-on and single logout services, and write each document to var/saml-entra/received/',
+        description: 'List what the provider accepted from the entity ID declared for Entra at its single sign-on and single logout services, and write each document to var/saml-entra/received/',
     )]
     bool $received = false,
     #[AsOption(description: 'With --received: how far back the profiles are read, in minutes')]
@@ -1263,6 +1273,11 @@ function saml_entra(
  * What the provider received from Entra since the minutes given, read from the profiles of the stack: each message
  * written to var/saml-entra/received/, the document decoded and the bytes as they came, and described as it arrived.
  * A message posted again by the provider from its own origin (S-28) is the one Entra posted, and is written once.
+ *
+ * What is written for the corpus is what saml_entra_received_messages() keeps, the messages of the entity ID declared
+ * for Entra that the provider accepted, and what is printed of them is text (saml_entra_text()): the profiles hold
+ * every request the services were sent, from any browser and any host that reaches them, and none of it is Entra's word
+ * until the provider took it as such.
  */
 function saml_entra_received(string $issuer, int $minutes): void
 {
@@ -1277,55 +1292,119 @@ function saml_entra_received(string $issuer, int $minutes): void
     }
     /** @var list<array{token: string, time: int, method: string, url: string, status: int, query: string, fields: array<string, mixed>, body: string, secFetchSite: ?string}> $profiled */
     $profiled = json_decode($read->getOutput(), true, 512, \JSON_THROW_ON_ERROR);
-    $written = [];
-    foreach ($profiled as $request) {
-        $message = saml_entra_message($request);
-        if ($message === null || ! saml_entra_is_entra($message['issuer'])) {
-            continue;
-        }
-        $digest = hash('sha256', $message['document']);
-        $profile = sprintf('%s/_profiler/%s', $issuer, $request['token']);
-        if (isset($written[$digest])) {
-            io()->text(sprintf(
-                ' the same %s, posted again from the origin of the provider (S-28), answered %d: %s',
-                $message['root'],
-                $request['status'],
-                $profile,
-            ));
-            continue;
-        }
-        $base = sprintf('%s/%s-%s-%s', SAML_ENTRA_RECEIVED, date('Ymd\THis', $request['time']), $message['binding'], $message['root']);
+    $received = saml_entra_received_messages($profiled);
+    foreach ($received as ['message' => $message, 'requests' => $requests]) {
+        $first = $requests[0];
+        $base = sprintf('%s/%s-%s-%s', SAML_ENTRA_RECEIVED, date('Ymd\THis', $first['time']), $message['binding'], $message['root']);
         file_put_contents($base . '.xml', $message['document']);
         file_put_contents($base . '.raw.txt', $message['raw']);
-        $written[$digest] = $base;
-        io()->section(sprintf('%s, %s over %s, answered %d', date('c', $request['time']), $message['root'], $message['binding'], $request['status']));
+        io()->section(saml_entra_text(sprintf('%s, %s over %s', date('c', $first['time']), $message['root'], $message['binding'])));
         io()->listing([
-            sprintf(
-                'Issuer: %s%s',
-                $message['issuer'],
-                $message['issuer'] === SAML_ENTRA_ENTITY_ID ? ', the entity ID declared' : ', NOT the entity ID declared (' . SAML_ENTRA_ENTITY_ID . ')',
-            ),
-            sprintf('Signed: %s', $message['signed'] ? 'yes' : 'no'),
-            sprintf('From another site: %s', $request['secFetchSite'] ?? 'not said'),
+            saml_entra_text(sprintf('Issuer: %s, the entity ID declared', $message['issuer'])),
+            saml_entra_text(sprintf('Signed: %s', $message['signed'] ? 'yes' : 'no')),
             ...array_map(
-                static fn (string $name, string $value): string => sprintf('%s: %s', $name, $value),
+                static fn (array $request): string => saml_entra_text(sprintf(
+                    '%s, answered %d, from another site: %s, profile %s/_profiler/%s',
+                    saml_entra_posted_again($request) ? 'Posted again from the origin of the provider (S-28)' : 'Received',
+                    $request['status'],
+                    $request['secFetchSite'] ?? 'not said',
+                    $issuer,
+                    $request['token'],
+                )),
+                $requests,
+            ),
+            ...array_map(
+                static fn (string $name, string $value): string => saml_entra_text(sprintf('%s: %s', $name, $value)),
                 array_keys($message['facts']),
                 array_values($message['facts']),
             ),
-            sprintf('Written to %s.xml and %s.raw.txt', $base, $base),
-            sprintf('Profile: %s', $profile),
+            saml_entra_text(sprintf('Written to %s.xml and %s.raw.txt', $base, $base)),
         ]);
-        io()->writeln($message['document']);
+        io()->writeln(saml_entra_text($message['document']));
     }
-    if ($written === []) {
+    if ($received === []) {
         io()->warning(sprintf(
-            'Nothing from Entra was profiled in the last %d minutes: --minutes reads further back; a stack started with --conformance collects no profile.',
+            'Nothing the provider accepted from %s was profiled in the last %d minutes: --minutes reads further back; a stack started with --conformance collects no profile.',
+            SAML_ENTRA_ENTITY_ID,
             $minutes,
         ));
 
         return;
     }
-    io()->success(sprintf('%d document(s) received from Entra written to %s/: they go to the corpus (issue #665).', count($written), SAML_ENTRA_RECEIVED));
+    io()->success(sprintf('%d document(s) received from Entra written to %s/: they go to the corpus (issue #665).', count($received), SAML_ENTRA_RECEIVED));
+}
+
+/**
+ * The messages of Entra among the requests profiled, each with the requests that carried it, in the order they came: a
+ * message whose Issuer is the entity ID declared for Entra, the string itself and not a prefix of it, which at least one
+ * of its requests had the provider accept (saml_entra_accepted()). Entra signs no request (spec/saml.md section 7), so
+ * that its signature cannot tell its messages apart: what the provider answered can, a message it refused, or one it
+ * never read, being no request of Entra's for the corpus, whatever its Issuer says.
+ *
+ * @param list<array{token: string, time: int, method: string, url: string, status: int, query: string, fields: array<string, mixed>, body: string, secFetchSite: ?string}> $profiled
+ * @return list<array{message: array{binding: string, raw: string, document: string, root: string, issuer: string, signed: bool, facts: array<string, string>}, requests: non-empty-list<array{token: string, time: int, method: string, url: string, status: int, query: string, fields: array<string, mixed>, body: string, secFetchSite: ?string}>}>
+ */
+function saml_entra_received_messages(array $profiled): array
+{
+    $messages = [];
+    foreach ($profiled as $request) {
+        $message = saml_entra_message($request);
+        if ($message === null || $message['issuer'] !== SAML_ENTRA_ENTITY_ID) {
+            continue;
+        }
+        $digest = hash('sha256', $message['document']);
+        $messages[$digest] ??= ['message' => $message, 'requests' => []];
+        $messages[$digest]['requests'][] = $request;
+    }
+
+    return array_values(array_filter(
+        $messages,
+        static fn (array $received): bool => array_filter($received['requests'], saml_entra_accepted(...)) !== [],
+    ));
+}
+
+/**
+ * Whether the provider accepted a profiled request at its single sign-on or single logout service: a request it read
+ * and answered with the login the request waits for (302) or the page that posts its answer (200), where a refusal is
+ * answered 400 and the page that says so. A form posted from another site without the marker of the page that posts it
+ * again is answered by that page (S-28), 200 as well, before anything of the message is read: it is not an answer of the
+ * provider to the message.
+ *
+ * @param array{method: string, url: string, status: int, secFetchSite: ?string} $request
+ */
+function saml_entra_accepted(array $request): bool
+{
+    $answeredByThePageThatPostsAgain = $request['method'] === 'POST' && $request['secFetchSite'] === 'cross-site' && ! saml_entra_posted_again($request);
+
+    return ! $answeredByThePageThatPostsAgain && in_array($request['status'], [200, 302], true);
+}
+
+/**
+ * Whether a profiled request is the post the page of S-28 sent again from the origin of the provider: its URL carries
+ * the marker of that page in its query.
+ *
+ * @param array{url: string} $request
+ */
+function saml_entra_posted_again(array $request): bool
+{
+    parse_str((string) parse_url($request['url'], \PHP_URL_QUERY), $query);
+
+    return array_key_exists(SAML_ENTRA_POSTED_AGAIN, $query);
+}
+
+/**
+ * A value received from the network, as text for the console: its markup escaped, so that a "<href=...>" or a
+ * "<fg=...>" it holds is printed and never made a link or a colour by the formatter of the output, and every control
+ * character but the tab and the line feed written as its bytes in hexadecimal, a C1 control included, which XML 1.0
+ * lets into a document, so that none reaches the terminal as one of its sequences.
+ */
+function saml_entra_text(string $value): string
+{
+    return OutputFormatter::escape((string) preg_replace_callback(
+        '/[\x00-\x08\x0B-\x1F\x7F]|\xC2[\x80-\x9F]/',
+        static fn (array $control): string => '\\x' . bin2hex($control[0]),
+        $value,
+    ));
 }
 
 /**
@@ -1394,13 +1473,4 @@ function saml_entra_message(array $request): ?array
         'signed' => isset($parameters['Signature']) || $xpath->query('ds:Signature', $root)?->length > 0,
         'facts' => $facts,
     ];
-}
-
-/**
- * Whether an issuer is one of Entra's: the tenanted entity ID of a new federation, any other tenant of the same host,
- * or the global entity ID of the federations made before (spec/saml.md section 7).
- */
-function saml_entra_is_entra(string $issuer): bool
-{
-    return str_starts_with($issuer, 'https://login.microsoftonline.com/') || $issuer === 'urn:federation:MicrosoftOnline';
 }
