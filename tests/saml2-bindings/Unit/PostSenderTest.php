@@ -230,6 +230,100 @@ final class PostSenderTest extends TestCase
     }
 
     /**
+     * §9.2 row 33, section 6.4 step 1, RFC 3986 §3.1: a Destination whose scheme is neither http nor https, which
+     * would be the action the browser submits the form to, is a programming error of the caller, whatever the method,
+     * refused before anything is written or signed, and whatever the case of the letters of the scheme.
+     *
+     * @param PostMessage $message
+     */
+    #[Test]
+    #[DataProvider('provideDestinationsOfAnotherScheme')]
+    public function itRefusesADestinationWhoseSchemeIsNeitherHttpNorHttps(string $message, string $destination): void
+    {
+        // Given
+        $signing = $this->uncalledSigning();
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The Destination is neither an http nor an https URL, the only actions a form is submitted to (section 6.4).');
+
+        // When
+        self::post($message, signing: $signing, destination: $destination);
+    }
+
+    /**
+     * @return iterable<string, array{PostMessage, string}>
+     */
+    public static function provideDestinationsOfAnotherScheme(): iterable
+    {
+        $destinations = [
+            'javascript:' => 'javascript:alert(document.domain)//',
+            'javascript: in upper case' => 'JAVASCRIPT:alert(1)//',
+            'data:' => 'data:text/html,<script>alert(1)</script>',
+            'ftp:' => 'ftp://peer.example.com/saml',
+            'file:' => 'file:///etc/passwd',
+            'a scheme after a scheme' => 'javascript:https://peer.example.com/saml',
+            'a scheme that only starts with https' => 'httpsx://peer.example.com/saml',
+        ];
+        foreach ($destinations as $case => $destination) {
+            foreach (self::postMessages() as $method => $message) {
+                yield $case . ', ' . $method => [$message, $destination];
+            }
+        }
+    }
+
+    /**
+     * Section 6.4 step 1, RFC 3986 §3.1: a Destination whose scheme is http or https, in whatever case, is the action
+     * as it is written, never normalised: the scheme of a URL is case-insensitive, and a browser reads it so.
+     *
+     * @param PostMessage $message
+     */
+    #[Test]
+    #[DataProvider('provideDestinationsOfAWebScheme')]
+    public function itKeepsADestinationWhoseSchemeIsHttpOrHttpsAsItIs(string $message, string $destination): void
+    {
+        // When
+        $form = self::post($message, destination: $destination);
+
+        // Then
+        static::assertSame($destination, $form->action);
+    }
+
+    /**
+     * @return iterable<string, array{PostMessage, string}>
+     */
+    public static function provideDestinationsOfAWebScheme(): iterable
+    {
+        $destinations = [
+            'http:' => 'http://peer.example.com/saml',
+            'https:' => 'https://peer.example.com/saml',
+            'https: in upper case' => 'HTTPS://peer.example.com/saml',
+            'http: in mixed case' => 'HtTp://peer.example.com/saml',
+        ];
+        foreach ($destinations as $case => $destination) {
+            foreach (self::postMessages() as $method => $message) {
+                yield $case . ', ' . $method => [$message, $destination];
+            }
+        }
+    }
+
+    /**
+     * Every method of the sender, with the message it is given.
+     *
+     * @return array<string, PostMessage>
+     */
+    private static function postMessages(): array
+    {
+        return [
+            'authnRequest()' => 'an AuthnRequest',
+            'logoutRequest()' => 'a LogoutRequest',
+            'logoutResponse()' => 'a LogoutResponse',
+            'response()' => 'a Response',
+            'failure()' => 'a failure',
+        ];
+    }
+
+    /**
      * §9.2 row 33, B-9, section 6.4 step 1, section 8: a RelayState of 1 025 bytes, or an empty one, given to
      * any method, is a programming error of the caller, refused before anything is written or signed: a key management
      * service is never called for a form the sender refuses by its arguments.
