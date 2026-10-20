@@ -108,6 +108,7 @@ use Beffroi\Bundle\Http\AuthorizationResponder;
 use Beffroi\Bundle\Http\AuthorizationResponderInterface;
 use Beffroi\Bundle\Http\BrowserSession;
 use Beffroi\Bundle\Http\CrossSitePost;
+use Beffroi\Bundle\Http\CrossSiteSessionCookie;
 use Beffroi\Bundle\Http\BrowserPreferences;
 use Beffroi\Bundle\Http\ApplicationPage;
 use Beffroi\Bundle\Http\InteractionLocale;
@@ -712,8 +713,12 @@ return static function (ContainerConfigurator $container): void {
     $services->set(BrowserSession::class);
     $services->set(InteractionPages::class);
     // what a browser posted from another site without the session cookie, posted again from this provider's own
-    // origin, which the cookie accompanies (beffroi/saml S-28): asked first by each browser endpoint that takes a post
+    // origin, which the cookie accompanies (beffroi/saml S-28): asked first by each endpoint a party posts a browser
+    // to from another site, the single sign-on and single logout services, the authorization and end session endpoints
     $services->set(CrossSitePost::class);
+    // and the cookie of a session started for such a request taken off its answer, on every endpoint of this plane,
+    // so that no page of another site replaces the session cookie the browser holds (S-28)
+    $services->set(CrossSiteSessionCookie::class);
     // what a page of this plane adds to the policy its answer carries, the deployment writing the rest
     // (PolicyCompletion): the origin of the client the page is answering, named in "form-action", without
     // which a browser refuses the redirection that takes the code there (FormTarget), and the origins of

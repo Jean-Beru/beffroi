@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use Beffroi\Bundle\Http\CrossSitePost;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use function http_build_query;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -13,16 +15,22 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * beffroi/saml, spec/saml.md S-28, the acceptance of issue #739 on the authorization endpoint of OpenID Connect, which
- * a client may post to (OIDC Core §3.1.2.1): a request posted from another site reaches the provider without the
- * session cookie, which "SameSite=Lax" keeps from a cross-site post, and is posted again from the origin of the
- * provider, which the cookie accompanies. The browser of these tests is signed in, and a post from another site is
- * played without its cookies (postedFromAnotherSite()).
+ * a client may post to (OIDC Core §3.1.2.1), and on its end session endpoint (RP-Initiated Logout §2): a request posted
+ * from another site reaches the provider without the session cookie, which "SameSite=Lax" keeps from a cross-site post,
+ * and is posted again from the origin of the provider, which the cookie accompanies. The browser of these tests is
+ * signed in, and a post from another site is played without its cookies (postedFromAnotherSite()).
  */
 final class CrossSitePostTest extends BrowserTestCase
 {
     private const string POSTED_AGAIN = '/authorize?' . CrossSitePost::MARKER . '=1';
 
     private const string ENGLISH_BROWSER = 'en-US,en;q=0.9';
+
+    /**
+     * A logout the client oidc-demo asks for without a hint, which the user is asked to confirm (RP-Initiated Logout
+     * §2).
+     */
+    private const string LOGOUT = 'client_id=oidc-demo&post_logout_redirect_uri=https%3A%2F%2Fdemo.test%2F&state=after-logout';
 
     /**
      * What the page says in French: its language, its title, the sentence and the button a browser without scripting
@@ -35,10 +43,12 @@ final class CrossSitePostTest extends BrowserTestCase
         'Continuer',
     ];
 
+    private AuthenticationSession $session;
+
     protected function setUp(): void
     {
         parent::setUp();
-        $this->signIn(self::user('alice'));
+        $this->session = $this->signIn(self::user('alice'));
     }
 
     /**
@@ -209,6 +219,62 @@ final class CrossSitePostTest extends BrowserTestCase
 
         // Then
         static::assertSame([self::POSTED_AGAIN, []], [$this->page()[0], $this->browser->getResponse()->headers->getCookies()]);
+    }
+
+    /**
+     * S-28: a logout a client posts from another site is answered with the page that posts it again to the end session
+     * endpoint, and no cookie.
+     */
+    #[Test]
+    public function aLogoutPostedFromAnotherSiteIsPostedAgain(): void
+    {
+        // When
+        $this->postedFromAnotherSite('/logout', self::LOGOUT);
+
+        // Then
+        static::assertSame(
+            ['/logout?' . CrossSitePost::MARKER . '=1', []],
+            [$this->page()[0], $this->browser->getResponse()->headers->getCookies()],
+        );
+    }
+
+    /**
+     * S-28, RP-Initiated Logout §2: the logout posted again finds the session the browser holds, and asks its user to
+     * confirm, where a browser without one would be told it is signed out already.
+     */
+    #[Test]
+    public function aLogoutPostedAgainAsksTheUserOfTheSession(): void
+    {
+        // Given
+        $this->postedFromAnotherSite('/logout', self::LOGOUT);
+
+        // When
+        $this->postedAgain();
+
+        // Then
+        static::assertSame(
+            [Response::HTTP_OK, 'no_hint'],
+            [$this->browser->getResponse()->getStatusCode(), $this->browser->getCrawler()->filter('[data-reason]')->attr('data-reason')],
+        );
+    }
+
+    /**
+     * S-28: a confirmation forged on another site is posted again, and the second post carries no token of the form
+     * the browser was given: the session is not ended.
+     */
+    #[Test]
+    public function aConfirmationForgedOnAnotherSiteEndsNothing(): void
+    {
+        // Given
+        $this->postedFromAnotherSite('/logout', self::LOGOUT . '&confirm=yes&_token=forged');
+
+        // When
+        $this->postedAgain();
+
+        // Then
+        $kept = self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)
+            ->find($this->session->id) ?? static::fail('The session is gone.');
+        static::assertSame([Response::HTTP_FORBIDDEN, false], [$this->browser->getResponse()->getStatusCode(), $kept->hasEnded()]);
     }
 
     /**

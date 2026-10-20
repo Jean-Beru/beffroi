@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Saml;
 
+use Beffroi\Bundle\Http\CrossSitePost;
 use Beffroi\Bundle\Saml\IdentityProviderRoutes;
 use Beffroi\Bundle\Saml\LogoutChainCookie;
 use Beffroi\Bundle\Saml\SamlSigning;
@@ -594,8 +595,9 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-32, section 6.8: the answer a service provider posts from its site over HTTP-POST, which the session cookie of
-     * the provider does not accompany, comes with the cookie of the chain, SameSite=None, and carries the chain on.
+     * S-32, S-28, section 6.8: the answer a service provider posts from its site over HTTP-POST, which the session cookie
+     * of the provider does not accompany, comes with the cookie of the chain, SameSite=None, and, posted again from the
+     * origin of the provider, carries the chain on.
      */
     #[Test]
     public function anAnswerPostedFromTheSiteOfTheServiceProviderCarriesTheChainOn(): void
@@ -608,9 +610,58 @@ final class ProviderLogoutTest extends ConsoleTestCase
 
         // When
         $this->postedFromAnotherSite('/saml/slo', http_build_query($form->fields));
+        $this->postedAgain();
 
         // Then
         static::assertEquals(new Status(StatusCode::Success), $this->answerToTheRequester()->response->status);
+    }
+
+    /**
+     * S-28: a LogoutRequest a service provider posts from its site over HTTP-POST, which the session cookie of the
+     * provider does not accompany, is answered with the page that posts it again from the origin of the provider,
+     * before anything of it is read: the session it names is not ended, and the answer sets no cookie.
+     */
+    #[Test]
+    public function aLogoutRequestPostedFromTheSiteOfTheServiceProviderIsPostedAgain(): void
+    {
+        // Given
+        $assertion = $this->signedOnAtBoth();
+        $form = new PostSender()->logoutRequest($this->logoutRequest($assertion), self::signing('sp'), 'state-2');
+
+        // When
+        $this->postedFromAnotherSite('/saml/slo', http_build_query($form->fields));
+
+        // Then
+        static::assertSame(
+            [IdentityProviderRoutes::SINGLE_LOGOUT_PATH . '?' . CrossSitePost::MARKER . '=1', [], false],
+            [
+                $this->browser->getCrawler()->filter('form')->attr('action'),
+                $this->browser->getResponse()->headers->getCookies(),
+                $this->sessionOf($assertion)->hasEnded(),
+            ],
+        );
+    }
+
+    /**
+     * S-28, S-29, S-32: the LogoutRequest posted again from the origin of the provider ends the session it names and
+     * begins the chain, the other service provider of the session told first and the browser given the cookie of the
+     * chain; the first post read nothing of it, which the store of S-23 would otherwise refuse as a replay.
+     */
+    #[Test]
+    public function aLogoutRequestPostedAgainEndsTheSessionAndBeginsTheChain(): void
+    {
+        // Given
+        $assertion = $this->signedOnAtBoth();
+        $form = new PostSender()->logoutRequest($this->logoutRequest($assertion), self::signing('sp'), 'state-2');
+        $this->postedFromAnotherSite('/saml/slo', http_build_query($form->fields));
+
+        // When
+        $this->postedAgain();
+
+        // Then
+        $cookie = $this->cookieOfTheChain();
+        $this->told(self::OTHER_SINGLE_LOGOUT, self::OTHER);
+        static::assertSame([true, false], [$this->sessionOf($assertion)->hasEnded(), $cookie->isCleared()]);
     }
 
     /**
@@ -829,20 +880,24 @@ final class ProviderLogoutTest extends ConsoleTestCase
      */
     private function logoutUrl(AcceptedAssertion $assertion): string
     {
+        return new RedirectSender()->logoutRequest($this->logoutRequest($assertion), self::signing('sp'), 'state-2');
+    }
+
+    /**
+     * The LogoutRequest the first service provider writes from the assertion it holds, whatever binding carries it.
+     */
+    private function logoutRequest(AcceptedAssertion $assertion): LogoutRequest
+    {
         $nameId = $assertion->assertion->nameId;
 
-        return new RedirectSender()->logoutRequest(
-            new LogoutRequest(
-                self::LOGOUT_REQUEST_ID,
-                self::currentSecond(),
-                new Issuer(self::SERVICE_PROVIDER),
-                self::IDENTITY_PROVIDER_SINGLE_LOGOUT,
-                null,
-                new NameId($nameId->value, $nameId->format, $nameId->nameQualifier, $nameId->spNameQualifier),
-                [self::sessionIndex($assertion)],
-            ),
-            self::signing('sp'),
-            'state-2',
+        return new LogoutRequest(
+            self::LOGOUT_REQUEST_ID,
+            self::currentSecond(),
+            new Issuer(self::SERVICE_PROVIDER),
+            self::IDENTITY_PROVIDER_SINGLE_LOGOUT,
+            null,
+            new NameId($nameId->value, $nameId->format, $nameId->nameQualifier, $nameId->spNameQualifier),
+            [self::sessionIndex($assertion)],
         );
     }
 

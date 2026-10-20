@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Controller;
 
 use Beffroi\Bundle\Doctrine\TenantProvider;
+use Beffroi\Bundle\Http\CrossSitePost;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\RequestContextFactory;
 use Beffroi\Bundle\Saml\IdentityProviderRoutes;
@@ -26,7 +27,9 @@ use function trim;
  * The single logout service of the SAML identity provider of the tenant (beffroi/saml, spec/saml.md sections 6.5 and
  * 6.6), at the one URL its metadata publish for both bindings: HTTP-Redirect by GET, its raw query string read from
  * QUERY_STRING and never from the parsed query, whose octets the signature covers (B-2); HTTP-POST by POST, the fields
- * of a form and nothing else (spec/saml.md section 6.8). A message refused ends nothing and gets the page of a refusal
+ * of a form and nothing else (spec/saml.md section 6.8), posted again from the origin of the provider when it came from
+ * another site without the session cookie, before anything of the message is read (S-28). A message refused ends
+ * nothing and gets the page of a refusal
  * and no SAML answer (S-22, S-23, S-33). A request accepted ends the sessions it names, then the other service
  * providers of those sessions are told, the page of Front-Channel Logout 1.0 first (S-35), before it is answered at
  * the single logout service of the metadata of its service provider (S-27, S-34); one that ended none is answered at
@@ -59,6 +62,7 @@ final readonly class SamlSingleLogoutController
         private InteractionPages $pages,
         private LogoutChainPages $chain,
         private LogoutChainCookie $cookie,
+        private CrossSitePost $crossSitePost,
     ) {
     }
 
@@ -76,6 +80,10 @@ final readonly class SamlSingleLogoutController
                         self::REFUSED,
                         'A request posted to the single logout service is a form, application/x-www-form-urlencoded (spec/saml.md section 6.8).',
                     );
+                }
+                $again = $this->crossSitePost->postAgain($request);
+                if ($again !== null) {
+                    return $again;
                 }
                 $answer = $this->singleLogout->post($tenant, $request->request->all(), $context, $secret);
             } else {
