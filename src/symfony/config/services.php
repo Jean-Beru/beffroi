@@ -275,6 +275,20 @@ use Beffroi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyFamily;
 use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
+use Beffroi\Bundle\Saml\MappedClaimsWarmer;
+use Beffroi\Bundle\Saml\ProviderServedClaims;
+use Beffroi\Bundle\Saml\SamlPostPage;
+use Beffroi\Bundle\Saml\SignOnAnswers;
+use Beffroi\Bundle\Saml\TenantPersistentIdentifierSalt;
+use Beffroi\Bundle\Saml\WaitingSignOns;
+use Beffroi\Core\Port\KeptSigningKeyProviderInterface;
+use Beffroi\Saml\Application\SingleSignOn\AttributeRelease;
+use Beffroi\Saml\Application\SingleSignOn\SingleSignOn;
+use Beffroi\Saml\Bridge\Model\ModelAuthnRequestReceiver;
+use Beffroi\Saml\Bridge\Model\ModelSignOnResponder;
+use Beffroi\Saml\Port\AuthnRequestReceiverInterface;
+use Beffroi\Saml\Port\PersistentIdentifierSaltInterface;
+use Beffroi\Saml\Port\SignOnResponderInterface;
 use Beffroi\Bundle\Saml\RouterIdentityProviderEndpoints;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
@@ -294,6 +308,7 @@ use Beffroi\Saml\Port\CanForgetAcceptedMetadataInterface;
 use Beffroi\Saml\Application\ServiceProvider\AcceptedMetadataForgetting;
 use Beffroi\Saml\Port\MetadataFetcherInterface;
 use Beffroi\Saml\Port\ServiceProviderMetadataReaderInterface;
+use Beffroi\Saml\Port\ServedClaimsInterface;
 use Beffroi\Saml\Port\ServiceProvidersInterface;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyEncryptionAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseMessageSealingAlgorithms;
@@ -1125,6 +1140,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(DecryptionKeyProviderInterface::class, SealedKeyProvider::class);
     $services->alias(PublicKeySetProviderInterface::class, SealedKeyProvider::class);
     $services->alias(ApplicationServerKeyProviderInterface::class, SealedKeyProvider::class);
+    $services->alias(KeptSigningKeyProviderInterface::class, SealedKeyProvider::class);
     $services->alias(MessageKeyProviderInterface::class, SealedKeyProvider::class);
     // The algorithms the provider signs with: one class per algorithm, tagged; the first tagged one is
     // the default, the one an access token, a signed introspection response and a client that registered
@@ -1825,11 +1841,19 @@ return static function (ContainerConfigurator $container): void {
     // beffroi/saml: the service providers of the tenant, declared in the configuration, which the SAML section hands
     // the declarations and the slug of the tenant (S-5); their metadata read by the model, fetched from a file or an
     // https URL, and the newest document accepted kept in the database, sealed (spec/saml.md section 6.2)
+    // the claims an attribute is mapped from, those OpenID Connect serves (spec/saml.md S-16)
+    $services->set(ProviderServedClaims::class);
+    $services->alias(ServedClaimsInterface::class, ProviderServedClaims::class);
     $services->set(ConfigurationServiceProviders::class)->args([
         '$tenantSlug' => '',
         '$definitions' => [],
     ]);
     $services->alias(ServiceProvidersInterface::class, ConfigurationServiceProviders::class);
+    // the claim of each mapping checked against the claims the provider serves right after the compilation, in the
+    // same build; ServiceProvidersPass hands it the declarations it built (spec/saml.md S-16, section 6.2 step 1)
+    $services->set(MappedClaimsWarmer::class)->args([
+        '$declarations' => [],
+    ]);
     $services->set(ModelServiceProviderMetadataReader::class);
     $services->alias(ServiceProviderMetadataReaderInterface::class, ModelServiceProviderMetadataReader::class);
     $services->set(MetadataFetcher::class);
@@ -1839,6 +1863,23 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(CanForgetAcceptedMetadataInterface::class, DoctrineAcceptedMetadataRepository::class);
     $services->set(ServiceProviderMetadataRefresh::class);
     $services->set(AcceptedMetadataForgetting::class);
+    // beffroi/saml: single sign-on (spec/saml.md section 6.4), a request received over either binding and validated by
+    // the model, answered from the session of the browser or after its login, the request waiting in its HTTP session
+    // (S-18); the assertion signed by the active SAML key of the tenant, opened by the KMS once per process (S-15), its
+    // NameID computed with the salt of the pairwise subjects (S-13), its attributes from the claims OpenID Connect serves
+    $services->set(ModelAuthnRequestReceiver::class);
+    $services->alias(AuthnRequestReceiverInterface::class, ModelAuthnRequestReceiver::class);
+    $services->set(ModelSignOnResponder::class)->args([
+        '$algorithm' => service(SamlSigning::class),
+    ]);
+    $services->alias(SignOnResponderInterface::class, ModelSignOnResponder::class);
+    $services->set(TenantPersistentIdentifierSalt::class);
+    $services->alias(PersistentIdentifierSaltInterface::class, TenantPersistentIdentifierSalt::class);
+    $services->set(AttributeRelease::class);
+    $services->set(SingleSignOn::class);
+    $services->set(WaitingSignOns::class);
+    $services->set(SamlPostPage::class);
+    $services->set(SignOnAnswers::class);
     $services->set(EndSessionRequestParser::class);
     $services->set(EndSessionHandler::class);
     $services->set(LogoutTokenIssuer::class);

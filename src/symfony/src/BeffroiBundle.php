@@ -211,7 +211,9 @@ final class BeffroiBundle extends AbstractBundle
      * registered in the framework's, so nothing but a pass can tell a name that answers from one that
      * does not. The service providers of the tenant are built when the container is compiled, so that a
      * declaration that does not hold together fails the build and not the first login (spec/saml.md
-     * section 6.2 step 1), which only a pass can do while leaving aside the values of the environment.
+     * section 6.2 step 1), which only a pass can do while leaving aside the values of the environment; the
+     * claim of a mapping, which needs the claims providers built, is checked by MappedClaimsWarmer right
+     * after, in the same build.
      */
     public function build(ContainerBuilder $container): void
     {

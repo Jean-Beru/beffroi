@@ -100,6 +100,16 @@ final readonly class ServiceProviderDocuments
     }
 
     /**
+     * The metadata of the service provider of single sign-on under test (spec/saml.md section 6.4), written once by
+     * the model's writer: the entity SIGNED, its assertion consumer service on HTTP-POST at SIGNED/acs, the test key of
+     * a service provider of saml2-model for signing, AuthnRequestsSigned.
+     */
+    public static function exampleOrg(): string
+    {
+        return (string) file_get_contents(__DIR__ . '/metadata/sp-example-org-metadata.xml');
+    }
+
+    /**
      * The metadata of Entra's SAML federation of guests as an administrator writes them: no key, no
      * AuthnRequestsSigned, its assertion consumer service on HTTP-POST.
      */

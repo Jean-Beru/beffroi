@@ -66,6 +66,7 @@ final class RouterIdentityProviderEndpointsTest extends TestCase
     {
         $routes = new RouteCollection();
         $routes->add(IdentityProviderRoutes::METADATA, new Route($prefix . IdentityProviderRoutes::METADATA_PATH));
+        $routes->add(IdentityProviderRoutes::SINGLE_SIGN_ON, new Route($prefix . IdentityProviderRoutes::SINGLE_SIGN_ON_PATH));
 
         return new UrlGenerator($routes, $context ?? new RequestContext());
     }
