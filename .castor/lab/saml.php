@@ -37,6 +37,7 @@ use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
 use function Castor\capture;
 use function Castor\context;
+use function Castor\http_request;
 use function Castor\io;
 use function Castor\load_dot_env;
 use function Castor\run;
@@ -90,7 +91,7 @@ const SAML_SP_BINDINGS = [
 
 #[AsTask(
     name: 'saml-sp',
-    description: 'The SAML identity provider of the stack judged by SimpleSAMLphp 2.5.3.1 (issue #732): the service provider is started on https://saml-sp.localhost, reads the metadata of the provider and is registered at it by a metadata file and "beffroi:saml:service-provider:refresh"; then single sign-on is played in HTTP-Redirect and in HTTP-POST as a browser plays it, as the development user, and the attributes SimpleSAMLphp received are printed. Every AuthnRequest is verified by xmlsec1 or by OpenSSL and Python (the detached signature of the redirect) and accepted by the model; every Response by xmlsec1. Each journey is a browser of its own, which signs in at the provider; then SimpleSAMLphp signs it out (issue #734): its LogoutRequest, verified by OpenSSL and Python, ends the session of the provider, the LogoutResponse comes back signed to its single logout service and SimpleSAMLphp accepts it, the browser is sent to the login when it asks to sign in again, and the same LogoutRequest presented again is refused',
+    description: 'The SAML identity provider of the stack judged by SimpleSAMLphp 2.5.3.1 (issue #732): the service provider is started on https://saml-sp.localhost, reads the metadata of the provider and is registered at it by a metadata file and "beffroi:saml:service-provider:refresh"; then single sign-on is played in HTTP-Redirect and in HTTP-POST as a browser plays it, as the development user, and the attributes SimpleSAMLphp received are printed. Every AuthnRequest is verified by xmlsec1 or by OpenSSL and Python (the detached signature of the redirect) and accepted by the model; every Response by xmlsec1. Each journey is a browser of its own, which signs in at the provider; the HTTP-POST one then signs in a second time, its request posted from the site of the service provider without the cookie of the provider and posted again by the provider from its own origin, answered without a login (spec/saml.md S-28); then SimpleSAMLphp signs it out (issue #734): its LogoutRequest, verified by OpenSSL and Python, ends the session of the provider, the LogoutResponse comes back signed to its single logout service and SimpleSAMLphp accepts it, the browser is sent to the login when it asks to sign in again, and the same LogoutRequest presented again is refused',
 )]
 function saml_sp(
     #[AsOption(description: 'Only start the service provider, read the metadata of the provider and register it: no sign-on')]
@@ -150,6 +151,10 @@ function saml_sp(
     io()->section('Single sign-on at the provider');
     foreach ($journeys as $binding => $journey) {
         $journeys[$binding] = saml_sp_sign_on_at_the_provider($journey, $issuer, $env['BEFFROI_DEV_USER_PASSWORD'], $ca);
+    }
+    if (isset($journeys['post'])) {
+        io()->section('A second sign-on in the same browser, its request posted from the site of the service provider');
+        saml_sp_sign_on_again($journeys['post'], $issuer, $ca, $endpoint);
     }
     saml_sp_verify_responses($journeys);
 
@@ -482,10 +487,13 @@ function saml_sp_in_phpqa(string $script, string $argument): void
  * (spec/saml.md S-18) and is resumed into the page that posts the Response, in the binding the metadata name for it
  * (HTTP-POST, SAML Bindings §3.5).
  *
- * @param array{binding: string, source?: string, cookies: array<string, array<string, string>>, request: array{method: string, url: string, fields: array<string, string>}, ssoUrl: string} $journey
+ * A browser already signed in at the provider ($signedIn) is answered from its session, and the login is then a
+ * failure of the journey; the Response it is answered with is captured under the name of the journey ($journey['capture']).
+ *
+ * @param array{binding: string, source?: string, cookies: array<string, array<string, string>>, request: array{method: string, url: string, fields: array<string, string>}, ssoUrl: string, capture?: string} $journey
  * @return array{binding: string, source: string, cookies: array<string, array<string, string>>, response?: string}
  */
-function saml_sp_sign_on_at_the_provider(array $journey, string $issuer, string $password, string $ca): array
+function saml_sp_sign_on_at_the_provider(array $journey, string $issuer, string $password, string $ca, bool $signedIn = false): array
 {
     $source = $journey['source'] ?? 'beffroi';
     $cookies = $journey['cookies'];
@@ -493,6 +501,12 @@ function saml_sp_sign_on_at_the_provider(array $journey, string $issuer, string 
     $binding = SAML_SP_BINDINGS[$journey['binding']];
 
     [$status, $location, $page] = demo_request($cookies, $ca, $request['method'], $request['url'], $request['fields']);
+    if ($signedIn) {
+        demo_expect(
+            ! ($status === 302 && strtok($location, '?') === $issuer . '/login'),
+            sprintf('the provider answers from the session of the browser, without a login (got %d %s)', $status, substr($location, 0, 120)),
+        );
+    }
     // the login every page of the provider that is not an authorization request sends the browser to, its path read
     // and not its query (spec/saml.md S-18)
     if ($status === 302 && strtok($location, '?') === $issuer . '/login') {
@@ -519,7 +533,7 @@ function saml_sp_sign_on_at_the_provider(array $journey, string $issuer, string 
     );
     $response = base64_decode($form['fields']['SAMLResponse'], true);
     demo_expect($response !== false, 'a base64 Response');
-    $name = sprintf('response-%s.xml', $journey['binding']);
+    $name = sprintf('response-%s.xml', $journey['capture'] ?? $journey['binding']);
     file_put_contents(SAML_SP_CAPTURED . '/' . $name, $response);
     if ($source === 'beffroi-encrypted') {
         saml_sp_encrypted_on_the_wire($response);
@@ -551,6 +565,78 @@ function saml_sp_sign_on_at_the_provider(array $journey, string $issuer, string 
         'cookies' => $cookies,
         'response' => $name,
     ];
+}
+
+/**
+ * A second sign-on in the browser of the HTTP-POST journey, signed in at the provider by the first (spec/saml.md S-28,
+ * issue #739): the service provider posts a new AuthnRequest from its own site, which a "SameSite=Lax" session cookie
+ * does not accompany, and the provider answers with a page of its own origin that posts the same fields again, once,
+ * from where the cookie comes with them; that post is answered from the session, without a login.
+ *
+ * The walk is a PHP client and not a browser: it sends no "Sec-Fetch-Site" and carries every cookie of its jar, whatever
+ * "SameSite" says. So the cross-site post is written here as a browser writes it, "Sec-Fetch-Site: cross-site" and no
+ * cookie of the provider, and what the walk proves is the answer of the provider to that post, the page and the post
+ * again; that a browser keeps the cookie back is the browser's, which the walk does not play.
+ *
+ * @param array{source?: string, cookies: array<string, array<string, string>>} $first
+ * @param array{sso: string, entityId: string} $endpoint
+ */
+function saml_sp_sign_on_again(array $first, string $issuer, string $ca, array $endpoint): void
+{
+    $journey = saml_sp_requests_sign_on('post', $ca, $endpoint, $first['source'] ?? 'beffroi');
+    file_put_contents(SAML_SP_DIRECTORY . '/sso-binding', '');
+    $provider = (string) parse_url($issuer, \PHP_URL_HOST);
+    demo_expect(($first['cookies'][$provider] ?? []) !== [], 'the browser holds the session cookie of the provider since the first sign-on');
+    $journey['cookies'][$provider] = $first['cookies'][$provider];
+    $request = $journey['request'];
+
+    $response = http_request('POST', $request['url'], [
+        'max_redirects' => 0,
+        'cafile' => $ca,
+        'headers' => [
+            'Sec-Fetch-Site' => 'cross-site',
+        ],
+        'body' => $request['fields'],
+    ]);
+    $status = $response->getStatusCode();
+    // the cookies the page sets, less the two the profiler of a stack in debug sets on every answer of a firewall
+    // that is not stateless, to link the profiles of a sign-in and a sign-out (SecurityDataCollector): they are the
+    // instrumentation's, not the provider's, and no stack that collects no profile sets them
+    $set = array_values(array_filter(
+        array_map(
+            static fn (string $cookie): string => trim(explode('=', $cookie, 2)[0]),
+            $response->getHeaders(false)['set-cookie'] ?? [],
+        ),
+        static fn (string $name): bool => preg_match('/_(de)?auth_profile_token$/', $name) !== 1,
+    ));
+    demo_expect(
+        $status === 200 && $set === [],
+        sprintf(
+            'the provider answers the post that came without its cookie with a page of its own, which sets no cookie (got %d%s)',
+            $status,
+            $set === [] ? '' : ', setting ' . implode(', ', $set),
+        ),
+    );
+    $form = saml_sp_page_form($response->getContent(false));
+    $path = (string) parse_url($request['url'], \PHP_URL_PATH);
+    demo_expect(
+        $form['action'] === $path . '?_beffroi_posted_again=1' && $form['fields'] === $request['fields'],
+        sprintf('whose form posts the same fields again to %s, marked so that it is not posted a third time (it posts to %s)', $path, $form['action']),
+    );
+
+    $journey['request'] = [
+        'method' => 'POST',
+        'url' => sprintf(
+            '%s://%s%s%s',
+            (string) parse_url($request['url'], \PHP_URL_SCHEME),
+            (string) parse_url($request['url'], \PHP_URL_HOST),
+            parse_url($request['url'], \PHP_URL_PORT) === null ? '' : ':' . parse_url($request['url'], \PHP_URL_PORT),
+            $form['action'],
+        ),
+        'fields' => $form['fields'],
+    ];
+    $journey['capture'] = 'post-again';
+    saml_sp_sign_on_at_the_provider($journey, $issuer, '', $ca, signedIn: true);
 }
 
 /**

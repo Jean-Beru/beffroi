@@ -1,0 +1,158 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Beffroi\Bundle\Http;
+
+use function array_pad;
+use Beffroi\Oidc\Domain\Page\InlineScript;
+use function explode;
+use function preg_match;
+use function sprintf;
+use function str_contains;
+use function strtolower;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use function trim;
+use function urldecode;
+
+/**
+ * A form a browser posted from another site, which a session cookie set "SameSite=Lax" does not accompany, posted
+ * again from this provider's own origin, which it does (beffroi/saml, spec/saml.md S-28). Under "Lax" a browser sends
+ * the cookie with a top-level GET from another site and with no POST from one (RFC 6265bis, "SameSite" cookies), so that a
+ * request a service provider or a client posts reaches the endpoint without the session the browser holds, a user
+ * signed in is asked to sign in again, and the cookie of the new session replaces the one the browser held.
+ *
+ * The page is served only where all of these hold, and the request is served as it came otherwise: it was posted, as
+ * a form; the browser says it came from another site ("Sec-Fetch-Site: cross-site", Fetch Metadata Request Headers), which no
+ * browser says of a post from this provider's own page; it carries no session cookie; the action it was posted to does
+ * not carry the marker this page adds to it; and every pair of its body comes back from a browser as it went, which a
+ * pair that is not UTF-8, holds a control character or a line break other than CR LF, or is named "_charset_" or by
+ * nothing would not. A browser that does not send "Sec-Fetch-Site" is served as today.
+ *
+ * What is posted again is the body the browser posted, pair by pair and in its order, repeated names included, so
+ * that the endpoint reads the second post as it would have read the first and refuses what it would have refused.
+ * The marker travels in the query of the action, which neither endpoint reads on a post: nothing is added to the
+ * fields. It stops a loop and decides nothing else, so that a request that forges it is served as it came, which is
+ * what a request is served as without this page.
+ *
+ * Nothing here reads or starts the HTTP session: a cookie set on this answer would replace the one the browser holds,
+ * which is what the page exists to avoid. Each endpoint opts in by asking first.
+ *
+ * The page speaks the language every page of the interaction plane chooses (InteractionLocale, architecture §5.7):
+ * the hint the endpoint read in the body, "ui_locales" for the authorization endpoint, then "Accept-Language". It is
+ * chosen here because the endpoint has not chosen it yet, the page coming before anything reads the request.
+ */
+final readonly class CrossSitePost
+{
+    public const string TEMPLATE = 'post_again.html.twig';
+
+    /**
+     * What submits the form where the browser runs scripts. A constant, because the hash of the policy is computed
+     * from it.
+     */
+    public const string SCRIPT = 'document.forms[0].submit();';
+
+    /**
+     * The parameter of the query of the action that says a post comes from this page (S-28).
+     */
+    public const string MARKER = '_beffroi_posted_again';
+
+    /**
+     * The one body posted again, whose pairs a browser writes back as they came; a multipart body is not one.
+     */
+    private const string FORM = 'application/x-www-form-urlencoded';
+
+    /**
+     * What a browser does not send back as it was given in a hidden field (HTML, "preprocessing the input stream" and "converting an entry list to a list of name-value pairs"):
+     * a control character, which the parser drops or rewrites, a carriage return or a line feed that is not one of a
+     * CR LF pair, both written back as that pair.
+     */
+    private const string REWRITTEN = '/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]|\r(?!\n)|(?<!\r)\n/';
+
+    /**
+     * The one hidden field a browser gives a value of its own, the name of its encoding (HTML, "constructing the entry list").
+     */
+    private const string CHARSET = '_charset_';
+
+    public function __construct(
+        private InteractionPages $pages,
+        private InteractionLocale $locale,
+    ) {
+    }
+
+    /**
+     * The page that posts the request again, or null when the endpoint serves the request as it came.
+     *
+     * @param list<string> $uiLocales the languages the posted body asks for, most preferred first (OIDC Core
+     *                                §3.1.2.1), none for a request that names none
+     */
+    public function postAgain(Request $request, array $uiLocales = []): ?Response
+    {
+        if (
+            ! $request->isMethod(Request::METHOD_POST)
+            || strtolower(trim(explode(';', $request->headers->get('Content-Type') ?? '')[0])) !== self::FORM
+            || $request->headers->get('Sec-Fetch-Site') !== 'cross-site'
+            || $request->hasPreviousSession()
+            || $request->query->has(self::MARKER)
+        ) {
+            return null;
+        }
+        $fields = self::fields($request->getContent());
+        if ($fields === null) {
+            return null;
+        }
+        $action = $request->getRequestUri();
+        $this->locale->apply($request, $this->locale->choose($request, $uiLocales));
+
+        return $this->pages->render(
+            self::TEMPLATE,
+            [
+                'action' => $action . (str_contains($action, '?') ? '&' : '?') . self::MARKER . '=1',
+                'fields' => $fields,
+                'script' => self::SCRIPT,
+            ],
+            headers: [
+                // No "form-action": the second post is answered where the endpoint sends it, a client of OpenID
+                // Connect among others, and a browser checks that directive over the whole chain of redirections
+                // of a submission (FormTarget), while the one form of this page is written here and posts here.
+                'Content-Security-Policy' => sprintf(
+                    "default-src 'none'; script-src '%s'; base-uri 'none'; frame-ancestors 'none'",
+                    new InlineScript(self::SCRIPT)->cspHashSource(),
+                ),
+                'Cache-Control' => 'no-cache, no-store',
+                'Pragma' => 'no-cache',
+            ],
+        );
+    }
+
+    /**
+     * The pairs of the body, decoded as PHP decodes them, or null when one would not come back from a browser as it
+     * went.
+     *
+     * @return non-empty-list<array{string, string}>|null
+     */
+    private static function fields(string $body): ?array
+    {
+        $fields = [];
+        foreach (explode('&', $body) as $pair) {
+            if ($pair === '') {
+                continue;
+            }
+            [$name, $value] = array_pad(explode('=', $pair, 2), 2, '');
+            $name = urldecode($name);
+            $value = urldecode($value);
+            if ($name === '' || $name === self::CHARSET || ! self::returns($name) || ! self::returns($value)) {
+                return null;
+            }
+            $fields[] = [$name, $value];
+        }
+
+        return $fields === [] ? null : $fields;
+    }
+
+    private static function returns(string $text): bool
+    {
+        return preg_match('//u', $text) === 1 && preg_match(self::REWRITTEN, $text) === 0;
+    }
+}
