@@ -284,7 +284,7 @@ final class ModelAuthnRequestPartiesTest extends TestCase
     {
         return AuthnRequestSigning::of(
             new ServiceProvider($entityId, new MetadataLocation('/etc/beffroi/sp.xml'), signsAuthnRequests: $signsAuthnRequests),
-            new ServiceProviderMetadata($entityId, null, [], $authnRequestsSigned, []),
+            new ServiceProviderMetadata($entityId, null, [], $authnRequestsSigned, [], readSigned: false),
         );
     }
 

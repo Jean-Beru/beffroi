@@ -16,8 +16,9 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * object the console calls (`beffroi:saml:service-provider:refresh`): what differs is who reads the outcome, a
  * terminal there and a log here.
  *
- * It fails nothing. A location that cannot be reached and a document refused are written to the log as warnings and
- * taken again at the next tick, the document accepted serving meanwhile, until its own validUntil refuses it.
+ * It fails nothing. A location that cannot be reached and a document refused are written to the log as errors, the
+ * level an operator is alerted on, and taken again at the next tick, the document accepted serving meanwhile, until
+ * its own validUntil refuses it (spec/saml.md S-6): a refusal nobody reads would keep that document for as long.
  */
 #[AsMessageHandler(bus: 'command.bus')]
 final readonly class RefreshTheServiceProviderMetadataHandler
@@ -39,7 +40,7 @@ final readonly class RefreshTheServiceProviderMetadataHandler
         }
         foreach ($this->refresh->refreshAll($tenant) as $refreshment) {
             if ($refreshment->refused) {
-                $this->logger->warning($refreshment->what);
+                $this->logger->error($refreshment->what);
                 continue;
             }
             $this->logger->info($refreshment->what);

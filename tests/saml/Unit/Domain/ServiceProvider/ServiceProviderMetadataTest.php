@@ -36,6 +36,23 @@ final class ServiceProviderMetadataTest extends TestCase
     }
 
     /**
+     * S-6: whether the document was read under the signers the declaration pins is said by the reading, which is the
+     * one that knows it, and never defaulted, so that a reading that leaves it out fails where it is written rather
+     * than reporting a document the rule against a rollback does not hold. PHPStan refuses the call below at level
+     * max, as above.
+     */
+    #[Test]
+    public function aReadingCannotLeaveOutWhetherItWasSigned(): void
+    {
+        // Then
+        $this->expectException(ArgumentCountError::class);
+        $this->expectExceptionMessageIsOrContains('5 passed');
+
+        // When
+        new ServiceProviderMetadata('https://sp.example.com/saml', null, [], false, []); // @phpstan-ignore arguments.count, new.resultUnused (the contract is broken on purpose)
+    }
+
+    /**
      * S-19: the key an assertion is encrypted for is the first certificate for encryption, in document order, the one
      * a SimpleSAMLphp identity provider takes; none without one.
      *
@@ -46,7 +63,7 @@ final class ServiceProviderMetadataTest extends TestCase
     public function itEncryptsForTheFirstCertificateForEncryption(array $certificates, ?Certificate $expected): void
     {
         // Given
-        $metadata = new ServiceProviderMetadata(ServiceProviderDocuments::SIGNED, null, $certificates, false, []);
+        $metadata = new ServiceProviderMetadata(ServiceProviderDocuments::SIGNED, null, $certificates, false, [], readSigned: false);
 
         // When / Then
         static::assertEquals($expected, $metadata->encryptionCertificate());

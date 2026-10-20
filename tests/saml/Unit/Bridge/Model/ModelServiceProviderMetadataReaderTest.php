@@ -216,6 +216,36 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
+     * S-6: a document read under a key the declaration pins says so, which holds it to the document accepted.
+     */
+    #[Test]
+    public function itSaysADocumentReadUnderAPinnedKeyWasReadSigned(): void
+    {
+        // When
+        $metadata = $this->reader->readSigned(
+            ServiceProviderDocuments::signed(new DateTimeImmutable('2026-10-01T00:00:00Z')),
+            [ServiceProviderDocuments::signer()],
+        );
+
+        // Then
+        static::assertTrue($metadata->readSigned);
+    }
+
+    /**
+     * S-6: a document read by its channel says it was not read signed, which lets it replace the document accepted
+     * whatever its validUntil.
+     */
+    #[Test]
+    public function itSaysADocumentReadByItsChannelWasNotReadSigned(): void
+    {
+        // When
+        $metadata = $this->reader->readTrusted(ServiceProviderDocuments::simpleSamlPhp());
+
+        // Then
+        static::assertFalse($metadata->readSigned);
+    }
+
+    /**
      * S-5: a document signed by another key than the pinned ones is refused.
      */
     #[Test]
@@ -286,6 +316,19 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
             [ServiceProviderDocuments::SIMPLESAMLPHP, ServiceProviderDocuments::SIMPLESAMLPHP, true, true],
             [$read->metadata->entityId, $read->role->entityId, $read->metadata->authnRequestsSigned, $read->role->authnRequestsSigned],
         );
+    }
+
+    /**
+     * Section 6.3 step 1, S-6: the accepted document read back is read by its store, never under a signer.
+     */
+    #[Test]
+    public function itSaysAnAcceptedDocumentReadBackWasNotReadSigned(): void
+    {
+        // When
+        $read = $this->reader->readAccepted(ServiceProviderDocuments::simpleSamlPhp());
+
+        // Then
+        static::assertFalse($read->metadata->readSigned);
     }
 
     /**
