@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Saml;
 
+use Beffroi\Bundle\Http\CrossSitePost;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
 use Beffroi\Core\Domain\Identity\EmailAddress;
@@ -198,6 +199,27 @@ final class SingleSignOnTest extends ConsoleTestCase
 
         // Then
         static::assertTrue($this->browser->getResponse()->isRedirect('/login'), (string) $this->browser->getResponse()->headers->get('Location'));
+    }
+
+    /**
+     * S-28, "The marker": a request a page of another site posts with the marker forged in its query, to a signed-in
+     * browser whose cookie is kept back, is posted again as one that does not carry it, and starts no HTTP session,
+     * whose cookie would replace the one the browser holds and sign it out of the provider.
+     */
+    #[Test]
+    public function aRequestPostedFromAnotherSiteThatForgesTheMarkerIsPostedAgainWithoutASession(): void
+    {
+        // Given
+        $this->signIn($this->alice);
+
+        // When
+        $this->postedFromAnotherSite('/saml/sso?' . CrossSitePost::MARKER . '=1', $this->postedBody('state-1'));
+
+        // Then
+        static::assertSame(
+            ['/saml/sso?' . CrossSitePost::MARKER . '=1', []],
+            [$this->form()['action'], $this->browser->getResponse()->headers->getCookies()],
+        );
     }
 
     /**

@@ -25,16 +25,18 @@ use function urldecode;
  *
  * The page is served only where all of these hold, and the request is served as it came otherwise: it was posted, as
  * a form; the browser says it came from another site ("Sec-Fetch-Site: cross-site", Fetch Metadata Request Headers), which no
- * browser says of a post from this provider's own page; it carries no session cookie; the action it was posted to does
- * not carry the marker this page adds to it; and every pair of its body comes back from a browser as it went, which a
- * pair that is not UTF-8, holds a control character or a line break other than CR LF, or is named "_charset_" or by
- * nothing would not. A browser that does not send "Sec-Fetch-Site" is served as today.
+ * browser says of a post from this provider's own page; it carries no session cookie; and every pair of its body comes
+ * back from a browser as it went, which a pair that is not UTF-8, holds a control character or a line break other than
+ * CR LF, or is named "_charset_" or by nothing would not. A browser that does not send "Sec-Fetch-Site" is served as
+ * today.
  *
  * What is posted again is the body the browser posted, pair by pair and in its order, repeated names included, so
  * that the endpoint reads the second post as it would have read the first and refuses what it would have refused.
  * The marker travels in the query of the action, which neither endpoint reads on a post: nothing is added to the
- * fields. It stops a loop and decides nothing else, so that a request that forges it is served as it came, which is
- * what a request is served as without this page.
+ * fields. It names the second post and decides nothing: the second post is posted from this provider's own page, so
+ * no browser says it came from another site, and that is what stops the loop. A post from another site that carries
+ * the marker already is posted again as one that does not, the marker not added twice, so that no post from another
+ * site, the marker forged or not, starts an HTTP session whose cookie would replace the one the browser holds.
  *
  * Nothing here reads or starts the HTTP session: a cookie set on this answer would replace the one the browser holds,
  * which is what the page exists to avoid. Each endpoint opts in by asking first.
@@ -94,7 +96,6 @@ final readonly class CrossSitePost
             || strtolower(trim(explode(';', $request->headers->get('Content-Type') ?? '')[0])) !== self::FORM
             || $request->headers->get('Sec-Fetch-Site') !== 'cross-site'
             || $request->hasPreviousSession()
-            || $request->query->has(self::MARKER)
         ) {
             return null;
         }
@@ -103,12 +104,15 @@ final readonly class CrossSitePost
             return null;
         }
         $action = $request->getRequestUri();
+        if (! $request->query->has(self::MARKER)) {
+            $action .= (str_contains($action, '?') ? '&' : '?') . self::MARKER . '=1';
+        }
         $this->locale->apply($request, $this->locale->choose($request, $uiLocales));
 
         return $this->pages->render(
             self::TEMPLATE,
             [
-                'action' => $action . (str_contains($action, '?') ? '&' : '?') . self::MARKER . '=1',
+                'action' => $action,
                 'fields' => $fields,
                 'script' => self::SCRIPT,
             ],

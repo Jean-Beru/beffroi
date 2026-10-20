@@ -183,17 +183,45 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28: a post that came from the page is not posted a third time, the marker stopping the loop and deciding
-     * nothing else: a browser that still sends no cookie is served as it came, here sent to the login.
+     * S-28: a post that came from the page is not posted a third time, the page posting from the origin of the
+     * provider: a browser that still sends no cookie is served as it came, here sent to the login.
      */
     #[Test]
     public function aRequestPostedAgainIsNotPostedAThirdTime(): void
     {
         // When
-        $this->postedFromAnotherSite(self::POSTED_AGAIN, self::body());
+        $this->postedFromAnotherSite(self::POSTED_AGAIN, self::body(), ['HTTP_SEC_FETCH_SITE' => 'same-origin']);
 
         // Then
         self::assertServedAsItCame();
+    }
+
+    /**
+     * S-28, "The marker": a post from another site that forges the marker is posted again as one that does not carry
+     * it, so that no post from another site starts an HTTP session, whose cookie would replace the one the browser
+     * holds and sign it out of the provider.
+     */
+    #[Test]
+    public function aPostFromAnotherSiteThatForgesTheMarkerIsPostedAgainWithoutASession(): void
+    {
+        // When
+        $this->postedFromAnotherSite(self::POSTED_AGAIN, self::body());
+
+        // Then
+        static::assertSame([self::POSTED_AGAIN, []], [$this->page()[0], $this->browser->getResponse()->headers->getCookies()]);
+    }
+
+    /**
+     * S-28: the marker is added after the query the request was posted with, once.
+     */
+    #[Test]
+    public function theMarkerIsAddedAfterTheQueryOfTheRequest(): void
+    {
+        // When
+        $this->postedFromAnotherSite('/authorize?x=y', self::body());
+
+        // Then
+        static::assertSame('/authorize?x=y&' . CrossSitePost::MARKER . '=1', $this->page()[0]);
     }
 
     /**
