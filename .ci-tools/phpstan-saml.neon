@@ -1,0 +1,103 @@
+# PHPStan at level max, with no baseline, ever: every finding is fixed in the code or refused in the review.
+#
+# An analysis of its own, apart from .ci-tools/phpstan.neon, which excludes this package, as the SAML packages have:
+# section 8 of src/saml/spec/saml.md bans what the identity provider's other packages may call (Reflection,
+# unserialize()), so the bans are a rule of beffroi/saml and not of the others. They hold in src/ and in tests/ alike,
+# through the two rules of tests/saml/PhpStan; bindings.md section 6.8 asks them of this package, and nothing else of
+# the bans of the SAML packages is copied here.
+#
+# The extensions come from the phpqa image (/tools/.composer/vendor-bin/phpstan), which is where %rootDir% points;
+# PHPUnit's classes are scanned from the image's PHPUnit install.
+parameters:
+	level: max
+	# A result cache of its own, beside those of the other analyses, so that none drops another's.
+	tmpDir: %currentWorkingDirectory%/.ci-tools/cache/phpstan-saml
+	scanDirectories:
+		- %rootDir%/../../../../phpunit/vendor
+	# The directory of the package, whose PHP is under src/ only: src/saml/src does not exist before the first class of
+	# the package, and a path PHPStan cannot find is an error.
+	paths:
+		- %currentWorkingDirectory%/src/saml
+		- %currentWorkingDirectory%/tests/saml
+	checkUninitializedProperties: true
+	treatPhpDocTypesAsCertain: false
+	# The functions never called (section 8): unserialize() builds an object of any class, one of
+	# Beffroi\Saml2\Bindings\Internal\ among them, without its constructor (finding 3 of the security review of
+	# saml2-bindings).
+	bannedFunctions:
+		- unserialize
+	# The methods never called, whatever the receiver (section 8). validateAuthenticatedByBinding(): the binding's
+	# authentication is the word of saml2-bindings only (B-5, bindings.md section 6.8). __unserialize(): the other half
+	# of unserialize().
+	bannedMethods:
+		- validateAuthenticatedByBinding
+		- __unserialize
+	# The methods of Closure never called (section 8): a closure bound to the scope of Internal\Reception builds a
+	# Reception that pairs the message of one input with the signature of another (bindings.md sections 6.8 and 12).
+	closureMethods:
+		- bind
+		- bindTo
+		- call
+	# Reflection never used (section 8), for the same reason: ReflectionProperty::setValue(),
+	# ReflectionClass::newInstanceWithoutConstructor(), a lazy ghost. The roots of the API, each banned with what extends
+	# it: ReflectionObject and ReflectionEnum with ReflectionClass, ReflectionMethod and ReflectionFunction with
+	# ReflectionFunctionAbstract, the enum cases with ReflectionClassConstant, the three kinds of type with
+	# ReflectionType. ReflectionException is not among them: catching it reaches nothing.
+	reflectionClasses:
+		- Reflection
+		- ReflectionAttribute
+		- ReflectionClass
+		- ReflectionClassConstant
+		- ReflectionConstant
+		- ReflectionExtension
+		- ReflectionFiber
+		- ReflectionFunctionAbstract
+		- ReflectionGenerator
+		- ReflectionParameter
+		- ReflectionProperty
+		- ReflectionReference
+		- ReflectionType
+		- ReflectionZendExtension
+
+parametersSchema:
+	bannedFunctions: listOf(string())
+	bannedMethods: listOf(string())
+	closureMethods: listOf(string())
+	reflectionClasses: listOf(string())
+
+services:
+	-
+		class: Beffroi\Saml\Tests\PhpStan\BannedCallsRule
+		arguments:
+			functions: %bannedFunctions%
+			methods: %bannedMethods%
+			closureMethods: %closureMethods%
+			reflection: %reflectionClasses%
+		tags:
+			- phpstan.rules.rule
+	# a first-class callable of a banned call is that call (BannedCallablesRule, issue #693)
+	-
+		class: Beffroi\Saml\Tests\PhpStan\BannedCallablesRule
+		arguments:
+			nodeType: PHPStan\Node\FunctionCallableNode
+		tags:
+			- phpstan.rules.rule
+	-
+		class: Beffroi\Saml\Tests\PhpStan\BannedCallablesRule
+		arguments:
+			nodeType: PHPStan\Node\MethodCallableNode
+		tags:
+			- phpstan.rules.rule
+	-
+		class: Beffroi\Saml\Tests\PhpStan\BannedCallablesRule
+		arguments:
+			nodeType: PHPStan\Node\StaticMethodCallableNode
+		tags:
+			- phpstan.rules.rule
+
+includes:
+	- %rootDir%/conf/bleedingEdge.neon
+	- %rootDir%/../phpstan-deprecation-rules/rules.neon
+	- %rootDir%/../phpstan-phpunit/extension.neon
+	- %rootDir%/../phpstan-phpunit/rules.neon
+	- %rootDir%/../phpstan-strict-rules/rules.neon

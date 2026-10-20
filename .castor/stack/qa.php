@@ -402,14 +402,15 @@ function rector_fix(): void
 
 /**
  * The configurations PHPStan runs, one analysis each: the identity provider's packages under the baseline, and
- * each SAML package under its own, with no baseline and the bans of its section 8, which are rules of that
- * package and not of the others.
+ * each SAML package, beffroi/saml among them, under its own, with no baseline and the bans of its section 8, which
+ * are rules of that package and not of the others.
  */
 const PHPSTAN_CONFIGURATIONS = [
     '.ci-tools/phpstan.neon',
     '.ci-tools/phpstan-xml-security.neon',
     '.ci-tools/phpstan-saml2-model.neon',
     '.ci-tools/phpstan-saml2-bindings.neon',
+    '.ci-tools/phpstan-saml.neon',
 ];
 
 #[AsTask(description: 'Run PHPStan, the identity provider\'s packages and then each SAML package')]
