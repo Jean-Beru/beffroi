@@ -64,7 +64,7 @@ concurrency:
 jobs:
   application:
     name: "The application boots, what its kernel writes is what is committed, and its suite is green"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, kloude]
     container:
       image: ghcr.io/spomky-labs/phpqa:8.5
     env:

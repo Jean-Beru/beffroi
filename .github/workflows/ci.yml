@@ -22,8 +22,9 @@ concurrency:
 # that older versions can be re-added by listing them (see the "tests" job). The SAML packages are
 # the exception: their suites run on PHP 8.4 too, in a job of their own ("saml_php84").
 #
-# Every job with "container:" pulls the phpqa image on a fresh runner (735 MB compressed, 3.3 GB
-# extracted) before its first step, out of reach of actions/cache. The quality checks therefore
+# Every job runs on the self-hosted runner of the organisation ("kloude"). Every job with "container:"
+# pulls the phpqa image (735 MB compressed, 3.3 GB extracted) before its first step when the runner
+# does not hold it already, out of reach of actions/cache. The quality checks therefore
 # share one job: one pull and one Composer install instead of one of each per tool. The steps run
 # to the end whatever the outcome of the previous ones, so that every tool reports its verdict.
 #
@@ -45,7 +46,7 @@ concurrency:
 jobs:
   pre_checks:
     name: "0️⃣ Pre-checks"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, kloude]
     steps:
       - uses: actions/checkout@v7
       - name: "Check file permissions"
@@ -66,7 +67,7 @@ jobs:
   quality:
     name: "1️⃣ Quality (PHPStan, Mago, Rector, composer.json, licenses, Deptrac)"
     needs: [pre_checks]
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, kloude]
     container:
       image: ghcr.io/spomky-labs/phpqa:8.5
     steps:
@@ -145,7 +146,7 @@ jobs:
   tests:
     name: "2️⃣ Tests (PHP ${{ matrix.php-version }})"
     needs: [pre_checks]
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, kloude]
     container:
       image: ghcr.io/spomky-labs/phpqa:${{ matrix.php-version }}
     continue-on-error: ${{ matrix.experimental }}
@@ -186,7 +187,7 @@ jobs:
     # does not run: their specifications ask for a green corpus on 8.4 and on 8.5, and what differs between the two
     # is theirs (the PSS schemes PHP 8.5 gives openssl_sign() and openssl_verify(), spec/dsig.md section 13). Their
     # suites only, without coverage: nothing reads it.
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, kloude]
     container:
       image: ghcr.io/spomky-labs/phpqa:8.4
     steps:
@@ -212,7 +213,7 @@ jobs:
     # URL, and every message inflated by Python's zlib to the document the writer wrote. Two images, hence Docker on
     # the runner rather than a job container; "castor xml-security-oracle", "castor saml2-model-oracle" and
     # "castor saml2-bindings-oracle" are the same on a workstation.
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, kloude]
     steps:
       - uses: actions/checkout@v7
       # Docker Hub under the account the secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN of this repository name,
@@ -277,7 +278,7 @@ jobs:
     # bridges, and what judges them runs on the development stack (VaultTransitCustodyTest,
     # AwsKmsCustodyTest, skipped without their DSN; "castor dump-search", whose backend list carries the
     # one that cannot be played yet with its issue).
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, kloude]
     container:
       image: ghcr.io/spomky-labs/phpqa:8.5
     steps:
@@ -302,7 +303,7 @@ jobs:
     # the commit before it (the pull request just merged). A schedule has neither and runs none of this; the whole
     # source, which takes hours with the functional tests covering most of it, is "mutation.yml".
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && endsWith(github.ref, '.x') && github.event.before != '0000000000000000000000000000000000000000')
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, kloude]
     container:
       image: ghcr.io/spomky-labs/phpqa:8.5
     steps:
