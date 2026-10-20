@@ -114,7 +114,8 @@
             "tests/saml2-model/Fixture/",
             "tests/saml2-model/Interop/",
             "tests/saml2-bindings/Fixture/",
-            "tests/saml2-bindings/Interop/"
+            "tests/saml2-bindings/Interop/",
+            "tests/saml/PhpStan/Fixture/"
         ]
     },
     "config": {

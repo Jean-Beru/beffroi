@@ -103,7 +103,8 @@ jobs:
       # nothing, 6.2 s with one source file changed, on one machine). It compresses to 2.3 MB, so the
       # 10 GB a repository is given is not spent on entries nobody reads.
       # One result cache per analysis: the identity provider's packages, then each SAML package under its own
-      # configuration, beffroi/saml among them (castor phpstan runs the five).
+      # configuration, beffroi/saml among them (castor phpstan runs the five, then proves the bans of beffroi/saml on
+      # their fixture, a sixth run of one file whose result is read as it is made and not kept).
       - uses: actions/cache@v6
         with:
           path: |

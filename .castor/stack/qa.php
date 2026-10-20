@@ -427,6 +427,132 @@ function phpstan(): void
             '--configuration=' . $configuration,
         ]);
     }
+    phpstan_saml_rules();
+}
+
+/**
+ * The fixture of the rules of beffroi/saml and the configuration that analyses it alone: every form section 8 of
+ * src/saml/spec/saml.md bans, one line each, and the lines that must pass.
+ */
+const PHPSTAN_SAML_RULES_FIXTURE = 'tests/saml/PhpStan/Fixture';
+
+const PHPSTAN_SAML_RULES_CONFIGURATION = '.ci-tools/phpstan-saml-rules.neon';
+
+const PHPSTAN_SAML_RULES_REPORT = '.ci-tools/cache/phpstan-saml-rules/report.json';
+
+/** The identifier of the errors BannedCallsRule and BannedCallablesRule report: the only ones this task reads. */
+const PHPSTAN_SAML_RULES_IDENTIFIER = 'beffroi.bannedCall';
+
+#[AsTask(
+    description: 'Prove the bans of beffroi/saml (section 8): PHPStan with its rules on tests/saml/PhpStan/Fixture, whose lines say what each must report; fails on a refusal missing and on one nobody expected',
+)]
+function phpstan_saml_rules(): void
+{
+    io()->section('Proving the bans of beffroi/saml on their fixture');
+    $report = PHPSTAN_SAML_RULES_REPORT;
+    if (! is_dir(dirname($report))) {
+        mkdir(dirname($report), 0o777, true);
+    }
+    // A report left by an earlier run is never read as this one's.
+    if (is_file($report)) {
+        unlink($report);
+    }
+
+    // PHPStan answers 1 when it reports errors, which is its job here; the report is the result, and anything above 1
+    // is PHPStan failing. The redirection is the shell's of the container: phpqa() does not capture an output.
+    phpqa([
+        'sh',
+        '-c',
+        sprintf(
+            'phpstan analyse --no-progress --error-format=json --configuration=%s > %s; status=$?; [ "$status" -le 1 ]',
+            PHPSTAN_SAML_RULES_CONFIGURATION,
+            $report,
+        ),
+    ]);
+
+    $analysis = is_file($report) ? json_decode((string) file_get_contents($report), true) : null;
+    if (! is_array($analysis) || ! is_array($analysis['files'] ?? null) || ! is_array($analysis['errors'] ?? null)) {
+        io()->error('PHPStan left no readable report in ' . $report);
+        exit(1);
+    }
+
+    $expected = phpstan_saml_rules_expected();
+    $reported = [];
+    $broken = array_map(static fn (mixed $error): string => (string) json_encode($error), $analysis['errors']);
+    foreach ($analysis['files'] as $file => $result) {
+        foreach ($result['messages'] ?? [] as $message) {
+            $identifier = (string) ($message['identifier'] ?? '');
+            $line = sprintf('%s:%d %s', phpstan_saml_rules_relative((string) $file), $message['line'] ?? 0, $message['message']);
+            if ($identifier === PHPSTAN_SAML_RULES_IDENTIFIER) {
+                // A set and not a count: PHPStan visits a nullsafe call twice, and what is asked is whether the line is refused.
+                $reported[$line] = true;
+            } elseif ($identifier === '' || str_starts_with($identifier, 'phpstan.')) {
+                // A parse error or a message without an identifier: the fixture was not read, and what it says is not proven.
+                $broken[] = $line;
+            }
+        }
+    }
+
+    $missing = array_keys(array_diff_key($expected, $reported));
+    $unexpected = array_keys(array_diff_key($reported, $expected));
+    sort($missing);
+    sort($unexpected);
+    if ($expected === []) {
+        $broken[] = 'the fixture expects nothing: no line of ' . PHPSTAN_SAML_RULES_FIXTURE . ' carries "// error: "';
+    }
+    if ($missing === [] && $unexpected === [] && $broken === []) {
+        io()->success(sprintf('%d refusals expected, %d reported, the same ones.', count($expected), count($reported)));
+
+        return;
+    }
+
+    foreach ([
+        'Expected by the fixture and not reported (a rule stopped firing, or a line moved)' => $missing,
+        'Reported and not expected (a rule fires on what it let through, or a line moved)' => $unexpected,
+        'PHPStan could not read the fixture' => $broken,
+    ] as $title => $lines) {
+        if ($lines !== []) {
+            io()->error($title);
+            io()->listing($lines);
+        }
+    }
+
+    exit(1);
+}
+
+/**
+ * What the lines of the fixture say they must be refused with: "file:line message", from each "// error: message".
+ *
+ * @return array<string, true>
+ */
+function phpstan_saml_rules_expected(): array
+{
+    $expected = [];
+    $files = glob(getcwd() . '/' . PHPSTAN_SAML_RULES_FIXTURE . '/*.php');
+    foreach ($files === false ? [] : $files as $file) {
+        foreach (file($file, \FILE_IGNORE_NEW_LINES) ?: [] as $number => $line) {
+            // A marker ends a line of code; the comments that explain the fixture may quote one.
+            if (preg_match('~^\s*(\*|/\*|//)~', $line) === 1) {
+                continue;
+            }
+            preg_match_all('~// error: (.+?)(?=\s// error: |$)~', $line, $matches);
+            foreach ($matches[1] as $message) {
+                $expected[sprintf('%s:%d %s', phpstan_saml_rules_relative($file), $number + 1, $message)] = true;
+            }
+        }
+    }
+
+    return $expected;
+}
+
+/**
+ * The path PHPStan reports (/project/... in the image, the working directory outside it) from the fixture directory on.
+ */
+function phpstan_saml_rules_relative(string $path): string
+{
+    $position = strpos($path, PHPSTAN_SAML_RULES_FIXTURE . '/');
+
+    return $position === false ? $path : substr($path, $position);
 }
 
 #[AsTask(description: 'Generate PHPStan baseline')]

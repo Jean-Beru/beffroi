@@ -117,7 +117,8 @@ What says where a provenance came from (`../docs/11-architecture/coeur.md` §3.5
 ```bash
 castor phpunit            # tests with coverage, which pcov produces (.ci-tools/php/coverage/pcov.ini, read only by this task)
 castor app-phpunit        # the suite of the standalone application, which the three suites of the task above do not cover: the kernel of apps/op, on the PostgreSQL the stack publishes on the loopback address and the KMS of apps/op/.env.test, the migrations of the bundle played before the first test and the rows emptied before each one; the Application workflow runs the same task with a database service beside it
-castor phpstan            # level max: the identity provider's packages under the baseline, then each SAML package under its own configuration, no baseline and the bans of its section 8
+castor phpstan            # level max: the identity provider's packages under the baseline, then each SAML package under its own configuration, no baseline and the bans of its section 8, then castor phpstan-saml-rules
+castor phpstan-saml-rules # the proof of those bans: PHPStan with the rules of beffroi/saml (.ci-tools/phpstan-saml-rules.neon) on tests/saml/PhpStan/Fixture, one line per banned form carrying its "// error: <message>" and the lines that must pass, the report compared to the markers; red on a refusal missing and on one nobody expected, so a new form of a ban is a new line there
 castor mago-format / castor mago-format-fix   # Mago, the formatter, in place of ECS; mago.toml at the root (where its editor integrations look for it)
 castor mago-lint / castor mago-lint-fix       # Mago, the linter, in place of the rules of ECS that are not whitespace
 castor mago-analyze       # Mago, the analyzer: informative only, it is not PHPStan's equal and the CI does not run it (see [analyzer] in mago.toml)
