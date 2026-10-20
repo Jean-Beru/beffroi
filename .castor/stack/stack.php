@@ -62,15 +62,18 @@ const COMPOSE_PROFILES = ['conformance', 'vault', 'aws', 'saml-sp'];
 const CADDY_ROOT_CERTIFICATE = '/data/beffroi/root.crt';
 
 /**
- * Every name the stack serves over HTTPS, by the variable of compose.yaml that can rename it, and the one
- * list the certificate mkcert issues for the stack is drawn from (stack_certificate()). A site the stack
- * comes to serve is one line here.
+ * Every name the stack serves over HTTPS, by the variable of compose.yaml that can rename it, or under no key
+ * when nothing renames it, and the one list the certificate mkcert issues for the stack is drawn from
+ * (stack_certificate()). A site the stack comes to serve is one line here: a name left out is served under the
+ * internal CA of Caddy, which the walks, trusting the root of the certificate, refuse.
  *
- * @var array<string, string>
+ * @var array<int|string, string>
  */
 const STACK_HOSTS = [
     'SERVER_NAME' => 'op.localhost',
     'MTLS_SERVER_NAME' => 'mtls.op.localhost',
+    // The service provider of the SAML judge (docker/saml-sp/saml-sp.Caddyfile), whose configuration names it.
+    'saml-sp.localhost',
 ];
 
 /**
@@ -168,8 +171,8 @@ function start(
 }
 
 /**
- * The names of STACK_HOSTS, each one renamed by its variable when the environment sets it, as compose.yaml
- * does.
+ * The names of STACK_HOSTS, each one that has a variable renamed by it when the environment sets it, as
+ * compose.yaml does.
  *
  * @return list<string>
  */
@@ -177,7 +180,7 @@ function stack_hosts(): array
 {
     $hosts = [];
     foreach (STACK_HOSTS as $variable => $default) {
-        $value = getenv($variable);
+        $value = is_string($variable) ? getenv($variable) : false;
         $hosts[] = is_string($value) && $value !== '' ? $value : $default;
     }
 
