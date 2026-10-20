@@ -8,6 +8,7 @@ use Beffroi\Bundle\EndSession\FrontChannelLogoutRenderer;
 use Beffroi\Bundle\Http\FormTarget;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Saml\IdentityProviderRoutes;
+use Beffroi\Bundle\Saml\LogoutChainCookie;
 use Beffroi\Bundle\Saml\LogoutChainPages;
 use Beffroi\Bundle\Saml\SamlPostPage;
 use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
@@ -27,10 +28,12 @@ use Beffroi\Saml\Tests\Fixture\InMemoryLogoutChains;
 use Beffroi\Saml\Tests\Fixture\InMemorySessionParticipations;
 use Beffroi\Saml\Tests\Fixture\RecordingSignOutNotifier;
 use Beffroi\Saml\Tests\Fixture\RecordingSignOutResponder;
+use function array_map;
 use function http_build_query;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Uid\Uuid;
@@ -40,7 +43,8 @@ use Twig\Loader\ArrayLoader;
 /**
  * beffroi/saml, spec/saml.md S-32, S-35: a chain whose first step is resumed at once, no client of OpenID Connect of
  * its sessions being loaded by the page of Front-Channel Logout 1.0, and meets a KMS that does not answer sends the
- * browser to the route that resumes it, with its reference, where the step is played again.
+ * browser to the route that resumes it, with its reference and the cookie of the chain, where the step is played
+ * again.
  */
 final class LogoutChainPagesTest extends TestCase
 {
@@ -100,6 +104,27 @@ final class LogoutChainPagesTest extends TestCase
     }
 
     /**
+     * S-32, S-35: the redirection to the route that resumes the chain after an outage gives the browser the cookie of
+     * the chain, without which that route resumes nothing.
+     */
+    #[Test]
+    public function aFirstStepThatMeetsAnOutageGivesTheBrowserTheCookieOfTheChain(): void
+    {
+        // Given
+        $started = $this->started();
+        $this->notifier->failure = new KmsUnavailableException('The KMS did not answer.');
+
+        // When
+        $response = $this->pages()->started($this->tenant, $started);
+
+        // Then
+        static::assertSame(
+            [[LogoutChainCookie::NAME, $started->secret->value]],
+            array_map(static fn (Cookie $cookie): array => [$cookie->getName(), $cookie->getValue()], $response->headers->getCookies()),
+        );
+    }
+
+    /**
      * S-32: a first step resumed at once that fails for another reason than an outage of the KMS fails as it came.
      */
     #[Test]
@@ -140,6 +165,7 @@ final class LogoutChainPagesTest extends TestCase
             new SamlPostPage($pages),
             $urls,
             new FormTarget(),
+            new LogoutChainCookie(new MockClock(Fixtures::now())),
         );
     }
 }
