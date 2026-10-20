@@ -46,6 +46,75 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
         static::assertStringStartsWith('MIIDcTCCAlmgAwIBAgIUcUbLWObVO2r2', $metadata->encryptionCertificates[0]->base64);
     }
 
+    /**
+     * S-9, section 6.2 step 3: the SimpleSAMLphp service provider says it signs its requests.
+     */
+    #[Test]
+    public function itReadsThatAServiceProviderSignsItsRequests(): void
+    {
+        // When
+        $metadata = $this->reader->readTrusted(ServiceProviderDocuments::simpleSamlPhp());
+
+        // Then
+        static::assertTrue($metadata->authnRequestsSigned);
+    }
+
+    /**
+     * S-9, section 6.2 step 3, Metadata §2.4.4: a document without AuthnRequestsSigned, as Entra's is written, says
+     * nothing of a signature.
+     */
+    #[Test]
+    public function itReadsAnAbsentAuthnRequestsSignedAsFalse(): void
+    {
+        // When
+        $metadata = $this->reader->readTrusted(ServiceProviderDocuments::entra());
+
+        // Then
+        static::assertSame(ServiceProviderDocuments::ENTRA, $metadata->entityId);
+        static::assertFalse($metadata->authnRequestsSigned);
+        static::assertSame([], $metadata->encryptionCertificates);
+    }
+
+    /**
+     * S-11, section 6.2 step 3: the signing certificates of a document are those of its `KeyDescriptor` for signing.
+     */
+    #[Test]
+    public function itReadsTheSigningCertificatesOfADocument(): void
+    {
+        // When
+        $metadata = $this->reader->readTrusted(ServiceProviderDocuments::simpleSamlPhp());
+
+        // Then
+        static::assertCount(1, $metadata->signingCertificates);
+    }
+
+    /**
+     * S-11, section 6.2 step 3: a `KeyDescriptor` for encryption is not a key for signing.
+     */
+    #[Test]
+    public function itDoesNotReadAnEncryptionCertificateAsASigningOne(): void
+    {
+        // When
+        $metadata = $this->reader->readTrusted(ServiceProviderDocuments::simpleSamlPhpWithoutSigningKey());
+
+        // Then
+        static::assertSame([], $metadata->signingCertificates);
+        static::assertCount(1, $metadata->encryptionCertificates);
+    }
+
+    /**
+     * S-11, section 6.2 step 3: a document without a key, as Entra's is written, has no signing certificate.
+     */
+    #[Test]
+    public function itReadsADocumentWithoutAKeyAsHoldingNoSigningCertificate(): void
+    {
+        // When
+        $metadata = $this->reader->readTrusted(ServiceProviderDocuments::entra());
+
+        // Then
+        static::assertSame([], $metadata->signingCertificates);
+    }
+
     #[Test]
     public function itReadsTheValidUntilOfADocument(): void
     {

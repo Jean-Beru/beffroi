@@ -720,6 +720,10 @@ const INFECTION_STRICT_FILES = [
     'src/saml/src/Application/ServiceProvider/AcceptedMetadataForgetting.php',
     'src/saml/src/Bridge/Model/ModelServiceProviderMetadataReader.php',
     'src/saml/src/Bridge/Configuration/ConfigurationServiceProviders.php',
+    // beffroi/saml, section 9: the signature an authentication request needs and its translation to the model's terms
+    // (section 6.3).
+    'src/saml/src/Domain/ServiceProvider/AuthnRequestSigning.php',
+    'src/saml/src/Bridge/Model/ModelAuthnRequestParties.php',
     'src/saml2-model/src/Writing/LogoutRequestWriter.php',
     'src/saml2-model/src/Writing/LogoutResponseWriter.php',
     // Section 9: the strict readers of the two logout messages (sections 6.3, 6.4).
