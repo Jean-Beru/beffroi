@@ -85,6 +85,13 @@ const SAML_SP_ENCRYPTION = [
 const SAML_SP_CAPTURED = SAML_SP_DIRECTORY . '/captured';
 
 /**
+ * The oracle of HTTP-Redirect of saml2-bindings, the script and the Python it runs, which is what the container that
+ * verifies a redirected message reads of tests/ (alpine_command()), with the certificate of the signer and the
+ * directory of what the walk captured, where each <name>.url has the document it carries beside it, <name>.xml.
+ */
+const SAML_SP_ORACLE_REDIRECT = 'tests/saml2-bindings/Fixture/oracle';
+
+/**
  * The bindings the AuthnRequest travels over, by the name the walk and its files give them, and the value of
  * "Binding" in the metadata that name stands for.
  */
@@ -438,11 +445,14 @@ function saml_sp_verify_requests(array $journeys): void
 {
     if (isset($journeys['redirect'])) {
         io()->text('OpenSSL and Python, the signature over the query string and the message it carries:');
-        in_alpine('apk add -q openssl python3 >/dev/null 2>&1 && openssl version && sh tests/saml2-bindings/Fixture/oracle/verify-redirect.sh '
-        . SAML_SP_DIRECTORY
-        . '/sp.crt '
-        . SAML_SP_CAPTURED
-        . '/authn-request-redirect.url');
+        in_alpine(
+            'apk add -q openssl python3 >/dev/null 2>&1 && openssl version && sh tests/saml2-bindings/Fixture/oracle/verify-redirect.sh '
+            . SAML_SP_DIRECTORY
+            . '/sp.crt '
+            . SAML_SP_CAPTURED
+            . '/authn-request-redirect.url',
+            [SAML_SP_ORACLE_REDIRECT, SAML_SP_DIRECTORY . '/sp.crt', SAML_SP_CAPTURED],
+        );
     }
     if (isset($journeys['post'])) {
         io()->text('xmlsec1, the signature of the document:');
@@ -459,9 +469,12 @@ function saml_sp_verify_requests(array $journeys): void
  */
 function saml_sp_xmlsec1(): void
 {
-    in_alpine('apk add -q xmlsec libxml2-utils >/dev/null 2>&1 && xmlsec1 --version && sh tests/saml2-model/Interop/simplesamlphp/xmlsec1-verify.sh '
-    . SAML_SP_CAPTURED
-    . ' "*.xml"');
+    in_alpine(
+        'apk add -q xmlsec libxml2-utils >/dev/null 2>&1 && xmlsec1 --version && sh tests/saml2-model/Interop/simplesamlphp/xmlsec1-verify.sh '
+        . SAML_SP_CAPTURED
+        . ' "*.xml"',
+        ['tests/saml2-model/Interop/simplesamlphp/xmlsec1-verify.sh', SAML_SP_CAPTURED],
+    );
 }
 
 /**
@@ -714,24 +727,15 @@ function saml_sp_encrypted_on_the_wire(string $response): void
  */
 function saml_sp_decrypt(string $file): void
 {
-    $assertion = capture([
-        'docker',
-        'run',
-        '--rm',
-        '-v',
-        getcwd() . ':/project:ro',
-        '-w',
-        '/project',
-        'alpine:3.22',
-        'sh',
-        '-c',
+    $assertion = capture(alpine_command(
         'apk add -q xmlsec libxml2-utils >/dev/null 2>&1'
-            . ' && xmlsec1 --decrypt --lax-key-search --privkey-pem '
-            . SAML_SP_DIRECTORY
-            . '/sp.pem --output /tmp/decrypted.xml '
-            . escapeshellarg($file)
-            . ' && xmllint --xpath \'/*/*[local-name()="EncryptedAssertion"]/*[local-name()="Assertion"]\' /tmp/decrypted.xml',
-    ]);
+        . ' && xmlsec1 --decrypt --lax-key-search --privkey-pem '
+        . SAML_SP_DIRECTORY
+        . '/sp.pem --output /tmp/decrypted.xml '
+        . escapeshellarg($file)
+        . ' && xmllint --xpath \'/*/*[local-name()="EncryptedAssertion"]/*[local-name()="Assertion"]\' /tmp/decrypted.xml',
+        [SAML_SP_DIRECTORY . '/sp.pem', $file],
+    ));
     $name = basename($file, '.xml') . '.decrypted-assertion.xml';
     file_put_contents(SAML_SP_CAPTURED . '/' . $name, $assertion);
     demo_expect(
@@ -835,6 +839,7 @@ function saml_sp_verify_logout_requests(array $journeys): void
     in_alpine(
         'apk add -q openssl python3 >/dev/null 2>&1 && sh tests/saml2-bindings/Fixture/oracle/verify-redirect.sh ' . SAML_SP_DIRECTORY . '/sp.crt '
             . implode(' ', $urls),
+        [SAML_SP_ORACLE_REDIRECT, SAML_SP_DIRECTORY . '/sp.crt', SAML_SP_CAPTURED],
     );
 }
 
@@ -1025,14 +1030,18 @@ function saml_sp_verify_provider_logout(array $answer): void
         . '; do if sh tests/saml2-bindings/Fixture/oracle/verify-redirect.sh "$certificate" '
         . SAML_SP_CAPTURED
         . '/provider-logout-request.url; then verified=1; break; fi; done; test -n "$verified"',
+        [SAML_SP_ORACLE_REDIRECT, SAML_SP_CAPTURED],
     );
     if ($answer['binding'] === 'redirect') {
         io()->text('OpenSSL and Python, the signature of the LogoutResponse of SimpleSAMLphp over its query string and the message it carries:');
-        in_alpine('apk add -q openssl python3 >/dev/null 2>&1 && sh tests/saml2-bindings/Fixture/oracle/verify-redirect.sh '
-        . SAML_SP_DIRECTORY
-        . '/sp.crt '
-        . SAML_SP_CAPTURED
-        . '/sp-logout-response.url');
+        in_alpine(
+            'apk add -q openssl python3 >/dev/null 2>&1 && sh tests/saml2-bindings/Fixture/oracle/verify-redirect.sh '
+            . SAML_SP_DIRECTORY
+            . '/sp.crt '
+            . SAML_SP_CAPTURED
+            . '/sp-logout-response.url',
+            [SAML_SP_ORACLE_REDIRECT, SAML_SP_DIRECTORY . '/sp.crt', SAML_SP_CAPTURED],
+        );
     }
     // the Response of this sign-on came after saml_sp_verify_responses() decrypted the others: its assertion, when
     // encrypted, is decrypted here, so that xmlsec1 verifies its signature as it does theirs
