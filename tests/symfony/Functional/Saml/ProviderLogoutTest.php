@@ -86,7 +86,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
      * The second service provider of the session, the SimpleSAMLphp one the configuration of the test declares, its
      * metadata here a document of the test key "idp" of saml2-model, so that its answers can be signed.
      */
-    private const string OTHER = 'http://localhost:8082/simplesaml/module.php/saml/sp/metadata/default-sp';
+    private const string OTHER = 'https://localhost:8082/simplesaml/module.php/saml/sp/metadata/default-sp';
 
     private const string OTHER_SINGLE_LOGOUT = 'https://default-sp.test/slo';
 

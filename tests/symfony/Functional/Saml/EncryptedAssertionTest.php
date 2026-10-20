@@ -56,7 +56,7 @@ final class EncryptedAssertionTest extends ConsoleTestCase
 {
     private const string SERVICE_PROVIDER = ServiceProviderDocuments::SIMPLESAMLPHP;
 
-    private const string ASSERTION_CONSUMER = 'http://localhost:8082/simplesaml/module.php/saml/sp/saml2-acs.php/default-sp';
+    private const string ASSERTION_CONSUMER = 'https://localhost:8082/simplesaml/module.php/saml/sp/saml2-acs.php/default-sp';
 
     private const string SINGLE_SIGN_ON = 'https://op.test/saml/sso';
 

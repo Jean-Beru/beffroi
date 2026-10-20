@@ -23,16 +23,17 @@ use function str_replace;
 
 /**
  * The metadata documents of a service provider the tests of spec/saml.md section 6.2 read: the one a SimpleSAMLphp
- * 2.5.3.1 service provider published on 30 September 2026 (tests/saml2-model/Fixture/real/), as it is or with one
- * change a test names, a document the model's writer signs with the test key of a service provider, and the document
- * an administrator writes by hand for Entra's SAML federation of guests, which publishes none (spec/saml.md S-9).
+ * 2.5.3.1 service provider published on 30 September 2026 (tests/saml2-model/Fixture/real/), served under https, as it
+ * is or with one change a test names, a document the model's writer signs with the test key of a service provider,
+ * and the document an administrator writes by hand for Entra's SAML federation of guests, which publishes none
+ * (spec/saml.md S-9).
  */
 final readonly class ServiceProviderDocuments
 {
     /**
-     * The entity ID of the SimpleSAMLphp service provider.
+     * The entity ID of the SimpleSAMLphp service provider, under https as its endpoints.
      */
-    public const string SIMPLESAMLPHP = 'http://localhost:8082/simplesaml/module.php/saml/sp/metadata/default-sp';
+    public const string SIMPLESAMLPHP = 'https://localhost:8082/simplesaml/module.php/saml/sp/metadata/default-sp';
 
     /**
      * The entity ID of the document the model's writer signs.
@@ -50,9 +51,14 @@ final readonly class ServiceProviderDocuments
      */
     public const string ENTRA_ASSERTION_CONSUMER = 'https://login.microsoftonline.com/login.srf';
 
+    /**
+     * The document SimpleSAMLphp published, its URLs moved from http://localhost:8082 to https://localhost:8082 and
+     * nothing else: the identity provider refuses an endpoint in plain http (spec/saml.md S-11), and the recording of
+     * saml2-model keeps the bytes as they were published.
+     */
     public static function path(): string
     {
-        return __DIR__ . '/../../saml2-model/Fixture/real/simplesamlphp-2.5.3.1-sp-metadata-2026-09-30.xml';
+        return __DIR__ . '/metadata/simplesamlphp-2.5.3.1-sp-metadata-https.xml';
     }
 
     public static function simpleSamlPhp(): string
@@ -162,20 +168,25 @@ final readonly class ServiceProviderDocuments
     }
 
     /**
-     * A service provider document signed by a test key of saml2-model, its validUntil given, and the single logout
-     * services given (spec/saml.md S-27).
+     * A service provider document signed by a test key of saml2-model, its validUntil given, the single logout
+     * services given (spec/saml.md S-27), and its assertion consumer service at SIGNED/acs or where a test names it
+     * (S-11).
      *
      * @param 'idp'|'sp' $key
      * @param list<Endpoint> $singleLogoutServices
      */
-    public static function signed(?DateTimeImmutable $validUntil, string $key = 'sp', array $singleLogoutServices = []): string
-    {
+    public static function signed(
+        ?DateTimeImmutable $validUntil,
+        string $key = 'sp',
+        array $singleLogoutServices = [],
+        string $assertionConsumerService = self::SIGNED . '/acs',
+    ): string {
         return new Serializer()->serialize(new MetadataWriter()->write(
             new EntityDescriptor(self::SIGNED, $validUntil, serviceProvider: new ServiceProvider(
                 self::SIGNED,
                 [MetadataFixtures::certificate('sp')],
                 [MetadataFixtures::certificate('sp')],
-                new IndexedEndpoints([new IndexedEndpoint(Binding::HttpPost, self::SIGNED . '/acs', 0)]),
+                new IndexedEndpoints([new IndexedEndpoint(Binding::HttpPost, $assertionConsumerService, 0)]),
                 $singleLogoutServices,
             )),
             new Signing(MetadataFixtures::signingKey($key)),

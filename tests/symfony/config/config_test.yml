@@ -996,7 +996,7 @@ when@test:
             # write in the cache directory of the kernel, the one of their worker, by
             # "beffroi:saml:service-provider:refresh"; its assertions encrypted, its metadata holding a key for it.
             service_providers:
-                'http://localhost:8082/simplesaml/module.php/saml/sp/metadata/default-sp':
+                'https://localhost:8082/simplesaml/module.php/saml/sp/metadata/default-sp':
                     metadata: '%kernel.cache_dir%/saml/simplesamlphp-sp-metadata.xml'
                     attributes:
                         'urn:oid:0.9.2342.19200300.100.1.3':
