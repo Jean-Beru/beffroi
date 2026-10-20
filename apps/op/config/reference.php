@@ -1697,6 +1697,12 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         default_scope?: scalar|Param|null, // What a client that registers itself and names no scope is registered with (RFC 7591 section 2: "If omitted, an authorization server MAY register a client with a default set of scopes"), space-delimited as a request writes one (RFC 6749 section 3.3). Left out, such a client is registered with "openid" alone, which is less than this tenant hands out and is a default nobody chose. It is held to what the tenant announces like every registered scope, so a scope written here that the tenant does not offer refuses every registration rather than granting one, and it is read at the boot that declares it. A client that names its own scopes keeps them. // Default: null
  *         exempt_confidential_clients_from_pkce?: bool|Param, // The named exception of decision 0017, for the tenant that writes it and no other: the confidential clients this policy registers are registered without the PKCE requirement, because the Dynamic OP profile of OIDC Core sends no code_challenge and offers no way to. A public client is never exempted whatever this says, "plain" never exists, and a code_challenge a client does send is verified like any other. Write it with the reason a tenant has for it beside it; a tenant with real users has none. // Default: false
  *     },
+ *     saml?: array{ // SAML 2.0 (beffroi/saml, decision 0013): the roles the tenant of this deployment plays.
+ *         identity_provider?: bool|array{ // The tenant as a SAML identity provider (spec/saml.md section 6.1). Disabled, nothing of it is wired: the tenant draws no SAML key and serves no metadata. Enabled, its key is drawn with "beffroi:keys:generate --algorithm=SAML-SIGNING" and rotates as every key of the tenant.
+ *             enabled?: bool|Param, // Default: false
+ *             want_authn_requests_signed?: bool|Param, // What the metadata says in WantAuthnRequestsSigned (SAML Metadata section 2.4.3): true asks every service provider to sign its requests, which is what a broker configured from the metadata does (spec/model.md section 6.9). Turned off, the requests of service providers that cannot sign are accepted where their configuration says so, and the logout of a broker that signs only when asked is lost. // Default: true
+ *         },
+ *     },
  * }
  * @psalm-type SymfonycastsTailwindConfig = array{
  *     input_css?: list<scalar|Param|null>,

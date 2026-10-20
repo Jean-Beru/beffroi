@@ -45,6 +45,7 @@ use Beffroi\Bundle\Configuration\PasswordsSection;
 use Beffroi\Bundle\Configuration\RequestObjectsSection;
 use Beffroi\Bundle\Configuration\TenantSection;
 use Beffroi\Bundle\Configuration\TokensSection;
+use Beffroi\Bundle\Configuration\SamlSection;
 use Beffroi\Bundle\Configuration\TrustedIssuersSection;
 use Beffroi\Bundle\Configuration\WebauthnSection;
 use Beffroi\Bundle\Configuration\WebPushSection;
@@ -400,6 +401,7 @@ final class BeffroiBundle extends AbstractBundle
             new TrustedIssuersSection(),
             new ClientsSection(),
             new ClientRegistrationSection(),
+            new SamlSection(),
         ];
     }
 }

@@ -196,7 +196,7 @@ jobs:
           composer-options: --optimize-autoloader
       - name: "libxml and OpenSSL of this build"
         run: castor libxml
-      - run: castor phpunit -- --no-coverage --testsuite xml-security,saml2-model,saml2-bindings
+      - run: castor phpunit -- --no-coverage --testsuite xml-security,saml2-model,saml2-bindings,saml
 
   oracle:
     name: "6️⃣ Oracles (xmlsec1, OpenSSL)"
@@ -308,7 +308,7 @@ jobs:
       # Infection counts the two cores of the runner and keeps one for itself; both can run mutants.
       # The files the specifications of the SAML packages hold to no escaped mutant, whole, on every run; then the
       # lines added or modified over the whole source.
-      # A coverage of its own, the three SAML suites under Xdebug, rather than the one the tests job measured with pcov
+      # A coverage of its own, the suites of the SAML packages under Xdebug, rather than the one the tests job measured with pcov
       # (see infect() in .castor/stack/qa.php).
       - name: "The files of section 9 of the SAML packages, no escaped mutant"
         run: castor infect --strict --threads=2

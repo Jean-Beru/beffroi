@@ -141,6 +141,7 @@ use Beffroi\Bundle\Http\TotpProvisioningSealer;
 use Beffroi\Bundle\Http\TotpProvisioningStore;
 use Beffroi\Bundle\Http\TwoFactorPage;
 use Beffroi\Bundle\Key\FilePairwiseSalt;
+use Beffroi\Bundle\Key\DormantKeyAlgorithms;
 use Beffroi\Bundle\Key\FileTenantKeyRepository;
 use Beffroi\Bundle\Key\KmsUnavailableListener;
 use Beffroi\Bundle\Load\LoadBudget;
@@ -272,6 +273,16 @@ use Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaOaep256;
 use Beffroi\Core\Bridge\JwtLibrary\JoseContentEncryptionAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
+use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
+use Beffroi\Bundle\Saml\RouterIdentityProviderEndpoints;
+use Beffroi\Bundle\Saml\SamlSigning;
+use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
+use Beffroi\Saml\Application\Metadata\SigningCertificates;
+use Beffroi\Saml\Bridge\Model\ModelMetadataWriter;
+use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
+use Beffroi\Saml\Port\CertificateIssuerInterface;
+use Beffroi\Saml\Port\IdentityProviderEndpointsInterface;
+use Beffroi\Saml\Port\MetadataWriterInterface;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyEncryptionAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseMessageSealingAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
@@ -1137,7 +1148,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(JoseEncryptionAlgorithms::class);
     // The algorithms of the keys the tenant hands out itself rather than publishing in its JWK Set
     // (RFC 8292 §2): wired by the deployment that reaches its users by push and by no other, so that a
-    // deployment that does not draws no such key and has no page that would hand one out (§5.6).
+    // deployment that does not draws no such key and has no page that would hand one out (§5.6); the
+    // web push section leaves it dormant otherwise.
     $services->set(Vapid::class);
     $services->set(JoseApplicationServerAlgorithms::class)->args([tagged_iterator('beffroi.application_server_algorithm')]);
     $services->alias(ApplicationServerAlgorithmsInterface::class, JoseApplicationServerAlgorithms::class);
@@ -1153,6 +1165,13 @@ return static function (ContainerConfigurator $container): void {
         ->tag('beffroi.message_sealing_algorithm');
     $services->set(JoseMessageSealingAlgorithms::class)->args([tagged_iterator('beffroi.message_sealing_algorithm')]);
     $services->alias(MessageSealingAlgorithmsInterface::class, JoseMessageSealingAlgorithms::class);
+    // The algorithm of the key the tenant signs its SAML messages with (beffroi/saml, spec/saml.md S-1): an RSA pair
+    // of the size above, kept out of the JWK Set and published as a certificate in the metadata of its identity
+    // provider. The SAML section of the configuration tags it when the deployment enables the identity provider, and
+    // nothing else does, so that a deployment that serves no SAML draws no such key; the section leaves it dormant
+    // otherwise.
+    $services->set(SamlSigning::class)->args([service(RsaKeyBits::class)]);
+    $services->set(JoseSamlSigningAlgorithms::class)->args([tagged_iterator(JoseSamlSigningAlgorithms::TAG)]);
     $services->set(JwtLibraryMessageBodySealer::class);
     $services->alias(MessageBodySealerInterface::class, JwtLibraryMessageBodySealer::class);
     $services->set(JwtLibraryMessageBodyOpener::class);
@@ -1165,8 +1184,12 @@ return static function (ContainerConfigurator $container): void {
         service(JoseKeyEncryptionAlgorithms::class),
         service(JoseApplicationServerAlgorithms::class),
         service(JoseMessageSealingAlgorithms::class),
+        service(JoseSamlSigningAlgorithms::class),
     ]]);
     $services->alias(KeyAlgorithmsInterface::class, JoseKeyAlgorithms::class);
+    // The algorithms a section of the configuration leaves off, each tagged by the section that owns it: what the key
+    // files read past, so that a key drawn before its capability was turned off waits for it to be turned on again
+    $services->set(DormantKeyAlgorithms::class)->args([tagged_iterator(DormantKeyAlgorithms::TAG)]);
     $services->set(JwtLibraryKeyPairGenerator::class);
     $services->alias(KeyPairGeneratorInterface::class, JwtLibraryKeyPairGenerator::class);
     $services->set(JwtLibraryJwsSigner::class);
@@ -1768,6 +1791,17 @@ return static function (ContainerConfigurator $container): void {
         '$contributors' => tagged_iterator('beffroi.oidc.metadata'),
     ]);
     $services->set(JwksHandler::class);
+    // beffroi/saml: the identity provider of the tenant, its certificates, built once per process from keys the KMS
+    // opens (S-1, S-3), and its metadata under the issuer (spec/saml.md section 6.1); the SAML section of the
+    // configuration gives the handler what the tenant set
+    $services->set(SelfSignedCertificateIssuer::class);
+    $services->alias(CertificateIssuerInterface::class, SelfSignedCertificateIssuer::class);
+    $services->set(ModelMetadataWriter::class);
+    $services->alias(MetadataWriterInterface::class, ModelMetadataWriter::class);
+    $services->set(RouterIdentityProviderEndpoints::class);
+    $services->alias(IdentityProviderEndpointsInterface::class, RouterIdentityProviderEndpoints::class);
+    $services->set(SigningCertificates::class);
+    $services->set(IdentityProviderMetadataHandler::class);
     $services->set(EndSessionRequestParser::class);
     $services->set(EndSessionHandler::class);
     $services->set(LogoutTokenIssuer::class);

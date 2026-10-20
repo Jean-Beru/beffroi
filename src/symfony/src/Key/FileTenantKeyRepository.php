@@ -45,6 +45,10 @@ use function usort;
  * The keys of a tenant as files (architecture §3.3), one JSON document per key under
  * "<storage>/<tenant slug>/<kid>.json", written through a sibling file renamed into place. What the key
  * is published for is what its algorithm says, so the document names the algorithm and nothing else.
+ *
+ * A file whose algorithm is dormant, the key of a capability the deployment turned off after the tenant
+ * drew it (DormantKeyAlgorithms), is read past: no method answers it, and it is read again as it was
+ * once the capability is turned back on.
  */
 final readonly class FileTenantKeyRepository implements TenantKeyRepositoryInterface
 {
@@ -56,6 +60,7 @@ final readonly class FileTenantKeyRepository implements TenantKeyRepositoryInter
     public function __construct(
         private string $directory,
         private KeyAlgorithmsInterface $algorithms,
+        private DormantKeyAlgorithms $dormant = new DormantKeyAlgorithms(),
     ) {
     }
 
@@ -146,7 +151,10 @@ final readonly class FileTenantKeyRepository implements TenantKeyRepositoryInter
             if ($json === false) {
                 throw new RuntimeException(sprintf('The key file "%s" cannot be read.', $path));
             }
-            $keys[] = $this->read($tenant, $path, $json);
+            $key = $this->read($tenant, $path, $json);
+            if ($key !== null) {
+                $keys[] = $key;
+            }
         }
         usort($keys, static fn (TenantKey $a, TenantKey $b): int => [$a->createdAt, $a->kid] <=> [$b->createdAt, $b->kid]);
 
@@ -156,8 +164,10 @@ final readonly class FileTenantKeyRepository implements TenantKeyRepositoryInter
     /**
      * A file that is not what this repository writes is a fault of the storage, not a missing key. The
      * transitions are replayed in order with their dates: the file holds facts, the key holds the rules.
+     *
+     * @return TenantKey|null null for the key of a dormant algorithm, which is left as it is
      */
-    private function read(Tenant $tenant, string $path, string $json): TenantKey
+    private function read(Tenant $tenant, string $path, string $json): ?TenantKey
     {
         try {
             $document = json_decode($json, true, 4, JSON_THROW_ON_ERROR);
@@ -174,6 +184,10 @@ final readonly class FileTenantKeyRepository implements TenantKeyRepositoryInter
             try {
                 $algorithm = $this->algorithms->named($document['algorithm']);
             } catch (UnsupportedAlgorithmException $exception) {
+                if ($this->dormant->holds($document['algorithm'])) {
+                    return null;
+                }
+
                 throw new RuntimeException(sprintf('The key file "%s" names an algorithm this provider is not wired with.', $path), 0, $exception);
             }
         }

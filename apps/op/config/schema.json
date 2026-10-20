@@ -1802,6 +1802,48 @@
                             "exempt_confidential_clients_from_pkce": false
                         },
                         "description": "How a client that nobody declared comes to exist here (RFC 7591, decision 0009). Absent, the tenant registers nobody, which is the default and what a deployment that writes nothing gets."
+                    },
+                    "saml": {
+                        "$ref": "#/$defs/types/object_null",
+                        "properties": {
+                            "identity_provider": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/types/object_null",
+                                        "properties": {
+                                            "enabled": {
+                                                "$ref": "#/$defs/types/boolean",
+                                                "default": false
+                                            },
+                                            "want_authn_requests_signed": {
+                                                "$ref": "#/$defs/types/boolean",
+                                                "default": true,
+                                                "description": "What the metadata says in WantAuthnRequestsSigned (SAML Metadata section 2.4.3): true asks every service provider to sign its requests, which is what a broker configured from the metadata does (spec/model.md section 6.9). Turned off, the requests of service providers that cannot sign are accepted where their configuration says so, and the logout of a broker that signs only when asked is lost."
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    },
+                                    {
+                                        "type": [
+                                            "boolean"
+                                        ]
+                                    }
+                                ],
+                                "default": {
+                                    "enabled": false,
+                                    "want_authn_requests_signed": true
+                                },
+                                "description": "The tenant as a SAML identity provider (spec/saml.md section 6.1). Disabled, nothing of it is wired: the tenant draws no SAML key and serves no metadata. Enabled, its key is drawn with \"beffroi:keys:generate --algorithm=SAML-SIGNING\" and rotates as every key of the tenant."
+                            }
+                        },
+                        "additionalProperties": false,
+                        "default": {
+                            "identity_provider": {
+                                "enabled": false,
+                                "want_authn_requests_signed": true
+                            }
+                        },
+                        "description": "SAML 2.0 (beffroi/saml, decision 0013): the roles the tenant of this deployment plays."
                     }
                 },
                 "additionalProperties": false
