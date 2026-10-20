@@ -15,11 +15,13 @@ use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
 use Beffroi\Saml\Tests\Fixture\SamlKeys;
 use function base64_decode;
 use function bin2hex;
+use function chunk_split;
 use DateTimeImmutable;
 use function hash;
 use function openssl_pkey_get_details;
 use function openssl_pkey_get_public;
 use function openssl_verify;
+use function openssl_x509_parse;
 use function ord;
 use function sprintf;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -89,8 +91,8 @@ final class SelfSignedCertificateIssuerTest extends TestCase
 
     /**
      * Section 6.1 step 2: version 3, its subject and its issuer the slug of the tenant, valid from the creation of the
-     * key to the second until the date of RFC 5280 §4.1.2.5, its serial number one more than the first seven bytes of
-     * the SHA-256 of the kid, signed sha256WithRSAEncryption.
+     * key to the second for ten years, its serial number one more than the first seven bytes of the SHA-256 of the
+     * kid, signed sha256WithRSAEncryption.
      */
     #[Test]
     public function itCarriesTheFieldsOfTheKeyAndOfItsTenant(): void
@@ -106,7 +108,7 @@ final class SelfSignedCertificateIssuerTest extends TestCase
                 'cn=acme',
                 'cn=acme',
                 '2026-10-15T09:30:12+00:00',
-                '9999-12-31T23:59:59+00:00',
+                '2036-10-15T09:30:12+00:00',
                 '1.2.840.113549.1.1.11',
             ],
             [
@@ -119,6 +121,51 @@ final class SelfSignedCertificateIssuerTest extends TestCase
                 $tbs->signature()->oid(),
             ],
         );
+    }
+
+    /**
+     * Section 6.1 step 2: the certificate is valid ten years from the creation of its key, to the second, in UTC.
+     */
+    #[Test]
+    #[DataProvider('provideCreations')]
+    public function itIsValidTenYearsFromTheCreationOfItsKey(string $createdAt, string $notAfter): void
+    {
+        // Given
+        $key = SamlKeys::key($this->tenant, createdAt: new DateTimeImmutable($createdAt));
+
+        // When
+        $validity = $this->certificateOf($key)->tbsCertificate()->validity();
+
+        // Then
+        static::assertSame($notAfter, $validity->notAfter()->dateTime()->format(DATE_ATOM));
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideCreations(): iterable
+    {
+        yield 'a key of 2026' => ['2026-10-15T09:30:12.345678Z', '2036-10-15T09:30:12+00:00'];
+        yield 'a key created on a leap day' => ['2028-02-29T00:00:00Z', '2038-03-01T00:00:00+00:00'];
+        yield 'a key created at another offset' => ['2031-01-01T00:30:00+02:00', '2040-12-31T22:30:00+00:00'];
+    }
+
+    /**
+     * Section 6.1 step 2, RFC 5280 §4.1.2.5: the end of the validity is before 2050, so it is written as UTCTime, the
+     * two digits of its year and its seconds, as OpenSSL reads it from the DER.
+     */
+    #[Test]
+    public function itWritesTheEndOfItsValidityAsUtcTime(): void
+    {
+        // Given
+        $base64 = new SelfSignedCertificateIssuer()->selfSigned(SamlKeys::opened($this->key))->base64;
+
+        // When
+        $parsed = openssl_x509_parse("-----BEGIN CERTIFICATE-----\n" . chunk_split($base64, 64, "\n") . "-----END CERTIFICATE-----\n");
+
+        // Then
+        static::assertIsArray($parsed);
+        static::assertSame('361015093012Z', $parsed['validTo'] ?? null);
     }
 
     /**

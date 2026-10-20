@@ -15,8 +15,10 @@ use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
 use Beffroi\Saml\Application\Metadata\SigningCertificates;
+use Beffroi\Saml\Bridge\Model\TenantSigning;
 use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
 use Beffroi\Saml\Domain\Metadata\Certificate;
+use Beffroi\Saml\Port\CertificateIssuerInterface;
 use Beffroi\Saml\Tests\Fixture\CountingKeySealer;
 use Beffroi\Saml\Tests\Fixture\SamlKeys;
 use function array_intersect_key;
@@ -29,7 +31,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * spec/saml.md section 6.1 step 2, S-1, S-2, S-3: the certificate of each SAML key of a tenant in service, in creation
- * order, each key opened by the KMS once per process.
+ * order, each key opened by the KMS at most once per process.
  */
 final class SigningCertificatesTest extends TestCase
 {
@@ -190,6 +192,31 @@ final class SigningCertificatesTest extends TestCase
     }
 
     /**
+     * Section 5.3, S-3, S-37: a process that signs before it serves the metadata opens the active key once, the
+     * certificate the metadata list built from the key the signature opened.
+     */
+    #[Test]
+    public function aProcessThatSignsFirstOpensTheActiveKeyOnce(): void
+    {
+        // Given
+        $this->keys->save(SamlKeys::activeKey($this->tenant));
+        $sealer = new CountingKeySealer();
+        $certificates = new SigningCertificates($this->keys, $sealer, new SelfSignedCertificateIssuer());
+        $signing = new TenantSigning(
+            new SealedKeyProvider($this->keys, new OpenedKeys($sealer)),
+            SamlKeys::algorithm(),
+            $certificates,
+        );
+        $signing->of($this->tenant);
+
+        // When
+        $certificates->of($this->tenant);
+
+        // Then
+        static::assertSame(1, $sealer->unsealed);
+    }
+
+    /**
      * S-1, S-3: what SigningCertificates keeps between two calls is certificates. Once of() has built them, nothing it
      * holds, its collaborators aside, is a key the KMS opened or a private member of one (RFC 7518 section 6.3.2).
      */
@@ -207,6 +234,68 @@ final class SigningCertificatesTest extends TestCase
 
         // Then
         static::assertSame([], self::privateHalvesIn($certificates, [$this->keys, $sealer, $issuer]));
+    }
+
+    /**
+     * S-37: the certificate of a key already opened, the active one a signature is made with, is the one the metadata
+     * list for it.
+     */
+    #[Test]
+    public function theCertificateOfAnOpenedKeyIsTheOneListed(): void
+    {
+        // Given
+        $key = SamlKeys::activeKey($this->tenant);
+        $this->keys->save($key);
+
+        // When
+        $certificate = $this->certificates()->ofOpened(SamlKeys::opened($key));
+
+        // Then
+        static::assertSame($this->base64Of([$key]), [$certificate->base64]);
+    }
+
+    /**
+     * S-3, S-37: the certificate built for a key already opened is the one the metadata list afterwards, the KMS not
+     * asked to open that key again.
+     */
+    #[Test]
+    public function theCertificateOfAnOpenedKeyIsListedWithoutTheKms(): void
+    {
+        // Given
+        $key = SamlKeys::activeKey($this->tenant);
+        $this->keys->save($key);
+        $sealer = self::createMock(KeySealerInterface::class);
+        $sealer->expects(static::never())->method('unseal');
+        $certificates = new SigningCertificates($this->keys, $sealer, new SelfSignedCertificateIssuer());
+        $certificates->ofOpened(SamlKeys::opened($key));
+
+        // When
+        $listed = $certificates->of($this->tenant);
+
+        // Then
+        static::assertSame($this->base64Of([$key]), self::base64($listed));
+    }
+
+    /**
+     * S-3, S-37: the certificate of a key already opened is built once per process, whatever the number of signatures
+     * that carry it.
+     */
+    #[Test]
+    public function theCertificateOfAnOpenedKeyIsBuiltOnce(): void
+    {
+        // Given
+        $key = SamlKeys::activeKey($this->tenant);
+        $built = new SelfSignedCertificateIssuer()->selfSigned(SamlKeys::opened($key));
+        $issuer = self::createMock(CertificateIssuerInterface::class);
+        $issuer->expects(static::once())->method('selfSigned')->willReturn($built);
+        $certificates = new SigningCertificates($this->keys, Keys::sealer(), $issuer);
+        $certificates->ofOpened(SamlKeys::opened($key));
+
+        // When
+        $again = $certificates->ofOpened(SamlKeys::opened($key));
+
+        // Then
+        static::assertSame($built, $again);
     }
 
     private function certificates(): SigningCertificates

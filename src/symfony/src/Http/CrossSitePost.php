@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Http;
 
 use function array_pad;
+use Beffroi\Oidc\Application\Request\RequestParameters as OidcRequestParameters;
 use Beffroi\Oidc\Domain\Page\InlineScript;
+use Beffroi\Oidc\Exception\InvalidRequestException;
 use function explode;
 use function preg_match;
 use function sprintf;
@@ -20,28 +22,35 @@ use function urldecode;
  * A form a browser posted from another site, which a session cookie set "SameSite=Lax" does not accompany, posted
  * again from this provider's own origin, which it does (beffroi/saml, spec/saml.md S-28). Under "Lax" a browser sends
  * the cookie with a top-level GET from another site and with no POST from one (RFC 6265bis, "SameSite" cookies), so that a
- * request a service provider or a client posts reaches the endpoint without the session the browser holds, a user
- * signed in is asked to sign in again, and the cookie of the new session replaces the one the browser held.
+ * request a service provider or a client posts reaches the endpoint without the session the browser holds: a user
+ * signed in is asked to sign in again, a logout finds no session to end and no confirmation page the browser can
+ * answer, and the cookie of a new session would replace the one the browser held, which no answer to such a post
+ * carries (CrossSiteSessionCookie).
  *
  * The page is served only where all of these hold, and the request is served as it came otherwise: it was posted, as
  * a form; the browser says it came from another site ("Sec-Fetch-Site: cross-site", Fetch Metadata Request Headers), which no
- * browser says of a post from this provider's own page; it carries no session cookie; the action it was posted to does
- * not carry the marker this page adds to it; and every pair of its body comes back from a browser as it went, which a
- * pair that is not UTF-8, holds a control character or a line break other than CR LF, or is named "_charset_" or by
- * nothing would not. A browser that does not send "Sec-Fetch-Site" is served as today.
+ * browser says of a post from this provider's own page; it carries no session cookie; and every pair of its body comes
+ * back from a browser as it went, which a pair that is not UTF-8, holds a control character or a line break other than
+ * CR LF, or is named "_charset_" or by nothing would not. A browser that does not send "Sec-Fetch-Site" is served as
+ * today.
  *
  * What is posted again is the body the browser posted, pair by pair and in its order, repeated names included, so
  * that the endpoint reads the second post as it would have read the first and refuses what it would have refused.
- * The marker travels in the query of the action, which neither endpoint reads on a post: nothing is added to the
- * fields. It stops a loop and decides nothing else, so that a request that forges it is served as it came, which is
- * what a request is served as without this page.
+ * The marker travels in the query of the action, which no endpoint reads on a post: nothing is added to the
+ * fields. It names the second post and decides nothing: the second post is posted from this provider's own page, so
+ * no browser says it came from another site, and that is what stops the loop. A post from another site that carries
+ * the marker already is posted again as one that does not, the marker not added twice, so that no post from another
+ * site, the marker forged or not, is served without the session the browser holds.
  *
  * Nothing here reads or starts the HTTP session: a cookie set on this answer would replace the one the browser holds,
- * which is what the page exists to avoid. Each endpoint opts in by asking first.
+ * which is what the page exists to avoid. Each endpoint a party posts a browser to from another site opts in by asking
+ * first, before anything of the request is read, so that the first post spends nothing the second needs: the single
+ * sign-on service and the single logout service of SAML, the authorization endpoint and the end session endpoint of
+ * OpenID Connect.
  *
  * The page speaks the language every page of the interaction plane chooses (InteractionLocale, architecture §5.7):
- * the hint the endpoint read in the body, "ui_locales" for the authorization endpoint, then "Accept-Language". It is
- * chosen here because the endpoint has not chosen it yet, the page coming before anything reads the request.
+ * the "ui_locales" of the posted body at an endpoint of OpenID Connect, then "Accept-Language". It is chosen here
+ * because the endpoint has not chosen it yet, the page coming before anything reads the request.
  */
 final readonly class CrossSitePost
 {
@@ -83,18 +92,39 @@ final readonly class CrossSitePost
 
     /**
      * The page that posts the request again, or null when the endpoint serves the request as it came.
-     *
-     * @param list<string> $uiLocales the languages the posted body asks for, most preferred first (OIDC Core
-     *                                §3.1.2.1), none for a request that names none
      */
-    public function postAgain(Request $request, array $uiLocales = []): ?Response
+    public function postAgain(Request $request): ?Response
+    {
+        return $this->page($request, []);
+    }
+
+    /**
+     * postAgain() at an endpoint of OpenID Connect, its page in the "ui_locales" of the posted body (OIDC Core §3.1.2.1,
+     * RP-Initiated Logout §2), read as the endpoint reads it, and none when the endpoint would refuse it, which the
+     * second post then does. Nothing else of the request is resolved for it, a pushed request being spent by whoever
+     * reads its reference.
+     */
+    public function postAgainWithItsUiLocales(Request $request): ?Response
+    {
+        try {
+            $uiLocales = OidcRequestParameters::of(RequestParameters::ofForm($request))->uiLocales();
+        } catch (InvalidRequestException) {
+            $uiLocales = [];
+        }
+
+        return $this->page($request, $uiLocales);
+    }
+
+    /**
+     * @param list<string> $uiLocales the languages the posted body asks for, most preferred first, none for a request
+     *                                that names none
+     */
+    private function page(Request $request, array $uiLocales): ?Response
     {
         if (
             ! $request->isMethod(Request::METHOD_POST)
             || strtolower(trim(explode(';', $request->headers->get('Content-Type') ?? '')[0])) !== self::FORM
-            || $request->headers->get('Sec-Fetch-Site') !== 'cross-site'
-            || $request->hasPreviousSession()
-            || $request->query->has(self::MARKER)
+            || ! CrossSiteSessionCookie::withheldFrom($request)
         ) {
             return null;
         }
@@ -103,12 +133,15 @@ final readonly class CrossSitePost
             return null;
         }
         $action = $request->getRequestUri();
+        if (! $request->query->has(self::MARKER)) {
+            $action .= (str_contains($action, '?') ? '&' : '?') . self::MARKER . '=1';
+        }
         $this->locale->apply($request, $this->locale->choose($request, $uiLocales));
 
         return $this->pages->render(
             self::TEMPLATE,
             [
-                'action' => $action . (str_contains($action, '?') ? '&' : '?') . self::MARKER . '=1',
+                'action' => $action,
                 'fields' => $fields,
                 'script' => self::SCRIPT,
             ],

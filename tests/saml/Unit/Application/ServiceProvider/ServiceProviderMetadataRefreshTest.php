@@ -17,6 +17,7 @@ use Beffroi\Saml\Tests\Fixture\FixedMetadataFetcher;
 use Beffroi\Saml\Tests\Fixture\InMemoryAcceptedMetadata;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
 use DateTimeImmutable;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -146,18 +147,19 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-6, the acceptance of issue #729: a document older than the one accepted is refused, the accepted one kept.
+     * S-6, the acceptance of issue #729: a document read under the signers the declaration pins that is older than the
+     * one accepted is refused, the accepted one kept, an older document signed by the same key verifying as well.
      */
     #[Test]
-    public function aDocumentOlderThanTheAcceptedOneIsRefusedAndTheAcceptedOneKept(): void
+    public function aSignedDocumentOlderThanTheAcceptedOneIsRefusedAndTheAcceptedOneKept(): void
     {
         // Given
-        $this->fetcher->answer(self::LOCATION, ServiceProviderDocuments::simpleSamlPhpValidUntil('2026-10-08T00:00:00Z'));
-        $this->refreshSimpleSamlPhp();
-        $this->fetcher->answer(self::LOCATION, ServiceProviderDocuments::simpleSamlPhpValidUntil('2026-10-01T00:00:00Z'));
+        $this->fetcher->answer(self::SIGNED_LOCATION, ServiceProviderDocuments::signed(new DateTimeImmutable('2026-10-08T00:00:00Z')));
+        $this->refreshSigned();
+        $this->fetcher->answer(self::SIGNED_LOCATION, ServiceProviderDocuments::signed(new DateTimeImmutable('2026-10-01T00:00:00Z')));
 
         // When
-        $refreshment = $this->refreshSimpleSamlPhp();
+        $refreshment = $this->refreshSigned();
 
         // Then
         static::assertTrue($refreshment->refused);
@@ -165,29 +167,73 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
             'The metadata are valid until an earlier instant than the document accepted, so they are older (spec/saml.md S-6).',
             $refreshment->what,
         );
-        static::assertEquals(new DateTimeImmutable('2026-10-08T00:00:00Z'), $this->acceptedSimpleSamlPhp()->validUntil);
+        static::assertEquals(new DateTimeImmutable('2026-10-08T00:00:00Z'), $this->acceptedSigned()->validUntil);
         static::assertSame(1, $this->accepted->saves);
     }
 
     /**
-     * S-6, section 6.2, forgotten: a service provider that went back to a document without validUntil after one that
-     * had one is registered again from it once an operator forgot the document accepted.
+     * S-6, the security review of 20 October 2026 (finding B-1): a document its channel vouches for replaces the
+     * accepted one whatever its validUntil, so that a document a metadata host wrote with a far validUntil while it was
+     * held by somebody else gives way to the next one the service provider publishes there, the genuine SimpleSAMLphp
+     * file carrying none.
      */
     #[Test]
-    public function aServiceProviderForgottenIsRegisteredAgainFromADocumentWithoutValidUntil(): void
-    {
+    #[DataProvider('provideDocumentsTrustedByTheirChannel')]
+    public function aDocumentTrustedByItsChannelReplacesTheAcceptedOneWhateverItsValidUntil(
+        string $accepted,
+        string $read,
+        ?DateTimeImmutable $validUntil,
+    ): void {
         // Given
-        $this->fetcher->answer(self::LOCATION, ServiceProviderDocuments::simpleSamlPhpValidUntil('2026-10-08T00:00:00Z'));
+        $this->fetcher->answer(self::LOCATION, $accepted);
         $this->refreshSimpleSamlPhp();
-        $this->fetcher->answer(self::LOCATION, ServiceProviderDocuments::simpleSamlPhp());
-        new AcceptedMetadataForgetting($this->accepted, $this->accepted)->forget($this->tenant, ServiceProviderDocuments::SIMPLESAMLPHP);
+        $this->fetcher->answer(self::LOCATION, $read);
 
         // When
         $refreshment = $this->refreshSimpleSamlPhp();
 
         // Then
-        static::assertSame(\sprintf('The service provider "%s" is registered from its metadata.', ServiceProviderDocuments::SIMPLESAMLPHP), $refreshment->what);
-        static::assertNull($this->acceptedSimpleSamlPhp()->validUntil);
+        static::assertSame(\sprintf('The metadata of the service provider "%s" are refreshed.', ServiceProviderDocuments::SIMPLESAMLPHP), $refreshment->what);
+        static::assertSame($read, $this->acceptedSimpleSamlPhp()->document);
+        static::assertEquals($validUntil, $this->acceptedSimpleSamlPhp()->validUntil);
+    }
+
+    /**
+     * @return iterable<string, array{string, string, ?DateTimeImmutable}>
+     */
+    public static function provideDocumentsTrustedByTheirChannel(): iterable
+    {
+        yield 'none after a far validUntil' => [
+            ServiceProviderDocuments::simpleSamlPhpValidUntil('2099-01-01T00:00:00Z'),
+            ServiceProviderDocuments::simpleSamlPhp(),
+            null,
+        ];
+        yield 'an earlier validUntil' => [
+            ServiceProviderDocuments::simpleSamlPhpValidUntil('2099-01-01T00:00:00Z'),
+            ServiceProviderDocuments::simpleSamlPhpValidUntil('2026-10-01T00:00:00Z'),
+            new DateTimeImmutable('2026-10-01T00:00:00Z'),
+        ];
+    }
+
+    /**
+     * S-6, section 6.2, forgotten: a service provider whose signed metadata went back to an earlier validUntil, refused
+     * for it, is registered again from them once an operator forgot the document accepted.
+     */
+    #[Test]
+    public function aServiceProviderForgottenIsRegisteredAgainFromAnOlderSignedDocument(): void
+    {
+        // Given
+        $this->fetcher->answer(self::SIGNED_LOCATION, ServiceProviderDocuments::signed(new DateTimeImmutable('2026-10-08T00:00:00Z')));
+        $this->refreshSigned();
+        $this->fetcher->answer(self::SIGNED_LOCATION, ServiceProviderDocuments::signed(new DateTimeImmutable('2026-10-01T00:00:00Z')));
+        new AcceptedMetadataForgetting($this->accepted, $this->accepted)->forget($this->tenant, ServiceProviderDocuments::SIGNED);
+
+        // When
+        $refreshment = $this->refreshSigned();
+
+        // Then
+        static::assertSame(\sprintf('The service provider "%s" is registered from its metadata.', ServiceProviderDocuments::SIGNED), $refreshment->what);
+        static::assertEquals(new DateTimeImmutable('2026-10-01T00:00:00Z'), $this->acceptedSigned()->validUntil);
     }
 
     /**
@@ -594,6 +640,21 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
                 'signs_authn_requests' => $signs,
             ],
         ])->refreshAll($this->tenant)[0];
+    }
+
+    private function refreshSigned(): MetadataRefreshment
+    {
+        return $this->refresh([
+            ServiceProviderDocuments::SIGNED => [
+                'metadata' => self::SIGNED_LOCATION,
+                'metadata_signers' => [ServiceProviderDocuments::signer()->base64],
+            ],
+        ])->refreshAll($this->tenant)[0];
+    }
+
+    private function acceptedSigned(): AcceptedMetadata
+    {
+        return $this->accepted->find($this->tenant, ServiceProviderDocuments::SIGNED) ?? static::fail('Nothing is accepted.');
     }
 
     private function acceptedSimpleSamlPhp(): AcceptedMetadata

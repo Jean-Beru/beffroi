@@ -18,6 +18,7 @@ use Beffroi\Saml\Application\SingleLogout\ProviderLogout;
 use Beffroi\Saml\Application\SingleLogout\SingleLogout;
 use Beffroi\Saml\Domain\SingleLogout\LogoutChain;
 use Beffroi\Saml\Domain\SingleLogout\LogoutChainEnded;
+use Beffroi\Saml\Domain\SingleLogout\LogoutChainSecret;
 use Beffroi\Saml\Domain\SingleLogout\LogoutChainStarted;
 use Beffroi\Saml\Domain\SingleLogout\LogoutProgress;
 use Beffroi\Saml\Domain\SingleLogout\RedirectedMessage;
@@ -85,7 +86,7 @@ final class SingleLogoutTest extends TestCase
     public function theSessionOfThePrincipalEnds(): void
     {
         // When
-        $this->singleLogout($this->request())->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context());
+        $this->singleLogout($this->request())->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context(), null);
 
         // Then
         static::assertEquals(
@@ -101,7 +102,7 @@ final class SingleLogoutTest extends TestCase
     public function theSessionEndsByARelyingParty(): void
     {
         // When
-        $this->singleLogout($this->request())->post($this->tenant, ['SAMLRequest' => 'given'], Fixtures::context());
+        $this->singleLogout($this->request())->post($this->tenant, ['SAMLRequest' => 'given'], Fixtures::context(), null);
 
         // Then
         static::assertSame(SessionEnd::RelyingParty, $this->session->endedBy);
@@ -116,7 +117,7 @@ final class SingleLogoutTest extends TestCase
     public function aRequestThatEndedASessionBeginsTheChain(): void
     {
         // When
-        $answer = $this->singleLogout($this->request())->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context());
+        $answer = $this->singleLogout($this->request())->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context(), null);
 
         // Then
         static::assertInstanceOf(LogoutChainStarted::class, $answer);
@@ -133,17 +134,17 @@ final class SingleLogoutTest extends TestCase
     {
         // Given
         $request = $this->request();
-        $started = $this->singleLogout($request)->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context());
+        $started = $this->singleLogout($request)->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context(), null);
         static::assertInstanceOf(LogoutChainStarted::class, $started);
 
         // When
-        $answer = $this->providerLogout()->resume($this->tenant, $started->reference);
+        $answer = $this->providerLogout()->resume($this->tenant, $started->reference, $started->secret);
 
         // Then
         static::assertEquals(
             [
                 new SignOutResponse(self::IDENTITY_PROVIDER, $request->requester(), SignOutStatus::Success, Fixtures::now()),
-                new RedirectedMessage(SignOutRequests::SINGLE_LOGOUT . '?SAMLResponse=answered'),
+                new LogoutChainEnded(null, new RedirectedMessage(SignOutRequests::SINGLE_LOGOUT . '?SAMLResponse=answered')),
             ],
             [$this->responder->response, $answer],
         );
@@ -159,7 +160,7 @@ final class SingleLogoutTest extends TestCase
         $request = $this->request(nameQualifier: self::IDENTITY_PROVIDER, spNameQualifier: ServiceProviderDocuments::SIGNED);
 
         // When
-        $this->singleLogout($request)->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context());
+        $this->singleLogout($request)->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context(), null);
 
         // Then
         static::assertTrue($this->session->hasEnded());
@@ -173,8 +174,10 @@ final class SingleLogoutTest extends TestCase
     public function anAnswerOfAServiceProviderMovesTheChainOn(): void
     {
         // Given
+        $secret = LogoutChainSecret::draw();
         $chain = new LogoutChain(
             LogoutChain::digestOf('reference'),
+            $secret->digest(),
             $this->tenant,
             '_request-1',
             new LogoutProgress([$this->session->id], [], ServiceProviderDocuments::SIGNED, false, null, 'https://demo.example/'),
@@ -183,7 +186,7 @@ final class SingleLogoutTest extends TestCase
         $this->chains->save($chain);
 
         // When
-        $answer = $this->singleLogout(new SignOutAnswer($chain, true))->redirect($this->tenant, 'SAMLResponse=given', Fixtures::context());
+        $answer = $this->singleLogout(new SignOutAnswer($chain, true, $secret))->redirect($this->tenant, 'SAMLResponse=given', Fixtures::context(), $secret);
 
         // Then
         static::assertEquals(new LogoutChainEnded('https://demo.example/'), $answer);
@@ -206,7 +209,7 @@ final class SingleLogoutTest extends TestCase
         };
 
         // When
-        $this->singleLogout($this->request(sessionIndexes: $sessionIndexes))->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context());
+        $this->singleLogout($this->request(sessionIndexes: $sessionIndexes))->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context(), null);
 
         // Then
         static::assertSame(
@@ -242,7 +245,7 @@ final class SingleLogoutTest extends TestCase
         $request = $this->request($nameId, $format, $nameQualifier, $spNameQualifier);
 
         // When
-        $this->singleLogout($request)->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context());
+        $this->singleLogout($request)->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context(), null);
 
         // Then
         static::assertSame(
@@ -274,7 +277,7 @@ final class SingleLogoutTest extends TestCase
         $request = $this->request(sessionIndexes: [$this->session->id->toRfc4122(), $other->id->toRfc4122()]);
 
         // When
-        $this->singleLogout($request)->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context());
+        $this->singleLogout($request)->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context(), null);
 
         // Then
         static::assertSame(
@@ -290,7 +293,7 @@ final class SingleLogoutTest extends TestCase
     public function aRequestNamingNoSessionIsUnsupported(): void
     {
         // When
-        $this->singleLogout($this->request(sessionIndexes: []))->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context());
+        $this->singleLogout($this->request(sessionIndexes: []))->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context(), null);
 
         // Then
         static::assertSame(
@@ -311,7 +314,7 @@ final class SingleLogoutTest extends TestCase
         $request = $this->request(sessionIndexes: [$this->session->id->toRfc4122(), $second->id->toRfc4122()]);
 
         // When
-        $this->singleLogout($request)->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context());
+        $this->singleLogout($request)->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context(), null);
 
         // Then
         static::assertSame([true, true], [$this->session->hasEnded(), $second->hasEnded()]);
@@ -417,9 +420,9 @@ final class SingleLogoutTest extends TestCase
         $singleLogout = $this->singleLogout($receiver);
         try {
             if ($binding === 'post') {
-                $singleLogout->post($this->tenant, ['SAMLRequest' => 'given'], Fixtures::context());
+                $singleLogout->post($this->tenant, ['SAMLRequest' => 'given'], Fixtures::context(), null);
             } else {
-                $singleLogout->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context());
+                $singleLogout->redirect($this->tenant, 'SAMLRequest=given', Fixtures::context(), null);
             }
         } catch (KeyNotFoundException|KmsUnavailableException) {
         }

@@ -7,7 +7,6 @@ namespace Beffroi\Saml\Tests\Unit\Bridge\Model;
 use function array_map;
 use function base64_decode;
 use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
-use Beffroi\Core\Bridge\Key\SealedKeyProvider;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\KeyNotFoundException;
@@ -15,7 +14,6 @@ use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
 use Beffroi\Saml\Bridge\Model\ModelSignOnResponder;
-use Beffroi\Saml\Bridge\Model\TenantSigning;
 use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
 use Beffroi\Saml\Domain\Metadata\Certificate;
 use Beffroi\Saml\Domain\ServiceProvider\AttributeNameFormat;
@@ -28,6 +26,7 @@ use Beffroi\Saml\Domain\SingleSignOn\SignOnResponse;
 use Beffroi\Saml\Domain\SingleSignOn\SignOnStatus;
 use Beffroi\Saml\Tests\Fixture\SamlKeys;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
+use Beffroi\Saml\Tests\Fixture\SignatureCertificates;
 use Beffroi\Saml\Tests\Fixture\SignOnRequests;
 use Beffroi\Saml2\Bindings\PostReceiver;
 use Beffroi\Saml2\Model\Assertion\Attribute;
@@ -130,6 +129,42 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
+     * S-37: the signature of the response and the one of its assertion each carry, in their KeyInfo, the one
+     * certificate the metadata publish for the key that signed them.
+     */
+    #[Test]
+    public function eachSignatureCarriesTheCertificateOfTheMetadata(): void
+    {
+        // Given
+        $published = SamlKeys::published($this->keys, $this->tenant);
+
+        // When
+        $response = $this->posted($this->responder()->success($this->tenant, self::response()));
+
+        // Then
+        static::assertSame([$published, $published], SignatureCertificates::of($response));
+    }
+
+    /**
+     * S-37: the signature of a failure carries the same certificate.
+     */
+    #[Test]
+    public function theSignatureOfAFailureCarriesTheCertificateOfTheMetadata(): void
+    {
+        // Given
+        $published = SamlKeys::published($this->keys, $this->tenant);
+
+        // When
+        $response = $this->posted($this->responder()->failure(
+            $this->tenant,
+            new SignOnFailure(self::IDENTITY_PROVIDER, SignOnRequests::request(), SignOnStatus::NoPassive, Fixtures::now()),
+        ));
+
+        // Then
+        static::assertSame([$published], SignatureCertificates::of($response));
+    }
+
+    /**
      * S-13: the persistent identifier, qualified by the identity provider and the service provider.
      */
     #[Test]
@@ -163,19 +198,20 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * S-15: valid five minutes from its issue, without NotBefore.
+     * S-15: valid five minutes from its issue, the NotBefore of its Conditions its IssueInstant, which Entra requires
+     * (section 7).
      */
     #[Test]
-    public function theAssertionIsValidFiveMinutes(): void
+    public function theAssertionIsValidFiveMinutesFromItsIssue(): void
     {
         // When
         $assertion = $this->accepted($this->responder()->success($this->tenant, self::response()))->assertion;
 
         // Then
         static::assertSame(
-            [null, '2026-09-15T10:05:00+00:00', '2026-09-15T10:05:00+00:00', '2026-09-15T10:00:00+00:00'],
+            ['2026-09-15T10:00:00+00:00', '2026-09-15T10:05:00+00:00', '2026-09-15T10:05:00+00:00', '2026-09-15T10:00:00+00:00'],
             [
-                $assertion->conditions->notBefore,
+                $assertion->conditions->notBefore?->format('c'),
                 $assertion->conditions->notOnOrAfter?->format('c'),
                 $assertion->confirmation->notOnOrAfter->format('c'),
                 $assertion->issueInstant->format('c'),
@@ -460,7 +496,7 @@ final class ModelSignOnResponderTest extends TestCase
 
     private function responder(): ModelSignOnResponder
     {
-        return new ModelSignOnResponder(new TenantSigning(new SealedKeyProvider($this->keys, Keys::opened()), SamlKeys::algorithm()));
+        return new ModelSignOnResponder(SamlKeys::signing($this->keys));
     }
 
     private function accepted(PostedForm $form): AcceptedAssertion

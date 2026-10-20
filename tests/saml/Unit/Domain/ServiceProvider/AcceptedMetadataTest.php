@@ -17,8 +17,8 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * spec/saml.md S-6, S-8, section 6.2 step 6: the newest document accepted for a service provider is kept, and an
- * older one refused.
+ * spec/saml.md S-6, S-8, section 6.2 step 6: the document read takes the place of the accepted one, an older one read
+ * signed refused.
  */
 final class AcceptedMetadataTest extends TestCase
 {
@@ -57,20 +57,20 @@ final class AcceptedMetadataTest extends TestCase
     }
 
     /**
-     * S-6, section 6.2 step 6: a document that is not older than the accepted one takes its place, its bytes, its
-     * validUntil and the instant of the clock; two without validUntil cannot be told apart, and the newer reading
-     * replaces the older (section 12).
+     * S-6, section 6.2 step 6: a document read signed that is not older than the accepted one takes its place, its
+     * bytes, its validUntil and the instant of the clock; two without validUntil cannot be told apart, and the newer
+     * reading replaces the older (section 12).
      */
     #[Test]
     #[DataProvider('provideNewerDocuments')]
-    public function aDocumentThatIsNotOlderTakesItsPlace(?DateTimeImmutable $accepted, ?DateTimeImmutable $newer): void
+    public function aSignedDocumentThatIsNotOlderTakesItsPlace(?DateTimeImmutable $accepted, ?DateTimeImmutable $newer): void
     {
         // Given
         $metadata = self::accepted($accepted);
         $at = Fixtures::now()->modify('+1 hour');
 
         // When
-        $metadata->replaceWith(new ServiceProviderMetadata(self::ENTITY_ID, $newer, [], false, []), self::NEWER, $at);
+        $metadata->replaceWith(self::read($newer, readSigned: true), self::NEWER, $at);
 
         // Then
         static::assertSame(self::NEWER, $metadata->document);
@@ -90,11 +90,12 @@ final class AcceptedMetadataTest extends TestCase
     }
 
     /**
-     * S-6, the acceptance of issue #729: a document older than the one accepted is refused, the accepted one kept.
+     * S-6, the acceptance of issue #729: a document read signed that is older than the one accepted is refused, the
+     * accepted one kept, an older document signed by the same key verifying as well.
      */
     #[Test]
     #[DataProvider('provideOlderDocuments')]
-    public function anOlderDocumentIsRefused(?DateTimeImmutable $older, string $message): void
+    public function anOlderSignedDocumentIsRefused(?DateTimeImmutable $older, string $message): void
     {
         // Given
         $metadata = self::accepted(new DateTimeImmutable('2026-10-01T00:00:00Z'));
@@ -104,7 +105,7 @@ final class AcceptedMetadataTest extends TestCase
         $this->expectExceptionMessageIs($message);
 
         // When
-        $metadata->replaceWith(new ServiceProviderMetadata(self::ENTITY_ID, $older, [], false, []), self::NEWER, Fixtures::now());
+        $metadata->replaceWith(self::read($older, readSigned: true), self::NEWER, Fixtures::now());
     }
 
     /**
@@ -123,6 +124,38 @@ final class AcceptedMetadataTest extends TestCase
     }
 
     /**
+     * S-6, the security review of 20 October 2026 (finding B-1): a document its channel vouches for takes the place of
+     * the accepted one whatever its validUntil, earlier, absent or later, so that a far validUntil written by whoever
+     * held the channel once pins nothing.
+     */
+    #[Test]
+    #[DataProvider('provideDocumentsTrustedByTheirChannel')]
+    public function aDocumentTrustedByItsChannelTakesItsPlaceWhateverItsValidUntil(?DateTimeImmutable $read): void
+    {
+        // Given
+        $metadata = self::accepted(new DateTimeImmutable('2099-01-01T00:00:00Z'));
+        $at = Fixtures::now()->modify('+1 hour');
+
+        // When
+        $metadata->replaceWith(self::read($read, readSigned: false), self::NEWER, $at);
+
+        // Then
+        static::assertSame(self::NEWER, $metadata->document);
+        static::assertEquals($read, $metadata->validUntil);
+        static::assertSame($at, $metadata->acceptedAt);
+    }
+
+    /**
+     * @return iterable<string, array{?DateTimeImmutable}>
+     */
+    public static function provideDocumentsTrustedByTheirChannel(): iterable
+    {
+        yield 'an earlier validUntil' => [new DateTimeImmutable('2026-10-01T00:00:00Z')];
+        yield 'no validUntil where the accepted one had one' => [null];
+        yield 'a later validUntil' => [new DateTimeImmutable('2099-01-01T00:00:01Z')];
+    }
+
+    /**
      * S-6, section 6.2 step 6: an older document refused leaves the accepted one as it was, its bytes, its validUntil
      * and the instant it was accepted.
      */
@@ -135,11 +168,7 @@ final class AcceptedMetadataTest extends TestCase
 
         // When
         try {
-            $metadata->replaceWith(
-                new ServiceProviderMetadata(self::ENTITY_ID, $validUntil->modify('-1 day'), [], false, []),
-                self::NEWER,
-                Fixtures::now()->modify('+1 hour'),
-            );
+            $metadata->replaceWith(self::read($validUntil->modify('-1 day'), readSigned: true), self::NEWER, Fixtures::now()->modify('+1 hour'));
         } catch (MetadataRefusedException) {
         }
 
@@ -163,8 +192,8 @@ final class AcceptedMetadataTest extends TestCase
     }
 
     /**
-     * S-6: a document whose validUntil is in the same second as the accepted one's is not older, whatever their
-     * fractions, the column keeping neither.
+     * S-6: a document read signed whose validUntil is in the same second as the accepted one's is not older, whatever
+     * their fractions, the column keeping neither.
      */
     #[Test]
     public function aValidUntilWithAFractionOfTheSameSecondIsNotOlder(): void
@@ -173,11 +202,7 @@ final class AcceptedMetadataTest extends TestCase
         $metadata = self::accepted(new DateTimeImmutable('2026-10-01T00:00:00.600000Z'));
 
         // When
-        $metadata->replaceWith(
-            new ServiceProviderMetadata(self::ENTITY_ID, new DateTimeImmutable('2026-10-01T00:00:00.300000Z'), [], false, []),
-            self::NEWER,
-            Fixtures::now(),
-        );
+        $metadata->replaceWith(self::read(new DateTimeImmutable('2026-10-01T00:00:00.300000Z'), readSigned: true), self::NEWER, Fixtures::now());
 
         // Then
         static::assertEquals(new DateTimeImmutable('2026-10-01T00:00:00Z'), $metadata->validUntil);
@@ -199,7 +224,11 @@ final class AcceptedMetadataTest extends TestCase
         $this->expectExceptionMessageIs('An accepted metadata document is replaced by a document of its own entity (spec/saml.md section 6.2 step 6).');
 
         // When
-        $metadata->replaceWith(new ServiceProviderMetadata('https://other.example.com/saml', null, [], false, []), self::NEWER, Fixtures::now());
+        $metadata->replaceWith(
+            new ServiceProviderMetadata('https://other.example.com/saml', null, [], false, [], readSigned: false),
+            self::NEWER,
+            Fixtures::now(),
+        );
     }
 
     /**
@@ -230,7 +259,7 @@ final class AcceptedMetadataTest extends TestCase
         $this->expectExceptionMessageIs('An accepted metadata document holds the bytes that were read (spec/saml.md S-8).');
 
         // When
-        $metadata->replaceWith(new ServiceProviderMetadata(self::ENTITY_ID, null, [], false, []), '', Fixtures::now());
+        $metadata->replaceWith(self::read(null, readSigned: false), '', Fixtures::now());
     }
 
     /**
@@ -249,5 +278,13 @@ final class AcceptedMetadataTest extends TestCase
     private static function accepted(?DateTimeImmutable $validUntil): AcceptedMetadata
     {
         return new AcceptedMetadata(Uuid::v7(), Fixtures::tenant(), self::ENTITY_ID, self::ACCEPTED, $validUntil, Fixtures::now());
+    }
+
+    /**
+     * A reading of a document of the same entity, its validUntil given, read signed or by its channel.
+     */
+    private static function read(?DateTimeImmutable $validUntil, bool $readSigned): ServiceProviderMetadata
+    {
+        return new ServiceProviderMetadata(self::ENTITY_ID, $validUntil, [], false, [], $readSigned);
     }
 }

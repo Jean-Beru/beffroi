@@ -13,6 +13,7 @@ use Beffroi\Saml\Bridge\Model\ModelLogoutMessageReceiver;
 use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataReader;
 use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
 use Beffroi\Saml\Domain\SingleLogout\LogoutChain;
+use Beffroi\Saml\Domain\SingleLogout\LogoutChainSecret;
 use Beffroi\Saml\Domain\SingleLogout\LogoutProgress;
 use Beffroi\Saml\Domain\SingleLogout\SignOutAnswer;
 use Beffroi\Saml\Domain\SingleLogout\SignOutRequest;
@@ -85,8 +86,14 @@ final class ModelLogoutMessageReceiverTest extends TestCase
 
     private InMemoryLogoutChains $chains;
 
+    /**
+     * The secret of the browser the chains of the test are bound to (S-32).
+     */
+    private LogoutChainSecret $secret;
+
     protected function setUp(): void
     {
+        $this->secret = LogoutChainSecret::draw();
         $this->tenant = Fixtures::tenant('acme', self::ISSUER);
         $this->accepted = new InMemoryAcceptedMetadata();
         $this->replay = new InMemoryLogoutReplayStore();
@@ -106,7 +113,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     public function aRequestSignedOverHttpRedirectIsAccepted(): void
     {
         // When
-        $request = $this->receiver()->redirect($this->tenant, $this->redirected());
+        $request = $this->receiver()->redirect($this->tenant, $this->redirected(), $this->secret);
 
         // Then
         static::assertEquals(
@@ -129,7 +136,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     public function aRequestSignedOverHttpPostIsAnsweredAtTheResponseLocation(): void
     {
         // When
-        $request = self::acceptedRequest($this->receiver()->post($this->tenant, $this->posted()));
+        $request = self::acceptedRequest($this->receiver()->post($this->tenant, $this->posted(), $this->secret));
 
         // Then
         static::assertSame(
@@ -148,7 +155,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
         $this->accept([new Endpoint(Binding::HttpPost, self::POST_LOCATION)]);
 
         // When
-        $request = self::acceptedRequest($this->receiver()->redirect($this->tenant, $this->redirected()));
+        $request = self::acceptedRequest($this->receiver()->redirect($this->tenant, $this->redirected(), $this->secret));
 
         // Then
         static::assertSame([SignOutRequests::POST, self::POST_LOCATION], [$request->answerBinding, $request->answerLocation]);
@@ -168,7 +175,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
         ]);
 
         // When
-        $request = self::acceptedRequest($this->receiver()->redirect($this->tenant, $this->redirected()));
+        $request = self::acceptedRequest($this->receiver()->redirect($this->tenant, $this->redirected(), $this->secret));
 
         // Then
         static::assertSame([SignOutRequests::REDIRECT, SignOutRequests::SINGLE_LOGOUT], [$request->answerBinding, $request->answerLocation]);
@@ -189,7 +196,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
         $this->expectExceptionMessageIs('The metadata of the service provider list no single logout service the answer could go to (spec/saml.md S-27).');
 
         // When
-        $this->receiver()->redirect($this->tenant, $this->redirected());
+        $this->receiver()->redirect($this->tenant, $this->redirected(), $this->secret);
     }
 
     /**
@@ -200,14 +207,14 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     {
         // Given
         $query = $this->redirected();
-        $this->receiver()->redirect($this->tenant, $query);
+        $this->receiver()->redirect($this->tenant, $query, $this->secret);
 
         // Then
         $this->expectException(LogoutRefusedException::class);
         $this->expectExceptionMessageIs('The logout message was already accepted from its issuer (M-11).');
 
         // When
-        $this->receiver()->redirect($this->tenant, $query);
+        $this->receiver()->redirect($this->tenant, $query, $this->secret);
     }
 
     /**
@@ -218,7 +225,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     public function theRequestIsRememberedUnderTheTenant(): void
     {
         // When
-        $this->receiver()->redirect($this->tenant, $this->redirected());
+        $this->receiver()->redirect($this->tenant, $this->redirected(), $this->secret);
 
         // Then
         static::assertEquals(
@@ -241,7 +248,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
         $this->expectExceptionMessageIs('The message carries no ds:Signature, which the profile requires (M-2).');
 
         // When
-        $this->receiver()->redirect($this->tenant, $query);
+        $this->receiver()->redirect($this->tenant, $query, $this->secret);
     }
 
     /**
@@ -258,7 +265,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
         $this->expectExceptionMessageIs('The message carries no ds:Signature, which the profile requires (M-2).');
 
         // When
-        $this->receiver()->post($this->tenant, ['SAMLRequest' => base64_encode($document)]);
+        $this->receiver()->post($this->tenant, ['SAMLRequest' => base64_encode($document)], $this->secret);
     }
 
     /**
@@ -275,7 +282,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
         $this->expectExceptionMessageIs('The Issuer of the request is no service provider this tenant declares (spec/saml.md section 6.3 step 1).');
 
         // When
-        $this->receiver()->post($this->tenant, new PostSender()->logoutRequest($request, self::signing(), 'state-1')->fields);
+        $this->receiver()->post($this->tenant, new PostSender()->logoutRequest($request, self::signing(), 'state-1')->fields, $this->secret);
     }
 
     /**
@@ -292,7 +299,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
         $this->expectExceptionMessageIs('The service provider of the request has no metadata accepted yet (spec/saml.md section 6.3 step 1).');
 
         // When
-        $this->receiver()->post($this->tenant, new PostSender()->logoutRequest($request, self::signing(), 'state-1')->fields);
+        $this->receiver()->post($this->tenant, new PostSender()->logoutRequest($request, self::signing(), 'state-1')->fields, $this->secret);
     }
 
     /**
@@ -306,10 +313,10 @@ final class ModelLogoutMessageReceiverTest extends TestCase
         $chain = $this->awaiting();
 
         // When
-        $answer = $this->receiver()->redirect($this->tenant, self::answeredOverRedirect(self::response()));
+        $answer = $this->receiver()->redirect($this->tenant, self::answeredOverRedirect(self::response()), $this->secret);
 
         // Then
-        static::assertEquals(new SignOutAnswer($chain, true), $answer);
+        static::assertEquals(new SignOutAnswer($chain, true, $this->secret), $answer);
     }
 
     /**
@@ -324,10 +331,10 @@ final class ModelLogoutMessageReceiverTest extends TestCase
         $response = self::response(new Status(StatusCode::Responder, SecondLevelStatusCode::PartialLogout));
 
         // When
-        $answer = $this->receiver()->post($this->tenant, new PostSender()->logoutResponse($response, self::signing())->fields);
+        $answer = $this->receiver()->post($this->tenant, new PostSender()->logoutResponse($response, self::signing())->fields, $this->secret);
 
         // Then
-        static::assertEquals(new SignOutAnswer($chain, false), $answer);
+        static::assertEquals(new SignOutAnswer($chain, false, $this->secret), $answer);
     }
 
     /**
@@ -345,7 +352,11 @@ final class ModelLogoutMessageReceiverTest extends TestCase
         $this->expectExceptionMessageIs('The LogoutResponse answers no request an open chain of logout waits for (spec/saml.md S-33).');
 
         // When
-        $this->receiver()->post($this->tenant, ['SAMLResponse' => base64_encode(str_replace(' InResponseTo="' . self::AWAITED . '"', '', $document))]);
+        $this->receiver()->post(
+            $this->tenant,
+            ['SAMLResponse' => base64_encode(str_replace(' InResponseTo="' . self::AWAITED . '"', '', $document))],
+            $this->secret,
+        );
     }
 
     /**
@@ -373,7 +384,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
         $this->expectExceptionMessageIs('The LogoutResponse answers no request an open chain of logout waits for (spec/saml.md S-33).');
 
         // When
-        $this->receiver()->redirect($this->tenant, self::answeredOverRedirect($response));
+        $this->receiver()->redirect($this->tenant, self::answeredOverRedirect($response), $this->secret);
     }
 
     /**
@@ -383,6 +394,56 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     {
         yield 'an answer to a request nobody waits for' => [SignOutRequests::ID, '+1 second'];
         yield 'the answer of a chain past its ten minutes' => [self::AWAITED, '+600 seconds'];
+    }
+
+    /**
+     * S-32, S-33: the answer of the request a chain waits for, carried by a client that presents no secret of a chain
+     * or the secret of another, is refused before any key is read.
+     */
+    #[Test]
+    #[DataProvider('provideSecretsOfAnotherClient')]
+    public function anAnswerCarriedByAnotherClientIsRefused(?LogoutChainSecret $secret): void
+    {
+        // Given
+        $this->awaiting();
+
+        // Then
+        $this->expectException(LogoutRefusedException::class);
+        $this->expectExceptionMessageIs('The LogoutResponse answers no request an open chain of logout waits for (spec/saml.md S-33).');
+
+        // When
+        $this->receiver()->redirect($this->tenant, self::answeredOverRedirect(self::response()), $secret);
+    }
+
+    /**
+     * @return iterable<string, array{LogoutChainSecret|null}>
+     */
+    public static function provideSecretsOfAnotherClient(): iterable
+    {
+        yield 'no secret' => [null];
+        yield 'the secret of another chain' => [new LogoutChainSecret('GJx3sTZ1n3W0pQm7e2Lr9VbY4kCq8HfA6dUoE5iNwXs')];
+    }
+
+    /**
+     * S-32, S-33, M-11: an answer refused to another client is not remembered, so that the browser the chain is bound
+     * to, carrying the same answer, has it accepted.
+     */
+    #[Test]
+    public function anAnswerRefusedToAnotherClientIsAcceptedFromTheBrowserOfTheChain(): void
+    {
+        // Given
+        $chain = $this->awaiting();
+        $query = self::answeredOverRedirect(self::response());
+        try {
+            $this->receiver()->redirect($this->tenant, $query, null);
+        } catch (LogoutRefusedException) {
+        }
+
+        // When
+        $answer = $this->receiver()->redirect($this->tenant, $query, $this->secret);
+
+        // Then
+        static::assertEquals(new SignOutAnswer($chain, true, $this->secret), $answer);
     }
 
     /**
@@ -408,7 +469,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
         $this->expectExceptionMessageIsOrContains('(M-8)');
 
         // When
-        $this->receiver()->redirect($this->tenant, self::answeredOverRedirect($response));
+        $this->receiver()->redirect($this->tenant, self::answeredOverRedirect($response), $this->secret);
     }
 
     /**
@@ -426,7 +487,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
         $this->expectExceptionMessageIs('The message carries no ds:Signature, which the profile requires (M-2).');
 
         // When
-        $this->receiver()->redirect($this->tenant, $query);
+        $this->receiver()->redirect($this->tenant, $query, $this->secret);
     }
 
     /**
@@ -438,14 +499,14 @@ final class ModelLogoutMessageReceiverTest extends TestCase
         // Given
         $this->awaiting();
         $query = self::answeredOverRedirect(self::response());
-        $this->receiver()->redirect($this->tenant, $query);
+        $this->receiver()->redirect($this->tenant, $query, $this->secret);
 
         // Then
         $this->expectException(LogoutRefusedException::class);
         $this->expectExceptionMessageIs('The logout message was already accepted from its issuer (M-11).');
 
         // When
-        $this->receiver()->redirect($this->tenant, $query);
+        $this->receiver()->redirect($this->tenant, $query, $this->secret);
     }
 
     /**
@@ -463,7 +524,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
         $this->expectExceptionMessageIs('The service provider of the request has no metadata accepted yet (spec/saml.md section 6.3 step 1).');
 
         // When
-        $this->receiver()->redirect($this->tenant, self::answeredOverRedirect(self::response()));
+        $this->receiver()->redirect($this->tenant, self::answeredOverRedirect(self::response()), $this->secret);
     }
 
     /**
@@ -477,7 +538,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
         $this->expectExceptionMessageIsOrContains('(B-1)');
 
         // When
-        $this->receiver()->redirect($this->tenant, 'RelayState=state-1');
+        $this->receiver()->redirect($this->tenant, 'RelayState=state-1', $this->secret);
     }
 
     /**
@@ -491,7 +552,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
         $this->expectExceptionMessageIsOrContains('(B-1)');
 
         // When
-        $this->receiver()->post($this->tenant, ['RelayState' => 'state-1']);
+        $this->receiver()->post($this->tenant, ['RelayState' => 'state-1'], $this->secret);
     }
 
     /**
@@ -531,6 +592,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     {
         $chain = new LogoutChain(
             LogoutChain::digestOf('reference'),
+            $this->secret->digest(),
             $this->tenant,
             self::AWAITED,
             new LogoutProgress([], [], $serviceProvider, false, null, null),

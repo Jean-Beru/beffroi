@@ -50,6 +50,7 @@ use const PHP_URL_QUERY;
 use function rtrim;
 use function sprintf;
 use function str_starts_with;
+use function strtolower;
 use function strtr;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Component\BrowserKit\Cookie;
@@ -479,8 +480,9 @@ abstract class BrowserTestCase extends DatabaseTestCase
      */
     /**
      * What a browser sends when a page of another site posts a form here: "Sec-Fetch-Site: cross-site", and none of the
-     * cookies of this provider, which "SameSite=Lax" keeps from a cross-site post (RFC 6265bis, "SameSite" cookies). The jar is
-     * given back afterwards, as the browser still holds its cookies.
+     * cookies of this provider that "SameSite=Lax" or "Strict" keeps from a cross-site post (RFC 6265bis, "SameSite"
+     * cookies), the ones that say "SameSite=None" going with it. The cookies held back are given back afterwards, as the
+     * browser still holds them.
      *
      * @param string $body the body as the other site encoded it, which the provider reads as it came
      * @param array<string, string|null> $server what replaces the headers of a cross-site post, null removing one
@@ -488,10 +490,15 @@ abstract class BrowserTestCase extends DatabaseTestCase
     protected function postedFromAnotherSite(string $uri, string $body, array $server = []): void
     {
         $jar = $this->browser->getCookieJar();
-        $cookies = $jar->all();
-        $jar->clear();
+        $heldBack = [];
+        foreach ($jar->all() as $cookie) {
+            if (strtolower((string) $cookie->getSameSite()) !== 'none') {
+                $heldBack[] = $cookie;
+                $jar->expire($cookie->getName(), $cookie->getPath(), $cookie->getDomain());
+            }
+        }
         $this->postedFromAnotherSiteWithTheCookie($uri, $body, $server);
-        foreach ($cookies as $cookie) {
+        foreach ($heldBack as $cookie) {
             $jar->set($cookie);
         }
     }

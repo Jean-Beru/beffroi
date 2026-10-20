@@ -256,6 +256,11 @@ services:
       timeout: 5s
       retries: 20
       start_period: 5s
+    # The private key of the service provider is 0600 under var/saml-sp/ ("castor saml-sp"), its owner's alone on the
+    # machine. Root of the container reads it there whatever uid owns it, as root of a container does on Linux, under
+    # rootless Docker and through Docker Desktop alike, and gives www-data, the user Apache serves as, a copy of its
+    # own that exists in this container only (docker/saml-sp/config/authsources.php).
+    command: ["sh", "-c", "install -d -o root -g www-data -m 0750 /run/saml-sp && install -o www-data -g www-data -m 0400 /saml-sp/sp.pem /run/saml-sp/sp.pem && exec apache2-foreground"]
     volumes:
       - ./docker/saml-sp/config:/var/simplesamlphp/config:ro
       - ./docker/saml-sp/metadata:/var/simplesamlphp/metadata:ro

@@ -49,9 +49,10 @@ final readonly class DoctrineLogoutChainRepository extends DoctrineRepository im
         );
         $connection->executeStatement(
             sprintf(
-                'INSERT INTO %s (%s, %s, %s, %s, %s) VALUES (:reference, :tenant, :awaiting, :progress, :expiresAt)',
+                'INSERT INTO %s (%s, %s, %s, %s, %s, %s) VALUES (:reference, :secret, :tenant, :awaiting, :progress, :expiresAt)',
                 $table,
                 $metadata->getColumnName('reference'),
+                $metadata->getColumnName('secret'),
                 $metadata->getSingleAssociationJoinColumnName('tenant'),
                 $metadata->getColumnName('awaitingRequest'),
                 $metadata->getColumnName('progress'),
@@ -59,6 +60,7 @@ final readonly class DoctrineLogoutChainRepository extends DoctrineRepository im
             ),
             [
                 'reference' => $chain->reference,
+                'secret' => $chain->secret,
                 'tenant' => $chain->tenant->id,
                 'awaiting' => $chain->awaitingRequest,
                 'progress' => $chain->progress,
@@ -66,6 +68,7 @@ final readonly class DoctrineLogoutChainRepository extends DoctrineRepository im
             ],
             [
                 'reference' => Types::STRING,
+                'secret' => Types::STRING,
                 'tenant' => 'uuid',
                 'awaiting' => Types::STRING,
                 'progress' => LogoutProgressType::NAME,

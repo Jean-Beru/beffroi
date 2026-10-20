@@ -19,7 +19,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class AuthnRequestSigningTest extends TestCase
 {
-    private const string ENTITY_ID = 'urn:federation:MicrosoftOnline';
+    private const string ENTITY_ID = 'https://login.microsoftonline.com/aaaabbbb-0000-cccc-1111-dddd2222eeee/';
 
     /**
      * S-9, the table of section 6.3 step 2: a request is unsigned only where the declaration says the provider does
@@ -34,7 +34,7 @@ final class AuthnRequestSigningTest extends TestCase
     ): void {
         // Given
         $declaration = new ServiceProvider(self::ENTITY_ID, new MetadataLocation('/etc/beffroi/entra.xml'), signsAuthnRequests: $signsAuthnRequests);
-        $metadata = new ServiceProviderMetadata(self::ENTITY_ID, null, [], $authnRequestsSigned, []);
+        $metadata = new ServiceProviderMetadata(self::ENTITY_ID, null, [], $authnRequestsSigned, [], readSigned: false);
 
         // When
         $signing = AuthnRequestSigning::of($declaration, $metadata);
@@ -63,7 +63,7 @@ final class AuthnRequestSigningTest extends TestCase
     {
         // Given
         $declaration = new ServiceProvider(self::ENTITY_ID, new MetadataLocation('/etc/beffroi/entra.xml'), signsAuthnRequests: false);
-        $metadata = new ServiceProviderMetadata('https://sp.example.com/saml', null, [], false, []);
+        $metadata = new ServiceProviderMetadata('https://sp.example.com/saml', null, [], false, [], readSigned: false);
 
         // Then
         $this->expectException(InvalidArgumentException::class);

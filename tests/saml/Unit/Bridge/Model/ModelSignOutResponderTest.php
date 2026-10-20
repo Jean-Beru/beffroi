@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Tests\Unit\Bridge\Model;
 
 use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
-use Beffroi\Core\Bridge\Key\SealedKeyProvider;
 use Beffroi\Core\Domain\Key\GeneratedKeyPair;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Domain\Tenant\Tenant;
@@ -14,7 +13,6 @@ use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
 use Beffroi\Saml\Bridge\Model\ModelSignOutResponder;
-use Beffroi\Saml\Bridge\Model\TenantSigning;
 use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
 use Beffroi\Saml\Domain\SingleLogout\RedirectedMessage;
 use Beffroi\Saml\Domain\SingleLogout\SignOutResponse;
@@ -22,6 +20,7 @@ use Beffroi\Saml\Domain\SingleLogout\SignOutStatus;
 use Beffroi\Saml\Domain\SingleSignOn\PostedForm;
 use Beffroi\Saml\Tests\Fixture\SamlKeys;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
+use Beffroi\Saml\Tests\Fixture\SignatureCertificates;
 use Beffroi\Saml\Tests\Fixture\SignOutRequests;
 use Beffroi\Saml2\Bindings\PostReceiver;
 use Beffroi\Saml2\Bindings\ReceivedLogoutResponse;
@@ -42,6 +41,8 @@ use Beffroi\Saml2\Model\Tests\Support\InMemoryReplayGuard;
 use Beffroi\Saml2\Model\Validation\AcceptedLogoutResponse;
 use Beffroi\Saml2\Model\Validation\Authentication;
 use Beffroi\Saml2\Model\Validation\LogoutResponseValidator;
+use Beffroi\Xml\Core\Document;
+use function base64_decode;
 use function parse_url;
 use const PHP_URL_QUERY;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -136,6 +137,23 @@ final class ModelSignOutResponderTest extends TestCase
             [SignOutRequests::SINGLE_LOGOUT . '/post', Authentication::XmlSignature],
             [$answer instanceof PostedForm ? $answer->action : null, $this->accepted($answer, SignOutRequests::SINGLE_LOGOUT . '/post')->authentication],
         );
+    }
+
+    /**
+     * S-37: over HTTP-POST, the signature of the answer carries, in its KeyInfo, the one certificate the metadata
+     * publish for the key that signed it.
+     */
+    #[Test]
+    public function overHttpPostTheSignatureCarriesTheCertificateOfTheMetadata(): void
+    {
+        // Given
+        $published = SamlKeys::published($this->keys, $this->tenant);
+
+        // When
+        $response = self::posted($this->responder()->answer($this->tenant, self::response(answerBinding: SignOutRequests::POST)));
+
+        // Then
+        static::assertSame([$published], SignatureCertificates::of($response));
     }
 
     /**
@@ -275,7 +293,17 @@ final class ModelSignOutResponderTest extends TestCase
 
     private function responder(): ModelSignOutResponder
     {
-        return new ModelSignOutResponder(new TenantSigning(new SealedKeyProvider($this->keys, Keys::opened()), SamlKeys::algorithm()));
+        return new ModelSignOutResponder(SamlKeys::signing($this->keys));
+    }
+
+    /**
+     * The LogoutResponse the form of HTTP-POST carries, loaded as the service provider loads it.
+     */
+    private static function posted(PostedForm|RedirectedMessage $answer): Document
+    {
+        static::assertInstanceOf(PostedForm::class, $answer);
+
+        return SamlLoader::create()->load((string) base64_decode($answer->fields['SAMLResponse'] ?? '', true));
     }
 
     private function received(PostedForm|RedirectedMessage $answer): ReceivedLogoutResponse

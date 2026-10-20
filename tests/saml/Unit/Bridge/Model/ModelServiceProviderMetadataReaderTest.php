@@ -10,7 +10,10 @@ use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataReader;
 use Beffroi\Saml\Exception\MetadataRefusedException;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
 use Beffroi\Saml2\Model\Exception\OutsideValidityWindow;
+use Beffroi\Saml2\Model\Metadata\Binding;
+use Beffroi\Saml2\Model\Metadata\Endpoint;
 use DateTimeImmutable;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -22,6 +25,8 @@ use function substr;
  */
 final class ModelServiceProviderMetadataReaderTest extends TestCase
 {
+    private const string ASSERTION_CONSUMER = 'https://sp.example.org/saml/acs';
+
     private ModelServiceProviderMetadataReader $reader;
 
     protected function setUp(): void
@@ -216,6 +221,104 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
+     * S-6: a document read under a key the declaration pins says so, which holds it to the document accepted.
+     */
+    #[Test]
+    public function itSaysADocumentReadUnderAPinnedKeyWasReadSigned(): void
+    {
+        // When
+        $metadata = $this->reader->readSigned(
+            ServiceProviderDocuments::signed(new DateTimeImmutable('2026-10-01T00:00:00Z')),
+            [ServiceProviderDocuments::signer()],
+        );
+
+        // Then
+        static::assertTrue($metadata->readSigned);
+    }
+
+    /**
+     * S-6: a document read by its channel says it was not read signed, which lets it replace the document accepted
+     * whatever its validUntil.
+     */
+    #[Test]
+    public function itSaysADocumentReadByItsChannelWasNotReadSigned(): void
+    {
+        // When
+        $metadata = $this->reader->readTrusted(ServiceProviderDocuments::simpleSamlPhp());
+
+        // Then
+        static::assertFalse($metadata->readSigned);
+    }
+
+    /**
+     * S-11, the security review of 20 October 2026 (findings B-3, C-2, C-3): a document one of whose endpoints the
+     * identity provider sends a browser to is not an https URL on a host is refused at its reading, the refusal naming
+     * the endpoint and never its value (M-16).
+     *
+     * @param list<Endpoint> $singleLogoutServices
+     */
+    #[Test]
+    #[DataProvider('provideDocumentsWithAnEndpointOffTheWeb')]
+    public function itRefusesADocumentAnEndpointOfWhichIsNotHttpsOnAHost(string $assertionConsumerService, array $singleLogoutServices, string $message): void
+    {
+        // Given
+        $document = ServiceProviderDocuments::signed(
+            new DateTimeImmutable('2026-10-01T00:00:00Z'),
+            singleLogoutServices: $singleLogoutServices,
+            assertionConsumerService: $assertionConsumerService,
+        );
+
+        // Then
+        $this->expectException(MetadataRefusedException::class);
+        $this->expectExceptionMessageIs($message);
+
+        // When
+        $this->reader->readTrusted($document);
+    }
+
+    /**
+     * @return iterable<string, array{string, list<Endpoint>, string}>
+     */
+    public static function provideDocumentsWithAnEndpointOffTheWeb(): iterable
+    {
+        yield 'an assertion consumer service in plain http' => [
+            'http://sp.example.org/saml/acs',
+            [],
+            'The Location of an md:AssertionConsumerService is not an https URL on a host name or an IP address, and the identity provider sends a browser there (spec/saml.md S-11).',
+        ];
+        yield 'a single logout service that runs a script' => [
+            self::ASSERTION_CONSUMER,
+            [new Endpoint(Binding::HttpRedirect, 'javascript:fetch(document.cookie)')],
+            'The Location of an md:SingleLogoutService is not an https URL on a host name or an IP address, and the identity provider sends a browser there (spec/saml.md S-11).',
+        ];
+        yield 'a response location whose host carries a directive' => [
+            self::ASSERTION_CONSUMER,
+            [new Endpoint(Binding::HttpPost, 'https://sp.example.org/saml/slo', 'https://sp.example.org;sandbox/saml/slo')],
+            'The ResponseLocation of an md:SingleLogoutService is not an https URL on a host name or an IP address, and the identity provider sends a browser there (spec/saml.md S-11).',
+        ];
+    }
+
+    /**
+     * S-11: endpoints in https on a port, on an IPv6 literal, their scheme in capitals, are read.
+     */
+    #[Test]
+    public function itReadsADocumentWhoseEndpointsAreHttpsOnAHost(): void
+    {
+        // Given
+        $document = ServiceProviderDocuments::signed(
+            new DateTimeImmutable('2026-10-01T00:00:00Z'),
+            singleLogoutServices: [new Endpoint(Binding::HttpPost, 'https://[2001:db8::1]/saml/slo', 'https://sp.example.org:8443/saml/slo')],
+            assertionConsumerService: 'HTTPS://sp.example.org:8443/saml/acs',
+        );
+
+        // When
+        $metadata = $this->reader->readTrusted($document);
+
+        // Then
+        static::assertSame(ServiceProviderDocuments::SIGNED, $metadata->entityId);
+    }
+
+    /**
      * S-5: a document signed by another key than the pinned ones is refused.
      */
     #[Test]
@@ -289,6 +392,19 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
+     * Section 6.3 step 1, S-6: the accepted document read back is read by its store, never under a signer.
+     */
+    #[Test]
+    public function itSaysAnAcceptedDocumentReadBackWasNotReadSigned(): void
+    {
+        // When
+        $read = $this->reader->readAccepted(ServiceProviderDocuments::simpleSamlPhp());
+
+        // Then
+        static::assertFalse($read->metadata->readSigned);
+    }
+
+    /**
      * Section 6.3 step 1: an accepted document the reading refuses now is refused.
      */
     #[Test]
@@ -300,6 +416,21 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
 
         // When
         $this->reader->readAccepted(ServiceProviderDocuments::simpleSamlPhpValidUntil('2026-09-01T00:00:00Z'));
+    }
+
+    /**
+     * Section 6.3 step 1, S-11: an accepted document read back is held to the same rule as a document read at a
+     * refresh, so that one accepted before the rule serves no request.
+     */
+    #[Test]
+    public function itRefusesAnAcceptedDocumentAnEndpointOfWhichIsNotHttpsOnAHost(): void
+    {
+        // Then
+        $this->expectException(MetadataRefusedException::class);
+        $this->expectExceptionMessageIs('The Location of an md:AssertionConsumerService is not an https URL on a host name or an IP address, and the identity provider sends a browser there (spec/saml.md S-11).');
+
+        // When
+        $this->reader->readAccepted(ServiceProviderDocuments::signed(null, assertionConsumerService: 'http://sp.example.org/saml/acs'));
     }
 
     /**

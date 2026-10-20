@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Saml;
 
+use Beffroi\Bundle\Http\CrossSitePost;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
 use Beffroi\Core\Domain\Identity\EmailAddress;
@@ -201,6 +202,27 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
+     * S-28, "The marker": a request a page of another site posts with the marker forged in its query, to a signed-in
+     * browser whose cookie is kept back, is posted again as one that does not carry it, and starts no HTTP session,
+     * whose cookie would replace the one the browser holds and sign it out of the provider.
+     */
+    #[Test]
+    public function aRequestPostedFromAnotherSiteThatForgesTheMarkerIsPostedAgainWithoutASession(): void
+    {
+        // Given
+        $this->signIn($this->alice);
+
+        // When
+        $this->postedFromAnotherSite('/saml/sso?' . CrossSitePost::MARKER . '=1', $this->postedBody('state-1'));
+
+        // Then
+        static::assertSame(
+            ['/saml/sso?' . CrossSitePost::MARKER . '=1', []],
+            [$this->form()['action'], $this->browser->getResponse()->headers->getCookies()],
+        );
+    }
+
+    /**
      * The acceptance of issue #731, B-9, section 6.8: the RelayState a request carried comes back byte for byte.
      */
     #[Test]
@@ -381,8 +403,9 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * Section 6.8, bindings.md section 6.7, SAML Bindings §3.5.5.1: the page names its one script by its hash, posts
-     * to the origin of the assertion consumer service and nowhere else, and is never cached.
+     * Section 6.8, S-36, bindings.md section 6.7, SAML Bindings §3.5.5.1: the page names its one script by its hash,
+     * loads nothing, is framed by nothing, names no "form-action", the assertion consumer service sending the browser
+     * on to where its application lives, and is never cached.
      */
     #[Test]
     public function thePageCarriesItsPolicyAndTheCachingOfTheBinding(): void
@@ -397,7 +420,7 @@ final class SingleSignOnTest extends ConsoleTestCase
         $response = $this->browser->getResponse();
         static::assertSame(
             [
-                "default-src 'none'; script-src 'sha256-8lDeP0UDwCO6/RhblgeH/ctdBzjVpJxrXizsnIk3cEQ='; form-action https://sp.example.org; base-uri 'none'; frame-ancestors 'none'",
+                "default-src 'none'; script-src 'sha256-8lDeP0UDwCO6/RhblgeH/ctdBzjVpJxrXizsnIk3cEQ='; base-uri 'none'; frame-ancestors 'none'",
                 true,
                 true,
                 'no-cache',

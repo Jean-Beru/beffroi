@@ -6,20 +6,35 @@ namespace Beffroi\Bundle\Tests\Functional\Saml;
 
 use Beffroi\Bundle\Command\SamlServiceProviderForgetCommand;
 use Beffroi\Bundle\Command\SamlServiceProviderRefreshCommand;
+use Beffroi\Bundle\Doctrine\TenantProvider;
 use Beffroi\Bundle\Message\RefreshTheServiceProviderMetadata;
+use Beffroi\Bundle\MessageHandler\RefreshTheServiceProviderMetadataHandler;
+use Beffroi\Bundle\Tests\Fixture\RecordedMessages;
 use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
+use Beffroi\Saml\Application\ServiceProvider\ServiceProviderMetadataRefresh;
 use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
+use Beffroi\Saml2\Model\Metadata\Binding;
+use Beffroi\Saml2\Model\Metadata\EntityDescriptor;
+use Beffroi\Saml2\Model\Metadata\IndexedEndpoint;
+use Beffroi\Saml2\Model\Metadata\IndexedEndpoints;
+use Beffroi\Saml2\Model\Metadata\ServiceProvider;
+use Beffroi\Saml2\Model\Tests\Unit\Metadata\MetadataFixtures;
+use Beffroi\Saml2\Model\Writing\MetadataWriter;
+use Beffroi\Saml2\Model\Writing\Signing;
+use Beffroi\Xml\Core\Serializer;
 use DateTimeImmutable;
 use function dirname;
 use function file_put_contents;
 use function is_dir;
 use function mkdir;
 use PHPUnit\Framework\Attributes\Test;
+use Psr\Log\LogLevel;
 use function sprintf;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * beffroi/saml, spec/saml.md section 6.2, the acceptance of issue #729: the SimpleSAMLphp service provider the
@@ -28,6 +43,8 @@ use Symfony\Component\Messenger\MessageBusInterface;
  */
 final class ServiceProvidersTest extends ConsoleTestCase
 {
+    private const string FAR_VALID_UNTIL = '2099-01-01T00:00:00+00:00';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -77,29 +94,39 @@ final class ServiceProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * S-6, the acceptance of issue #729: a document older than the one accepted is refused, and the accepted one
-     * kept.
+     * S-6, the security review of 20 October 2026 (finding B-1): a document its channel vouches for, the file the
+     * declaration names, replaces the one accepted whatever validUntil that one carries. A document an attacker had
+     * accepted while he held where the metadata are read, valid until 2099 and listing his own certificate and his own
+     * assertion consumer service, gives way to the genuine one, which carries no validUntil, at the next refresh.
      */
     #[Test]
-    public function aDocumentOlderThanTheAcceptedOneIsRefusedAndTheAcceptedOneKept(): void
+    public function theGenuineDocumentReplacesTheDocumentAnAttackerHadAccepted(): void
     {
         // Given
-        self::publish(ServiceProviderDocuments::simpleSamlPhpValidUntil('2026-10-08T00:00:00Z'));
-        self::console(SamlServiceProviderRefreshCommand::NAME);
-        self::publish(ServiceProviderDocuments::simpleSamlPhpValidUntil('2026-10-01T00:00:00Z'));
+        self::service('test.beffroi.saml_accepted_metadata', AcceptedMetadataRepositoryInterface::class)
+            ->save(new AcceptedMetadata(
+                Uuid::v7(),
+                self::tenant(),
+                ServiceProviderDocuments::SIGNED,
+                self::attackerDocument(),
+                new DateTimeImmutable(self::FAR_VALID_UNTIL),
+                new DateTimeImmutable('2026-09-15T09:00:00+00:00'),
+            ));
 
         // When
         $tester = self::console(SamlServiceProviderRefreshCommand::NAME, [
-            'entity-id' => ServiceProviderDocuments::SIMPLESAMLPHP,
+            'entity-id' => ServiceProviderDocuments::SIGNED,
         ]);
 
         // Then
-        static::assertSame(Command::FAILURE, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         static::assertStringContainsString(
-            'The metadata are valid until an earlier instant than the document accepted, so they are older (spec/saml.md S-6).',
+            sprintf('The metadata of the service provider "%s" are refreshed.', ServiceProviderDocuments::SIGNED),
             self::flattened($tester),
         );
-        static::assertEquals(new DateTimeImmutable('2026-10-08T00:00:00Z'), self::accepted()?->validUntil);
+        $accepted = self::accepted(ServiceProviderDocuments::SIGNED) ?? static::fail('Nothing is accepted.');
+        static::assertSame(ServiceProviderDocuments::exampleOrg(), $accepted->document);
+        static::assertNull($accepted->validUntil);
     }
 
     /**
@@ -165,11 +192,11 @@ final class ServiceProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * S-6, section 6.2, forgotten: a service provider that went back to a document without validUntil after one that
-     * had one, refused for it, is registered from it again once the operator forgot the document accepted.
+     * S-6, section 6.2, forgotten: once the operator forgot the document accepted for a service provider, the next
+     * refresh registers it as a first one.
      */
     #[Test]
-    public function aForgottenServiceProviderIsRegisteredAgainFromADocumentWithoutValidUntil(): void
+    public function aForgottenServiceProviderIsRegisteredAgainAtTheNextRefresh(): void
     {
         // Given
         self::publish(ServiceProviderDocuments::simpleSamlPhpValidUntil('2026-10-08T00:00:00Z'));
@@ -228,6 +255,35 @@ final class ServiceProvidersTest extends ConsoleTestCase
     }
 
     /**
+     * S-6, section 6.2: a document the step of the schedule refuses is written to the log as an error, the level an
+     * operator is alerted on, since the refusal comes back at every hour while the document accepted serves on.
+     */
+    #[Test]
+    public function aDocumentTheStepOfTheScheduleRefusesIsLoggedAsAnError(): void
+    {
+        // Given
+        self::publish(ServiceProviderDocuments::simpleSamlPhpWithoutEncryptionKey());
+        $said = new RecordedMessages();
+        $step = new RefreshTheServiceProviderMetadataHandler(
+            self::service(TenantProvider::class, TenantProvider::class),
+            self::service(ServiceProviderMetadataRefresh::class, ServiceProviderMetadataRefresh::class),
+            $said,
+        );
+
+        // When
+        $step(new RefreshTheServiceProviderMetadata());
+
+        // Then
+        static::assertSame(
+            [sprintf(
+                'The metadata of the service provider "%s" are refused, the document accepted kept: The service provider asks for encrypted assertions and its metadata hold no key for encryption (spec/saml.md S-7).',
+                ServiceProviderDocuments::SIMPLESAMLPHP,
+            )],
+            $said->at(LogLevel::ERROR),
+        );
+    }
+
+    /**
      * The file the declaration of the test names, in the cache directory of the kernel of this worker.
      */
     private static function publish(string $document): void
@@ -240,14 +296,36 @@ final class ServiceProvidersTest extends ConsoleTestCase
         file_put_contents($path, $document);
     }
 
-    private static function accepted(): ?AcceptedMetadata
+    private static function accepted(string $entityId = ServiceProviderDocuments::SIMPLESAMLPHP): ?AcceptedMetadata
     {
         self::reload();
 
         return self::service('test.beffroi.saml_accepted_metadata', AcceptedMetadataRepositoryInterface::class)
             ->find(
                 self::tenant(),
-                ServiceProviderDocuments::SIMPLESAMLPHP,
+                $entityId,
             );
+    }
+
+    /**
+     * What an attacker who held where the metadata of the service provider of single sign-on are read publishes for
+     * its entity ID: valid until 2099, his own certificate, the test key "idp" of saml2-model, and his own assertion
+     * consumer service.
+     */
+    private static function attackerDocument(): string
+    {
+        return new Serializer()->serialize(new MetadataWriter()->write(
+            new EntityDescriptor(
+                ServiceProviderDocuments::SIGNED,
+                new DateTimeImmutable(self::FAR_VALID_UNTIL),
+                serviceProvider: new ServiceProvider(
+                    ServiceProviderDocuments::SIGNED,
+                    [MetadataFixtures::certificate('idp')],
+                    [MetadataFixtures::certificate('idp')],
+                    new IndexedEndpoints([new IndexedEndpoint(Binding::HttpPost, 'https://attacker.example/acs', 0)]),
+                ),
+            ),
+            new Signing(MetadataFixtures::signingKey('idp')),
+        ));
     }
 }

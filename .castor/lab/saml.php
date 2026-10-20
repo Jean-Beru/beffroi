@@ -44,6 +44,7 @@ use function Castor\http_request;
 use function Castor\io;
 use function Castor\load_dot_env;
 use function Castor\run;
+use Symfony\Component\Console\Formatter\OutputFormatter;
 use Symfony\Contracts\HttpClient\Exception\ExceptionInterface as HttpClientException;
 
 const SAML_SP_URL = 'https://saml-sp.localhost';
@@ -84,6 +85,27 @@ const SAML_SP_ENCRYPTION = [
 const SAML_SP_CAPTURED = SAML_SP_DIRECTORY . '/captured';
 
 /**
+ * The parameter the page that posts a form from another site again adds to the query of its action (S-28), the MARKER
+ * of Beffroi\Bundle\Http\CrossSitePost, which the tasks do not load: the action of that page carries it, and a
+ * profiled post that carries it is the one the provider read.
+ */
+const SAML_POSTED_AGAIN = '_beffroi_posted_again';
+
+/**
+ * The cookie that binds a chain of logout to the browser that began it (spec/saml.md S-32), the NAME of
+ * Beffroi\Bundle\Saml\LogoutChainCookie, which the tasks do not load: it says "SameSite=None", and goes with the
+ * answer a service provider posts from its site.
+ */
+const SAML_LOGOUT_CHAIN_COOKIE = '__Host-beffroi_saml_logout';
+
+/**
+ * The oracle of HTTP-Redirect of saml2-bindings, the script and the Python it runs, which is what the container that
+ * verifies a redirected message reads of tests/ (alpine_command()), with the certificate of the signer and the
+ * directory of what the walk captured, where each <name>.url has the document it carries beside it, <name>.xml.
+ */
+const SAML_SP_ORACLE_REDIRECT = 'tests/saml2-bindings/Fixture/oracle';
+
+/**
  * The bindings the AuthnRequest travels over, by the name the walk and its files give them, and the value of
  * "Binding" in the metadata that name stands for.
  */
@@ -94,7 +116,7 @@ const SAML_SP_BINDINGS = [
 
 #[AsTask(
     name: 'saml-sp',
-    description: 'The SAML identity provider of the stack judged by SimpleSAMLphp 2.5.3.1 (issue #732): the service provider is started on https://saml-sp.localhost, reads the metadata of the provider and is registered at it by a metadata file and "beffroi:saml:service-provider:refresh"; then single sign-on is played in HTTP-Redirect and in HTTP-POST as a browser plays it, as the development user, and the attributes SimpleSAMLphp received are printed. Every AuthnRequest is verified by xmlsec1 or by OpenSSL and Python (the detached signature of the redirect) and accepted by the model; every Response by xmlsec1. Each journey is a browser of its own, which signs in at the provider; the HTTP-POST one then signs in a second time, its request posted from the site of the service provider without the cookie of the provider and posted again by the provider from its own origin, answered without a login (spec/saml.md S-28); then SimpleSAMLphp signs it out (issue #734): its LogoutRequest, verified by OpenSSL and Python, ends the session of the provider, the LogoutResponse comes back signed to its single logout service and SimpleSAMLphp accepts it, the browser is sent to the login when it asks to sign in again, and the same LogoutRequest presented again is refused; then a third browser signed in at SimpleSAMLphp signs out at the end session endpoint of the provider (issue #735): the provider sends SimpleSAMLphp a LogoutRequest, verified by OpenSSL and Python under the certificate of its metadata, SimpleSAMLphp ends its session and answers with a LogoutResponse verified under its own certificate, the provider ends the chain on the page that says the browser is signed out, and the same LogoutResponse presented again is refused',
+    description: 'The SAML identity provider of the stack judged by SimpleSAMLphp 2.5.3.1 (issue #732): the service provider is started on https://saml-sp.localhost, reads the metadata of the provider and is registered at it by a metadata file and "beffroi:saml:service-provider:refresh"; then single sign-on is played in HTTP-Redirect and in HTTP-POST as a browser plays it, as the development user, and the attributes SimpleSAMLphp received are printed. Every AuthnRequest is verified by xmlsec1 or by OpenSSL and Python (the detached signature of the redirect) and accepted by the model; every Response by xmlsec1. Each journey is a browser of its own, which signs in at the provider; the HTTP-POST one then signs in a second time, its request posted from the site of the service provider without the cookie of the provider and posted again by the provider from its own origin, answered without a login (spec/saml.md S-28); then SimpleSAMLphp signs it out (issue #734): its LogoutRequest, verified by OpenSSL and Python, ends the session of the provider, the LogoutResponse comes back signed to its single logout service and SimpleSAMLphp accepts it, the browser is sent to the login when it asks to sign in again, and the same LogoutRequest presented again is refused; then a third browser signed in at SimpleSAMLphp signs out at the end session endpoint of the provider (issue #735): the provider sends SimpleSAMLphp a LogoutRequest, verified by OpenSSL and Python under the certificate of its metadata, SimpleSAMLphp ends its session and answers with a LogoutResponse verified under its own certificate, which, posted from the site of SimpleSAMLphp without the cookie of the provider, the provider posts again from its own origin (spec/saml.md S-28), the provider ends the chain on the page that says the browser is signed out, and the same LogoutResponse presented again is refused',
 )]
 function saml_sp(
     #[AsOption(description: 'Only start the service provider, read the metadata of the provider and register it: no sign-on')]
@@ -204,7 +226,8 @@ function saml_sp_start(): string
     foreach (glob(SAML_SP_CAPTURED . '/*') ?: [] as $file) {
         unlink($file);
     }
-    if (! is_file(SAML_SP_DIRECTORY . '/sp.pem') || ! is_file(SAML_SP_DIRECTORY . '/sp.crt')) {
+    $drawn = ! is_file(SAML_SP_DIRECTORY . '/sp.pem') || ! is_file(SAML_SP_DIRECTORY . '/sp.crt');
+    if ($drawn) {
         run([
             'openssl',
             'req',
@@ -222,14 +245,16 @@ function saml_sp_start(): string
             '-out',
             SAML_SP_DIRECTORY . '/sp.crt',
         ], context: context()->withQuiet());
-        // read by www-data in the container, the file belonging to whoever runs the task
-        chmod(SAML_SP_DIRECTORY . '/sp.pem', 0o644);
     }
+    // Its owner's alone: the container reads it as root, whatever uid owns it here, and hands www-data a copy of its
+    // own (compose.yaml), so that no other account of the machine reads the key the judge signs with.
+    chmod(SAML_SP_DIRECTORY . '/sp.pem', 0o600);
     file_put_contents(SAML_SP_DIRECTORY . '/sso-binding', '');
-    run(['docker', 'compose', '--profile', 'saml-sp', 'up', '-d', '--wait', '--build', 'saml-sp']);
+    // A container that copied the key of an earlier pair holds it until it is created again.
+    run(['docker', 'compose', '--profile', 'saml-sp', 'up', '-d', '--wait', '--build', ...($drawn ? ['--force-recreate'] : []), 'saml-sp']);
 
     $ca = caddy_ca(getcwd() . '/' . SAML_SP_DIRECTORY . '/caddy-root.crt');
-    // read by www-data in the container, as the key above
+    // read by www-data in the container, a certificate and no secret
     chmod($ca, 0o644);
     $cookies = [];
     for ($attempt = 0; $attempt < 30; ++$attempt) {
@@ -434,11 +459,14 @@ function saml_sp_verify_requests(array $journeys): void
 {
     if (isset($journeys['redirect'])) {
         io()->text('OpenSSL and Python, the signature over the query string and the message it carries:');
-        in_alpine('apk add -q openssl python3 >/dev/null 2>&1 && openssl version && sh tests/saml2-bindings/Fixture/oracle/verify-redirect.sh '
-        . SAML_SP_DIRECTORY
-        . '/sp.crt '
-        . SAML_SP_CAPTURED
-        . '/authn-request-redirect.url');
+        in_alpine(
+            'apk add -q openssl python3 >/dev/null 2>&1 && openssl version && sh tests/saml2-bindings/Fixture/oracle/verify-redirect.sh '
+            . SAML_SP_DIRECTORY
+            . '/sp.crt '
+            . SAML_SP_CAPTURED
+            . '/authn-request-redirect.url',
+            [SAML_SP_ORACLE_REDIRECT, SAML_SP_DIRECTORY . '/sp.crt', SAML_SP_CAPTURED],
+        );
     }
     if (isset($journeys['post'])) {
         io()->text('xmlsec1, the signature of the document:');
@@ -455,9 +483,12 @@ function saml_sp_verify_requests(array $journeys): void
  */
 function saml_sp_xmlsec1(): void
 {
-    in_alpine('apk add -q xmlsec libxml2-utils >/dev/null 2>&1 && xmlsec1 --version && sh tests/saml2-model/Interop/simplesamlphp/xmlsec1-verify.sh '
-    . SAML_SP_CAPTURED
-    . ' "*.xml"');
+    in_alpine(
+        'apk add -q xmlsec libxml2-utils >/dev/null 2>&1 && xmlsec1 --version && sh tests/saml2-model/Interop/simplesamlphp/xmlsec1-verify.sh '
+        . SAML_SP_CAPTURED
+        . ' "*.xml"',
+        ['tests/saml2-model/Interop/simplesamlphp/xmlsec1-verify.sh', SAML_SP_CAPTURED],
+    );
 }
 
 /**
@@ -582,12 +613,8 @@ function saml_sp_sign_on_at_the_provider(array $journey, string $issuer, string 
  * A second sign-on in the browser of the HTTP-POST journey, signed in at the provider by the first (spec/saml.md S-28,
  * issue #739): the service provider posts a new AuthnRequest from its own site, which a "SameSite=Lax" session cookie
  * does not accompany, and the provider answers with a page of its own origin that posts the same fields again, once,
- * from where the cookie comes with them; that post is answered from the session, without a login.
- *
- * The walk is a PHP client and not a browser: it sends no "Sec-Fetch-Site" and carries every cookie of its jar, whatever
- * "SameSite" says. So the cross-site post is written here as a browser writes it, "Sec-Fetch-Site: cross-site" and no
- * cookie of the provider, and what the walk proves is the answer of the provider to that post, the page and the post
- * again; that a browser keeps the cookie back is the browser's, which the walk does not play.
+ * from where the cookie comes with them (saml_sp_posted_from_another_site()); that post is answered from the session,
+ * without a login.
  *
  * @param array{source?: string, cookies: array<string, array<string, string>>} $first
  * @param array{sso: string, entityId: string} $endpoint
@@ -599,15 +626,48 @@ function saml_sp_sign_on_again(array $first, string $issuer, string $ca, array $
     $provider = (string) parse_url($issuer, \PHP_URL_HOST);
     demo_expect(($first['cookies'][$provider] ?? []) !== [], 'the browser holds the session cookie of the provider since the first sign-on');
     $journey['cookies'][$provider] = $first['cookies'][$provider];
-    $request = $journey['request'];
+    $journey['request'] = [
+        'method' => 'POST',
+        ...saml_sp_posted_from_another_site($journey['request']['url'], $journey['request']['fields'], $ca),
+    ];
+    $journey['capture'] = 'post-again';
+    saml_sp_sign_on_at_the_provider($journey, $issuer, '', $ca, signedIn: true);
+}
 
-    $response = http_request('POST', $request['url'], [
+/**
+ * A form a page of the service provider posts to the provider, as a browser posts it from that other site (spec/saml.md
+ * S-28): the provider answers with a page of its own origin that posts the same fields again, once, to the same URL
+ * marked in its query, and sets no cookie, which would replace the session cookie of the provider the browser holds.
+ * Returned is the post that page makes, which the walk then makes with every cookie of the browser, as a post from the
+ * origin of the provider goes.
+ *
+ * The walk is a PHP client and not a browser: it sends no "Sec-Fetch-Site" and carries every cookie of its jar, whatever
+ * "SameSite" says. So the cross-site post is written here as a browser writes it, "Sec-Fetch-Site: cross-site" and, of
+ * the cookies of the provider, only those that say "SameSite=None", given here, and what the walk proves is the answer
+ * of the provider to that post, the page and the post again; that a browser keeps the other cookies back is the
+ * browser's, which the walk does not play.
+ *
+ * @param array<string, string> $fields
+ * @param array<string, string> $sameSiteNone the cookies of the provider that go with a post from another site, by name
+ * @return array{url: string, fields: array<string, string>}
+ */
+function saml_sp_posted_from_another_site(string $url, array $fields, string $ca, array $sameSiteNone = []): array
+{
+    $headers = [
+        'Sec-Fetch-Site' => 'cross-site',
+    ];
+    if ($sameSiteNone !== []) {
+        $headers['Cookie'] = implode('; ', array_map(
+            static fn (string $name, string $value): string => $name . '=' . $value,
+            array_keys($sameSiteNone),
+            array_values($sameSiteNone),
+        ));
+    }
+    $response = http_request('POST', $url, [
         'max_redirects' => 0,
         'cafile' => $ca,
-        'headers' => [
-            'Sec-Fetch-Site' => 'cross-site',
-        ],
-        'body' => $request['fields'],
+        'headers' => $headers,
+        'body' => $fields,
     ]);
     $status = $response->getStatusCode();
     // the cookies the page sets, less the two the profiler of a stack in debug sets on every answer of a firewall
@@ -629,25 +689,22 @@ function saml_sp_sign_on_again(array $first, string $issuer, string $ca, array $
         ),
     );
     $form = saml_sp_page_form($response->getContent(false));
-    $path = (string) parse_url($request['url'], \PHP_URL_PATH);
+    $path = (string) parse_url($url, \PHP_URL_PATH);
     demo_expect(
-        $form['action'] === $path . '?_beffroi_posted_again=1' && $form['fields'] === $request['fields'],
+        $form['action'] === $path . '?' . SAML_POSTED_AGAIN . '=1' && $form['fields'] === $fields,
         sprintf('whose form posts the same fields again to %s, marked so that it is not posted a third time (it posts to %s)', $path, $form['action']),
     );
 
-    $journey['request'] = [
-        'method' => 'POST',
+    return [
         'url' => sprintf(
             '%s://%s%s%s',
-            (string) parse_url($request['url'], \PHP_URL_SCHEME),
-            (string) parse_url($request['url'], \PHP_URL_HOST),
-            parse_url($request['url'], \PHP_URL_PORT) === null ? '' : ':' . parse_url($request['url'], \PHP_URL_PORT),
+            (string) parse_url($url, \PHP_URL_SCHEME),
+            (string) parse_url($url, \PHP_URL_HOST),
+            parse_url($url, \PHP_URL_PORT) === null ? '' : ':' . parse_url($url, \PHP_URL_PORT),
             $form['action'],
         ),
         'fields' => $form['fields'],
     ];
-    $journey['capture'] = 'post-again';
-    saml_sp_sign_on_at_the_provider($journey, $issuer, '', $ca, signedIn: true);
 }
 
 /**
@@ -710,24 +767,15 @@ function saml_sp_encrypted_on_the_wire(string $response): void
  */
 function saml_sp_decrypt(string $file): void
 {
-    $assertion = capture([
-        'docker',
-        'run',
-        '--rm',
-        '-v',
-        getcwd() . ':/project:ro',
-        '-w',
-        '/project',
-        'alpine:3.22',
-        'sh',
-        '-c',
+    $assertion = capture(alpine_command(
         'apk add -q xmlsec libxml2-utils >/dev/null 2>&1'
-            . ' && xmlsec1 --decrypt --lax-key-search --privkey-pem '
-            . SAML_SP_DIRECTORY
-            . '/sp.pem --output /tmp/decrypted.xml '
-            . escapeshellarg($file)
-            . ' && xmllint --xpath \'/*/*[local-name()="EncryptedAssertion"]/*[local-name()="Assertion"]\' /tmp/decrypted.xml',
-    ]);
+        . ' && xmlsec1 --decrypt --lax-key-search --privkey-pem '
+        . SAML_SP_DIRECTORY
+        . '/sp.pem --output /tmp/decrypted.xml '
+        . escapeshellarg($file)
+        . ' && xmllint --xpath \'/*/*[local-name()="EncryptedAssertion"]/*[local-name()="Assertion"]\' /tmp/decrypted.xml',
+        [SAML_SP_DIRECTORY . '/sp.pem', $file],
+    ));
     $name = basename($file, '.xml') . '.decrypted-assertion.xml';
     file_put_contents(SAML_SP_CAPTURED . '/' . $name, $assertion);
     demo_expect(
@@ -831,6 +879,7 @@ function saml_sp_verify_logout_requests(array $journeys): void
     in_alpine(
         'apk add -q openssl python3 >/dev/null 2>&1 && sh tests/saml2-bindings/Fixture/oracle/verify-redirect.sh ' . SAML_SP_DIRECTORY . '/sp.crt '
             . implode(' ', $urls),
+        [SAML_SP_ORACLE_REDIRECT, SAML_SP_DIRECTORY . '/sp.crt', SAML_SP_CAPTURED],
     );
 }
 
@@ -840,8 +889,10 @@ function saml_sp_verify_logout_requests(array $journeys): void
  * the session; the confirmed logout ends the session of the provider and sends the browser to the single logout
  * service of SimpleSAMLphp with a signed LogoutRequest, captured; SimpleSAMLphp verifies it under the metadata of the
  * provider (validate.logout), ends its own session and answers with a LogoutResponse, captured, which the browser
- * carries back to the single logout service of the provider; the chain ends there, on the page that says the browser
- * is signed out, nobody having named where to go back to (S-34). Then what each kept of it: SimpleSAMLphp holds no
+ * carries back to the single logout service of the provider, over HTTP-POST from the site of SimpleSAMLphp as a browser
+ * posts it, answered with the page that posts it again from the origin of the provider (S-28,
+ * saml_sp_posted_from_another_site()); the chain ends there, on the page that says the browser is signed out, nobody
+ * having named where to go back to (S-34). Then what each kept of it: SimpleSAMLphp holds no
  * session any more, the browser asking it to sign in again is sent to the login of the provider, whose session has
  * ended (S-29), and the same LogoutResponse presented again is refused, with the page of a refusal (S-33).
  *
@@ -897,7 +948,13 @@ function saml_sp_logged_out_by_the_provider(array $journey, string $issuer, stri
         $response = base64_decode($form['fields']['SAMLResponse'], true);
         demo_expect($response !== false && str_contains($response, 'urn:oasis:names:tc:SAML:2.0:status:Success'), 'which says Success');
         file_put_contents(SAML_SP_CAPTURED . '/sp-logout-response.xml', $response);
-        $carried = ['POST', $form['action'], $form['fields']];
+        // posted from the site of SimpleSAMLphp, with the cookie of the chain and without the session cookie of the
+        // provider, then posted again by the page of the provider (S-28), the post the chain is carried on by
+        $provider = (string) parse_url($issuer, \PHP_URL_HOST);
+        $chain = $cookies[$provider][SAML_LOGOUT_CHAIN_COOKIE] ?? '';
+        demo_expect($chain !== '', 'the browser holds the cookie of the chain the provider gave it (S-32)');
+        $again = saml_sp_posted_from_another_site($form['action'], $form['fields'], $ca, [SAML_LOGOUT_CHAIN_COOKIE => $chain]);
+        $carried = ['POST', $again['url'], $again['fields']];
         $answered = ['binding' => 'post'];
     } else {
         demo_expect(
@@ -1021,15 +1078,452 @@ function saml_sp_verify_provider_logout(array $answer): void
         . '; do if sh tests/saml2-bindings/Fixture/oracle/verify-redirect.sh "$certificate" '
         . SAML_SP_CAPTURED
         . '/provider-logout-request.url; then verified=1; break; fi; done; test -n "$verified"',
+        [SAML_SP_ORACLE_REDIRECT, SAML_SP_CAPTURED],
     );
     if ($answer['binding'] === 'redirect') {
         io()->text('OpenSSL and Python, the signature of the LogoutResponse of SimpleSAMLphp over its query string and the message it carries:');
-        in_alpine('apk add -q openssl python3 >/dev/null 2>&1 && sh tests/saml2-bindings/Fixture/oracle/verify-redirect.sh '
-        . SAML_SP_DIRECTORY
-        . '/sp.crt '
-        . SAML_SP_CAPTURED
-        . '/sp-logout-response.url');
+        in_alpine(
+            'apk add -q openssl python3 >/dev/null 2>&1 && sh tests/saml2-bindings/Fixture/oracle/verify-redirect.sh '
+            . SAML_SP_DIRECTORY
+            . '/sp.crt '
+            . SAML_SP_CAPTURED
+            . '/sp-logout-response.url',
+            [SAML_SP_ORACLE_REDIRECT, SAML_SP_DIRECTORY . '/sp.crt', SAML_SP_CAPTURED],
+        );
+    }
+    // the Response of this sign-on came after saml_sp_verify_responses() decrypted the others: its assertion, when
+    // encrypted, is decrypted here, so that xmlsec1 verifies its signature as it does theirs
+    $response = SAML_SP_CAPTURED . '/response-provider-logout.xml';
+    if (str_contains((string) file_get_contents($response), 'EncryptedAssertion')) {
+        saml_sp_decrypt($response);
     }
     io()->text('xmlsec1, every XML signature captured, the Response of this sign-on and a LogoutResponse that was posted among them:');
     saml_sp_xmlsec1();
+}
+
+/*
+ * The Entra judge (issue #736, spec/saml.md sections 7 and 12): Entra's SAML federation of guests, set up without a
+ * domain in the maintainer's test tenant, federating the identity provider of the stack. Entra is configured by hand in
+ * its portal, by the maintainer and by nobody else; this task prints what the portal takes and the authorization request
+ * through which the guest signs in, registers the service provider the development configuration declares for it, and
+ * reads back, once the sign-in was played, what the provider received from Entra.
+ *
+ * What was received is read from the profiler of the development stack, which collects every request while
+ * APP_PROFILER is 1, its default (apps/op/config/packages/web_profiler.yaml): the raw query string of HTTP-Redirect, the
+ * fields and the raw body of HTTP-POST, before anything validated them, a request refused included, from whoever sent
+ * it. What is kept of them is a message of the entity ID declared for Entra that the provider accepted, and what is
+ * printed of it is text. Nothing is added to the provider for it, and a deployment, which collects no profile, has
+ * nothing of it.
+ */
+
+/**
+ * The test tenant of the maintainer, Entra ID Free (beffroilaboutlook.onmicrosoft.com).
+ */
+const SAML_ENTRA_TENANT = '20a6e528-cf9e-4f79-8949-bbd59006eff5';
+
+/**
+ * The tenanted issuer of the AuthnRequest Entra sends for a new federation, the trailing slash included, as
+ * apps/op/config/packages/beffroi.yaml declares it and apps/op/config/saml/entra-guest-federation-sp.xml names it.
+ */
+const SAML_ENTRA_ENTITY_ID = 'https://login.microsoftonline.com/' . SAML_ENTRA_TENANT . '/';
+
+/**
+ * Where the guest signs in (spec/saml.md section 7): an authorization request sent to the tenant itself, whose
+ * domain_hint, the Issuer URI of the federation, sends the browser to the identity provider, where the invitation
+ * redemption URL and My Apps fall back to a one-time passcode by email.
+ */
+const SAML_ENTRA_AUTHORIZE = 'https://login.microsoftonline.com/' . SAML_ENTRA_TENANT . '/oauth2/v2.0/authorize';
+
+/**
+ * The client of that request: Azure CLI, a public client of Microsoft that every tenant knows and whose redirection URI
+ * http://localhost takes any port. Nothing listens on the port: the last redirection ends on an error page of the
+ * browser, whose address carries the answer of Entra in its query.
+ */
+const SAML_ENTRA_SIGN_IN_CLIENT = '04b07795-8ddb-461a-bbee-02f9e1bf7b46';
+
+const SAML_ENTRA_SIGN_IN_REDIRECT = 'http://localhost:65000';
+
+/**
+ * Under the ignored var/ of the repository: the metadata of the provider as Entra's portal can parse them, its signing
+ * certificate as the portal takes it, and every document received from Entra.
+ */
+const SAML_ENTRA_DIRECTORY = 'var/saml-entra';
+
+const SAML_ENTRA_RECEIVED = SAML_ENTRA_DIRECTORY . '/received';
+
+/**
+ * Run by the PHP of the op container on the profiler storage of its kernel: the requests profiled at the paths given
+ * since the instant given, oldest first, as JSON.
+ */
+const SAML_ENTRA_PROFILE_READER = <<<'PHP'
+    <?php
+
+    declare(strict_types=1);
+
+    require '/app/vendor/autoload.php';
+
+    $storage = new Symfony\Component\HttpKernel\Profiler\FileProfilerStorage('file:/app/var/cache/dev/profiler');
+    $rows = [];
+    foreach (array_slice($argv, 2) as $path) {
+        foreach ($storage->find(null, $path, 500, null, (int) $argv[1]) as $row) {
+            $rows['t' . $row['token']] = $row;
+        }
+    }
+    $found = [];
+    foreach ($rows as $row) {
+        $profile = $storage->read((string) $row['token']);
+        if ($profile === null || ! $profile->hasCollector('request')) {
+            continue;
+        }
+        $request = $profile->getCollector('request');
+        $server = $request->getRequestServer(true)->all();
+        $found[] = [
+            'token' => (string) $row['token'],
+            'time' => $profile->getTime(),
+            'method' => $request->getMethod(),
+            'url' => $profile->getUrl(),
+            'status' => $profile->getStatusCode(),
+            'query' => is_string($server['QUERY_STRING'] ?? null) ? $server['QUERY_STRING'] : '',
+            'fields' => array_map(
+                static fn (mixed $value): mixed => $value instanceof Symfony\Component\VarDumper\Cloner\Data ? $value->getValue(true) : $value,
+                $request->getRequestRequest()->all(),
+            ),
+            'body' => is_string($request->getContent()) ? $request->getContent() : '',
+            'secFetchSite' => is_string($server['HTTP_SEC_FETCH_SITE'] ?? null) ? $server['HTTP_SEC_FETCH_SITE'] : null,
+        ];
+    }
+    usort($found, static fn (array $a, array $b): int => $a['time'] <=> $b['time']);
+    echo json_encode($found, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+    PHP;
+
+#[AsTask(
+    name: 'saml-entra',
+    description: 'The Entra judge (issue #736): registers the service provider declared for Entra\'s SAML federation of guests, then prints what the portal of Entra takes (Issuer URI, passive authentication endpoint, signing certificate), the invitation Microsoft Graph creates and the authorization request to the tenant, carrying the domain_hint, through which the guest signs in and redeems it; with --received, lists what the provider accepted from the entity ID declared for Entra, read from the profiler of the stack, and writes each document to var/saml-entra/received/ for the corpus',
+)]
+function saml_entra(
+    #[AsOption(
+        description: 'List what the provider accepted from the entity ID declared for Entra at its single sign-on and single logout services, and write each document to var/saml-entra/received/',
+    )]
+    bool $received = false,
+    #[AsOption(description: 'With --received: how far back the profiles are read, in minutes')]
+    int $minutes = 180,
+    #[AsOption(description: 'The address the guest is invited with, the email of the user of the provider who signs in')]
+    string $email = DEV_USERNAME . '@op.localhost',
+): void {
+    io()->title('Entra federating the SAML identity provider of the stack');
+    $env = load_dot_env(getcwd() . '/apps/op/.env');
+    if (($env['BEFFROI_ISSUER'] ?? '') === '') {
+        io()->error('BEFFROI_ISSUER is empty: run "castor provision" first.');
+        exit(1);
+    }
+    $issuer = rtrim($env['BEFFROI_ISSUER'], '/');
+    foreach ([SAML_ENTRA_DIRECTORY, SAML_ENTRA_RECEIVED] as $directory) {
+        if (! is_dir($directory) && ! mkdir($directory, 0o777, true) && ! is_dir($directory)) {
+            io()->error(sprintf('Cannot create %s.', $directory));
+            exit(1);
+        }
+    }
+    if ($received) {
+        saml_entra_received($issuer, $minutes);
+
+        return;
+    }
+
+    io()->section('The metadata of the provider');
+    $ca = caddy_ca(getcwd() . '/' . SAML_ENTRA_DIRECTORY . '/caddy-root.crt');
+    $cookies = [];
+    [$status, , $document] = demo_request($cookies, $ca, 'GET', $issuer . '/saml/metadata');
+    demo_expect($status === 200 && str_contains($document, 'IDPSSODescriptor'), sprintf('%s/saml/metadata serves them (got %d)', $issuer, $status));
+    file_put_contents(SAML_ENTRA_DIRECTORY . '/op-idp-metadata.xml', $document);
+    $dom = new DOMDocument();
+    demo_expect($dom->loadXML($document, \LIBXML_NONET), 'which are well-formed XML');
+    $xpath = new DOMXPath($dom);
+    $xpath->registerNamespace('md', 'urn:oasis:names:tc:SAML:2.0:metadata');
+    $xpath->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
+    $entityId = (string) $xpath->evaluate('string(/md:EntityDescriptor/@entityID)');
+    $singleSignOn = (string) $xpath->evaluate(sprintf(
+        'string(/md:EntityDescriptor/md:IDPSSODescriptor/md:SingleSignOnService[@Binding="%s"]/@Location)',
+        SAML_SP_BINDINGS['post'],
+    ));
+    demo_expect(
+        str_starts_with($singleSignOn, 'https://'),
+        sprintf('its single sign-on service over HTTP-POST is %s, in https as Entra requires', $singleSignOn),
+    );
+    $certificates = [];
+    foreach ($xpath->query('/md:EntityDescriptor/md:IDPSSODescriptor/md:KeyDescriptor[not(@use) or @use="signing"]//ds:X509Certificate')
+        ?: [] as $certificate) {
+        $certificates[] = (string) preg_replace('/\s+/', '', $certificate->textContent);
+    }
+    demo_expect($certificates !== [], sprintf('they hold %d signing certificate(s)', count($certificates)));
+
+    io()->section('The provider registers Entra');
+    $refresh = op_console(['beffroi:saml:service-provider:refresh', SAML_ENTRA_ENTITY_ID], context()->withAllowFailure());
+    demo_expect($refresh->isSuccessful(), sprintf('beffroi:saml:service-provider:refresh registers %s (its output above says why not)', SAML_ENTRA_ENTITY_ID));
+
+    io()->section('What the portal of Entra takes (External Identities, All identity providers, Custom, Add new, SAML/WS-Fed)');
+    io()->writeln(sprintf('<comment>Issuer URI</comment> (also the domain_hint):%s%s%s', \PHP_EOL, $entityId, \PHP_EOL));
+    io()->writeln(sprintf('<comment>Passive authentication endpoint:</comment>%s%s%s', \PHP_EOL, $singleSignOn, \PHP_EOL));
+    foreach ($certificates as $index => $certificate) {
+        $file = sprintf('%s/signing-certificate-%d.txt', SAML_ENTRA_DIRECTORY, $index + 1);
+        file_put_contents($file, $certificate);
+        io()->writeln(sprintf(
+            '<comment>Certificate</comment> %d of %d, the base64 of its DER on one line, also in %s (pbcopy < %s):%s%s%s',
+            $index + 1,
+            count($certificates),
+            $file,
+            $file,
+            \PHP_EOL,
+            $certificate,
+            \PHP_EOL,
+        ));
+    }
+    if (count($certificates) > 1) {
+        io()->warning('The metadata publish more than one signing certificate (a key staged or retiring beside the active one, S-2), and Entra holds one: give it the certificate of the active key, which "castor console beffroi:keys:list" names.');
+    }
+    io()->writeln(sprintf('<comment>Metadata URL:</comment> empty, Microsoft cannot reach %s.%s', $issuer, \PHP_EOL));
+    io()->writeln(sprintf('<comment>Or "Parse metadata file":</comment> %s%s', SAML_ENTRA_DIRECTORY . '/op-idp-metadata.xml', \PHP_EOL));
+    $redirect = sprintf('https://myapps.microsoft.com/?tenantid=%s&domain_hint=%s', SAML_ENTRA_TENANT, rawurlencode($entityId));
+    io()->writeln(sprintf(
+        '<comment>The invitation</comment>, POST https://graph.microsoft.com/v1.0/invitations in Graph Explorer, the portal taking no redirect URL; neither the "inviteRedeemUrl" it answers with nor its "inviteRedirectUrl" sends the browser to the provider, Entra falling back to a one-time passcode:%s%s%s',
+        \PHP_EOL,
+        json_encode(
+            [
+                'invitedUserEmailAddress' => $email,
+                'inviteRedirectUrl' => $redirect,
+                'sendInvitationMessage' => false,
+            ],
+            \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_THROW_ON_ERROR,
+        ),
+        \PHP_EOL,
+    ));
+    $signIn =
+        SAML_ENTRA_AUTHORIZE
+        . '?'
+        . http_build_query(
+            [
+                'client_id' => SAML_ENTRA_SIGN_IN_CLIENT,
+                'response_type' => 'code',
+                'redirect_uri' => SAML_ENTRA_SIGN_IN_REDIRECT,
+                'scope' => 'openid',
+                'domain_hint' => $entityId,
+            ],
+            '',
+            '&',
+            \PHP_QUERY_RFC3986,
+        );
+    io()->writeln(sprintf(
+        '<comment>The sign-in</comment>, opened in the browser by the guest, who signs in at the provider as the user whose email is %s and so redeems the invitation: an authorization request to the tenant, its domain_hint the Issuer URI, for Azure CLI; it ends on an error page of the browser, %s answering nothing, whose address carries the result:%s%s%s',
+        $email,
+        SAML_ENTRA_SIGN_IN_REDIRECT,
+        \PHP_EOL,
+        $signIn,
+        \PHP_EOL,
+    ));
+    io()->success(sprintf('%s is registered; once the sign-in is played, "castor saml-entra --received" lists what Entra sent.', SAML_ENTRA_ENTITY_ID));
+}
+
+/**
+ * What the provider received from Entra since the minutes given, read from the profiles of the stack: each message
+ * written to var/saml-entra/received/, the document decoded and the bytes as they came, and described as it arrived.
+ * A message posted again by the provider from its own origin (S-28) is the one Entra posted, and is written once.
+ *
+ * What is written for the corpus is what saml_entra_received_messages() keeps, the messages of the entity ID declared
+ * for Entra that the provider accepted, and what is printed of them is text (saml_entra_text()): the profiles hold
+ * every request the services were sent, from any browser and any host that reaches them, and none of it is Entra's word
+ * until the provider took it as such.
+ */
+function saml_entra_received(string $issuer, int $minutes): void
+{
+    io()->section(sprintf('What the provider received from Entra in the last %d minutes', $minutes));
+    $read = run(
+        ['docker', 'compose', 'exec', '-T', 'op', 'php', '--', (string) (time() - ($minutes * 60)), '/saml/sso', '/saml/slo'],
+        context: context()->withInput(SAML_ENTRA_PROFILE_READER)->withQuiet()->withAllowFailure(),
+    );
+    if (! $read->isSuccessful()) {
+        io()->error(sprintf('The profiles of the op container cannot be read: %s', trim($read->getErrorOutput()) ?: '"castor start" first.'));
+        exit(1);
+    }
+    /** @var list<array{token: string, time: int, method: string, url: string, status: int, query: string, fields: array<string, mixed>, body: string, secFetchSite: ?string}> $profiled */
+    $profiled = json_decode($read->getOutput(), true, 512, \JSON_THROW_ON_ERROR);
+    $received = saml_entra_received_messages($profiled);
+    foreach ($received as ['message' => $message, 'requests' => $requests]) {
+        $first = $requests[0];
+        $base = sprintf('%s/%s-%s-%s', SAML_ENTRA_RECEIVED, date('Ymd\THis', $first['time']), $message['binding'], $message['root']);
+        file_put_contents($base . '.xml', $message['document']);
+        file_put_contents($base . '.raw.txt', $message['raw']);
+        io()->section(saml_entra_text(sprintf('%s, %s over %s', date('c', $first['time']), $message['root'], $message['binding'])));
+        io()->listing([
+            saml_entra_text(sprintf('Issuer: %s, the entity ID declared', $message['issuer'])),
+            saml_entra_text(sprintf('Signed: %s', $message['signed'] ? 'yes' : 'no')),
+            ...array_map(
+                static fn (array $request): string => saml_entra_text(sprintf(
+                    '%s, answered %d, from another site: %s, profile %s/_profiler/%s',
+                    saml_entra_posted_again($request) ? 'Posted again from the origin of the provider (S-28)' : 'Received',
+                    $request['status'],
+                    $request['secFetchSite'] ?? 'not said',
+                    $issuer,
+                    $request['token'],
+                )),
+                $requests,
+            ),
+            ...array_map(
+                static fn (string $name, string $value): string => saml_entra_text(sprintf('%s: %s', $name, $value)),
+                array_keys($message['facts']),
+                array_values($message['facts']),
+            ),
+            saml_entra_text(sprintf('Written to %s.xml and %s.raw.txt', $base, $base)),
+        ]);
+        io()->writeln(saml_entra_text($message['document']));
+    }
+    if ($received === []) {
+        io()->warning(sprintf(
+            'Nothing the provider accepted from %s was profiled in the last %d minutes: --minutes reads further back; a stack started with --conformance collects no profile.',
+            SAML_ENTRA_ENTITY_ID,
+            $minutes,
+        ));
+
+        return;
+    }
+    io()->success(sprintf('%d document(s) received from Entra written to %s/: they go to the corpus (issue #665).', count($received), SAML_ENTRA_RECEIVED));
+}
+
+/**
+ * The messages of Entra among the requests profiled, each with the requests that carried it, in the order they came: a
+ * message whose Issuer is the entity ID declared for Entra, the string itself and not a prefix of it, which at least one
+ * of its requests had the provider accept (saml_entra_accepted()). Entra signs no request (spec/saml.md section 7), so
+ * that its signature cannot tell its messages apart: what the provider answered can, a message it refused, or one it
+ * never read, being no request of Entra's for the corpus, whatever its Issuer says.
+ *
+ * @param list<array{token: string, time: int, method: string, url: string, status: int, query: string, fields: array<string, mixed>, body: string, secFetchSite: ?string}> $profiled
+ * @return list<array{message: array{binding: string, raw: string, document: string, root: string, issuer: string, signed: bool, facts: array<string, string>}, requests: non-empty-list<array{token: string, time: int, method: string, url: string, status: int, query: string, fields: array<string, mixed>, body: string, secFetchSite: ?string}>}>
+ */
+function saml_entra_received_messages(array $profiled): array
+{
+    $messages = [];
+    foreach ($profiled as $request) {
+        $message = saml_entra_message($request);
+        if ($message === null || $message['issuer'] !== SAML_ENTRA_ENTITY_ID) {
+            continue;
+        }
+        $digest = hash('sha256', $message['document']);
+        $messages[$digest] ??= ['message' => $message, 'requests' => []];
+        $messages[$digest]['requests'][] = $request;
+    }
+
+    return array_values(array_filter(
+        $messages,
+        static fn (array $received): bool => array_filter($received['requests'], saml_entra_accepted(...)) !== [],
+    ));
+}
+
+/**
+ * Whether the provider accepted a profiled request at its single sign-on or single logout service: a request it read
+ * and answered with the login the request waits for (302) or the page that posts its answer (200), where a refusal is
+ * answered 400 and the page that says so. A form posted from another site without the marker of the page that posts it
+ * again is answered by that page (S-28), 200 as well, before anything of the message is read: it is not an answer of the
+ * provider to the message.
+ *
+ * @param array{method: string, url: string, status: int, secFetchSite: ?string} $request
+ */
+function saml_entra_accepted(array $request): bool
+{
+    $answeredByThePageThatPostsAgain = $request['method'] === 'POST' && $request['secFetchSite'] === 'cross-site' && ! saml_entra_posted_again($request);
+
+    return ! $answeredByThePageThatPostsAgain && in_array($request['status'], [200, 302], true);
+}
+
+/**
+ * Whether a profiled request is the post the page of S-28 sent again from the origin of the provider: its URL carries
+ * the marker of that page in its query.
+ *
+ * @param array{url: string} $request
+ */
+function saml_entra_posted_again(array $request): bool
+{
+    parse_str((string) parse_url($request['url'], \PHP_URL_QUERY), $query);
+
+    return array_key_exists(SAML_POSTED_AGAIN, $query);
+}
+
+/**
+ * A value received from the network, as text for the console: its markup escaped, so that a "<href=...>" or a
+ * "<fg=...>" it holds is printed and never made a link or a colour by the formatter of the output, and every control
+ * character but the tab and the line feed written as its bytes in hexadecimal, a C1 control included, which XML 1.0
+ * lets into a document, so that none reaches the terminal as one of its sequences.
+ */
+function saml_entra_text(string $value): string
+{
+    return OutputFormatter::escape((string) preg_replace_callback(
+        '/[\x00-\x08\x0B-\x1F\x7F]|\xC2[\x80-\x9F]/',
+        static fn (array $control): string => '\\x' . bin2hex($control[0]),
+        $value,
+    ));
+}
+
+/**
+ * The SAML message a profiled request carried, decoded as its binding encodes it: the raw query string of
+ * HTTP-Redirect, its message deflated (SAML Bindings §3.4.4.1), or the field of HTTP-POST (§3.5.4); null when it
+ * carries none, or one that does not decode to XML.
+ *
+ * @param array{method: string, query: string, fields: array<string, mixed>, body: string} $request
+ * @return array{binding: string, raw: string, document: string, root: string, issuer: string, signed: bool, facts: array<string, string>}|null
+ */
+function saml_entra_message(array $request): ?array
+{
+    if ($request['method'] === 'GET') {
+        parse_str($request['query'], $parameters);
+        $binding = 'redirect';
+        $raw = $request['query'];
+    } else {
+        $parameters = $request['fields'];
+        $binding = 'post';
+        $raw = $request['body'];
+    }
+    $encoded = $parameters['SAMLRequest'] ?? $parameters['SAMLResponse'] ?? null;
+    if (! is_string($encoded)) {
+        return null;
+    }
+    $bytes = base64_decode($encoded, true);
+    $document = $bytes;
+    if ($bytes !== false && $binding === 'redirect') {
+        $document = @gzinflate($bytes);
+    }
+    $dom = new DOMDocument();
+    if (! is_string($document) || ! @$dom->loadXML($document, \LIBXML_NONET) || ! $dom->documentElement instanceof DOMElement) {
+        return null;
+    }
+    $xpath = new DOMXPath($dom);
+    $xpath->registerNamespace('saml', 'urn:oasis:names:tc:SAML:2.0:assertion');
+    $xpath->registerNamespace('samlp', 'urn:oasis:names:tc:SAML:2.0:protocol');
+    $xpath->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
+    $root = $dom->documentElement;
+    $facts = [];
+    foreach (['Destination', 'AssertionConsumerServiceURL', 'AssertionConsumerServiceIndex', 'ProtocolBinding', 'ForceAuthn', 'IsPassive'] as $attribute) {
+        $facts[$attribute] = $root->hasAttribute($attribute) ? $root->getAttribute($attribute) : 'absent';
+    }
+    $policy = $xpath->query('samlp:NameIDPolicy', $root)?->item(0);
+    $facts['NameIDPolicy'] = $policy instanceof DOMElement
+        ? sprintf('Format %s, AllowCreate %s', $policy->getAttribute('Format') ?: 'absent', $policy->getAttribute('AllowCreate') ?: 'absent')
+        : 'absent';
+    $contexts = array_map(
+        static fn (DOMNode $reference): string => trim($reference->textContent),
+        iterator_to_array($xpath->query('samlp:RequestedAuthnContext/saml:AuthnContextClassRef', $root) ?: []),
+    );
+    $facts['RequestedAuthnContext'] = $xpath->query('samlp:RequestedAuthnContext', $root)?->length
+        ? sprintf(
+            'Comparison %s, %s',
+            $xpath->evaluate('string(samlp:RequestedAuthnContext/@Comparison)', $root) ?: 'absent',
+            implode(', ', $contexts) ?: 'no class',
+        )
+        : 'absent';
+
+    return [
+        'binding' => $binding,
+        'raw' => $raw,
+        'document' => $document,
+        'root' => $root->localName,
+        'issuer' => trim((string) $xpath->evaluate('string(saml:Issuer)', $root)),
+        'signed' => isset($parameters['Signature']) || $xpath->query('ds:Signature', $root)?->length > 0,
+        'facts' => $facts,
+    ];
 }

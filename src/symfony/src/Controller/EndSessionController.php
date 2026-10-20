@@ -6,6 +6,7 @@ namespace Beffroi\Bundle\Controller;
 
 use Beffroi\Bundle\Doctrine\TenantProvider;
 use Beffroi\Bundle\Http\BrowserSession;
+use Beffroi\Bundle\Http\CrossSitePost;
 use Beffroi\Bundle\Http\FormTarget;
 use Beffroi\Bundle\Http\InteractionLocale;
 use Beffroi\Bundle\Http\FormToken;
@@ -27,8 +28,10 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The end session endpoint (RP-Initiated Logout §2), GET or POST. An error is a page, never a
- * redirection (§4). The confirmation page re-submits the same parameters with the answer and the CSRF
+ * The end session endpoint (RP-Initiated Logout §2), GET or POST. A request a client posted from another site
+ * without the session cookie is posted again from the origin of the provider first (CrossSitePost), so that the
+ * session it would end is the one the browser holds and the confirmation page is one the browser can answer. An error
+ * is a page, never a redirection (§4). The confirmation page re-submits the same parameters with the answer and the CSRF
  * token; a "no" ends nothing and sends the user nowhere. A session that ended and whose clients
  * registered a front-channel logout URI leaves through the page that loads them (Front-Channel Logout
  * 1.0 §3), then through the SAML service providers it signed in, each told in turn (beffroi/saml S-29 to
@@ -59,12 +62,17 @@ final readonly class EndSessionController
         private InteractionLocale $locale,
         private LogoutChainPages $logoutChain,
         private FormTarget $formTargets,
+        private CrossSitePost $crossSitePost,
     ) {
     }
 
     #[Route('/logout', name: 'beffroi_interaction_logout', methods: ['GET', 'POST'])]
     public function __invoke(Request $request): Response
     {
+        $again = $this->crossSitePost->postAgainWithItsUiLocales($request);
+        if ($again !== null) {
+            return $again;
+        }
         $tenant = $this->tenants->provide();
         $parameters = RequestParameters::ofBrowserRequest($request);
         try {

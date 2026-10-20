@@ -73,7 +73,7 @@ final readonly class SignOnAnswers
             $this->waiting->forget($request->getSession(), $reference);
         }
 
-        return $this->page->render($form);
+        return $this->page->signOnResponse($form);
     }
 
     /**

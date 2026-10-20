@@ -11,7 +11,9 @@ $config['beffroi'] = [
     'saml:SP',
     'entityID' => 'https://saml-sp.localhost/simplesaml/module.php/saml/sp/metadata/beffroi',
     'idp' => 'https://op.localhost/saml/metadata',
-    'privatekey' => 'sp.pem',
+    // the copy of var/saml-sp/sp.pem the command of the service gives www-data (compose.yaml), the file itself being
+    // its owner's alone on the machine
+    'privatekey' => '/run/saml-sp/sp.pem',
     'certificate' => 'sp.crt',
     'sign.authnrequest' => true,
     'sign.logout' => true,

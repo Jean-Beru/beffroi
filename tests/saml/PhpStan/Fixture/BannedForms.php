@@ -10,8 +10,9 @@ namespace Beffroi\Saml\Tests\PhpStan\Fixture;
  * pointed at this file alone, and by no other analysis, nor by the suite, nor by the formatter or Rector: it is not
  * code, it is the question put to the rules.
  *
- * A line that ends in `// error: <message>` must be refused by the rules of section 8 (identifier beffroi.bannedCall)
- * with that message, one marker for each message; a line with none must not be refused by them at all. The task fails
+ * A line that ends in `// error: <message>` must be refused by the rules of section 8 (identifiers beffroi.bannedCall,
+ * beffroi.bannedName, ekinoBannedCode.function and ekinoBannedCode.expression) with that message, one marker for each
+ * message; a line with none must not be refused by them at all. The task fails
  * on a refusal missing and on a refusal nobody expected, so that a rule that stops firing, a rule that starts firing on
  * what it let through and a line that moved are all red. What PHPStan's other rules say of this file (an unused
  * variable, a missing generic type) is not the question and is not read.
@@ -70,6 +71,10 @@ final class BannedForms
         string $reflectionClass,
         callable $callable,
         array $unread,
+        \ArrayObject $arrayObject,
+        \ArrayIterator $iterator,
+        \SplObjectStorage $storage,
+        \SplDoublyLinkedList $list,
     ): void {
         // the methods banned on any receiver
         $validator->validateAuthenticatedByBinding(); // error: validateAuthenticatedByBinding() is never called: section 8 of the specification bans it.
@@ -82,6 +87,14 @@ final class BannedForms
         unserialize(''); // error: unserialize() is never called: section 8 of the specification bans it.
         \unserialize(''); // error: unserialize() is never called: section 8 of the specification bans it.
         \UNSERIALIZE(''); // error: unserialize() is never called: section 8 of the specification bans it.
+        session_decode(''); // error: session_decode() is never called: section 8 of the specification bans it.
+
+        // the unserializer under the method PHP also gives it, on any receiver: the Serializable half of ArrayObject,
+        // ArrayIterator, SplObjectStorage and SplDoublyLinkedList
+        $arrayObject->unserialize(''); // error: unserialize() is never called: section 8 of the specification bans it.
+        $iterator->unserialize(''); // error: unserialize() is never called: section 8 of the specification bans it.
+        $storage->unserialize(''); // error: unserialize() is never called: section 8 of the specification bans it.
+        $list->unserialize(''); // error: unserialize() is never called: section 8 of the specification bans it.
 
         // the methods of Closure, statically and on an instance
         \Closure::bind($closure, null); // error: Closure::bind() is never called: section 8 of the specification bans it.
@@ -114,6 +127,7 @@ final class BannedForms
         [$validator, 'validateAuthenticatedByBinding'](); // error: validateAuthenticatedByBinding() is never called: section 8 of the specification bans it.
         [$closure, 'bindTo'](null); // error: Closure::bindTo() is never called: section 8 of the specification bans it.
         ['Closure', 'bind']($closure, null); // error: Closure::bind() is never called: section 8 of the specification bans it.
+        [$storage, 'unserialize'](''); // error: unserialize() is never called: section 8 of the specification bans it.
 
         // the same, as an argument of any call
         array_map('unserialize', ['']); // error: unserialize() is never called: section 8 of the specification bans it.
@@ -130,6 +144,47 @@ final class BannedForms
         $first = \Closure::bind(...); // error: Closure::bind() is never called: section 8 of the specification bans it.
         $first = Validator::validateAuthenticatedByBinding(...); // error: validateAuthenticatedByBinding() is never called: section 8 of the specification bans it.
         $first = $closure->bindTo(...); // error: Closure::bindTo() is never called: section 8 of the specification bans it.
+        $first = $arrayObject->unserialize(...); // error: unserialize() is never called: section 8 of the specification bans it.
+        $first = session_decode(...); // error: session_decode() is never called: section 8 of the specification bans it.
+
+        // the DOM and every parser but the one of xml-security, as model.md section 8 bans them: a class, a constant,
+        // whatever its case, a loader of the DOM of PHP 8.4 on any receiver, a function
+        $parsed = new \DOMDocument(); // error: DOMDocument is never used: section 8 of the specification bans it.
+        $parsed = new \domdocument(); // error: DOMDocument is never used: section 8 of the specification bans it.
+        $named = \DOMXPath::class; // error: DOMXPath is never used: section 8 of the specification bans it.
+        $named = \DOMImplementation::class; // error: DOMImplementation is never used: section 8 of the specification bans it.
+        $named = \Dom\XPath::class; // error: Dom\XPath is never used: section 8 of the specification bans it.
+        $named = \SimpleXMLElement::class; // error: SimpleXMLElement is never used: section 8 of the specification bans it.
+        $named = \XMLReader::class; // error: XMLReader is never used: section 8 of the specification bans it.
+        $named = \XMLWriter::class; // error: XMLWriter is never used: section 8 of the specification bans it.
+        $flags = LIBXML_NOENT; // error: LIBXML_NOENT is never used: section 8 of the specification bans it.
+        $flags = LIBXML_DTDLOAD; // error: LIBXML_DTDLOAD is never used: section 8 of the specification bans it.
+        $flags = LIBXML_DTDATTR; // error: LIBXML_DTDATTR is never used: section 8 of the specification bans it.
+        $flags = LIBXML_DTDVALID; // error: LIBXML_DTDVALID is never used: section 8 of the specification bans it.
+        $flags = LIBXML_XINCLUDE; // error: LIBXML_XINCLUDE is never used: section 8 of the specification bans it.
+        $flags = LIBXML_PARSEHUGE; // error: LIBXML_PARSEHUGE is never used: section 8 of the specification bans it.
+        $flags = LIBXML_NOBLANKS; // error: LIBXML_NOBLANKS is never used: section 8 of the specification bans it.
+        $flags = LIBXML_NOCDATA; // error: LIBXML_NOCDATA is never used: section 8 of the specification bans it.
+        \Dom\XMLDocument::createFromString('<a/>'); // error: createFromString() is never called: section 8 of the specification bans it.
+        \Dom\XMLDocument::createFromFile($name); // error: createFromFile() is never called: section 8 of the specification bans it.
+        libxml_set_external_entity_loader(null); // error: libxml_set_external_entity_loader() is never called: section 8 of the specification bans it.
+        libxml_disable_entity_loader(true); // error: libxml_disable_entity_loader() is never called: section 8 of the specification bans it.
+        simplexml_load_string(''); // error: simplexml_load_string() is never called: section 8 of the specification bans it.
+        simplexml_load_file($name); // error: simplexml_load_file() is never called: section 8 of the specification bans it.
+        simplexml_import_dom($name); // error: simplexml_import_dom() is never called: section 8 of the specification bans it.
+        xml_parser_create(); // error: xml_parser_create() is never called: section 8 of the specification bans it.
+        xml_parser_create_ns(); // error: xml_parser_create_ns() is never called: section 8 of the specification bans it.
+
+        // the weak generators, as model.md section 8 bans them
+        rand(); // error: rand() is never called: section 8 of the specification bans it.
+        mt_rand(); // error: mt_rand() is never called: section 8 of the specification bans it.
+        srand(); // error: srand() is never called: section 8 of the specification bans it.
+        mt_srand(); // error: mt_srand() is never called: section 8 of the specification bans it.
+        uniqid(); // error: uniqid() is never called: section 8 of the specification bans it.
+        lcg_value(); // error: lcg_value() is never called: section 8 of the specification bans it.
+        shuffle($unread); // error: shuffle() is never called: section 8 of the specification bans it.
+        str_shuffle($name); // error: str_shuffle() is never called: section 8 of the specification bans it.
+        array_rand($unread); // error: array_rand() is never called: section 8 of the specification bans it.
 
         // what PHPStan cannot read
         $name(); // error: A call whose function PHPStan cannot read escapes the review: name the function.
@@ -139,9 +194,41 @@ final class BannedForms
     }
 
     /**
+     * What ekino/phpstan-banned-code bans by default, as in the packages below this one: its functions as they are
+     * written, and the statements whole. exit and dd() end what PHPStan reads of a method, so each has one of its own.
+     */
+    public function ekino(string $text): void
+    {
+        exec($text); // error: Should not use function "exec", please change the code.
+        shell_exec($text); // error: Should not use function "shell_exec", please change the code.
+        system($text); // error: Should not use function "system", please change the code.
+        passthru($text); // error: Should not use function "passthru", please change the code.
+        print_r($text); // error: Should not use function "print_r", please change the code.
+        var_dump($text); // error: Should not use function "var_dump", please change the code.
+        dump($text); // error: Should not use function "dump", please change the code.
+        debug_backtrace(); // error: Should not use function "debug_backtrace", please change the code.
+        phpinfo(); // error: Should not use function "phpinfo", please change the code.
+        proc_open($text, [], $pipes); // error: Should not use function "proc_open", please change the code.
+        eval($text); // error: Should not use node with type "Expr_Eval", please change the code.
+        `$text`; // error: Should not use node with type "Expr_ShellExec", please change the code.
+        echo $text; // error: Should not use node with type "Stmt_Echo", please change the code.
+        print $text; // error: Should not use node with type "Expr_Print", please change the code.
+    }
+
+    public function dumpsAndDies(string $text): void
+    {
+        dd($text); // error: Should not use function "dd", please change the code.
+    }
+
+    public function exits(): void
+    {
+        exit(); // error: Should not use node with type "Expr_Exit", please change the code.
+    }
+
+    /**
      * What section 8 lets through: the lines below must not be refused.
      */
-    public function witness(Validator $validator, \Closure $closure, string $text): void
+    public function witness(Validator $validator, \Closure $closure, string $text, \ArrayObject $arrayObject): void
     {
         $validator->bind();
         $validator->call();
@@ -158,5 +245,9 @@ final class BannedForms
         $witnessed = serialize($text);
         $witnessed = new \ReflectionException();
         $witnessed = new \stdClass();
+        $witnessed = $arrayObject->getArrayCopy();
+        $witnessed = random_bytes(16);
+        $witnessed = random_int(1, 6);
+        $witnessed = LIBXML_NONET;
     }
 }

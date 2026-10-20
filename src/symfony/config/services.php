@@ -108,6 +108,7 @@ use Beffroi\Bundle\Http\AuthorizationResponder;
 use Beffroi\Bundle\Http\AuthorizationResponderInterface;
 use Beffroi\Bundle\Http\BrowserSession;
 use Beffroi\Bundle\Http\CrossSitePost;
+use Beffroi\Bundle\Http\CrossSiteSessionCookie;
 use Beffroi\Bundle\Http\BrowserPreferences;
 use Beffroi\Bundle\Http\ApplicationPage;
 use Beffroi\Bundle\Http\InteractionLocale;
@@ -308,6 +309,7 @@ use Beffroi\Saml\Port\PersistentIdentifierSaltInterface;
 use Beffroi\Saml\Port\SignOnResponderInterface;
 use Beffroi\Bundle\Saml\RouterIdentityProviderEndpoints;
 use Beffroi\Bundle\Saml\SamlSigning;
+use Beffroi\Bundle\Saml\LogoutChainCookie;
 use Beffroi\Bundle\Saml\LogoutChainPages;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineLogoutChainRepository;
 use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
@@ -711,8 +713,12 @@ return static function (ContainerConfigurator $container): void {
     $services->set(BrowserSession::class);
     $services->set(InteractionPages::class);
     // what a browser posted from another site without the session cookie, posted again from this provider's own
-    // origin, which the cookie accompanies (beffroi/saml S-28): asked first by each browser endpoint that takes a post
+    // origin, which the cookie accompanies (beffroi/saml S-28): asked first by each endpoint a party posts a browser
+    // to from another site, the single sign-on and single logout services, the authorization and end session endpoints
     $services->set(CrossSitePost::class);
+    // and the cookie of a session started for such a request taken off its answer, on every endpoint of this plane,
+    // so that no page of another site replaces the session cookie the browser holds (S-28)
+    $services->set(CrossSiteSessionCookie::class);
     // what a page of this plane adds to the policy its answer carries, the deployment writing the rest
     // (PolicyCompletion): the origin of the client the page is answering, named in "form-action", without
     // which a browser refuses the redirection that takes the code there (FormTarget), and the origins of
@@ -1890,8 +1896,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set(AcceptedMetadataForgetting::class);
     // beffroi/saml: single sign-on (spec/saml.md section 6.4), a request received over either binding and validated by
     // the model, answered from the session of the browser or after its login, the request waiting in its HTTP session
-    // (S-18); the assertion signed by the active SAML key of the tenant, opened by the KMS once per process (S-15), its
-    // NameID computed with the salt of the pairwise subjects (S-13), its attributes from the claims OpenID Connect serves
+    // (S-18); the assertion signed by the active SAML key of the tenant, opened by the KMS once per process to sign,
+    // besides once for its certificate when the metadata are served first (S-3, S-15), its NameID computed with the
+    // salt of the pairwise subjects (S-13), its attributes from the claims OpenID Connect serves
     $services->set(DeclaredServiceProviderReader::class);
     $services->set(ModelAuthnRequestReceiver::class);
     $services->alias(AuthnRequestReceiverInterface::class, ModelAuthnRequestReceiver::class);
@@ -1925,12 +1932,14 @@ return static function (ContainerConfigurator $container): void {
     // beffroi/saml: Single Logout started by the identity provider (spec/saml.md section 6.6), every service provider
     // of the sessions a browser ended told through that browser, by a request signed by the SAML key of the tenant
     // (S-31), its answer read at the single logout service (S-33); the chain kept in a store every worker shares,
-    // taken by one request at each step (S-32); the page of Front-Channel Logout 1.0 put before it (S-35)
+    // taken by one request at each step and played by the browser that began it alone, which a cookie of the provider
+    // binds it to (S-32); the page of Front-Channel Logout 1.0 put before it (S-35)
     $services->set(DoctrineLogoutChainRepository::class);
     $services->alias(LogoutChainRepositoryInterface::class, DoctrineLogoutChainRepository::class);
     $services->set(ModelSignOutNotifier::class);
     $services->alias(SignOutNotifierInterface::class, ModelSignOutNotifier::class);
     $services->set(ProviderLogout::class);
+    $services->set(LogoutChainCookie::class);
     $services->set(LogoutChainPages::class);
     $services->set(EndSessionRequestParser::class);
     $services->set(EndSessionHandler::class);

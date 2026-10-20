@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Saml;
 
+use Beffroi\Bundle\Http\CrossSitePost;
+use Beffroi\Bundle\Saml\IdentityProviderRoutes;
+use Beffroi\Bundle\Saml\LogoutChainCookie;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
+use Beffroi\Bundle\Tests\Functional\Key\KmsOutage;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
@@ -15,6 +19,7 @@ use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Port\SessionParticipationRepositoryInterface;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
 use Beffroi\Saml2\Bindings\PostReceiver;
+use Beffroi\Saml2\Bindings\PostSender;
 use Beffroi\Saml2\Bindings\ReceivedLogoutRequest;
 use Beffroi\Saml2\Bindings\ReceivedLogoutResponse;
 use Beffroi\Saml2\Bindings\RedirectReceiver;
@@ -45,15 +50,21 @@ use Beffroi\Saml2\Model\Validation\LogoutRequestValidator;
 use Beffroi\Saml2\Model\Validation\LogoutResponseValidator;
 use Beffroi\Saml2\Model\Validation\ResponseValidator;
 use Beffroi\Saml2\Model\Writing\Signing;
+use Closure;
+use function http_build_query;
 use function parse_url;
 use function sprintf;
+use function strlen;
 use const PHP_URL_HOST;
 use const PHP_URL_PATH;
 use const PHP_URL_QUERY;
 use const PHP_URL_SCHEME;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\BrowserKit\Cookie as BrowserCookie;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\DomCrawler\Crawler;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
@@ -76,7 +87,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
      * The second service provider of the session, the SimpleSAMLphp one the configuration of the test declares, its
      * metadata here a document of the test key "idp" of saml2-model, so that its answers can be signed.
      */
-    private const string OTHER = 'http://localhost:8082/simplesaml/module.php/saml/sp/metadata/default-sp';
+    private const string OTHER = 'https://localhost:8082/simplesaml/module.php/saml/sp/metadata/default-sp';
 
     private const string OTHER_SINGLE_LOGOUT = 'https://default-sp.test/slo';
 
@@ -95,8 +106,11 @@ final class ProviderLogoutTest extends ConsoleTestCase
 
     private User $alice;
 
+    private KmsOutage $kms;
+
     protected function setUp(): void
     {
+        $this->kms = new KmsOutage();
         parent::setUp();
         $tester = self::console('beffroi:keys:generate', [
             '--algorithm' => SamlSigning::NAME,
@@ -106,6 +120,11 @@ final class ProviderLogoutTest extends ConsoleTestCase
             [Binding::HttpRedirect->value, self::SINGLE_LOGOUT, null],
         ]));
         $this->alice = self::userWithPassword('alice', 'correct horse battery staple');
+    }
+
+    protected function configureContainer(): Closure
+    {
+        return $this->kms->takeOver(...);
     }
 
     /**
@@ -385,6 +404,267 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
+     * S-32, S-33: the answer of the outstanding request, presented by a client that is not the browser that began the
+     * chain, the server of the service provider itself or a browser holding the cookie of another chain, is refused
+     * with the page of a refusal, before it is read: no request to the next service provider is handed to it.
+     */
+    #[Test]
+    #[DataProvider('provideClientsThatDidNotBeginTheChain')]
+    public function anAnswerIsRefusedToAClientThatDidNotBeginTheChain(?string $cookie): void
+    {
+        // Given
+        $this->signedOnAtBoth();
+        $this->logOut();
+        $answer = self::pathOf($this->answered($this->told(self::SINGLE_LOGOUT), self::SERVICE_PROVIDER, 'sp'));
+        $this->browser->getCookieJar()->clear();
+        $this->holding($cookie);
+
+        // When
+        $this->browser->request('GET', $answer);
+
+        // Then
+        $this->assertRefused();
+    }
+
+    /**
+     * @return iterable<string, array{string|null}>
+     */
+    public static function provideClientsThatDidNotBeginTheChain(): iterable
+    {
+        yield 'without the cookie of the chain' => [null];
+        yield 'with the cookie of another chain' => ['GJx3sTZ1n3W0pQm7e2Lr9VbY4kCq8HfA6dUoE5iNwXs'];
+    }
+
+    /**
+     * S-32, S-33: an answer refused to another client leaves the chain as it was, the answer unread: the browser that
+     * began the chain, presenting the same answer, is sent on to the next service provider.
+     */
+    #[Test]
+    public function anAnswerRefusedToAnotherClientIsLeftToTheBrowserThatBeganTheChain(): void
+    {
+        // Given
+        $assertion = $this->signedOnAtBoth();
+        $this->logOut();
+        $answer = self::pathOf($this->answered($this->told(self::SINGLE_LOGOUT), self::SERVICE_PROVIDER, 'sp'));
+        $this->fromAnotherClient(fn () => $this->browser->request('GET', $answer));
+
+        // When
+        $this->browser->request('GET', $answer);
+
+        // Then
+        static::assertSame([self::sessionIndex($assertion)], $this->told(self::OTHER_SINGLE_LOGOUT, self::OTHER)->request->sessionIndexes);
+    }
+
+    /**
+     * S-32, S-35: the reference of a chain written back after a KMS that did not answer, which the URL of the route
+     * that resumes the chain carries and an access log keeps, resumes nothing for a client that is not the browser that
+     * began the chain: the page of a refusal.
+     */
+    #[Test]
+    #[DataProvider('provideClientsThatDidNotBeginTheChain')]
+    public function aReferenceIsRefusedToAClientThatDidNotBeginTheChain(?string $cookie): void
+    {
+        // Given
+        $this->signedOn();
+        $continue = $this->loggedOutDuringAnOutage();
+        $this->browser->getCookieJar()->clear();
+        $this->holding($cookie);
+
+        // When
+        $this->browser->request('GET', $continue);
+
+        // Then
+        $this->assertRefused();
+    }
+
+    /**
+     * S-32, S-35: a reference refused to another client leaves the chain as it was: the browser that began it, at the
+     * same URL, is sent on to the service provider.
+     */
+    #[Test]
+    public function aReferenceRefusedToAnotherClientIsLeftToTheBrowserThatBeganTheChain(): void
+    {
+        // Given
+        $assertion = $this->signedOn();
+        $continue = $this->loggedOutDuringAnOutage();
+        $this->fromAnotherClient(fn () => $this->browser->request('GET', $continue));
+
+        // When
+        $this->browser->request('GET', $continue);
+
+        // Then
+        static::assertSame([self::sessionIndex($assertion)], $this->told(self::SINGLE_LOGOUT)->request->sessionIndexes);
+    }
+
+    /**
+     * S-32: the browser that begins the chain is given the secret of the chain in a cookie of the provider: its name
+     * "__Host-", Secure, HttpOnly, the path "/" and no domain, so that only the origin of the provider sets it and
+     * reads it; SameSite=None, so that the answer a service provider posts from its site comes with it; open the ten
+     * minutes the chain is; the secret 32 bytes in base64url.
+     */
+    #[Test]
+    public function theBrowserThatBeginsTheChainIsGivenItsCookie(): void
+    {
+        // Given
+        $this->signedOn();
+        $now = self::currentSecond();
+        self::mockTime($now);
+
+        // When
+        $this->logOut();
+
+        // Then
+        $cookie = $this->cookieOfTheChain();
+        static::assertSame(
+            ['__Host-beffroi_saml_logout', true, true, Cookie::SAMESITE_NONE, '/', null, $now->getTimestamp() + 600, 43],
+            [
+                $cookie->getName(),
+                $cookie->isSecure(),
+                $cookie->isHttpOnly(),
+                $cookie->getSameSite(),
+                $cookie->getPath(),
+                $cookie->getDomain(),
+                $cookie->getExpiresTime(),
+                strlen((string) $cookie->getValue()),
+            ],
+        );
+    }
+
+    /**
+     * S-32: each step of the chain gives its cookie the ten minutes the chain is open from that step.
+     */
+    #[Test]
+    public function eachStepGivesTheCookieTheTenMinutesOfTheChainAgain(): void
+    {
+        // Given
+        $this->signedOnAtBoth();
+        $this->logOut();
+        $held = $this->cookieOfTheChain()->getValue();
+        $answer = self::pathOf($this->answered($this->told(self::SINGLE_LOGOUT), self::SERVICE_PROVIDER, 'sp'));
+        $later = self::currentSecond()->modify('+60 seconds');
+        self::mockTime($later);
+
+        // When
+        $this->browser->request('GET', $answer);
+
+        // Then
+        $cookie = $this->cookieOfTheChain();
+        static::assertSame([$held, $later->getTimestamp() + 600], [$cookie->getValue(), $cookie->getExpiresTime()]);
+    }
+
+    /**
+     * S-32, S-34: the cookie of the chain is cleared where the chain ends, at the end session endpoint as for a service
+     * provider that asked.
+     */
+    #[Test]
+    #[DataProvider('provideEnds')]
+    public function theCookieOfTheChainIsClearedWhereTheChainEnds(string $end): void
+    {
+        // Given
+        if ($end === 'requester') {
+            $assertion = $this->signedOnAtBoth();
+            $this->browser->request('GET', self::pathOf($this->logoutUrl($assertion)));
+            $answer = $this->answered($this->told(self::OTHER_SINGLE_LOGOUT, self::OTHER), self::OTHER, 'idp');
+        } else {
+            $this->signedOn();
+            $this->logOut();
+            $answer = $this->answered($this->told(self::SINGLE_LOGOUT), self::SERVICE_PROVIDER, 'sp');
+        }
+
+        // When
+        $this->browser->request('GET', self::pathOf($answer));
+
+        // Then
+        $cookie = $this->cookieOfTheChain();
+        static::assertSame([true, '/', null, true, Cookie::SAMESITE_NONE], [
+            $cookie->isCleared(),
+            $cookie->getPath(),
+            $cookie->getDomain(),
+            $cookie->isSecure(),
+            $cookie->getSameSite(),
+        ]);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideEnds(): iterable
+    {
+        yield 'where the client asked' => ['client'];
+        yield 'with the answer to the service provider that asked' => ['requester'];
+    }
+
+    /**
+     * S-32, S-28, section 6.8: the answer a service provider posts from its site over HTTP-POST, which the session cookie
+     * of the provider does not accompany, comes with the cookie of the chain, SameSite=None, and, posted again from the
+     * origin of the provider, carries the chain on.
+     */
+    #[Test]
+    public function anAnswerPostedFromTheSiteOfTheServiceProviderCarriesTheChainOn(): void
+    {
+        // Given
+        $assertion = $this->signedOnAtBoth();
+        $this->browser->request('GET', self::pathOf($this->logoutUrl($assertion)));
+        $told = $this->told(self::OTHER_SINGLE_LOGOUT, self::OTHER);
+        $form = new PostSender()->logoutResponse($this->answer($told, self::OTHER), self::signing('idp'));
+
+        // When
+        $this->postedFromAnotherSite('/saml/slo', http_build_query($form->fields));
+        $this->postedAgain();
+
+        // Then
+        static::assertEquals(new Status(StatusCode::Success), $this->answerToTheRequester()->response->status);
+    }
+
+    /**
+     * S-28: a LogoutRequest a service provider posts from its site over HTTP-POST, which the session cookie of the
+     * provider does not accompany, is answered with the page that posts it again from the origin of the provider,
+     * before anything of it is read: the session it names is not ended, and the answer sets no cookie.
+     */
+    #[Test]
+    public function aLogoutRequestPostedFromTheSiteOfTheServiceProviderIsPostedAgain(): void
+    {
+        // Given
+        $assertion = $this->signedOnAtBoth();
+        $form = new PostSender()->logoutRequest($this->logoutRequest($assertion), self::signing('sp'), 'state-2');
+
+        // When
+        $this->postedFromAnotherSite('/saml/slo', http_build_query($form->fields));
+
+        // Then
+        static::assertSame(
+            [IdentityProviderRoutes::SINGLE_LOGOUT_PATH . '?' . CrossSitePost::MARKER . '=1', [], false],
+            [
+                $this->browser->getCrawler()->filter('form')->attr('action'),
+                $this->browser->getResponse()->headers->getCookies(),
+                $this->sessionOf($assertion)->hasEnded(),
+            ],
+        );
+    }
+
+    /**
+     * S-28, S-29, S-32: the LogoutRequest posted again from the origin of the provider ends the session it names and
+     * begins the chain, the other service provider of the session told first and the browser given the cookie of the
+     * chain; the first post read nothing of it, which the store of S-23 would otherwise refuse as a replay.
+     */
+    #[Test]
+    public function aLogoutRequestPostedAgainEndsTheSessionAndBeginsTheChain(): void
+    {
+        // Given
+        $assertion = $this->signedOnAtBoth();
+        $form = new PostSender()->logoutRequest($this->logoutRequest($assertion), self::signing('sp'), 'state-2');
+        $this->postedFromAnotherSite('/saml/slo', http_build_query($form->fields));
+
+        // When
+        $this->postedAgain();
+
+        // Then
+        $cookie = $this->cookieOfTheChain();
+        $this->told(self::OTHER_SINGLE_LOGOUT, self::OTHER);
+        static::assertSame([true, false], [$this->sessionOf($assertion)->hasEnded(), $cookie->isCleared()]);
+    }
+
+    /**
      * The metadata of a service provider accepted for the tenant.
      */
     private function accept(string $entityId, string $document): void
@@ -502,17 +782,96 @@ final class ProviderLogoutTest extends ConsoleTestCase
      */
     private function answered(AcceptedLogoutRequest $told, string $entityId, string $key, Status $status = new Status(StatusCode::Success)): string
     {
-        return new RedirectSender()->logoutResponse(
-            new LogoutResponse(
-                '_3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d',
-                self::currentSecond(),
-                new Issuer($entityId),
-                self::IDENTITY_PROVIDER_SINGLE_LOGOUT,
-                $told->request->id,
-                $status,
-            ),
-            self::signing($key),
+        return new RedirectSender()->logoutResponse($this->answer($told, $entityId, $status), self::signing($key));
+    }
+
+    /**
+     * The LogoutResponse of the service provider $entityId to a request it accepted, to the single logout service of
+     * the tenant.
+     */
+    private function answer(AcceptedLogoutRequest $told, string $entityId, Status $status = new Status(StatusCode::Success)): LogoutResponse
+    {
+        return new LogoutResponse(
+            '_3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d',
+            self::currentSecond(),
+            new Issuer($entityId),
+            self::IDENTITY_PROVIDER_SINGLE_LOGOUT,
+            $told->request->id,
+            $status,
         );
+    }
+
+    /**
+     * A logout at the end session endpoint confirmed while the KMS does not answer, a SAML key the process has not
+     * opened yet being the one the first request of the chain is signed with: the session ended, the chain written back
+     * (S-32), and the browser sent to the route that resumes it with its reference (S-35), whose path is returned, once
+     * the KMS answers again.
+     */
+    private function loggedOutDuringAnOutage(): string
+    {
+        $form = $this->browser->request('GET', '/logout', [
+            'client_id' => 'oidc-demo',
+            'post_logout_redirect_uri' => 'https://demo.test/',
+            'state' => 'after-logout',
+        ])->selectButton('Sign out')->form();
+        $tester = self::console('beffroi:keys:generate', [
+            '--algorithm' => SamlSigning::NAME,
+        ]);
+        static::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
+        $this->kms->down = true;
+        $this->browser->submit($form);
+        $this->kms->down = false;
+        $continue = $this->browser->getResponse()->headers->get('Location') ?? '';
+        static::assertSame([Response::HTTP_FOUND, IdentityProviderRoutes::SINGLE_LOGOUT_CONTINUE_PATH], [
+            $this->browser->getResponse()->getStatusCode(),
+            parse_url($continue, PHP_URL_PATH),
+        ]);
+
+        return self::pathOf($continue);
+    }
+
+    /**
+     * The cookie of a chain the client holds, the secret of another chain, or none.
+     */
+    private function holding(?string $secret): void
+    {
+        if ($secret !== null) {
+            $this->browser->getCookieJar()->set(new BrowserCookie(LogoutChainCookie::NAME, $secret));
+        }
+    }
+
+    /**
+     * What another client does, which holds the cookie of another chain and none of the cookies of the browser: the jar
+     * of the browser emptied for it, and given back.
+     *
+     * @param Closure(): mixed $request
+     */
+    private function fromAnotherClient(Closure $request): void
+    {
+        $jar = $this->browser->getCookieJar();
+        $cookies = $jar->all();
+        $jar->clear();
+        $this->holding('GJx3sTZ1n3W0pQm7e2Lr9VbY4kCq8HfA6dUoE5iNwXs');
+        $request();
+        $this->assertRefused();
+        $jar->clear();
+        foreach ($cookies as $cookie) {
+            $jar->set($cookie);
+        }
+    }
+
+    /**
+     * The cookie of the chain the last response sets or clears.
+     */
+    private function cookieOfTheChain(): Cookie
+    {
+        foreach ($this->browser->getResponse()->headers->getCookies() as $cookie) {
+            if ($cookie->getName() === LogoutChainCookie::NAME) {
+                return $cookie;
+            }
+        }
+
+        return static::fail('The response sets no cookie of the chain of logout.');
     }
 
     /**
@@ -521,20 +880,24 @@ final class ProviderLogoutTest extends ConsoleTestCase
      */
     private function logoutUrl(AcceptedAssertion $assertion): string
     {
+        return new RedirectSender()->logoutRequest($this->logoutRequest($assertion), self::signing('sp'), 'state-2');
+    }
+
+    /**
+     * The LogoutRequest the first service provider writes from the assertion it holds, whatever binding carries it.
+     */
+    private function logoutRequest(AcceptedAssertion $assertion): LogoutRequest
+    {
         $nameId = $assertion->assertion->nameId;
 
-        return new RedirectSender()->logoutRequest(
-            new LogoutRequest(
-                self::LOGOUT_REQUEST_ID,
-                self::currentSecond(),
-                new Issuer(self::SERVICE_PROVIDER),
-                self::IDENTITY_PROVIDER_SINGLE_LOGOUT,
-                null,
-                new NameId($nameId->value, $nameId->format, $nameId->nameQualifier, $nameId->spNameQualifier),
-                [self::sessionIndex($assertion)],
-            ),
-            self::signing('sp'),
-            'state-2',
+        return new LogoutRequest(
+            self::LOGOUT_REQUEST_ID,
+            self::currentSecond(),
+            new Issuer(self::SERVICE_PROVIDER),
+            self::IDENTITY_PROVIDER_SINGLE_LOGOUT,
+            null,
+            new NameId($nameId->value, $nameId->format, $nameId->nameQualifier, $nameId->spNameQualifier),
+            [self::sessionIndex($assertion)],
         );
     }
 
