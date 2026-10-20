@@ -44,7 +44,7 @@ name: gitsplit
 # without a name; this is the same pin with its name on it.
 #
 # That one pull is authenticated when the run is given DOCKERHUB_USERNAME
-# and DOCKERHUB_TOKEN, secrets of the organisation (issue #543), because an anonymous pull cannot be
+# and DOCKERHUB_TOKEN, secrets of this repository (issue #543), because an anonymous pull cannot be
 # answered at all on an address of the pool that is already spent, and the
 # entry cannot be filled on an address like that: the first two runs of the
 # cache were refused on two runners. Authenticated, the pull is counted against
