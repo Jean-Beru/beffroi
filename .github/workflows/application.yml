@@ -78,15 +78,17 @@ jobs:
     # The database the suite of the application needs. The version is the one compose.yaml serves the
     # development stack with.
     #
-    # From the mirror of the Docker official images that Amazon serves, and not from Docker Hub (issue
-    # #541): the same image, digest for digest, from a registry that asks for no credential and counts no
-    # limit. A service container is pulled by the runner before the first step, out of reach of the cache
-    # that holds the image of the split, so the registry is the only place this one can be answered from;
-    # and an anonymous pull of Docker Hub is counted per address of the runner pool, where it is the split
-    # of the four mirrors that pays for a busy address.
+    # From Docker Hub, pulled by the runner before the first step, out of reach of the cache that holds the
+    # image of the split, under the account of the organisation (its secrets DOCKERHUB_USERNAME and
+    # DOCKERHUB_TOKEN): an anonymous pull is counted per address of the runner pool, which this repository
+    # shares, and an address already spent answers "toomanyrequests". A run given no secret, a pull request of
+    # Dependabot among them, pulls anonymously, the runner logging in only with both values. Docker Hub, GitHub's registry and GitLab's (the images of the conformance suite) are the only registries this repository reads.
     services:
       database:
-        image: public.ecr.aws/docker/library/postgres:16-alpine
+        image: postgres:16-alpine
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
         env:
           POSTGRES_DB: beffroi
           POSTGRES_USER: beffroi

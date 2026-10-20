@@ -215,6 +215,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # Docker Hub under the account of the organisation (its secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN), so
+      # that the pulls below are counted against it and not against the address of the runner, which the pool
+      # shares; a run given no secret, a pull request of Dependabot among them, pulls anonymously and says so.
+      - name: "Docker Hub, under the account of the organisation"
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -n "${DOCKERHUB_USERNAME}" ] && [ -n "${DOCKERHUB_TOKEN}" ]; then
+            printf '%s' "${DOCKERHUB_TOKEN}" | docker login --username "${DOCKERHUB_USERNAME}" --password-stdin
+          else
+            echo "::warning title=Docker Hub, anonymously::This run is given no DOCKERHUB_USERNAME and DOCKERHUB_TOKEN, so its pulls of Docker Hub are counted against the address of the runner, which is shared and may be spent."
+          fi
       - name: "Sign, encrypt and write with every scheme and algorithm of the build"
         run: >-
           docker run --rm -v "$PWD:/project" -w /project -e HOME=/tmp ghcr.io/spomky-labs/phpqa:8.5
