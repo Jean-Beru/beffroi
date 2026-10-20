@@ -60,6 +60,10 @@ use Beffroi\Bundle\Migrations\Version20261011120000;
 use Beffroi\Bundle\Migrations\Version20261011150000;
 use Beffroi\Bundle\Migrations\Version20261011160000;
 use Beffroi\Bundle\Migrations\Version20261011170000;
+use Beffroi\Bundle\Migrations\Version20261015120000;
+use Beffroi\Bundle\Migrations\Version20261015173400;
+use Beffroi\Bundle\Migrations\Version20261015200000;
+use Beffroi\Bundle\Migrations\Version20261020153500;
 use function implode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -130,6 +134,10 @@ final class MigrationTest extends DatabaseTestCase
         Version20261011150000::class,
         Version20261011160000::class,
         Version20261011170000::class,
+        Version20261015120000::class,
+        Version20261015173400::class,
+        Version20261015200000::class,
+        Version20261020153500::class,
     ];
 
     #[Test]
@@ -190,7 +198,7 @@ final class MigrationTest extends DatabaseTestCase
     }
 
     #[Test]
-    public function theMigrationsCreateTheThirtyTablesOfTheBundle(): void
+    public function theMigrationsCreateTheThirtyFourTablesOfTheBundle(): void
     {
         // Given
         $connection = DriverManager::getConnection([
@@ -202,7 +210,7 @@ final class MigrationTest extends DatabaseTestCase
         $statements = self::statements($connection);
 
         // Then
-        static::assertCount(30, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
+        static::assertCount(34, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
     }
 
     /**

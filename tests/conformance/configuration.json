@@ -43,7 +43,7 @@
                         [
                             "click",
                             "css",
-                            "form button[type=submit]"
+                            "form[action^=\"/login\"] button[type=submit]"
                         ]
                     ]
                 },
@@ -132,7 +132,7 @@
                                 [
                                     "click",
                                     "css",
-                                    "form button[type=submit]"
+                                    "form[action^=\"/login\"] button[type=submit]"
                                 ]
                             ]
                         },
@@ -198,7 +198,7 @@
                                 [
                                     "click",
                                     "css",
-                                    "form button[type=submit]"
+                                    "form[action^=\"/login\"] button[type=submit]"
                                 ]
                             ]
                         },
@@ -280,7 +280,7 @@
                                 [
                                     "click",
                                     "css",
-                                    "form button[type=submit]"
+                                    "form[action^=\"/login\"] button[type=submit]"
                                 ]
                             ]
                         },
@@ -334,7 +334,7 @@
                                 [
                                     "click",
                                     "css",
-                                    "form button[type=submit]"
+                                    "form[action^=\"/login\"] button[type=submit]"
                                 ]
                             ]
                         },
@@ -388,7 +388,7 @@
                                 [
                                     "click",
                                     "css",
-                                    "form button[type=submit]"
+                                    "form[action^=\"/login\"] button[type=submit]"
                                 ]
                             ]
                         },
@@ -514,7 +514,7 @@
                                 [
                                     "click",
                                     "css",
-                                    "form button[type=submit]"
+                                    "form[action^=\"/login\"] button[type=submit]"
                                 ]
                             ]
                         },
@@ -605,7 +605,7 @@
                                 [
                                     "click",
                                     "css",
-                                    "form button[type=submit]"
+                                    "form[action^=\"/login\"] button[type=submit]"
                                 ]
                             ]
                         },
@@ -696,7 +696,7 @@
                                 [
                                     "click",
                                     "css",
-                                    "form button[type=submit]"
+                                    "form[action^=\"/login\"] button[type=submit]"
                                 ]
                             ]
                         },
@@ -787,7 +787,7 @@
                                 [
                                     "click",
                                     "css",
-                                    "form button[type=submit]"
+                                    "form[action^=\"/login\"] button[type=submit]"
                                 ]
                             ]
                         },
@@ -865,7 +865,7 @@
                                 [
                                     "click",
                                     "css",
-                                    "form button[type=submit]"
+                                    "form[action^=\"/login\"] button[type=submit]"
                                 ]
                             ]
                         },
@@ -943,7 +943,7 @@
                                 [
                                     "click",
                                     "css",
-                                    "form button[type=submit]"
+                                    "form[action^=\"/login\"] button[type=submit]"
                                 ]
                             ]
                         },
@@ -1021,7 +1021,7 @@
                                 [
                                     "click",
                                     "css",
-                                    "form button[type=submit]"
+                                    "form[action^=\"/login\"] button[type=submit]"
                                 ]
                             ]
                         },
@@ -1099,7 +1099,7 @@
                                 [
                                     "click",
                                     "css",
-                                    "form button[type=submit]"
+                                    "form[action^=\"/login\"] button[type=submit]"
                                 ]
                             ]
                         },
@@ -1209,7 +1209,7 @@
                                 [
                                     "click",
                                     "css",
-                                    "form button[type=submit]"
+                                    "form[action^=\"/login\"] button[type=submit]"
                                 ]
                             ]
                         },
@@ -1331,7 +1331,7 @@
                                 [
                                     "click",
                                     "css",
-                                    "form button[type=submit]"
+                                    "form[action^=\"/login\"] button[type=submit]"
                                 ]
                             ]
                         },
@@ -1412,7 +1412,7 @@
                                 [
                                     "click",
                                     "css",
-                                    "form button[type=submit]"
+                                    "form[action^=\"/login\"] button[type=submit]"
                                 ]
                             ]
                         },
@@ -1538,7 +1538,7 @@
                                 [
                                     "click",
                                     "css",
-                                    "form button[type=submit]"
+                                    "form[action^=\"/login\"] button[type=submit]"
                                 ]
                             ]
                         },
@@ -1623,7 +1623,7 @@
                                 [
                                     "click",
                                     "css",
-                                    "form button[type=submit]"
+                                    "form[action^=\"/login\"] button[type=submit]"
                                 ]
                             ]
                         },

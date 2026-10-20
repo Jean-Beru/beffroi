@@ -52,7 +52,7 @@ const KMS_FILE_DIRECTORY = '/app/var/kms';
 /**
  * The compose profiles a task that stops or reads the whole stack must name.
  */
-const COMPOSE_PROFILES = ['conformance', 'vault', 'aws'];
+const COMPOSE_PROFILES = ['conformance', 'vault', 'aws', 'saml-sp'];
 
 /**
  * Where the op container publishes the root of the authority that signed the certificate it serves, in its
@@ -140,6 +140,12 @@ function start(
         // Caddy reads the certificate when it starts: one issued again is a configuration compose sees
         // change, so the op container is created again rather than left serving the one it read.
         $environment['BEFFROI_STACK_CERTIFICATE_FINGERPRINT'] = stack_certificate_fingerprint($certificate);
+    }
+    // The directory compose.yaml mounts into op and worker for the metadata of the SAML judge: made here by whoever
+    // runs the task, or Docker makes it as root and "castor saml-sp" cannot write the file into it.
+    if (! is_dir('var/saml-sp/metadata') && ! mkdir('var/saml-sp/metadata', 0o777, true) && ! is_dir('var/saml-sp/metadata')) {
+        io()->error('Cannot create var/saml-sp/metadata.');
+        exit(1);
     }
     $command = [...$command, 'up', '-d', '--remove-orphans', '--wait'];
     if ($build) {

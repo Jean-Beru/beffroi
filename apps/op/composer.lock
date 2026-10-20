@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b8c3dce3274e0732e0ad1706d1c43974",
+    "content-hash": "cd3550d0d048f8564a2f41844136a418",
     "packages": [
         {
             "name": "async-aws/core",
@@ -288,17 +288,166 @@
             }
         },
         {
+            "name": "beffroi/saml",
+            "version": "0.0.x-dev",
+            "dist": {
+                "type": "path",
+                "url": "../../src/saml",
+                "reference": "822a622978e4cd45da6de4e861ca592c8bf37a76"
+            },
+            "require": {
+                "beffroi/core": "self.version",
+                "beffroi/saml2-bindings": "self.version",
+                "beffroi/saml2-model": "self.version",
+                "beffroi/xml-security": "self.version",
+                "php": ">=8.4",
+                "spomky-labs/pki-framework": "^1.2.1"
+            },
+            "type": "library",
+            "extra": {
+                "thanks": {
+                    "name": "beffroi/framework"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Beffroi\\Saml\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "All contributors"
+                }
+            ],
+            "description": "SAML 2.0 module of the IdP: the profile on top of beffroi/saml2-model and beffroi/saml2-bindings, the identity provider and the service provider of a tenant, their metadata, the attributes mapped from the claims, a NameID derived from the sub, Single Logout on the session of the core. Pure PHP.",
+            "keywords": [
+                "identity-provider",
+                "saml",
+                "saml2",
+                "service-provider",
+                "single-logout",
+                "single-sign-on",
+                "sso"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "beffroi/saml2-bindings",
+            "version": "0.0.x-dev",
+            "dist": {
+                "type": "path",
+                "url": "../../src/saml2-bindings",
+                "reference": "8f850347db9dae0c68337053116989aad755b507"
+            },
+            "require": {
+                "beffroi/saml2-model": "self.version",
+                "beffroi/xml-security": "self.version",
+                "ext-zlib": "*",
+                "php": ">=8.4"
+            },
+            "type": "library",
+            "extra": {
+                "thanks": {
+                    "name": "beffroi/framework"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Beffroi\\Saml2\\Bindings\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "All contributors"
+                }
+            ],
+            "description": "The HTTP-Redirect and HTTP-POST bindings of SAML 2.0 for PHP, on beffroi/saml2-model and beffroi/xml-security: a query string or a form decoded into the document the model reads, the detached signature of HTTP-Redirect verified over the octets the sender signed and nothing else, and a message the model writes turned into a URL or a form's fields. Strings and arrays in and out, no HTTP object.",
+            "keywords": [
+                "binding",
+                "http-post",
+                "http-redirect",
+                "identity-provider",
+                "saml",
+                "saml2",
+                "service-provider",
+                "single-logout",
+                "single-sign-on",
+                "sso"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "beffroi/saml2-model",
+            "version": "0.0.x-dev",
+            "dist": {
+                "type": "path",
+                "url": "../../src/saml2-model",
+                "reference": "9569cddc439603b06b27598179ac6940f4602243"
+            },
+            "require": {
+                "beffroi/xml-security": "self.version",
+                "php": ">=8.4",
+                "psr/clock": "^1.0"
+            },
+            "type": "library",
+            "extra": {
+                "thanks": {
+                    "name": "beffroi/framework"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Beffroi\\Saml2\\Model\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "All contributors"
+                }
+            ],
+            "description": "The SAML 2.0 model for PHP: the samlp:, saml: and md: objects of the Web Browser SSO and Single Logout profiles, read strictly (what is read is what a signature covers, a peer's keys from its metadata only), validated against the rules of the profiles in code rather than in options, and written, on the safe DOM, XML Signature and XML Encryption of beffroi/xml-security. It knows no HTTP.",
+            "keywords": [
+                "identity-provider",
+                "metadata",
+                "saml",
+                "saml2",
+                "service-provider",
+                "single-logout",
+                "single-sign-on",
+                "sso",
+                "xml-security",
+                "xml-signature"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
             "name": "beffroi/symfony-bundle",
             "version": "0.0.x-dev",
             "dist": {
                 "type": "path",
                 "url": "../../src/symfony",
-                "reference": "eac950116fee9259a1d9be27a6d5c53eddeb6e9a"
+                "reference": "92387dd5f4a46ce11fab1dc2b706178fd0e308dc"
             },
             "require": {
                 "bacon/bacon-qr-code": "^3.0",
                 "beffroi/core": "self.version",
                 "beffroi/oidc": "self.version",
+                "beffroi/saml": "self.version",
                 "doctrine/dbal": "^4.4",
                 "doctrine/doctrine-bundle": "^3.3",
                 "doctrine/migrations": "^3.9",
@@ -364,6 +513,56 @@
                 "openid-connect",
                 "symfony",
                 "symfony-bundle"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "beffroi/xml-security",
+            "version": "0.0.x-dev",
+            "dist": {
+                "type": "path",
+                "url": "../../src/xml-security",
+                "reference": "315ec4bb9e0d4b58935de820221e6bf817ccfdd7"
+            },
+            "require": {
+                "ext-dom": "*",
+                "ext-libxml": "*",
+                "ext-openssl": "*",
+                "php": ">=8.4"
+            },
+            "type": "library",
+            "extra": {
+                "thanks": {
+                    "name": "beffroi/framework"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Beffroi\\Xml\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "All contributors"
+                }
+            ],
+            "description": "XML security for PHP, in one package and three namespaces: Core, a safe DOM for XML about to be signed, verified, encrypted or decrypted (hardened loading, one ID space per document, canonicalization that never hashes nothing, faithful serialization); Dsig, XML Signature; Enc, XML Encryption.",
+            "keywords": [
+                "c14n",
+                "canonicalization",
+                "dom",
+                "libxml",
+                "saml",
+                "xml",
+                "xml-encryption",
+                "xml-security",
+                "xml-signature",
+                "xmldsig"
             ],
             "transport-options": {
                 "relative": true

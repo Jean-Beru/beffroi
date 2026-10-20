@@ -10,6 +10,7 @@ use function file_get_contents;
 use function file_put_contents;
 use function fileperms;
 use function glob;
+use Beffroi\Bundle\Key\DormantKeyAlgorithms;
 use Beffroi\Bundle\Key\FileTenantKeyRepository;
 use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
 use Beffroi\Core\Domain\Key\KeyStatus;
@@ -264,6 +265,85 @@ final class FileTenantKeyRepositoryTest extends TestCase
         $unwired->find($tenant, Keys::pair()->kid);
     }
 
+    /**
+     * Spec/saml.md section 5.1: the key of a capability the deployment turned off after the tenant drew it is read
+     * past, and the keys beside it are read as they were.
+     */
+    #[Test]
+    public function theKeyOfADormantAlgorithmIsReadPast(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $this->repository->save(self::activeKey($tenant, Keys::pair()->kid));
+        $this->repository->save(self::applicationServerKey($tenant));
+
+        // When
+        $keys = $this->withoutApplicationServer()->findAll($tenant);
+
+        // Then
+        static::assertSame([Keys::pair()->kid], array_map(static fn (TenantKey $key): string => $key->kid, $keys));
+    }
+
+    /**
+     * Spec/saml.md section 5.1: nothing answers for the key of a dormant algorithm, its kid included.
+     */
+    #[Test]
+    public function theKeyOfADormantAlgorithmIsNotFoundByItsKid(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $this->repository->save(self::applicationServerKey($tenant));
+
+        // When / Then
+        static::assertNull($this->withoutApplicationServer()->find($tenant, Keys::applicationServerPair()->kid));
+    }
+
+    /**
+     * Spec/saml.md section 5.1: a key read past while its capability was off is in service again, as it was, once
+     * its algorithm is wired again.
+     */
+    #[Test]
+    public function aKeyReadPastIsInServiceAgainOnceItsAlgorithmIsWired(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $this->repository->save(self::applicationServerKey($tenant));
+        $this->withoutApplicationServer()->findAll($tenant);
+
+        // When
+        $inService = new FileTenantKeyRepository($this->directory, Algorithms::everyUse())->findInService($tenant);
+
+        // Then
+        static::assertSame(
+            [[Keys::applicationServerPair()->kid, KeyStatus::Active]],
+            array_map(static fn (TenantKey $key): array => [$key->kid, $key->status], $inService),
+        );
+    }
+
+    /**
+     * Spec/saml.md section 5.1, issue #156: a name that neither the wiring nor a section that left its capability
+     * off knows is still a fault of the storage.
+     */
+    #[Test]
+    public function aKeyOfAnAlgorithmNoSectionLeftOffIsStillRefused(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $this->repository->save(self::key($tenant, Keys::pair()->kid));
+        $unwired = new FileTenantKeyRepository(
+            $this->directory,
+            new JoseSignatureAlgorithms([Algorithms::es256()]),
+            new DormantKeyAlgorithms([Algorithms::vapid()]),
+        );
+
+        // Then
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageIsOrContains('names an algorithm this provider is not wired with');
+
+        // When
+        $unwired->findAll($tenant);
+    }
+
     #[Test]
     #[DataProvider('provideKidsThatCannotNameAFile')]
     public function aKidThatIsNotAThumbprintNamesNoFile(string $kid): void
@@ -513,5 +593,26 @@ final class FileTenantKeyRepositoryTest extends TestCase
         $key->activate(Fixtures::now());
 
         return $key;
+    }
+
+    /**
+     * The application server key of the tenant, active: the key of a capability a deployment may turn off.
+     */
+    private static function applicationServerKey(Tenant $tenant): TenantKey
+    {
+        $pair = Keys::applicationServerPair();
+        $key = new TenantKey($pair->kid, $tenant, Algorithms::vapid(), $pair->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
+        $key->activate(Fixtures::now());
+
+        return $key;
+    }
+
+    /**
+     * The same storage read by a deployment that reaches nobody by push: the signature algorithms wired, the
+     * application server algorithm dormant.
+     */
+    private function withoutApplicationServer(): FileTenantKeyRepository
+    {
+        return new FileTenantKeyRepository($this->directory, Algorithms::all(), new DormantKeyAlgorithms([Algorithms::vapid()]));
     }
 }

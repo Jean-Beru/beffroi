@@ -9,7 +9,6 @@ use Doctrine\DBAL\Connection;
 use Beffroi\Bundle\Doctrine\PersonalData\BlindIndexListener;
 use Beffroi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
 use Beffroi\Bundle\Command\DataKeysRewrapCommand;
-use Beffroi\Bundle\Command\KeysListCommand;
 use Beffroi\Bundle\Http\RequestContextFactory;
 use Beffroi\Bundle\Messenger\EventBusDispatcher;
 use Beffroi\Bundle\Doctrine\PersonalData\TenantBlindIndexes;
@@ -23,8 +22,7 @@ use Beffroi\Bundle\Key\FileTenantKeyRepository;
 use Beffroi\Bundle\Key\KeyAge;
 use Beffroi\Bundle\Key\StagingDelay;
 use Beffroi\Bundle\Profiler\KmsClient;
-use Beffroi\Core\Application\Key\KeyStaging;
-use Beffroi\Core\Application\Key\KeySuccession;
+use Beffroi\Core\Domain\Key\RotationSchedule;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\DataKeyStore;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\EncryptedTypes;
 use Symfony\Component\KeyManagement\Bridge\DoctrineOrm\SchemaListener\DataKeyStoreSchemaListener;
@@ -80,12 +78,12 @@ final readonly class KeysSection extends ConfigurationSection
             ->min(0)
             ->end()
             ->integerNode('staging_delay')
-            ->info('How long a new key is published before it signs, in seconds (architecture §3.3, §9); unless set, jwks_max_age plus the 60 s refetch cooldown of oidc_login: the max-age is what a relying party with a warm cache needs to see the new key, the cooldown what one served by a shared HTTP cache needs to refetch it.')
+            ->info('How long a new key is published before it signs, in seconds (architecture §3.3, §9), for every family of keys but the SAML signing key, which has its own ("saml.identity_provider.staging_delay"); unless set, jwks_max_age plus the 60 s refetch cooldown of oidc_login: the max-age is what a relying party with a warm cache needs to see the new key, the cooldown what one served by a shared HTTP cache needs to refetch it.')
             ->defaultNull()
             ->min(0)
             ->end()
             ->integerNode('age')
-            ->info('How long a key works before the planning stages a successor for it, in seconds, counted from its activation (architecture §3.3): ninety days by default, which is inside the one to three years NIST SP 800-57 Part 1 Rev. 5 §5.3.6 gives a private signature key and short enough that the rotation path is walked four times a year rather than first walked during an incident. It has to be longer than the window a retiring key holds the JWK Set open for, which is the longest lifetime of what a key of that use is bound to, or every rotation would leave a key behind; the rotation refuses an age that is not.')
+            ->info('How long a key works before the planning stages a successor for it, in seconds, counted from its activation (architecture §3.3), for every family of keys but the SAML signing key, which has its own ("saml.identity_provider.age"): ninety days by default, which is inside the one to three years NIST SP 800-57 Part 1 Rev. 5 §5.3.6 gives a private signature key and short enough that the rotation path is walked four times a year rather than first walked during an incident. It has to be longer than the window a retiring key holds the JWK Set open for, which is the longest lifetime of what a key of that use is bound to, or every rotation would leave a key behind; the rotation refuses an age that is not.')
             ->defaultValue(KeyAge::DEFAULT_SECONDS)
             ->min(1)
             ->end()
@@ -244,14 +242,15 @@ final readonly class KeysSection extends ConfigurationSection
             $services->get(KmsClient::class)->arg('$name', self::string($keys, 'kms'));
         }
         $services->get(JwksHandler::class)->arg('$maxAge', self::integer($keys, 'jwks_max_age'));
-        // derived at runtime, once the environment placeholders are numbers
-        $services->get(KeyStaging::class)->arg('$stagingDelay', inline_service(DateInterval::class)
-            ->factory(StagingDelay::interval(...))
-            ->args([isset($keys['staging_delay']) ? self::integer($keys, 'staging_delay') : null, self::integer($keys, 'jwks_max_age')]));
-        // one definition each: an inline service is a definition and not a value, so the same object given
-        // to two arguments is one of them left empty
-        $seconds = self::integer($keys, 'age');
-        $services->get(KeySuccession::class)->arg('$age', inline_service(DateInterval::class)->factory(KeyAge::interval(...))->args([$seconds]));
-        $services->get(KeysListCommand::class)->arg('$age', inline_service(DateInterval::class)->factory(KeyAge::interval(...))->args([$seconds]));
+        // The schedule of the JOSE families, the keys of the JWK Set and the keys the tenant keeps
+        // (issue #738): one service the four families of JoseKeyAlgorithms share, the SAML key having a
+        // schedule of its own (SamlSection). The staging delay is derived at runtime, once the environment
+        // placeholders are numbers.
+        $services->set('beffroi.keys.rotation_schedule', RotationSchedule::class)->args([
+            inline_service(DateInterval::class)
+                ->factory(StagingDelay::interval(...))
+                ->args([isset($keys['staging_delay']) ? self::integer($keys, 'staging_delay') : null, self::integer($keys, 'jwks_max_age')]),
+            inline_service(DateInterval::class)->factory(KeyAge::interval(...))->args([self::integer($keys, 'age')]),
+        ]);
     }
 }

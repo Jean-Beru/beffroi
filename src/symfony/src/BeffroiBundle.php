@@ -12,6 +12,7 @@ use Beffroi\Bundle\Doctrine\Type\AddressType;
 use Beffroi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
 use Beffroi\Bundle\Doctrine\Type\AuthenticationPredicateType;
 use Beffroi\Bundle\Doctrine\Type\SelfServedClaimsType;
+use Beffroi\Bundle\Doctrine\Type\LogoutProgressType;
 use Beffroi\Bundle\Doctrine\Type\TenantLookType;
 use Beffroi\Bundle\Doctrine\Type\AuthenticationProofsType;
 use Beffroi\Bundle\Doctrine\Type\BackupCodesType;
@@ -45,6 +46,7 @@ use Beffroi\Bundle\Configuration\PasswordsSection;
 use Beffroi\Bundle\Configuration\RequestObjectsSection;
 use Beffroi\Bundle\Configuration\TenantSection;
 use Beffroi\Bundle\Configuration\TokensSection;
+use Beffroi\Bundle\Configuration\SamlSection;
 use Beffroi\Bundle\Configuration\TrustedIssuersSection;
 use Beffroi\Bundle\Configuration\WebauthnSection;
 use Beffroi\Bundle\Configuration\WebPushSection;
@@ -70,6 +72,7 @@ use Beffroi\Bundle\Doctrine\Type\ScopesType;
 use Beffroi\Bundle\Doctrine\Type\SectorIdentifierType;
 use Beffroi\Bundle\Doctrine\Type\SubjectType;
 use Beffroi\Bundle\Key\KmsClientPass;
+use Beffroi\Bundle\Saml\ServiceProvidersPass;
 use Beffroi\Bundle\Plane\Plane;
 use Beffroi\Bundle\Security\CorePasswordHasher;
 use Beffroi\Bundle\Security\RateLimitedAttempts;
@@ -133,6 +136,7 @@ final class BeffroiBundle extends AbstractBundle
         TenantLookType::NAME => TenantLookType::class,
         SelfServedClaimsType::NAME => SelfServedClaimsType::class,
         BackupCodesType::NAME => BackupCodesType::class,
+        LogoutProgressType::NAME => LogoutProgressType::class,
     ];
 
     /**
@@ -205,15 +209,20 @@ final class BeffroiBundle extends AbstractBundle
     }
 
     /**
-     * The one pass of the bundle: the KMS client it seals with is named in its own configuration and
+     * The passes of the bundle. The KMS client it seals with is named in its own configuration and
      * registered in the framework's, so nothing but a pass can tell a name that answers from one that
-     * does not.
+     * does not. The service providers of the tenant are built when the container is compiled, so that a
+     * declaration that does not hold together fails the build and not the first login (spec/saml.md
+     * section 6.2 step 1), which only a pass can do while leaving aside the values of the environment; the
+     * claim of a mapping, which needs the claims providers built, is checked by MappedClaimsWarmer right
+     * after, in the same build.
      */
     public function build(ContainerBuilder $container): void
     {
         parent::build($container);
 
         $container->addCompilerPass(new KmsClientPass());
+        $container->addCompilerPass(new ServiceProvidersPass());
     }
 
     /**
@@ -245,6 +254,13 @@ final class BeffroiBundle extends AbstractBundle
                             'dir' => $bundleDir . '/config/doctrine/oidc',
                             'prefix' => 'Beffroi\\Oidc\\Domain',
                             'alias' => 'BeffroiOidc',
+                        ],
+                        'BeffroiSaml' => [
+                            'type' => 'xml',
+                            'is_bundle' => false,
+                            'dir' => $bundleDir . '/config/doctrine/saml',
+                            'prefix' => 'Beffroi\\Saml\\Domain',
+                            'alias' => 'BeffroiSaml',
                         ],
                     ],
                 ],
@@ -400,6 +416,7 @@ final class BeffroiBundle extends AbstractBundle
             new TrustedIssuersSection(),
             new ClientsSection(),
             new ClientRegistrationSection(),
+            new SamlSection(),
         ];
     }
 }
