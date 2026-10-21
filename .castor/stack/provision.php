@@ -366,6 +366,10 @@ function provision(
     // the mapping it booted with (compose_restart_after_migration).
     compose_restart_after_migration();
 
+    // Last, once everything it reads is written: a provision that ends is a worker that consumes.
+    io()->section('Worker');
+    provision_start_worker();
+
     io()->success('The OP is provisioned.');
     io()->definitionList(
         [
@@ -583,6 +587,36 @@ function provision_restart_consumers(): void
     }
 
     compose_recreate_redirectors(['worker']);
+}
+
+/**
+ * Starts the worker and waits until it consumes, then brings up the sidecar that joins its network namespace.
+ *
+ * "castor start" creates the worker without starting it on a stack that names no KMS yet, the worker refusing
+ * to boot without one (issue #773), so a first provision is what starts it; a worker that runs already was
+ * restarted by the steps above and is only waited for. It is never created here: it carries the environment
+ * "castor start" gave it (the host of the suite whose certificate it trusts, the access token format of the
+ * clients of the suite), which this task does not know, and an "up" would create it again without them.
+ */
+function provision_start_worker(): void
+{
+    $state = trim(
+        run(
+            ['docker', 'compose', ...compose_profiles(), 'ps', '--all', '--format', '{{.State}}', 'worker'],
+            context: context()->withQuiet(),
+        )->getOutput(),
+    );
+    if ($state === '') {
+        return;
+    }
+    if ($state === 'restarting') {
+        run(['docker', 'compose', ...compose_profiles(), 'restart', 'worker']);
+    }
+    // The window of the healthcheck of compose.yaml and the time the entrypoint takes to trust the suite.
+    run(['docker', 'compose', ...compose_profiles(), 'start', '--wait', '--wait-timeout', '180', 'worker']);
+    if ($state !== 'running') {
+        compose_recreate_redirectors(['worker']);
+    }
 }
 
 /**

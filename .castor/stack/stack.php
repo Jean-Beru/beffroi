@@ -150,11 +150,22 @@ function start(
         io()->error('Cannot create var/saml-sp/metadata.');
         exit(1);
     }
-    $command = [...$command, 'up', '-d', '--remove-orphans', '--wait'];
+    $up = ['up', '-d', '--remove-orphans', '--wait'];
     if ($build) {
-        $command[] = '--build';
+        $up[] = '--build';
     }
-    run($command, context: context()->withEnvironment($environment));
+    $context = context()->withEnvironment($environment);
+    $provisioned = stack_names_a_kms();
+    if ($provisioned) {
+        run([...$command, ...$up], context: $context);
+    } else {
+        // The worker refuses to boot without the KMS "castor provision" names (issue #773), so on a stack that
+        // task has not provisioned yet "up --wait" would wait for a container that cannot become healthy.
+        // Everything else is started and waited for; the worker is created with the environment above and
+        // left stopped, and "castor provision" starts it once the DSN is written (provision_start_worker()).
+        run([...$command, ...$up, ...compose_services_but_the_worker($command, $context)], context: $context);
+        run([...$command, 'create', ...($build ? ['--build'] : []), 'worker'], context: $context);
+    }
     $started = match ($kms) {
         'vault' => ', Vault: http://localhost:8200 (dev mode, root token in compose.yaml); "castor provision --kms vault" seals the signing keys with it',
         'aws'
@@ -166,8 +177,35 @@ function start(
         . ($certificate === null ? ' (internal CA of Caddy)' : ' (certificate of the mkcert CA of the machine)')
         . ($conformance ? ', conformance suite: https://localhost:8443, profiler off' : '')
         . ($accessTokenFormat === null ? '' : sprintf(', %s access tokens for the clients of the suite', $accessTokenFormat))
-        . $started,
+        . $started
+        . ($provisioned ? '' : '; the worker starts with "castor provision", which names the KMS it needs'),
     );
+}
+
+/**
+ * Whether apps/op/.env.local names the KMS of the stack, which "castor provision" writes there and the worker
+ * cannot boot without (issue #773). That one line of the file is read, and nothing else of it.
+ */
+function stack_names_a_kms(): bool
+{
+    $path = getcwd() . '/' . DEV_ENV_LOCAL;
+
+    return is_file($path) && preg_match('/^BEFFROI_KMS_DSN="?[^"\s]/m', (string) file_get_contents($path)) === 1;
+}
+
+/**
+ * The services a "docker compose" command starts under its profiles, but the worker and the sidecar that
+ * joins its network namespace.
+ *
+ * @param list<string> $compose "docker compose" and its profiles
+ *
+ * @return list<string>
+ */
+function compose_services_but_the_worker(array $compose, Context $context): array
+{
+    $services = run([...$compose, 'config', '--services'], context: $context->withQuiet())->getOutput();
+
+    return array_values(array_diff(explode("\n", trim($services)), ['worker', REDIRECTOR_SERVICES['worker']]));
 }
 
 /**
@@ -383,8 +421,10 @@ function caddy_ca(string $destination): string
 }
 
 /**
- * Brings the sidecars of the containers just restarted back up, and does nothing when the stack runs
- * without them (a run against a suite of its own has no sidecar to bring back).
+ * Brings the sidecars of the containers just restarted or started back up, and does nothing when the stack
+ * runs without the suite (a run against a suite of its own has no sidecar to bring back). A sidecar that was
+ * never started is brought up the same way: "castor start" leaves the one of the worker for "castor
+ * provision", which starts the worker it follows.
  *
  * One is created again, never restarted, and always after the container it follows: it holds the
  * identifier of the container whose network namespace it joined, resolved once when Docker created it. A
@@ -394,14 +434,17 @@ function caddy_ca(string $destination): string
  * that notice are the back-channel logout plan, five minutes later, on a logout token that never left,
  * and the two sector modules of the Dynamic plan, on a document that cannot be reached.
  *
- * @param list<string> $restarted the containers whose network namespace has just been left behind
+ * @param list<string> $restarted the containers just restarted or started, whose network namespace is a new one
  */
 function compose_recreate_redirectors(array $restarted): void
 {
     $running = compose_running_services();
+    if (! in_array('conformance-nginx', $running, true)) {
+        return;
+    }
     foreach ($restarted as $container) {
         $sidecar = REDIRECTOR_SERVICES[$container] ?? null;
-        if ($sidecar === null || ! in_array($sidecar, $running, true)) {
+        if ($sidecar === null || ! in_array($container, $running, true)) {
             continue;
         }
 

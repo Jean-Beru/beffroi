@@ -149,7 +149,9 @@ services:
     # The image checks Caddy; a worker is healthy while the consumer is its first process. The entrypoint
     # runs before that process replaces it, and waits for the certificate of the conformance suite when
     # the suite is starting beside it: the window is wide enough for that wait, or "up --wait" would call
-    # a worker that is still getting ready unhealthy.
+    # a worker that is still getting ready unhealthy. The consumer refuses to boot without the KMS that
+    # "castor provision" names, so on a stack not provisioned yet "castor start" creates this container and
+    # leaves it stopped, and "castor provision" starts it (issue #773).
     healthcheck:
       test: ["CMD-SHELL", "grep -q messenger:consume /proc/1/cmdline"]
       start_period: 90s
