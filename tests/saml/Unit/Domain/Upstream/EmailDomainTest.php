@@ -83,6 +83,7 @@ final class EmailDomainTest extends TestCase
         yield 'a hyphen first in a label' => ['-acme.example'];
         yield 'a hyphen last in a label' => ['acme-.example'];
         yield 'an underscore' => ['ac_me.example'];
+        yield 'a wildcard' => ['*.acme.example'];
         yield 'a name outside ASCII' => ['bücher.example'];
         yield 'a name of 254 characters' => [self::longName(62)];
         yield 'an IPv4 address' => ['192.0.2.1'];
@@ -90,6 +91,108 @@ final class EmailDomainTest extends TestCase
         yield 'a port' => ['acme.example:443'];
         yield 'a space' => ['acme .example'];
         yield 'a line feed after it' => ["acme.example\n"];
+    }
+
+    /**
+     * S-44, UTS #46: the domain of an address is written as a declared domain is, in lower case and as its A-label, the
+     * part after the last "@" taken, so that it is compared with a declared domain as one.
+     */
+    #[Test]
+    #[DataProvider('provideAddresses')]
+    public function theDomainOfAnAddressIsWrittenAsADeclaredDomainIs(string $address, string $domain): void
+    {
+        // When / Then
+        static::assertSame($domain, EmailDomain::ofAddress($address)->value);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideAddresses(): iterable
+    {
+        yield 'in lower case already' => ['alice@acme.example', 'acme.example'];
+        yield 'in capitals' => ['alice@Acme.EXAMPLE', 'acme.example'];
+        yield 'a U-label' => ['alice@bücher.example', 'xn--bcher-kva.example'];
+        yield 'a U-label in capitals' => ['alice@BÜCHER.example', 'xn--bcher-kva.example'];
+        yield 'an A-label' => ['alice@xn--bcher-kva.example', 'xn--bcher-kva.example'];
+        yield 'a sharp s, kept by the non-transitional processing' => ['alice@faß.example', 'xn--fa-hia.example'];
+        yield 'the last "@"' => ['"alice@home"@acme.example', 'acme.example'];
+    }
+
+    /**
+     * S-44: an address without a domain after an "@" is refused, and never taken for an address of no federated
+     * domain.
+     */
+    #[Test]
+    #[DataProvider('provideAddressesWithoutADomain')]
+    public function anAddressWithoutADomainIsRefused(string $address): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('An address holds a domain after its "@" (spec/saml.md S-44).');
+
+        // When
+        EmailDomain::ofAddress($address);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideAddressesWithoutADomain(): iterable
+    {
+        yield 'no "@"' => ['alice.acme.example'];
+        yield 'nothing after the "@"' => ['alice@'];
+    }
+
+    /**
+     * S-44, UTS #46: a domain the IDNA cannot convert is refused, the address not named.
+     */
+    #[Test]
+    #[DataProvider('provideDomainsTheIdnaRefuses')]
+    public function aDomainTheIdnaCannotConvertIsRefused(string $address): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The domain of an address cannot be written as a name of the DNS by the IDNA of UTS #46 (spec/saml.md S-44).');
+
+        // When
+        EmailDomain::ofAddress($address);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideDomainsTheIdnaRefuses(): iterable
+    {
+        yield 'an empty label' => ['alice@acme..example'];
+        yield 'a broken A-label' => ['alice@xn--a.example'];
+        yield 'an underscore' => ['alice@ac_me.example'];
+        yield 'a wildcard' => ['alice@*.acme.example'];
+    }
+
+    /**
+     * S-44: a domain the IDNA converts that is no name of the DNS of two labels at least is refused, the address not
+     * named.
+     */
+    #[Test]
+    #[DataProvider('provideDomainsTheRuleRefuses')]
+    public function aDomainTheRuleRefusesOnceConvertedIsRefused(string $address): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The domain of an address is no name of the DNS of two labels at least (spec/saml.md S-44).');
+
+        // When
+        EmailDomain::ofAddress($address);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideDomainsTheRuleRefuses(): iterable
+    {
+        yield 'one label' => ['alice@localhost'];
+        yield 'a final dot' => ['alice@acme.example.'];
     }
 
     /**

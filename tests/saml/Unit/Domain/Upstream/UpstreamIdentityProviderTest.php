@@ -228,6 +228,21 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
+     * S-45: the attribute of the subject is never the attribute of the e-mail, an address being given again to
+     * another person.
+     */
+    #[Test]
+    public function aSubjectNamedByTheAttributeOfTheEmailIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The attribute of the subject is the attribute of the e-mail, and an address is given again to another person (spec/saml.md S-45).');
+
+        // When
+        new UpstreamIdentityProvider(self::ENTITY_ID, new MetadataLocation('/srv/saml/idp.xml'), [], [new EmailDomain('acme.example')], 'mail', [], 'mail');
+    }
+
+    /**
      * S-45: one attribute per claim of the profile.
      */
     #[Test]
