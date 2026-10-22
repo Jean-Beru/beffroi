@@ -101,10 +101,9 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
-     * The acceptance of the issue, its first half: one person, whose source is the provider and holds what
-     * that provider fills and said, its address verified, the provider answering for its domain. Its
-     * username is its subject: it never signs in here with one (decision 0029), and an address would be a
-     * username that follows no change of address.
+     * The acceptance of the issue, its first half: one person, named by its address, whose source is the
+     * provider and holds what that provider fills and said, its address verified, the provider answering
+     * for its domain.
      */
     #[Test]
     public function aFirstSignInCreatesThePersonTheProviderNames(): void
@@ -115,7 +114,7 @@ final class JustInTimeProvisioningTest extends TestCase
         // Then
         static::assertSame($alice, $this->users->find($alice->id));
         static::assertSame($this->tenant, $alice->tenant);
-        static::assertSame($alice->subject->value, $alice->username);
+        static::assertSame(self::ADDRESS, $alice->username);
         static::assertSame(self::ADDRESS, $alice->email?->value);
         static::assertTrue($alice->emailVerified);
         static::assertEquals(new Profile(givenName: 'Alice', familyName: 'Liddell'), $alice->profile);
@@ -383,21 +382,20 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
-     * A username is no address: a local person named by the address the provider gives holds no mailbox,
-     * and the person the provider names is created beside them, under a username of its own.
+     * The username of the person is its address, so a local person already named by that address holds it
+     * too: no existing account is linked on its own, and the same refusal says nothing of which.
      */
     #[Test]
-    public function aLocalUsernameThatIsTheAddressKeepsNobodyFromBeingCreated(): void
+    public function anAddressAnotherPersonIsNamedByIsRefused(): void
     {
         // Given
-        $local = $this->provisioner->create($this->tenant, self::ADDRESS);
+        $this->provisioner->create($this->tenant, self::ADDRESS);
 
         // When
-        $alice = $this->signIn();
+        $refusal = $this->failToSignIn(self::ADDRESS);
 
         // Then
-        static::assertFalse($alice->id->equals($local->id));
-        static::assertNotNull($this->identities->find($this->tenant, self::PROVIDER, self::SUBJECT));
+        static::assertSame(UpstreamProvisioningRefusalReason::AddressHeld, $refusal->reason);
     }
 
     /**
@@ -405,12 +403,11 @@ final class JustInTimeProvisioningTest extends TestCase
      * nothing raised inside it names anybody.
      */
     #[Test]
-    #[DataProvider('provideWhatTheDrawnSubjectIsAlready')]
-    public function aDrawnSubjectAPersonAlreadyHasIsRefused(string $username, ?Subject $subject): void
+    public function aDrawnSubjectAPersonAlreadyHasIsRefused(): void
     {
         // Given
         $drawn = Uuid::fromString('5f0c7a5e-9b0e-4c8e-9a51-0d4b8d3c2a11');
-        $this->provisioner->create($this->tenant, $username, subject: $subject);
+        $this->provisioner->create($this->tenant, 'bob', subject: new Subject($drawn->toRfc4122()));
         $this->provisioning = $this->provisioningDrawing(new FixedUuidGenerator([$drawn]));
 
         // When
@@ -418,15 +415,6 @@ final class JustInTimeProvisioningTest extends TestCase
 
         // Then
         static::assertSame(UpstreamProvisioningRefusalReason::DrawnSubjectTaken, $refusal->reason);
-    }
-
-    /**
-     * @return iterable<string, array{string, ?Subject}>
-     */
-    public static function provideWhatTheDrawnSubjectIsAlready(): iterable
-    {
-        yield 'the subject of a person' => ['bob', new Subject('5f0c7a5e-9b0e-4c8e-9a51-0d4b8d3c2a11')];
-        yield 'the username of a person' => ['5f0c7a5e-9b0e-4c8e-9a51-0d4b8d3c2a11', null];
     }
 
     /**
@@ -469,6 +457,7 @@ final class JustInTimeProvisioningTest extends TestCase
     {
         // Given
         $this->provisioner->create($this->tenant, 'bob', new EmailAddress('bob@acme.example'), true);
+        $this->provisioner->create($this->tenant, 'carol@acme.example');
 
         // When
         try {
@@ -489,6 +478,7 @@ final class JustInTimeProvisioningTest extends TestCase
     {
         yield 'outside the domains of the provider' => ['alice@initech.example', []];
         yield 'held by another person' => ['bob@acme.example', []];
+        yield 'the username of another person' => ['carol@acme.example', []];
         yield 'a claim the profile refuses' => [
             self::ADDRESS,
             [
@@ -524,6 +514,7 @@ final class JustInTimeProvisioningTest extends TestCase
     {
         // Given
         $this->provisioner->create($this->tenant, 'bob', new EmailAddress('bob@acme.example'), true);
+        $this->provisioner->create($this->tenant, 'carol@acme.example');
         $this->signIn();
 
         // When
@@ -541,6 +532,8 @@ final class JustInTimeProvisioningTest extends TestCase
         yield 'outside the domains of the provider' => ['alice@initech.example', UpstreamProvisioningRefusalReason::OutsideItsDomains];
         yield 'held by another person' => ['bob@acme.example', UpstreamProvisioningRefusalReason::AddressHeld];
         yield 'held by another person under another spelling' => ['Bob@acme.example', UpstreamProvisioningRefusalReason::AddressHeld];
+        // the username follows the address, so a new address another person is named by is refused too
+        yield 'the username of another person' => ['carol@acme.example', UpstreamProvisioningRefusalReason::AddressHeld];
     }
 
     /**
@@ -553,6 +546,7 @@ final class JustInTimeProvisioningTest extends TestCase
     {
         // Given
         $this->provisioner->create($this->tenant, 'bob', new EmailAddress('bob@acme.example'), true);
+        $this->provisioner->create($this->tenant, 'carol@acme.example');
         $alice = $this->signIn();
 
         // When
@@ -566,6 +560,7 @@ final class JustInTimeProvisioningTest extends TestCase
         // Then
         static::assertSame(1, $this->writes->units);
         static::assertSame(self::ADDRESS, $alice->email?->value);
+        static::assertSame(self::ADDRESS, $alice->username);
         static::assertEquals(new Profile(givenName: 'Alice', familyName: 'Liddell'), $alice->profile);
         static::assertEquals(UserSource::upstream(self::PROVIDER, ['email', 'given_name', 'family_name']), $alice->source);
         static::assertSame(self::ADDRESS, $this->identities->of($alice)[0]->claims['email']);
@@ -578,6 +573,44 @@ final class JustInTimeProvisioningTest extends TestCase
     {
         yield 'outside the domains of the provider' => ['alice@initech.example'];
         yield 'held by another person' => ['bob@acme.example'];
+        yield 'the username of another person' => ['carol@acme.example'];
+    }
+
+    /**
+     * The username follows the address: a provider that sends another one has the person renamed to it in
+     * the same unit, so that the pages a person reads call them by the address they have.
+     */
+    #[Test]
+    public function aNewAddressRenamesThePerson(): void
+    {
+        // Given
+        $alice = $this->signIn();
+
+        // When
+        $this->signIn('alice.liddell@acme.example');
+
+        // Then
+        static::assertSame('alice.liddell@acme.example', $alice->username);
+        static::assertSame($alice, $this->users->findByUsername($this->tenant, 'alice.liddell@acme.example'));
+    }
+
+    /**
+     * The old address is nobody's any more, as a mailbox or as a username: the next person who holds it is
+     * created, where a username that followed no change of address would have refused them for ever.
+     */
+    #[Test]
+    public function theOldAddressOfARenamedPersonIsFreedForTheNextOne(): void
+    {
+        // Given
+        $alice = $this->signIn();
+        $this->signIn('alice.liddell@acme.example');
+
+        // When
+        $next = $this->signIn(subject: 'b81d4e02-the-next-alice');
+
+        // Then
+        static::assertFalse($next->id->equals($alice->id));
+        static::assertSame(self::ADDRESS, $next->username);
     }
 
     /**
@@ -615,6 +648,7 @@ final class JustInTimeProvisioningTest extends TestCase
 
         // Then
         static::assertSame($address, $alice->email?->value);
+        static::assertSame($address, $alice->username);
     }
 
     /**
@@ -672,11 +706,12 @@ final class JustInTimeProvisioningTest extends TestCase
         ],
         ?RequestContext $context = null,
         ?UpstreamProvider $provider = null,
+        string $subject = self::SUBJECT,
     ): User {
         return $this->provisioning->personNamedBy(
             $this->tenant,
             $provider ?? $this->provider,
-            self::SUBJECT,
+            $subject,
             new EmailAddress($address),
             $claims,
             $context ?? Fixtures::context(),
