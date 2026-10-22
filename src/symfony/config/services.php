@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+use Beffroi\Bundle\Http\LoginAddresses;
+use Beffroi\Bundle\Saml\UpstreamDiscovery;
+use Beffroi\Core\Port\UpstreamProvidersInterface;
+use Beffroi\Bundle\Saml\SamlUpstreamProviders;
+use Beffroi\Core\Application\Identity\FederatedDomains;
 use Beffroi\Bundle\Command\DoctorCommand;
 use Beffroi\Bundle\Doctor\NotificationsLanePatience;
 use Beffroi\Oidc\Application\Secret\SecretDrawer;
@@ -770,6 +775,11 @@ return static function (ContainerConfigurator $container): void {
     // where a page of the provider that is not an authorization request sends a browser to sign in, and
     // where the login of the firewall sends it back (RFC 8628 §3.3)
     $services->set(LoginTarget::class);
+    // the address an interaction passed at the first step of its login page, when the tenant federates a domain
+    // (beffroi/saml S-61)
+    $services->set(LoginAddresses::class);
+    // and where an address of a federated domain goes from there: the sign-on of its upstream provider (S-51, S-62)
+    $services->set(UpstreamDiscovery::class);
     // what a page of the account that adds or takes away a way in asks of a session before the form: a
     // proof given a short while ago, and the login of the firewall when there is none (issue #552); which
     // pages ask is said by the pages themselves and read where the kernel is about to call one, so the rule
@@ -1455,6 +1465,13 @@ return static function (ContainerConfigurator $container): void {
     // the tenant by the declaration of that provider, which the caller hands over (issue #782)
     $services->set(UpstreamMemberships::class);
     $services->set(GroupProvisioner::class);
+    // Decision 0029: the e-mail domains of a tenant federated to an upstream provider, read by the one rule of the
+    // core (EmailDomain), where the login page sends an address of one and whom no local credential signs in; the
+    // upstream providers are the SAML upstream identity providers of the tenant, none when its service provider is
+    // not enabled (beffroi/saml S-60 to S-63)
+    $services->set(FederatedDomains::class);
+    $services->set(SamlUpstreamProviders::class);
+    $services->alias(UpstreamProvidersInterface::class, SamlUpstreamProviders::class);
 
     // The module: every value this provider hands out and recognises again is drawn here (issue #245)
     $services->set(SecretDrawer::class);
