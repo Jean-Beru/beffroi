@@ -55,17 +55,19 @@ final readonly class UpstreamDiscovery
     }
 
     /**
-     * S-51: the parameters of the sign-on of that interaction at that provider, at the route of the interaction plane
-     * ServiceProviderRoutes::UPSTREAM_SIGN_ON names.
+     * S-51: the parameters of the sign-on of that interaction at that provider, or of the login a page of the provider
+     * waits for when there is none (S-61), at the route of the interaction plane ServiceProviderRoutes::UPSTREAM_SIGN_ON
+     * names.
      *
      * @return array<string, string>
      */
-    public static function signOn(Interaction $interaction, UpstreamProvider $provider): array
+    public static function signOn(?Interaction $interaction, UpstreamProvider $provider): array
     {
-        return [
-            AuthorizationResponder::INTERACTION_PARAMETER => $interaction->id,
+        $parameters = [
             ServiceProviderRoutes::IDENTITY_PROVIDER_PARAMETER => $provider->name,
         ];
+
+        return $interaction === null ? $parameters : [AuthorizationResponder::INTERACTION_PARAMETER => $interaction->id, ...$parameters];
     }
 
     /**

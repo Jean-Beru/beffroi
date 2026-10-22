@@ -81,6 +81,18 @@ final readonly class LoginTarget
     }
 
     /**
+     * The page that is waiting for a login, null when none is: what a sign-on at an upstream provider remembers
+     * for the login it serves (beffroi/saml S-50), the step-up it asked for aside, the provider proving what it
+     * proves.
+     */
+    public function waiting(SessionInterface $httpSession): ?WaitingPage
+    {
+        $remembered = self::remembered($httpSession);
+
+        return $remembered === null ? null : new WaitingPage($remembered['route'], $remembered['parameters']);
+    }
+
+    /**
      * What the page that is waiting asked this login to add, null when it asked for a login and not for one
      * more proof.
      */

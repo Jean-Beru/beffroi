@@ -11,6 +11,7 @@ use Beffroi\Bundle\Http\BrowserSession;
 use Beffroi\Bundle\Http\FormToken;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\LoginAddresses;
+use Beffroi\Bundle\Http\LoginTarget;
 use Beffroi\Bundle\Http\WhatWasRefused;
 use Beffroi\Bundle\Saml\ServiceProviderRoutes;
 use Beffroi\Bundle\Saml\UpstreamDiscovery;
@@ -23,8 +24,9 @@ use Symfony\Component\Routing\Attribute\Route;
 use function trim;
 
 /**
- * The step of the address of the login page of an interaction, when the tenant federates a domain (beffroi/saml S-61,
- * decision 0029): an address of a federated domain is sent to the sign-on of its provider for that interaction; any
+ * The step of the address of the login page, when the tenant federates a domain (beffroi/saml S-61, decision 0029), for
+ * an interaction or for the login a page of the provider waits for (LoginTarget): an address of a federated domain is
+ * sent to the sign-on of its provider for that interaction or that page; any
  * other address, and a username, go on to the usual page, the field of the username holding what was typed; an
  * address whose domain the rule of the core does not read comes back to the step, which says so. An empty value goes
  * back to the step, for another address.
@@ -57,6 +59,7 @@ final readonly class LoginAddressController
         private LoginAddresses $addresses,
         private WhatWasRefused $refusals,
         private InteractionPages $pages,
+        private LoginTarget $loginTargets,
     ) {
     }
 
@@ -64,17 +67,21 @@ final readonly class LoginAddressController
     public function __invoke(Request $request): Response
     {
         $tenant = $this->tenants->provide();
-        $interaction = $this->browser->pending($request, $tenant, $request->query->getString(AuthorizationResponder::INTERACTION_PARAMETER));
-        if ($interaction === null) {
+        $id = $request->query->getString(AuthorizationResponder::INTERACTION_PARAMETER);
+        // an interaction this browser began, or none for the login a page of the provider waits for (S-61)
+        $interaction = $id === '' ? null : $this->browser->pending($request, $tenant, $id);
+        if ($interaction === null && ($id !== '' || ! $this->loginTargets->isPending($request->getSession()))) {
             return $this->responder->unknownInteraction();
         }
         $refusal = $this->formTokens->refusal($request->request->get(FormToken::PARAMETER), self::CSRF_TOKEN_ID);
         if ($refusal !== null) {
             return $refusal;
         }
-        $back = [
-            AuthorizationResponder::INTERACTION_PARAMETER => $interaction->id,
-        ];
+        $back = $interaction === null
+            ? []
+            : [
+                AuthorizationResponder::INTERACTION_PARAMETER => $interaction->id,
+            ];
         $address = trim($request->request->getString(self::ADDRESS_PARAMETER));
         if ($address === '') {
             $this->addresses->forget($request->getSession(), $interaction);

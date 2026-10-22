@@ -43,10 +43,11 @@ use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
  * that satisfies nothing being the way back to the client with what the session has.
  *
  * When the tenant federates an e-mail domain to an upstream provider (decision 0029, beffroi/saml S-61,
- * S-62), the page of an interaction asks for the address first and offers nothing else, the domain of what
- * is typed sending the browser to the sign-on of its provider or on to this page (LoginAddressController),
- * and a "login_hint" that is an address of a federated domain skips the page; both read the domain and
- * never a person, so that the answer says nothing of who holds an address.
+ * S-62), the page asks for the address first and offers nothing else, for an interaction as for a page of
+ * the provider, the domain of what is typed sending the browser to the sign-on of its provider or on to
+ * this page (LoginAddressController), and a "login_hint" that is an address of a federated domain skips the
+ * page of an interaction; both read the domain and never a person, so that the answer says nothing of who
+ * holds an address.
  *
  * A page of the provider that is not an authorization request asks for the same two things through the
  * same form (LoginTarget): a login, when nobody is signed in, and one more proof, when somebody is and
@@ -89,8 +90,15 @@ final readonly class LoginController
                 return $this->responder->unknownInteraction();
             }
             $stepUp = $this->loginTargets->pendingStepUp($request->getSession());
+            $requirement = $stepUp === null ? null : LoginRequirement::StrongerFactorRequired;
+            // beffroi/saml S-61: the address first here too, the sign-on of a federated domain coming back to the
+            // page that waits (S-51)
+            $asksForAnAddress = $this->discovery->asksForAnAddress($tenant);
+            if ($asksForAnAddress && ! $this->addresses->passed($request->getSession(), null)) {
+                return $this->address($request, $tenant, null, $requirement, $stepUp);
+            }
 
-            return $this->form($tenant, null, $stepUp === null ? null : LoginRequirement::StrongerFactorRequired, $stepUp, false);
+            return $this->form($tenant, null, $requirement, $stepUp, $asksForAnAddress);
         }
         $this->locale->resume($request, $interaction);
         try {
@@ -129,21 +137,23 @@ final readonly class LoginController
     }
 
     /**
-     * The step of the address (beffroi/saml S-61): one field, and no password, no passkey and no autofill of one, the
-     * domain of what is typed deciding where the browser goes (LoginAddressController). Its submission ends at the
+     * The step of the address (beffroi/saml S-61), of an interaction or of the login a page of the provider waits for:
+     * one field, and no password, no passkey and no autofill of one, the domain of what is typed deciding where the
+     * browser goes (LoginAddressController). Its submission ends at the
      * single sign-on service of a provider over HTTP-Redirect, whose origin it names in its "form-action".
      */
-    private function address(Request $request, Tenant $tenant, Interaction $interaction, LoginRequirement $requirement, ?StepUpOffer $stepUp): Response
+    private function address(Request $request, Tenant $tenant, ?Interaction $interaction, ?LoginRequirement $requirement, ?StepUpOffer $stepUp): Response
     {
         $this->discovery->mayReachTheProviders($request, $tenant);
         $lastUsername = $this->authentication->getLastUsername();
+        $hinted = $interaction === null ? null : $this->hints->userNamedBy($interaction->request);
 
         return $this->pages->render('login_address.html.twig', [
             'interaction' => $interaction,
-            'client' => $interaction->request->client,
+            'client' => $interaction?->request->client,
             'requirement' => $requirement,
             'step_up' => $stepUp,
-            'address' => $lastUsername === '' ? $this->hints->userNamedBy($interaction->request)?->username : $lastUsername,
+            'address' => $lastUsername === '' ? $hinted?->username : $lastUsername,
             'refusal' => $this->refusals->take($request),
         ]);
     }
