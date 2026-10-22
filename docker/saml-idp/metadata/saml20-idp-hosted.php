@@ -1,0 +1,45 @@
+<?php
+
+// The hosted identity provider of the judge (issue #788), the upstream identity provider the service provider of the
+// stack federates to: its entity ID is the URL of its metadata, as SimpleSAMLphp names one by default. What differs
+// from the defaults of SimpleSAMLphp 2.5.3.1, each with its reason:
+//
+// - its single sign-on service published for HTTP-Redirect and for HTTP-POST, where SimpleSAMLphp publishes
+//   HTTP-Redirect alone, so that the provider sends its AuthnRequest over either binding;
+// - a persistent NameID, drawn by the saml:PersistentNameID filter from the "uid" of the person, the secret salt and
+//   both entity IDs: the same person at the same service provider gets the same one at every sign-in, which is what
+//   names her to the provider. Its format is the one published, and the one SimpleSAMLphp gives a request that asks
+//   for none; without the filter it would give a transient one whatever it published;
+// - the response and its assertion signed, both, as SimpleSAMLphp does by default, said here since the provider
+//   verifies both;
+// - the attributes named by their plain name, "mail", "givenName", "sn", "groups", the names the declaration of this
+//   identity provider maps, under the basic name format, where SimpleSAMLphp would announce the URI one;
+// - its metadata signed with its own key, under the certificate they publish: a signature xmlsec1 and the model
+//   verify, though the provider reads the metadata by their channel (the metadata carry no validUntil, which
+//   SimpleSAMLphp 2.5.3.1 does not write for a hosted identity provider).
+//
+// Its key is the copy of var/saml-idp/idp.pem the command of the service gives www-data (compose.yaml), the file itself
+// being its owner's alone on the machine; its certificate is var/saml-idp/idp.crt, under the certdir of config.php.
+$metadata['https://saml-idp.localhost/simplesaml/module.php/saml/idp/metadata'] = [
+    'host' => '__DEFAULT__',
+    'privatekey' => '/run/saml-idp/idp.pem',
+    'certificate' => 'idp.crt',
+    'auth' => 'lab-people',
+    'SingleSignOnServiceBinding' => [
+        'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
+        'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
+    ],
+    'NameIDFormat' => 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent',
+    'authproc' => [
+        10 => [
+            'class' => 'saml:PersistentNameID',
+            'identifyingAttribute' => 'uid',
+        ],
+    ],
+    'saml20.sign.response' => true,
+    'saml20.sign.assertion' => true,
+    'attributes.NameFormat' => 'urn:oasis:names:tc:SAML:2.0:attrname-format:basic',
+    'metadata.sign.enable' => true,
+    'metadata.sign.privatekey' => '/run/saml-idp/idp.pem',
+    'metadata.sign.certificate' => 'idp.crt',
+];

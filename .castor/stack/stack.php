@@ -52,7 +52,7 @@ const KMS_FILE_DIRECTORY = '/app/var/kms';
 /**
  * The compose profiles a task that stops or reads the whole stack must name.
  */
-const COMPOSE_PROFILES = ['conformance', 'vault', 'aws', 'saml-sp'];
+const COMPOSE_PROFILES = ['conformance', 'vault', 'aws', 'saml-sp', 'saml-idp'];
 
 /**
  * Where the op container publishes the root of the authority that signed the certificate it serves, in its
@@ -74,6 +74,8 @@ const STACK_HOSTS = [
     'MTLS_SERVER_NAME' => 'mtls.op.localhost',
     // The service provider of the SAML judge (docker/saml-sp/saml-sp.Caddyfile), whose configuration names it.
     'saml-sp.localhost',
+    // The identity provider of the SAML judge (docker/saml-idp/saml-idp.Caddyfile), whose configuration names it.
+    'saml-idp.localhost',
 ];
 
 /**
