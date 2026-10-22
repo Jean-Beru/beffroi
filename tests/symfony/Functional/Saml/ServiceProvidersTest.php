@@ -12,6 +12,7 @@ use Beffroi\Bundle\MessageHandler\RefreshTheSamlMetadataHandler;
 use Beffroi\Bundle\Tests\Fixture\RecordedMessages;
 use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
 use Beffroi\Saml\Application\Metadata\MetadataRefresh;
+use Beffroi\Saml\Domain\Metadata\PeerInterface;
 use Beffroi\Saml\Domain\Metadata\AcceptedMetadata;
 use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
@@ -34,6 +35,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Psr\Log\LogLevel;
 use function sprintf;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -265,11 +267,14 @@ final class ServiceProvidersTest extends ConsoleTestCase
         // Given
         self::publish(ServiceProviderDocuments::simpleSamlPhpWithoutEncryptionKey());
         $said = new RecordedMessages();
-        $step = new RefreshTheSamlMetadataHandler(
-            self::service(TenantProvider::class, TenantProvider::class),
-            [self::service('beffroi.saml.service_providers.refresh', MetadataRefresh::class)],
-            $said,
-        );
+        /** @var ServiceLocator<MetadataRefresh<covariant PeerInterface>> $roles */
+        $roles = new ServiceLocator([
+            'beffroi.saml.service_providers.refresh' => static fn (): MetadataRefresh => self::service(
+                'beffroi.saml.service_providers.refresh',
+                MetadataRefresh::class,
+            ),
+        ]);
+        $step = new RefreshTheSamlMetadataHandler(self::service(TenantProvider::class, TenantProvider::class), $roles, $said);
 
         // When
         $step(new RefreshTheSamlMetadata());

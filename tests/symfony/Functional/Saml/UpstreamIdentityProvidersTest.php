@@ -11,7 +11,9 @@ use Beffroi\Bundle\Message\RefreshTheSamlMetadata;
 use Beffroi\Bundle\MessageHandler\RefreshTheSamlMetadataHandler;
 use Beffroi\Bundle\Tests\Fixture\RecordedMessages;
 use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Application\Metadata\MetadataRefresh;
+use Beffroi\Saml\Domain\Metadata\PeerInterface;
 use Beffroi\Saml\Domain\Metadata\AcceptedMetadata;
 use Beffroi\Saml\Domain\Upstream\AcceptedUpstreamMetadata;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
@@ -25,6 +27,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Psr\Log\LogLevel;
 use function sprintf;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
@@ -201,11 +204,14 @@ final class UpstreamIdentityProvidersTest extends ConsoleTestCase
         // Given
         self::publish(IdentityProviderDocuments::simpleSamlPhpWithoutSigningKey());
         $said = new RecordedMessages();
-        $step = new RefreshTheSamlMetadataHandler(
-            self::service(TenantProvider::class, TenantProvider::class),
-            [self::service('beffroi.saml.identity_providers.refresh', MetadataRefresh::class)],
-            $said,
-        );
+        /** @var ServiceLocator<MetadataRefresh<covariant PeerInterface>> $roles */
+        $roles = new ServiceLocator([
+            'beffroi.saml.identity_providers.refresh' => static fn (): MetadataRefresh => self::service(
+                'beffroi.saml.identity_providers.refresh',
+                MetadataRefresh::class,
+            ),
+        ]);
+        $step = new RefreshTheSamlMetadataHandler(self::service(TenantProvider::class, TenantProvider::class), $roles, $said);
 
         // When
         $step(new RefreshTheSamlMetadata());
@@ -216,6 +222,43 @@ final class UpstreamIdentityProvidersTest extends ConsoleTestCase
                 'The metadata of the identity provider "%s" are refused, the document accepted kept: The metadata of the identity provider hold no key for signing, and nothing it sends could be verified (spec/saml.md S-43).',
                 IdentityProviderDocuments::SIMPLESAMLPHP,
             )],
+            $said->at(LogLevel::ERROR),
+        );
+    }
+
+    /**
+     * Section 6.10: a role whose declarations are refused when its refresh is built, at the first use of declarations
+     * holding an environment variable, is written to the log as an error, and the next role is read.
+     */
+    #[Test]
+    public function aRoleRefusedAtItsFirstUseIsLoggedAndTheNextRoleRead(): void
+    {
+        // Given
+        self::publish(IdentityProviderDocuments::simpleSamlPhpWithoutSigningKey());
+        $said = new RecordedMessages();
+        /** @var ServiceLocator<MetadataRefresh<covariant PeerInterface>> $roles */
+        $roles = new ServiceLocator([
+            'beffroi.saml.service_providers.refresh' =>
+                static fn (): MetadataRefresh => throw new InvalidArgumentException('The service provider "https://sp.example.com/saml": The metadata of a service provider or of an identity provider are read from an https URL or from the absolute path of a file (spec/saml.md S-5, S-42).'),
+            'beffroi.saml.identity_providers.refresh' => static fn (): MetadataRefresh => self::service(
+                'beffroi.saml.identity_providers.refresh',
+                MetadataRefresh::class,
+            ),
+        ]);
+        $step = new RefreshTheSamlMetadataHandler(self::service(TenantProvider::class, TenantProvider::class), $roles, $said);
+
+        // When
+        $step(new RefreshTheSamlMetadata());
+
+        // Then
+        static::assertSame(
+            [
+                'The SAML metadata of the role "beffroi.saml.service_providers.refresh" could not be refreshed, the next role is read: Beffroi\\Core\\Exception\\InvalidArgumentException was thrown: The service provider "https://sp.example.com/saml": The metadata of a service provider or of an identity provider are read from an https URL or from the absolute path of a file (spec/saml.md S-5, S-42).',
+                sprintf(
+                    'The metadata of the identity provider "%s" are refused, the document accepted kept: The metadata of the identity provider hold no key for signing, and nothing it sends could be verified (spec/saml.md S-43).',
+                    IdentityProviderDocuments::SIMPLESAMLPHP,
+                ),
+            ],
             $said->at(LogLevel::ERROR),
         );
     }

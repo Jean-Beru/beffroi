@@ -676,6 +676,7 @@ use Symfony\Component\RateLimiter\Storage\CacheStorage;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\inline_service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_iterator;
+use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_locator;
 use Webauthn\MetadataService\CertificateChain\CertificateChainValidator;
 use Webauthn\MetadataService\CertificateChain\PhpCertificateChainValidator;
 use Webauthn\MetadataService\MetadataStatementRepository;
@@ -1960,7 +1961,7 @@ return static function (ContainerConfigurator $container): void {
     ]);
     $services->get(SamlIdentityProviderRefreshCommand::class)->arg('$refresh', service('beffroi.saml.identity_providers.refresh'));
     $services->get(SamlIdentityProviderForgetCommand::class)->arg('$forgetting', service('beffroi.saml.identity_providers.forgetting'));
-    $services->get(RefreshTheSamlMetadataHandler::class)->arg('$refreshes', tagged_iterator(RefreshTheSamlMetadataHandler::TAG));
+    $services->get(RefreshTheSamlMetadataHandler::class)->arg('$refreshes', tagged_locator(RefreshTheSamlMetadataHandler::TAG));
     // beffroi/saml: single sign-on (spec/saml.md section 6.4), a request received over either binding and validated by
     // the model, answered from the session of the browser or after its login, the request waiting in its HTTP session
     // (S-18); the assertion signed by the active SAML key of the tenant, opened by the KMS once per process to sign,
