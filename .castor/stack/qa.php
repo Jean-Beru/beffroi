@@ -877,6 +877,12 @@ const INFECTION_STRICT_FILES = [
     'src/saml/src/Application/Upstream/UpstreamIdentityProviderRole.php',
     'src/saml/src/Bridge/Model/ModelUpstreamMetadataReader.php',
     'src/saml/src/Bridge/Configuration/ConfigurationUpstreamIdentityProviders.php',
+    // beffroi/saml, section 9: the request the service provider sends an upstream identity provider, what it is written
+    // from, the use case that starts it and the sender that writes and signs it (S-48 to S-50, section 6.11)
+    'src/saml/src/Domain/Upstream/UpstreamAuthnRequest.php',
+    'src/saml/src/Domain/Upstream/SentAuthnRequest.php',
+    'src/saml/src/Application/Upstream/UpstreamSignOn.php',
+    'src/saml/src/Bridge/Model/ModelAuthnRequestSender.php',
     // beffroi/saml, section 9: the signature an authentication request needs and its translation to the model's terms
     // (section 6.3).
     'src/saml/src/Domain/ServiceProvider/AuthnRequestSigning.php',
