@@ -141,8 +141,9 @@ final class EnvelopeTest extends TestCase
     }
 
     /**
-     * §9.2 row 43, M-4, M-5, M-13, section 6.7: a saml:EncryptedAssertion holding no xenc:EncryptedData or two, next
-     * to a saml:Assertion, or in a failure, refused before any key is touched.
+     * §9.2 rows 42 and 43, M-4, M-5, M-8, M-13, section 6.7, SAML Profiles §4.1.4.2 as corrected by E17: a
+     * saml:EncryptedAssertion holding no xenc:EncryptedData or two, two of them, one next to a saml:Assertion or in a
+     * failure, and a response holding one without its own Issuer, refused before any key is touched.
      */
     #[Test]
     #[DataProvider('provideMalformedEncryptedAssertions')]
@@ -173,6 +174,10 @@ final class EnvelopeTest extends TestCase
             'encrypted/response-encrypted-assertion-two-encrypted-data-refused.xml',
             'The saml:EncryptedAssertion holds more than one xenc:EncryptedData (M-4).',
         ];
+        yield 'two saml:EncryptedAssertion' => [
+            'encrypted/response-encrypted-two-encrypted-assertions-refused.xml',
+            'The samlp:Response holds more than one saml:Assertion or saml:EncryptedAssertion (M-4).',
+        ];
         yield 'next to a saml:Assertion' => [
             'encrypted/response-encrypted-next-to-an-assertion-refused.xml',
             'The samlp:Response holds more than one saml:Assertion or saml:EncryptedAssertion (M-4).',
@@ -180,6 +185,10 @@ final class EnvelopeTest extends TestCase
         yield 'in a failure' => [
             'encrypted/response-encrypted-in-a-failure-refused.xml',
             'The samlp:Response has a status other than Success and holds a saml:Assertion or a saml:EncryptedAssertion (M-13).',
+        ];
+        yield 'a response without its own Issuer' => [
+            'encrypted/response-encrypted-without-issuer-refused.xml',
+            'The response holds a saml:EncryptedAssertion and has no saml:Issuer (M-8).',
         ];
     }
 

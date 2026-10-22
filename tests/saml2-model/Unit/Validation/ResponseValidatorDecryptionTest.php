@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Beffroi\Saml2\Model\Tests\Unit\Validation;
 
+use Beffroi\Saml2\Model\Exception\InResponseToMismatch;
 use Beffroi\Saml2\Model\Exception\MalformedMessage;
+use Beffroi\Saml2\Model\Exception\MessageRefused;
 use Beffroi\Saml2\Model\Exception\Replayed;
 use Beffroi\Saml2\Model\Exception\SignatureRequired;
 use Beffroi\Saml2\Model\Exception\Unsupported;
@@ -165,23 +167,82 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * §9.2 row 42, M-8, SAML Profiles §4.1.4.2 as corrected by E17: a response whose assertion is encrypted carries its
-     * own Issuer, signed or not.
+     * §9.2 row 42, section 6.7, M-8, M-10, SAML Profiles §4.1.4.2 as corrected by E17: the envelope of an unsigned
+     * response, which needs nothing of the plaintext, is refused before any operation of the decryption key, the
+     * Issuer E17 requires at step 2 and the rest of step 6 before the decryption.
+     *
+     * @param class-string<MessageRefused> $exception
      */
     #[Test]
-    public function itRequiresTheIssuerOfAResponseWhoseAssertionIsEncrypted(): void
-    {
+    #[DataProvider('provideEnvelopesRefusedBeforeTheKey')]
+    public function itRefusesTheEnvelopeBeforeAnyOperationOfTheKey(
+        string $fixture,
+        string $requestId,
+        string $exception,
+        string $message,
+    ): void {
         // Given
-        $response = $this->unverified('encrypted/response-encrypted-without-issuer-refused.xml');
-        $message = 'The response holds a saml:EncryptedAssertion and has no saml:Issuer (M-8).';
+        $response = $this->unverified($fixture);
+        $key = $this->createMock(DecryptionKeyInterface::class);
+        $key->expects($this->never())->method('unwrap');
 
         // Then
-        $this->expectException(MalformedMessage::class);
+        $this->expectException($exception);
         $this->expectExceptionMessageIs($message);
         self::assertCarriesNothingOf($message, $response->document);
 
         // When
+        $this->validator($key)->validate($response, self::identityProvider(), self::expected($requestId));
+    }
+
+    /**
+     * @return iterable<string, array{string, string, class-string<MessageRefused>, string}>
+     */
+    public static function provideEnvelopesRefusedBeforeTheKey(): iterable
+    {
+        yield 'no Issuer of its own' => [
+            'encrypted/response-encrypted-without-issuer-refused.xml',
+            '_request',
+            MalformedMessage::class,
+            'The response holds a saml:EncryptedAssertion and has no saml:Issuer (M-8).',
+        ];
+        yield 'an answer to another request' => [
+            'encrypted/response-encrypted-signed-assertion-accepted.xml',
+            '_another-request',
+            InResponseToMismatch::class,
+            'The InResponseTo of the response is not the one the consumer expects (M-10).',
+        ];
+    }
+
+    /**
+     * §9.2 row 46, M-2, section 6.7, SAML Core §6.2: an assertion whose NameID was changed after it was signed,
+     * encrypted for the key of the service provider, is refused by its own signature once decrypted, in an unsigned
+     * response as under a response whose signature over the ciphertext holds.
+     */
+    #[Test]
+    #[DataProvider('provideAssertionsChangedAfterSigning')]
+    public function itRefusesADecryptedAssertionWhoseOwnSignatureFails(string $fixture): void
+    {
+        // Given
+        $response = $this->unverified($fixture);
+
+        // Then
+        $this->expectException(DigestMismatch::class);
+        $this->expectExceptionMessageIs('The claimed element is not what was signed (D-8).');
+
+        // When
         $this->validator(self::decryptionKey())->validate($response, self::identityProvider(), self::expected());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideAssertionsChangedAfterSigning(): iterable
+    {
+        yield 'in an unsigned response' => ['encrypted/response-encrypted-assertion-changed-after-signing-refused.xml'];
+        yield 'under a signed response' => [
+            'encrypted/response-signed-over-encrypted-assertion-changed-after-signing-refused.xml',
+        ];
     }
 
     /**
@@ -248,11 +309,11 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * A response to the request _request, received at our assertion consumer service, for our entity ID.
+     * A response to the request $requestId, received at our assertion consumer service, for our entity ID.
      */
-    private static function expected(): ExpectedResponse
+    private static function expected(string $requestId = '_request'): ExpectedResponse
     {
-        return ExpectedResponse::toRequest('_request', 'https://sp.example.com/saml/acs', 'https://sp.example.com/saml');
+        return ExpectedResponse::toRequest($requestId, 'https://sp.example.com/saml/acs', 'https://sp.example.com/saml');
     }
 
     /**

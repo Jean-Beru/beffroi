@@ -87,9 +87,9 @@ if ($mode === 'data') {
     $unsigned = $replaceMatch('~<ds:Signature .*?</ds:Signature>~s', static fn (): string => '', $signed);
     $write('response-unsigned-assertion.data.xml', $unsigned);
 
-    // the unsigned assertion, the response carrying the template of an enveloped signature after its Issuer, which
-    // xmlsec1 fills once the assertion is encrypted
-    $write('response-signed-response.data.xml', $replace(
+    // the response carrying the template of an enveloped signature after its Issuer, which xmlsec1 fills once the
+    // assertion is encrypted
+    $signedResponse = static fn (string $response): string => $replace(
         "</saml:Issuer>\n  <samlp:Status>",
         '</saml:Issuer><ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><ds:SignedInfo>'
         . '<ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>'
@@ -100,8 +100,17 @@ if ($mode === 'data') {
         . '<ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ds:DigestValue></ds:DigestValue>'
         . '</ds:Reference></ds:SignedInfo><ds:SignatureValue></ds:SignatureValue></ds:Signature>'
         . "\n  <samlp:Status>",
-        $unsigned,
-    ));
+        $response,
+    );
+
+    // the unsigned assertion under that template
+    $write('response-signed-response.data.xml', $signedResponse($unsigned));
+
+    // the signed assertion, its NameID changed after it was signed, so that its signature no longer holds: what
+    // anyone can encrypt for the key of the service provider; alone, then under that template
+    $changed = $replace('>_7a2f4c1d9e</saml:NameID>', '>_7a2f4c1d9f</saml:NameID>', $signed);
+    $write('response-signed-assertion-changed.data.xml', $changed);
+    $write('response-signed-response-signed-assertion-changed.data.xml', $signedResponse($changed));
 
     // in place of the assertion, the response in clear, whose own assertion is the signed one: what the plaintext of
     // a saml:EncryptedAssertion must not be
@@ -179,6 +188,14 @@ $assertion = $extract('~<saml:Assertion ID="_assertion".*</saml:Assertion>~s', $
 $write('response-encrypted-next-to-an-assertion-refused.xml', $replace(
     '</saml:EncryptedAssertion>',
     '</saml:EncryptedAssertion>' . "\n  " . $assertion,
+    $vector,
+));
+
+// two saml:EncryptedAssertion, the one of the vector twice (M-4)
+$encryptedAssertion = $extract('~<saml:EncryptedAssertion>.*</saml:EncryptedAssertion>~s', $vector);
+$write('response-encrypted-two-encrypted-assertions-refused.xml', $replace(
+    $encryptedAssertion,
+    $encryptedAssertion . "\n  " . $encryptedAssertion,
     $vector,
 ));
 
