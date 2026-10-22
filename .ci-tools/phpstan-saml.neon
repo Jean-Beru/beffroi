@@ -92,6 +92,8 @@ parameters:
 	# saml2-bindings); session_decode() is the same unserializer, fed the bytes of a session.
 	bannedFunctions:
 		- unserialize
+		# a name the rules read where it is written, given another under which it passes unread (section 8)
+		- class_alias
 		- session_decode
 		# model.md section 8, core.md section 8: no entity loader, no second parser (I-2, I-4)
 		- libxml_set_external_entity_loader
@@ -119,6 +121,9 @@ parameters:
 	# security review of sub-spike 9c).
 	bannedMethods:
 		- validateAuthenticatedByBinding
+		# the one method that takes the proof of a covering signature, which only the model's reader calls (section 8,
+		# enc.md E-15): a proof forged around the names reaches nothing
+		- decryptCovered
 		- __unserialize
 		- unserialize
 		# core.md section 8, I-4: the loaders of the DOM of PHP 8.4, a second parser; xml-security's Core loads

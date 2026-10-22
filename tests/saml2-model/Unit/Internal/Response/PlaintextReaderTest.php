@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Saml2\Model\Tests\Unit\Internal\Response;
 
+use Beffroi\Saml2\Model\Exception\Unsupported;
 use Beffroi\Saml2\Model\Internal\Assertion\AssertionContext;
 use Beffroi\Saml2\Model\Internal\Response\PlaintextReader;
 use Beffroi\Saml2\Model\Internal\Response\SignedResponse;
@@ -48,8 +49,7 @@ final class PlaintextReaderTest extends TestCase
         // When
         $read = PlaintextReader::decrypt(
             $response,
-            self::identityProvider(),
-            self::decryptionKey(),
+            self::identityProvider()->withDecryptionKey(self::decryptionKey()),
             SamlLoader::create(),
             self::context(),
         );
@@ -97,14 +97,32 @@ final class PlaintextReaderTest extends TestCase
         // When
         $read = PlaintextReader::decrypt(
             $response,
-            self::identityProvider(),
-            self::decryptionKey(),
+            self::identityProvider()->withDecryptionKey(self::decryptionKey()),
             SamlLoader::create(),
             self::context(),
         );
 
         // Then
         static::assertSame(['_assertion', true], [$read->assertion->id, $read->signed]);
+    }
+
+    /**
+     * §9.2 row 44, section 5.5, section 6.7: the key is read from the identity provider itself; a provider given none
+     * has its encrypted assertion refused by name.
+     */
+    #[Test]
+    public function itRefusesAProviderGivenNoKey(): void
+    {
+        // Given
+        $document = $this->document('encrypted/response-signed-over-encrypted-assertion-accepted.xml');
+        $response = SignedResponse::of($document->root(), self::identityProvider(), SamlLoader::create());
+
+        // Then
+        $this->expectException(Unsupported::class);
+        $this->expectExceptionMessageIs('The response holds a saml:EncryptedAssertion and the identity provider was given no key to decrypt it (section 6.7).');
+
+        // When
+        PlaintextReader::decrypt($response, self::identityProvider(), SamlLoader::create(), self::context());
     }
 
     /**

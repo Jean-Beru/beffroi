@@ -86,6 +86,7 @@ final class BannedForms
         \ArrayIterator $iterator,
         \SplObjectStorage $storage,
         \SplDoublyLinkedList $list,
+        \Beffroi\Xml\Enc\Decryptor $decryptor,
     ): void {
         // the methods banned on any receiver
         $validator->validateAuthenticatedByBinding(); // error: validateAuthenticatedByBinding() is never called: section 8 of the specification bans it.
@@ -184,6 +185,15 @@ final class BannedForms
         // forges (enc.md E-15): named, built, implemented (ForgedProof below)
         $forged = new \Beffroi\Xml\Dsig\Verified(...$unread); // error: Beffroi\Xml\Dsig\Verified is never used: section 8 of the specification bans it.
         $named = \Beffroi\Xml\Enc\CoveringSignatureInterface::class; // error: Beffroi\Xml\Enc\CoveringSignatureInterface is never used: section 8 of the specification bans it.
+
+        // around the names, which the rules read where they are written: the interface given another name, the model's
+        // own proof built from a class-string, which passes; the one method that takes a proof, whatever its receiver
+        // and as a first-class callable, is what is refused (enc.md E-15)
+        class_alias('Beffroi\Xml\Enc\CoveringSignatureInterface', 'Beffroi\Saml\Tests\PhpStan\Fixture\Proof'); // error: class_alias() is never called: section 8 of the specification bans it.
+        $proofClass = 'Beffroi\Saml2\Model\Internal\Response\CoveringResponseSignature';
+        $forged = new $proofClass(...$unread);
+        $decryptor->decryptCovered(...$unread); // error: decryptCovered() is never called: section 8 of the specification bans it.
+        $first = $decryptor->decryptCovered(...); // error: decryptCovered() is never called: section 8 of the specification bans it.
         libxml_disable_entity_loader(true); // error: libxml_disable_entity_loader() is never called: section 8 of the specification bans it.
         simplexml_load_string(''); // error: simplexml_load_string() is never called: section 8 of the specification bans it.
         simplexml_load_file($name); // error: simplexml_load_file() is never called: section 8 of the specification bans it.

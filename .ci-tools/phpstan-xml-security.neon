@@ -244,6 +244,10 @@ parameters:
 		-
 			function: hash_hmac
 			allowedIn: []
+		# enc.md section 8: a name the rules confine or ban, given another under which it passes unread
+		-
+			function: class_alias
+			allowedIn: []
 
 parametersSchema:
 	bannedNames: listOf(string())
