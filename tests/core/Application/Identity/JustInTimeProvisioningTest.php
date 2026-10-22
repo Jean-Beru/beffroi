@@ -29,6 +29,7 @@ use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Core\Tests\Fixture\WritesAsTheyCome;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -60,6 +61,8 @@ final class JustInTimeProvisioningTest extends TestCase
 
     private MockClock $clock;
 
+    private WritesAsTheyCome $writes;
+
     private UserProvisioner $provisioner;
 
     private IdentityLinker $linker;
@@ -74,6 +77,7 @@ final class JustInTimeProvisioningTest extends TestCase
         $this->identities = new InMemoryLinkedIdentityRepository();
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-10-22T09:00:00+00:00');
+        $this->writes = new WritesAsTheyCome();
         $credentials = new InMemoryCredentialRepository();
         $this->provisioner = new UserProvisioner(
             $this->users,
@@ -93,6 +97,7 @@ final class JustInTimeProvisioningTest extends TestCase
             $this->linker,
             $this->events,
             $this->clock,
+            $this->writes,
         );
     }
 
@@ -163,6 +168,20 @@ final class JustInTimeProvisioningTest extends TestCase
         static::assertSame(self::PROVIDER, $announced[0]->provider);
         static::assertEquals($this->clock->now(), $announced[0]->occurredAt);
         static::assertSame($context, $announced[0]->context);
+    }
+
+    /**
+     * The person, its source and its linked identity are one unit, kept all or none; the refusals come before
+     * it, so a refused creation opens none.
+     */
+    #[Test]
+    public function aFirstSignInWritesThePersonAndItsLinkedIdentityAsOneUnit(): void
+    {
+        // When
+        $this->signIn();
+
+        // Then
+        static::assertSame(1, $this->writes->units);
     }
 
     /**
@@ -308,6 +327,7 @@ final class JustInTimeProvisioningTest extends TestCase
         static::assertNull($this->identities->find($this->tenant, self::PROVIDER, self::SUBJECT));
         static::assertNull($this->users->findByUsername($this->tenant, $address));
         static::assertSame([], $this->events->events);
+        static::assertSame(0, $this->writes->units);
     }
 
     /**

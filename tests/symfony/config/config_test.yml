@@ -825,6 +825,12 @@ services:
     test.beffroi.linked_identities:
         alias: Beffroi\Core\Port\LinkedIdentityRepositoryInterface
         public: true
+    test.beffroi.atomic_writes:
+        alias: Beffroi\Core\Port\AtomicWritesInterface
+        public: true
+    test.beffroi.user_provisioner:
+        alias: Beffroi\Core\Application\Identity\UserProvisioner
+        public: true
     test.beffroi.push_subscriptions:
         alias: Beffroi\Core\Port\PushSubscriptionRepositoryInterface
         public: true
