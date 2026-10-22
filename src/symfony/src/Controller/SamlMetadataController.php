@@ -8,7 +8,7 @@ use Beffroi\Bundle\Doctrine\TenantProvider;
 use Beffroi\Bundle\Saml\IdentityProviderRoutes;
 use Beffroi\Core\Exception\KeyNotFoundException;
 use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
-use Beffroi\Saml\Domain\Metadata\IdentityProviderMetadata;
+use Beffroi\Saml\Domain\Metadata\PublishedMetadata;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -39,7 +39,7 @@ final readonly class SamlMetadataController
         }
 
         return new Response($metadata->document, Response::HTTP_OK, [
-            'Content-Type' => IdentityProviderMetadata::CONTENT_TYPE,
+            'Content-Type' => PublishedMetadata::CONTENT_TYPE,
         ] + $metadata->headers);
     }
 }

@@ -12,7 +12,7 @@ use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
-use Beffroi\Saml\Domain\Metadata\IdentityProviderMetadata;
+use Beffroi\Saml\Domain\Metadata\PublishedMetadata;
 use function is_array;
 use function is_int;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
@@ -86,7 +86,7 @@ final readonly class SamlSection extends ConfigurationSection
                 // an environment placeholder is a number at runtime only, where the handler checks it again
                 if (is_int($cacheDuration) && is_int($stagingDelay)) {
                     try {
-                        IdentityProviderMetadata::assertCacheDuration($cacheDuration, $stagingDelay);
+                        PublishedMetadata::assertCacheDuration($cacheDuration, $stagingDelay);
                     } catch (InvalidArgumentException $refusal) {
                         throw new InvalidConfigurationException($refusal->getMessage(), 0, $refusal);
                     }

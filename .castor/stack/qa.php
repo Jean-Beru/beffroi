@@ -837,7 +837,7 @@ const INFECTION_STRICT_FILES = [
     // and forgets, and the handler and the writer that build it (section 6.1).
     'src/saml/src/Domain/Metadata/Certificate.php',
     'src/saml/src/Domain/Metadata/IdentityProviderDescription.php',
-    'src/saml/src/Domain/Metadata/IdentityProviderMetadata.php',
+    'src/saml/src/Domain/Metadata/PublishedMetadata.php',
     'src/saml/src/Application/Metadata/SigningCertificates.php',
     'src/saml/src/Application/Metadata/IdentityProviderMetadataHandler.php',
     'src/saml/src/Bridge/Model/ModelMetadataWriter.php',
