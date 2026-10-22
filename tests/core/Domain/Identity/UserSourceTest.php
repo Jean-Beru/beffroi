@@ -194,8 +194,8 @@ final class UserSourceTest extends TestCase
     }
 
     /**
-     * Issue #781: what the provider says now of the claims its source holds is what the profile says, and
-     * a claim it holds and no longer says is cleared, the provider being the one that answers for it.
+     * Issue #781: what the provider says now of the claims its source holds is what the profile says; what
+     * it does not hold, or does not say, is left as it was.
      */
     #[Test]
     public function anUpstreamSourceRewritesWhatItHoldsAsItsProviderSaysItNow(): void
@@ -211,7 +211,7 @@ final class UserSourceTest extends TestCase
         ]);
 
         // Then
-        static::assertEquals(new Profile(givenName: 'Alicia', nickname: 'ali'), $rewritten);
+        static::assertEquals(new Profile(givenName: 'Alicia', familyName: 'Liddell', nickname: 'ali'), $rewritten);
     }
 
     #[Test]

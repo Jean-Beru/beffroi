@@ -12,6 +12,7 @@ use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\UserRepositoryInterface;
+use function array_values;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -64,17 +65,16 @@ final readonly class DoctrineUserRepository extends DoctrineRepository implement
 
     /**
      * On the blind index of the address, as the username is found, under the projection the write used: the
-     * domain folded, the local part as it is written. No constraint holds the column unique, so the first
-     * row that matches is the answer.
+     * address folded whole. No constraint holds the column unique, so every row that matches is the answer.
      */
-    public function findByEmail(Tenant $tenant, EmailAddress $email): ?User
+    public function findAllByEmail(Tenant $tenant, EmailAddress $email): array
     {
         $column = BlindIndexedColumns::of(User::class, 'email');
 
-        return $this->repository()->findOneBy([
+        return array_values($this->repository()->findBy([
             'tenant' => $tenant,
             $column->tag => $this->indexes->of($column)->of($email->value),
-        ]);
+        ]));
     }
 
     public function save(User $user): void

@@ -10,22 +10,28 @@ use Beffroi\Core\Application\Credential\BreachedPasswordRefusal;
 use Beffroi\Core\Application\Credential\EnrolmentRefusal;
 use Beffroi\Core\Application\Identity\IdentityLinker;
 use Beffroi\Core\Application\Identity\JustInTimeProvisioning;
+use Beffroi\Core\Application\Identity\UpstreamProvisioningRefusalReason;
 use Beffroi\Core\Application\Identity\UpstreamProvisioningRefusedException;
 use Beffroi\Core\Application\Identity\UserProvisioner;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Beffroi\Core\Bridge\InMemory\InMemoryLinkedIdentityRepository;
 use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Beffroi\Core\Bridge\Password\NativePasswordHasher;
+use Beffroi\Core\Bridge\Uid\FixedUuidGenerator;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Domain\Event\PersonProvisioned;
 use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Identity\LinkedIdentity;
 use Beffroi\Core\Domain\Identity\Profile;
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\UpstreamProvider;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Identity\UserSource;
 use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
+use Beffroi\Core\Port\UuidGeneratorInterface;
 use Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
@@ -34,6 +40,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Issue #781, decision 0002: the person an upstream provider names at a sign-in through it, created at the
@@ -90,21 +97,14 @@ final class JustInTimeProvisioningTest extends TestCase
             $this->clock,
         );
         $this->linker = new IdentityLinker($this->identities, new SymfonyUuidGenerator(), $this->clock);
-        $this->provisioning = new JustInTimeProvisioning(
-            $this->identities,
-            $this->users,
-            $this->provisioner,
-            $this->linker,
-            $this->events,
-            $this->clock,
-            $this->writes,
-        );
+        $this->provisioning = $this->provisioningDrawing(new SymfonyUuidGenerator());
     }
 
     /**
-     * The acceptance of the issue, its first half: one person, named by its address, whose source is the
-     * provider and holds what that provider fills, its address verified, the provider answering for its
-     * domain.
+     * The acceptance of the issue, its first half: one person, whose source is the provider and holds what
+     * that provider fills and said, its address verified, the provider answering for its domain. Its
+     * username is its subject: it never signs in here with one (decision 0029), and an address would be a
+     * username that follows no change of address.
      */
     #[Test]
     public function aFirstSignInCreatesThePersonTheProviderNames(): void
@@ -115,7 +115,7 @@ final class JustInTimeProvisioningTest extends TestCase
         // Then
         static::assertSame($alice, $this->users->find($alice->id));
         static::assertSame($this->tenant, $alice->tenant);
-        static::assertSame(self::ADDRESS, $alice->username);
+        static::assertSame($alice->subject->value, $alice->username);
         static::assertSame(self::ADDRESS, $alice->email?->value);
         static::assertTrue($alice->emailVerified);
         static::assertEquals(new Profile(givenName: 'Alice', familyName: 'Liddell'), $alice->profile);
@@ -346,18 +346,17 @@ final class JustInTimeProvisioningTest extends TestCase
     #[Test]
     public function anAddressOutsideTheDomainsOfTheProviderIsRefused(): void
     {
-        // Then
-        $this->expectException(UpstreamProvisioningRefusedException::class);
-        $this->expectExceptionMessageIs('The upstream provider "https://idp.acme.example/saml" does not answer for the domain "initech.example".');
-
         // When
-        $this->signIn('alice@initech.example');
+        $refusal = $this->failToSignIn('alice@initech.example');
+
+        // Then
+        static::assertSame(UpstreamProvisioningRefusalReason::OutsideItsDomains, $refusal->reason);
     }
 
     /**
      * The acceptance of the issue: no existing account is linked on its own, linking one being spike 12's,
-     * after a local re-authentication. The address is matched as its blind index matches it, the domain
-     * folded.
+     * after a local re-authentication. The mailbox is matched as its blind index matches it, folded whole,
+     * so that a second person never holds the mailbox of a first under another spelling.
      */
     #[Test]
     #[DataProvider('provideAddressesBobHolds')]
@@ -366,12 +365,11 @@ final class JustInTimeProvisioningTest extends TestCase
         // Given
         $this->provisioner->create($this->tenant, 'bob', new EmailAddress('bob@acme.example'), true);
 
-        // Then
-        $this->expectException(UpstreamProvisioningRefusedException::class);
-        $this->expectExceptionMessageIs('Another person of this tenant holds the address the upstream provider "https://idp.acme.example/saml" gave, and no existing account is linked to it on its own.');
-
         // When
-        $this->signIn($address);
+        $refusal = $this->failToSignIn($address);
+
+        // Then
+        static::assertSame(UpstreamProvisioningRefusalReason::AddressHeld, $refusal->reason);
     }
 
     /**
@@ -381,6 +379,83 @@ final class JustInTimeProvisioningTest extends TestCase
     {
         yield 'as it was written' => ['bob@acme.example'];
         yield 'its domain in another case' => ['bob@ACME.example'];
+        yield 'its local part in another case' => ['Bob@acme.example'];
+    }
+
+    /**
+     * A username is no address: a local person named by the address the provider gives holds no mailbox,
+     * and the person the provider names is created beside them, under a username of its own.
+     */
+    #[Test]
+    public function aLocalUsernameThatIsTheAddressKeepsNobodyFromBeingCreated(): void
+    {
+        // Given
+        $local = $this->provisioner->create($this->tenant, self::ADDRESS);
+
+        // When
+        $alice = $this->signIn();
+
+        // Then
+        static::assertFalse($alice->id->equals($local->id));
+        static::assertNotNull($this->identities->find($this->tenant, self::PROVIDER, self::SUBJECT));
+    }
+
+    /**
+     * The subject drawn for the person is checked before the unit like every other collision, so that
+     * nothing raised inside it names anybody.
+     */
+    #[Test]
+    #[DataProvider('provideWhatTheDrawnSubjectIsAlready')]
+    public function aDrawnSubjectAPersonAlreadyHasIsRefused(string $username, ?Subject $subject): void
+    {
+        // Given
+        $drawn = Uuid::fromString('5f0c7a5e-9b0e-4c8e-9a51-0d4b8d3c2a11');
+        $this->provisioner->create($this->tenant, $username, subject: $subject);
+        $this->provisioning = $this->provisioningDrawing(new FixedUuidGenerator([$drawn]));
+
+        // When
+        $refusal = $this->failToSignIn(self::ADDRESS);
+
+        // Then
+        static::assertSame(UpstreamProvisioningRefusalReason::DrawnSubjectTaken, $refusal->reason);
+    }
+
+    /**
+     * @return iterable<string, array{string, ?Subject}>
+     */
+    public static function provideWhatTheDrawnSubjectIsAlready(): iterable
+    {
+        yield 'the subject of a person' => ['bob', new Subject('5f0c7a5e-9b0e-4c8e-9a51-0d4b8d3c2a11')];
+        yield 'the username of a person' => ['5f0c7a5e-9b0e-4c8e-9a51-0d4b8d3c2a11', null];
+    }
+
+    /**
+     * Another sign-in links the same subject between the lookup and the unit: the same refusal, which does
+     * not say whom the identity is, and nothing of what the linker said carried along.
+     */
+    #[Test]
+    public function anIdentityLinkedMeanwhileIsRefusedWithoutNamingItsPerson(): void
+    {
+        // Given
+        $bob = $this->provisioner->create($this->tenant, 'bob');
+        $this->linker->link($bob, self::PROVIDER, self::SUBJECT);
+        $this->provisioning = $this->provisioningDrawing(new SymfonyUuidGenerator(), new class implements LinkedIdentityRepositoryInterface {
+            public function find(Tenant $tenant, string $provider, string $subject): ?LinkedIdentity
+            {
+                return null;
+            }
+
+            public function save(LinkedIdentity $identity): void
+            {
+            }
+        });
+
+        // When
+        $refusal = $this->failToSignIn(self::ADDRESS);
+
+        // Then
+        static::assertSame(UpstreamProvisioningRefusalReason::IdentityLinkedMeanwhile, $refusal->reason);
+        static::assertNull($refusal->getPrevious());
     }
 
     /**
@@ -403,7 +478,6 @@ final class JustInTimeProvisioningTest extends TestCase
 
         // Then
         static::assertNull($this->identities->find($this->tenant, self::PROVIDER, self::SUBJECT));
-        static::assertNull($this->users->findByUsername($this->tenant, $address));
         static::assertSame([], $this->events->events);
         static::assertSame(0, $this->writes->units);
     }
@@ -446,54 +520,64 @@ final class JustInTimeProvisioningTest extends TestCase
      */
     #[Test]
     #[DataProvider('provideAddressesASecondSignInCannotWrite')]
-    public function aSecondSignInThatWouldWriteAnAddressTheProviderCannotWriteIsRefused(string $address, string $message): void
+    public function aSecondSignInThatWouldWriteAnAddressTheProviderCannotWriteIsRefused(string $address, UpstreamProvisioningRefusalReason $reason): void
     {
         // Given
         $this->provisioner->create($this->tenant, 'bob', new EmailAddress('bob@acme.example'), true);
         $this->signIn();
 
-        // Then
-        $this->expectException(UpstreamProvisioningRefusedException::class);
-        $this->expectExceptionMessageIs($message);
-
         // When
-        $this->signIn($address);
+        $refusal = $this->failToSignIn($address);
+
+        // Then
+        static::assertSame($reason, $refusal->reason);
     }
 
     /**
-     * @return iterable<string, array{string, string}>
+     * @return iterable<string, array{string, UpstreamProvisioningRefusalReason}>
      */
     public static function provideAddressesASecondSignInCannotWrite(): iterable
     {
-        yield 'outside the domains of the provider' => [
-            'alice@initech.example',
-            'The upstream provider "https://idp.acme.example/saml" does not answer for the domain "initech.example".',
-        ];
-        yield 'held by another person' => [
-            'bob@acme.example',
-            'Another person of this tenant holds the address the upstream provider "https://idp.acme.example/saml" gave, and no existing account is linked to it on its own.',
-        ];
+        yield 'outside the domains of the provider' => ['alice@initech.example', UpstreamProvisioningRefusalReason::OutsideItsDomains];
+        yield 'held by another person' => ['bob@acme.example', UpstreamProvisioningRefusalReason::AddressHeld];
+        yield 'held by another person under another spelling' => ['Bob@acme.example', UpstreamProvisioningRefusalReason::AddressHeld];
     }
 
+    /**
+     * Both refusals come before the unit, the contract of the port: the one the first sign-in spent is the
+     * only one, and the person, its source and its snapshot are what they were.
+     */
     #[Test]
-    public function aRefusedSecondSignInWritesNothing(): void
+    #[DataProvider('provideRefusedSecondSignIns')]
+    public function aRefusedSecondSignInWritesNothing(string $address): void
     {
         // Given
+        $this->provisioner->create($this->tenant, 'bob', new EmailAddress('bob@acme.example'), true);
         $alice = $this->signIn();
 
         // When
         try {
-            $this->signIn('alice@initech.example', [
+            $this->signIn($address, [
                 'given_name' => 'Alicia',
             ]);
         } catch (UpstreamProvisioningRefusedException) {
         }
 
         // Then
+        static::assertSame(1, $this->writes->units);
         static::assertSame(self::ADDRESS, $alice->email?->value);
         static::assertEquals(new Profile(givenName: 'Alice', familyName: 'Liddell'), $alice->profile);
         static::assertEquals(UserSource::upstream(self::PROVIDER, ['email', 'given_name', 'family_name']), $alice->source);
         static::assertSame(self::ADDRESS, $this->identities->of($alice)[0]->claims['email']);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideRefusedSecondSignIns(): iterable
+    {
+        yield 'outside the domains of the provider' => ['alice@initech.example'];
+        yield 'held by another person' => ['bob@acme.example'];
     }
 
     /**
@@ -515,20 +599,66 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
-     * An address the person holds in another case of its domain is still theirs: the blind index finds them,
-     * and they are nobody else.
+     * The mailbox the person holds, spelt in another case, is still theirs, and it is not asked again: a
+     * local person who shares it with them, which nothing forbids, is not a reason to refuse them.
      */
     #[Test]
-    public function anAddressThePersonHoldsInAnotherCaseOfItsDomainIsWritten(): void
+    #[DataProvider('provideSpellingsOfAlicesMailbox')]
+    public function theMailboxThePersonHoldsSpeltAnotherWayIsWritten(string $address): void
     {
         // Given
         $alice = $this->signIn();
+        $this->provisioner->create($this->tenant, 'alice-at-home', new EmailAddress(self::ADDRESS));
 
         // When
-        $this->signIn('alice@ACME.example');
+        $this->signIn($address);
 
         // Then
-        static::assertSame('alice@ACME.example', $alice->email?->value);
+        static::assertSame($address, $alice->email?->value);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideSpellingsOfAlicesMailbox(): iterable
+    {
+        yield 'its domain in another case' => ['alice@ACME.example'];
+        yield 'its local part in another case' => ['Alice@acme.example'];
+    }
+
+    /**
+     * The use case on the adapters of the suite, the subject of a person it creates drawn from those
+     * identifiers, and what it looks a linked identity up in, when a test says it.
+     */
+    private function provisioningDrawing(UuidGeneratorInterface $uuids, ?LinkedIdentityRepositoryInterface $identities = null): JustInTimeProvisioning
+    {
+        return new JustInTimeProvisioning(
+            $identities ?? $this->identities,
+            $this->users,
+            $this->provisioner,
+            $this->linker,
+            $this->events,
+            $this->clock,
+            $this->writes,
+            $uuids,
+        );
+    }
+
+    /**
+     * The refusal a sign-in through the provider of the suite raised, which a test reads the reason of, the
+     * message being the same whatever it is.
+     */
+    private function failToSignIn(string $address): UpstreamProvisioningRefusedException
+    {
+        try {
+            $this->signIn($address);
+        } catch (UpstreamProvisioningRefusedException $refusal) {
+            static::assertSame('The person an upstream provider named is not one this provider creates or writes.', $refusal->getMessage());
+
+            return $refusal;
+        }
+
+        static::fail('The sign-in was not refused.');
     }
 
     /**

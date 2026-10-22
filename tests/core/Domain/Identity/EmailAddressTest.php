@@ -74,8 +74,8 @@ final class EmailAddressTest extends TestCase
     }
 
     /**
-     * RFC 5321 §2.4: the local part is the receiving server's business and so case-sensitive to everyone
-     * else, the domain is not.
+     * Issue #781: one mailbox whatever the case it is written in, the local part included, every server a
+     * person reads their mail on ignoring it.
      */
     #[Test]
     #[DataProvider('provideMailboxes')]
@@ -92,7 +92,8 @@ final class EmailAddressTest extends TestCase
     {
         yield 'as it was written' => ['alice@acme.example', 'alice@acme.example', true];
         yield 'the domain in another case' => ['alice@acme.example', 'alice@ACME.example', true];
-        yield 'the local part in another case' => ['alice@acme.example', 'Alice@acme.example', false];
+        yield 'the local part in another case' => ['alice@acme.example', 'Alice@acme.example', true];
+        yield 'a local part in Unicode in another case' => ['zoé@acme.example', 'ZOÉ@acme.example', true];
         yield 'another domain' => ['alice@acme.example', 'alice@acme.test', false];
         yield 'another local part' => ['alice@acme.example', 'bob@acme.example', false];
     }

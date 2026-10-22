@@ -11,6 +11,7 @@ use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\LinkedIdentity;
 use Beffroi\Core\Domain\Identity\UpstreamProvider;
+use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\AtomicWritesInterface;
 use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
@@ -67,6 +68,7 @@ final class JustInTimeProvisioningTest extends DatabaseTestCase
             new RecordingEventDispatcher(),
             $clock,
             self::service('test.beffroi.atomic_writes', AtomicWritesInterface::class),
+            new SymfonyUuidGenerator(),
         );
 
         // When
@@ -86,9 +88,8 @@ final class JustInTimeProvisioningTest extends DatabaseTestCase
 
         // Then
         static::assertSame(1, $identities->refused);
-        self::reload();
-        static::assertNull(self::users()->findByEmail(self::tenant(), new EmailAddress(self::ADDRESS)));
-        static::assertNull(self::users()->findByUsername(self::tenant(), self::ADDRESS));
+        static::assertSame([], self::users()->findAllByEmail(self::tenant(), new EmailAddress(self::ADDRESS)));
+        static::assertSame([], self::entityManager()->getUnitOfWork()->getIdentityMap()[User::class] ?? []);
     }
 
     private static function users(): UserRepositoryInterface

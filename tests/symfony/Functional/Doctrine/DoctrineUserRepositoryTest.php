@@ -189,10 +189,11 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
         self::reload();
 
         // When
-        $found = self::users()->findByEmail(self::tenant(), new EmailAddress($address));
+        $found = self::users()->findAllByEmail(self::tenant(), new EmailAddress($address));
 
         // Then
-        static::assertTrue($bob->id->equals($found?->id));
+        static::assertCount(1, $found);
+        static::assertTrue($bob->id->equals($found[0]->id));
     }
 
     /**
@@ -202,26 +203,32 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
     {
         yield 'as it was written' => ['Bob@acme.example'];
         yield 'its domain in another case' => ['Bob@ACME.Example'];
+        // one mailbox however its local part is written, so that no second person holds it under another
+        // spelling (issue #781)
+        yield 'its local part in another case' => ['bob@acme.example'];
     }
 
     /**
-     * The local part is the receiving server's business, and so case-sensitive to everyone else (RFC 5321
-     * §2.4): an address that differs by it is another address.
+     * Nothing says two persons may not share an address, so the lookup answers every one of them, and what
+     * asks reads no order into it.
      */
     #[Test]
-    public function anAddressWhoseLocalPartIsInAnotherCaseIsAnotherAddress(): void
+    public function everyPersonWhoHoldsAnAddressIsFound(): void
     {
         // Given
+        $alice = self::user();
+        $alice->changeEmail(new EmailAddress('Shared@acme.example'), false, self::now());
+        self::users()->save($alice);
         $bob = self::user('bob', 'bob-subject');
-        $bob->changeEmail(new EmailAddress('Bob@acme.example'), false, self::now());
+        $bob->changeEmail(new EmailAddress('shared@acme.example'), false, self::now());
         self::users()->save($bob);
         self::reload();
 
         // When
-        $found = self::users()->findByEmail(self::tenant(), new EmailAddress('bob@acme.example'));
+        $found = self::users()->findAllByEmail(self::tenant(), new EmailAddress('shared@acme.example'));
 
         // Then
-        static::assertNull($found);
+        static::assertCount(2, $found);
     }
 
     /**
@@ -274,7 +281,7 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
             static fn (UserRepositoryInterface $users): ?User => $users->findByUsername(self::tenant(), 'ALICE'),
         ];
         yield 'an unknown address' => [
-            static fn (UserRepositoryInterface $users): ?User => $users->findByEmail(self::tenant(), new EmailAddress('carol@example.com')),
+            static fn (UserRepositoryInterface $users): ?User => $users->findAllByEmail(self::tenant(), new EmailAddress('carol@example.com'))[0] ?? null,
         ];
         yield 'an unknown identifier' => [
             static fn (UserRepositoryInterface $users): ?User => $users->find(Uuid::v7()),

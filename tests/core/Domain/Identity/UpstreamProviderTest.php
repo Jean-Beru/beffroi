@@ -70,7 +70,20 @@ final class UpstreamProviderTest extends TestCase
             self::PROVIDER,
             ['acme.example', ''],
             [],
-            'A domain the upstream provider "https://idp.acme.example/saml" answers for is named.',
+            'The upstream provider "https://idp.acme.example/saml" answers for "", which is no domain an address carries.',
+        ];
+        // an address carries a domain in ASCII, a label in Unicode being written as its A-label
+        yield 'a domain in Unicode' => [
+            self::PROVIDER,
+            ['café.example'],
+            [],
+            'The upstream provider "https://idp.acme.example/saml" answers for "café.example", which is no domain an address carries.',
+        ];
+        yield 'a domain with a final dot' => [
+            self::PROVIDER,
+            ['acme.example.'],
+            [],
+            'The upstream provider "https://idp.acme.example/saml" answers for "acme.example.", which is no domain an address carries.',
         ];
         // the address is not a claim of the profile: every provider holds it, its domains being read from it
         yield 'the address among the claims of the profile' => [
