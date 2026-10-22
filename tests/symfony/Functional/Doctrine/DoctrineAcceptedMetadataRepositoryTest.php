@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
-use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Domain\Metadata\AcceptedMetadata;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
 use DateTimeImmutable;
@@ -81,12 +82,12 @@ final class DoctrineAcceptedMetadataRepositoryTest extends DatabaseTestCase
 
         // Then
         static::assertTrue($registered);
-        static::assertInstanceOf(AcceptedMetadata::class, self::repository()->find(self::tenant(), self::SIGNED));
+        static::assertInstanceOf(AcceptedServiceProviderMetadata::class, self::repository()->find(self::tenant(), self::SIGNED));
     }
 
     private static function accepted(string $entityId, string $document): AcceptedMetadata
     {
-        return new AcceptedMetadata(Uuid::v7(), self::tenant(), $entityId, $document, null, self::now());
+        return new AcceptedServiceProviderMetadata(Uuid::v7(), self::tenant(), $entityId, $document, null, self::now());
     }
 
     private static function repository(): AcceptedMetadataRepositoryInterface

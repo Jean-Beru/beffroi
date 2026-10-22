@@ -12,7 +12,7 @@ use Beffroi\Core\Port\CredentialRepositoryInterface;
 use Beffroi\Core\Port\SecretSealerInterface;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Totps;
-use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
 use Beffroi\Saml\Domain\SingleLogout\SessionParticipation;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Port\SessionParticipationRepositoryInterface;
@@ -265,7 +265,7 @@ final class FormTargetTest extends PasskeyTestCase
     {
         $session = $this->signIn(self::user('alice'));
         self::service('test.beffroi.saml_accepted_metadata', AcceptedMetadataRepositoryInterface::class)
-            ->save(new AcceptedMetadata(
+            ->save(new AcceptedServiceProviderMetadata(
                 Uuid::v7(),
                 self::tenant(),
                 ServiceProviderDocuments::SIGNED,

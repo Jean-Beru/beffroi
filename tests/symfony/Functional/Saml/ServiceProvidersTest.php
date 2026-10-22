@@ -7,12 +7,13 @@ namespace Beffroi\Bundle\Tests\Functional\Saml;
 use Beffroi\Bundle\Command\SamlServiceProviderForgetCommand;
 use Beffroi\Bundle\Command\SamlServiceProviderRefreshCommand;
 use Beffroi\Bundle\Doctrine\TenantProvider;
-use Beffroi\Bundle\Message\RefreshTheServiceProviderMetadata;
-use Beffroi\Bundle\MessageHandler\RefreshTheServiceProviderMetadataHandler;
+use Beffroi\Bundle\Message\RefreshTheSamlMetadata;
+use Beffroi\Bundle\MessageHandler\RefreshTheSamlMetadataHandler;
 use Beffroi\Bundle\Tests\Fixture\RecordedMessages;
 use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
-use Beffroi\Saml\Application\ServiceProvider\ServiceProviderMetadataRefresh;
-use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Application\Metadata\MetadataRefresh;
+use Beffroi\Saml\Domain\Metadata\AcceptedMetadata;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
 use Beffroi\Saml2\Model\Metadata\Binding;
@@ -104,7 +105,7 @@ final class ServiceProvidersTest extends ConsoleTestCase
     {
         // Given
         self::service('test.beffroi.saml_accepted_metadata', AcceptedMetadataRepositoryInterface::class)
-            ->save(new AcceptedMetadata(
+            ->save(new AcceptedServiceProviderMetadata(
                 Uuid::v7(),
                 self::tenant(),
                 ServiceProviderDocuments::SIGNED,
@@ -248,10 +249,10 @@ final class ServiceProvidersTest extends ConsoleTestCase
         self::publish(ServiceProviderDocuments::simpleSamlPhp());
 
         // When
-        self::service('command.bus', MessageBusInterface::class)->dispatch(new RefreshTheServiceProviderMetadata());
+        self::service('command.bus', MessageBusInterface::class)->dispatch(new RefreshTheSamlMetadata());
 
         // Then
-        static::assertInstanceOf(AcceptedMetadata::class, self::accepted());
+        static::assertInstanceOf(AcceptedServiceProviderMetadata::class, self::accepted());
     }
 
     /**
@@ -264,14 +265,14 @@ final class ServiceProvidersTest extends ConsoleTestCase
         // Given
         self::publish(ServiceProviderDocuments::simpleSamlPhpWithoutEncryptionKey());
         $said = new RecordedMessages();
-        $step = new RefreshTheServiceProviderMetadataHandler(
+        $step = new RefreshTheSamlMetadataHandler(
             self::service(TenantProvider::class, TenantProvider::class),
-            self::service(ServiceProviderMetadataRefresh::class, ServiceProviderMetadataRefresh::class),
+            [self::service('beffroi.saml.service_providers.refresh', MetadataRefresh::class)],
             $said,
         );
 
         // When
-        $step(new RefreshTheServiceProviderMetadata());
+        $step(new RefreshTheSamlMetadata());
 
         // Then
         static::assertSame(

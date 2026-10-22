@@ -15,7 +15,7 @@ use Beffroi\Saml\Bridge\Model\DeclaredServiceProviderReader;
 use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataReader;
 use Beffroi\Saml\Bridge\Model\ModelSignOutNotifier;
 use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
-use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
 use Beffroi\Saml\Domain\SingleLogout\RedirectedMessage;
 use Beffroi\Saml\Domain\SingleLogout\SentSignOutNotice;
 use Beffroi\Saml\Domain\SingleLogout\SignOutNotice;
@@ -281,7 +281,7 @@ final class ModelSignOutNotifierTest extends TestCase
      */
     private function accept(array $singleLogoutServices): void
     {
-        $this->accepted->save(new AcceptedMetadata(
+        $this->accepted->save(new AcceptedServiceProviderMetadata(
             Uuid::v7(),
             $this->tenant,
             ServiceProviderDocuments::SIGNED,

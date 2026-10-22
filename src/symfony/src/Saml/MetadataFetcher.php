@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Saml;
 
 use Beffroi\Core\Exception\ExceptionTrail;
-use Beffroi\Saml\Domain\ServiceProvider\MetadataLocation;
+use Beffroi\Saml\Domain\Metadata\MetadataLocation;
 use Beffroi\Saml\Exception\MetadataRefusedException;
 use Beffroi\Saml\Port\MetadataFetcherInterface;
 use function fclose;

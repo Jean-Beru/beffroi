@@ -69,7 +69,8 @@ use Beffroi\Core\Domain\Event\UserAuthenticated;
 use Beffroi\Core\Domain\Journal\JournalEntry;
 use Beffroi\Core\Port\JournalInterface;
 use Symfony\Component\Uid\Uuid;
-use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Domain\Metadata\AcceptedMetadata;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
 use function str_replace;
@@ -283,7 +284,7 @@ final readonly class SealedRows
      */
     public function serviceProviderMetadata(): AcceptedMetadata
     {
-        $metadata = new AcceptedMetadata(
+        $metadata = new AcceptedServiceProviderMetadata(
             Uuid::v7(),
             $this->tenant,
             ServiceProviderDocuments::SIMPLESAMLPHP,

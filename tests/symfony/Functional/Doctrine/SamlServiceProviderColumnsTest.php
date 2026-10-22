@@ -6,7 +6,8 @@ namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
 use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
-use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Domain\Metadata\AcceptedMetadata;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
 use Doctrine\DBAL\Connection;
@@ -32,7 +33,7 @@ final class SamlServiceProviderColumnsTest extends DatabaseTestCase
         $read = self::repository()->find(self::tenant(), ServiceProviderDocuments::SIMPLESAMLPHP);
 
         // Then
-        static::assertInstanceOf(AcceptedMetadata::class, $read);
+        static::assertInstanceOf(AcceptedServiceProviderMetadata::class, $read);
         static::assertSame($written->document, $read->document);
     }
 

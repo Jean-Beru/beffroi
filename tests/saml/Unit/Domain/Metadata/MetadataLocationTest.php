@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Saml\Tests\Unit\Domain\ServiceProvider;
+namespace Beffroi\Saml\Tests\Unit\Domain\Metadata;
 
 use Beffroi\Core\Exception\InvalidArgumentException;
-use Beffroi\Saml\Domain\ServiceProvider\MetadataLocation;
+use Beffroi\Saml\Domain\Metadata\MetadataLocation;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -39,7 +39,7 @@ final class MetadataLocationTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIs('The metadata of a service provider are read from an https URL or from the absolute path of a file (spec/saml.md S-5).');
+        $this->expectExceptionMessageIs('The metadata of a service provider or of an identity provider are read from an https URL or from the absolute path of a file (spec/saml.md S-5, S-42).');
 
         // When
         new MetadataLocation($location);

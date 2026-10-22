@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Saml\Tests\Unit\Domain\ServiceProvider;
+namespace Beffroi\Saml\Tests\Unit\Domain\Metadata;
 
 use Beffroi\Core\Domain\PersonalData\Sealed;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
-use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Domain\Metadata\AcceptedMetadata;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
 use Beffroi\Saml\Domain\ServiceProvider\ServiceProviderMetadata;
 use Beffroi\Saml\Exception\MetadataRefusedException;
 use DateTimeImmutable;
@@ -242,7 +243,7 @@ final class AcceptedMetadataTest extends TestCase
         $this->expectExceptionMessageIs('An accepted metadata document holds the bytes that were read (spec/saml.md S-8).');
 
         // When
-        new AcceptedMetadata(Uuid::v7(), Fixtures::tenant(), self::ENTITY_ID, '', null, Fixtures::now());
+        new AcceptedServiceProviderMetadata(Uuid::v7(), Fixtures::tenant(), self::ENTITY_ID, '', null, Fixtures::now());
     }
 
     /**
@@ -269,7 +270,7 @@ final class AcceptedMetadataTest extends TestCase
     public function theDocumentIsSealedInTheFamilyOfItsTable(): void
     {
         // When
-        $fields = AcceptedMetadata::classifiedFields();
+        $fields = AcceptedServiceProviderMetadata::classifiedFields();
 
         // Then
         static::assertEquals(new Sealed('saml_service_provider'), $fields['document']);
@@ -277,7 +278,7 @@ final class AcceptedMetadataTest extends TestCase
 
     private static function accepted(?DateTimeImmutable $validUntil): AcceptedMetadata
     {
-        return new AcceptedMetadata(Uuid::v7(), Fixtures::tenant(), self::ENTITY_ID, self::ACCEPTED, $validUntil, Fixtures::now());
+        return new AcceptedServiceProviderMetadata(Uuid::v7(), Fixtures::tenant(), self::ENTITY_ID, self::ACCEPTED, $validUntil, Fixtures::now());
     }
 
     /**

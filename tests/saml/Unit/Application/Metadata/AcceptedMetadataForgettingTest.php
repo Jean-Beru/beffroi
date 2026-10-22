@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Saml\Tests\Unit\Application\ServiceProvider;
+namespace Beffroi\Saml\Tests\Unit\Application\Metadata;
 
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\Fixtures;
-use Beffroi\Saml\Application\ServiceProvider\AcceptedMetadataForgetting;
-use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Application\Metadata\AcceptedMetadataForgetting;
+use Beffroi\Saml\Domain\Metadata\AcceptedMetadata;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
 use Beffroi\Saml\Tests\Fixture\InMemoryAcceptedMetadata;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
@@ -66,7 +67,7 @@ final class AcceptedMetadataForgettingTest extends TestCase
 
         // Then
         static::assertFalse($forgotten);
-        static::assertInstanceOf(AcceptedMetadata::class, $this->accepted->find($this->tenant, self::ENTITY_ID));
+        static::assertInstanceOf(AcceptedServiceProviderMetadata::class, $this->accepted->find($this->tenant, self::ENTITY_ID));
     }
 
     /**
@@ -85,12 +86,12 @@ final class AcceptedMetadataForgettingTest extends TestCase
 
         // Then
         static::assertFalse($forgotten);
-        static::assertInstanceOf(AcceptedMetadata::class, $this->accepted->find($other, self::ENTITY_ID));
+        static::assertInstanceOf(AcceptedServiceProviderMetadata::class, $this->accepted->find($other, self::ENTITY_ID));
     }
 
     private static function accepted(Tenant $tenant, string $entityId): AcceptedMetadata
     {
-        return new AcceptedMetadata(
+        return new AcceptedServiceProviderMetadata(
             Uuid::v7(),
             $tenant,
             $entityId,

@@ -322,12 +322,17 @@ use Beffroi\Saml\Port\MetadataWriterInterface;
 use Beffroi\Saml\Port\ServiceProviderMetadataWriterInterface;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineAcceptedMetadataRepository;
 use Beffroi\Bundle\Saml\MetadataFetcher;
-use Beffroi\Saml\Application\ServiceProvider\ServiceProviderMetadataRefresh;
+use Beffroi\Saml\Application\Metadata\MetadataRefresh;
+use Beffroi\Saml\Application\ServiceProvider\ServiceProviderRole;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
+use Beffroi\Bundle\Command\SamlServiceProviderRefreshCommand;
+use Beffroi\Bundle\Command\SamlServiceProviderForgetCommand;
+use Beffroi\Bundle\MessageHandler\RefreshTheSamlMetadataHandler;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataReader;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Port\CanForgetAcceptedMetadataInterface;
-use Beffroi\Saml\Application\ServiceProvider\AcceptedMetadataForgetting;
+use Beffroi\Saml\Application\Metadata\AcceptedMetadataForgetting;
 use Beffroi\Saml\Port\MetadataFetcherInterface;
 use Beffroi\Saml\Port\ServiceProviderMetadataReaderInterface;
 use Beffroi\Saml\Port\ServedClaimsInterface;
@@ -1892,11 +1897,27 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ServiceProviderMetadataReaderInterface::class, ModelServiceProviderMetadataReader::class);
     $services->set(MetadataFetcher::class);
     $services->alias(MetadataFetcherInterface::class, MetadataFetcher::class);
-    $services->set(DoctrineAcceptedMetadataRepository::class);
+    // the rows of the service providers, which single sign-on and single logout read through the port; the metadata
+    // of every role are refreshed by one procedure (MetadataRefresh), built with the role and the rows of its table,
+    // and every refresh is tagged for the hourly step of the schedule (spec/saml.md section 6.2, S-42)
+    $services->set(DoctrineAcceptedMetadataRepository::class)->arg('$entity', AcceptedServiceProviderMetadata::class);
     $services->alias(AcceptedMetadataRepositoryInterface::class, DoctrineAcceptedMetadataRepository::class);
     $services->alias(CanForgetAcceptedMetadataInterface::class, DoctrineAcceptedMetadataRepository::class);
-    $services->set(ServiceProviderMetadataRefresh::class);
-    $services->set(AcceptedMetadataForgetting::class);
+    $services->set(ServiceProviderRole::class);
+    $services
+        ->set('beffroi.saml.service_providers.refresh', MetadataRefresh::class)
+        ->args([
+            '$role' => service(ServiceProviderRole::class),
+            '$accepted' => service(DoctrineAcceptedMetadataRepository::class),
+        ])
+        ->tag(RefreshTheSamlMetadataHandler::TAG);
+    $services->set('beffroi.saml.service_providers.forgetting', AcceptedMetadataForgetting::class)->args([
+        '$accepted' => service(DoctrineAcceptedMetadataRepository::class),
+        '$forgetting' => service(DoctrineAcceptedMetadataRepository::class),
+    ]);
+    $services->get(SamlServiceProviderRefreshCommand::class)->arg('$refresh', service('beffroi.saml.service_providers.refresh'));
+    $services->get(SamlServiceProviderForgetCommand::class)->arg('$forgetting', service('beffroi.saml.service_providers.forgetting'));
+    $services->get(RefreshTheSamlMetadataHandler::class)->arg('$refreshes', tagged_iterator(RefreshTheSamlMetadataHandler::TAG));
     // beffroi/saml: single sign-on (spec/saml.md section 6.4), a request received over either binding and validated by
     // the model, answered from the session of the browser or after its login, the request waiting in its HTTP session
     // (S-18); the assertion signed by the active SAML key of the tenant, opened by the KMS once per process to sign,

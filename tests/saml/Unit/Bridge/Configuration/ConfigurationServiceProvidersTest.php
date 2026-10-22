@@ -9,7 +9,7 @@ use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use Beffroi\Saml\Domain\ServiceProvider\AttributeMapping;
 use Beffroi\Saml\Domain\ServiceProvider\AttributeNameFormat;
-use Beffroi\Saml\Domain\ServiceProvider\MetadataLocation;
+use Beffroi\Saml\Domain\Metadata\MetadataLocation;
 use Beffroi\Saml\Domain\ServiceProvider\ServiceProvider;
 use Beffroi\Saml\Tests\Fixture\FixedClaims;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
@@ -230,7 +230,7 @@ final class ConfigurationServiceProvidersTest extends TestCase
         yield 'no metadata' => [[], '"metadata" is a string.'];
         yield 'a plain http location' => [
             ['metadata' => 'http://sp.example.com/saml/metadata'],
-            'The metadata of a service provider are read from an https URL or from the absolute path of a file (spec/saml.md S-5).',
+            'The metadata of a service provider or of an identity provider are read from an https URL or from the absolute path of a file (spec/saml.md S-5, S-42).',
         ];
         yield 'a signer that is not a string' => [['metadata' => self::LOCATION, 'metadata_signers' => [1]], '"metadata_signers" is a string.'];
         yield 'a signer that is not base64' => [

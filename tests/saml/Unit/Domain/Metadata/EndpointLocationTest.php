@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Saml\Tests\Unit\Domain\ServiceProvider;
+namespace Beffroi\Saml\Tests\Unit\Domain\Metadata;
 
-use Beffroi\Saml\Domain\ServiceProvider\EndpointLocation;
+use Beffroi\Saml\Domain\Metadata\EndpointLocation;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Command;
 
-use Beffroi\Saml\Application\ServiceProvider\ServiceProviderMetadataRefresh;
+use Beffroi\Saml\Application\Metadata\MetadataRefresh;
 use Beffroi\Saml\Domain\ServiceProvider\ServiceProvider;
 use Beffroi\Saml\Port\ServiceProvidersInterface;
 use function sprintf;
@@ -16,7 +16,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 /**
  * The metadata of the service providers of the tenant read now (beffroi/saml, spec/saml.md section 6.2): a service
  * provider declared in the configuration is registered the first time, and refreshed every time after. The hourly
- * step of the schedule does the same thing with the same object (`RefreshTheServiceProviderMetadata`); this is how an
+ * step of the schedule does the same thing with the same object (`RefreshTheSamlMetadata`); this is how an
  * operator registers a service provider the day it is declared, and reads why its metadata were refused.
  *
  * It registers only what the configuration declares: a service provider is declared in "beffroi.yaml" and nowhere
@@ -30,10 +30,13 @@ final readonly class SamlServiceProviderRefreshCommand
 {
     public const string NAME = 'beffroi:saml:service-provider:refresh';
 
+    /**
+     * @param MetadataRefresh<ServiceProvider> $refresh the refresh of the service providers
+     */
     public function __construct(
         private ConfiguredTenant $tenant,
         private ServiceProvidersInterface $serviceProviders,
-        private ServiceProviderMetadataRefresh $refresh,
+        private MetadataRefresh $refresh,
     ) {
     }
 
