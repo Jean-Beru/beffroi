@@ -841,6 +841,12 @@ const INFECTION_STRICT_FILES = [
     'src/saml/src/Application/Metadata/SigningCertificates.php',
     'src/saml/src/Application/Metadata/IdentityProviderMetadataHandler.php',
     'src/saml/src/Bridge/Model/ModelMetadataWriter.php',
+    // beffroi/saml, section 9: the service provider of a tenant, its entity ID of its own, what its metadata say, and
+    // the handler and the writer that build them (section 6.9).
+    'src/saml/src/Domain/Metadata/ServiceProviderEndpoints.php',
+    'src/saml/src/Domain/Metadata/ServiceProviderDescription.php',
+    'src/saml/src/Application/Metadata/ServiceProviderMetadataHandler.php',
+    'src/saml/src/Bridge/Model/ModelServiceProviderMetadataWriter.php',
     // beffroi/saml, section 9: the service providers of a tenant, their declaration, the reading of their metadata and
     // the document kept against a rollback (section 6.2).
     'src/saml/src/Domain/ServiceProvider/AcceptedMetadata.php',
