@@ -44,9 +44,12 @@ concurrency:
 # workflow, and nothing here reads their result, so no merge waits on them.
 
 jobs:
+  # Two self-hosted runners on kloude, one job at a time each: "kloude-light" (3 CPU, 6 GB) takes the jobs that wait
+  # mostly on the network and the disk, "kloude" (6 CPU, 8 GB) the suite with its coverage and the mutation testing,
+  # which use every core they are given, and the conformance suite of "conformance.yml", which needs the memory.
   pre_checks:
     name: "0️⃣ Pre-checks"
-    runs-on: [self-hosted, kloude]
+    runs-on: [self-hosted, kloude-light]
     steps:
       - uses: actions/checkout@v7
       - name: "Check file permissions"
@@ -67,7 +70,7 @@ jobs:
   quality:
     name: "1️⃣ Quality (PHPStan, Mago, Rector, composer.json, licenses, Deptrac)"
     needs: [pre_checks]
-    runs-on: [self-hosted, kloude]
+    runs-on: [self-hosted, kloude-light]
     container:
       image: ghcr.io/spomky-labs/phpqa:8.5
     steps:
@@ -188,7 +191,7 @@ jobs:
     # does not run: their specifications ask for a green corpus on 8.4 and on 8.5, and what differs between the two
     # is theirs (the PSS schemes PHP 8.5 gives openssl_sign() and openssl_verify(), spec/dsig.md section 13). Their
     # suites only, without coverage: nothing reads it.
-    runs-on: [self-hosted, kloude]
+    runs-on: [self-hosted, kloude-light]
     container:
       image: ghcr.io/spomky-labs/phpqa:8.4
     steps:
@@ -214,7 +217,7 @@ jobs:
     # URL, and every message inflated by Python's zlib to the document the writer wrote. Two images, hence Docker on
     # the runner rather than a job container; "castor xml-security-oracle", "castor saml2-model-oracle" and
     # "castor saml2-bindings-oracle" are the same on a workstation.
-    runs-on: [self-hosted, kloude]
+    runs-on: [self-hosted, kloude-light]
     steps:
       - uses: actions/checkout@v7
       # Docker Hub under the account the secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN of this repository name,
@@ -279,7 +282,7 @@ jobs:
     # bridges, and what judges them runs on the development stack (VaultTransitCustodyTest,
     # AwsKmsCustodyTest, skipped without their DSN; "castor dump-search", whose backend list carries the
     # one that cannot be played yet with its issue).
-    runs-on: [self-hosted, kloude]
+    runs-on: [self-hosted, kloude-light]
     container:
       image: ghcr.io/spomky-labs/phpqa:8.5
     steps:
