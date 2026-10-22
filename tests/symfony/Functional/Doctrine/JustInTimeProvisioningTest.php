@@ -9,6 +9,7 @@ use Beffroi\Core\Application\Identity\JustInTimeProvisioning;
 use Beffroi\Core\Application\Identity\UserProvisioner;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Identity\EmailDomain;
 use Beffroi\Core\Domain\Identity\LinkedIdentity;
 use Beffroi\Core\Domain\Identity\UpstreamProvider;
 use Beffroi\Core\Domain\Identity\User;
@@ -75,7 +76,7 @@ final class JustInTimeProvisioningTest extends DatabaseTestCase
         try {
             $provisioning->personNamedBy(
                 self::tenant(),
-                new UpstreamProvider('https://idp.acme.example/saml', ['acme.example'], ['given_name']),
+                new UpstreamProvider('https://idp.acme.example/saml', [new EmailDomain('acme.example')], ['given_name']),
                 'a7f3c2e1-alice',
                 new EmailAddress(self::ADDRESS),
                 [

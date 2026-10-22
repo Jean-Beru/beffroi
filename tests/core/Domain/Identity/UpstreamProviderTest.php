@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Core\Tests\Domain\Identity;
 
-use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Identity\EmailDomain;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\UpstreamProvider;
 use Beffroi\Core\Domain\Identity\User;
@@ -25,93 +25,77 @@ final class UpstreamProviderTest extends TestCase
     private const string PROVIDER = 'https://idp.acme.example/saml';
 
     #[Test]
-    public function itHoldsItsDomainsInLowercaseAndEachOnce(): void
+    public function itHoldsEachOfItsDomainsOnce(): void
     {
         // When
-        $provider = new UpstreamProvider(self::PROVIDER, ['Acme.Example', 'acme.test', 'ACME.EXAMPLE']);
+        $provider = new UpstreamProvider(self::PROVIDER, [new EmailDomain('Acme.Example'), new EmailDomain('acme.test'), new EmailDomain('ACME.EXAMPLE')]);
 
         // Then
-        static::assertSame(['acme.example', 'acme.test'], $provider->domains);
+        static::assertEquals([new EmailDomain('acme.example'), new EmailDomain('acme.test')], $provider->domains);
     }
 
     #[Test]
     public function itFillsEachClaimOnceInTheOrderItWasDeclared(): void
     {
         // When
-        $provider = new UpstreamProvider(self::PROVIDER, ['acme.example'], ['family_name', 'given_name', 'family_name']);
+        $provider = new UpstreamProvider(self::PROVIDER, [new EmailDomain('acme.example')], ['family_name', 'given_name', 'family_name']);
 
         // Then
         static::assertSame(['family_name', 'given_name'], $provider->claims);
     }
 
     /**
-     * @param list<string> $domains
+     * A domain a provider is declared with is an EmailDomain, refused there when it is none (EmailDomainTest).
+     *
      * @param list<string> $claims
      */
     #[Test]
     #[DataProvider('provideWhatIsNotAProvider')]
-    public function whatIsNotAProviderIsRefused(string $name, array $domains, array $claims, string $message): void
+    public function whatIsNotAProviderIsRefused(string $name, array $claims, string $message): void
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessageIs($message);
 
         // When
-        new UpstreamProvider($name, $domains, $claims);
+        new UpstreamProvider($name, [new EmailDomain('acme.example')], $claims);
     }
 
     /**
-     * @return iterable<string, array{string, list<string>, list<string>, string}>
+     * @return iterable<string, array{string, list<string>, string}>
      */
     public static function provideWhatIsNotAProvider(): iterable
     {
-        yield 'unnamed' => ['', ['acme.example'], [], 'An upstream provider is named.'];
-        yield 'an empty domain' => [
-            self::PROVIDER,
-            ['acme.example', ''],
-            [],
-            'The upstream provider "https://idp.acme.example/saml" answers for "", which is no domain an address carries.',
-        ];
-        // an address carries a domain in ASCII, a label in Unicode being written as its A-label
-        yield 'a domain in Unicode' => [
-            self::PROVIDER,
-            ['café.example'],
-            [],
-            'The upstream provider "https://idp.acme.example/saml" answers for "café.example", which is no domain an address carries.',
-        ];
-        yield 'a domain with a final dot' => [
-            self::PROVIDER,
-            ['acme.example.'],
-            [],
-            'The upstream provider "https://idp.acme.example/saml" answers for "acme.example.", which is no domain an address carries.',
-        ];
+        yield 'unnamed' => ['', [], 'An upstream provider is named.'];
         // the address is not a claim of the profile: every provider holds it, its domains being read from it
         yield 'the address among the claims of the profile' => [
             self::PROVIDER,
-            ['acme.example'],
             ['email'],
             'The upstream provider "https://idp.acme.example/saml" fills "email", which is no claim of the profile.',
         ];
         yield 'a claim no profile holds' => [
             self::PROVIDER,
-            ['acme.example'],
             ['groups'],
             'The upstream provider "https://idp.acme.example/saml" fills "groups", which is no claim of the profile.',
         ];
     }
 
     /**
-     * RFC 4343 §3: a domain is compared without regard to ASCII case, and exactly otherwise.
+     * RFC 4343 §3, UTS #46: the domain of an address, as EmailDomain reads it, is compared exactly.
      */
     #[Test]
     #[DataProvider('provideAddresses')]
     public function itAnswersForTheAddressesOfItsDomainsOnly(string $address, bool $answers): void
     {
         // Given
-        $provider = new UpstreamProvider(self::PROVIDER, ['acme.example', 'eu.acme.test']);
+        $provider = new UpstreamProvider(self::PROVIDER, [
+            new EmailDomain('acme.example'),
+            new EmailDomain('eu.acme.test'),
+            new EmailDomain('xn--bcher-kva.example'),
+        ]);
 
         // When / Then
-        static::assertSame($answers, $provider->answersFor(new EmailAddress($address)));
+        static::assertSame($answers, $provider->answersFor(EmailDomain::ofAddress($address)));
     }
 
     /**
@@ -122,6 +106,8 @@ final class UpstreamProviderTest extends TestCase
         yield 'of its first domain' => ['alice@acme.example', true];
         yield 'of another of its domains' => ['alice@eu.acme.test', true];
         yield 'of its domain in another case' => ['alice@ACME.Example', true];
+        yield 'of its domain in a U-label' => ['alice@bücher.example', true];
+        yield 'of its domain in a U-label in capitals' => ['alice@BÜCHER.example', true];
         yield 'of a subdomain of its domain' => ['alice@eu.acme.example', false];
         yield 'of the parent of its domain' => ['alice@acme.test', false];
         yield 'of a domain it does not declare' => ['alice@initech.example', false];
@@ -136,7 +122,7 @@ final class UpstreamProviderTest extends TestCase
     public function itHoldsTheAddressAndTheClaimsItFillsThatItSaid(): void
     {
         // Given
-        $provider = new UpstreamProvider(self::PROVIDER, ['acme.example'], ['given_name', 'family_name']);
+        $provider = new UpstreamProvider(self::PROVIDER, [new EmailDomain('acme.example')], ['given_name', 'family_name']);
 
         // When
         $source = $provider->source([
@@ -153,7 +139,7 @@ final class UpstreamProviderTest extends TestCase
     public function itIsTheSourceOfThePersonsItCreatedOnly(UserSource $source, bool $isTheSource): void
     {
         // Given
-        $provider = new UpstreamProvider(self::PROVIDER, ['acme.example']);
+        $provider = new UpstreamProvider(self::PROVIDER, [new EmailDomain('acme.example')]);
         $user = User::create(Uuid::v7(), Fixtures::tenant(), new Subject('alice-subject'), 'alice', Fixtures::now(), source: $source);
 
         // When / Then

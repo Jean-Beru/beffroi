@@ -21,6 +21,7 @@ use Beffroi\Core\Bridge\Uid\FixedUuidGenerator;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Domain\Event\PersonProvisioned;
 use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Identity\EmailDomain;
 use Beffroi\Core\Domain\Identity\LinkedIdentity;
 use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\Subject;
@@ -79,7 +80,7 @@ final class JustInTimeProvisioningTest extends TestCase
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
-        $this->provider = new UpstreamProvider(self::PROVIDER, ['acme.example'], ['given_name', 'family_name', 'birthdate']);
+        $this->provider = new UpstreamProvider(self::PROVIDER, [new EmailDomain('acme.example')], ['given_name', 'family_name', 'birthdate']);
         $this->users = new InMemoryUserRepository();
         $this->identities = new InMemoryLinkedIdentityRepository();
         $this->events = new RecordingEventDispatcher();
@@ -274,7 +275,7 @@ final class JustInTimeProvisioningTest extends TestCase
      */
     public static function provideClaimsTheProviderLetsGo(): iterable
     {
-        $declared = new UpstreamProvider(self::PROVIDER, ['acme.example'], ['given_name', 'family_name', 'birthdate']);
+        $declared = new UpstreamProvider(self::PROVIDER, [new EmailDomain('acme.example')], ['given_name', 'family_name', 'birthdate']);
         yield 'a claim it no longer sends' => [
             $declared,
             [
@@ -282,7 +283,7 @@ final class JustInTimeProvisioningTest extends TestCase
             ],
         ];
         yield 'a claim its declaration no longer names' => [
-            new UpstreamProvider(self::PROVIDER, ['acme.example'], ['family_name']),
+            new UpstreamProvider(self::PROVIDER, [new EmailDomain('acme.example')], ['family_name']),
             [
                 'given_name' => 'Alicia',
                 'family_name' => 'Hargreaves',

@@ -195,7 +195,7 @@ final class UpstreamIdentityProvidersPassTest extends TestCase
         ];
         yield 'a domain that is none' => [
             self::declaration('/srv/saml/acme-idp.xml', ['acme']),
-            '"acme" is no e-mail domain: a name of the DNS of two labels at least, of letters, digits and hyphens, a name outside ASCII written as its A-label (spec/saml.md S-44).',
+            '"acme" is no e-mail domain: a name of the DNS of two labels at least, of letters, digits and hyphens, a name outside ASCII written as its A-label.',
         ];
         yield 'a domain declared twice' => [
             self::declaration('/srv/saml/acme-idp.xml', ['acme.example', 'ACME.example']),

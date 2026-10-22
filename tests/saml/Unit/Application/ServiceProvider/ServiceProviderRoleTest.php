@@ -10,7 +10,7 @@ use Beffroi\Saml\Application\ServiceProvider\ServiceProviderRole;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataReader;
 use Beffroi\Saml\Domain\Metadata\MetadataLocation;
-use Beffroi\Saml\Domain\Upstream\EmailDomain;
+use Beffroi\Core\Domain\Identity\EmailDomain;
 use Beffroi\Saml\Domain\Upstream\UpstreamIdentityProvider;
 use Beffroi\Saml\Tests\Fixture\FixedClaims;
 use Beffroi\Saml\Tests\Fixture\IdentityProviderDocuments;

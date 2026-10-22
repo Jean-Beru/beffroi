@@ -8,7 +8,8 @@ use function array_fill;
 use function array_map;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Domain\Metadata\MetadataLocation;
-use Beffroi\Saml\Domain\Upstream\EmailDomain;
+use Beffroi\Core\Domain\Identity\EmailDomain;
+use Beffroi\Core\Domain\Identity\UpstreamProvider;
 use Beffroi\Saml\Domain\Upstream\GroupMapping;
 use Beffroi\Saml\Domain\Upstream\ProfileAttribute;
 use Beffroi\Saml\Domain\Upstream\UpstreamIdentityProvider;
@@ -58,6 +59,61 @@ final class UpstreamIdentityProviderTest extends TestCase
         static::assertSame('given_name', $identityProvider->profile[0]->claim);
         static::assertSame(self::OBJECT_ID, $identityProvider->subjectAttribute);
         static::assertSame($groups, $identityProvider->groups);
+    }
+
+    /**
+     * S-60: a declaration is the upstream provider of the core named by its entity ID, answering for its domains and
+     * filling the claims of its profile, so that every place that reads a domain reads it by the one rule of the core.
+     */
+    #[Test]
+    public function aDeclarationIsTheUpstreamProviderOfTheCoreItNames(): void
+    {
+        // Given
+        $identityProvider = new UpstreamIdentityProvider(
+            self::ENTITY_ID,
+            new MetadataLocation('/srv/saml/idp.xml'),
+            [],
+            [new EmailDomain('acme.example'), new EmailDomain('xn--bcher-kva.example')],
+            'mail',
+            [new ProfileAttribute('givenName', 'given_name'), new ProfileAttribute('sn', 'family_name')],
+        );
+
+        // When
+        $provider = $identityProvider->provider();
+
+        // Then
+        static::assertEquals(
+            new UpstreamProvider(
+                self::ENTITY_ID,
+                [new EmailDomain('acme.example'), new EmailDomain('xn--bcher-kva.example')],
+                ['given_name', 'family_name'],
+            ),
+            $provider,
+        );
+    }
+
+    /**
+     * S-60, S-45: a telephone number an attribute fills is no claim of the profile of the core, and the declaration that
+     * fills one is a provider of the core all the same, filling the claims of the profile it names.
+     */
+    #[Test]
+    public function aTelephoneNumberIsNoClaimOfTheProviderOfTheCore(): void
+    {
+        // Given
+        $identityProvider = new UpstreamIdentityProvider(
+            self::ENTITY_ID,
+            new MetadataLocation('/srv/saml/idp.xml'),
+            [],
+            [new EmailDomain('acme.example')],
+            'mail',
+            [new ProfileAttribute('telephoneNumber', 'phone_number'), new ProfileAttribute('givenName', 'given_name')],
+        );
+
+        // When
+        $provider = $identityProvider->provider();
+
+        // Then
+        static::assertSame(['given_name'], $provider->claims);
     }
 
     /**
