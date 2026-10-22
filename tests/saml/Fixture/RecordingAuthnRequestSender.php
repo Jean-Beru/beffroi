@@ -8,6 +8,7 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Saml\Domain\SingleLogout\RedirectedMessage;
 use Beffroi\Saml\Domain\Upstream\SentAuthnRequest;
 use Beffroi\Saml\Domain\Upstream\UpstreamAuthnRequest;
+use Beffroi\Saml\Exception\UpstreamSignOnRefusedException;
 use Beffroi\Saml\Port\AuthnRequestSenderInterface;
 
 /**
@@ -21,6 +22,11 @@ final class RecordingAuthnRequestSender implements AuthnRequestSenderInterface
     public const string LOCATION = 'https://idp.example.org/saml/sso';
 
     /**
+     * A provider with no accepted document, whose sign-on is refused.
+     */
+    public const string REFUSED = 'https://idp.refused.example/saml';
+
+    /**
      * @var list<UpstreamAuthnRequest>
      */
     public private(set) array $sent = [];
@@ -30,5 +36,17 @@ final class RecordingAuthnRequestSender implements AuthnRequestSenderInterface
         $this->sent[] = $request;
 
         return new SentAuthnRequest($request, self::ID, new RedirectedMessage(self::LOCATION . '?SAMLRequest=written'));
+    }
+
+    /**
+     * The single sign-on service of every provider, and a refusal for the one named REFUSED.
+     */
+    public function destination(Tenant $tenant, string $identityProvider): string
+    {
+        if ($identityProvider === self::REFUSED) {
+            throw new UpstreamSignOnRefusedException('The identity provider has no metadata accepted yet (spec/saml.md S-48).');
+        }
+
+        return self::LOCATION;
     }
 }

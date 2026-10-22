@@ -268,6 +268,40 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
+     * S-61, S-48: the destination a page names in its "form-action" is the single sign-on service the request is written
+     * to, the one on HTTP-Redirect whatever the order of the document.
+     *
+     * @param list<Endpoint> $singleSignOnServices
+     */
+    #[Test]
+    #[DataProvider('provideBothBindings')]
+    public function theDestinationIsTheServiceTheRequestIsWrittenTo(array $singleSignOnServices): void
+    {
+        // Given
+        $this->accept($singleSignOnServices);
+
+        // When / Then
+        static::assertSame(self::SINGLE_SIGN_ON . '/redirect', $this->sender()->destination($this->tenant, IdentityProviderDocuments::SIGNED));
+    }
+
+    /**
+     * S-61, S-48: a provider with no accepted document has no destination, a sign-on of it being refused.
+     */
+    #[Test]
+    public function aProviderWithNoAcceptedDocumentHasNoDestination(): void
+    {
+        // Given
+        $this->accepted = new InMemoryAcceptedMetadata();
+
+        // Then
+        $this->expectException(UpstreamSignOnRefusedException::class);
+        $this->expectExceptionMessageIs('The identity provider has no metadata accepted yet (spec/saml.md S-48).');
+
+        // When
+        $this->sender()->destination($this->tenant, IdentityProviderDocuments::SIGNED);
+    }
+
+    /**
      * S-48: the first single sign-on service on HTTP-POST is the one the request goes to when the document lists no
      * other binding.
      */
