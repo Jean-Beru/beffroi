@@ -72,6 +72,8 @@ use Symfony\Component\Uid\Uuid;
 use Beffroi\Saml\Domain\Metadata\AcceptedMetadata;
 use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
+use Beffroi\Saml\Domain\Upstream\AcceptedUpstreamMetadata;
+use Beffroi\Saml\Tests\Fixture\IdentityProviderDocuments;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
 use function str_replace;
 
@@ -183,6 +185,11 @@ final readonly class SealedRows
         'beffroi_saml_service_provider' => [
             'document' => 'grace.hopper@sp.example.org',
         ],
+        // the metadata an upstream identity provider of the tenant published (beffroi/saml, issue #779), whose
+        // md:ContactPerson names the person who answers for it
+        'beffroi_saml_upstream_identity_provider' => [
+            'document' => 'katherine.johnson@idp.example.org',
+        ],
         'beffroi_client' => [
             'metadata' => 'The Difference Engine',
             'assigned_metadata' => 'urn:example:scope:assigned-by-the-policy',
@@ -275,6 +282,7 @@ final readonly class SealedRows
         $this->change($user);
         $this->disclosure($user, $client);
         $this->serviceProviderMetadata();
+        $this->identityProviderMetadata();
     }
 
     /**
@@ -300,6 +308,33 @@ final readonly class SealedRows
             $this->now,
         );
         $this->service('test.beffroi.saml_accepted_metadata', AcceptedMetadataRepositoryInterface::class)->register($metadata);
+
+        return $metadata;
+    }
+
+    /**
+     * The metadata document accepted for an upstream identity provider (beffroi/saml, issue #779), sealed in a scope
+     * of its own: the one the SimpleSAMLphp identity provider of the judge publishes, with the technical contact a
+     * deployment of it declares.
+     */
+    public function identityProviderMetadata(): AcceptedUpstreamMetadata
+    {
+        $metadata = new AcceptedUpstreamMetadata(
+            Uuid::v7(),
+            $this->tenant,
+            IdentityProviderDocuments::SIMPLESAMLPHP,
+            str_replace(
+                '</md:EntityDescriptor>',
+                sprintf(
+                    '<md:ContactPerson contactType="technical"><md:GivenName>Katherine</md:GivenName><md:EmailAddress>mailto:%s</md:EmailAddress></md:ContactPerson></md:EntityDescriptor>',
+                    self::VALUES['beffroi_saml_upstream_identity_provider']['document'],
+                ),
+                IdentityProviderDocuments::simpleSamlPhp(),
+            ),
+            null,
+            $this->now,
+        );
+        $this->service('test.beffroi.saml_upstream_accepted_metadata', AcceptedMetadataRepositoryInterface::class)->register($metadata);
 
         return $metadata;
     }

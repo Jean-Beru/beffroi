@@ -59,6 +59,42 @@ final class DeclaredClaimsTest extends TestCase
     }
 
     /**
+     * S-45, section 6.10 step 1: the claim every attribute of the profile of every declaration of an upstream identity
+     * provider fills is held, and nothing else.
+     *
+     * @param array<array-key, mixed> $declarations
+     * @param list<string> $expected
+     */
+    #[Test]
+    #[DataProvider('provideUpstreamDeclarations')]
+    public function itHoldsTheClaimEveryAttributeOfTheProfileFills(array $declarations, array $expected): void
+    {
+        // When / Then
+        static::assertSame($expected, DeclaredClaims::filledBy($declarations)->names());
+    }
+
+    /**
+     * @return iterable<string, array{array<array-key, mixed>, list<string>}>
+     */
+    public static function provideUpstreamDeclarations(): iterable
+    {
+        yield 'no declaration' => [[], []];
+        yield 'a declaration without a profile' => [['https://idp.example.com/saml' => ['metadata' => '/srv/idp.xml']], []];
+        yield 'two attributes' => [
+            ['https://idp.example.com/saml' => ['profile' => ['givenName' => 'given_name', 'sn' => 'family_name']]],
+            ['given_name', 'family_name'],
+        ];
+        yield 'what is no attribute before an attribute' => [
+            [
+                'https://a.example.com/saml' => 'not a declaration',
+                'https://b.example.com/saml' => ['profile' => 'not a map'],
+                'https://c.example.com/saml' => ['profile' => ['givenName' => ['given_name'], 'sn' => 'family_name']],
+            ],
+            ['family_name'],
+        ];
+    }
+
+    /**
      * S-16: no value is read through it, a container being compiled holding no user.
      */
     #[Test]

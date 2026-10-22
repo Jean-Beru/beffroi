@@ -29,6 +29,7 @@ use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
 use Beffroi\Saml\Application\Metadata\ServiceProviderMetadataHandler;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
+use Beffroi\Saml\Bridge\Configuration\ConfigurationUpstreamIdentityProviders;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use PHPUnit\Framework\Attributes\Test;
@@ -681,6 +682,109 @@ final class BeffroiBundleExtensionTest extends TestCase
                 'service_providers' => [
                     'https://sp.example.com/saml' => [
                         'metadata' => 'https://sp.example.com/saml/metadata',
+                    ],
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Spec/saml.md S-42, section 5.7: the upstream identity providers the configuration declares reach the declarations
+     * of the tenant whose slug the configuration names, each with what a declaration leaves out filled in.
+     */
+    #[Test]
+    public function theUpstreamIdentityProvidersReachTheDeclarationsOfTheTenant(): void
+    {
+        // When
+        $container = self::load([
+            'tenant' => [
+                'issuer' => 'https://op.test',
+                'slug' => 'acme',
+            ],
+            'saml' => [
+                'service_provider' => null,
+                'identity_providers' => [
+                    'https://idp.acme.example/saml' => [
+                        'metadata' => 'https://idp.acme.example/saml/metadata',
+                        'domains' => ['acme.example'],
+                        'email_attribute' => 'mail',
+                        'groups' => [
+                            'attribute' => 'groups',
+                            'map' => ['member' => 'Members'],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        // Then
+        $declarations = $container->getDefinition(ConfigurationUpstreamIdentityProviders::class);
+        static::assertSame('acme', $declarations->getArgument('$tenantSlug'));
+        static::assertSame(
+            [
+                'https://idp.acme.example/saml' => [
+                    'metadata' => 'https://idp.acme.example/saml/metadata',
+                    'domains' => ['acme.example'],
+                    'email_attribute' => 'mail',
+                    'groups' => [
+                        'attribute' => 'groups',
+                        'map' => ['member' => 'Members'],
+                    ],
+                    'metadata_signers' => [],
+                    'profile' => [],
+                    'subject_attribute' => null,
+                ],
+            ],
+            $declarations->getArgument('$definitions'),
+        );
+    }
+
+    /**
+     * Spec/saml.md S-42, section 5.7: a tenant that is no service provider receives no assertion of an upstream
+     * identity provider, and a deployment that declares one for it is refused at boot rather than left with a
+     * declaration nothing reads.
+     */
+    #[Test]
+    public function anUpstreamIdentityProviderOfATenantThatIsNoServiceProviderIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIsOrContains('Upstream identity providers are declared for a tenant that is a SAML service provider: enable "beffroi.saml.service_provider", or remove "beffroi.saml.identity_providers".');
+
+        // When
+        self::load([
+            'saml' => [
+                'identity_provider' => null,
+                'identity_providers' => [
+                    'https://idp.acme.example/saml' => [
+                        'metadata' => 'https://idp.acme.example/saml/metadata',
+                        'domains' => ['acme.example'],
+                        'email_attribute' => 'mail',
+                    ],
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Spec/saml.md S-44: an upstream identity provider answers for one domain at least, refused at boot otherwise.
+     */
+    #[Test]
+    public function anUpstreamIdentityProviderWithoutADomainIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIs('The path "beffroi.saml.identity_providers.https://idp.acme.example/saml.domains" should have at least 1 element(s) defined.');
+
+        // When
+        self::load([
+            'saml' => [
+                'service_provider' => null,
+                'identity_providers' => [
+                    'https://idp.acme.example/saml' => [
+                        'metadata' => 'https://idp.acme.example/saml/metadata',
+                        'domains' => [],
+                        'email_attribute' => 'mail',
                     ],
                 ],
             ],

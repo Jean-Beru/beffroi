@@ -852,6 +852,9 @@ services:
     test.beffroi.saml_accepted_metadata:
         alias: Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface
         public: true
+    test.beffroi.saml_upstream_accepted_metadata:
+        alias: beffroi.saml.identity_providers.accepted_metadata
+        public: true
     test.beffroi.saml_session_participants:
         alias: Beffroi\Saml\Port\SessionParticipationRepositoryInterface
         public: true

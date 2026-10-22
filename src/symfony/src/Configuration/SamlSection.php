@@ -13,6 +13,7 @@ use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
 use Beffroi\Saml\Application\Metadata\ServiceProviderMetadataHandler;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
+use Beffroi\Saml\Bridge\Configuration\ConfigurationUpstreamIdentityProviders;
 use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
 use Beffroi\Saml\Domain\Metadata\PublishedMetadata;
 use Beffroi\Saml\Port\ServiceProviderEndpointsInterface;
@@ -45,6 +46,11 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurat
  * mapping right after, in the same build (MappedClaimsWarmer), and one holding an environment variable at its first
  * use; its metadata are read by "beffroi:saml:service-provider:refresh" and by the hourly step of the schedule, and kept
  * in the database.
+ *
+ * So are the upstream identity providers of the service provider (S-42), with the e-mail domains each answers for,
+ * one provider per domain (S-44), and the attributes an assertion of it is read for (S-45): validated when the
+ * container is compiled (UpstreamIdentityProvidersPass), the claims of the profile by the same warmer, and their
+ * metadata read by "beffroi:saml:identity-provider:refresh" and by the same hourly step.
  *
  * The keys of the identity provider are a family of their own (spec/saml.md S-12, issue #738): their staging delay and their age are set here,
  * counted in days by default, and not by "beffroi.keys", whose figures suit a JWK Set refetched within minutes. The
@@ -168,10 +174,73 @@ final readonly class SamlSection extends ConfigurationSection
             ->end()
             ->end()
             ->end()
+            ->arrayNode('identity_providers')
+            ->info('The upstream identity providers of the tenant, keyed by entity ID, compared exactly with the one of their metadata (spec/saml.md S-42): identity providers whose assertions the service provider of the tenant receives. Their metadata are read by "beffroi:saml:identity-provider:refresh" and every hour after, refused when expired, older than the document accepted, without an identity provider role, without a key for signing, or with a single sign-on service that is not https (S-6, S-43). Declared only for a tenant that is a service provider.')
+            ->useAttributeAsKey('entity_id')
+            ->normalizeKeys(false)
+            ->arrayPrototype()
+            ->children()
+            ->scalarNode('metadata')
+            ->info('Where the metadata are read from: an https URL, fetched without following a redirect, or the absolute path of a file of the deployment. Nothing else, a plain http URL included. The channel is what vouches for them unless metadata_signers pins who signs them.')
+            ->isRequired()
+            ->cannotBeEmpty()
+            ->end()
+            ->arrayNode('metadata_signers')
+            ->info('The certificates the metadata are signed by, each the base64 of its DER as an X509Certificate carries it, sixteen at most: the metadata are then verified under them and carry a validUntil (spec/saml.md S-42, S-6). Left empty, they are trusted by the channel they come through.')
+            ->scalarPrototype()
+            ->end()
+            ->end()
+            ->arrayNode('domains')
+            ->info('The e-mail domains this identity provider answers for, one at least and 256 at most, each a name of the DNS read without regard to case, a name outside ASCII written as its A-label (spec/saml.md S-44). A domain is the whole part of an address after its "@" and nothing under it, and answers to one identity provider of the tenant: a domain two of them declare is refused.')
+            ->isRequired()
+            ->requiresAtLeastOneElement()
+            ->scalarPrototype()
+            ->end()
+            ->end()
+            ->scalarNode('email_attribute')
+            ->info('The name of the attribute of an assertion that carries the e-mail address of a person (spec/saml.md S-45), "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" for Entra.')
+            ->isRequired()
+            ->cannotBeEmpty()
+            ->end()
+            ->arrayNode('profile')
+            ->info('The attributes of an assertion that fill the profile of a person, keyed by the name of the attribute, each naming the claim of OpenID Connect Core section 5.1 it fills, one attribute per claim (spec/saml.md S-45): a claim a person can describe themselves with in this deployment, refused otherwise when the deployment is built.')
+            ->useAttributeAsKey('attribute')
+            ->normalizeKeys(false)
+            ->scalarPrototype()
+            ->end()
+            ->end()
+            ->scalarNode('subject_attribute')
+            ->info('The name of the attribute that names a person when the NameID of an assertion is not persistent (spec/saml.md S-45): a value the identity provider keeps for that person and never one the person changes, "http://schemas.microsoft.com/identity/claims/objectidentifier" for Entra rather than an address. Left out, a person is named by a persistent NameID only.')
+            ->defaultNull()
+            ->end()
+            ->arrayNode('groups')
+            ->info('The attribute of an assertion that carries the groups of a person, and the group of the tenant each of its values stands for (spec/saml.md S-45). A value the map does not name is no group, and no group is created from what an identity provider sends.')
+            ->children()
+            ->scalarNode('attribute')
+            ->info('The name of the attribute that carries the groups.')
+            ->isRequired()
+            ->cannotBeEmpty()
+            ->end()
+            ->arrayNode('map')
+            ->info('The name of a group of the tenant, keyed by a value of the attribute, compared exactly, 256 values at most; the object IDs of the groups for Entra.')
+            ->useAttributeAsKey('value')
+            ->normalizeKeys(false)
+            ->scalarPrototype()
+            ->end()
+            ->end()
+            ->end()
+            ->end()
+            ->end()
+            ->end()
+            ->end()
             ->end()
             ->validate()
             ->ifTrue(self::declaresServiceProvidersAlone(...))
             ->thenInvalid('Service providers are declared for a tenant that is a SAML identity provider: enable "beffroi.saml.identity_provider", or remove "beffroi.saml.service_providers".')
+            ->end()
+            ->validate()
+            ->ifTrue(self::declaresIdentityProvidersAlone(...))
+            ->thenInvalid('Upstream identity providers are declared for a tenant that is a SAML service provider: enable "beffroi.saml.service_provider", or remove "beffroi.saml.identity_providers".')
             ->end()
             ->end();
     }
@@ -181,6 +250,10 @@ final readonly class SamlSection extends ConfigurationSection
         $services->get(ConfigurationServiceProviders::class)->arg('$tenantSlug', self::string(self::section($config, 'tenant'), 'slug'))->arg(
             '$definitions',
             self::section($this->own($config), 'service_providers'),
+        );
+        $services->get(ConfigurationUpstreamIdentityProviders::class)->arg('$tenantSlug', self::string(self::section($config, 'tenant'), 'slug'))->arg(
+            '$definitions',
+            self::section($this->own($config), 'identity_providers'),
         );
         $identityProvider = self::section($this->own($config), 'identity_provider');
         $serviceProvider = self::section($this->own($config), 'service_provider');
@@ -239,5 +312,18 @@ final readonly class SamlSection extends ConfigurationSection
         }
 
         return self::section($saml, 'service_providers') !== [] && (self::section($saml, 'identity_provider')['enabled'] ?? false) !== true;
+    }
+
+    /**
+     * Whether upstream identity providers are declared for a tenant that is no service provider, which receives no
+     * assertion of theirs.
+     */
+    private static function declaresIdentityProvidersAlone(mixed $saml): bool
+    {
+        if (! is_array($saml)) {
+            return false;
+        }
+
+        return self::section($saml, 'identity_providers') !== [] && (self::section($saml, 'service_provider')['enabled'] ?? false) !== true;
     }
 }

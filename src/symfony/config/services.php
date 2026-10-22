@@ -328,6 +328,16 @@ use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
 use Beffroi\Bundle\Command\SamlServiceProviderRefreshCommand;
 use Beffroi\Bundle\Command\SamlServiceProviderForgetCommand;
 use Beffroi\Bundle\MessageHandler\RefreshTheSamlMetadataHandler;
+use Beffroi\Bundle\Command\SamlIdentityProviderRefreshCommand;
+use Beffroi\Bundle\Command\SamlIdentityProviderForgetCommand;
+use Beffroi\Bundle\Saml\WiredProfileClaims;
+use Beffroi\Saml\Application\Upstream\UpstreamIdentityProviderRole;
+use Beffroi\Saml\Bridge\Configuration\ConfigurationUpstreamIdentityProviders;
+use Beffroi\Saml\Bridge\Model\ModelUpstreamMetadataReader;
+use Beffroi\Saml\Domain\Upstream\AcceptedUpstreamMetadata;
+use Beffroi\Saml\Port\ProfileClaimsInterface;
+use Beffroi\Saml\Port\UpstreamIdentityProvidersInterface;
+use Beffroi\Saml\Port\UpstreamMetadataReaderInterface;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataReader;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
@@ -1892,6 +1902,7 @@ return static function (ContainerConfigurator $container): void {
     // same build; ServiceProvidersPass hands it the declarations it built (spec/saml.md S-16, section 6.2 step 1)
     $services->set(MappedClaimsWarmer::class)->args([
         '$declarations' => [],
+        '$upstreamDeclarations' => [],
     ]);
     $services->set(ModelServiceProviderMetadataReader::class);
     $services->alias(ServiceProviderMetadataReaderInterface::class, ModelServiceProviderMetadataReader::class);
@@ -1917,6 +1928,38 @@ return static function (ContainerConfigurator $container): void {
     ]);
     $services->get(SamlServiceProviderRefreshCommand::class)->arg('$refresh', service('beffroi.saml.service_providers.refresh'));
     $services->get(SamlServiceProviderForgetCommand::class)->arg('$forgetting', service('beffroi.saml.service_providers.forgetting'));
+    // beffroi/saml: the upstream identity providers of the service provider of the tenant, declared in the
+    // configuration, which the SAML section hands the declarations and the slug of the tenant (S-42), their
+    // attributes filling the claims a person describes themselves with (S-45); their metadata read by the model,
+    // fetched as a service provider's, refreshed by the same procedure, and the newest document accepted kept in a
+    // table of their own, sealed (spec/saml.md section 6.10)
+    $services->set(WiredProfileClaims::class);
+    $services->alias(ProfileClaimsInterface::class, WiredProfileClaims::class);
+    $services->set(ConfigurationUpstreamIdentityProviders::class)->args([
+        '$tenantSlug' => '',
+        '$definitions' => [],
+    ]);
+    $services->alias(UpstreamIdentityProvidersInterface::class, ConfigurationUpstreamIdentityProviders::class);
+    $services->set(ModelUpstreamMetadataReader::class);
+    $services->alias(UpstreamMetadataReaderInterface::class, ModelUpstreamMetadataReader::class);
+    $services->set(UpstreamIdentityProviderRole::class);
+    $services->set('beffroi.saml.identity_providers.accepted_metadata', DoctrineAcceptedMetadataRepository::class)->arg(
+        '$entity',
+        AcceptedUpstreamMetadata::class,
+    );
+    $services
+        ->set('beffroi.saml.identity_providers.refresh', MetadataRefresh::class)
+        ->args([
+            '$role' => service(UpstreamIdentityProviderRole::class),
+            '$accepted' => service('beffroi.saml.identity_providers.accepted_metadata'),
+        ])
+        ->tag(RefreshTheSamlMetadataHandler::TAG);
+    $services->set('beffroi.saml.identity_providers.forgetting', AcceptedMetadataForgetting::class)->args([
+        '$accepted' => service('beffroi.saml.identity_providers.accepted_metadata'),
+        '$forgetting' => service('beffroi.saml.identity_providers.accepted_metadata'),
+    ]);
+    $services->get(SamlIdentityProviderRefreshCommand::class)->arg('$refresh', service('beffroi.saml.identity_providers.refresh'));
+    $services->get(SamlIdentityProviderForgetCommand::class)->arg('$forgetting', service('beffroi.saml.identity_providers.forgetting'));
     $services->get(RefreshTheSamlMetadataHandler::class)->arg('$refreshes', tagged_iterator(RefreshTheSamlMetadataHandler::TAG));
     // beffroi/saml: single sign-on (spec/saml.md section 6.4), a request received over either binding and validated by
     // the model, answered from the session of the browser or after its login, the request waiting in its HTTP session

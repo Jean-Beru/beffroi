@@ -65,16 +65,6 @@ final readonly class SamlServiceProviderRefreshCommand
 
             return Command::INVALID;
         }
-        $refused = 0;
-        foreach ($refreshments as $refreshment) {
-            if ($refreshment->refused) {
-                ++$refused;
-                $io->error($refreshment->what);
-                continue;
-            }
-            $io->success($refreshment->what);
-        }
-
-        return $refused === 0 ? Command::SUCCESS : Command::FAILURE;
+        return MetadataRefreshments::told($io, $refreshments);
     }
 }
