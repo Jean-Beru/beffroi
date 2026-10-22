@@ -52,7 +52,7 @@ final class TraceabilityTest extends TestCase
     {
         // Given
         $rows = $this->traceability->tableRows('### 9.2 Hostile corpus');
-        static::assertCount(46, $rows);
+        static::assertCount(51, $rows);
 
         // When
         $uncited = array_diff(array_keys($rows), $this->traceability->citedRows('9.2'));
@@ -69,7 +69,7 @@ final class TraceabilityTest extends TestCase
     {
         // Given
         $rows = $this->traceability->tableRows('### 9.3 Behaviour corpus');
-        static::assertCount(24, $rows);
+        static::assertCount(25, $rows);
 
         // When
         $uncited = array_diff(array_keys($rows), $this->traceability->citedRows('9.3'));

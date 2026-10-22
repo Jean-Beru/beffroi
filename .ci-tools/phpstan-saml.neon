@@ -84,11 +84,18 @@ parameters:
 		- LIBXML_PARSEHUGE
 		- LIBXML_NOBLANKS
 		- LIBXML_NOCDATA
+		# The proof Enc asks for before it opens AES-CBC, and the result of a verification (section 8, enc.md E-15): the
+		# package neither implements the one nor builds the other, the one proof being saml2-model's, built from the
+		# Verified that Dsig's Verifier gives
+		- Beffroi\Xml\Enc\CoveringSignatureInterface
+		- Beffroi\Xml\Dsig\Verified
 	# The functions never called (section 8): unserialize() builds an object of any class, one of
 	# Beffroi\Saml2\Bindings\Internal\ among them, without its constructor (finding 3 of the security review of
 	# saml2-bindings); session_decode() is the same unserializer, fed the bytes of a session.
 	bannedFunctions:
 		- unserialize
+		# a name the rules read where it is written, given another under which it passes unread (section 8)
+		- class_alias
 		- session_decode
 		# model.md section 8, core.md section 8: no entity loader, no second parser (I-2, I-4)
 		- libxml_set_external_entity_loader
@@ -116,6 +123,9 @@ parameters:
 	# security review of sub-spike 9c).
 	bannedMethods:
 		- validateAuthenticatedByBinding
+		# the one method that takes the proof of a covering signature, which only the model's reader calls (section 8,
+		# enc.md E-15): a proof forged around the names reaches nothing
+		- decryptCovered
 		- __unserialize
 		- unserialize
 		# core.md section 8, I-4: the loaders of the DOM of PHP 8.4, a second parser; xml-security's Core loads

@@ -137,8 +137,8 @@ final class ResponseWriterEncryptionTest extends TestCase
     }
 
     /**
-     * §9.3 row 20, section 9.1, section 6.7, SAML Core §6.2, enc.md E-9: read back by a validator built with the test
-     * key of the service provider, the assertion is the one written, signed by the identity provider and verified once
+     * §9.3 row 20, section 9.1, section 6.7, SAML Core §6.2, enc.md E-9: read back by a validator, the identity provider
+     * given the test key of the service provider (section 5.5), the assertion is the one written, signed by the identity provider and verified once
      * decrypted, the response signed over the ciphertext when asked.
      */
     #[Test]
@@ -150,9 +150,11 @@ final class ResponseWriterEncryptionTest extends TestCase
         $encrypted = new ResponseWriter()->write($response, $this->signing(), $parts, new Encryption(self::peer()));
 
         // When
-        $accepted = Fixtures::validator(PrivateDecryptionKey::fromPem(MetadataFixtures::bytes('keys/sp-signing-key.pem')))->validate(
+        $accepted = Fixtures::validator()->validate(
             UnverifiedResponse::of(SamlLoader::create()->load(new Serializer()->serialize($encrypted))),
-            Fixtures::identityProvider(),
+            Fixtures::identityProvider()->withDecryptionKey(
+                PrivateDecryptionKey::fromPem(MetadataFixtures::bytes('keys/sp-signing-key.pem')),
+            ),
             Fixtures::expected(),
         );
 
