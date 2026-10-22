@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Beffroi\Core\Tests\Application\Identity;
 
+use Beffroi\Core\Application\Identity\FederatedDomains;
+use Beffroi\Core\Bridge\InMemory\InMemoryUpstreamProviders;
 use Beffroi\Core\Application\Credential\ActiveCredentials;
 use Beffroi\Core\Application\Credential\ActivePassword;
 use Beffroi\Core\Application\Credential\BreachedPasswordRefusal;
@@ -93,7 +95,7 @@ final class JustInTimeProvisioningTest extends TestCase
             new ActivePassword(new ActiveCredentials($credentials)),
             new NativePasswordHasher(),
             new BreachedPasswordRefusal(BreachedPasswordsOfARecord::holding([])),
-            new EnrolmentRefusal(),
+            new EnrolmentRefusal(new FederatedDomains(new InMemoryUpstreamProviders())),
             new SymfonyUuidGenerator(),
             $this->clock,
         );
