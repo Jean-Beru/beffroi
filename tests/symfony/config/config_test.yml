@@ -867,6 +867,12 @@ services:
     test.beffroi.groups_of_a_person:
         alias: Beffroi\Core\Port\GroupsOfAPersonInterface
         public: true
+    test.beffroi.group_memberships:
+        alias: Beffroi\Core\Port\GroupMembershipRepositoryInterface
+        public: true
+    test.beffroi.upstream_memberships:
+        alias: Beffroi\Core\Application\Group\UpstreamMemberships
+        public: true
     test.beffroi.archive_request:
         alias: Beffroi\Core\Application\Archive\ArchiveRequest
         public: true

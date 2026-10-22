@@ -65,6 +65,7 @@ use Beffroi\Core\Application\Archive\Chapter\JournalChapter;
 use Beffroi\Core\Application\Archive\Chapter\LinkedIdentitiesChapter;
 use Beffroi\Core\Application\Archive\Chapter\ProfileChapter;
 use Beffroi\Core\Application\Archive\Chapter\SessionsChapter;
+use Beffroi\Core\Port\GroupMembershipRepositoryInterface;
 use Beffroi\Core\Port\GroupsOfAPersonInterface;
 use Beffroi\Core\Port\LinkedIdentitiesOfAPersonInterface;
 use Beffroi\Core\Port\PersonalArchiveRepositoryInterface;
@@ -247,6 +248,7 @@ use Beffroi\Core\Application\Credential\BreachedPasswordRefusal;
 use Beffroi\Core\Application\Credential\PasswordChange;
 use Beffroi\Core\Application\Credential\CredentialRenaming;
 use Beffroi\Core\Application\Credential\CredentialRevocation;
+use Beffroi\Core\Application\Group\UpstreamMemberships;
 use Beffroi\Core\Application\Identity\IdentityLinker;
 use Beffroi\Core\Application\Identity\UserProvisioner;
 use Beffroi\Core\Application\Key\KeyRetirement;
@@ -829,6 +831,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(PersonalArchiveRepositoryInterface::class, DoctrinePersonalArchiveRepository::class);
     $services->set(DoctrineGroupMembershipRepository::class);
     $services->alias(GroupsOfAPersonInterface::class, DoctrineGroupMembershipRepository::class);
+    $services->alias(GroupMembershipRepositoryInterface::class, DoctrineGroupMembershipRepository::class);
     $services->alias(LinkedIdentitiesOfAPersonInterface::class, DoctrineLinkedIdentityRepository::class);
     $services->set(ProfileChapter::class)->tag('beffroi.archive_chapter');
     $services->set(CredentialsChapter::class)->tag('beffroi.archive_chapter');
@@ -1400,6 +1403,9 @@ return static function (ContainerConfigurator $container): void {
     // Decision 0002: the one way a row saying a user is a subject at an upstream provider comes to exist
     // outside a flow that receives one; what needs it today is the JWT bearer grant (RFC 7523 §3)
     $services->set(IdentityLinker::class);
+    // Decision 0002: the memberships a sign-in through an upstream provider asserts, mapped to the groups of
+    // the tenant by the declaration of that provider, which the caller hands over (issue #782)
+    $services->set(UpstreamMemberships::class);
 
     // The module: every value this provider hands out and recognises again is drawn here (issue #245)
     $services->set(SecretDrawer::class);
