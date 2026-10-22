@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Configuration;
 
 use Beffroi\Bundle\Key\DormantKeyAlgorithms;
-use Beffroi\Bundle\Saml\IdentityProviderRoutes;
 use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
 use Beffroi\Bundle\Saml\RouterServiceProviderEndpoints;
 use Beffroi\Bundle\Saml\SamlSigning;
@@ -16,12 +15,10 @@ use Beffroi\Saml\Application\Metadata\ServiceProviderMetadataHandler;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
 use Beffroi\Saml\Domain\Metadata\PublishedMetadata;
-use Beffroi\Saml\Domain\Metadata\ServiceProviderEndpoints;
 use Beffroi\Saml\Port\ServiceProviderEndpointsInterface;
 use function is_array;
 use function is_int;
 use function is_string;
-use function sprintf;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
@@ -38,10 +35,10 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurat
  * of the SAML signing key is wired with the others, so that the key commands draw, list and rotate it, and the
  * scheduled step stages its successors, as every key of the tenant.
  *
- * The entity ID of the service provider is its own (S-38): one the deployment names is refused here, when the
- * container is compiled, when it is the entity ID of the identity provider, the issuer followed by the path of its
- * metadata, which RouterIdentityProviderEndpoints holds it to; one that holds an environment variable, or an issuer
- * that does, is checked again by RouterServiceProviderEndpoints at its first use.
+ * The entity ID of the service provider is its own (S-38): one the deployment names is a string here, and a URI of
+ * M-6 that is not the entity ID of the identity provider once the container is compiled (ServiceProviderEntityIdPass);
+ * one that holds an environment variable, or an issuer that does, is checked by RouterServiceProviderEndpoints at its
+ * first use.
  *
  * The service providers are declared here and nowhere else, as the clients are (S-5): no request registers one and no
  * page edits one. A declaration is validated when the container is compiled (ServiceProvidersPass), the claim of a
@@ -114,8 +111,8 @@ final readonly class SamlSection extends ConfigurationSection
             ->info('The tenant as a SAML service provider to the identity providers upstream of it (spec/saml.md section 6.9). Disabled, nothing of it is wired: its metadata answer that there are none. Enabled, it signs with the SAML signing key of the identity provider, drawn and rotated by the figures of "identity_provider" whichever role is enabled (S-40), and its metadata are served at /saml/sp/metadata.')
             ->canBeEnabled()
             ->children()
-            ->scalarNode('entity_id')
-            ->info('The entity ID of the service provider (spec/saml.md S-38): the URL of its metadata when left out, as the identity provider is named by the URL of its own; another absolute URI of at most 1024 characters with no whitespace for a service provider its upstream identity providers already know by a name it keeps. Never the entity ID of the identity provider of the tenant, refused when the container is compiled.')
+            ->stringNode('entity_id')
+            ->info('The entity ID of the service provider (spec/saml.md S-38): the URL of its metadata when left out, as the identity provider is named by the URL of its own; another URI for a service provider its upstream identity providers already know by a name it keeps, absolute, at most 1024 characters, with no whitespace, control, format or invisible character (M-6). Never the entity ID of the identity provider of the tenant. Refused when the container is compiled, or at its first use when it or the issuer holds an environment variable.')
             ->defaultNull()
             ->cannotBeEmpty()
             ->end()
@@ -216,10 +213,8 @@ final readonly class SamlSection extends ConfigurationSection
                 ->arg('$stagingDelay', $stagingDelay);
         }
         if ($serviceProviderEnabled) {
+            // a string or nothing, which the node holds it to; ServiceProviderEntityIdPass checks it once compiled (S-38)
             $entityId = is_string($serviceProvider['entity_id'] ?? null) ? $serviceProvider['entity_id'] : null;
-            if ($entityId !== null) {
-                self::assertOwnEntityId($entityId, self::string(self::section($config, 'tenant'), 'issuer'));
-            }
             $services->set(RouterServiceProviderEndpoints::class)->autowire()->arg('$entityId', $entityId);
             $services->alias(ServiceProviderEndpointsInterface::class, RouterServiceProviderEndpoints::class);
             $services
@@ -231,26 +226,6 @@ final readonly class SamlSection extends ConfigurationSection
                     '$stagingDelay',
                     $stagingDelay,
                 );
-        }
-    }
-
-    /**
-     * S-38: the entity ID the deployment names for its service provider is not the one of its identity provider, the
-     * issuer followed by the path of its metadata. An environment variable in either is a placeholder here, which is
-     * never the other value, so that it is left to the first use of the service provider.
-     *
-     * @throws InvalidConfigurationException when the two are one
-     */
-    private static function assertOwnEntityId(string $entityId, string $issuer): void
-    {
-        try {
-            ServiceProviderEndpoints::assertOwnEntityId($entityId, $issuer . IdentityProviderRoutes::METADATA_PATH);
-        } catch (InvalidArgumentException $refusal) {
-            throw new InvalidConfigurationException(
-                sprintf('Invalid configuration for path "beffroi.saml.service_provider.entity_id": %s', $refusal->getMessage()),
-                0,
-                $refusal,
-            );
         }
     }
 

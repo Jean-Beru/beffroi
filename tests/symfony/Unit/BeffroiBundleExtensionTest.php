@@ -429,25 +429,37 @@ final class BeffroiBundleExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-38: an entity ID of the service provider equal to the one of the identity provider, the issuer
-     * followed by the path of its metadata, is refused when the container is compiled, whether the identity provider
-     * is enabled or not.
+     * Spec/saml.md S-38: an entity ID of the service provider that is no string is refused when the configuration is
+     * read, rather than read as none and the service provider named by the URL of its metadata.
      */
     #[Test]
-    public function anEntityIdOfTheServiceProviderEqualToTheOneOfTheIdentityProviderIsRefused(): void
+    #[DataProvider('provideEntityIdsThatAreNoString')]
+    public function anEntityIdOfTheServiceProviderThatIsNoStringIsRefused(mixed $entityId, string $type): void
     {
         // Then
         $this->expectException(InvalidConfigurationException::class);
-        $this->expectExceptionMessageIs('Invalid configuration for path "beffroi.saml.service_provider.entity_id": The entity ID of the service provider of the tenant, "https://op.test/saml/metadata", is the one of its identity provider: each role is an entity of its own (spec/saml.md S-38).');
+        $this->expectExceptionMessageIsOrContains(\sprintf(
+            'Invalid type for path "beffroi.saml.service_provider.entity_id". Expected "string", but got "%s".',
+            $type,
+        ));
 
         // When
         self::load([
             'saml' => [
                 'service_provider' => [
-                    'entity_id' => 'https://op.test/saml/metadata',
+                    'entity_id' => $entityId,
                 ],
             ],
         ]);
+    }
+
+    /**
+     * @return iterable<string, array{mixed, string}>
+     */
+    public static function provideEntityIdsThatAreNoString(): iterable
+    {
+        yield 'a number' => [12_345, 'int'];
+        yield 'a boolean' => [true, 'bool'];
     }
 
     /**

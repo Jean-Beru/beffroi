@@ -73,6 +73,7 @@ use Beffroi\Bundle\Doctrine\Type\ScopesType;
 use Beffroi\Bundle\Doctrine\Type\SectorIdentifierType;
 use Beffroi\Bundle\Doctrine\Type\SubjectType;
 use Beffroi\Bundle\Key\KmsClientPass;
+use Beffroi\Bundle\Saml\ServiceProviderEntityIdPass;
 use Beffroi\Bundle\Saml\ServiceProvidersPass;
 use Beffroi\Bundle\Plane\Plane;
 use Beffroi\Bundle\Security\CorePasswordHasher;
@@ -225,6 +226,7 @@ final class BeffroiBundle extends AbstractBundle
 
         $container->addCompilerPass(new KmsClientPass());
         $container->addCompilerPass(new ServiceProvidersPass());
+        $container->addCompilerPass(new ServiceProviderEntityIdPass());
     }
 
     /**

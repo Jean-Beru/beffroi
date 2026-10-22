@@ -84,6 +84,24 @@ final class RouterServiceProviderEndpointsTest extends TestCase
     }
 
     /**
+     * S-38, M-6: an entity ID that is no URI of the model, which an environment variable kept from the compilation of
+     * the container, is refused at the first use of the service provider rather than at the writer of its metadata.
+     */
+    #[Test]
+    public function anEntityIdThatIsNoUriOfTheModelIsRefused(): void
+    {
+        // Given
+        $endpoints = self::endpoints('', "https://op.example/saml\u{200B}sp");
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The entity ID of the service provider of a tenant is refused (spec/saml.md S-38): A URI holds whitespace, a control, format or invisible character, or bytes that are not UTF-8 (M-6).');
+
+        // When
+        $endpoints->locate(self::tenant('https://op.example'));
+    }
+
+    /**
      * Section 6.9 step 3: the routes are not mounted under the path of the issuer, so the metadata would name a URL
      * where nothing is served; a configuration fault, refused rather than announced.
      */

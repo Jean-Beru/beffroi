@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Saml;
 
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Saml\Bridge\Model\ModelEntityId;
 use Beffroi\Saml\Domain\Metadata\ServiceProviderEndpoints;
 use Beffroi\Saml\Port\IdentityProviderEndpointsInterface;
 use Beffroi\Saml\Port\ServiceProviderEndpointsInterface;
@@ -19,9 +20,10 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  *
  * The path of the metadata is the router's, compared with the one the issuer makes a reader expect: routes mounted
  * elsewhere are refused at the first request. The assertion consumer service is the issuer and the path of its route
- * until issue #784 routes it. The entity ID is the URL of the metadata unless the deployment names another, which is
- * never the one of the identity provider of the tenant: the configuration refuses it when the container is compiled,
- * and this refuses it again at the first use, should the issuer or the entity ID hold an environment variable.
+ * until issue #784 routes it. The entity ID is the URL of the metadata unless the deployment names another, a URI of M-6
+ * that is never the one of the identity provider of the tenant: ServiceProviderEntityIdPass refuses another when the
+ * container is compiled, and this refuses it again at the first use, should the issuer or the entity ID hold an
+ * environment variable.
  */
 final readonly class RouterServiceProviderEndpoints implements ServiceProviderEndpointsInterface
 {
@@ -48,7 +50,11 @@ final readonly class RouterServiceProviderEndpoints implements ServiceProviderEn
                 $expected,
             ));
         }
-        $endpoints = new ServiceProviderEndpoints($this->entityId ?? $metadata, $metadata, $issuer . ServiceProviderRoutes::ASSERTION_CONSUMER_SERVICE_PATH);
+        $endpoints = new ServiceProviderEndpoints(
+            $this->entityId === null ? $metadata : ModelEntityId::read($this->entityId),
+            $metadata,
+            $issuer . ServiceProviderRoutes::ASSERTION_CONSUMER_SERVICE_PATH,
+        );
         ServiceProviderEndpoints::assertOwnEntityId($endpoints->entityId, $this->identityProvider->locate($tenant)->metadata);
 
         return $endpoints;

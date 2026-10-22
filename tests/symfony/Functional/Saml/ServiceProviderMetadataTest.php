@@ -10,11 +10,14 @@ use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use Beffroi\Saml2\Bindings\RedirectSender;
 use Beffroi\Saml2\Model\Assertion\Issuer;
+use Beffroi\Saml2\Model\Assertion\NameId;
+use Beffroi\Saml2\Model\Assertion\NameIdFormat;
 use Beffroi\Saml2\Model\Metadata\Binding;
 use Beffroi\Saml2\Model\Metadata\EntityDescriptor;
 use Beffroi\Saml2\Model\Metadata\IndexedEndpoint;
 use Beffroi\Saml2\Model\Metadata\MetadataReader;
 use Beffroi\Saml2\Model\Protocol\AuthnRequest;
+use Beffroi\Saml2\Model\Protocol\LogoutRequest;
 use Beffroi\Saml2\Model\SamlLoader;
 use Beffroi\Saml2\Model\Tests\Unit\Metadata\MetadataFixtures;
 use Beffroi\Saml2\Model\Writing\Signing;
@@ -179,6 +182,50 @@ final class ServiceProviderMetadataTest extends ConsoleTestCase
         static::assertSame([Response::HTTP_BAD_REQUEST, 1], [
             $this->browser->getResponse()->getStatusCode(),
             $this->browser->getCrawler()->filter('[data-error="saml_request_refused"]')->count(),
+        ]);
+    }
+
+    /**
+     * Section 6.9 step 1: the service provider enabled, a tenant that holds no SAML key has no metadata of it to serve.
+     */
+    #[Test]
+    public function aTenantWithoutASamlKeyServesNoMetadata(): void
+    {
+        // When
+        $this->browser->request('GET', self::METADATA);
+
+        // Then
+        static::assertSame(Response::HTTP_NOT_FOUND, $this->browser->getResponse()->getStatusCode());
+    }
+
+    /**
+     * S-41: the identity provider left off declares no service provider, so its single logout service refuses a
+     * LogoutRequest signed by a service provider, with the page of a refusal and no SAML answer, though the tenant
+     * holds a SAML key in service.
+     */
+    #[Test]
+    public function theIdentityProviderLeftOffRefusesEveryLogoutRequest(): void
+    {
+        // Given
+        self::generate();
+        $request = new LogoutRequest(
+            '_6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d',
+            Clock::get()->now(),
+            new Issuer('https://sp.example.org/saml'),
+            'https://op.test/saml/slo',
+            null,
+            new NameId('a-persistent-identifier', NameIdFormat::Persistent),
+            ['0199f0a1-7b2c-7d3e-8f4a-5b6c7d8e9f0a'],
+        );
+        $url = new RedirectSender()->logoutRequest($request, new Signing(MetadataFixtures::signingKey('sp')), 'state-1');
+
+        // When
+        $this->browser->request('GET', parse_url($url, PHP_URL_PATH) . '?' . parse_url($url, PHP_URL_QUERY));
+
+        // Then
+        static::assertSame([Response::HTTP_BAD_REQUEST, 1], [
+            $this->browser->getResponse()->getStatusCode(),
+            $this->browser->getCrawler()->filter('[data-error="saml_logout_refused"]')->count(),
         ]);
     }
 
