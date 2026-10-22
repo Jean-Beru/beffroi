@@ -218,6 +218,72 @@ final class SelfSignedCertificateIssuerTest extends TestCase
     }
 
     /**
+     * S-65, RFC 5280 §4.2.1.3: the certificate of the key an upstream identity provider encrypts for has one extension,
+     * keyUsage with keyEncipherment alone, critical.
+     */
+    #[Test]
+    public function itMayOnlyTransportKeysForTheKeyOfAnIdentityProvider(): void
+    {
+        // Given
+        $key = SamlKeys::encryptionKey($this->tenant, 'https://idp.example/metadata');
+
+        // When
+        $extensions = $this->certificateOf($key)->tbsCertificate()->extensions();
+
+        // Then
+        $keyUsage = $extensions->keyUsage();
+        static::assertSame(
+            [1, true, false, false, true, false, false, false, false, false, false],
+            [
+                $extensions->count(),
+                $keyUsage->isCritical(),
+                $keyUsage->isDigitalSignature(),
+                $keyUsage->isNonRepudiation(),
+                $keyUsage->isKeyEncipherment(),
+                $keyUsage->isDataEncipherment(),
+                $keyUsage->isKeyAgreement(),
+                $keyUsage->isKeyCertSign(),
+                $keyUsage->isCRLSign(),
+                $keyUsage->isEncipherOnly(),
+                $keyUsage->isDecipherOnly(),
+            ],
+        );
+    }
+
+    /**
+     * S-65, S-3: the certificate of the key an upstream identity provider encrypts for verifies under the public key it
+     * carries, which is the modulus of the key's public JWK.
+     */
+    #[Test]
+    public function theCertificateOfTheKeyOfAnIdentityProviderVerifiesUnderThatKey(): void
+    {
+        // Given
+        $key = SamlKeys::encryptionKey($this->tenant, 'https://idp.example/metadata');
+
+        // When
+        $certificate = $this->certificateOf($key);
+
+        // Then
+        $public = openssl_pkey_get_public($certificate->tbsCertificate()->subjectPublicKeyInfo()->toPEM()->string());
+        static::assertNotFalse($public);
+        $details = openssl_pkey_get_details($public);
+        static::assertIsArray($details);
+        static::assertIsArray($details['rsa'] ?? null);
+        static::assertSame(
+            [1, self::base64url($key->publicJwk['n'])],
+            [
+                openssl_verify(
+                    $certificate->tbsCertificate()->toASN1()->toDER(),
+                    $certificate->signatureValue()->bitString()->string(),
+                    $public,
+                    OPENSSL_ALGO_SHA256,
+                ),
+                $details['rsa']['n'] ?? null,
+            ],
+        );
+    }
+
+    /**
      * S-3: built twice, the certificate is the same bytes, so that two processes publish the same one.
      */
     #[Test]
@@ -269,7 +335,7 @@ final class SelfSignedCertificateIssuerTest extends TestCase
         // Then
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessageIs(sprintf(
-            'The key "%s" is of RS256, not a SAML signing key: its certificate is not one the metadata publishes (spec/saml.md section 6.1 step 2).',
+            'The key "%s" is of RS256, not a SAML key: its certificate is not one the metadata publishes (spec/saml.md section 6.1 step 2).',
             $pair->kid,
         ));
 

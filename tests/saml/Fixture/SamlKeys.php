@@ -35,6 +35,11 @@ final class SamlKeys
 
     private static ?GeneratedKeyPair $weakPair = null;
 
+    /**
+     * @var array<int, GeneratedKeyPair>
+     */
+    private static array $encryptionPairs = [];
+
     public static function algorithm(): SamlSigning
     {
         return new SamlSigning();
@@ -92,6 +97,73 @@ final class SamlKeys
     {
         $key = self::key($tenant, $pair, $createdAt);
         $key->activate($createdAt ?? Fixtures::now());
+
+        return $key;
+    }
+
+    /**
+     * A pair of its own for the key an upstream identity provider encrypts for, never the material of another key of
+     * the suite (S-64): the first of a provider, its next one, the first of another provider.
+     */
+    public static function encryptionPair(int $index = 0): GeneratedKeyPair
+    {
+        return self::$encryptionPairs[$index] ??= self::generate();
+    }
+
+    /**
+     * The key an upstream identity provider encrypts for, on that pair, staged, sealed by the KMS of the suite: its
+     * public JWK names the algorithm of that provider and the use "enc" (S-64).
+     */
+    public static function encryptionKey(
+        Tenant $tenant,
+        string $identityProvider,
+        int $pair = 0,
+        ?DateTimeImmutable $createdAt = null,
+    ): TenantKey {
+        $algorithm = new SamlEncryption($identityProvider);
+        $generated = self::encryptionPair($pair);
+        $createdAt ??= Fixtures::now();
+
+        return new TenantKey(
+            $generated->kid,
+            $tenant,
+            $algorithm,
+            [
+                ...$generated->publicJwk,
+                'alg' => $algorithm->name(),
+                'use' => $algorithm->keyUse()->value,
+            ],
+            Keys::sealer()->seal($tenant, $generated->privateJwk),
+            $createdAt,
+            $createdAt,
+        );
+    }
+
+    /**
+     * The key an upstream identity provider encrypts for, on the material of a PEM, active, sealed by the KMS of the
+     * suite: what a ciphertext an outside tool made for that material is opened with (S-64).
+     */
+    public static function encryptionKeyOfPem(Tenant $tenant, string $identityProvider, string $pem): TenantKey
+    {
+        $algorithm = new SamlEncryption($identityProvider);
+        $private = JWKFactory::createFromKey($pem);
+        $kid = $private->thumbprint('sha256');
+        $public = self::members($private->toPublic());
+        $key = new TenantKey(
+            $kid,
+            $tenant,
+            $algorithm,
+            [
+                ...$public,
+                'kid' => $kid,
+                'alg' => $algorithm->name(),
+                'use' => $algorithm->keyUse()->value,
+            ],
+            Keys::sealer()->seal($tenant, self::members($private)),
+            Fixtures::now(),
+            Fixtures::now(),
+        );
+        $key->activate(Fixtures::now());
 
         return $key;
     }
