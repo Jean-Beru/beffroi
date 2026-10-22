@@ -28,7 +28,7 @@ use function trim;
  */
 #[AsCommand(
     name: 'beffroi:user:profile',
-    description: 'Describe a user with the standard claims of OIDC Core section 5.1; what is not said is cleared but for what the upstream provider that created the user holds, which is refused, a run that says nothing writes nothing. To read a user, see beffroi:user:show.',
+    description: 'Describe a user with the standard claims of OIDC Core section 5.1; what is not said is cleared, except what the upstream provider that created the user holds, which is kept, and saying that otherwise is refused; a run that says nothing writes nothing. To read a user, see beffroi:user:show.',
 )]
 final readonly class UserProfileCommand
 {
