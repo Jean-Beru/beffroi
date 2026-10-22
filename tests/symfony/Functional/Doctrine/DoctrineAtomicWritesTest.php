@@ -72,7 +72,58 @@ final class DoctrineAtomicWritesTest extends DatabaseTestCase
         }
 
         // Then
-        self::reload();
+        static::assertNull(self::users()->findByUsername(self::tenant(), 'alice'));
+    }
+
+    /**
+     * The rollback takes the row back and the manager would keep the object it flushed into it, which a later
+     * flush of the same request would write again or point a new row at: it holds nothing after a failure.
+     */
+    #[Test]
+    public function aWriteThatFailsLeavesNothingManaged(): void
+    {
+        // Given
+        $alice = User::create(Uuid::v7(), self::tenant(), new Subject('alice-subject'), 'alice', self::now());
+
+        // When
+        try {
+            self::writes()
+                ->atomically(static function () use ($alice): void {
+                    self::users()->save($alice);
+
+                    throw new RuntimeException('The second write failed.');
+                });
+        } catch (RuntimeException) {
+        }
+
+        // Then
+        static::assertFalse(self::entityManager()->contains($alice));
+    }
+
+    /**
+     * What the request does after a failure is written, the manager forgetting what it held and not the
+     * tenant it reads again.
+     */
+    #[Test]
+    public function aWriteAfterAFailureIsKept(): void
+    {
+        // Given
+        $alice = User::create(Uuid::v7(), self::tenant(), new Subject('alice-subject'), 'alice', self::now());
+        try {
+            self::writes()
+                ->atomically(static function () use ($alice): void {
+                    self::users()->save($alice);
+
+                    throw new RuntimeException('The second write failed.');
+                });
+        } catch (RuntimeException) {
+        }
+
+        // When
+        self::users()->save(User::create(Uuid::v7(), self::tenant(), new Subject('bob-subject'), 'bob', self::now()));
+
+        // Then
+        static::assertNotNull(self::users()->findByUsername(self::tenant(), 'bob'));
         static::assertNull(self::users()->findByUsername(self::tenant(), 'alice'));
     }
 
