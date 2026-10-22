@@ -362,7 +362,8 @@ deptrac:
     Saml2ModelAuthentication: ~
     Saml2ModelAssertion: ['Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'XmlCore']
     Saml2ModelProtocol: ['Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'Saml2ModelAssertion', 'Saml2ModelInternal', 'XmlCore']
-    Saml2ModelMetadata: ['Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'Saml2ModelAssertion', 'Saml2ModelInternal', 'Saml2ModelTimeBounds', 'XmlCore', 'XmlDsig', 'PsrClock']
+    # IdentityProvider carries the service provider's decryption key given to that provider, Enc's port (model.md 5.5)
+    Saml2ModelMetadata: ['Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'Saml2ModelAssertion', 'Saml2ModelInternal', 'Saml2ModelTimeBounds', 'XmlCore', 'XmlDsig', 'XmlEnc', 'PsrClock']
     Saml2ModelInternal: ['Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'Saml2ModelAssertion', 'Saml2ModelProtocol', 'Saml2ModelMetadata', 'Saml2ModelTimeBounds', 'Saml2ModelAuthentication', 'XmlCore', 'XmlDsig', 'XmlEnc']
     Saml2ModelValidation: ['Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'Saml2ModelAssertion', 'Saml2ModelProtocol', 'Saml2ModelMetadata', 'Saml2ModelPort', 'Saml2ModelTimeBounds', 'Saml2ModelAuthentication', 'Saml2ModelInternal', 'XmlCore', 'XmlDsig', 'XmlEnc', 'PsrClock']
     Saml2ModelWriting: ['Saml2ModelRoot', 'Saml2ModelException', 'Saml2ModelValue', 'Saml2ModelAssertion', 'Saml2ModelProtocol', 'Saml2ModelMetadata', 'Saml2ModelInternal', 'XmlCore', 'XmlDsig', 'XmlEnc']

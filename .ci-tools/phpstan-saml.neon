@@ -82,6 +82,11 @@ parameters:
 		- LIBXML_PARSEHUGE
 		- LIBXML_NOBLANKS
 		- LIBXML_NOCDATA
+		# The proof Enc asks for before it opens AES-CBC, and the result of a verification (section 8, enc.md E-15): the
+		# package neither implements the one nor builds the other, the one proof being saml2-model's, built from the
+		# Verified that Dsig's Verifier gives
+		- Beffroi\Xml\Enc\CoveringSignatureInterface
+		- Beffroi\Xml\Dsig\Verified
 	# The functions never called (section 8): unserialize() builds an object of any class, one of
 	# Beffroi\Saml2\Bindings\Internal\ among them, without its constructor (finding 3 of the security review of
 	# saml2-bindings); session_decode() is the same unserializer, fed the bytes of a session.

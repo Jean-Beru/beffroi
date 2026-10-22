@@ -16,8 +16,8 @@ const IV_BYTES = 12;
 const CBC_BLOCK_BYTES = 16;
 
 $mode = $argv[1] ?? '';
-if ($mode !== 'data' && $mode !== 'hostile' && $mode !== 'cbc') {
-    fwrite(STDERR, "Usage: php derive.php data|hostile|cbc\n");
+if ($mode !== 'data' && $mode !== 'hostile' && $mode !== 'cbc' && $mode !== 'foreign') {
+    fwrite(STDERR, "Usage: php derive.php data|hostile|cbc|foreign\n");
     exit(1);
 }
 
@@ -70,6 +70,16 @@ $write = static function (string $path, string $bytes): void {
     }
 };
 
+// the template of an enveloped signature of the response, after its Issuer, which xmlsec1 fills
+$signatureTemplate = '<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><ds:SignedInfo>'
+    . '<ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>'
+    . '<ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>'
+    . '<ds:Reference URI="#_response"><ds:Transforms>'
+    . '<ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>'
+    . '<ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></ds:Transforms>'
+    . '<ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ds:DigestValue></ds:DigestValue>'
+    . '</ds:Reference></ds:SignedInfo><ds:SignatureValue></ds:SignatureValue></ds:Signature>';
+
 if ($mode === 'data') {
     $clear = $read('../behaviour/response-signed-assertion-accepted.xml');
 
@@ -93,15 +103,7 @@ if ($mode === 'data') {
     // assertion is encrypted
     $signedResponse = static fn (string $response): string => $replace(
         "</saml:Issuer>\n  <samlp:Status>",
-        '</saml:Issuer><ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><ds:SignedInfo>'
-        . '<ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>'
-        . '<ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>'
-        . '<ds:Reference URI="#_response"><ds:Transforms>'
-        . '<ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>'
-        . '<ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></ds:Transforms>'
-        . '<ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ds:DigestValue></ds:DigestValue>'
-        . '</ds:Reference></ds:SignedInfo><ds:SignatureValue></ds:SignatureValue></ds:Signature>'
-        . "\n  <samlp:Status>",
+        '</saml:Issuer>' . $signatureTemplate . "\n  <samlp:Status>",
         $response,
     );
 
@@ -121,11 +123,26 @@ if ($mode === 'data') {
     // in place of the assertion, the response in clear, whose own assertion is the signed one: what the plaintext of
     // a saml:EncryptedAssertion must not be
     $inside = $replace(' ID="_response"', ' ID="_response-inside"', $extract('~<samlp:Response .*</samlp:Response>~s', $clear));
-    $write('response-not-an-assertion.data.xml', $replaceMatch(
+    $notAnAssertion = $replaceMatch(
         '~<saml:Assertion xmlns:saml="[^"]*" ID="_assertion".*</saml:Assertion>~s',
         static fn (): string => $inside,
         $signed,
+    );
+    $write('response-not-an-assertion.data.xml', $notAnAssertion);
+
+    // the same, and an assertion whose Issuer is another entity than the identity provider's, each under the template
+    // of the response's signature: what a decryption under AES-CBC refuses with the one failure (spec/model.md
+    // section 9.2)
+    $write('response-signed-response-not-an-assertion.data.xml', $replaceMatch(
+        '~<saml:Assertion xmlns:saml="[^"]*" ID="_assertion".*</saml:Assertion>~s',
+        static fn (): string => $inside,
+        $signedResponse($signed),
     ));
+    $write('response-signed-response-assertion-of-another-issuer.data.xml', $signedResponse($replace(
+        "\n    <saml:Issuer>https://idp.example.com/saml</saml:Issuer>",
+        "\n    <saml:Issuer>https://other.example.com/saml</saml:Issuer>",
+        $unsigned,
+    )));
 
     exit(0);
 }
@@ -189,6 +206,23 @@ if ($mode === 'cbc') {
     exit(0);
 }
 
+if ($mode === 'foreign') {
+    // the AES-CBC ciphertext of the identity provider, intact, its response's signature taken off for the template and
+    // its Issuer the second identity provider's, which xmlsec1 then signs with that provider's key (spec/model.md
+    // section 5.5, section 9.2)
+    $write('cbc-aes128-signed-by-b.tmp.xml', $replace(
+        '<saml:Issuer>https://idp.example.com/saml</saml:Issuer>',
+        '<saml:Issuer>https://idp-b.example.com/saml</saml:Issuer>',
+        $replaceMatch(
+            '~<ds:Signature xmlns:ds="[^"]*">.*?</ds:Signature>~s',
+            static fn (): string => $signatureTemplate,
+            $read('response-signed-over-encrypted-assertion-aes128-cbc-accepted.xml'),
+        ),
+    ));
+
+    exit(0);
+}
+
 $vector = $read('response-encrypted-signed-assertion-accepted.xml');
 $signedOver = $read('response-signed-over-encrypted-assertion-accepted.xml');
 
@@ -198,6 +232,10 @@ $write('response-encrypted-tag-truncated-refused.xml', $content($vector, static 
 
 // the ciphertext altered under the signature of the response: refused by the signature, before any decryption
 $write('response-signed-over-encrypted-assertion-ciphertext-altered-refused.xml', $content($signedOver, $flip));
+$write('response-signed-over-encrypted-assertion-aes128-cbc-ciphertext-altered-after-signing-refused.xml', $content(
+    $read('response-signed-over-encrypted-assertion-aes128-cbc-accepted.xml'),
+    $flip,
+));
 
 // the response without its Issuer, which E17 requires when an assertion is encrypted
 $write('response-encrypted-without-issuer-refused.xml', $replace(

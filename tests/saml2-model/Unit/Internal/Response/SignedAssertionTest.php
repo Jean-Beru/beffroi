@@ -18,6 +18,7 @@ use Beffroi\Xml\Core\Document;
 use Beffroi\Xml\Core\Name;
 use Beffroi\Xml\Dsig\Exception\DigestMismatch;
 use Beffroi\Xml\Dsig\Verifier;
+use Beffroi\Xml\Enc\Decryptor;
 use Dom\Element;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -190,7 +191,7 @@ final class SignedAssertionTest extends TestCase
         // Given
         $document = $this->document('encrypted/response-encrypted-signed-assertion-accepted.xml');
         $response = SignedResponse::of($document->root(), self::identityProvider(), SamlLoader::create());
-        $decrypted = DecryptedAssertion::of($response, self::decryptionKey(), SamlLoader::create());
+        $decrypted = self::decrypted($response);
 
         // When
         $assertion = SignedAssertion::decrypted($decrypted, $response, self::identityProvider(), SamlLoader::create());
@@ -211,7 +212,7 @@ final class SignedAssertionTest extends TestCase
         // Given
         $document = $this->document('encrypted/response-signed-over-encrypted-assertion-accepted.xml');
         $response = SignedResponse::of($document->root(), self::identityProvider(), SamlLoader::create());
-        $decrypted = DecryptedAssertion::of($response, self::decryptionKey(), SamlLoader::create());
+        $decrypted = self::decrypted($response);
 
         // When
         $assertion = SignedAssertion::decrypted($decrypted, $response, self::identityProvider(), SamlLoader::create());
@@ -231,7 +232,7 @@ final class SignedAssertionTest extends TestCase
         // Given
         $document = $this->document('encrypted/response-encrypted-unsigned-assertion-refused.xml');
         $response = SignedResponse::of($document->root(), self::identityProvider(), SamlLoader::create());
-        $decrypted = DecryptedAssertion::of($response, self::decryptionKey(), SamlLoader::create());
+        $decrypted = self::decrypted($response);
 
         // Then
         $this->expectException(SignatureRequired::class);
@@ -239,6 +240,20 @@ final class SignedAssertionTest extends TestCase
 
         // When
         SignedAssertion::decrypted($decrypted, $response, self::identityProvider(), SamlLoader::create());
+    }
+
+    /**
+     * The plaintext of the one saml:EncryptedAssertion of $response, decrypted by Enc with the service provider's key.
+     */
+    private static function decrypted(SignedResponse $response): DecryptedAssertion
+    {
+        return DecryptedAssertion::of(new Decryptor(SamlLoader::create())->decrypt(
+            Children::one(
+                Children::one($response->root, new Name(Saml::ASSERTION, 'EncryptedAssertion')),
+                new Name('http://www.w3.org/2001/04/xmlenc#', 'EncryptedData'),
+            ),
+            self::decryptionKey(),
+        ));
     }
 
     private function assertion(Document $document): Element

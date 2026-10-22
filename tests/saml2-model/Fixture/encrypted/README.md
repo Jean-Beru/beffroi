@@ -1,7 +1,7 @@
 # Encrypted responses
 
 The responses whose assertion is encrypted, which `ResponseValidator` reads under the contract of section 6.7 of
-`spec/model.md` (rows 38 to 48 of section 9.2, rows 23 to 25 of section 9.3). The encryptions and the signature of a
+`spec/model.md` (rows 38 to 51 of section 9.2, rows 23 to 25 of section 9.3). The encryptions and the signature of a
 response over its ciphertext are made by xmlsec1, an implementation that is not this one: xmlsec1 1.3.7 on OpenSSL, in
 Alpine 3.22 (`apk add xmlsec`), on 22 October 2026, for the test certificate of the service provider and with the test
 key of the identity provider, both under `../keys/`. Each vector is the output of xmlsec1 byte for byte; the hostile
@@ -24,6 +24,8 @@ php derive.php data
 | `response-signed-response-signed-assertion-changed.data.xml` | the same changed assertion under the template of the signature of the response |
 | `response-not-an-assertion.data.xml` | the response in clear, its `ID` changed to `_response-inside`, inside the `saml:EncryptedAssertion` in place of the assertion |
 | `response-signed-assertion-signed-response.data.xml` | the signed assertion of the first, the response carrying the template of the third: what Entra's "Sign SAML response and assertion" sends |
+| `response-signed-response-not-an-assertion.data.xml` | the fourth under the template of the response's signature |
+| `response-signed-response-assertion-of-another-issuer.data.xml` | the second, its assertion's `Issuer` `https://other.example.com/saml`, under that template |
 
 `encrypted-data-aes256-gcm.template.xml` is the template of `tests/xml-security/Enc/Fixture/vectors/`: `aes256-gcm`
 for the content, the session key under `rsa-oaep-mgf1p`, the certificate in the `KeyInfo` of the `EncryptedKey`, a hint
@@ -192,3 +194,57 @@ rm encrypted/*.tmp.xml
 
 The third case of row 48, the wrong key, needs no fixture: the first `aes128-cbc` response read with the test key of the
 identity provider.
+
+## The key given with each identity provider, and the reading after a CBC decryption
+
+Made on 22 October 2026 by the same xmlsec1, after the review of the pull request (section 5.5, §9.2 rows 49 to 51).
+`php derive.php data` writes the two data files above; `php derive.php hostile` writes
+`response-signed-over-encrypted-assertion-aes128-cbc-ciphertext-altered-after-signing-refused.xml`, the first byte of
+the ciphertext of the signed `aes128-cbc` response flipped after its signature (row 50); `php derive.php foreign` takes
+that response, intact, its signature replaced by the template and its `Issuer` by `https://idp-b.example.com/saml`, into
+`cbc-aes128-signed-by-b.tmp.xml`. Then, from `tests/saml2-model/Fixture/`, the script in a file `more.sh`:
+
+```
+set -e
+apk add -q xmlsec
+ID="--id-attr:ID urn:oasis:names:tc:SAML:2.0:assertion:Assertion --node-id _assertion"
+CBC128="xmlsec1 --encrypt --lax-key-search --pubkey-cert-pem keys/sp-signing-certificate.pem --session-key aes-128-cbc"
+$CBC128 --node-xpath "/*/*[local-name()='EncryptedAssertion']/*" \
+    --xml-data encrypted/response-signed-response-not-an-assertion.data.xml \
+    --output encrypted/cbc-aes128-not-an-assertion.tmp.xml encrypted/encrypted-data-aes128-cbc.template.xml
+$CBC128 $ID --xml-data encrypted/response-signed-response-signed-assertion-changed.data.xml \
+    --output encrypted/cbc-aes128-assertion-changed.tmp.xml encrypted/encrypted-data-aes128-cbc.template.xml
+$CBC128 $ID --xml-data encrypted/response-signed-response-assertion-of-another-issuer.data.xml \
+    --output encrypted/cbc-aes128-another-issuer.tmp.xml encrypted/encrypted-data-aes128-cbc.template.xml
+RESPONSE="--id-attr:ID urn:oasis:names:tc:SAML:2.0:protocol:Response"
+SIGN="xmlsec1 --sign --lax-key-search --privkey-pem keys/idp-signing-key.pem $RESPONSE"
+$SIGN --output encrypted/response-signed-over-encrypted-aes128-cbc-not-an-assertion-refused.xml \
+    encrypted/cbc-aes128-not-an-assertion.tmp.xml
+$SIGN --output encrypted/response-signed-over-encrypted-aes128-cbc-assertion-changed-after-signing-refused.xml \
+    encrypted/cbc-aes128-assertion-changed.tmp.xml
+$SIGN --output encrypted/response-signed-over-encrypted-aes128-cbc-assertion-of-another-issuer-refused.xml \
+    encrypted/cbc-aes128-another-issuer.tmp.xml
+xmlsec1 --sign --lax-key-search --privkey-pem keys/idp-b-signing-key.pem $RESPONSE \
+    --output encrypted/response-aes128-cbc-ciphertext-of-another-provider-signed-by-b-refused.xml \
+    encrypted/cbc-aes128-signed-by-b.tmp.xml
+VERIFY="xmlsec1 --verify --lax-key-search $RESPONSE"
+for f in not-an-assertion assertion-changed-after-signing assertion-of-another-issuer; do
+    $VERIFY --pubkey-cert-pem keys/idp-signing-certificate.pem encrypted/response-signed-over-encrypted-aes128-cbc-$f-refused.xml
+done
+$VERIFY --pubkey-cert-pem keys/idp-b-signing-certificate.pem \
+    encrypted/response-aes128-cbc-ciphertext-of-another-provider-signed-by-b-refused.xml
+DEC="xmlsec1 --decrypt --lax-key-search --privkey-pem keys/sp-signing-key.pem --id-attr:ID urn:oasis:names:tc:SAML:2.0:assertion:Assertion"
+$DEC encrypted/response-aes128-cbc-ciphertext-of-another-provider-signed-by-b-refused.xml > /dev/null
+if xmlsec1 --decrypt --lax-key-search --privkey-pem keys/sp-b-encryption-key.pem \
+    encrypted/response-aes128-cbc-ciphertext-of-another-provider-signed-by-b-refused.xml > /dev/null 2>&1; then exit 1; fi
+rm encrypted/*.tmp.xml
+```
+
+xmlsec1 verifies each signature under its signer's certificate; the ciphertext the second provider carries opens under
+the key of the first and not under the key given with the second.
+
+| Fixture | Made from | Serves |
+|---|---|---|
+| `response-aes128-cbc-ciphertext-of-another-provider-signed-by-b-refused.xml` | the signed `aes128-cbc` response of the first provider, its ciphertext intact, signed again by the second (`../keys/idp-b-signing-key.pem`) under its own `Issuer` | §9.2 row 49: the key given with the second provider asked, and opening nothing |
+| `response-signed-over-encrypted-assertion-aes128-cbc-ciphertext-altered-after-signing-refused.xml` | the signed `aes128-cbc` response, a byte of its ciphertext flipped after the signature | §9.2 row 50: `DigestMismatch`, the key never asked |
+| `response-signed-over-encrypted-aes128-cbc-not-an-assertion-refused.xml`, `response-signed-over-encrypted-aes128-cbc-assertion-changed-after-signing-refused.xml`, `response-signed-over-encrypted-aes128-cbc-assertion-of-another-issuer-refused.xml` | the three data files encrypted under `aes128-cbc`, each response signed by the first provider | §9.2 row 51: the one failure of the decryption, whatever the reading refused |

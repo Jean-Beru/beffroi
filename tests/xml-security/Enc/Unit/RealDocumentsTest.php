@@ -18,6 +18,7 @@ use Beffroi\Xml\Tests\Core\Support\Stack;
 use Beffroi\Xml\Tests\Enc\Support\CoveringDocument;
 use Beffroi\Xml\Tests\Enc\Support\Encrypted;
 use Beffroi\Xml\Tests\Enc\Support\Fixtures;
+use Beffroi\Xml\Tests\Enc\Support\LoadedDocument;
 use Beffroi\Xml\Tests\Enc\Support\Loaded;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestWith;
@@ -105,6 +106,7 @@ final class RealDocumentsTest extends TestCase
             $element,
             $this->key(),
             new CoveringDocument($document),
+            new LoadedDocument(),
         );
 
         // Then

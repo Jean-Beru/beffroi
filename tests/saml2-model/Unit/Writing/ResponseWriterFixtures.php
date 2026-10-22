@@ -33,7 +33,6 @@ use Beffroi\Saml2\Model\Value\SamlId;
 use Beffroi\Xml\Core\Document;
 use Beffroi\Xml\Core\Serializer;
 use Beffroi\Xml\Core\Text;
-use Beffroi\Xml\Enc\DecryptionKeyInterface;
 use DateTimeImmutable;
 use Dom\Element;
 
@@ -193,17 +192,15 @@ final class ResponseWriterFixtures
     }
 
     /**
-     * The validator of the service provider, its clock frozen at the IssueInstant of the responses, built with the key
-     * $decryptionKey decrypts an encrypted assertion with (section 6.7).
+     * The validator of the service provider, its clock frozen at the IssueInstant of the responses.
      */
-    public static function validator(?DecryptionKeyInterface $decryptionKey = null): ResponseValidator
+    public static function validator(): ResponseValidator
     {
         return new ResponseValidator(
             SamlLoader::create(),
             new FrozenClock(new DateTimeImmutable(self::NOW)),
             new InMemoryReplayGuard(),
             new TimeBounds(),
-            $decryptionKey,
         );
     }
 

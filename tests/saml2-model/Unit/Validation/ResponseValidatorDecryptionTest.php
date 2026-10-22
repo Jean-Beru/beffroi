@@ -47,7 +47,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     public function itReadsAnEncryptedAssertionAsTheSameAssertionInClear(): void
     {
         // Given
-        $clear = $this->validator(null)->validate(
+        $clear = $this->validator()->validate(
             $this->unverified('behaviour/response-signed-assertion-accepted.xml'),
             self::identityProvider(),
             self::expected(),
@@ -55,7 +55,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
         $response = $this->unverified('encrypted/response-encrypted-signed-assertion-accepted.xml');
 
         // When
-        $accepted = $this->validator(self::decryptionKey())->validate($response, self::identityProvider(), self::expected());
+        $accepted = $this->validator()->validate($response, self::identityProvider()->withDecryptionKey(self::decryptionKey()), self::expected());
 
         // Then
         static::assertEquals($clear, $accepted);
@@ -72,7 +72,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
         $response = $this->unverified('encrypted/response-signed-over-encrypted-assertion-accepted.xml');
 
         // When
-        $accepted = $this->validator(self::decryptionKey())->validate($response, self::identityProvider(), self::expected());
+        $accepted = $this->validator()->validate($response, self::identityProvider()->withDecryptionKey(self::decryptionKey()), self::expected());
 
         // Then
         static::assertSame(
@@ -99,7 +99,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
         $this->expectExceptionMessageIs('The data could not be decrypted (E-3).');
 
         // When
-        $this->validator(self::decryptionKey($key))->validate($response, self::identityProvider(), self::expected());
+        $this->validator()->validate($response, self::identityProvider()->withDecryptionKey(self::decryptionKey($key)), self::expected());
     }
 
     /**
@@ -128,7 +128,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
         $this->expectExceptionMessageIs('The claimed element is not what was signed (D-8).');
 
         // When
-        $this->validator(self::decryptionKey())->validate($response, self::identityProvider(), self::expected());
+        $this->validator()->validate($response, self::identityProvider()->withDecryptionKey(self::decryptionKey()), self::expected());
     }
 
     /**
@@ -147,7 +147,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
         $this->expectExceptionMessageIs($message);
 
         // When
-        $this->validator(self::decryptionKey())->validate($response, self::identityProvider(), self::expected());
+        $this->validator()->validate($response, self::identityProvider()->withDecryptionKey(self::decryptionKey()), self::expected());
     }
 
     /**
@@ -165,7 +165,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
         $this->expectExceptionMessageIs('The plaintext of the saml:EncryptedAssertion is not a saml:Assertion (M-4).');
 
         // When
-        $this->validator(self::decryptionKey())->validate($response, self::identityProvider(), self::expected());
+        $this->validator()->validate($response, self::identityProvider()->withDecryptionKey(self::decryptionKey()), self::expected());
     }
 
     /**
@@ -194,7 +194,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
         self::assertCarriesNothingOf($message, $response->document);
 
         // When
-        $this->validator($key)->validate($response, self::identityProvider(), self::expected($requestId));
+        $this->validator()->validate($response, self::identityProvider()->withDecryptionKey($key), self::expected($requestId));
     }
 
     /**
@@ -233,7 +233,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
         $this->expectExceptionMessageIs('The claimed element is not what was signed (D-8).');
 
         // When
-        $this->validator(self::decryptionKey())->validate($response, self::identityProvider(), self::expected());
+        $this->validator()->validate($response, self::identityProvider()->withDecryptionKey(self::decryptionKey()), self::expected());
     }
 
     /**
@@ -248,8 +248,8 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * §9.2 row 44, section 6.7, section 6.1 step 2: a validator built without a decryption key refuses an encrypted
-     * assertion by name before any key is touched: under metadata that would refuse the signature of the response, the
+     * §9.2 row 44, section 6.7, section 6.1 step 2, section 5.5: an identity provider given without a decryption key has
+     * its encrypted assertion refused by name before any key is touched: under metadata that would refuse the signature of the response, the
      * refusal is still that one.
      */
     #[Test]
@@ -257,7 +257,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     {
         // Given
         $response = $this->unverified('encrypted/response-signed-over-encrypted-assertion-accepted.xml');
-        $message = 'The response holds a saml:EncryptedAssertion and the validator holds no key to decrypt it (section 6.7).';
+        $message = 'The response holds a saml:EncryptedAssertion and the identity provider was given no key to decrypt it (section 6.7).';
 
         // Then
         $this->expectException(Unsupported::class);
@@ -265,7 +265,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
         self::assertCarriesNothingOf($message, $response->document);
 
         // When
-        $this->validator(null)->validate($response, self::identityProvider(key: 'sp'), self::expected());
+        $this->validator()->validate($response, self::identityProvider(key: 'sp'), self::expected());
     }
 
     /**
@@ -283,7 +283,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
         $this->expectExceptionMessageIs('An EncryptedData holds exactly one EncryptionMethod (E-5).');
 
         // When
-        $this->validator(self::decryptionKey())->validate($response, self::identityProvider(), self::expected());
+        $this->validator()->validate($response, self::identityProvider()->withDecryptionKey(self::decryptionKey()), self::expected());
     }
 
     /**
@@ -295,9 +295,9 @@ final class ResponseValidatorDecryptionTest extends TestCase
     {
         // Given
         $replay = new InMemoryReplayGuard();
-        $this->validator(self::decryptionKey(), $replay)->validate(
+        $this->validator($replay)->validate(
             $this->unverified('encrypted/response-encrypted-signed-assertion-accepted.xml'),
-            self::identityProvider(),
+            self::identityProvider()->withDecryptionKey(self::decryptionKey()),
             self::expected(),
         );
         $response = $this->unverified('behaviour/response-signed-assertion-accepted.xml');
@@ -307,7 +307,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
         $this->expectExceptionMessageIs('The assertion was already accepted from its issuer (M-11).');
 
         // When
-        $this->validator(self::decryptionKey(), $replay)->validate($response, self::identityProvider(), self::expected());
+        $this->validator($replay)->validate($response, self::identityProvider()->withDecryptionKey(self::decryptionKey()), self::expected());
     }
 
     /**
@@ -322,7 +322,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
         string $fixture,
     ): void {
         // Given
-        $clear = $this->validator(null)->validate(
+        $clear = $this->validator()->validate(
             $this->unverified('behaviour/response-signed-assertion-accepted.xml'),
             self::identityProvider(),
             self::expected(),
@@ -330,7 +330,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
         $response = $this->unverified($fixture);
 
         // When
-        $accepted = $this->validator(self::decryptionKey())->validate($response, self::identityProvider(), self::expected());
+        $accepted = $this->validator()->validate($response, self::identityProvider()->withDecryptionKey(self::decryptionKey()), self::expected());
 
         // Then
         static::assertEquals(
@@ -366,7 +366,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
 
         // When
         try {
-            $this->validator($key)->validate($response, self::identityProvider(), self::expected());
+            $this->validator()->validate($response, self::identityProvider()->withDecryptionKey($key), self::expected());
             static::fail('The validator opened AES-CBC that no signature of the response covers.');
         } catch (CoveringSignatureRequired $refusal) {
             // Then
@@ -413,7 +413,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
         $this->expectExceptionMessageIs('The data could not be decrypted (E-3).');
 
         // When
-        $this->validator(self::decryptionKey($key))->validate($response, self::identityProvider(), self::expected());
+        $this->validator()->validate($response, self::identityProvider()->withDecryptionKey(self::decryptionKey($key)), self::expected());
     }
 
     /**
@@ -433,6 +433,97 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
+     * §9.2 row 49, section 5.5, section 6.7, enc.md E-15: the aes128-cbc ciphertext of the identity provider A, intact,
+     * in a response a second provider B signed with its own key, under its own Issuer, to the request sent to it, is
+     * opened under the key given with B, which does not open it: the one failure, and the key given with A, which would
+     * open it, is never asked. The consumer chooses the provider by the unverified Issuer, as section 5.4 says.
+     */
+    #[Test]
+    public function itOpensAResponseWithTheKeyGivenWithTheProviderThatSignedItOnly(): void
+    {
+        // Given
+        $response = $this->unverified('encrypted/response-aes128-cbc-ciphertext-of-another-provider-signed-by-b-refused.xml');
+        $keyOfA = new RecordingDecryptionKey(self::decryptionKey());
+        $keyOfB = new RecordingDecryptionKey(self::decryptionKey('sp-b'));
+        $providers = [
+            'https://idp.example.com/saml' => self::identityProvider()->withDecryptionKey($keyOfA),
+            'https://idp-b.example.com/saml' => self::identityProvider('https://idp-b.example.com/saml', 'idp-b')->withDecryptionKey($keyOfB),
+        ];
+
+        // When
+        try {
+            $this->validator()->validate($response, $providers[$response->issuer ?? ''], self::expected());
+            static::fail('The validator read the ciphertext of a provider under the signature of another.');
+        } catch (DecryptionFailed $failure) {
+            // Then
+            static::assertSame(
+                [DecryptionFailed::MESSAGE, true, false],
+                [$failure->getMessage(), $keyOfB->asked, $keyOfA->asked],
+            );
+        }
+    }
+
+    /**
+     * §9.2 row 50, M-2, section 6.7: an aes128-cbc ciphertext altered after the identity provider signed the response
+     * is refused by the signature, before the key is asked anything.
+     */
+    #[Test]
+    public function itRefusesAnAesCbcCiphertextAlteredAfterTheSignatureBeforeAskingTheKey(): void
+    {
+        // Given
+        $response = $this->unverified('encrypted/response-signed-over-encrypted-assertion-aes128-cbc-ciphertext-altered-after-signing-refused.xml');
+        $key = new RecordingDecryptionKey(self::decryptionKey());
+
+        // When
+        try {
+            $this->validator()->validate($response, self::identityProvider()->withDecryptionKey($key), self::expected());
+            static::fail('The validator accepted a ciphertext altered after the signature.');
+        } catch (DigestMismatch $refusal) {
+            // Then
+            static::assertSame(
+                ['The claimed element is not what was signed (D-8).', false],
+                [$refusal->getMessage(), $key->asked],
+            );
+        }
+    }
+
+    /**
+     * §9.2 row 51, section 6.7, enc.md E-16: under AES-CBC, in a response the identity provider signed over the
+     * ciphertext, what the reading after the decryption refuses, the plaintext that is not an assertion, the assertion's
+     * own signature, its Issuer, is the one failure of the decryption.
+     */
+    #[Test]
+    #[DataProvider('provideCbcPlaintextsTheReadingRefuses')]
+    public function itRefusesWhatTheReadingRefusesAfterAnAesCbcDecryptionAsTheOneFailure(string $fixture): void
+    {
+        // Given
+        $response = $this->unverified($fixture);
+
+        // Then
+        $this->expectException(DecryptionFailed::class);
+        $this->expectExceptionMessageIs('The data could not be decrypted (E-3).');
+
+        // When
+        $this->validator()->validate($response, self::identityProvider()->withDecryptionKey(self::decryptionKey()), self::expected());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideCbcPlaintextsTheReadingRefuses(): iterable
+    {
+        yield 'a samlp:Response, not an assertion (M-4)' => [
+            'encrypted/response-signed-over-encrypted-aes128-cbc-not-an-assertion-refused.xml',
+        ];
+        yield 'the assertion\'s own signature failing, its NameID changed after signing (M-2)' => [
+            'encrypted/response-signed-over-encrypted-aes128-cbc-assertion-changed-after-signing-refused.xml',
+        ];
+        yield 'the assertion\'s Issuer another entity (M-8)' => [
+            'encrypted/response-signed-over-encrypted-aes128-cbc-assertion-of-another-issuer-refused.xml',
+        ];
+    }
+
+    /**
      * A response to the request $requestId, received at our assertion consumer service, for our entity ID.
      */
     private static function expected(string $requestId = '_request'): ExpectedResponse
@@ -441,19 +532,16 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * The validator of the service provider, built with $key, its clock frozen at 2026-09-30T12:00:00Z, a second after
-     * the responses were issued.
+     * The validator of the service provider, its clock frozen at 2026-09-30T12:00:00Z, a second after the responses
+     * were issued; the key that decrypts is given with the identity provider (section 5.5).
      */
-    private function validator(
-        ?DecryptionKeyInterface $key,
-        InMemoryReplayGuard $replay = new InMemoryReplayGuard(),
-    ): ResponseValidator {
+    private function validator(InMemoryReplayGuard $replay = new InMemoryReplayGuard()): ResponseValidator
+    {
         return new ResponseValidator(
             SamlLoader::create(),
             new FrozenClock(new DateTimeImmutable('2026-09-30T12:00:00Z')),
             $replay,
             new TimeBounds(),
-            $key,
         );
     }
 }

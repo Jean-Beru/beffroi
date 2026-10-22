@@ -805,6 +805,8 @@ const INFECTION_STRICT_FILES = [
     'src/saml2-model/src/Internal/Response/SignedResponse.php',
     'src/saml2-model/src/Internal/Response/DecryptedAssertion.php',
     'src/saml2-model/src/Internal/Response/CoveringResponseSignature.php',
+    'src/saml2-model/src/Internal/Response/PlaintextReader.php',
+    'src/saml2-model/src/Internal/Response/ReadAssertion.php',
     'src/saml2-model/src/Internal/Response/SignedAssertion.php',
     'src/saml2-model/src/Internal/Response/EnvelopeReader.php',
     // Section 9: the validator of a response and what it takes and returns (sections 5.4, 5.5).
