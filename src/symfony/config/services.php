@@ -49,6 +49,7 @@ use Beffroi\Bundle\Doctrine\Repository\DoctrineDeviceAuthorizationRecordReposito
 use Beffroi\Bundle\Doctrine\Repository\DoctrineRefreshTokenRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineLinkedIdentityRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineGroupMembershipRepository;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineGroupRepository;
 use Beffroi\Bundle\Doctrine\Repository\DoctrinePersonalArchiveRepository;
 use Beffroi\Bundle\Http\Account\ArchiveSection;
 use Beffroi\Bundle\Archive\ZipArchiveContainer;
@@ -66,6 +67,7 @@ use Beffroi\Core\Application\Archive\Chapter\LinkedIdentitiesChapter;
 use Beffroi\Core\Application\Archive\Chapter\ProfileChapter;
 use Beffroi\Core\Application\Archive\Chapter\SessionsChapter;
 use Beffroi\Core\Port\GroupMembershipRepositoryInterface;
+use Beffroi\Core\Port\GroupRepositoryInterface;
 use Beffroi\Core\Port\GroupsOfAPersonInterface;
 use Beffroi\Core\Port\LinkedIdentitiesOfAPersonInterface;
 use Beffroi\Core\Port\PersonalArchiveRepositoryInterface;
@@ -248,6 +250,7 @@ use Beffroi\Core\Application\Credential\BreachedPasswordRefusal;
 use Beffroi\Core\Application\Credential\PasswordChange;
 use Beffroi\Core\Application\Credential\CredentialRenaming;
 use Beffroi\Core\Application\Credential\CredentialRevocation;
+use Beffroi\Core\Application\Group\GroupProvisioner;
 use Beffroi\Core\Application\Group\UpstreamMemberships;
 use Beffroi\Core\Application\Identity\IdentityLinker;
 use Beffroi\Core\Application\Identity\UserProvisioner;
@@ -832,6 +835,10 @@ return static function (ContainerConfigurator $container): void {
     $services->set(DoctrineGroupMembershipRepository::class);
     $services->alias(GroupsOfAPersonInterface::class, DoctrineGroupMembershipRepository::class);
     $services->alias(GroupMembershipRepositoryInterface::class, DoctrineGroupMembershipRepository::class);
+    // the groups of the tenant by their name: what the console creates and what the declaration of an
+    // upstream provider maps the values it asserts to (issue #782)
+    $services->set(DoctrineGroupRepository::class);
+    $services->alias(GroupRepositoryInterface::class, DoctrineGroupRepository::class);
     $services->alias(LinkedIdentitiesOfAPersonInterface::class, DoctrineLinkedIdentityRepository::class);
     $services->set(ProfileChapter::class)->tag('beffroi.archive_chapter');
     $services->set(CredentialsChapter::class)->tag('beffroi.archive_chapter');
@@ -1406,6 +1413,7 @@ return static function (ContainerConfigurator $container): void {
     // Decision 0002: the memberships a sign-in through an upstream provider asserts, mapped to the groups of
     // the tenant by the declaration of that provider, which the caller hands over (issue #782)
     $services->set(UpstreamMemberships::class);
+    $services->set(GroupProvisioner::class);
 
     // The module: every value this provider hands out and recognises again is drawn here (issue #245)
     $services->set(SecretDrawer::class);

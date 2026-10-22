@@ -867,6 +867,9 @@ services:
     test.beffroi.groups_of_a_person:
         alias: Beffroi\Core\Port\GroupsOfAPersonInterface
         public: true
+    test.beffroi.groups:
+        alias: Beffroi\Core\Port\GroupRepositoryInterface
+        public: true
     test.beffroi.group_memberships:
         alias: Beffroi\Core\Port\GroupMembershipRepositoryInterface
         public: true
