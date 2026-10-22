@@ -10,6 +10,7 @@ use Beffroi\Saml2\Model\Metadata\IdentityProvider;
 use Beffroi\Saml2\Model\Protocol\UnverifiedResponse;
 use Beffroi\Saml2\Model\Tests\Unit\Internal\Assertion\AssertionFixtures;
 use Beffroi\Saml2\Model\Tests\Unit\Metadata\MetadataFixtures;
+use Beffroi\Xml\Enc\PrivateDecryptionKey;
 
 /**
  * The response fixtures of tests/saml2-model/Fixture/ (tests/saml2-model/Support/ResponseFixtureBuilder.php) and the identity provider they
@@ -37,6 +38,17 @@ trait ResponseFixtures
             [],
             [new Endpoint(Binding::HttpRedirect, 'https://idp.example.com/saml/sso')],
         );
+    }
+
+    /**
+     * The private key of the test key $key, the service provider's by default, for which the responses of
+     * tests/saml2-model/Fixture/encrypted/ are encrypted (section 6.7); the identity provider's is another key.
+     *
+     * @param 'idp'|'sp' $key
+     */
+    private static function decryptionKey(string $key = 'sp'): PrivateDecryptionKey
+    {
+        return PrivateDecryptionKey::fromPem(MetadataFixtures::bytes('keys/' . $key . '-signing-key.pem'));
     }
 
     /**

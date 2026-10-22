@@ -299,7 +299,7 @@ final class SubjectReaderTest extends TestCase
     /**
      * §9.2 rows 28 and 29, section 8, section 6.7: a subject or a confirmation the package does not support; a
      * holder-of-key confirmation, a sender-vouches one; an identifier in the bearer confirmation, an element in its
-     * SubjectConfirmationData; saml:BaseID, and saml:EncryptedID until sub-spike 9e.
+     * SubjectConfirmationData; saml:BaseID, and saml:EncryptedID.
      */
     #[Test]
     #[DataProvider('provideUnsupportedSubjects')]
@@ -344,7 +344,7 @@ final class SubjectReaderTest extends TestCase
         ];
         yield 'saml:EncryptedID' => [
             'hostile/assertion-subject-encrypted-id-refused.xml',
-            'The subject is a saml:EncryptedID, which the package does not support until sub-spike 9e (section 6.7).',
+            'The subject is a saml:EncryptedID, which the package does not support (section 6.7).',
         ];
     }
 }

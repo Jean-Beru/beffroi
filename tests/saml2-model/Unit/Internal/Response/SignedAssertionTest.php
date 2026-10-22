@@ -6,6 +6,7 @@ namespace Beffroi\Saml2\Model\Tests\Unit\Internal\Response;
 
 use Beffroi\Saml2\Model\Exception\MalformedMessage;
 use Beffroi\Saml2\Model\Exception\SignatureRequired;
+use Beffroi\Saml2\Model\Internal\Response\DecryptedAssertion;
 use Beffroi\Saml2\Model\Internal\Response\SignedAssertion;
 use Beffroi\Saml2\Model\Internal\Response\SignedResponse;
 use Beffroi\Saml2\Model\Saml;
@@ -23,8 +24,8 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.1 step 5, M-1, M-2, M-4, M-5: the verification the assertion is read from, its own signature verified
- * where the assertion arrived, or the response's.
+ * Section 6.1 step 5, section 6.7, M-1, M-2, M-4, M-5: the document the assertion is read from, its own signature
+ * verified where the assertion arrived, or on the root of its decryption, or the response's.
  */
 final class SignedAssertionTest extends TestCase
 {
@@ -52,7 +53,7 @@ final class SignedAssertionTest extends TestCase
         static::assertTrue($assertion->signed);
         static::assertSame(
             '_assertion',
-            Attributes::optional($assertion->verification->document->root(), new Name(null, 'ID')),
+            Attributes::optional($assertion->document->root(), new Name(null, 'ID')),
         );
     }
 
@@ -76,7 +77,7 @@ final class SignedAssertionTest extends TestCase
 
         // Then
         static::assertFalse($assertion->signed);
-        static::assertSame($response->verification, $assertion->verification);
+        static::assertSame($response->verification?->document, $assertion->document);
     }
 
     /**
@@ -153,7 +154,7 @@ final class SignedAssertionTest extends TestCase
         );
 
         // Then
-        static::assertNotSame($response->verification, $assertion->verification);
+        static::assertNotSame($response->verification?->document, $assertion->document);
     }
 
     /**
@@ -177,6 +178,67 @@ final class SignedAssertionTest extends TestCase
             Children::one($response->root, new Name(Saml::ASSERTION, 'Assertion')),
             MetadataFixtures::verificationKeys('idp'),
         );
+    }
+
+    /**
+     * §9.3 row 23, M-2, section 6.7: a decrypted assertion that carries a signature is read from the verification of
+     * that signature, made on the root of the document its decryption gave.
+     */
+    #[Test]
+    public function itReadsADecryptedAssertionFromItsOwnVerification(): void
+    {
+        // Given
+        $document = $this->document('encrypted/response-encrypted-signed-assertion-accepted.xml');
+        $response = SignedResponse::of($document->root(), self::identityProvider(), SamlLoader::create());
+        $decrypted = DecryptedAssertion::of($response, self::decryptionKey(), SamlLoader::create());
+
+        // When
+        $assertion = SignedAssertion::decrypted($decrypted, $response, self::identityProvider(), SamlLoader::create());
+
+        // Then
+        static::assertTrue($assertion->signed);
+        static::assertNotSame($decrypted->document, $assertion->document);
+        static::assertSame('_assertion', Attributes::optional($assertion->document->root(), new Name(null, 'ID')));
+    }
+
+    /**
+     * §9.3 row 24, M-1, M-2, section 6.7: a decrypted assertion without a signature is read from the document of its
+     * decryption when the response's signature covered the ciphertext.
+     */
+    #[Test]
+    public function itReadsAnUnsignedDecryptedAssertionWhoseCiphertextTheResponsesSignatureCovered(): void
+    {
+        // Given
+        $document = $this->document('encrypted/response-signed-over-encrypted-assertion-accepted.xml');
+        $response = SignedResponse::of($document->root(), self::identityProvider(), SamlLoader::create());
+        $decrypted = DecryptedAssertion::of($response, self::decryptionKey(), SamlLoader::create());
+
+        // When
+        $assertion = SignedAssertion::decrypted($decrypted, $response, self::identityProvider(), SamlLoader::create());
+
+        // Then
+        static::assertFalse($assertion->signed);
+        static::assertSame($decrypted->document, $assertion->document);
+    }
+
+    /**
+     * §9.2 row 40, M-2, section 6.7: a decrypted assertion that no signature covers, its response unsigned, is refused:
+     * anyone encrypts for the key of the service provider.
+     */
+    #[Test]
+    public function itRefusesADecryptedAssertionNoSignatureCovers(): void
+    {
+        // Given
+        $document = $this->document('encrypted/response-encrypted-unsigned-assertion-refused.xml');
+        $response = SignedResponse::of($document->root(), self::identityProvider(), SamlLoader::create());
+        $decrypted = DecryptedAssertion::of($response, self::decryptionKey(), SamlLoader::create());
+
+        // Then
+        $this->expectException(SignatureRequired::class);
+        $this->expectExceptionMessageIs('Neither the response nor its assertion carries a ds:Signature, one of which the profile requires (M-2).');
+
+        // When
+        SignedAssertion::decrypted($decrypted, $response, self::identityProvider(), SamlLoader::create());
     }
 
     private function assertion(Document $document): Element

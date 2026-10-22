@@ -21,7 +21,6 @@ use Beffroi\Xml\Core\Serializer;
 use Beffroi\Xml\Dsig\Exception\DigestMismatch;
 use Beffroi\Xml\Dsig\Verifier;
 use Beffroi\Xml\Enc\ContentAlgorithm;
-use Beffroi\Xml\Enc\Decryptor;
 use Beffroi\Xml\Enc\KeyTransport;
 use Beffroi\Xml\Enc\PeerKey;
 use Beffroi\Xml\Enc\PrivateDecryptionKey;
@@ -29,7 +28,6 @@ use Dom\Element;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use function preg_replace;
 use function preg_replace_callback;
 
 /**
@@ -139,29 +137,36 @@ final class ResponseWriterEncryptionTest extends TestCase
     }
 
     /**
-     * §9.3 row 20, section 6.7, SAML Core §6.2, enc.md E-9: decrypted with the test key of the service provider, the
-     * assertion is the one written, signed by the identity provider: put back in place of its ciphertext, the response
-     * is accepted by the validator, the assertion covering itself.
+     * §9.3 row 20, section 9.1, section 6.7, SAML Core §6.2, enc.md E-9: read back by a validator built with the test
+     * key of the service provider, the assertion is the one written, signed by the identity provider and verified once
+     * decrypted, the response signed over the ciphertext when asked.
      */
     #[Test]
-    public function itDecryptsToTheSignedAssertionAsWritten(): void
+    #[DataProvider('provideSignedParts')]
+    public function theValidatorReadsTheAssertionAsWritten(SignedParts $parts, SignatureCoverage $coverage): void
     {
         // Given
         $response = Fixtures::response();
-        $encrypted = new ResponseWriter()->write($response, $this->signing(), SignedParts::Assertion, new Encryption(self::peer()));
+        $encrypted = new ResponseWriter()->write($response, $this->signing(), $parts, new Encryption(self::peer()));
 
         // When
-        $accepted = Fixtures::validator()->validate(
-            $this->decryptedInPlace($encrypted),
+        $accepted = Fixtures::validator(PrivateDecryptionKey::fromPem(MetadataFixtures::bytes('keys/sp-signing-key.pem')))->validate(
+            UnverifiedResponse::of(SamlLoader::create()->load(new Serializer()->serialize($encrypted))),
             Fixtures::identityProvider(),
             Fixtures::expected(),
         );
 
         // Then
-        static::assertEquals(
-            [$response->assertion, SignatureCoverage::Assertion],
-            [$accepted->assertion, $accepted->coverage],
-        );
+        static::assertEquals([$response->assertion, $coverage], [$accepted->assertion, $accepted->coverage]);
+    }
+
+    /**
+     * @return iterable<string, array{SignedParts, SignatureCoverage}>
+     */
+    public static function provideSignedParts(): iterable
+    {
+        yield 'the assertion signed' => [SignedParts::Assertion, SignatureCoverage::Assertion];
+        yield 'the response signed too' => [SignedParts::AssertionAndResponse, SignatureCoverage::AssertionAndResponse];
     }
 
     /**
@@ -218,26 +223,6 @@ final class ResponseWriterEncryptionTest extends TestCase
     private function encrypted(SignedParts $parts): Document
     {
         return new ResponseWriter()->write(Fixtures::response(), $this->signing(), $parts, new Encryption(self::peer()));
-    }
-
-    /**
-     * The response as the service provider reads it once it decrypted the assertion: the plaintext the service
-     * provider's test key gives back, put in place of the saml:EncryptedAssertion of the serialized response.
-     */
-    private function decryptedInPlace(Document $encrypted): UnverifiedResponse
-    {
-        $plaintext = new Decryptor(SamlLoader::create())->decrypt(
-            $this->encryptedData($encrypted),
-            PrivateDecryptionKey::fromPem(MetadataFixtures::bytes('keys/sp-signing-key.pem')),
-        );
-        $assertion = (string) preg_replace('~^<\?xml[^>]*\?>\s*~', '', new Serializer()->serialize($plaintext));
-        $response = (string) preg_replace_callback(
-            '~<saml:EncryptedAssertion\b.*</saml:EncryptedAssertion>~s',
-            static fn (): string => $assertion,
-            new Serializer()->serialize($encrypted),
-        );
-
-        return UnverifiedResponse::of(SamlLoader::create()->load($response));
     }
 
     private function encryptedData(Document $document): Element
