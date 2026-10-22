@@ -797,10 +797,11 @@ const INFECTION_STRICT_FILES = [
     'src/saml2-model/src/Internal/Assertion/AuthnStatementReader.php',
     'src/saml2-model/src/Internal/Assertion/AttributeStatementReader.php',
     'src/saml2-model/src/Internal/Assertion/AssertionReader.php',
-    // Section 9: the envelope of a response, its status, and the selection of the signed element, section 6.1 steps 2
-    // to 6.
+    // Section 9: the envelope of a response, its status, the selection of the signed element and the decryption of an
+    // encrypted assertion, section 6.1 steps 2 to 6 and section 6.7.
     'src/saml2-model/src/Internal/Response/Envelope.php',
     'src/saml2-model/src/Internal/Response/SignedResponse.php',
+    'src/saml2-model/src/Internal/Response/DecryptedAssertion.php',
     'src/saml2-model/src/Internal/Response/SignedAssertion.php',
     'src/saml2-model/src/Internal/Response/EnvelopeReader.php',
     // Section 9: the validator of a response and what it takes and returns (sections 5.4, 5.5).

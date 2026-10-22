@@ -281,7 +281,7 @@ final class LogoutRequestValidatorTest extends TestCase
 
     /**
      * §9.2 row 25, M-5, section 6.3: the structure of the request is the schema's, checked before any signature;
-     * saml:BaseID is refused by name (section 8), saml:EncryptedID until sub-spike 9e (§9.2 row 29, section 6.7).
+     * saml:BaseID is refused by name (section 8), saml:EncryptedID too (§9.2 row 29, section 6.7).
      *
      * @param class-string<MessageRefused> $exception
      */
@@ -349,7 +349,7 @@ final class LogoutRequestValidatorTest extends TestCase
         yield 'a saml:EncryptedID' => [
             'hostile/logout-request-encrypted-id-refused.xml',
             Unsupported::class,
-            'The LogoutRequest names its principal with a saml:EncryptedID, which the package does not support until sub-spike 9e (section 6.7).',
+            'The LogoutRequest names its principal with a saml:EncryptedID, which the package does not support (section 6.7).',
         ];
     }
 
