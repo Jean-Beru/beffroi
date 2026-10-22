@@ -1,7 +1,7 @@
 # Encrypted responses
 
 The responses whose assertion is encrypted, which `ResponseValidator` reads under the contract of section 6.7 of
-`spec/model.md` (rows 38 to 46 of section 9.2, rows 23 and 24 of section 9.3). The encryptions and the signature of a
+`spec/model.md` (rows 38 to 48 of section 9.2, rows 23 to 25 of section 9.3). The encryptions and the signature of a
 response over its ciphertext are made by xmlsec1, an implementation that is not this one: xmlsec1 1.3.7 on OpenSSL, in
 Alpine 3.22 (`apk add xmlsec`), on 22 October 2026, for the test certificate of the service provider and with the test
 key of the identity provider, both under `../keys/`. Each vector is the output of xmlsec1 byte for byte; the hostile
@@ -23,6 +23,7 @@ php derive.php data
 | `response-signed-assertion-changed.data.xml` | the first data file, the `NameID` of its signed assertion changed after signing, so that the signature of the assertion no longer holds |
 | `response-signed-response-signed-assertion-changed.data.xml` | the same changed assertion under the template of the signature of the response |
 | `response-not-an-assertion.data.xml` | the response in clear, its `ID` changed to `_response-inside`, inside the `saml:EncryptedAssertion` in place of the assertion |
+| `response-signed-assertion-signed-response.data.xml` | the signed assertion of the first, the response carrying the template of the third: what Entra's "Sign SAML response and assertion" sends |
 
 `encrypted-data-aes256-gcm.template.xml` is the template of `tests/xml-security/Enc/Fixture/vectors/`: `aes256-gcm`
 for the content, the session key under `rsa-oaep-mgf1p`, the certificate in the `KeyInfo` of the `EncryptedKey`, a hint
@@ -119,3 +120,75 @@ php derive.php hostile
 
 The third case of row 38, the wrong key, needs no fixture: the first vector read with the test key of the identity
 provider.
+
+## AES-CBC
+
+The responses whose assertion is encrypted under AES-CBC, which the validator reads only under the signature of the
+response (section 6.7, enc.md E-15; rows 47 and 48 of section 9.2, row 25 of section 9.3), made on 22 October 2026 by
+the same xmlsec1, for the same keys, in three runs: xmlsec1 encrypts, `derive.php` alters two ciphertexts, and xmlsec1
+signs the responses over the ciphertexts as they then are, so that the signature holds over an altered one.
+`encrypted-data-aes128-cbc.template.xml` names `aes128-cbc` under `rsa-oaep-mgf1p`, the shape SimpleSAMLphp's library
+writes; `encrypted-data-aes256-cbc-mgf1p-digest-sha1.template.xml` names `aes256-cbc` under `rsa-oaep-mgf1p` with the
+`DigestMethod` of SHA-1, the shape Entra and ADFS write.
+
+The first run, from `tests/saml2-model/Fixture/`, the script in a file `encrypt.sh` next to it
+(`docker run --rm -v "$PWD:/w" -w /w alpine:3.22 sh encrypt.sh`), checks that xmlsec1 decrypts each output back to
+its data file, the empty elements of the template of the signature written in their short form:
+
+```
+set -e
+apk add -q xmlsec
+ID="--id-attr:ID urn:oasis:names:tc:SAML:2.0:assertion:Assertion --node-id _assertion"
+CBC128="xmlsec1 --encrypt --lax-key-search --pubkey-cert-pem keys/sp-signing-certificate.pem --session-key aes-128-cbc $ID"
+CBC256="xmlsec1 --encrypt --lax-key-search --pubkey-cert-pem keys/sp-signing-certificate.pem --session-key aes-256-cbc $ID"
+$CBC128 --xml-data encrypted/response-unsigned-assertion.data.xml \
+    --output encrypted/response-encrypted-aes128-cbc-unsigned-assertion-refused.xml encrypted/encrypted-data-aes128-cbc.template.xml
+$CBC256 --xml-data encrypted/response-signed-assertion.data.xml \
+    --output encrypted/response-encrypted-aes256-cbc-signed-assertion-refused.xml \
+    encrypted/encrypted-data-aes256-cbc-mgf1p-digest-sha1.template.xml
+$CBC128 --xml-data encrypted/response-signed-assertion-signed-response.data.xml \
+    --output encrypted/cbc-aes128.tmp.xml encrypted/encrypted-data-aes128-cbc.template.xml
+$CBC256 --xml-data encrypted/response-signed-assertion-signed-response.data.xml \
+    --output encrypted/cbc-aes256.tmp.xml encrypted/encrypted-data-aes256-cbc-mgf1p-digest-sha1.template.xml
+DEC="xmlsec1 --decrypt --lax-key-search --privkey-pem keys/sp-signing-key.pem --id-attr:ID urn:oasis:names:tc:SAML:2.0:assertion:Assertion"
+$DEC encrypted/response-encrypted-aes128-cbc-unsigned-assertion-refused.xml | diff encrypted/response-unsigned-assertion.data.xml -
+$DEC encrypted/response-encrypted-aes256-cbc-signed-assertion-refused.xml | diff encrypted/response-signed-assertion.data.xml -
+EMPTY="s#<ds:DigestValue></ds:DigestValue>#<ds:DigestValue/>#;s#<ds:SignatureValue></ds:SignatureValue>#<ds:SignatureValue/>#"
+sed "$EMPTY" encrypted/response-signed-assertion-signed-response.data.xml > /tmp/data.xml
+for v in aes128 aes256; do
+    $DEC encrypted/cbc-$v.tmp.xml | diff /tmp/data.xml -
+done
+```
+
+The second, `php derive.php cbc` in this directory, writes `cbc-aes128-padding-altered.tmp.xml` and
+`cbc-aes128-first-block-altered.tmp.xml` from `cbc-aes128.tmp.xml`, and the response whose valid signature is over
+another element, from the unsigned one of the first run. The third, the script in a file `sign.sh`, signs and verifies:
+
+```
+set -e
+apk add -q xmlsec
+SIGN="xmlsec1 --sign --lax-key-search --privkey-pem keys/idp-signing-key.pem --id-attr:ID urn:oasis:names:tc:SAML:2.0:protocol:Response"
+$SIGN --output encrypted/response-signed-over-encrypted-assertion-aes128-cbc-accepted.xml encrypted/cbc-aes128.tmp.xml
+$SIGN --output encrypted/response-signed-over-encrypted-assertion-aes256-cbc-accepted.xml encrypted/cbc-aes256.tmp.xml
+$SIGN --output encrypted/response-signed-over-encrypted-assertion-aes128-cbc-padding-altered-refused.xml \
+    encrypted/cbc-aes128-padding-altered.tmp.xml
+$SIGN --output encrypted/response-signed-over-encrypted-assertion-aes128-cbc-first-block-altered-refused.xml \
+    encrypted/cbc-aes128-first-block-altered.tmp.xml
+VERIFY="xmlsec1 --verify --lax-key-search --pubkey-cert-pem keys/idp-signing-certificate.pem --id-attr:ID urn:oasis:names:tc:SAML:2.0:protocol:Response"
+for f in aes128-cbc-accepted aes256-cbc-accepted aes128-cbc-padding-altered-refused aes128-cbc-first-block-altered-refused; do
+    $VERIFY encrypted/response-signed-over-encrypted-assertion-$f.xml
+done
+rm encrypted/*.tmp.xml
+```
+
+| Fixture | Made from | Serves |
+|---|---|---|
+| `response-signed-over-encrypted-assertion-aes128-cbc-accepted.xml`, `response-signed-over-encrypted-assertion-aes256-cbc-accepted.xml` | the signed assertion and the signed response, `aes128-cbc`, then `aes256-cbc` with the `DigestMethod` of SHA-1 | §9.3 row 25: read as the assertion in clear |
+| `response-encrypted-aes128-cbc-unsigned-assertion-refused.xml` | the unsigned assertion, the response unsigned | §9.2 row 47: no signature at all |
+| `response-encrypted-aes256-cbc-signed-assertion-refused.xml` | the signed assertion, the response unsigned | §9.2 row 47: the assertion's signature, inside the ciphertext |
+| `response-encrypted-aes128-cbc-signature-in-extensions-refused.xml` | the unsigned one, the signed assertion in clear of `../behaviour/response-signed-assertion-accepted.xml` inside a `samlp:Extensions` after its `Issuer` | §9.2 row 47: a valid signature of the identity provider over another element |
+| `response-signed-over-encrypted-assertion-aes128-cbc-padding-altered-refused.xml` | the last octet of the block before the last XORed with `0x80` before the signature, the count of the padding out of range | §9.2 row 48 |
+| `response-signed-over-encrypted-assertion-aes128-cbc-first-block-altered-refused.xml` | the first octet of the ciphertext flipped before the signature, the first block garbled and the count left | §9.2 row 48 |
+
+The third case of row 48, the wrong key, needs no fixture: the first `aes128-cbc` response read with the test key of the
+identity provider.
