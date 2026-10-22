@@ -71,7 +71,7 @@ final readonly class AccountProfileController
         // the form answered with and the page it was read by has taken it (issue beffroi-php/beffroi#481)
         $refusal = $this->refusals->take($request);
         $forms = [];
-        foreach ($this->claims->openedBy($user->tenant) as $open) {
+        foreach ($this->claims->openedTo($user) as $open) {
             $form = $this->claimForms->of($open, $user);
             if ($refusal?->field === $open->name()) {
                 // the message goes back under the line it is about, which is what this page has a form
@@ -89,7 +89,8 @@ final readonly class AccountProfileController
             // correct; how many of them are held is what the page says of the record itself
             'claims' => RecordedInformation::everyClaimOf($user),
             'held' => count(RecordedInformation::claimsOf($user)),
-            // one view per claim the tenant opens, in the order the claims are wired, each built once
+            // one view per claim the tenant opens and the source of the person does not hold, in the order
+            // the claims are wired, each built once
             // what was refused of it is on its field
             'forms' => $forms,
         ]);

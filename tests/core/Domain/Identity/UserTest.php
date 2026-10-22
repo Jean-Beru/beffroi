@@ -11,8 +11,10 @@ use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Identity\UserSource;
+use Beffroi\Core\Domain\Tenant\SelfServedClaims;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function str_repeat;
@@ -341,5 +343,35 @@ final class UserTest extends TestCase
 
         // When / Then
         static::assertFalse($user->belongsTo(Fixtures::tenant('other', 'https://id.other.example')));
+    }
+
+    /**
+     * Issue #452 and decision 0002: a person may say a claim of themselves when their tenant opens it and
+     * the source that created them does not hold it.
+     *
+     * @param list<string> $opened
+     */
+    #[Test]
+    #[DataProvider('provideWhatAPersonMaySay')]
+    public function whatAPersonMaySayOfThemselvesIsWhatTheTenantOpensAndTheSourceLeaves(array $opened, UserSource $source, bool $may): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $tenant->adoptSelfServedClaims(new SelfServedClaims($opened));
+        $user = User::create(Uuid::v7(), $tenant, new Subject('alice-subject'), 'alice', Fixtures::now(), source: $source);
+
+        // When / Then
+        static::assertSame($may, $user->maySayOfThemselves('nickname'));
+    }
+
+    /**
+     * @return iterable<string, array{list<string>, UserSource, bool}>
+     */
+    public static function provideWhatAPersonMaySay(): iterable
+    {
+        yield 'opened, of a local person' => [['nickname'], UserSource::local(), true];
+        yield 'opened, and left by the source' => [['nickname'], UserSource::upstream('workforce', ['email']), true];
+        yield 'opened, and held by the source' => [['nickname'], UserSource::upstream('workforce', ['nickname']), false];
+        yield 'not opened' => [['zoneinfo'], UserSource::local(), false];
     }
 }
