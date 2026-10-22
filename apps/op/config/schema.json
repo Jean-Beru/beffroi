@@ -1854,7 +1854,36 @@
                                     "age": 31536000,
                                     "cache_duration": 86400
                                 },
-                                "description": "The tenant as a SAML identity provider (spec/saml.md section 6.1). Disabled, nothing of it is wired: the tenant draws no SAML key and serves no metadata. Enabled, its key is drawn with \"beffroi:keys:generate --algorithm=SAML-SIGNING\" and rotates as every key of the tenant, by the figures of its own family below."
+                                "description": "The tenant as a SAML identity provider (spec/saml.md section 6.1). Disabled, nothing of it is wired: it serves no metadata, and the tenant draws no SAML key unless its service provider is enabled, the key of both roles (S-40, S-41). Enabled, its key is drawn with \"beffroi:keys:generate --algorithm=SAML-SIGNING\" and rotates as every key of the tenant, by the figures of its own family below."
+                            },
+                            "service_provider": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/types/object_null",
+                                        "properties": {
+                                            "enabled": {
+                                                "$ref": "#/$defs/types/boolean",
+                                                "default": false
+                                            },
+                                            "entity_id": {
+                                                "$ref": "#/$defs/types/scalar",
+                                                "default": null,
+                                                "description": "The entity ID of the service provider (spec/saml.md S-38): the URL of its metadata when left out, as the identity provider is named by the URL of its own; another absolute URI of at most 1024 characters with no whitespace for a service provider its upstream identity providers already know by a name it keeps. Never the entity ID of the identity provider of the tenant, refused when the container is compiled."
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    },
+                                    {
+                                        "type": [
+                                            "boolean"
+                                        ]
+                                    }
+                                ],
+                                "default": {
+                                    "enabled": false,
+                                    "entity_id": null
+                                },
+                                "description": "The tenant as a SAML service provider to the identity providers upstream of it (spec/saml.md section 6.9). Disabled, nothing of it is wired: its metadata answer that there are none. Enabled, it signs with the SAML signing key of the identity provider, drawn and rotated by the figures of \"identity_provider\" whichever role is enabled (S-40), and its metadata are served at /saml/sp/metadata."
                             },
                             "service_providers": {
                                 "$ref": "#/$defs/types/object_null",
@@ -1931,6 +1960,10 @@
                                 "staging_delay": 604800,
                                 "age": 31536000,
                                 "cache_duration": 86400
+                            },
+                            "service_provider": {
+                                "enabled": false,
+                                "entity_id": null
                             },
                             "service_providers": []
                         },
