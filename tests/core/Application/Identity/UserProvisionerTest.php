@@ -318,6 +318,48 @@ final class UserProvisionerTest extends TestCase
         yield 'the address' => [Profile::empty(), null, new Address(locality: 'London'), 'address'];
     }
 
+    /**
+     * What the source holds and has not written yet is still its own to write: the next sign-in through it
+     * fills it, and an operator who filled it first would be overwritten there.
+     */
+    #[Test]
+    public function aClaimTheSourceHoldsAndHasNotWrittenIsNotTheOperatorsToFill(): void
+    {
+        // Given
+        $user = $this->provisioner->create($this->tenant, 'alice', source: UserSource::upstream(self::PROVIDER, ['family_name']));
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs(sprintf(
+            'The upstream provider "%s" created this person and holds "family_name": a manual description does not change what its source holds.',
+            self::PROVIDER,
+        ));
+
+        // When
+        $this->provisioner->setProfile($user, new Profile(familyName: 'Liddell'));
+    }
+
+    /**
+     * Whether a number is verified is part of what the source holds of it: the same number said
+     * unverified is said otherwise.
+     */
+    #[Test]
+    public function aPhoneNumberTheSourceHoldsSaidWithAnotherVerificationIsRefused(): void
+    {
+        // Given
+        $user = $this->createdBySource();
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs(sprintf(
+            'The upstream provider "%s" created this person and holds "phone_number": a manual description does not change what its source holds.',
+            self::PROVIDER,
+        ));
+
+        // When
+        $this->provisioner->setProfile($user, Profile::empty(), '+44 1865 000000', false);
+    }
+
     #[Test]
     public function aRefusedDescriptionWritesNothing(): void
     {

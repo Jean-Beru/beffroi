@@ -98,6 +98,40 @@ final class SelfDescriptionTest extends TestCase
         self::describing()->describe($user, new Nickname(), 'Ada', Fixtures::context());
     }
 
+    /**
+     * The refusal comes before anything is said: the record is as it was, no history is written and no
+     * act is announced.
+     */
+    #[Test]
+    public function aClaimRefusedForItsSourceWritesNothingAndAnnouncesNothing(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $tenant->adoptSelfServedClaims(new SelfServedClaims(['nickname']));
+        $user = User::create(
+            Uuid::v7(),
+            $tenant,
+            new Subject('alice-subject'),
+            'alice',
+            Fixtures::now(),
+            source: UserSource::upstream('workforce', ['nickname']),
+        );
+        $user->updateProfile(new Profile(nickname: 'Alice'), Fixtures::now());
+        $events = new RecordingEventDispatcher();
+        $history = new InMemoryClaimHistory();
+
+        // When
+        try {
+            self::describing($events, $history)->describe($user, new Nickname(), 'Ada', Fixtures::context());
+        } catch (InvalidArgumentException) {
+        }
+
+        // Then
+        static::assertSame('Alice', $user->profile->nickname);
+        static::assertSame([], $history->lastOf($user, 10));
+        static::assertSame([], $events->of(PersonDescribedThemselves::class));
+    }
+
     #[Test]
     public function aTenantThatOpensNothingRefusesEverything(): void
     {
