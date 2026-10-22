@@ -89,8 +89,8 @@ final class UpstreamIdentityProvidersPass implements CompilerPassInterface
         $named = $container->hasDefinition(RouterServiceProviderEndpoints::class)
             ? $container->getDefinition(RouterServiceProviderEndpoints::class)->getArgument('$entityId')
             : null;
-        $identityProvider = $issuer === null ? null : $issuer . IdentityProviderRoutes::METADATA_PATH;
-        $serviceProvider = $named === null ? ($issuer === null ? null : $issuer . ServiceProviderRoutes::METADATA_PATH) : self::literal($container, $named);
+        $identityProvider = self::under($issuer, IdentityProviderRoutes::METADATA_PATH);
+        $serviceProvider = $named === null ? self::under($issuer, ServiceProviderRoutes::METADATA_PATH) : self::literal($container, $named);
         try {
             foreach ($entityIds as $entityId) {
                 UpstreamIdentityProvider::assertNotTheTenant((string) $entityId, $identityProvider, $serviceProvider);
@@ -98,6 +98,14 @@ final class UpstreamIdentityProvidersPass implements CompilerPassInterface
         } catch (InvalidArgumentException $exception) {
             throw new InvalidConfigurationException(sprintf('Invalid configuration for path "%s": %s', self::PATH, $exception->getMessage()), 0, $exception);
         }
+    }
+
+    /**
+     * The URL of that path under the issuer, or null when the issuer is not known yet.
+     */
+    private static function under(?string $issuer, string $path): ?string
+    {
+        return $issuer === null ? null : $issuer . $path;
     }
 
     /**
