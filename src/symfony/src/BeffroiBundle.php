@@ -22,6 +22,7 @@ use Beffroi\Bundle\Doctrine\Type\NeedsPasswordAlgorithmsInterface;
 use Beffroi\Bundle\Doctrine\Type\PasswordAlgorithmType;
 use Beffroi\Bundle\Doctrine\Type\PasswordHashType;
 use Beffroi\Bundle\Doctrine\Type\ProfileType;
+use Beffroi\Bundle\Doctrine\Type\UserSourceType;
 use Beffroi\Core\Port\AuthenticationPredicatesInterface;
 use Beffroi\Core\Port\PasswordAlgorithmsInterface;
 use Beffroi\Bundle\Doctrine\Type\AuthenticationSnapshotType;
@@ -130,6 +131,7 @@ final class BeffroiBundle extends AbstractBundle
         PasswordAlgorithmType::NAME => PasswordAlgorithmType::class,
         PasswordHashType::NAME => PasswordHashType::class,
         ProfileType::NAME => ProfileType::class,
+        UserSourceType::NAME => UserSourceType::class,
         PasskeyUserHandleType::NAME => PasskeyUserHandleType::class,
         AuthenticationContextPolicyType::NAME => AuthenticationContextPolicyType::class,
         AuthenticationPredicateType::NAME => AuthenticationPredicateType::class,

@@ -10,6 +10,7 @@ use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Identity\UserSource;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
@@ -84,7 +85,21 @@ final class UserTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new User(Uuid::v7(), Fixtures::tenant(), new Subject('s'), 'alice', null, true, Profile::empty(), null, false, null, Fixtures::now(), Fixtures::now());
+        new User(
+            Uuid::v7(),
+            Fixtures::tenant(),
+            new Subject('s'),
+            'alice',
+            null,
+            true,
+            Profile::empty(),
+            null,
+            false,
+            null,
+            Fixtures::now(),
+            Fixtures::now(),
+            UserSource::local(),
+        );
     }
 
     #[Test]
@@ -94,7 +109,21 @@ final class UserTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new User(Uuid::v7(), Fixtures::tenant(), new Subject('s'), 'alice', null, false, Profile::empty(), null, true, null, Fixtures::now(), Fixtures::now());
+        new User(
+            Uuid::v7(),
+            Fixtures::tenant(),
+            new Subject('s'),
+            'alice',
+            null,
+            false,
+            Profile::empty(),
+            null,
+            true,
+            null,
+            Fixtures::now(),
+            Fixtures::now(),
+            UserSource::local(),
+        );
     }
 
     #[Test]
@@ -114,6 +143,7 @@ final class UserTest extends TestCase
             null,
             Fixtures::now(),
             Fixtures::now(),
+            UserSource::local(),
         );
 
         // Then

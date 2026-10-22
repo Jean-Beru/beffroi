@@ -35,6 +35,7 @@ use Beffroi\Bundle\Doctrine\Type\ResourceIndicatorsType;
 use Beffroi\Bundle\Doctrine\Type\ScopesType;
 use Beffroi\Bundle\Doctrine\Type\SubjectType;
 use Beffroi\Bundle\Doctrine\Type\SelfServedClaimsType;
+use Beffroi\Bundle\Doctrine\Type\UserSourceType;
 use Beffroi\Bundle\Doctrine\Type\TenantLookType;
 use Beffroi\Bundle\Doctrine\Type\LogoutProgressType;
 use Beffroi\Saml\Domain\SingleLogout\LogoutHop;
@@ -346,6 +347,7 @@ final class TypesTest extends TestCase
         yield 'a string for authorization details' => [AuthorizationDetailsType::class, '[]'];
         yield 'a detail alone for authorization details' => [AuthorizationDetailsType::class, AuthorizationDetailTypes::detail()];
         yield 'a string for the progress of a chain' => [LogoutProgressType::class, '{}'];
+        yield 'a name for the source of a person' => [UserSourceType::class, 'local'];
     }
 
     /**
@@ -413,6 +415,8 @@ final class TypesTest extends TestCase
         yield 'backup codes that are not a string' => [BackupCodesType::class, 12];
         yield 'the progress of a chain whose session is no UUID' => [LogoutProgressType::class, '{"sessions":["session-1"],"partial":false}'];
         yield 'the progress of a chain that does not say whether it is partial' => [LogoutProgressType::class, '{"sessions":[]}'];
+        yield 'the source of a person that names no provider' => [UserSourceType::class, '{"claims":["email"]}'];
+        yield 'the source of a person whose claims are not names' => [UserSourceType::class, '{"provider":"workforce","claims":[12]}'];
     }
 
     /**
@@ -505,10 +509,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function theBundleDeclaresThirtyTwoTypes(): void
+    public function theBundleDeclaresThirtyThreeTypes(): void
     {
         // When / Then
-        static::assertCount(32, BeffroiBundle::DBAL_TYPES);
+        static::assertCount(33, BeffroiBundle::DBAL_TYPES);
     }
 
     /**

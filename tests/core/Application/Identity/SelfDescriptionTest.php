@@ -12,7 +12,9 @@ use Beffroi\Core\Domain\Identity\Claim\Birthdate;
 use Beffroi\Core\Domain\Identity\Claim\Nickname;
 use Beffroi\Core\Domain\Identity\Claim\PhoneNumber;
 use Beffroi\Core\Domain\Identity\Profile;
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Identity\UserSource;
 use Beffroi\Core\Domain\Tenant\SelfServedClaims;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
@@ -20,6 +22,7 @@ use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Issue #452: a person says something of themselves, when the tenant lets them. The policy is read here
@@ -64,6 +67,32 @@ final class SelfDescriptionTest extends TestCase
         // Then
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessageIs('This tenant does not let a person change "nickname" of themselves.');
+
+        // When
+        self::describing()->describe($user, new Nickname(), 'Ada', Fixtures::context());
+    }
+
+    /**
+     * Decision 0002: what the source of the person holds is not theirs to say, the tenant opening it or not.
+     */
+    #[Test]
+    public function aClaimTheSourceOfThePersonHoldsIsNotTheirsToSay(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $tenant->adoptSelfServedClaims(new SelfServedClaims(['nickname']));
+        $user = User::create(
+            Uuid::v7(),
+            $tenant,
+            new Subject('alice-subject'),
+            'alice',
+            Fixtures::now(),
+            source: UserSource::upstream('workforce', ['nickname']),
+        );
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The upstream provider "workforce" created this person and holds "nickname": a manual description does not change what its source holds.');
 
         // When
         self::describing()->describe($user, new Nickname(), 'Ada', Fixtures::context());

@@ -34,7 +34,7 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
     private const string TABLE = 'test_sealed_column';
 
     /**
-     * Fifteen families of columns, one data key per tenant each (decision 0018), and twenty-six types
+     * Fifteen families of columns, one data key per tenant each (decision 0018), and twenty-seven types
      * because a type seals one type: the count of keys is the count of families and not of types.
      */
     #[Test]
@@ -42,7 +42,7 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
     {
         // When / Then
         static::assertCount(15, EncryptedColumnTypes::FAMILIES);
-        static::assertCount(26, EncryptedColumnTypes::declarations());
+        static::assertCount(27, EncryptedColumnTypes::declarations());
     }
 
     /**

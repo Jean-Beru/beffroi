@@ -22,12 +22,16 @@ use Beffroi\Core\Domain\Identity\Address;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Identity\UserSource;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Exception\PasswordRefusedException;
 use Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use function sprintf;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -43,6 +47,11 @@ final class UserProvisionerTest extends TestCase
     private const string ANOTHER_PASSWORD = 'nine lives of a quiet cat';
 
     private const string BREACHED = 'monkey business as usual';
+
+    /**
+     * The upstream provider that creates a person in this suite, named as its linked identities name it.
+     */
+    private const string PROVIDER = 'https://idp.acme.example/saml';
 
     private Tenant $tenant;
 
@@ -248,6 +257,122 @@ final class UserProvisionerTest extends TestCase
         $this->provisioner->setProfile($user, Profile::empty(), null, true);
     }
 
+    /**
+     * Decision 0002: a person a console, a fixture or an import creates is local.
+     */
+    #[Test]
+    public function aUserCreatedWithoutASourceIsLocal(): void
+    {
+        // When
+        $user = $this->provisioner->create($this->tenant, 'alice');
+
+        // Then
+        static::assertTrue($user->source->isLocal());
+    }
+
+    /**
+     * Decision 0002: a person an upstream provider creates names it, with the claims it holds of them.
+     */
+    #[Test]
+    public function aUserCreatedByAnUpstreamProviderNamesIt(): void
+    {
+        // When
+        $user = $this->provisioner->create($this->tenant, 'alice', source: UserSource::upstream(self::PROVIDER, ['email', 'given_name']));
+
+        // Then
+        static::assertSame($user, $this->users->find($user->id));
+        static::assertSame(self::PROVIDER, $user->source->provider);
+        static::assertSame(['email', 'given_name'], $user->source->claims);
+    }
+
+    /**
+     * Decision 0002: what the source of a person holds, a manual description does not change, and the
+     * refusal names the provider.
+     */
+    #[Test]
+    #[DataProvider('provideDescriptionsOfWhatTheSourceHolds')]
+    public function aDescriptionThatSaysOtherwiseAClaimTheSourceHoldsIsRefused(Profile $profile, ?string $phoneNumber, ?Address $address, string $claim): void
+    {
+        // Given
+        $user = $this->createdBySource();
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs(sprintf(
+            'The upstream provider "%s" created this person and holds "%s": a manual description does not change what its source holds.',
+            self::PROVIDER,
+            $claim,
+        ));
+
+        // When
+        $this->provisioner->setProfile($user, $profile, $phoneNumber, false, $address);
+    }
+
+    /**
+     * @return iterable<string, array{Profile, string|null, Address|null, string}>
+     */
+    public static function provideDescriptionsOfWhatTheSourceHolds(): iterable
+    {
+        yield 'a claim of the profile' => [new Profile(givenName: 'Alicia'), null, null, 'given_name'];
+        yield 'the phone number' => [Profile::empty(), '+44 1865 999999', null, 'phone_number'];
+        yield 'the address' => [Profile::empty(), null, new Address(locality: 'London'), 'address'];
+    }
+
+    #[Test]
+    public function aRefusedDescriptionWritesNothing(): void
+    {
+        // Given
+        $user = $this->createdBySource();
+
+        // When
+        try {
+            $this->provisioner->setProfile($user, new Profile(givenName: 'Alicia', nickname: 'Ali'));
+        } catch (InvalidArgumentException) {
+        }
+
+        // Then
+        static::assertSame('Alice', $user->profile->givenName);
+        static::assertNull($user->profile->nickname);
+    }
+
+    /**
+     * A description says the whole profile and clears what it does not say, except what the source holds,
+     * which stays what the source wrote.
+     */
+    #[Test]
+    public function whatTheSourceHoldsStaysWhatItWroteWhenADescriptionDoesNotSayIt(): void
+    {
+        // Given
+        $user = $this->createdBySource();
+
+        // When
+        $this->provisioner->setProfile($user, new Profile(nickname: 'Ali'));
+
+        // Then
+        static::assertSame('Ali', $user->profile->nickname);
+        static::assertSame('Alice', $user->profile->givenName);
+        static::assertSame('+44 1865 000000', $user->phoneNumber);
+        static::assertTrue($user->phoneNumberVerified);
+        static::assertSame('Oxford', $user->address?->locality);
+    }
+
+    /**
+     * A provisioning script played again says what the source holds as it already is, which changes
+     * nothing of it.
+     */
+    #[Test]
+    public function aClaimTheSourceHoldsMayBeSaidAsItIs(): void
+    {
+        // Given
+        $user = $this->createdBySource();
+
+        // When
+        $this->provisioner->setProfile($user, new Profile(givenName: 'Alice', nickname: 'Ali'), '+44 1865 000000', true, new Address(locality: 'Oxford'));
+
+        // Then
+        static::assertSame('Ali', $user->profile->nickname);
+    }
+
     #[Test]
     public function theFirstPasswordCreatesTheCredentialHashedByThePolicyOfTheCore(): void
     {
@@ -421,6 +546,21 @@ final class UserProvisionerTest extends TestCase
 
         // When
         $this->provisioner->setPassword($carol, Fixtures::plainPassword('correct horse battery staple', $carol->tenant->loginFloor));
+    }
+
+    /**
+     * A person an upstream provider created, with what it holds written the way a sign-in through it writes
+     * it: through the entity, which is not a manual description.
+     */
+    private function createdBySource(): User
+    {
+        $user = $this->provisioner->create($this->tenant, 'alice', source: UserSource::upstream(self::PROVIDER, ['given_name', 'phone_number', 'address']));
+        $now = $this->clock->now();
+        $user->updateProfile(new Profile(givenName: 'Alice'), $now);
+        $user->changePhoneNumber('+44 1865 000000', true, $now);
+        $user->changeAddress(new Address(locality: 'Oxford'), $now);
+
+        return $user;
     }
 
     private function provisionerAsking(BreachedPasswordsOfARecord $breaches): UserProvisioner
