@@ -49,6 +49,11 @@ use function usort;
  * A file whose algorithm is dormant, the key of a capability the deployment turned off after the tenant
  * drew it (DormantKeyAlgorithms), is read past: no method answers it, and it is read again as it was
  * once the capability is turned back on.
+ *
+ * One material is the key of one algorithm: the "kid" is the thumbprint of the public half, so the key of
+ * another algorithm under the same "kid" is the same material, and it is refused rather than written over
+ * the file that holds it. For the keys the upstream SAML identity providers encrypt for, one algorithm per
+ * provider, that is what keeps the key of one provider from being the key of another (spec/saml.md S-64).
  */
 final readonly class FileTenantKeyRepository implements TenantKeyRepositoryInterface
 {
@@ -111,6 +116,15 @@ final readonly class FileTenantKeyRepository implements TenantKeyRepositoryInter
             throw new RuntimeException(sprintf('The key storage "%s" cannot be created.', $directory));
         }
         $path = $this->path($key->tenant, $key->kid);
+        $held = @file_get_contents($path);
+        if ($held !== false && self::algorithmOf($held) !== $key->algorithm->name()) {
+            throw new RuntimeException(sprintf(
+                'The key "%s" of tenant "%s" is held already, and not as a key of %s: one material is the key of one algorithm.',
+                $key->kid,
+                $key->tenant->slug,
+                $key->algorithm->name(),
+            ));
+        }
         $temporary = $path . '.' . bin2hex(random_bytes(8)) . '.tmp';
         $json = json_encode(
             [
@@ -232,6 +246,21 @@ final readonly class FileTenantKeyRepository implements TenantKeyRepositoryInter
         }
 
         return $key;
+    }
+
+    /**
+     * The algorithm a key file names, null when it names none or is not a key document.
+     */
+    private static function algorithmOf(string $json): ?string
+    {
+        try {
+            $document = json_decode($json, true, 4, JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            return null;
+        }
+        $algorithm = is_array($document) ? $document['algorithm'] ?? null : null;
+
+        return is_string($algorithm) ? $algorithm : null;
     }
 
     private static function date(string $path, mixed $value): DateTimeImmutable

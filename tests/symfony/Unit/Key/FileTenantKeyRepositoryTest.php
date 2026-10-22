@@ -12,6 +12,13 @@ use function fileperms;
 use function glob;
 use Beffroi\Bundle\Key\DormantKeyAlgorithms;
 use Beffroi\Bundle\Key\FileTenantKeyRepository;
+use Beffroi\Bundle\Saml\JoseSamlEncryptionAlgorithms;
+use Beffroi\Bundle\Saml\SamlEncryption;
+use Beffroi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JoseKeyFamily;
+use Beffroi\Core\Domain\Key\RotationSchedule;
+use Beffroi\Saml\Domain\Key\SamlEncryptionAlgorithmInterface;
+use DateInterval;
 use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
 use Beffroi\Core\Domain\Key\KeyStatus;
 use Beffroi\Core\Domain\Key\TenantKey;
@@ -344,6 +351,73 @@ final class FileTenantKeyRepositoryTest extends TestCase
         $unwired->findAll($tenant);
     }
 
+    /**
+     * Spec/saml.md S-64: the key of an upstream identity provider nothing wires any more, an algorithm of a family named
+     * after its holder, is read past, and the keys beside it are read as they were.
+     */
+    #[Test]
+    public function theKeyOfAProviderNothingWiresIsReadPast(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $this->repository->save(self::activeKey($tenant, Keys::pair()->kid));
+        $wired = new FileTenantKeyRepository($this->directory, self::withProviders(['https://idp-a.example/metadata']));
+        $wired->save(self::providerKey($tenant, 'https://idp-a.example/metadata'));
+        $unwired = new FileTenantKeyRepository(
+            $this->directory,
+            Algorithms::all(),
+            new DormantKeyAlgorithms([], [SamlEncryptionAlgorithmInterface::NAME_PREFIX]),
+        );
+
+        // When
+        $keys = $unwired->findAll($tenant);
+
+        // Then
+        static::assertSame([Keys::pair()->kid], array_map(static fn (TenantKey $key): string => $key->kid, $keys));
+    }
+
+    /**
+     * Spec/saml.md S-64: one material is the key of one algorithm, so the key of another algorithm under the "kid" a
+     * file holds is refused rather than written over it, and the key that file holds is left as it was.
+     */
+    #[Test]
+    public function theKeyOfAnotherAlgorithmUnderAKidHeldAlreadyIsRefused(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $repository = new FileTenantKeyRepository($this->directory, self::withProviders(['https://idp-a.example/metadata', 'https://idp-b.example/metadata']));
+        $repository->save(self::providerKey($tenant, 'https://idp-a.example/metadata'));
+
+        // Then
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageIs(sprintf(
+            'The key "%s" of tenant "acme" is held already, and not as a key of SAML-ENCRYPTION:https://idp-b.example/metadata: one material is the key of one algorithm.',
+            Keys::otherPair()->kid,
+        ));
+
+        // When
+        $repository->save(self::providerKey($tenant, 'https://idp-b.example/metadata'));
+    }
+
+    /**
+     * The key a file holds is saved again as it changes, under the same algorithm: its status survives.
+     */
+    #[Test]
+    public function aKeyIsSavedAgainUnderItsOwnAlgorithm(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $key = self::key($tenant, Keys::pair()->kid);
+        $this->repository->save($key);
+        $key->activate(Fixtures::now());
+
+        // When
+        $this->repository->save($key);
+
+        // Then
+        static::assertSame(KeyStatus::Active, $this->repository->find($tenant, Keys::pair()->kid)?->status);
+    }
+
     #[Test]
     #[DataProvider('provideKidsThatCannotNameAFile')]
     public function aKidThatIsNotAThumbprintNamesNoFile(string $kid): void
@@ -584,6 +658,48 @@ final class FileTenantKeyRepositoryTest extends TestCase
             'sealed',
             $createdAt ?? Fixtures::now(),
             $createdAt ?? Fixtures::now(),
+        );
+    }
+
+    /**
+     * The algorithms of the suite and the one of each upstream identity provider given (spec/saml.md S-64).
+     *
+     * @param list<string> $providers
+     */
+    private static function withProviders(array $providers): JoseKeyAlgorithms
+    {
+        $algorithms = [];
+        foreach ($providers as $provider) {
+            $algorithms[] = new SamlEncryption($provider);
+        }
+        $schedule = new RotationSchedule(new DateInterval('PT6M'), new DateInterval('P90D'));
+
+        return new JoseKeyAlgorithms([
+            new JoseKeyFamily(Algorithms::all(), $schedule),
+            new JoseKeyFamily(new JoseSamlEncryptionAlgorithms($algorithms), $schedule),
+        ]);
+    }
+
+    /**
+     * The key an upstream identity provider encrypts for, on the second RSA pair of the suite.
+     */
+    private static function providerKey(Tenant $tenant, string $provider): TenantKey
+    {
+        $algorithm = new SamlEncryption($provider);
+        $pair = Keys::otherPair();
+
+        return new TenantKey(
+            $pair->kid,
+            $tenant,
+            $algorithm,
+            [
+                ...$pair->publicJwk,
+                'alg' => $algorithm->name(),
+                'use' => $algorithm->keyUse()->value,
+            ],
+            'sealed',
+            Fixtures::now(),
+            Fixtures::now(),
         );
     }
 

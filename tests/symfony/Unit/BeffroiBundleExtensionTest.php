@@ -16,6 +16,7 @@ use Beffroi\Bundle\Tenant\TenantFactory;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Beffroi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
+use Beffroi\Saml\Domain\Key\SamlEncryptionAlgorithmInterface;
 use Beffroi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
 use Beffroi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Beffroi\Oidc\Application\Token\JwtAccessTokenIssuer;
@@ -308,6 +309,20 @@ final class BeffroiBundleExtensionTest extends TestCase
 
         // Then
         static::assertFalse($container->getDefinition(SamlSigning::class)->hasTag(JoseSamlSigningAlgorithms::TAG));
+    }
+
+    /**
+     * Spec/saml.md S-64: the key files read past the key of an upstream identity provider nothing wires any more, every
+     * algorithm of that family named "SAML-ENCRYPTION:" and the entity ID of its provider.
+     */
+    #[Test]
+    public function theKeyOfAProviderNothingWiresIsDormant(): void
+    {
+        // When
+        $container = self::load([]);
+
+        // Then
+        static::assertSame([SamlEncryptionAlgorithmInterface::NAME_PREFIX], $container->getDefinition(DormantKeyAlgorithms::class)->getArgument(1));
     }
 
     /**
