@@ -16,7 +16,7 @@ use Beffroi\Core\Domain\Session\SessionEnd;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use Beffroi\Oidc\Domain\Event\LogoutTokenIssued;
-use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
 use Beffroi\Saml\Domain\SingleLogout\SessionParticipation;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Port\SessionParticipationRepositoryInterface;
@@ -107,7 +107,7 @@ final class SingleLogoutTest extends ConsoleTestCase
         ]);
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         self::service('test.beffroi.saml_accepted_metadata', AcceptedMetadataRepositoryInterface::class)
-            ->save(new AcceptedMetadata(
+            ->save(new AcceptedServiceProviderMetadata(
                 Uuid::v7(),
                 self::tenant(),
                 self::SERVICE_PROVIDER,

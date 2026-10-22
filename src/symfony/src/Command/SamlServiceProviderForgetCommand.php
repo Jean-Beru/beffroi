@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Command;
 
-use Beffroi\Saml\Application\ServiceProvider\AcceptedMetadataForgetting;
+use Beffroi\Saml\Application\Metadata\AcceptedMetadataForgetting;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;

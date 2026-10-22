@@ -9,7 +9,7 @@ use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Domain\Metadata\Certificate;
 use Beffroi\Saml\Domain\ServiceProvider\AttributeMapping;
 use Beffroi\Saml\Domain\ServiceProvider\AttributeNameFormat;
-use Beffroi\Saml\Domain\ServiceProvider\MetadataLocation;
+use Beffroi\Saml\Domain\Metadata\MetadataLocation;
 use Beffroi\Saml\Domain\ServiceProvider\ServiceProvider;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
 use function range;

@@ -59,7 +59,7 @@ final class ServiceProvidersPassTest extends TestCase
         yield 'a plain http location' => [
             self::ENTITY_ID,
             ['metadata' => 'http://sp.example.com/saml/metadata'],
-            'The metadata of a service provider are read from an https URL or from the absolute path of a file (spec/saml.md S-5).',
+            'The metadata of a service provider or of an identity provider are read from an https URL or from the absolute path of a file (spec/saml.md S-5, S-42).',
         ];
         yield 'an entity ID that holds whitespace' => [
             'https://sp.example.com/my saml',
@@ -200,7 +200,7 @@ final class ServiceProvidersPassTest extends TestCase
 
         // Then
         $this->expectException(InvalidConfigurationException::class);
-        $this->expectExceptionMessageIsOrContains('The service provider "https://sp.example.com/saml": The metadata of a service provider are read from an https URL');
+        $this->expectExceptionMessageIsOrContains('The service provider "https://sp.example.com/saml": The metadata of a service provider or of an identity provider are read from an https URL');
 
         // When
         new ServiceProvidersPass()->process($container);

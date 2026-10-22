@@ -59,14 +59,7 @@ final class ServiceProvidersPass implements CompilerPassInterface
         if (! is_array($declarations)) {
             return;
         }
-        $literal = [];
-        foreach ($declarations as $entityId => $declaration) {
-            $environment = [];
-            $container->resolveEnvPlaceholders([$entityId => $declaration], null, $environment);
-            if ($environment === []) {
-                $literal[$entityId] = $declaration;
-            }
-        }
+        $literal = LiteralDeclarations::of($container, $declarations);
         self::build($literal, DeclaredClaims::mappedBy($literal));
         $container->getDefinition(MappedClaimsWarmer::class)->setArgument('$declarations', $literal);
     }

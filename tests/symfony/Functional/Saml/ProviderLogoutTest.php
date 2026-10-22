@@ -13,7 +13,7 @@ use Beffroi\Bundle\Tests\Functional\Key\KmsOutage;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
-use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
 use Beffroi\Saml\Domain\SingleLogout\SessionParticipation;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Port\SessionParticipationRepositoryInterface;
@@ -670,7 +670,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     private function accept(string $entityId, string $document): void
     {
         self::service('test.beffroi.saml_accepted_metadata', AcceptedMetadataRepositoryInterface::class)
-            ->save(new AcceptedMetadata(Uuid::v7(), self::tenant(), $entityId, $document, null, self::currentSecond()));
+            ->save(new AcceptedServiceProviderMetadata(Uuid::v7(), self::tenant(), $entityId, $document, null, self::currentSecond()));
     }
 
     /**

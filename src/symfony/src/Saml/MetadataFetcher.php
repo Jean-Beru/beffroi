@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Saml;
 
 use Beffroi\Core\Exception\ExceptionTrail;
-use Beffroi\Saml\Domain\ServiceProvider\MetadataLocation;
+use Beffroi\Saml\Domain\Metadata\MetadataLocation;
 use Beffroi\Saml\Exception\MetadataRefusedException;
 use Beffroi\Saml\Port\MetadataFetcherInterface;
 use function fclose;
@@ -19,8 +19,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Throwable;
 
 /**
- * The bytes of the metadata of a service provider at the location its declaration names (beffroi/saml, spec/saml.md
- * section 6.2 step 2). An https URL is read with one GET, nothing sent but the request and the media type of SAML
+ * The bytes of the metadata of a peer at the location its declaration names, a service provider or an upstream
+ * identity provider (beffroi/saml, spec/saml.md section 6.2 step 2, section 6.10 step 2). An https URL is read with one GET, nothing sent but the request and the media type of SAML
  * metadata, no redirect followed (decision 0006): the declaration names where the metadata are, and nobody moves
  * them. Anything else is a file of the deployment, and nothing a stream wrapper would go and fetch, the declaration
  * having refused every other location already. Either way the read stops as soon as it is longer than any metadata

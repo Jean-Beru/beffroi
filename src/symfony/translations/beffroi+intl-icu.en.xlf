@@ -1557,6 +1557,14 @@
         <source>saml_post.continue</source>
         <target>Continue</target>
       </trans-unit>
+      <trans-unit id="saml_post.upstream.title" resname="saml_post.upstream.title">
+        <source>saml_post.upstream.title</source>
+        <target>Signing in with your organisation</target>
+      </trans-unit>
+      <trans-unit id="saml_post.upstream.explanation" resname="saml_post.upstream.explanation">
+        <source>saml_post.upstream.explanation</source>
+        <target>Your browser is sending you to the sign-in of your organisation. Use the button below to continue.</target>
+      </trans-unit>
       <trans-unit id="error.saml_request_refused" resname="error.saml_request_refused">
         <source>error.saml_request_refused</source>
         <target>The application sent a sign-in request this provider cannot accept. Start again from the application.</target>
@@ -1564,6 +1572,10 @@
       <trans-unit id="error.saml_logout_refused" resname="error.saml_logout_refused">
         <source>error.saml_logout_refused</source>
         <target>The application sent a request to sign out that this provider cannot accept. Sign out again from the application.</target>
+      </trans-unit>
+      <trans-unit id="error.saml_upstream_sign_on_refused" resname="error.saml_upstream_sign_on_refused">
+        <source>error.saml_upstream_sign_on_refused</source>
+        <target>The sign-in with your organisation cannot start from here. Start again from the application.</target>
       </trans-unit>
     </body>
   </file>

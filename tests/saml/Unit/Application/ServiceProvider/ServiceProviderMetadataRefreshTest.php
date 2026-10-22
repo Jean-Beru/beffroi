@@ -6,12 +6,15 @@ namespace Beffroi\Saml\Tests\Unit\Application\ServiceProvider;
 
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\Fixtures;
-use Beffroi\Saml\Application\ServiceProvider\AcceptedMetadataForgetting;
-use Beffroi\Saml\Application\ServiceProvider\MetadataRefreshment;
-use Beffroi\Saml\Application\ServiceProvider\ServiceProviderMetadataRefresh;
+use Beffroi\Saml\Application\Metadata\AcceptedMetadataForgetting;
+use Beffroi\Saml\Application\Metadata\MetadataRefreshment;
+use Beffroi\Saml\Application\Metadata\MetadataRefresh;
+use Beffroi\Saml\Application\ServiceProvider\ServiceProviderRole;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataReader;
-use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Domain\Metadata\AcceptedMetadata;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
+use Beffroi\Saml\Domain\ServiceProvider\ServiceProvider;
 use Beffroi\Saml\Tests\Fixture\FixedClaims;
 use Beffroi\Saml\Tests\Fixture\FixedMetadataFetcher;
 use Beffroi\Saml\Tests\Fixture\InMemoryAcceptedMetadata;
@@ -484,7 +487,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
 
         // Then
         static::assertFalse($refreshment->refused, $refreshment->what);
-        static::assertInstanceOf(AcceptedMetadata::class, $this->accepted->find($this->tenant, ServiceProviderDocuments::SIGNED));
+        static::assertInstanceOf(AcceptedServiceProviderMetadata::class, $this->accepted->find($this->tenant, ServiceProviderDocuments::SIGNED));
     }
 
     /**
@@ -528,7 +531,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     {
         // Given
         $this->fetcher->answer(self::LOCATION, ServiceProviderDocuments::simpleSamlPhpValidUntil('2026-10-08T00:00:00Z'));
-        $theOther = new AcceptedMetadata(
+        $theOther = new AcceptedServiceProviderMetadata(
             Uuid::v7(),
             $this->tenant,
             ServiceProviderDocuments::SIMPLESAMLPHP,
@@ -584,7 +587,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
             ],
             \array_map(static fn (MetadataRefreshment $refreshment): array => [$refreshment->entityId, $refreshment->refused], $refreshments),
         );
-        static::assertInstanceOf(AcceptedMetadata::class, $this->accepted->find($this->tenant, ServiceProviderDocuments::SIGNED));
+        static::assertInstanceOf(AcceptedServiceProviderMetadata::class, $this->accepted->find($this->tenant, ServiceProviderDocuments::SIGNED));
     }
 
     /**
@@ -664,13 +667,17 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
 
     /**
      * @param array<string, array<string, mixed>> $definitions
+     *
+     * @return MetadataRefresh<ServiceProvider>
      */
-    private function refresh(array $definitions): ServiceProviderMetadataRefresh
+    private function refresh(array $definitions): MetadataRefresh
     {
-        return new ServiceProviderMetadataRefresh(
-            new ConfigurationServiceProviders($this->tenant->slug, $definitions, new FixedClaims()),
+        return new MetadataRefresh(
+            new ServiceProviderRole(
+                new ConfigurationServiceProviders($this->tenant->slug, $definitions, new FixedClaims()),
+                new ModelServiceProviderMetadataReader($this->clock),
+            ),
             $this->fetcher,
-            new ModelServiceProviderMetadataReader($this->clock),
             $this->accepted,
             $this->clock,
         );

@@ -9,7 +9,7 @@ use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Saml\Application\SingleSignOn\AttributeRelease;
 use Beffroi\Saml\Domain\ServiceProvider\AttributeMapping;
 use Beffroi\Saml\Domain\ServiceProvider\AttributeNameFormat;
-use Beffroi\Saml\Domain\ServiceProvider\MetadataLocation;
+use Beffroi\Saml\Domain\Metadata\MetadataLocation;
 use Beffroi\Saml\Domain\ServiceProvider\ServiceProvider;
 use Beffroi\Saml\Domain\SingleSignOn\AttributeValue;
 use Beffroi\Saml\Domain\SingleSignOn\ReleasedAttribute;

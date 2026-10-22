@@ -6,7 +6,7 @@ namespace Beffroi\Saml\Tests\Unit\Domain\ServiceProvider;
 
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Domain\ServiceProvider\AuthnRequestSigning;
-use Beffroi\Saml\Domain\ServiceProvider\MetadataLocation;
+use Beffroi\Saml\Domain\Metadata\MetadataLocation;
 use Beffroi\Saml\Domain\ServiceProvider\ServiceProvider;
 use Beffroi\Saml\Domain\ServiceProvider\ServiceProviderMetadata;
 use PHPUnit\Framework\Attributes\DataProvider;

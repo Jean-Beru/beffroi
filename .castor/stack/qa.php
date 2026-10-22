@@ -850,18 +850,39 @@ const INFECTION_STRICT_FILES = [
     'src/saml/src/Bridge/Model/ModelEntityId.php',
     // beffroi/saml, section 9: the service providers of a tenant, their declaration, the reading of their metadata and
     // the document kept against a rollback (section 6.2).
-    'src/saml/src/Domain/ServiceProvider/AcceptedMetadata.php',
+    'src/saml/src/Domain/Metadata/AcceptedMetadata.php',
+    'src/saml/src/Domain/Metadata/Lexical.php',
+    'src/saml/src/Domain/Metadata/MetadataLocation.php',
+    'src/saml/src/Domain/ServiceProvider/AcceptedServiceProviderMetadata.php',
     'src/saml/src/Domain/ServiceProvider/AttributeMapping.php',
     'src/saml/src/Domain/ServiceProvider/AttributeNameFormat.php',
-    'src/saml/src/Domain/ServiceProvider/Lexical.php',
-    'src/saml/src/Domain/ServiceProvider/MetadataLocation.php',
     'src/saml/src/Domain/ServiceProvider/ServiceProvider.php',
     'src/saml/src/Domain/ServiceProvider/ServiceProviderMetadata.php',
-    'src/saml/src/Application/ServiceProvider/MetadataRefreshment.php',
-    'src/saml/src/Application/ServiceProvider/ServiceProviderMetadataRefresh.php',
-    'src/saml/src/Application/ServiceProvider/AcceptedMetadataForgetting.php',
+    'src/saml/src/Application/Metadata/MetadataRefreshment.php',
+    'src/saml/src/Application/Metadata/MetadataRefresh.php',
+    'src/saml/src/Application/Metadata/AcceptedMetadataForgetting.php',
+    'src/saml/src/Application/ServiceProvider/ServiceProviderRole.php',
+    'src/saml/src/Bridge/Model/MetadataDocumentReader.php',
     'src/saml/src/Bridge/Model/ModelServiceProviderMetadataReader.php',
     'src/saml/src/Bridge/Configuration/ConfigurationServiceProviders.php',
+    'src/saml/src/Bridge/Configuration/DeclarationMembers.php',
+    // beffroi/saml, section 9: the upstream identity providers of a tenant, their declaration, their domains, the
+    // reading of their metadata and the role the refresh reads them by (S-42 to S-45)
+    'src/saml/src/Domain/Upstream/AcceptedUpstreamMetadata.php',
+    'src/saml/src/Domain/Upstream/EmailDomain.php',
+    'src/saml/src/Domain/Upstream/GroupMapping.php',
+    'src/saml/src/Domain/Upstream/ProfileAttribute.php',
+    'src/saml/src/Domain/Upstream/UpstreamIdentityProvider.php',
+    'src/saml/src/Domain/Upstream/UpstreamMetadata.php',
+    'src/saml/src/Application/Upstream/UpstreamIdentityProviderRole.php',
+    'src/saml/src/Bridge/Model/ModelUpstreamMetadataReader.php',
+    'src/saml/src/Bridge/Configuration/ConfigurationUpstreamIdentityProviders.php',
+    // beffroi/saml, section 9: the request the service provider sends an upstream identity provider, what it is written
+    // from, the use case that starts it and the sender that writes and signs it (S-48 to S-50, section 6.11)
+    'src/saml/src/Domain/Upstream/UpstreamAuthnRequest.php',
+    'src/saml/src/Domain/Upstream/SentAuthnRequest.php',
+    'src/saml/src/Application/Upstream/UpstreamSignOn.php',
+    'src/saml/src/Bridge/Model/ModelAuthnRequestSender.php',
     // beffroi/saml, section 9: the signature an authentication request needs and its translation to the model's terms
     // (section 6.3).
     'src/saml/src/Domain/ServiceProvider/AuthnRequestSigning.php',
