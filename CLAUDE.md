@@ -47,7 +47,7 @@ The journal is written as the spike runs, one row per working day, `Fait` and `A
 
 ## Commands
 
-Every QA task runs in `ghcr.io/spomky-labs/phpqa` when Docker is available; [Mago](https://mago.carthage.software/) is a Rust binary that image already carries (`/tools/mago`), so nothing is installed for it. Castor exposes `snake_case` functions as `kebab-case` tasks. `castor.php` only imports `.castor/`, whose files share the global namespace so a task keeps the name of its function: `.castor/stack/` is what builds and checks the stack and what the CI runs (`stack.php`, `provision.php`, `qa.php`), `.castor/lab/` the tests and the experiments played against the running stack (`conformance.php`, `cost.php`, `demo.php`, `mtls.php`, `saml.php`) or against another implementation (`xml-security.php`, `saml2-model.php`, `saml2-bindings.php`), `.castor/tools/` what reads the repository itself and asks nothing of the stack (`graphify.php`). A new task goes to the file of its side.
+Every QA task runs in `ghcr.io/spomky-labs/phpqa` when Docker is available; [Mago](https://mago.carthage.software/) is a Rust binary that image already carries (`/tools/mago`), so nothing is installed for it. Castor exposes `snake_case` functions as `kebab-case` tasks. `castor.php` only imports `.castor/`, whose files share the global namespace so a task keeps the name of its function: `.castor/stack/` is what builds and checks the stack and what the CI runs (`stack.php`, `provision.php`, `qa.php`), `.castor/lab/` the tests and the experiments played against the running stack (`conformance.php`, `cost.php`, `demo.php`, `mtls.php`, `saml.php`) or against another implementation (`xml-security.php`, `saml2-model.php`, `saml2-bindings.php`, `saml-interop.php`), `.castor/tools/` what reads the repository itself and asks nothing of the stack (`graphify.php`). A new task goes to the file of its side.
 
 ```bash
 composer install                  # monorepo (packages, tests)
@@ -94,6 +94,7 @@ castor saml2-model-keycloak [--up|--capture|--exchange|--verify|--down] [--outpu
 castor saml2-bindings-oracle               # signed HTTP-Redirect URLs under every algorithm of the build, verified by the OpenSSL command line and inflated by Python's zlib in Alpine (spec/bindings.md section 9.1); the job Oracles of the CI
 castor saml2-bindings-simplesamlphp [--up|--capture|--exchange|--keep|--timing|--down]   # the judge of spec/bindings.md section 9.5, SimpleSAMLphp both ways on ports 8091 and 8092; by hand, never in the CI (tests/saml2-bindings/Interop/simplesamlphp/README.md)
 castor saml2-bindings-keycloak [--up|--capture|--exchange|--keep|--down]                 # Keycloak both ways on port 8190, reinforcing that judge; by hand (tests/saml2-bindings/Interop/keycloak/README.md)
+castor saml-simplesamlphp-parser           # the metadata of the service provider of a tenant (spec/saml.md S-39) written by ServiceProviderMetadataOracleTest and read by SimpleSAMLphp 2.5.3.1's own parser, SAMLParser::parseDescriptorsString() and getMetadata20SP(), in the image of the judge of saml2-bindings, built if needed; no stack, by hand, never in the CI (tests/saml/Interop/simplesamlphp/)
 ```
 
 **FIDO.**

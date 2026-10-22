@@ -10,6 +10,7 @@ use Beffroi\Bundle\Key\DormantKeyAlgorithms;
 use Beffroi\Bundle\Key\FileTenantKeyRepository;
 use Beffroi\Bundle\Key\StagingDelay;
 use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
+use Beffroi\Bundle\Saml\RouterServiceProviderEndpoints;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Tenant\TenantFactory;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
@@ -26,6 +27,7 @@ use Beffroi\Oidc\Application\Token\TokenIssuer;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
+use Beffroi\Saml\Application\Metadata\ServiceProviderMetadataHandler;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
@@ -326,6 +328,173 @@ final class BeffroiBundleExtensionTest extends TestCase
     }
 
     /**
+     * Spec/saml.md S-40: the service provider enabled alone wires the SAML key too, the key of both roles, so that the
+     * key commands draw it for a tenant that is no identity provider.
+     */
+    #[Test]
+    public function enablingTheSamlServiceProviderAloneWiresTheSamlKey(): void
+    {
+        // When
+        $container = self::load([
+            'saml' => [
+                'service_provider' => null,
+            ],
+        ]);
+
+        // Then
+        static::assertTrue($container->getDefinition(SamlSigning::class)->hasTag(JoseSamlSigningAlgorithms::TAG));
+    }
+
+    /**
+     * Spec/saml.md S-41: the handler of the metadata of a role is wired when the deployment enables that role, and
+     * not otherwise, so that a role left off serves no metadata whatever keys the tenant holds.
+     *
+     * @param array<string, mixed> $saml
+     * @param array{bool, bool} $wired whether the handler of the identity provider and of the service provider are
+     */
+    #[Test]
+    #[DataProvider('provideRoles')]
+    public function theHandlerOfEachRoleIsWiredOnlyWhenTheRoleIsEnabled(array $saml, array $wired): void
+    {
+        // When
+        $container = self::load([
+            'saml' => $saml,
+        ]);
+
+        // Then
+        static::assertSame($wired, [
+            $container->hasDefinition(IdentityProviderMetadataHandler::class),
+            $container->hasDefinition(ServiceProviderMetadataHandler::class),
+        ]);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, array{bool, bool}}>
+     */
+    public static function provideRoles(): iterable
+    {
+        yield 'neither' => [[], [false, false]];
+        yield 'the identity provider alone' => [
+            [
+                'identity_provider' => null,
+            ],
+            [true, false],
+        ];
+        yield 'the service provider alone' => [
+            [
+                'service_provider' => null,
+            ],
+            [false, true],
+        ];
+        yield 'both' => [
+            [
+                'identity_provider' => null,
+                'service_provider' => null,
+            ],
+            [true, true],
+        ];
+    }
+
+    /**
+     * Spec/saml.md S-38: the entity ID the deployment names for its service provider reaches the locator of its
+     * endpoints, and none leaves it to the URL of the metadata.
+     */
+    #[Test]
+    #[DataProvider('provideServiceProviderEntityIds')]
+    public function theEntityIdOfTheServiceProviderReachesItsLocator(mixed $serviceProvider, ?string $entityId): void
+    {
+        // When
+        $container = self::load([
+            'saml' => [
+                'service_provider' => $serviceProvider,
+            ],
+        ]);
+
+        // Then
+        static::assertSame($entityId, $container->getDefinition(RouterServiceProviderEndpoints::class)->getArgument('$entityId'));
+    }
+
+    /**
+     * @return iterable<string, array{mixed, ?string}>
+     */
+    public static function provideServiceProviderEntityIds(): iterable
+    {
+        yield 'the URL of the metadata' => [null, null];
+        yield 'one the deployment names' => [
+            [
+                'entity_id' => 'urn:example:op:service-provider',
+            ],
+            'urn:example:op:service-provider',
+        ];
+    }
+
+    /**
+     * Spec/saml.md S-38: an entity ID of the service provider that is no string is refused when the configuration is
+     * read, rather than read as none and the service provider named by the URL of its metadata.
+     */
+    #[Test]
+    #[DataProvider('provideEntityIdsThatAreNoString')]
+    public function anEntityIdOfTheServiceProviderThatIsNoStringIsRefused(mixed $entityId, string $type): void
+    {
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIsOrContains(\sprintf(
+            'Invalid type for path "beffroi.saml.service_provider.entity_id". Expected "string", but got "%s".',
+            $type,
+        ));
+
+        // When
+        self::load([
+            'saml' => [
+                'service_provider' => [
+                    'entity_id' => $entityId,
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * @return iterable<string, array{mixed, string}>
+     */
+    public static function provideEntityIdsThatAreNoString(): iterable
+    {
+        yield 'a number' => [12_345, 'int'];
+        yield 'a boolean' => [true, 'bool'];
+    }
+
+    /**
+     * Spec/saml.md S-12, S-40: the metadata of the service provider are handed the max-age of the keys, and the
+     * cacheDuration and the staging delay of the SAML key, those of the identity provider.
+     */
+    #[Test]
+    public function theMetadataOfTheServiceProviderAreHandedTheFiguresOfTheSamlKey(): void
+    {
+        // When
+        $container = self::load([
+            'keys' => [
+                'kms' => 'op',
+                'key_id' => 'signing',
+                'jwks_max_age' => 90,
+            ],
+            'saml' => [
+                'identity_provider' => [
+                    'enabled' => false,
+                    'staging_delay' => 172_800,
+                    'cache_duration' => 3_600,
+                ],
+                'service_provider' => null,
+            ],
+        ]);
+
+        // Then
+        $handler = $container->getDefinition(ServiceProviderMetadataHandler::class);
+        static::assertSame(
+            [90, 3_600, 172_800],
+            [$handler->getArgument('$maxAge'), $handler->getArgument('$cacheDuration'), $handler->getArgument('$stagingDelay')],
+        );
+    }
+
+    /**
      * Spec/saml.md section 5.1: the algorithm of a capability a deployment leaves off is dormant, so that a key the
      * tenant drew while it was on is read by nothing rather than refused as a fault of the storage.
      *
@@ -374,6 +543,14 @@ final class BeffroiBundleExtensionTest extends TestCase
      */
     public static function provideCapabilitiesTurnedOn(): iterable
     {
+        yield 'the SAML service provider' => [
+            [
+                'saml' => [
+                    'service_provider' => null,
+                ],
+            ],
+            SamlSigning::class,
+        ];
         yield 'the SAML identity provider' => [
             [
                 'saml' => [
@@ -555,6 +732,18 @@ final class BeffroiBundleExtensionTest extends TestCase
                     'staging_delay' => 1_209_600,
                     'age' => 15_552_000,
                 ],
+            ],
+            'PT1209600S',
+            'PT15552000S',
+        ];
+        yield 'figures set under the identity provider left off, for the service provider alone' => [
+            [
+                'identity_provider' => [
+                    'enabled' => false,
+                    'staging_delay' => 1_209_600,
+                    'age' => 15_552_000,
+                ],
+                'service_provider' => null,
             ],
             'PT1209600S',
             'PT15552000S',

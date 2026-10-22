@@ -322,16 +322,33 @@ jobs:
           path: .ci-tools/coverage
           key: coverage-php8.5-${{ github.run_id }}
           fail-on-cache-miss: true
-      # Infection counts the two cores of the runner and keeps one for itself; both can run mutants.
-      # The files the specifications of the SAML packages hold to no escaped mutant, whole, on every run; then the
-      # lines added or modified over the whole source.
+      # Infection takes every core of the runner but one (kloude-sysbox has eight), the job running alone on it.
+      # The files the specifications of the SAML packages hold to no escaped mutant, whole: on every push to a
+      # maintenance branch, and on a pull request whose diff reaches those packages, their suites or what decides the
+      # pass, a quarter of an hour that a pull request elsewhere has no reason to wait for. Then the lines added or
+      # modified over the whole source.
       # A coverage of its own, the suites of the SAML packages under Xdebug, rather than the one the tests job measured with pcov
       # (see infect() in .castor/stack/qa.php).
+      - name: "Whether the pull request reaches the SAML packages"
+        id: saml
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: origin/${{ github.base_ref }}
+        run: |
+          if git diff --quiet "$(git merge-base "$BASE" HEAD)" HEAD -- \
+            src/xml-security src/saml2-model src/saml2-bindings src/saml \
+            tests/xml-security tests/saml2-model tests/saml2-bindings tests/saml \
+            .castor/stack/qa.php infection.json.dist .github/workflows/ci.yml; then
+            echo "reached=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "reached=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: "The files of section 9 of the SAML packages, no escaped mutant"
-        run: castor infect --strict --threads=2
+        if: github.event_name != 'pull_request' || steps.saml.outputs.reached == 'true'
+        run: castor infect --strict --threads=max
       - name: "Mutations of the pull request"
         if: ${{ !cancelled() && github.event_name == 'pull_request' }}
-        run: castor infect --diff --reuse-coverage --base="origin/${{ github.base_ref }}" --threads=2
+        run: castor infect --diff --reuse-coverage --base="origin/${{ github.base_ref }}" --threads=max
       - name: "Mutations of the push"
         if: ${{ !cancelled() && github.event_name == 'push' }}
-        run: castor infect --diff --reuse-coverage --base="${{ github.event.before }}" --threads=2
+        run: castor infect --diff --reuse-coverage --base="${{ github.event.before }}" --threads=max

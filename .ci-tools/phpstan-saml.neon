@@ -23,9 +23,11 @@ parameters:
 	paths:
 		- %currentWorkingDirectory%/src/saml
 		- %currentWorkingDirectory%/tests/saml
-	# The fixture of the rules is code written to be refused, analysed on its own by .ci-tools/phpstan-saml-rules.neon.
+	# The fixture of the rules is code written to be refused, analysed on its own by .ci-tools/phpstan-saml-rules.neon;
+	# the interoperability scripts run in the image of SimpleSAMLphp, against a library that is not a dependency here.
 	excludePaths:
 		- %currentWorkingDirectory%/tests/saml/PhpStan/Fixture/*
+		- %currentWorkingDirectory%/tests/saml/Interop/*
 	checkUninitializedProperties: true
 	treatPhpDocTypesAsCertain: false
 	# The statements and the functions of ekino/phpstan-banned-code, its defaults, as saml2-model has them (section 8).
