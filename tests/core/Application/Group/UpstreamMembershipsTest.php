@@ -194,8 +194,27 @@ final class UpstreamMembershipsTest extends TestCase
     }
 
     /**
-     * GroupMembership refuses a group of another tenant, and the refusal comes before any write, so the
-     * person keeps what the last sign-in gave.
+     * GroupMembership refuses a group of another tenant, which a mapping wired for the wrong tenant leads to.
+     */
+    #[Test]
+    public function aMappingLeadingToAGroupOfAnotherTenantIsRefused(): void
+    {
+        // Given
+        $foreign = new Group(Uuid::v7(), Fixtures::tenant('other', 'https://id.other.example'), 'admins', GroupSource::Local, Fixtures::now());
+        $mapping = new GroupMapping([
+            'foreign-guid' => $foreign,
+        ]);
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A user can only belong to a group of their own tenant.');
+
+        // When
+        $this->upstream->replace($this->user, ['foreign-guid'], $mapping);
+    }
+
+    /**
+     * The refusal comes before any write, so the person keeps what the last sign-in gave.
      */
     #[Test]
     public function aMappingLeadingToAGroupOfAnotherTenantWritesNothing(): void

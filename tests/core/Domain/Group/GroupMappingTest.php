@@ -80,6 +80,48 @@ final class GroupMappingTest extends TestCase
         yield 'a prefix of it' => ['admins'];
     }
 
+    /**
+     * PHP keys the declared value "1" by the integer 1: what a provider sent is a value only when it is a
+     * string, so nothing else reaches that key.
+     */
+    #[Test]
+    #[DataProvider('provideAssertedValuesThatAreNotStrings')]
+    public function anAssertedValueThatIsNotAStringIsIgnored(mixed $asserted): void
+    {
+        // Given
+        $mapping = new GroupMapping([
+            '1' => self::group('admins'),
+        ]);
+
+        // When / Then
+        static::assertSame([], $mapping->groupsOf([$asserted]));
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function provideAssertedValuesThatAreNotStrings(): iterable
+    {
+        yield 'true' => [true];
+        yield 'the integer 1' => [1];
+        yield 'the float 1.0' => [1.0];
+        yield 'a list' => [['1']];
+        yield 'null' => [null];
+    }
+
+    #[Test]
+    public function aDeclaredValueOfDigitsIsFoundByTheStringItIs(): void
+    {
+        // Given
+        $admins = self::group('admins');
+        $mapping = new GroupMapping([
+            '1' => $admins,
+        ]);
+
+        // When / Then
+        static::assertSame([$admins], $mapping->groupsOf(['1']));
+    }
+
     #[Test]
     public function twoValuesThatNameOneGroupLeadToItOnce(): void
     {
@@ -102,7 +144,7 @@ final class GroupMappingTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIs('A value an upstream provider asserts for the group "admins" is not empty.');
+        $this->expectExceptionMessageIs('A value an upstream provider asserts for the group "admins" must not be empty.');
 
         // When
         new GroupMapping([

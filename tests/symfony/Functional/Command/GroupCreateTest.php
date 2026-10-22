@@ -54,7 +54,7 @@ final class GroupCreateTest extends ConsoleTestCase
     {
         // When
         $tester = self::console('beffroi:group:create', [
-            'name' => ' ',
+            'name' => '',
         ]);
 
         // Then

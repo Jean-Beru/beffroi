@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Command;
 
-use Beffroi\Core\Application\Group\GroupAlreadyExistsException;
+use Beffroi\Core\Exception\GroupAlreadyExistsException;
 use Beffroi\Core\Application\Group\GroupProvisioner;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use function sprintf;

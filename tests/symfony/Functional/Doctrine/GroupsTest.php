@@ -6,7 +6,9 @@ namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use Beffroi\Core\Domain\Group\Group;
 use Beffroi\Core\Domain\Group\GroupSource;
+use Beffroi\Core\Exception\GroupAlreadyExistsException;
 use Beffroi\Core\Port\GroupRepositoryInterface;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
@@ -53,6 +55,27 @@ final class GroupsTest extends DatabaseTestCase
     {
         yield 'another case' => ['Admins'];
         yield 'another name' => ['sales'];
+    }
+
+    /**
+     * The race the lookup cannot see: a second group of the same name reaches the table, and the unique
+     * constraint refuses it under the name of the refusal the lookup gives.
+     */
+    #[Test]
+    public function aSecondGroupOfTheSameNameIsRefusedByTheTable(): void
+    {
+        // Given
+        self::groupsOfTheTenant()->save(new Group(Uuid::v7(), self::tenant(), 'admins', GroupSource::Local, self::now()));
+
+        // When
+        try {
+            self::groupsOfTheTenant()->save(new Group(Uuid::v7(), self::tenant(), 'admins', GroupSource::Local, self::now()));
+            static::fail('A second group of the same name was written.');
+        } catch (GroupAlreadyExistsException $exception) {
+            // Then
+            static::assertSame('A group named "admins" already exists in this tenant.', $exception->getMessage());
+            static::assertInstanceOf(UniqueConstraintViolationException::class, $exception->getPrevious());
+        }
     }
 
     private static function groupsOfTheTenant(): GroupRepositoryInterface
