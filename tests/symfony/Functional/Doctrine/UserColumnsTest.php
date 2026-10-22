@@ -24,7 +24,7 @@ use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The seventeen columns of `beffroi_user` sealed and read back, and the row underneath (decisions 0011
+ * The six columns of `beffroi_user` sealed and read back, and the row underneath (decisions 0011
  * and 0018).
  *
  * What is played here is the deployment's own chain, end to end: the mapping that names an encrypted type
@@ -35,7 +35,7 @@ use Symfony\Component\Uid\Uuid;
 final class UserColumnsTest extends DatabaseTestCase
 {
     /**
-     * The seventeen personal data of a user, by the column each one lands in: what the fixture writes and
+     * The six personal data of a user, by the column each one lands in: what the fixture writes and
      * what the row must not hold. One list, so that a column sealed without being written here, or written
      * without being asserted, is a count that no longer adds up.
      */
@@ -95,11 +95,49 @@ final class UserColumnsTest extends DatabaseTestCase
         static::assertInstanceOf(Address::class, $read->address);
         static::assertSame(self::PLAINTEXTS['address'], $read->address->formatted);
         static::assertSame(self::PLAINTEXTS['profile'], $read->profile->name);
+        static::assertSame(self::PLAINTEXTS['source'], $read->source->provider);
+    }
+
+    /**
+     * Decision 0002: a local source holds nothing and has nothing to seal, so a person a console created
+     * leaves the column empty.
+     */
+    #[Test]
+    public function aLocalPersonLeavesTheSourceColumnEmpty(): void
+    {
+        // Given
+        self::user('bob', 'bob-subject');
+
+        // When
+        $source = self::connection()->fetchOne('SELECT source FROM beffroi_user');
+
+        // Then
+        static::assertNull($source);
+    }
+
+    /**
+     * The rows the table held before the column came are read as what they are: people a console, a
+     * fixture or an import created.
+     */
+    #[Test]
+    public function anEmptySourceColumnIsReadBackAsALocalPerson(): void
+    {
+        // Given
+        $saved = self::ada();
+        self::connection()->executeStatement('UPDATE beffroi_user SET source = NULL');
+        self::reload();
+
+        // When
+        $read = self::users()->find($saved->id);
+
+        // Then
+        static::assertInstanceOf(User::class, $read);
+        static::assertTrue($read->source->isLocal());
     }
 
     /**
      * Column by column, which is the point of the data provider: a column that stopped sealing would fail
-     * on its own line and not hide behind sixteen others.
+     * on its own line and not hide behind five others.
      */
     #[Test]
     #[DataProvider('provideSealedColumns')]
@@ -256,7 +294,7 @@ final class UserColumnsTest extends DatabaseTestCase
     }
 
     /**
-     * The user of the fixture, with every one of the seventeen columns written.
+     * The user of the fixture, with every one of the six columns written.
      */
     private static function ada(): User
     {
@@ -269,7 +307,7 @@ final class UserColumnsTest extends DatabaseTestCase
     }
 
     /**
-     * The one row of the table as the database holds it, the seventeen sealed columns and the two tags: a
+     * The one row of the table as the database holds it, the six sealed columns and the two tags: a
      * column that holds nothing is a column with nothing to assert against, so a null fails here and not
      * silently in the test that reads it.
      *

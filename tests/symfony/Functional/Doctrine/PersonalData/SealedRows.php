@@ -16,6 +16,7 @@ use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\PushSubscription;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Identity\UserSource;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
 use Beffroi\Core\Domain\Session\AuthenticationProofs;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
@@ -117,6 +118,8 @@ final readonly class SealedRows
             // The thirteen claims of a profile share one column and one type, so one of them exercises the
             // path all thirteen take; the other twelve left with the columns they had (issue #440).
             'profile' => 'Augusta Ada King-Noel',
+            // the upstream provider that created her, the one her linked identity names (decision 0002)
+            'source' => 'login.acme-federation.example',
         ],
         'beffroi_linked_identity' => [
             'provider' => 'login.acme-federation.example',
@@ -389,6 +392,7 @@ final readonly class SealedRows
             $values['username'],
             $this->now,
             new EmailAddress($values['email']),
+            source: UserSource::upstream($values['source'], ['email', 'name']),
         );
         $user->changePhoneNumber($values['phone_number'], false, $this->now);
         $user->changeAddress(new Address($values['address']), $this->now);
