@@ -9,8 +9,10 @@ use Beffroi\Bundle\BeffroiBundle;
 use Beffroi\Bundle\Key\DormantKeyAlgorithms;
 use Beffroi\Bundle\Key\FileTenantKeyRepository;
 use Beffroi\Bundle\Key\StagingDelay;
+use Beffroi\Bundle\Saml\JoseSamlEncryptionAlgorithms;
 use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
 use Beffroi\Bundle\Saml\RouterServiceProviderEndpoints;
+use Beffroi\Bundle\Saml\SamlEncryption;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Tenant\TenantFactory;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
@@ -748,10 +750,47 @@ final class BeffroiBundleExtensionTest extends TestCase
                     'metadata_signers' => [],
                     'profile' => [],
                     'subject_attribute' => null,
+                    'require_encrypted_assertions' => false,
                 ],
             ],
             $declarations->getArgument('$definitions'),
         );
+    }
+
+    /**
+     * Spec/saml.md S-64: each upstream identity provider declared has the algorithm of the key it encrypts for wired in
+     * the family of those keys, named after its entity ID.
+     */
+    #[Test]
+    public function eachDeclaredIdentityProviderHasTheAlgorithmOfItsKeyWired(): void
+    {
+        // When
+        $container = self::load([
+            'saml' => [
+                'service_provider' => null,
+                'identity_providers' => [
+                    'https://idp.acme.example/saml' => [
+                        'metadata' => 'https://idp.acme.example/saml/metadata',
+                        'domains' => ['acme.example'],
+                        'email_attribute' => 'mail',
+                    ],
+                    'https://idp.other.example/saml' => [
+                        'metadata' => 'https://idp.other.example/saml/metadata',
+                        'domains' => ['other.example'],
+                        'email_attribute' => 'mail',
+                    ],
+                ],
+            ],
+        ]);
+
+        // Then
+        $wired = [];
+        foreach ($container->findTaggedServiceIds(JoseSamlEncryptionAlgorithms::TAG) as $id => $tags) {
+            $definition = $container->getDefinition($id);
+            static::assertSame(SamlEncryption::class, $definition->getClass());
+            $wired[] = $definition->getArgument(0);
+        }
+        static::assertSame(['https://idp.acme.example/saml', 'https://idp.other.example/saml'], $wired);
     }
 
     /**

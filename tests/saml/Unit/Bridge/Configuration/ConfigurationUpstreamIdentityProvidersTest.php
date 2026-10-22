@@ -163,6 +163,47 @@ final class ConfigurationUpstreamIdentityProvidersTest extends TestCase
             '"map" is a string.',
         ];
         yield 'a subject that is no string' => [[...self::declaration(['acme.example']), 'subject_attribute' => ['oid']], '"subject_attribute" is a string.'];
+        yield 'a requirement of encryption that is no boolean' => [
+            [...self::declaration(['acme.example']), 'require_encrypted_assertions' => 'yes'],
+            '"require_encrypted_assertions" is a boolean.',
+        ];
+    }
+
+    /**
+     * S-67: whether the assertions of an identity provider must arrive encrypted is read from its declaration, and
+     * they need not unless it says so.
+     *
+     * @param array<string, mixed> $declared
+     */
+    #[Test]
+    #[DataProvider('provideRequirementsOfEncryption')]
+    public function whetherAssertionsMustArriveEncryptedIsRead(array $declared, bool $required): void
+    {
+        // Given
+        $identityProviders = new ConfigurationUpstreamIdentityProviders(
+            'acme',
+            ['https://idp.acme.example/saml' => [...self::declaration(['acme.example']), ...$declared]],
+            new FixedProfileClaims(),
+        );
+
+        // When
+        $identityProvider = $identityProviders->find(
+            Fixtures::tenant('acme'),
+            'https://idp.acme.example/saml',
+        ) ?? static::fail('The identity provider is not declared.');
+
+        // Then
+        static::assertSame($required, $identityProvider->requireEncryptedAssertions);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, bool}>
+     */
+    public static function provideRequirementsOfEncryption(): iterable
+    {
+        yield 'not declared' => [[], false];
+        yield 'declared false' => [['require_encrypted_assertions' => false], false];
+        yield 'declared true' => [['require_encrypted_assertions' => true], true];
     }
 
     /**
