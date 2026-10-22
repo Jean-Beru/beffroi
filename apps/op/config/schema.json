@@ -1866,9 +1866,9 @@
                                                 "default": false
                                             },
                                             "entity_id": {
-                                                "$ref": "#/$defs/types/scalar",
+                                                "$ref": "#/$defs/types/string_null",
                                                 "default": null,
-                                                "description": "The entity ID of the service provider (spec/saml.md S-38): the URL of its metadata when left out, as the identity provider is named by the URL of its own; another absolute URI of at most 1024 characters with no whitespace for a service provider its upstream identity providers already know by a name it keeps. Never the entity ID of the identity provider of the tenant, refused when the container is compiled."
+                                                "description": "The entity ID of the service provider (spec/saml.md S-38): the URL of its metadata when left out, as the identity provider is named by the URL of its own; another URI for a service provider its upstream identity providers already know by a name it keeps, absolute, at most 1024 characters, with no whitespace, control, format or invisible character (M-6). Never the entity ID of the identity provider of the tenant. Refused when the container is compiled, or at its first use when it or the issuer holds an environment variable."
                                             }
                                         },
                                         "additionalProperties": false
