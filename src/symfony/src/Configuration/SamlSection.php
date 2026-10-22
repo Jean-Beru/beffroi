@@ -12,6 +12,7 @@ use Beffroi\Core\Domain\Key\RotationSchedule;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
 use Beffroi\Saml\Application\Metadata\ServiceProviderMetadataHandler;
+use Beffroi\Saml\Application\Upstream\UpstreamSignOn;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationUpstreamIdentityProviders;
 use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
@@ -299,6 +300,8 @@ final readonly class SamlSection extends ConfigurationSection
                     '$stagingDelay',
                     $stagingDelay,
                 );
+            // the sign-on at an upstream identity provider, which needs the endpoints of the role (spec/saml.md S-51)
+            $services->set(UpstreamSignOn::class)->autowire();
         }
     }
 

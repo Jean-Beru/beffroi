@@ -1553,6 +1553,14 @@
         <source>saml_post.continue</source>
         <target>Continuer</target>
       </trans-unit>
+      <trans-unit id="saml_post.upstream.title" resname="saml_post.upstream.title">
+        <source>saml_post.upstream.title</source>
+        <target>Connexion avec votre organisation</target>
+      </trans-unit>
+      <trans-unit id="saml_post.upstream.explanation" resname="saml_post.upstream.explanation">
+        <source>saml_post.upstream.explanation</source>
+        <target>Votre navigateur vous envoie vers la connexion de votre organisation. Utilisez le bouton ci-dessous pour continuer.</target>
+      </trans-unit>
       <trans-unit id="error.saml_request_refused" resname="error.saml_request_refused">
         <source>error.saml_request_refused</source>
         <target>L’application a envoyé une demande de connexion que ce fournisseur ne peut pas accepter. Recommencez depuis l’application.</target>
@@ -1560,6 +1568,10 @@
       <trans-unit id="error.saml_logout_refused" resname="error.saml_logout_refused">
         <source>error.saml_logout_refused</source>
         <target>L’application a envoyé une demande de déconnexion que ce fournisseur ne peut pas accepter. Déconnectez-vous à nouveau depuis l’application.</target>
+      </trans-unit>
+      <trans-unit id="error.saml_upstream_sign_on_refused" resname="error.saml_upstream_sign_on_refused">
+        <source>error.saml_upstream_sign_on_refused</source>
+        <target>La connexion avec votre organisation ne peut pas commencer ici. Recommencez depuis l’application.</target>
       </trans-unit>
     </body>
   </file>

@@ -288,6 +288,9 @@ use Beffroi\Saml\Application\SingleSignOn\AttributeRelease;
 use Beffroi\Saml\Application\SingleSignOn\SingleSignOn;
 use Beffroi\Saml\Bridge\Model\ModelAuthnRequestReceiver;
 use Beffroi\Saml\Bridge\Model\DeclaredServiceProviderReader;
+use Beffroi\Saml\Bridge\Model\ModelAuthnRequestSender;
+use Beffroi\Saml\Port\AuthnRequestSenderInterface;
+use Beffroi\Bundle\Saml\UpstreamSignOns;
 use Beffroi\Saml\Bridge\Model\ModelLogoutMessageReceiver;
 use Beffroi\Saml\Bridge\Model\ModelSignOutNotifier;
 use Beffroi\Saml\Bridge\Model\ModelSignOutResponder;
@@ -1982,6 +1985,14 @@ return static function (ContainerConfigurator $container): void {
     $services->set(WaitingSignOns::class);
     $services->set(SamlPostPage::class);
     $services->set(SignOnAnswers::class);
+    // beffroi/saml: the request the service provider of the tenant sends an upstream identity provider for an
+    // interaction of the browser (spec/saml.md S-48 to S-51), written to a single sign-on service of the accepted
+    // document read back from the table of the upstream identity providers, and not of the service providers the port
+    // is aliased to, signed by the SAML key of the tenant, remembered in the HTTP session of the browser under its
+    // RelayState; the use case is wired by the SAML section when the service provider is enabled
+    $services->set(ModelAuthnRequestSender::class)->arg('$accepted', service('beffroi.saml.identity_providers.accepted_metadata'));
+    $services->alias(AuthnRequestSenderInterface::class, ModelAuthnRequestSender::class);
+    $services->set(UpstreamSignOns::class);
     // beffroi/saml: Single Logout started by a service provider (spec/saml.md section 6.5), a request received over
     // either binding, validated by the model and remembered in a store every worker shares, written atomically (S-23);
     // the sessions it names ended by the core as every session ends (S-25) and the answer signed by the SAML key of

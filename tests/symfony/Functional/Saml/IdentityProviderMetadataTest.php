@@ -317,6 +317,26 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
+     * S-41, S-51: the service provider of the tenant left off, as this kernel leaves it, starts no sign-on at an
+     * upstream identity provider, though the tenant holds a SAML key in service for its identity provider.
+     */
+    #[Test]
+    public function theServiceProviderLeftOffStartsNoSignOn(): void
+    {
+        // Given
+        self::generate();
+
+        // When
+        $this->browser->request('GET', '/saml/sp/sign-on', [
+            'interaction' => 'an-interaction',
+            'identity_provider' => 'https://idp.example.org/saml',
+        ]);
+
+        // Then
+        static::assertSame(Response::HTTP_NOT_FOUND, $this->browser->getResponse()->getStatusCode());
+    }
+
+    /**
      * Section 6.1 step 1: a tenant that holds no SAML key has no metadata to serve.
      */
     #[Test]
