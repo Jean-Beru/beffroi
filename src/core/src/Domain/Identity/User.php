@@ -45,10 +45,10 @@ final class User implements ClassifiedFieldsInterface
     /**
      * The blind index of the email address, filled the same way, and null for a user who gave none.
      *
-     * Nothing looks an address up today: the repository has no such lookup and no unique constraint says
-     * two users of a tenant may not share one. The column is here because the table is empty today, and a
-     * blind index added later is a reindex, which means reading and unsealing every row of every tenant;
-     * added now it is a column of a migration. Decision 0011 names it for the console of a tenant.
+     * What looks an address up is the first sign-in through an upstream provider, which refuses to create a
+     * person whose address another person of the tenant holds (`JustInTimeProvisioning`). No unique
+     * constraint says two users of a tenant may not share one: two local persons may, and nothing links
+     * either of them to a provider on its own. Decision 0011 names it for the console of a tenant too.
      */
     public private(set) ?string $emailIndex = null;
 
@@ -65,7 +65,7 @@ final class User implements ClassifiedFieldsInterface
         public private(set) ?Address $address,
         public readonly DateTimeImmutable $createdAt,
         public private(set) DateTimeImmutable $updatedAt,
-        public readonly UserSource $source,
+        public private(set) UserSource $source,
     ) {
         $this->username = self::normalizeUsername($username);
         self::assertVerifiable($email, $emailVerified, 'email address');
@@ -133,6 +133,23 @@ final class User implements ClassifiedFieldsInterface
     public function changeAddress(?Address $address, DateTimeImmutable $now): void
     {
         $this->address = $address?->isEmpty() === true ? null : $address;
+        $this->updatedAt = $now;
+    }
+
+    /**
+     * What the source that created the person holds now, which its provider says again at every sign-in
+     * through it (issue #781): a claim it no longer fills or no longer sends is released, and a manual
+     * description may say it again, no source holding a claim for ever. The provider is not what changes:
+     * the person stays the one it created.
+     *
+     * @throws InvalidArgumentException when the source names another provider than the one that created the person
+     */
+    public function heldBy(UserSource $source, DateTimeImmutable $now): void
+    {
+        if ($source->provider !== $this->source->provider) {
+            throw new InvalidArgumentException('What a source holds of a person changes, and the provider that created the person does not.');
+        }
+        $this->source = $source;
         $this->updatedAt = $now;
     }
 

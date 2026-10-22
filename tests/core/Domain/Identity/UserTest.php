@@ -374,4 +374,59 @@ final class UserTest extends TestCase
         yield 'opened, and held by the source' => [['nickname'], UserSource::upstream('workforce', ['nickname']), false];
         yield 'not opened' => [['zoneinfo'], UserSource::local(), false];
     }
+
+    /**
+     * Issue #781: what the provider that created a person holds of them is what it fills and says at its
+     * last sign-in, so no claim is held for ever.
+     */
+    #[Test]
+    public function whatItsSourceHoldsChanges(): void
+    {
+        // Given
+        $user = User::create(
+            Uuid::v7(),
+            Fixtures::tenant(),
+            new Subject('alice-subject'),
+            'alice',
+            Fixtures::now(),
+            source: UserSource::upstream('workforce', ['email', 'given_name']),
+        );
+        $now = new DateTimeImmutable('2026-10-22T12:00:00+00:00');
+
+        // When
+        $user->heldBy(UserSource::upstream('workforce', ['email']), $now);
+
+        // Then
+        static::assertEquals(UserSource::upstream('workforce', ['email']), $user->source);
+        static::assertSame($now, $user->updatedAt);
+    }
+
+    /**
+     * The person stays the one the provider created: a source of another provider, or none, is a link or a
+     * move, and no sign-in makes either.
+     */
+    #[Test]
+    #[DataProvider('provideSourcesOfAnotherProvider')]
+    public function theProviderThatCreatedThePersonDoesNotChange(UserSource $was, UserSource $other): void
+    {
+        // Given
+        $user = User::create(Uuid::v7(), Fixtures::tenant(), new Subject('alice-subject'), 'alice', Fixtures::now(), source: $was);
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('What a source holds of a person changes, and the provider that created the person does not.');
+
+        // When
+        $user->heldBy($other, Fixtures::now());
+    }
+
+    /**
+     * @return iterable<string, array{UserSource, UserSource}>
+     */
+    public static function provideSourcesOfAnotherProvider(): iterable
+    {
+        yield 'another provider' => [UserSource::upstream('workforce', ['email']), UserSource::upstream('partners', ['email'])];
+        yield 'a local person given a provider' => [UserSource::local(), UserSource::upstream('workforce', ['email'])];
+        yield 'a person of a provider made local' => [UserSource::upstream('workforce', ['email']), UserSource::local()];
+    }
 }

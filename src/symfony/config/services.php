@@ -20,6 +20,7 @@ use Beffroi\Bundle\Client\ClientJwksFetcher;
 use Beffroi\Bundle\Client\RequestObjectFetcher;
 use Beffroi\Bundle\Client\SectorIdentifierDocumentFetcher;
 use Beffroi\Bundle\Doctrine\Listener\ClientResolver;
+use Beffroi\Bundle\Doctrine\DoctrineAtomicWrites;
 use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Bundle\Doctrine\PageOfRows;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineAccessTokenRepository;
@@ -405,6 +406,7 @@ use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use Beffroi\Core\Port\TotpAlgorithmInterface;
 use Beffroi\Core\Port\UserAgentParserInterface;
 use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
+use Beffroi\Core\Port\AtomicWritesInterface;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use Beffroi\Oidc\Application\Authorization\AuthenticationRequirement;
 use Beffroi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
@@ -1091,6 +1093,10 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ClientResolver::class)->tag('doctrine.orm.entity_listener');
     $services->set(DoctrineUserRepository::class);
     $services->alias(UserRepositoryInterface::class, DoctrineUserRepository::class);
+    // writes that are one fact, kept all or none (issue #781): a person an upstream provider creates and the
+    // linked identity that names it
+    $services->set(DoctrineAtomicWrites::class);
+    $services->alias(AtomicWritesInterface::class, DoctrineAtomicWrites::class);
     // the identities a user has at an upstream provider (decision 0002), which is what the subject of an
     // assertion of a trusted issuer resolves through (RFC 7523 §2.1)
     $services->set(DoctrineLinkedIdentityRepository::class);
