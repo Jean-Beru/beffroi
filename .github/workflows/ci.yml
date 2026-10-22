@@ -45,8 +45,9 @@ concurrency:
 
 jobs:
   # Two self-hosted runners on kloude, one job at a time each: "kloude-light" (3 CPU, 6 GB) takes the jobs that wait
-  # mostly on the network and the disk, "kloude" (6 CPU, 8 GB) the suite with its coverage and the mutation testing,
-  # which use every core they are given, and the conformance suite of "conformance.yml", which needs the memory.
+  # mostly on the network and the disk, "kloude" (6 CPU, 8 GB) the quality tools, the suite with its coverage and the
+  # mutation testing, which use every core they are given (Rector's parallel workers time out on three), and the
+  # conformance suite of "conformance.yml", which needs the memory.
   pre_checks:
     name: "0️⃣ Pre-checks"
     runs-on: [self-hosted, kloude-light]
@@ -70,7 +71,7 @@ jobs:
   quality:
     name: "1️⃣ Quality (PHPStan, Mago, Rector, composer.json, licenses, Deptrac)"
     needs: [pre_checks]
-    runs-on: [self-hosted, kloude-light]
+    runs-on: [self-hosted, kloude]
     container:
       image: ghcr.io/spomky-labs/phpqa:8.5
     steps:
