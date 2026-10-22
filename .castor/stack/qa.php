@@ -865,6 +865,18 @@ const INFECTION_STRICT_FILES = [
     'src/saml/src/Bridge/Model/MetadataDocumentReader.php',
     'src/saml/src/Bridge/Model/ModelServiceProviderMetadataReader.php',
     'src/saml/src/Bridge/Configuration/ConfigurationServiceProviders.php',
+    'src/saml/src/Bridge/Configuration/DeclarationMembers.php',
+    // beffroi/saml, section 9: the upstream identity providers of a tenant, their declaration, their domains, the
+    // reading of their metadata and the role the refresh reads them by (S-42 to S-45)
+    'src/saml/src/Domain/Upstream/AcceptedUpstreamMetadata.php',
+    'src/saml/src/Domain/Upstream/EmailDomain.php',
+    'src/saml/src/Domain/Upstream/GroupMapping.php',
+    'src/saml/src/Domain/Upstream/ProfileAttribute.php',
+    'src/saml/src/Domain/Upstream/UpstreamIdentityProvider.php',
+    'src/saml/src/Domain/Upstream/UpstreamMetadata.php',
+    'src/saml/src/Application/Upstream/UpstreamIdentityProviderRole.php',
+    'src/saml/src/Bridge/Model/ModelUpstreamMetadataReader.php',
+    'src/saml/src/Bridge/Configuration/ConfigurationUpstreamIdentityProviders.php',
     // beffroi/saml, section 9: the signature an authentication request needs and its translation to the model's terms
     // (section 6.3).
     'src/saml/src/Domain/ServiceProvider/AuthnRequestSigning.php',
