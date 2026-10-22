@@ -19,7 +19,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §3.4: users found by identifier, by subject and by username within a tenant.
+ * Architecture §3.4: users found by identifier, by subject, by username and by address within a tenant.
  */
 final class DoctrineUserRepositoryTest extends DatabaseTestCase
 {
@@ -142,6 +142,58 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
     }
 
     /**
+     * Issue #781: the first sign-in through an upstream provider asks whether somebody holds the address it
+     * gave, on the blind index of the address, whose projection folds the domain and leaves the local part
+     * as it is written (RFC 5321 §2.4).
+     */
+    #[Test]
+    #[DataProvider('provideAddressesBobHolds')]
+    public function aUserIsFoundByAddressWithinTheTenant(string $address): void
+    {
+        // Given
+        self::user();
+        $bob = self::user('bob', 'bob-subject');
+        $bob->changeEmail(new EmailAddress('Bob@acme.example'), false, self::now());
+        self::users()->save($bob);
+        self::reload();
+
+        // When
+        $found = self::users()->findByEmail(self::tenant(), new EmailAddress($address));
+
+        // Then
+        static::assertTrue($bob->id->equals($found?->id));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideAddressesBobHolds(): iterable
+    {
+        yield 'as it was written' => ['Bob@acme.example'];
+        yield 'its domain in another case' => ['Bob@ACME.Example'];
+    }
+
+    /**
+     * The local part is the receiving server's business, and so case-sensitive to everyone else (RFC 5321
+     * §2.4): an address that differs by it is another address.
+     */
+    #[Test]
+    public function anAddressWhoseLocalPartIsInAnotherCaseIsAnotherAddress(): void
+    {
+        // Given
+        $bob = self::user('bob', 'bob-subject');
+        $bob->changeEmail(new EmailAddress('Bob@acme.example'), false, self::now());
+        self::users()->save($bob);
+        self::reload();
+
+        // When
+        $found = self::users()->findByEmail(self::tenant(), new EmailAddress('bob@acme.example'));
+
+        // Then
+        static::assertNull($found);
+    }
+
+    /**
      * Decision 0002: the same username and the same subject in another tenant are another user.
      */
     #[Test]
@@ -189,6 +241,9 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
         ];
         yield 'a username in another case' => [
             static fn (UserRepositoryInterface $users): ?User => $users->findByUsername(self::tenant(), 'ALICE'),
+        ];
+        yield 'an unknown address' => [
+            static fn (UserRepositoryInterface $users): ?User => $users->findByEmail(self::tenant(), new EmailAddress('carol@example.com')),
         ];
         yield 'an unknown identifier' => [
             static fn (UserRepositoryInterface $users): ?User => $users->find(Uuid::v7()),

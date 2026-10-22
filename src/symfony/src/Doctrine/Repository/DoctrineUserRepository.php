@@ -7,6 +7,7 @@ namespace Beffroi\Bundle\Doctrine\Repository;
 use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Bundle\Doctrine\PersonalData\BlindIndexedColumns;
 use Beffroi\Bundle\Doctrine\PersonalData\TenantBlindIndexes;
+use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\Tenant;
@@ -16,9 +17,9 @@ use Symfony\Component\Uid\Uuid;
 /**
  * Users in beffroi_user (architecture §3.4); a lookup is scoped by the tenant and exact.
  *
- * The username is sealed, so no lookup matches it: the format seals every value under a random
- * initialisation vector, and two writes of one username give two ciphertexts. What a lookup matches is its
- * blind index, in the sibling column the write filled in the same statement (decision 0011).
+ * The username and the address are sealed, so no lookup matches either: the format seals every value under a
+ * random initialisation vector, and two writes of one username give two ciphertexts. What a lookup matches
+ * is the blind index, in the sibling column the write filled in the same statement (decision 0011).
  *
  * @extends DoctrineRepository<User>
  */
@@ -58,6 +59,21 @@ final readonly class DoctrineUserRepository extends DoctrineRepository implement
         return $this->repository()->findOneBy([
             'tenant' => $tenant,
             $column->tag => $this->indexes->of($column)->of($username),
+        ]);
+    }
+
+    /**
+     * On the blind index of the address, as the username is found, under the projection the write used: the
+     * domain folded, the local part as it is written. No constraint holds the column unique, so the first
+     * row that matches is the answer.
+     */
+    public function findByEmail(Tenant $tenant, EmailAddress $email): ?User
+    {
+        $column = BlindIndexedColumns::of(User::class, 'email');
+
+        return $this->repository()->findOneBy([
+            'tenant' => $tenant,
+            $column->tag => $this->indexes->of($column)->of($email->value),
         ]);
     }
 

@@ -997,6 +997,10 @@
         <source>act.backup_codes.renewed</source>
         <target>Codes de secours renouvelés</target>
       </trans-unit>
+      <trans-unit id="act.person.provisioned" resname="act.person.provisioned">
+        <source>act.person.provisioned</source>
+        <target>Compte créé à votre première connexion par votre organisation</target>
+      </trans-unit>
       <trans-unit id="act.person.described_themselves" resname="act.person.described_themselves">
         <source>act.person.described_themselves</source>
         <target>Vos informations ont changé</target>

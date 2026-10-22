@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Core\Tests\Domain\Identity;
 
+use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\UserSource;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -190,5 +191,41 @@ final class UserSourceTest extends TestCase
             ],
             'The claims an upstream provider holds are names.',
         ];
+    }
+
+    /**
+     * Issue #781: what the provider says now of the claims its source holds is what the profile says, and
+     * a claim it holds and no longer says is cleared, the provider being the one that answers for it.
+     */
+    #[Test]
+    public function anUpstreamSourceRewritesWhatItHoldsAsItsProviderSaysItNow(): void
+    {
+        // Given
+        $source = UserSource::upstream('workforce', ['email', 'given_name', 'family_name']);
+        $profile = new Profile(givenName: 'Alice', familyName: 'Liddell', nickname: 'ali');
+
+        // When
+        $rewritten = $source->rewrite($profile, [
+            'given_name' => 'Alicia',
+            'nickname' => 'what the provider does not hold',
+        ]);
+
+        // Then
+        static::assertEquals(new Profile(givenName: 'Alicia', nickname: 'ali'), $rewritten);
+    }
+
+    #[Test]
+    public function aLocalSourceRewritesNothing(): void
+    {
+        // Given
+        $profile = new Profile(givenName: 'Alice');
+
+        // When
+        $rewritten = UserSource::local()->rewrite($profile, [
+            'given_name' => 'Alicia',
+        ]);
+
+        // Then
+        static::assertEquals($profile, $rewritten);
     }
 }
