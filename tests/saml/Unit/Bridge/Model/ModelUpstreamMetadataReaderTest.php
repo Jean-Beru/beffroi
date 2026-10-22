@@ -9,6 +9,8 @@ use Beffroi\Saml\Bridge\Model\ModelUpstreamMetadataReader;
 use Beffroi\Saml\Exception\MetadataRefusedException;
 use Beffroi\Saml\Tests\Fixture\IdentityProviderDocuments;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
+use Beffroi\Saml2\Model\Metadata\Binding;
+use Beffroi\Saml2\Model\Metadata\Endpoint;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -17,7 +19,8 @@ use Symfony\Component\Clock\MockClock;
 
 /**
  * spec/saml.md S-42, S-43, section 6.10 step 3: the metadata of an upstream identity provider read by saml2-model's
- * MetadataReader, by the channel or under the signers a declaration pins, at 2026-09-15T10:00:00Z.
+ * MetadataReader, by the channel or under the signers a declaration pins, at 2026-09-15T10:00:00Z; and its accepted
+ * document read back when the service provider sends it a request (S-48, section 6.11 step 4).
  */
 final class ModelUpstreamMetadataReaderTest extends TestCase
 {
@@ -170,5 +173,58 @@ final class ModelUpstreamMetadataReaderTest extends TestCase
     {
         yield 'a port' => ['https://saml-idp.localhost:8443/sso'];
         yield 'an IPv6 literal' => ['https://[2001:db8::1]/sso'];
+    }
+
+    /**
+     * S-48, section 6.11 step 4: the accepted document of the identity provider of the judge read back into the
+     * model's role, which holds its single sign-on service.
+     */
+    #[Test]
+    public function itReadsTheAcceptedDocumentBackIntoTheRoleOfTheModel(): void
+    {
+        // When
+        $role = $this->reader->readAccepted(IdentityProviderDocuments::simpleSamlPhp());
+
+        // Then
+        static::assertSame(IdentityProviderDocuments::SIMPLESAMLPHP, $role->entityId);
+        static::assertEquals(
+            [new Endpoint(Binding::HttpRedirect, 'https://saml-idp.localhost/simplesaml/module.php/saml/idp/singleSignOnService')],
+            $role->singleSignOnServices,
+        );
+    }
+
+    /**
+     * S-42, S-43, section 6.11 step 4: a document accepted before that the reading back refuses now is refused, as
+     * the readings of the refresh refuse it.
+     */
+    #[Test]
+    #[DataProvider('provideDocumentsTheReadingBackRefuses')]
+    public function itRefusesAtTheReadingBackWhatAReadingRefuses(string $document, string $message): void
+    {
+        // Then
+        $this->expectException(MetadataRefusedException::class);
+        $this->expectExceptionMessageIs($message);
+
+        // When
+        $this->reader->readAccepted($document);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideDocumentsTheReadingBackRefuses(): iterable
+    {
+        yield 'no identity provider role' => [
+            ServiceProviderDocuments::simpleSamlPhp(),
+            'The metadata hold no identity provider role of SAML 2.0 (spec/saml.md S-42).',
+        ];
+        yield 'no key for signing' => [
+            IdentityProviderDocuments::simpleSamlPhpWithoutSigningKey(),
+            'The metadata of the identity provider hold no key for signing, and nothing it sends could be verified (spec/saml.md S-43).',
+        ];
+        yield 'a single sign-on service in plain http' => [
+            IdentityProviderDocuments::simpleSamlPhpSigningOnAt('http://saml-idp.localhost/sso'),
+            'The Location of an md:SingleSignOnService is not an https URL on a host name or an IP address, and the service provider sends a browser there (spec/saml.md S-43).',
+        ];
     }
 }

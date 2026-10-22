@@ -87,6 +87,38 @@ final readonly class IdentityProviderDocuments
     }
 
     /**
+     * The SimpleSAMLphp document whose single sign-on service is on HTTP-POST, at the same location, and on no other
+     * binding.
+     */
+    public static function simpleSamlPhpSigningOnOverPost(): string
+    {
+        return str_replace(
+            'Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://saml-idp.localhost/simplesaml/module.php/saml/idp/singleSignOnService"',
+            'Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://saml-idp.localhost/simplesaml/module.php/saml/idp/singleSignOnService"',
+            self::simpleSamlPhp(),
+        );
+    }
+
+    /**
+     * An unsigned identity provider document of the entity SIGNED, its single sign-on services those given, in their
+     * order, the test key of an identity provider of saml2-model for signing.
+     *
+     * @param list<Endpoint> $singleSignOnServices
+     */
+    public static function signingOnAt(array $singleSignOnServices): string
+    {
+        return new Serializer()->serialize(new MetadataWriter()->write(
+            new EntityDescriptor(self::SIGNED, null, identityProvider: new IdentityProvider(
+                self::SIGNED,
+                [MetadataFixtures::certificate('idp')],
+                [],
+                $singleSignOnServices,
+            )),
+            null,
+        ));
+    }
+
+    /**
      * An identity provider document signed by a test key of saml2-model, its validUntil given: the entity SIGNED, its
      * single sign-on service at SIGNED/sso on HTTP-Redirect, the test key of an identity provider of saml2-model for
      * signing.
