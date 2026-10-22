@@ -1720,6 +1720,18 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             encrypt_assertions?: bool|Param, // The assertions of this service provider are encrypted to a key of its metadata, which must then hold one for encryption, or the metadata are refused (spec/saml.md S-7). // Default: false
  *             signs_authn_requests?: bool|Param, // This service provider signs its authentication requests. Turned off for one that cannot, Entra among them, whose unsigned requests are then the only ones accepted (issue #730); a provider that signs is refused while its metadata hold no key for signing (S-11); there is no switch for the tenant or for the deployment. // Default: true
  *         }>,
+ *         identity_providers?: array<string, array{ // Default: []
+ *             metadata?: scalar|Param|null, // Where the metadata are read from: an https URL, fetched without following a redirect, or the absolute path of a file of the deployment. Nothing else, a plain http URL included. The channel is what vouches for them unless metadata_signers pins who signs them.
+ *             metadata_signers?: list<scalar|Param|null>,
+ *             domains?: list<scalar|Param|null>,
+ *             email_attribute?: scalar|Param|null, // The name of the attribute of an assertion that carries the e-mail address of a person (spec/saml.md S-45), "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" for Entra.
+ *             profile?: array<string, scalar|Param|null>,
+ *             subject_attribute?: scalar|Param|null, // The name of the attribute that names a person when the NameID of an assertion is not persistent (spec/saml.md S-45): a value the identity provider keeps for that person and never one the person changes, "http://schemas.microsoft.com/identity/claims/objectidentifier" for Entra rather than an address. Left out, a person is named by a persistent NameID only. // Default: null
+ *             groups?: array{ // The attribute of an assertion that carries the groups of a person, and the group of the tenant each of its values stands for (spec/saml.md S-45). A value the map does not name is no group, and no group is created from what an identity provider sends.
+ *                 attribute?: scalar|Param|null, // The name of the attribute that carries the groups.
+ *                 map?: array<string, scalar|Param|null>,
+ *             },
+ *         }>,
  *     },
  * }
  * @psalm-type SymfonycastsTailwindConfig = array{
