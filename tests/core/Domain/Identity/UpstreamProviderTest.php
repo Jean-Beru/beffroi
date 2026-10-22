@@ -115,17 +115,24 @@ final class UpstreamProviderTest extends TestCase
     }
 
     /**
-     * Decision 0002: a person it creates names it as its source, which holds the address and the claims it
-     * fills, so that a manual description leaves them to it.
+     * Decision 0002, issue #781: the source of a person it creates names it, and holds the address and those
+     * of the claims it fills that it said, so that a manual description leaves them to it; a claim it fills
+     * and did not say, or said and does not fill, it does not hold.
      */
     #[Test]
-    public function thePersonItCreatesNamesItAndHoldsTheAddressAndTheClaimsItFills(): void
+    public function itHoldsTheAddressAndTheClaimsItFillsThatItSaid(): void
     {
         // Given
         $provider = new UpstreamProvider(self::PROVIDER, ['acme.example'], ['given_name', 'family_name']);
 
-        // When / Then
-        static::assertEquals(UserSource::upstream(self::PROVIDER, ['email', 'given_name', 'family_name']), $provider->source());
+        // When
+        $source = $provider->source([
+            'family_name' => 'Liddell',
+            'nickname' => 'what it does not fill',
+        ]);
+
+        // Then
+        static::assertEquals(UserSource::upstream(self::PROVIDER, ['email', 'family_name']), $source);
     }
 
     #[Test]

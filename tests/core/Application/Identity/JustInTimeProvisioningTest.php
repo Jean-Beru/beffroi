@@ -119,7 +119,7 @@ final class JustInTimeProvisioningTest extends TestCase
         static::assertSame(self::ADDRESS, $alice->email?->value);
         static::assertTrue($alice->emailVerified);
         static::assertEquals(new Profile(givenName: 'Alice', familyName: 'Liddell'), $alice->profile);
-        static::assertEquals(UserSource::upstream(self::PROVIDER, ['email', 'given_name', 'family_name', 'birthdate']), $alice->source);
+        static::assertEquals(UserSource::upstream(self::PROVIDER, ['email', 'given_name', 'family_name']), $alice->source);
         static::assertEquals($this->clock->now(), $alice->createdAt);
     }
 
@@ -185,6 +185,20 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
+     * The source holds what the provider fills and said: the birthdate it fills and did not say, it does not
+     * hold, and a manual description may say it.
+     */
+    #[Test]
+    public function aFirstSignInHoldsWhatTheProviderFillsAndSaid(): void
+    {
+        // When
+        $alice = $this->signIn();
+
+        // Then
+        static::assertFalse($alice->source->holds('birthdate'));
+    }
+
+    /**
      * The acceptance of the issue: the person found again by its linked identity, and nothing created or
      * announced a second time.
      */
@@ -204,8 +218,8 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
-     * The acceptance of the issue: what the source holds is written as the provider says it now, a claim it
-     * no longer says cleared, and the snapshot is the last thing it said.
+     * The acceptance of the issue: what the source holds is written as the provider says it now, and the
+     * snapshot is the last thing it said.
      */
     #[Test]
     public function aSecondSignInWritesWhatTheProviderSaysNow(): void
@@ -217,20 +231,84 @@ final class JustInTimeProvisioningTest extends TestCase
         // When
         $this->signIn('alice.liddell@acme.example', [
             'given_name' => 'Alicia',
+            'family_name' => 'Liddell-Hargreaves',
         ]);
 
         // Then
         static::assertSame('alice.liddell@acme.example', $alice->email?->value);
         static::assertTrue($alice->emailVerified);
-        static::assertEquals(new Profile(givenName: 'Alicia'), $alice->profile);
+        static::assertEquals(new Profile(givenName: 'Alicia', familyName: 'Liddell-Hargreaves'), $alice->profile);
         static::assertEquals($this->clock->now(), $alice->updatedAt);
         static::assertSame(
             [
                 'given_name' => 'Alicia',
+                'family_name' => 'Liddell-Hargreaves',
                 'email' => 'alice.liddell@acme.example',
             ],
             $this->identities->of($alice)[0]->claims,
         );
+    }
+
+    /**
+     * No source holds a claim for ever: one its provider stops sending, or stops filling because its
+     * declaration no longer names it, is released, keeping the value the provider wrote last.
+     *
+     * @param array<string, string> $claims
+     */
+    #[Test]
+    #[DataProvider('provideClaimsTheProviderLetsGo')]
+    public function aClaimTheProviderNoLongerFillsOrSaysIsReleased(UpstreamProvider $provider, array $claims): void
+    {
+        // Given
+        $alice = $this->signIn();
+
+        // When
+        $this->signIn(claims: $claims, provider: $provider);
+
+        // Then
+        static::assertEquals(UserSource::upstream(self::PROVIDER, ['email', 'family_name']), $alice->source);
+        static::assertEquals(new Profile(givenName: 'Alice', familyName: 'Hargreaves'), $alice->profile);
+    }
+
+    /**
+     * @return iterable<string, array{UpstreamProvider, array<string, string>}>
+     */
+    public static function provideClaimsTheProviderLetsGo(): iterable
+    {
+        $declared = new UpstreamProvider(self::PROVIDER, ['acme.example'], ['given_name', 'family_name', 'birthdate']);
+        yield 'a claim it no longer sends' => [
+            $declared,
+            [
+                'family_name' => 'Hargreaves',
+            ],
+        ];
+        yield 'a claim its declaration no longer names' => [
+            new UpstreamProvider(self::PROVIDER, ['acme.example'], ['family_name']),
+            [
+                'given_name' => 'Alicia',
+                'family_name' => 'Hargreaves',
+            ],
+        ];
+    }
+
+    /**
+     * A claim released is the person's again: a manual description says it, which it refused while the
+     * provider held it.
+     */
+    #[Test]
+    public function aReleasedClaimCanBeDescribedByHand(): void
+    {
+        // Given
+        $alice = $this->signIn();
+        $this->signIn(claims: [
+            'family_name' => 'Liddell',
+        ]);
+
+        // When
+        $this->provisioner->setProfile($alice, new Profile(givenName: 'Ali', familyName: 'Liddell'));
+
+        // Then
+        static::assertEquals(new Profile(givenName: 'Ali', familyName: 'Liddell'), $alice->profile);
     }
 
     /**
@@ -414,6 +492,7 @@ final class JustInTimeProvisioningTest extends TestCase
         // Then
         static::assertSame(self::ADDRESS, $alice->email?->value);
         static::assertEquals(new Profile(givenName: 'Alice', familyName: 'Liddell'), $alice->profile);
+        static::assertEquals(UserSource::upstream(self::PROVIDER, ['email', 'given_name', 'family_name']), $alice->source);
         static::assertSame(self::ADDRESS, $this->identities->of($alice)[0]->claims['email']);
     }
 
@@ -453,30 +532,6 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
-     * A source writes what it holds and nothing else: one that does not hold the address neither writes it
-     * nor asks it of the domains of the provider.
-     */
-    #[Test]
-    public function aSourceThatDoesNotHoldTheAddressLeavesIt(): void
-    {
-        // Given
-        $alice = $this->provisioner->create(
-            $this->tenant,
-            'alice',
-            new EmailAddress('alice@home.example'),
-            source: UserSource::upstream(self::PROVIDER, ['given_name']),
-        );
-        $this->linker->link($alice, self::PROVIDER, self::SUBJECT);
-
-        // When
-        $this->signIn('alice@initech.example');
-
-        // Then
-        static::assertSame('alice@home.example', $alice->email?->value);
-        static::assertEquals(new Profile(givenName: 'Alice'), $alice->profile);
-    }
-
-    /**
      * @param array<string, string> $claims
      */
     private function signIn(
@@ -486,10 +541,11 @@ final class JustInTimeProvisioningTest extends TestCase
             'family_name' => 'Liddell',
         ],
         ?RequestContext $context = null,
+        ?UpstreamProvider $provider = null,
     ): User {
         return $this->provisioning->personNamedBy(
             $this->tenant,
-            $this->provider,
+            $provider ?? $this->provider,
             self::SUBJECT,
             new EmailAddress($address),
             $claims,

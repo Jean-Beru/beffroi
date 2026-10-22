@@ -12,6 +12,7 @@ use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Identity\UserSource;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -110,6 +111,36 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
         static::assertSame('alice2', $found->username);
         static::assertSame('alice2@example.com', (string) $found->email);
         static::assertEquals(self::now()->modify('+1 hour'), $found->updatedAt);
+    }
+
+    /**
+     * Issue #781: what the provider that created a person holds changes at its sign-ins, and the column
+     * follows.
+     */
+    #[Test]
+    public function whatItsSourceHoldsIsWrittenOnSave(): void
+    {
+        // Given
+        $user = User::create(
+            Uuid::v7(),
+            self::tenant(),
+            new Subject('alice-subject'),
+            'alice',
+            self::now(),
+            source: UserSource::upstream('https://idp.acme.example/saml', ['email', 'given_name']),
+        );
+        self::users()->save($user);
+        self::reload();
+        $found = self::users()->find($user->id) ?? static::fail('The user was not stored.');
+        $found->heldBy(UserSource::upstream('https://idp.acme.example/saml', ['email']), self::now()->modify('+1 hour'));
+        self::users()->save($found);
+        self::reload();
+
+        // When
+        $again = self::users()->find($user->id) ?? static::fail('The user was not stored.');
+
+        // Then
+        static::assertEquals(UserSource::upstream('https://idp.acme.example/saml', ['email']), $again->source);
     }
 
     #[Test]
