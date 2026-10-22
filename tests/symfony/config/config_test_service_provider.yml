@@ -1,0 +1,9 @@
+# A deployment whose tenant is a SAML service provider and no SAML identity provider (beffroi/saml, spec/saml.md
+# S-38 to S-41): the SAML key drawn for the service provider alone, its metadata served, and nothing of the identity
+# provider served with that key (ServiceProviderMetadataTest). The declarations of config_test.yml are under
+# "when@test", so this environment declares no service provider, as a tenant that is no identity provider declares
+# none.
+beffroi:
+    saml:
+        identity_provider: false
+        service_provider: ~

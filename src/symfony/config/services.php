@@ -312,13 +312,14 @@ use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Saml\LogoutChainCookie;
 use Beffroi\Bundle\Saml\LogoutChainPages;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineLogoutChainRepository;
-use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
 use Beffroi\Saml\Application\Metadata\SigningCertificates;
 use Beffroi\Saml\Bridge\Model\ModelMetadataWriter;
+use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataWriter;
 use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
 use Beffroi\Saml\Port\CertificateIssuerInterface;
 use Beffroi\Saml\Port\IdentityProviderEndpointsInterface;
 use Beffroi\Saml\Port\MetadataWriterInterface;
+use Beffroi\Saml\Port\ServiceProviderMetadataWriterInterface;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineAcceptedMetadataRepository;
 use Beffroi\Bundle\Saml\MetadataFetcher;
 use Beffroi\Saml\Application\ServiceProvider\ServiceProviderMetadataRefresh;
@@ -1858,17 +1859,19 @@ return static function (ContainerConfigurator $container): void {
         '$contributors' => tagged_iterator('beffroi.oidc.metadata'),
     ]);
     $services->set(JwksHandler::class);
-    // beffroi/saml: the identity provider of the tenant, its certificates, built once per process from keys the KMS
-    // opens (S-1, S-3), and its metadata under the issuer (spec/saml.md section 6.1); the SAML section of the
-    // configuration gives the handler what the tenant set
+    // beffroi/saml: the identity provider and the service provider of the tenant, their certificates, built once per
+    // process from keys the KMS opens (S-1, S-3), and their metadata under the issuer (spec/saml.md sections 6.1 and
+    // 6.9); the SAML section of the configuration wires the handler of each role it enables, and of no other (S-41),
+    // with what the tenant set
     $services->set(SelfSignedCertificateIssuer::class);
     $services->alias(CertificateIssuerInterface::class, SelfSignedCertificateIssuer::class);
     $services->set(ModelMetadataWriter::class);
     $services->alias(MetadataWriterInterface::class, ModelMetadataWriter::class);
+    $services->set(ModelServiceProviderMetadataWriter::class);
+    $services->alias(ServiceProviderMetadataWriterInterface::class, ModelServiceProviderMetadataWriter::class);
     $services->set(RouterIdentityProviderEndpoints::class);
     $services->alias(IdentityProviderEndpointsInterface::class, RouterIdentityProviderEndpoints::class);
     $services->set(SigningCertificates::class);
-    $services->set(IdentityProviderMetadataHandler::class);
     // beffroi/saml: the service providers of the tenant, declared in the configuration, which the SAML section hands
     // the declarations and the slug of the tenant (S-5); their metadata read by the model, fetched from a file or an
     // https URL, and the newest document accepted kept in the database, sealed (spec/saml.md section 6.2)

@@ -18,16 +18,10 @@ use Beffroi\Saml2\Model\Metadata\MetadataReader;
 use Beffroi\Saml2\Model\SamlLoader;
 use function array_find;
 use function array_map;
-use function base64_decode;
-use function chunk_split;
-use function openssl_pkey_get_details;
-use function openssl_pkey_get_public;
-use function openssl_x509_read;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function preg_match;
 use function sprintf;
-use function strtr;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\HttpFoundation\Response;
@@ -153,8 +147,8 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
 
         // Then
         static::assertSame(
-            [self::base64url($key->publicJwk['n'])],
-            array_map(self::modulusOf(...), $this->servedDescriptor()->identityProvider->signingCertificates ?? []),
+            [CertificateModulus::ofKey($key)],
+            array_map(CertificateModulus::ofCertificate(...), $this->servedDescriptor()->identityProvider->signingCertificates ?? []),
         );
     }
 
@@ -199,8 +193,8 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
 
         // Then
         static::assertSame(
-            [KeyStatus::Staged, [self::base64url($current->publicJwk['n']), self::base64url($next->publicJwk['n'])]],
-            [$next->status, array_map(self::modulusOf(...), $this->servedDescriptor()->identityProvider->signingCertificates ?? [])],
+            [KeyStatus::Staged, [CertificateModulus::ofKey($current), CertificateModulus::ofKey($next)]],
+            [$next->status, array_map(CertificateModulus::ofCertificate(...), $this->servedDescriptor()->identityProvider->signingCertificates ?? [])],
         );
     }
 
@@ -255,11 +249,11 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
 
         // Then
         static::assertSame(
-            [KeyStatus::Staged, KeyStatus::Active, [self::base64url($current->publicJwk['n']), self::base64url($next->publicJwk['n'])]],
+            [KeyStatus::Staged, KeyStatus::Active, [CertificateModulus::ofKey($current), CertificateModulus::ofKey($next)]],
             [
                 self::key($next->kid)->status,
                 self::key($current->kid)->status,
-                array_map(self::modulusOf(...), $this->servedDescriptor()->identityProvider->signingCertificates ?? []),
+                array_map(CertificateModulus::ofCertificate(...), $this->servedDescriptor()->identityProvider->signingCertificates ?? []),
             ],
         );
     }
@@ -303,6 +297,23 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
         $cacheDuration = SamlLoader::create()->load(self::string($this->browser->getResponse()->getContent()))->root()->getAttribute('cacheDuration');
         static::assertSame(1, preg_match('~^PT(\d+)S$~', $cacheDuration ?? '', $seconds), (string) $cacheDuration);
         static::assertLessThan($next->activationDueAt->getTimestamp() - $next->createdAt->getTimestamp(), (int) $seconds[1]);
+    }
+
+    /**
+     * S-41: the service provider of the tenant left off, as this kernel leaves it, serves no metadata, though the
+     * tenant holds a SAML key in service for its identity provider.
+     */
+    #[Test]
+    public function theServiceProviderLeftOffServesNoMetadata(): void
+    {
+        // Given
+        self::generate();
+
+        // When
+        $this->browser->request('GET', '/saml/sp/metadata');
+
+        // Then
+        static::assertSame(Response::HTTP_NOT_FOUND, $this->browser->getResponse()->getStatusCode());
     }
 
     /**
@@ -373,23 +384,5 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
         static::assertSame(Response::HTTP_OK, $response->getStatusCode());
 
         return new MetadataReader(SamlLoader::create(), new MockClock())->readTrusted(SamlLoader::create()->load(self::string($response->getContent())));
-    }
-
-    private static function modulusOf(string $certificate): string
-    {
-        $x509 = openssl_x509_read("-----BEGIN CERTIFICATE-----\n" . chunk_split($certificate, 64, "\n") . "-----END CERTIFICATE-----\n");
-        static::assertNotFalse($x509);
-        $public = openssl_pkey_get_public($x509);
-        static::assertNotFalse($public);
-        $details = openssl_pkey_get_details($public);
-        static::assertIsArray($details);
-        static::assertIsArray($details['rsa'] ?? null);
-
-        return self::string($details['rsa']['n'] ?? null);
-    }
-
-    private static function base64url(string $value): string
-    {
-        return self::string(base64_decode(strtr($value, '-_', '+/'), true));
     }
 }
