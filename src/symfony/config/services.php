@@ -307,6 +307,7 @@ use Beffroi\Saml\Bridge\Model\ModelAuthnRequestSender;
 use Beffroi\Saml\Port\AuthnRequestSenderInterface;
 use Beffroi\Bundle\Saml\UpstreamLoginRequirement;
 use Beffroi\Bundle\Saml\UpstreamSignOnAnswer;
+use Beffroi\Bundle\Saml\UpstreamSignOnReferences;
 use Beffroi\Bundle\Saml\UpstreamSignOns;
 use Beffroi\Saml\Bridge\Model\ModelLogoutMessageReceiver;
 use Beffroi\Saml\Bridge\Model\ModelSignOutNotifier;
@@ -784,6 +785,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(LoginAddresses::class);
     // and where an address of a federated domain goes from there: the sign-on of its upstream provider (S-51, S-62)
     $services->set(UpstreamDiscovery::class);
+    // under a one-time reference the sign-on takes, so that no page of another site starts one (S-51)
+    $services->set(UpstreamSignOnReferences::class);
     // what a page of the account that adds or takes away a way in asks of a session before the form: a
     // proof given a short while ago, and the login of the firewall when there is none (issue #552); which
     // pages ask is said by the pages themselves and read where the kernel is about to call one, so the rule

@@ -27,10 +27,11 @@ use function trim;
 /**
  * The step of the address of the login page, when the tenant federates a domain (beffroi/saml S-61, decision 0029), for
  * an interaction or for the login a page of the provider waits for (LoginTarget): an address of a federated domain is
- * sent to the sign-on of its provider for that interaction or that page, kept in the HTTP session for that sign-on,
- * which carries it to a provider that reads one (S-68); any other address, and a username, go on to the usual page,
- * the field of the username holding what was typed; an address whose domain the rule of the core does not read comes
- * back to the step, which says so. An empty value goes back to the step, for another address.
+ * sent to the sign-on of its provider for that interaction or that page, under the one-time reference drawn for that
+ * sign-on (S-51), kept in the HTTP session for that sign-on, which carries it to a provider that reads one (S-68); any
+ * other address, and a username, go on to the usual page, the field of the username holding what was typed; an address
+ * whose domain the rule of the core does not read comes back to the step, which says so. An empty value goes back to
+ * the step, for another address.
  *
  * **Nothing here reads a person.** Where the browser goes is a function of the domain and of the declarations of the
  * tenant (FederatedDomains), so that the answer, its status, its headers and its body, is the same whether somebody
@@ -62,6 +63,7 @@ final readonly class LoginAddressController
         private InteractionPages $pages,
         private LoginTarget $loginTargets,
         private ClockInterface $clock,
+        private UpstreamDiscovery $discovery,
     ) {
     }
 
@@ -98,9 +100,16 @@ final readonly class LoginAddressController
             return $this->pages->afterTheForm(LoginController::ROUTE, $back);
         }
         if ($provider !== null) {
-            $this->addresses->sendOn($request->getSession(), $interaction, $address, $this->clock->now());
+            $now = $this->clock->now();
+            $this->addresses->sendOn($request->getSession(), $interaction, $address, $now);
 
-            return $this->pages->afterTheForm(ServiceProviderRoutes::UPSTREAM_SIGN_ON, UpstreamDiscovery::signOn($interaction, $provider));
+            // S-51: under the one-time reference drawn for that sign-on, which no page of another site reads
+            return $this->pages->afterTheForm(ServiceProviderRoutes::UPSTREAM_SIGN_ON, $this->discovery->signOn(
+                $request->getSession(),
+                $interaction,
+                $provider,
+                $now,
+            ));
         }
         $this->addresses->pass($request->getSession(), $interaction, $address);
 

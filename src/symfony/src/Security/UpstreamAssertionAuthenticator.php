@@ -18,6 +18,7 @@ use Beffroi\Bundle\Saml\ServiceProviderRoutes;
 use Beffroi\Bundle\Saml\UpstreamLoginRequirement;
 use Beffroi\Bundle\Saml\UpstreamSignOnAnswer;
 use Beffroi\Bundle\Saml\UpstreamSignOns;
+use Beffroi\Core\Application\Identity\UpstreamProvisioningRefusalReason;
 use Beffroi\Core\Application\Identity\UpstreamProvisioningRefusedException;
 use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
 use Beffroi\Core\Domain\Identity\User;
@@ -160,12 +161,16 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
         $context = $this->contexts->fromRequest($request);
         try {
             $person = $consumer->personOf($tenant, $assertion, $context);
-        } catch (UpstreamProvisioningRefusedException|InvalidArgumentException) {
-            // the refusal of the core names no value, and the claim the profile refuses would: neither travels on (S-53)
-            throw $this->refused(
-                'The person the identity provider named is not one this provider signs in (spec/saml.md S-56).',
-                AuthenticationFailureReason::UpstreamPersonRefused,
+        } catch (UpstreamProvisioningRefusedException $exception) {
+            // a disabled person is announced as such, under the page of every refusal of the person, which says
+            // nothing of the state of the account (S-56)
+            throw $this->personRefused(
+                $exception->reason === UpstreamProvisioningRefusalReason::PersonDisabled
+                    ? AuthenticationFailureReason::DisabledUser
+                    : AuthenticationFailureReason::UpstreamPersonRefused,
             );
+        } catch (InvalidArgumentException) {
+            throw $this->personRefused(AuthenticationFailureReason::UpstreamPersonRefused);
         }
         $held = $this->browser->authenticationSession($request, $tenant);
         if ($interaction instanceof Interaction) {
@@ -348,6 +353,16 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
             $this->responder->failure($request, $interaction->request->redirectTarget(), $answer, $interaction),
             $failure->getMessage(),
         );
+    }
+
+    /**
+     * S-56: the person the response named refused, by the core or by the profile. The refusal of the core names no
+     * value, and the claim the profile refuses would: neither travels on (S-53), and the page is the same whatever the
+     * reason the audit trail is told.
+     */
+    private function personRefused(AuthenticationFailureReason $reason): UpstreamLoginRefusedException
+    {
+        return $this->refused('The person the identity provider named is not one this provider signs in (spec/saml.md S-56).', $reason);
     }
 
     /**

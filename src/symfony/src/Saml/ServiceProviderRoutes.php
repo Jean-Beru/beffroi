@@ -47,6 +47,12 @@ final class ServiceProviderRoutes
      */
     public const string IDENTITY_PROVIDER_PARAMETER = 'identity_provider';
 
+    /**
+     * The parameter of that route that carries the one-time reference the login page drew for that sign-on
+     * (UpstreamSignOnReferences, spec/saml.md S-51).
+     */
+    public const string REFERENCE_PARAMETER = 'reference';
+
     private function __construct()
     {
     }

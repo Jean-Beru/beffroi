@@ -12,7 +12,9 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Oidc\Domain\Interaction\Interaction;
 use Beffroi\Saml\Application\Upstream\UpstreamSignOn;
+use DateTimeImmutable;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 /**
  * Where the login page of an interaction sends an address of a domain the tenant federates (beffroi/saml S-61, S-62):
@@ -25,6 +27,7 @@ final readonly class UpstreamDiscovery
     public function __construct(
         private FederatedDomains $federated,
         private FormTarget $formTargets,
+        private UpstreamSignOnReferences $references,
         private ?UpstreamSignOn $signOn = null,
     ) {
     }
@@ -57,14 +60,16 @@ final readonly class UpstreamDiscovery
     /**
      * S-51: the parameters of the sign-on of that interaction at that provider, or of the login a page of the provider
      * waits for when there is none (S-61), at the route of the interaction plane ServiceProviderRoutes::UPSTREAM_SIGN_ON
-     * names.
+     * names, with the one-time reference drawn for it in the HTTP session of the browser, without which the sign-on
+     * starts nothing (UpstreamSignOnReferences).
      *
      * @return array<string, string>
      */
-    public static function signOn(?Interaction $interaction, UpstreamProvider $provider): array
+    public function signOn(SessionInterface $httpSession, ?Interaction $interaction, UpstreamProvider $provider, DateTimeImmutable $now): array
     {
         $parameters = [
             ServiceProviderRoutes::IDENTITY_PROVIDER_PARAMETER => $provider->name,
+            ServiceProviderRoutes::REFERENCE_PARAMETER => $this->references->issue($httpSession, $interaction, $provider->name, $now),
         ];
 
         return $interaction === null ? $parameters : [AuthorizationResponder::INTERACTION_PARAMETER => $interaction->id, ...$parameters];

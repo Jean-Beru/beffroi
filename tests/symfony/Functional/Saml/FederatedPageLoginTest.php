@@ -16,6 +16,7 @@ use function base64_decode;
 use function gzinflate;
 use function parse_str;
 use function parse_url;
+use function preg_quote;
 use const PHP_URL_QUERY;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Console\Command\Command;
@@ -175,9 +176,9 @@ final class FederatedPageLoginTest extends ConsoleTestCase
         $this->browser->submit($form);
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_SEE_OTHER, $response->getStatusCode(), self::string($response->getContent()));
-        static::assertSame(
-            '/saml/sp/sign-on?identity_provider=' . IdentityProviderDocuments::SIMPLESAMLPHP,
-            $response->headers->get('Location'),
+        static::assertMatchesRegularExpression(
+            '#^/saml/sp/sign-on\?identity_provider=' . preg_quote(IdentityProviderDocuments::SIMPLESAMLPHP, '#') . '&reference=[A-Za-z0-9_-]{43}$#',
+            (string) $response->headers->get('Location'),
         );
     }
 

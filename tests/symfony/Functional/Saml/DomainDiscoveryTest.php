@@ -123,7 +123,7 @@ final class DomainDiscoveryTest extends PasskeyTestCase
         $response = $this->browser->getResponse();
         static::assertSame(
             [Response::HTTP_SEE_OTHER, self::signOn($interaction)],
-            [$response->getStatusCode(), $response->headers->get('Location')],
+            [$response->getStatusCode(), self::locationOf($response)],
         );
     }
 
@@ -142,7 +142,7 @@ final class DomainDiscoveryTest extends PasskeyTestCase
         $this->submitAddress($interaction, $address);
 
         // Then
-        static::assertSame(self::signOn($interaction), $this->browser->getResponse()->headers->get('Location'));
+        static::assertSame(self::signOn($interaction), self::locationOf($this->browser->getResponse()));
     }
 
     /**
@@ -177,7 +177,7 @@ final class DomainDiscoveryTest extends PasskeyTestCase
         $response = $this->browser->getResponse();
         static::assertSame(
             [Response::HTTP_FOUND, self::signOn($interaction)],
-            [$response->getStatusCode(), $response->headers->get('Location')],
+            [$response->getStatusCode(), self::locationOf($response)],
         );
     }
 
@@ -423,7 +423,7 @@ final class DomainDiscoveryTest extends PasskeyTestCase
     }
 
     /**
-     * The sign-on of S-51 at the identity provider of the judge, for that interaction.
+     * The sign-on of S-51 at the identity provider of the judge, for that interaction, its reference set aside.
      */
     private static function signOn(string $interaction): string
     {
@@ -482,7 +482,27 @@ final class DomainDiscoveryTest extends PasskeyTestCase
      */
     private static function answer(Response $response): array
     {
-        return [$response->getStatusCode(), $response->headers->get('Location'), $response->getContent()];
+        $content = $response->getContent();
+
+        return [$response->getStatusCode(), self::locationOf($response), $content === false ? false : self::withoutReferences($content)];
+    }
+
+    /**
+     * Where an answer sends the browser, the one-time reference of a sign-on set aside (S-51).
+     */
+    private static function locationOf(Response $response): ?string
+    {
+        $location = $response->headers->get('Location');
+
+        return $location === null ? null : self::withoutReferences($location);
+    }
+
+    /**
+     * What names a sign-on with its one-time reference left out, a reference being drawn again at each answer (S-51).
+     */
+    private static function withoutReferences(string $text): string
+    {
+        return (string) preg_replace('/&(amp;)?reference=[A-Za-z0-9_-]{43}/', '', $text);
     }
 
     /**

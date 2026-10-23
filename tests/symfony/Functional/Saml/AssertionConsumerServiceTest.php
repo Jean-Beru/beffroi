@@ -64,6 +64,8 @@ use Symfony\Component\Uid\Uuid;
  */
 final class AssertionConsumerServiceTest extends ConsoleTestCase
 {
+    use SignOnFromTheLoginPage;
+
     private const string SERVICE_PROVIDER = 'test_service_provider';
 
     private const string ASSERTION_CONSUMER_SERVICE = 'https://op.test/saml/sp/acs';
@@ -424,10 +426,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
         $interaction = $this->beginAuthorization(['id_token_hint' => $bob]);
 
         // When
-        $this->browser->request('GET', '/saml/sp/sign-on', [
-            'interaction' => $interaction,
-            'identity_provider' => IdentityProviderDocuments::SIMPLESAMLPHP,
-        ]);
+        $this->signOnAs($interaction, self::ADDRESS);
 
         // Then
         static::assertTrue($this->sentRequest()->forceAuthn);
@@ -472,9 +471,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
                 'step_up' => null,
             ]);
         });
-        $this->browser->request('GET', '/saml/sp/sign-on', [
-            'identity_provider' => IdentityProviderDocuments::SIMPLESAMLPHP,
-        ]);
+        $this->signOnAs(null, self::ADDRESS);
         $request = $this->sentRequestOfTheAnswer();
         self::forgetEvents();
 
@@ -579,6 +576,56 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
 
         // Then
         $this->assertRefused('The subject is the address of the person, which is given again to another (spec/saml.md S-55).');
+    }
+
+    /**
+     * The acceptance of issue #820, S-56: a valid assertion for a person an administrator disabled writes nothing of
+     * what it says, the address, the username, the profile and the groups of the person being what they were.
+     */
+    #[Test]
+    public function aValidAssertionForADisabledPersonWritesNothing(): void
+    {
+        // Given
+        self::provisioned();
+        $this->disabledAliceSigningOnAgain();
+        $request = $this->signOn($this->beginAuthorization());
+
+        // When
+        $this->post($this->response($request, ['mail' => ['alicia@example.org'], 'givenName' => ['Alicia']]));
+
+        // Then
+        $alice = self::person();
+        static::assertSame([self::ADDRESS, self::ADDRESS, 'Alice', ['Members']], [
+            $alice->email?->value,
+            $alice->username,
+            $alice->profile->givenName,
+            array_map(
+                static fn ($membership): string => $membership->group->name,
+                self::service('test.beffroi.groups_of_a_person', GroupsOfAPersonInterface::class)->of($alice),
+            ),
+        ]);
+    }
+
+    /**
+     * The acceptance of issue #820, S-56, S-53: a valid assertion for a disabled person is refused with the page of
+     * every refusal of the person, which says nothing of the state of the account, and announced as a login refused
+     * for a disabled account, nothing typed.
+     */
+    #[Test]
+    public function aValidAssertionForADisabledPersonIsRefusedAndAnnounced(): void
+    {
+        // Given
+        self::provisioned();
+        $this->disabledAliceSigningOnAgain();
+        $request = $this->signOn($this->beginAuthorization());
+        self::forgetEvents();
+
+        // When
+        $this->post($this->response($request));
+
+        // Then
+        $this->assertRefused('The person the identity provider named is not one this provider signs in (spec/saml.md S-56).');
+        static::assertSame([AuthenticationFailureReason::DisabledUser, 'fed', null, null], self::failures());
     }
 
     /**
@@ -834,16 +881,14 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The request the sign-on of the interaction sent the provider, as the provider reads it.
+     * The request the sign-on of the interaction sent the provider, as the provider reads it, the sign-on started from
+     * the login page by an address of a domain of that provider.
      *
      * @return array{id: string, relay_state: string}
      */
     private function signOn(string $interaction, string $identityProvider = IdentityProviderDocuments::SIMPLESAMLPHP): array
     {
-        $this->browser->request('GET', '/saml/sp/sign-on', [
-            'interaction' => $interaction,
-            'identity_provider' => $identityProvider,
-        ]);
+        $this->signOnAs($interaction, $identityProvider === IdentityProviderDocuments::SIGNED ? 'alice@encrypting.example' : self::ADDRESS);
 
         return $this->sentRequestOfTheAnswer($identityProvider);
     }
@@ -864,9 +909,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     private function signOnFromTheAccount(): array
     {
         $this->browser->request('GET', '/account');
-        $this->browser->request('GET', '/saml/sp/sign-on', [
-            'identity_provider' => IdentityProviderDocuments::SIMPLESAMLPHP,
-        ]);
+        $this->signOnAs(null, self::ADDRESS);
 
         return $this->sentRequestOfTheAnswer();
     }
@@ -995,9 +1038,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
                 'step_up' => $stepUp === [] ? null : $stepUp,
             ]);
         });
-        $this->browser->request('GET', '/saml/sp/sign-on', [
-            'identity_provider' => IdentityProviderDocuments::SIMPLESAMLPHP,
-        ]);
+        $this->signOnAs(null, self::ADDRESS);
 
         return $this->sentRequestOfTheAnswer();
     }
@@ -1083,6 +1124,21 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
             ],
             self::string($response->getContent()),
         );
+    }
+
+    /**
+     * Alice signed in once through the provider, a member of the group her value maps to, then disabled by an
+     * administrator, in a browser that holds no session of hers.
+     */
+    private function disabledAliceSigningOnAgain(): void
+    {
+        $members = new Group(Uuid::v7(), self::tenant(), 'Members', GroupSource::Local, self::currentSecond());
+        self::service('test.beffroi.groups', GroupRepositoryInterface::class)->save($members);
+        $this->post($this->response($this->signOn($this->beginAuthorization()), ['eduPersonAffiliation' => ['member']]));
+        $this->browser->getCookieJar()->clear();
+        $alice = self::person();
+        $alice->disable(Clock::get()->now());
+        self::service('test.beffroi.users', UserRepositoryInterface::class)->save($alice);
     }
 
     private static function person(): User

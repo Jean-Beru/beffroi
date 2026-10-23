@@ -216,51 +216,8 @@ final class AddressHintTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #816, S-68: a sign-on of an interaction the browser reaches without the step of the
-     * address sends no address.
-     */
-    #[Test]
-    public function aSignOnOfAnInteractionWithoutTheStepOfTheAddressSendsNone(): void
-    {
-        // Given
-        self::generate();
-        self::accept(IdentityProviderDocuments::SIMPLESAMLPHP, IdentityProviderDocuments::simpleSamlPhp());
-        $interaction = $this->beginAuthorization();
-
-        // When
-        $this->browser->request('GET', '/saml/sp/sign-on', [
-            'interaction' => $interaction,
-            'identity_provider' => IdentityProviderDocuments::SIMPLESAMLPHP,
-        ]);
-
-        // Then
-        static::assertSame(['SAMLRequest', 'RelayState', 'SigAlg', 'Signature'], self::parameterNames($this->redirection(self::SINGLE_SIGN_ON)));
-    }
-
-    /**
-     * The acceptance of issue #816, S-68: the sign-on of the login a page of the provider waits for, the home of the
-     * account, reached without the step of the address, sends no address.
-     */
-    #[Test]
-    public function aSignOnOfAPageThatWaitsWithoutTheStepOfTheAddressSendsNone(): void
-    {
-        // Given
-        self::generate();
-        self::accept(IdentityProviderDocuments::SIMPLESAMLPHP, IdentityProviderDocuments::simpleSamlPhp());
-        $this->browser->request('GET', '/account');
-
-        // When
-        $this->browser->request('GET', '/saml/sp/sign-on', [
-            'identity_provider' => IdentityProviderDocuments::SIMPLESAMLPHP,
-        ]);
-
-        // Then
-        static::assertSame(['SAMLRequest', 'RelayState', 'SigAlg', 'Signature'], self::parameterNames($this->redirection(self::SINGLE_SIGN_ON)));
-    }
-
-    /**
-     * S-68: the address kept for a sign-on is taken by it, so that the next sign-on of the same interaction, which the
-     * discovery did not send the browser to, sends none.
+     * S-68: the address kept for a sign-on is taken by it, which the HTTP session holds no longer; the same sign-on
+     * presented again starts nothing (S-51, UpstreamSignOnTest).
      */
     #[Test]
     public function theAddressIsTakenByTheSignOnItWasKeptFor(): void
@@ -270,14 +227,11 @@ final class AddressHintTest extends ConsoleTestCase
         self::accept(IdentityProviderDocuments::SIMPLESAMLPHP, IdentityProviderDocuments::simpleSamlPhp());
         $interaction = $this->beginAuthorization();
         $this->typeAddress($interaction, 'alice@example.org');
-        $signOn = (string) $this->browser->getResponse()->headers->get('Location');
-        $this->browser->followRedirect();
 
         // When
-        $this->browser->request('GET', $signOn);
+        $this->browser->followRedirect();
 
         // Then
-        static::assertSame(['SAMLRequest', 'RelayState', 'SigAlg', 'Signature'], self::parameterNames($this->redirection(self::SINGLE_SIGN_ON)));
         static::assertSame([], $this->readHttpSession()->get(LoginAddresses::SENT_SESSION_KEY));
     }
 
