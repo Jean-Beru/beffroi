@@ -1745,8 +1745,17 @@ function saml_entra_upstream(): void
     ]);
     parse_str((string) parse_url($signOn, \PHP_URL_QUERY), $query);
     demo_expect(
-        $status === 303 && str_starts_with($signOn, $issuer . '/saml/sp/sign-on?') && ($query['identity_provider'] ?? null) === SAML_ENTRA_IDP_ENTITY_ID,
-        sprintf('%s is sent to the sign-on of Entra (got %d %s)', SAML_ENTRA_PEOPLE['alice'], $status, substr($signOn, 0, 160)),
+        $status === 303
+        && str_starts_with($signOn, $issuer . '/saml/sp/sign-on?')
+        && ($query['identity_provider'] ?? null) === SAML_ENTRA_IDP_ENTITY_ID
+        && is_string($query['reference'] ?? null)
+        && preg_match('/^[A-Za-z0-9_-]{43}$/', $query['reference']) === 1,
+        sprintf(
+            '%s is sent to the sign-on of Entra, under the one-time reference the login page drew for it, spec/saml.md S-51 (got %d %s)',
+            SAML_ENTRA_PEOPLE['alice'],
+            $status,
+            substr($signOn, 0, 160),
+        ),
     );
     [$status, $location] = demo_request($cookies, $ca, 'GET', $signOn);
     demo_expect(

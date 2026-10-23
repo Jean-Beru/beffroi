@@ -64,6 +64,8 @@ use Symfony\Component\Uid\Uuid;
  */
 final class AssertionConsumerServiceTest extends ConsoleTestCase
 {
+    use SignOnFromTheLoginPage;
+
     private const string SERVICE_PROVIDER = 'test_service_provider';
 
     private const string ASSERTION_CONSUMER_SERVICE = 'https://op.test/saml/sp/acs';
@@ -424,10 +426,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
         $interaction = $this->beginAuthorization(['id_token_hint' => $bob]);
 
         // When
-        $this->browser->request('GET', '/saml/sp/sign-on', [
-            'interaction' => $interaction,
-            'identity_provider' => IdentityProviderDocuments::SIMPLESAMLPHP,
-        ]);
+        $this->signOnAs($interaction, self::ADDRESS);
 
         // Then
         static::assertTrue($this->sentRequest()->forceAuthn);
@@ -472,9 +471,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
                 'step_up' => null,
             ]);
         });
-        $this->browser->request('GET', '/saml/sp/sign-on', [
-            'identity_provider' => IdentityProviderDocuments::SIMPLESAMLPHP,
-        ]);
+        $this->signOnAs(null, self::ADDRESS);
         $request = $this->sentRequestOfTheAnswer();
         self::forgetEvents();
 
@@ -884,16 +881,14 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The request the sign-on of the interaction sent the provider, as the provider reads it.
+     * The request the sign-on of the interaction sent the provider, as the provider reads it, the sign-on started from
+     * the login page by an address of a domain of that provider.
      *
      * @return array{id: string, relay_state: string}
      */
     private function signOn(string $interaction, string $identityProvider = IdentityProviderDocuments::SIMPLESAMLPHP): array
     {
-        $this->browser->request('GET', '/saml/sp/sign-on', [
-            'interaction' => $interaction,
-            'identity_provider' => $identityProvider,
-        ]);
+        $this->signOnAs($interaction, $identityProvider === IdentityProviderDocuments::SIGNED ? 'alice@encrypting.example' : self::ADDRESS);
 
         return $this->sentRequestOfTheAnswer($identityProvider);
     }
@@ -914,9 +909,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     private function signOnFromTheAccount(): array
     {
         $this->browser->request('GET', '/account');
-        $this->browser->request('GET', '/saml/sp/sign-on', [
-            'identity_provider' => IdentityProviderDocuments::SIMPLESAMLPHP,
-        ]);
+        $this->signOnAs(null, self::ADDRESS);
 
         return $this->sentRequestOfTheAnswer();
     }
@@ -1045,9 +1038,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
                 'step_up' => $stepUp === [] ? null : $stepUp,
             ]);
         });
-        $this->browser->request('GET', '/saml/sp/sign-on', [
-            'identity_provider' => IdentityProviderDocuments::SIMPLESAMLPHP,
-        ]);
+        $this->signOnAs(null, self::ADDRESS);
 
         return $this->sentRequestOfTheAnswer();
     }

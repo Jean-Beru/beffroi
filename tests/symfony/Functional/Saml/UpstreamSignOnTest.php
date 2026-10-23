@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Tests\Functional\Saml;
 
 use Beffroi\Bundle\Saml\SamlSigning;
+use Beffroi\Bundle\Saml\UpstreamSignOnReferences;
 use Beffroi\Bundle\Saml\UpstreamSignOns;
 use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
 use Beffroi\Saml\Domain\Upstream\AcceptedUpstreamMetadata;
@@ -25,7 +26,10 @@ use Beffroi\Saml2\Model\Validation\AcceptedAuthnRequest;
 use Beffroi\Saml2\Model\Validation\Authentication;
 use Beffroi\Saml2\Model\Validation\AuthnRequestValidator;
 use DateTimeImmutable;
+use function count;
+use function parse_str;
 use function parse_url;
+use function strtok;
 use const PHP_URL_QUERY;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -41,13 +45,27 @@ use Symfony\Component\Uid\Uuid;
  * a service provider (tests/symfony/config/config_test_service_provider.yml), the SimpleSAMLphp identity provider of
  * the judge declared and its document accepted, an interaction begun at the authorization endpoint is sent to that
  * provider with an AuthnRequest signed by the SAML key of the tenant, which saml2-model's validator accepts on the side
- * of the provider under the metadata the service provider serves, in each binding.
+ * of the provider under the metadata the service provider serves, in each binding. The sign-on is started as a person
+ * starts it, from the step of the address of the login page (SignOnFromTheLoginPage), and a sign-on reached any other
+ * way starts nothing (S-51, issue #820).
  */
 final class UpstreamSignOnTest extends ConsoleTestCase
 {
+    use SignOnFromTheLoginPage;
+
     private const string SERVICE_PROVIDER = 'test_service_provider';
 
     private const string SIGN_ON = '/saml/sp/sign-on';
+
+    /**
+     * An address of example.org, a domain of the identity provider of the judge.
+     */
+    private const string ADDRESS = 'alice@example.org';
+
+    /**
+     * The reference the step of the address drew, which a case of a data provider cannot know.
+     */
+    private const string DRAWN = 'the reference the step of the address drew';
 
     private const string SINGLE_SIGN_ON = 'https://saml-idp.localhost/simplesaml/module.php/saml/idp/singleSignOnService';
 
@@ -313,11 +331,11 @@ final class UpstreamSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #783, S-51: a provider the tenant does not declare is the page of a refusal, and the
-     * browser is sent nowhere.
+     * The acceptance of issue #783, S-48, S-51: a provider the tenant declares whose document was never accepted is the
+     * page of a refusal, and the browser is sent nowhere.
      */
     #[Test]
-    public function aProviderTheTenantDoesNotDeclareIsRefused(): void
+    public function aProviderWhoseDocumentWasNeverAcceptedIsRefused(): void
     {
         // Given
         self::generate();
@@ -325,13 +343,118 @@ final class UpstreamSignOnTest extends ConsoleTestCase
         $interaction = $this->beginAuthorization();
 
         // When
-        $this->signOn($interaction, 'https://idp.nobody.example/saml');
+        $this->signOnAs($interaction, 'carol@encrypting.example');
+
+        // Then
+        $this->assertRefusedAndRemembersNothing();
+    }
+
+    /**
+     * The acceptance of issue #820, S-51: a sign-on of an interaction that does not present the reference the login
+     * page drew for it, one it presents another, or the reference drawn for another provider, starts nothing: no
+     * request is signed and nothing is remembered.
+     */
+    #[Test]
+    #[DataProvider('provideReferencesNotDrawnForTheSignOn')]
+    public function aSignOnWithoutItsReferenceStartsNothing(?string $reference, string $identityProvider): void
+    {
+        // Given
+        self::generate();
+        self::accept(IdentityProviderDocuments::simpleSamlPhp());
+        $interaction = $this->beginAuthorization();
+        $this->typeTheAddress($interaction, self::ADDRESS);
+        $drawn = $this->presentedReference();
+
+        // When
+        $this->browser->request('GET', self::SIGN_ON, [
+            'interaction' => $interaction,
+            'identity_provider' => $identityProvider,
+            ...($reference === null ? [] : ['reference' => $reference === self::DRAWN ? $drawn : $reference]),
+        ]);
+
+        // Then
+        $this->assertRefusedAndRemembersNothing();
+    }
+
+    /**
+     * @return iterable<string, array{string|null, string}>
+     */
+    public static function provideReferencesNotDrawnForTheSignOn(): iterable
+    {
+        yield 'none' => [null, IdentityProviderDocuments::SIMPLESAMLPHP];
+        yield 'another' => ['Ab3xQ0kQ1n0oG2d9V5m8Zr4wY7tL6pHcEeFsUjKiN1o', IdentityProviderDocuments::SIMPLESAMLPHP];
+        yield 'drawn for another provider' => [self::DRAWN, IdentityProviderDocuments::SIGNED];
+    }
+
+    /**
+     * The acceptance of issue #820, S-51, the login CSRF of the security review of sub-spike 9d: a page of the provider
+     * that waits for a login, which a page of another site can have the browser reach, then the sign-on of a provider
+     * the tenant declares, without the reference the login page draws, starts nothing.
+     */
+    #[Test]
+    public function theLoginAPageWaitsForStartsNoSignOnWithoutItsReference(): void
+    {
+        // Given
+        self::generate();
+        self::accept(IdentityProviderDocuments::simpleSamlPhp());
+        $this->browser->request('GET', '/account');
+
+        // When
+        $this->browser->request('GET', self::SIGN_ON, [
+            'identity_provider' => IdentityProviderDocuments::SIMPLESAMLPHP,
+        ]);
+
+        // Then
+        $this->assertRefusedAndRemembersNothing();
+    }
+
+    /**
+     * The acceptance of issue #820, S-51: the reference starts one sign-on, and the same sign-on presented again starts
+     * nothing more.
+     */
+    #[Test]
+    public function aReferencePresentedTwiceStartsOneSignOn(): void
+    {
+        // Given
+        self::generate();
+        self::accept(IdentityProviderDocuments::simpleSamlPhp());
+        $interaction = $this->beginAuthorization();
+        $this->typeTheAddress($interaction, self::ADDRESS);
+        $signOn = self::string($this->browser->getResponse()->headers->get('Location'));
+        $this->browser->followRedirect();
+
+        // When
+        $this->browser->request('GET', $signOn);
 
         // Then
         $response = $this->browser->getResponse();
-        static::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
-        static::assertSame('saml_upstream_sign_on_refused', $this->browser->getCrawler()->filter('[data-error]')->attr('data-error'));
-        static::assertNull($this->readHttpSession()->get(UpstreamSignOns::SESSION_KEY));
+        $remembered = $this->readHttpSession()->get(UpstreamSignOns::SESSION_KEY);
+        static::assertIsArray($remembered);
+        static::assertSame(
+            [Response::HTTP_BAD_REQUEST, 'saml_upstream_sign_on_refused', 1],
+            [$response->getStatusCode(), $this->browser->getCrawler()->filter('[data-error]')->attr('data-error'), count($remembered)],
+        );
+    }
+
+    /**
+     * The acceptance of issue #820, S-51, section 7: a reference presented more than a minute after it was drawn,
+     * which no redirection followed at once takes, starts nothing.
+     */
+    #[Test]
+    public function aReferenceOlderThanItsLifeStartsNothing(): void
+    {
+        // Given
+        self::generate();
+        self::accept(IdentityProviderDocuments::simpleSamlPhp());
+        $interaction = $this->beginAuthorization();
+        $this->typeTheAddress($interaction, self::ADDRESS);
+        self::mockTime(Clock::get()->now()->modify('+' . (UpstreamSignOnReferences::LIFE + 1) . ' seconds'));
+
+        // When
+        $this->browser->followRedirect();
+
+        // Then
+        $this->assertRefusedAndRemembersNothing();
     }
 
     /**
@@ -364,7 +487,10 @@ final class UpstreamSignOnTest extends ConsoleTestCase
         $this->beginAuthorization();
 
         // When
-        $this->signOn('an-interaction-nobody-began');
+        $this->browser->request('GET', self::SIGN_ON, [
+            'interaction' => 'an-interaction-nobody-began',
+            'identity_provider' => IdentityProviderDocuments::SIMPLESAMLPHP,
+        ]);
 
         // Then
         static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
@@ -385,12 +511,42 @@ final class UpstreamSignOnTest extends ConsoleTestCase
         return self::redirectedInteraction($response);
     }
 
-    private function signOn(string $interaction, string $identityProvider = IdentityProviderDocuments::SIMPLESAMLPHP): Crawler
+    /**
+     * The sign-on of the interaction at the identity provider of the judge, started from the login page as a person
+     * starts it.
+     */
+    private function signOn(string $interaction): Crawler
     {
-        return $this->browser->request('GET', self::SIGN_ON, [
-            'interaction' => $interaction,
-            'identity_provider' => $identityProvider,
-        ]);
+        return $this->signOnAs($interaction, self::ADDRESS);
+    }
+
+    /**
+     * The reference the redirection to the sign-on carries.
+     */
+    private function presentedReference(): string
+    {
+        $query = [];
+        parse_str((string) parse_url(self::string($this->browser->getResponse()->headers->get('Location')), PHP_URL_QUERY), $query);
+
+        return self::string($query['reference'] ?? null);
+    }
+
+    /**
+     * Refused with the page of a refusal, no request sent to a provider and none remembered in the HTTP session.
+     */
+    private function assertRefusedAndRemembersNothing(): void
+    {
+        $response = $this->browser->getResponse();
+        static::assertSame(
+            [Response::HTTP_BAD_REQUEST, 'saml_upstream_sign_on_refused', null, null],
+            [
+                $response->getStatusCode(),
+                $this->browser->getCrawler()->filter('[data-error]')->attr('data-error'),
+                $response->headers->get('Location'),
+                $this->readHttpSession()->get(UpstreamSignOns::SESSION_KEY),
+            ],
+            self::string($response->getContent()),
+        );
     }
 
     /**
@@ -435,7 +591,8 @@ final class UpstreamSignOnTest extends ConsoleTestCase
         }
         static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
         $form = $this->browser->getCrawler()->filter('form')->first();
-        static::assertSame(self::SINGLE_SIGN_ON, $form->attr('action'));
+        // the address of S-68 in the query of the action, the message in the body
+        static::assertSame(self::SINGLE_SIGN_ON, strtok((string) $form->attr('action'), '?'));
         $fields = [];
         $form->filter('input[type="hidden"]')->each(static function (Crawler $input) use (&$fields): void {
             $fields[(string) $input->attr('name')] = (string) $input->attr('value');

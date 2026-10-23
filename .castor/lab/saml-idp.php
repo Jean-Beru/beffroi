@@ -621,6 +621,11 @@ function saml_idp_ask(array $client, array &$cookies, string $address, string $b
     }
     parse_str((string) parse_url($location, \PHP_URL_QUERY), $query);
     demo_expect(($query['identity_provider'] ?? null) === SAML_IDP_ENTITY_ID, sprintf('of %s', SAML_IDP_ENTITY_ID));
+    // spec/saml.md S-51: the one-time reference the login page drew, without which the sign-on starts nothing
+    demo_expect(
+        is_string($query['reference'] ?? null) && preg_match('/^[A-Za-z0-9_-]{43}$/', $query['reference']) === 1,
+        'under the one-time reference the login page drew for that sign-on',
+    );
 
     // the AuthnRequest, over the binding the metadata publish
     [$status, $location, $page] = demo_request($cookies, $ca, 'GET', $location);
