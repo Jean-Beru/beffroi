@@ -4,15 +4,20 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Saml;
 
+use Beffroi\Bundle\Http\BrowserSession;
 use Beffroi\Bundle\Http\LoginTarget;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Saml\ServiceProviderRoutes;
 use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
+use Beffroi\Core\Domain\Event\AuthenticationFailed;
+use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
 use Beffroi\Core\Domain\Group\Group;
 use Beffroi\Core\Domain\Group\GroupSource;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Beffroi\Core\Port\GroupRepositoryInterface;
 use Beffroi\Core\Port\GroupsOfAPersonInterface;
 use Beffroi\Core\Port\UserRepositoryInterface;
@@ -42,6 +47,9 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\Security\Http\Event\LoginFailureEvent;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -85,9 +93,10 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
 
         // When
         $this->post($this->response($request));
+        $answer = $this->resumed();
 
         // Then
-        static::assertArrayHasKey('code', self::redirectedQuery($this->resumed()));
+        static::assertArrayHasKey('code', self::redirectedQuery($answer));
     }
 
     /**
@@ -127,13 +136,11 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     {
         // Given
         self::provisioned();
-        $this->post($this->response($this->signOn($this->beginAuthorization())));
-        $first = $this->idToken($this->resumed());
+        $first = self::claimsOf($this->idTokenOf('alice'));
         $this->browser->getCookieJar()->clear();
-        $this->post($this->response($this->signOn($this->beginAuthorization())));
 
         // When
-        $second = $this->idToken($this->resumed());
+        $second = self::claimsOf($this->idTokenOf('alice'));
 
         // Then
         static::assertSame($first['sub'], $second['sub']);
@@ -149,9 +156,10 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
         // Given
         self::provisioned();
         $authnInstant = new DateTimeImmutable('@' . (Clock::get()->now()->getTimestamp() - 30));
-        $this->post($this->response($this->signOn($this->beginAuthorization()), authnInstant: $authnInstant));
+        $request = $this->signOn($this->beginAuthorization());
 
         // When
+        $this->post($this->response($request, authnInstant: $authnInstant));
         $claims = $this->idToken($this->resumed());
 
         // Then
@@ -271,7 +279,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
         $request = $this->signOn($this->beginAuthorization());
 
         // When
-        $this->post($this->response($request, key: MetadataFixtures::signingKey('idp')));
+        $this->post($this->response($request, key: MetadataFixtures::signingKey('idp'), certificatePem: MetadataFixtures::certificatePem('idp')));
 
         // Then
         $this->assertRefused('No trusted key verifies the signature over SignedInfo (D-7, D-8).');
@@ -315,9 +323,10 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
 
         // When
         $this->postedAgain();
+        $answer = $this->resumed();
 
         // Then
-        static::assertArrayHasKey('code', self::redirectedQuery($this->resumed()));
+        static::assertArrayHasKey('code', self::redirectedQuery($answer));
     }
 
     /**
@@ -470,6 +479,200 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
+     * S-57, S-53: a tenant whose every login must prove two factors refuses a login of the provider that proves one,
+     * with the page of a refusal, before the person is written, and announces it with no identifier.
+     */
+    #[Test]
+    public function aLoginUnderTheFloorOfTheTenantIsRefusedAndAnnounced(): void
+    {
+        // Given
+        self::provisioned();
+        $tester = self::console('beffroi:tenant:login-floor', ['floor' => 'two_factors'], ['yes']);
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        $request = $this->signOn($this->beginAuthorization());
+
+        // When
+        $this->post($this->response($request));
+
+        // Then
+        $this->assertRefused('The login of the identity provider proves less than this tenant requires of every login (spec/saml.md S-57).');
+        static::assertSame(
+            [[AuthenticationFailureReason::BelowTheFloor, 'fed', null, null], []],
+            [
+                self::failures(),
+                self::service('test.beffroi.users', UserRepositoryInterface::class)->findAllByEmail(self::tenant(), new EmailAddress(self::ADDRESS)),
+            ],
+        );
+    }
+
+    /**
+     * S-53: a response refused, here one signed by a key outside the metadata, leaves its trace in the audit trail: a
+     * federated assertion refused, nothing typed, nobody named.
+     */
+    #[Test]
+    public function aRefusedResponseIsAnnounced(): void
+    {
+        // Given
+        self::provisioned();
+        $request = $this->signOn($this->beginAuthorization());
+        self::forgetEvents();
+
+        // When
+        $this->post($this->response($request, key: MetadataFixtures::signingKey('idp'), certificatePem: MetadataFixtures::certificatePem('idp')));
+
+        // Then
+        static::assertSame([AuthenticationFailureReason::UpstreamResponseRefused, 'fed', null, null], self::failures());
+    }
+
+    /**
+     * S-53, M-16: the refusal of an address the core refuses carries no exception under it, whose message would hold the
+     * address, since what the firewall logs is the whole chain.
+     */
+    #[Test]
+    public function theRefusalOfAnAddressCarriesNoValueInItsChain(): void
+    {
+        // Given
+        self::provisioned();
+        $request = $this->signOn($this->beginAuthorization());
+        $refused = new class {
+            public ?AuthenticationException $exception = null;
+        };
+        // the dispatcher of the firewall, where the security component dispatches what a login of it does
+        self::service('security.event_dispatcher.beffroi_interaction', EventDispatcherInterface::class)
+            ->addListener(
+                LoginFailureEvent::class,
+                static function (LoginFailureEvent $event) use ($refused): void {
+                    $refused->exception = $event->getException();
+                },
+            );
+
+        // When
+        $this->post($this->response($request, ['mail' => ['al ice@example.org']]));
+
+        // Then
+        static::assertSame(
+            ['The attribute of the e-mail is no address whose domain the rule reads (spec/saml.md S-56, S-60).', null],
+            [$refused->exception?->getMessage(), $refused->exception?->getPrevious()],
+        );
+    }
+
+    /**
+     * S-55, decision 0029: a persistent NameID an administrator filled with the address of the person is refused, a
+     * mailbox given again naming the newcomer otherwise.
+     */
+    #[Test]
+    public function aPersistentNameIdThatIsTheAddressIsRefused(): void
+    {
+        // Given
+        self::provisioned();
+        $request = $this->signOn($this->beginAuthorization());
+
+        // When
+        $this->post($this->response($request, nameId: new NameId('Alice@EXAMPLE.org', NameIdFormat::Persistent)));
+
+        // Then
+        $this->assertRefused('The subject is the address of the person, which is given again to another (spec/saml.md S-55).');
+    }
+
+    /**
+     * S-57, SAML Core §2.7.2, issue #813: the session the login opens ends at the SessionNotOnOrAfter the provider
+     * allows, before the lifetime of the tenant.
+     */
+    #[Test]
+    public function theSessionEndsAtTheSessionNotOnOrAfter(): void
+    {
+        // Given
+        self::provisioned();
+        $bound = new DateTimeImmutable('@' . (Clock::get()->now()->getTimestamp() + 3600));
+        $request = $this->signOn($this->beginAuthorization());
+
+        // When
+        $this->post($this->response($request, sessionNotOnOrAfter: $bound));
+
+        // Then
+        static::assertEquals($bound, $this->boundSession()->expiresAt);
+    }
+
+    /**
+     * S-59, decision (b) of the review of #806: another person signing in for a page that waits ends the session the
+     * browser held, opens theirs, and the page is served to them.
+     */
+    #[Test]
+    public function anotherPersonSigningInForAPageThatWaitsIsServedThatPage(): void
+    {
+        // Given
+        self::provisioned();
+        $this->idTokenOf('alice');
+        $request = $this->signOnForThePage([]);
+
+        // When
+        $this->post($this->response($request, person: 'bob'));
+
+        // Then
+        static::assertSame(['/account', 'bob@example.org'], [$this->browser->getResponse()->headers->get('Location'), $this->boundSession()->user->username]);
+    }
+
+    /**
+     * S-59: a page that asked for one more proof, a class the login of the provider does not prove, is refused, its
+     * request having carried ForceAuthn already.
+     */
+    #[Test]
+    public function aPageWhoseStepUpTheLoginDoesNotMeetIsRefused(): void
+    {
+        // Given
+        self::provisioned();
+        $this->idTokenOf('alice');
+        $request = $this->signOnForThePage(['classes' => ['phr'], 'kinds' => ['passkey']]);
+        self::forgetEvents();
+
+        // When
+        $this->post($this->response($request));
+
+        // Then
+        $this->assertRefused('The identity provider proved none of the classes the page asks for (spec/saml.md S-59).');
+    }
+
+    /**
+     * S-53, M-8, Profiles §4.1.4.3: a response for another assertion consumer service than the one the router generates
+     * is refused.
+     */
+    #[Test]
+    public function aResponseToAnotherAssertionConsumerServiceIsRefused(): void
+    {
+        // Given
+        self::provisioned();
+        $request = $this->signOn($this->beginAuthorization());
+
+        // When
+        $this->post($this->response($request, assertionConsumerService: 'https://op.test/elsewhere/acs'));
+
+        // Then
+        $this->assertRefused('The Destination of the response is not the URL at which it arrived (M-8).');
+    }
+
+    /**
+     * S-58, OIDC Core §3.1.2.6: a client that asks for an account to be chosen, answered twice by the session the provider
+     * holds, is answered account_selection_required.
+     */
+    #[Test]
+    public function anAccountSelectionTheProviderDoesNotOfferIsAnsweredAccountSelectionRequired(): void
+    {
+        // Given
+        self::provisioned();
+        $this->post($this->response(
+            $this->signOn($this->beginAuthorization(['prompt' => 'select_account'])),
+            authnInstant: Clock::get()->now()->modify('-5 seconds'),
+        ));
+        $again = $this->sentRequestOfTheAnswer();
+
+        // When
+        $this->post($this->response($again, authnInstant: Clock::get()->now()->modify('-5 seconds')));
+
+        // Then
+        static::assertSame('account_selection_required', self::redirectedQuery($this->browser->getResponse())['error'] ?? null);
+    }
+
+    /**
      * The tenant holds a SAML key, a key that signs its ID tokens, and the document of the provider of the judge.
      */
     private static function provisioned(): void
@@ -597,19 +800,25 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
         ?string $assertionId = null,
         ?PrivateKey $key = null,
         string $person = 'alice',
+        ?string $certificatePem = null,
+        ?NameId $nameId = null,
+        ?DateTimeImmutable $sessionNotOnOrAfter = null,
+        string $assertionConsumerService = self::ASSERTION_CONSUMER_SERVICE,
     ): array {
         return UpstreamResponses::form(
             $key ?? UpstreamResponses::simpleSamlPhpKey(),
             IdentityProviderDocuments::SIMPLESAMLPHP,
-            self::ASSERTION_CONSUMER_SERVICE,
+            $assertionConsumerService,
             $audience,
             $request['id'],
             Clock::get()->now(),
             ['mail' => [$person . '@example.org'], 'givenName' => [ucfirst($person)], ...$attributes],
             $request['relay_state'],
             $authnInstant,
-            new NameId('persistent-' . $person, NameIdFormat::Persistent),
+            $nameId ?? new NameId('persistent-' . $person, NameIdFormat::Persistent),
             assertionId: $assertionId,
+            sessionNotOnOrAfter: $sessionNotOnOrAfter,
+            certificatePem: $certificatePem,
         );
     }
 
@@ -635,6 +844,57 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
         }
 
         return $this->browser->getResponse();
+    }
+
+    /**
+     * The login the home of the account waits for, the step-up given, sent to the provider by a browser signed in.
+     *
+     * @param array{classes?: list<string>, kinds?: list<string>} $stepUp
+     *
+     * @return array{id: string, relay_state: string}
+     */
+    private function signOnForThePage(array $stepUp): array
+    {
+        $this->httpSession(static function (SessionInterface $httpSession) use ($stepUp): void {
+            $httpSession->set(LoginTarget::SESSION_KEY, [
+                'route' => 'beffroi_interaction_account',
+                'parameters' => [],
+                'step_up' => $stepUp === [] ? null : $stepUp,
+            ]);
+        });
+        $this->browser->request('GET', '/saml/sp/sign-on', [
+            'identity_provider' => IdentityProviderDocuments::SIMPLESAMLPHP,
+        ]);
+
+        return $this->sentRequestOfTheAnswer();
+    }
+
+    /**
+     * The session the browser is bound to.
+     */
+    private function boundSession(): AuthenticationSession
+    {
+        $id = $this->readHttpSession()->get(BrowserSession::AUTHENTICATION_SESSION_KEY);
+        static::assertIsString($id);
+
+        return (
+            self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)
+                ->find(Uuid::fromString($id)) ?? static::fail('The browser is bound to no session.')
+        );
+    }
+
+    /**
+     * What the audit trail was told of the one login refused since the events were last forgotten: the reason, the
+     * method, the identifier and the person.
+     *
+     * @return array{AuthenticationFailureReason, string|null, string|null, string|null}
+     */
+    private static function failures(): array
+    {
+        $failures = self::events(AuthenticationFailed::class);
+        static::assertCount(1, $failures);
+
+        return [$failures[0]->reason, $failures[0]->method?->value, $failures[0]->identifier, $failures[0]->user?->username];
     }
 
     /**

@@ -66,6 +66,22 @@ final readonly class PassportProofs implements ProvableMethodsInterface
     }
 
     /**
+     * The instant the session the passport opens must end by, null when nothing bounds it: the first login that bounds
+     * its session and recognises the passport answers (BoundsItsSessionInterface, beffroi/saml S-57).
+     */
+    public function sessionNotOnOrAfter(Passport $passport): ?DateTimeImmutable
+    {
+        foreach ($this->logins as $login) {
+            $bound = $login instanceof BoundsItsSessionInterface ? $login->sessionNotOnOrAfter($passport) : null;
+            if ($bound !== null) {
+                return $bound;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Every method the wired logins prove for this tenant, each once, in the order they are tagged: a login
      * whose proofs the floor of the tenant never reads is a login closed there (issue #327), so it is asked
      * login by login and not method by method, a passkey that proves "user" besides its key not being half

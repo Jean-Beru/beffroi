@@ -9,6 +9,7 @@ use Beffroi\Bundle\Doctrine\TenantProvider;
 use Beffroi\Bundle\Http\AuthorizationResponder;
 use Beffroi\Bundle\Http\AuthorizationResponderInterface;
 use Beffroi\Bundle\Http\BrowserSession;
+use Beffroi\Bundle\Http\CrossSitePost;
 use Beffroi\Bundle\Http\CrossSiteSessionCookie;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\RequestContextFactory;
@@ -18,26 +19,29 @@ use Beffroi\Bundle\Saml\UpstreamLoginRequirement;
 use Beffroi\Bundle\Saml\UpstreamSignOnAnswer;
 use Beffroi\Bundle\Saml\UpstreamSignOns;
 use Beffroi\Core\Application\Identity\UpstreamProvisioningRefusedException;
+use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
 use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Exception\KeyNotFoundException;
 use Beffroi\Oidc\Domain\Interaction\Interaction;
+use Beffroi\Oidc\Domain\Interaction\LoginRequirement;
+use Beffroi\Oidc\Exception\AccountSelectionRequiredException;
 use Beffroi\Oidc\Exception\InteractionCompletedException;
 use Beffroi\Oidc\Exception\InteractionExpiredException;
 use Beffroi\Oidc\Exception\LoginRequiredException;
 use Beffroi\Oidc\Exception\OAuth2Exception;
 use Beffroi\Saml\Application\Upstream\AssertionConsumerService;
 use Beffroi\Saml\Application\Upstream\UpstreamSignOn;
+use Beffroi\Saml\Domain\Upstream\AuthnContextMethods;
 use Beffroi\Saml\Domain\Upstream\UpstreamAssertion;
 use Beffroi\Saml\Exception\AssertionRefusedException;
 use Beffroi\Saml\Exception\UpstreamSignOnRefusedException;
 use DateTimeImmutable;
-use function explode;
 use Psr\Clock\ClockInterface;
-use function strtolower;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -49,9 +53,7 @@ use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
 use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPassport;
 use Symfony\Component\Security\Http\Authenticator\Token\PostAuthenticationToken;
-use Throwable;
 use function is_string;
-use function trim;
 
 /**
  * The assertion consumer service of the service provider of the tenant, a login of the firewall of the interaction
@@ -108,7 +110,7 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
             $this->consumer instanceof AssertionConsumerService
             && $request->isMethod('POST')
             && $request->attributes->getString('_route') === ServiceProviderRoutes::ASSERTION_CONSUMER_SERVICE
-            && self::isAForm($request)
+            && CrossSitePost::isAForm($request)
             && ! CrossSiteSessionCookie::withheldFrom($request)
         );
     }
@@ -122,22 +124,43 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
         $remembered = is_string($relayState) && $relayState !== '' ? $this->signOns->take($request->getSession(), $tenant, $relayState, $now) : null;
         if (! $remembered instanceof RememberedSignOn) {
             // S-53: an unsolicited response, or one for a request this browser does not remember (decision 0029)
-            throw $this->refused('The response answers no request this browser remembers (spec/saml.md S-53).');
+            throw $this->refused(
+                'The response answers no request this browser remembers (spec/saml.md S-53).',
+                AuthenticationFailureReason::UpstreamResponseRefused,
+            );
         }
         $interaction = $remembered->interaction === null ? null : $this->resumable($request, $tenant, $remembered->interaction, $now);
         try {
             $assertion = $consumer->receive($tenant, $request->request->all(), $remembered->identityProvider, $remembered->requestId);
         } catch (AssertionRefusedException $exception) {
-            throw $this->refused($exception->getMessage(), $exception);
-        } catch (KeyNotFoundException $exception) {
+            throw $this->refused($exception->getMessage(), AuthenticationFailureReason::UpstreamResponseRefused);
+        } catch (KeyNotFoundException) {
             // S-66: a key of the provider retired between the reading of the store and its opening
-            throw $this->refused('A key of the identity provider retired while the response was read (spec/saml.md S-66).', $exception);
+            throw $this->refused(
+                'A key of the identity provider retired while the response was read (spec/saml.md S-66).',
+                AuthenticationFailureReason::UpstreamResponseRefused,
+            );
+        }
+        // S-57: held to the floor of the tenant before the person is written, the opening of the session refusing it
+        // past the firewall otherwise, where nothing catches it
+        if (! $tenant->loginFloor->isSatisfiedBy($assertion->methods)) {
+            throw $this->refused(
+                'The login of the identity provider proves less than this tenant requires of every login (spec/saml.md S-57).',
+                AuthenticationFailureReason::BelowTheFloor,
+            );
+        }
+        if ($assertion->sessionNotOnOrAfter !== null && $assertion->sessionNotOnOrAfter <= $now) {
+            throw $this->refused('The session the identity provider allows is over (spec/saml.md S-57).', AuthenticationFailureReason::UpstreamResponseRefused);
         }
         $context = $this->contexts->fromRequest($request);
         try {
             $person = $consumer->personOf($tenant, $assertion, $context);
-        } catch (UpstreamProvisioningRefusedException|InvalidArgumentException $exception) {
-            throw $this->refused('The person the identity provider named is not one this provider signs in (spec/saml.md S-56).', $exception);
+        } catch (UpstreamProvisioningRefusedException|InvalidArgumentException) {
+            // the refusal of the core names no value, and the claim the profile refuses would: neither travels on (S-53)
+            throw $this->refused(
+                'The person the identity provider named is not one this provider signs in (spec/saml.md S-56).',
+                AuthenticationFailureReason::UpstreamPersonRefused,
+            );
         }
         $held = $this->browser->authenticationSession($request, $tenant);
         if ($interaction instanceof Interaction) {
@@ -149,7 +172,7 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
 
         return new SelfValidatingPassport(
             new UserBadge($person->username, static fn (): SecurityUser => new SecurityUser($person, null)),
-            [new UpstreamCredentials($assertion->methods, $assertion->authenticatedAt)],
+            [new UpstreamCredentials($assertion->methods, $assertion->authenticatedAt, $assertion->sessionNotOnOrAfter)],
         );
     }
 
@@ -242,7 +265,9 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
                 return;
             }
             if ($remembered->forceAuthn) {
-                throw new LoginRequiredException('The identity provider did not authenticate the person as the request asks, ForceAuthn notwithstanding.');
+                throw $asked === LoginRequirement::AccountSelectionRequested
+                    ? new AccountSelectionRequiredException('The identity provider answered for the person it holds a session of, ForceAuthn notwithstanding.')
+                    : new LoginRequiredException('The identity provider did not authenticate the person as the request asks, ForceAuthn notwithstanding.');
             }
         } catch (OAuth2Exception $exception) {
             throw new UpstreamLoginRefusedException(
@@ -254,7 +279,8 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
         try {
             $sent = $signOn->start($tenant, $remembered->identityProvider, true);
         } catch (UpstreamSignOnRefusedException $exception) {
-            throw $this->refused($exception->getMessage(), $exception);
+            // no refused login: the request could not be sent again, which the sign-on refuses with the same message
+            throw $this->refused($exception->getMessage(), null);
         } catch (KeyNotFoundException $exception) {
             // as the route of the sign-on answers a tenant that holds no SAML key any more (S-51)
             throw new NotFoundHttpException('This tenant serves no SAML service provider.', $exception);
@@ -280,24 +306,34 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
         DateTimeImmutable $now,
     ): void {
         if ($remembered->forceAuthn && $assertion->authenticatedAt < $remembered->issuedAt) {
-            throw $this->refused('The identity provider did not authenticate the person again, ForceAuthn notwithstanding (spec/saml.md S-59).');
+            throw $this->refused(
+                'The identity provider did not authenticate the person again, ForceAuthn notwithstanding (spec/saml.md S-59).',
+                AuthenticationFailureReason::UpstreamResponseRefused,
+                $person,
+            );
         }
         $stepUp = $remembered->page?->stepUp;
         if ($stepUp !== null && ! $this->requirement->meets($stepUp, $person, $assertion->methods, $assertion->authenticatedAt, $held, $context, $now)) {
-            throw $this->refused('The identity provider proved none of the classes the page asks for (spec/saml.md S-59).');
+            throw $this->refused(
+                'The identity provider proved none of the classes the page asks for (spec/saml.md S-59).',
+                AuthenticationFailureReason::UpstreamResponseRefused,
+                $person,
+            );
         }
     }
 
-    private function refused(string $description, ?Throwable $previous = null): UpstreamLoginRefusedException
-    {
-        return new UpstreamLoginRefusedException($this->pages->error(Response::HTTP_BAD_REQUEST, self::REFUSED, $description), $description, $previous);
-    }
-
     /**
-     * S-52, bindings.md section 6.8: the body of HTTP-POST, a form.
+     * The page of a refusal, and what the audit trail is told of it (S-53): a federated assertion refused for that
+     * reason, nothing typed, the person when one was resolved; none when it is no refused login. No exception it
+     * caught travels on: the message of the rule is all a refusal carries, whatever the chain under it named.
      */
-    private static function isAForm(Request $request): bool
+    private function refused(string $description, ?AuthenticationFailureReason $reason, ?User $person = null): UpstreamLoginRefusedException
     {
-        return strtolower(trim(explode(';', $request->headers->get('Content-Type') ?? '')[0])) === 'application/x-www-form-urlencoded';
+        return new UpstreamLoginRefusedException(
+            $this->pages->error(Response::HTTP_BAD_REQUEST, self::REFUSED, $description),
+            $description,
+            null,
+            $reason === null ? null : new LoginFailure(new AuthenticationMethod(AuthnContextMethods::FEDERATED), $reason, null, $person),
+        );
     }
 }

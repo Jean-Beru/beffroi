@@ -10,8 +10,9 @@ use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\Credentia
 
 /**
  * What an upstream identity provider proved of the person its assertion names (beffroi/saml S-57): the methods of
- * RFC 8176 its authentication context maps to exactly, "fed" first, and the AuthnInstant, when it proved them. The
- * assertion consumer service verified the response before it put this on the passport (S-53).
+ * RFC 8176 its authentication context maps to exactly, "fed" first, the AuthnInstant, when it proved them, and the
+ * SessionNotOnOrAfter, the instant the session must end by. The assertion consumer service verified the response
+ * before it put this on the passport (S-53).
  */
 final readonly class UpstreamCredentials implements CredentialsInterface
 {
@@ -21,6 +22,7 @@ final readonly class UpstreamCredentials implements CredentialsInterface
     public function __construct(
         public array $methods,
         public DateTimeImmutable $provenAt,
+        public ?DateTimeImmutable $sessionNotOnOrAfter = null,
     ) {
     }
 

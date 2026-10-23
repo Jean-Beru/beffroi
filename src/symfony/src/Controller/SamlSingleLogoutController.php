@@ -15,13 +15,10 @@ use Beffroi\Core\Exception\KeyNotFoundException;
 use Beffroi\Saml\Application\SingleLogout\SingleLogout;
 use Beffroi\Saml\Domain\SingleLogout\LogoutChainStarted;
 use Beffroi\Saml\Exception\LogoutRefusedException;
-use function explode;
-use function strtolower;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
-use function trim;
 
 /**
  * The single logout service of the SAML identity provider of the tenant (beffroi/saml, spec/saml.md sections 6.5 and
@@ -50,11 +47,6 @@ final readonly class SamlSingleLogoutController
      */
     public const string REFUSED = 'saml_logout_refused';
 
-    /**
-     * The one body HTTP-POST carries (SAML Bindings §3.5.4).
-     */
-    private const string FORM = 'application/x-www-form-urlencoded';
-
     public function __construct(
         private TenantProvider $tenants,
         private SingleLogout $singleLogout,
@@ -74,7 +66,7 @@ final readonly class SamlSingleLogoutController
         $secret = $this->cookie->presented($request);
         try {
             if ($request->isMethod(Request::METHOD_POST)) {
-                if (strtolower(trim(explode(';', $request->headers->get('Content-Type') ?? '')[0])) !== self::FORM) {
+                if (! CrossSitePost::isAForm($request)) {
                     return $this->pages->error(
                         Response::HTTP_UNSUPPORTED_MEDIA_TYPE,
                         self::REFUSED,

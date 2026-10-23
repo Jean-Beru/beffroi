@@ -91,6 +91,16 @@ final readonly class CrossSitePost
     }
 
     /**
+     * Whether the body of the request is a form, `application/x-www-form-urlencoded`, its parameters aside: the one
+     * body a post of HTTP-POST carries (SAML Bindings §3.5.4), and the one a browser posts back as it went, read here
+     * and at every endpoint that takes one.
+     */
+    public static function isAForm(Request $request): bool
+    {
+        return strtolower(trim(explode(';', $request->headers->get('Content-Type') ?? '')[0])) === self::FORM;
+    }
+
+    /**
      * The page that posts the request again, or null when the endpoint serves the request as it came.
      */
     public function postAgain(Request $request): ?Response
@@ -121,11 +131,7 @@ final readonly class CrossSitePost
      */
     private function page(Request $request, array $uiLocales): ?Response
     {
-        if (
-            ! $request->isMethod(Request::METHOD_POST)
-            || strtolower(trim(explode(';', $request->headers->get('Content-Type') ?? '')[0])) !== self::FORM
-            || ! CrossSiteSessionCookie::withheldFrom($request)
-        ) {
+        if (! $request->isMethod(Request::METHOD_POST) || ! self::isAForm($request) || ! CrossSiteSessionCookie::withheldFrom($request)) {
             return null;
         }
         $fields = self::fields($request->getContent());

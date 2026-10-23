@@ -322,7 +322,7 @@ final readonly class SamlSection extends ConfigurationSection
             $services->set(ModelResponseReceiver::class)->autowire()->arg('$accepted', service('beffroi.saml.identity_providers.accepted_metadata'));
             $services->alias(ResponseReceiverInterface::class, ModelResponseReceiver::class);
             $services->set(AssertionConsumerService::class)->autowire();
-            $services->set(UpstreamLogin::class)->tag('beffroi.login');
+            $services->set(UpstreamLogin::class)->tag('beffroi.login')->tag('beffroi.login.refusal');
             // the key each upstream identity provider declared encrypts for, an algorithm of its own (spec/saml.md S-64),
             // named by the digest of its entity ID, which a service identifier holds whatever the URI
             foreach (array_keys(self::section($this->own($config), 'identity_providers')) as $identityProvider) {

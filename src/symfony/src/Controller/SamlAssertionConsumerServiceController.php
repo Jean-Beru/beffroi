@@ -9,14 +9,11 @@ use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Saml\ServiceProviderRoutes;
 use Beffroi\Bundle\Security\UpstreamAssertionAuthenticator;
 use Beffroi\Saml\Application\Upstream\AssertionConsumerService;
-use function explode;
-use function strtolower;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
-use function trim;
 
 /**
  * The route of the assertion consumer service of the service provider of the tenant (beffroi/saml, spec/saml.md S-52),
@@ -30,8 +27,6 @@ use function trim;
 #[AsController]
 final readonly class SamlAssertionConsumerServiceController
 {
-    private const string FORM = 'application/x-www-form-urlencoded';
-
     public function __construct(
         private InteractionPages $pages,
         private CrossSitePost $crossSitePost,
@@ -45,7 +40,7 @@ final readonly class SamlAssertionConsumerServiceController
         if (! $this->consumer instanceof AssertionConsumerService) {
             throw new NotFoundHttpException('This tenant serves no SAML service provider.');
         }
-        if (strtolower(trim(explode(';', $request->headers->get('Content-Type') ?? '')[0])) !== self::FORM) {
+        if (! CrossSitePost::isAForm($request)) {
             return $this->pages->error(
                 Response::HTTP_UNSUPPORTED_MEDIA_TYPE,
                 UpstreamAssertionAuthenticator::REFUSED,

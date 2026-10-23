@@ -64,17 +64,22 @@ final readonly class LoginSuccessListener
         // what an upstream identity provider proved is dated by its AuthnInstant (beffroi/saml S-57), every other
         // login by the request
         $provenAt = $this->proofs->provenAt($passport);
+        // and ends no later than that provider allows (beffroi/saml S-57)
+        $notOnOrAfter = $this->proofs->sessionNotOnOrAfter($passport);
         $session = $this->browser->authenticationSession($request, $tenant);
         if ($session !== null && $session->user->id->equals($user->id)) {
             foreach ($methods as $method) {
                 $session->recordProof($method, $context, $provenAt);
+            }
+            if ($notOnOrAfter !== null) {
+                $session->endNoLaterThan($notOnOrAfter);
             }
             $this->sessions->save($session);
         } else {
             if ($session !== null) {
                 $this->terminator->end($session, SessionEnd::User, $context);
             }
-            $session = $this->opener->open($tenant, $user->user(), $methods, $context, $provenAt);
+            $session = $this->opener->open($tenant, $user->user(), $methods, $context, $provenAt, $notOnOrAfter);
         }
 
         $this->recordUse($passport, $user, $now, $context);

@@ -17,10 +17,15 @@ use Throwable;
  */
 final class UpstreamLoginRefusedException extends AuthenticationException
 {
+    /**
+     * @param LoginFailure|null $failure what the audit trail is told of it (S-53), null when it is no refused login:
+     *                                   the request sent once more, an answer to the client, an interaction gone
+     */
     public function __construct(
         public readonly Response $answer,
         string $message = 'The response of the upstream identity provider signs nobody in.',
         ?Throwable $previous = null,
+        public readonly ?LoginFailure $failure = null,
     ) {
         parent::__construct($message, 0, $previous);
     }
