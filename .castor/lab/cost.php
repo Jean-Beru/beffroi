@@ -268,6 +268,22 @@ function cost_journey(string $issuer, string $password, string $secret, string $
     );
 
     [$status, , $page] = cost_request($steps, $cookies, 'login page', $ca, 'GET', $location);
+    // A tenant that federates an e-mail domain to an upstream identity provider, as the development tenant does
+    // (beffroi.saml.identity_providers), asks for the address first (beffroi/saml S-61): the username, of no domain, is
+    // sent on to the usual page, two requests more of the journey of every login of such a tenant.
+    if (str_contains($page, 'data-step="address"')) {
+        cost_expect(
+            preg_match('/data-step="address".*?name="_token" value="([^"]+)"/s', $page, $token) === 1
+            && preg_match('/<form method="post" action="([^"]+)" data-step="address"/', $page, $addressForm) === 1,
+            'the login page asked for the address without carrying its form',
+        );
+        [$status, $location] = cost_request($steps, $cookies, 'address', $ca, 'POST', $issuer . html_entity_decode($addressForm[1]), [
+            '_address' => DEV_USERNAME,
+            '_token' => $token[1],
+        ]);
+        cost_expect(in_array($status, [302, 303], true), sprintf('the address was not taken (got %d)', $status));
+        [$status, , $page] = cost_request($steps, $cookies, 'login page after the address', $ca, 'GET', $location);
+    }
     cost_expect(
         $status === 200 && preg_match('/name="_csrf_token" value="([^"]+)"/', $page, $csrf) === 1 && preg_match('/action="([^"]+)"/', $page, $loginForm) === 1,
         sprintf('the login page did not carry the form (got %d)', $status),
