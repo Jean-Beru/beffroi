@@ -21,8 +21,9 @@ declare(strict_types=1);
  * one request at a time: the client is oidc-demo, whose code the walk spends itself, the demonstration not being needed
  * for it. alice twice, her request over HTTP-Redirect from the address she types and over HTTP-POST from the address
  * her client hints, the first sign-in creating her and the second creating nothing; then bob, his assertion encrypted
- * for the key of this provider, and his group. Then what the provider refuses: the response of bob posted again, and a
- * response SimpleSAMLphp sends unasked (decision 0029). Every request of the provider is verified by the OpenSSL command
+ * for the key of this provider, and his group; then carol, whom SimpleSAMLphp signs in and refuses, its Response saying
+ * AuthnFailed, which the provider answers the client access_denied for. Then what the provider refuses: the response of
+ * bob posted again, and a response SimpleSAMLphp sends unasked (decision 0029). Every request of the provider is verified by the OpenSSL command
  * line and Python (the detached signature of HTTP-Redirect) or by xmlsec1 (the XML signature of HTTP-POST), every
  * response by xmlsec1, under the certificates of the metadata of their signer. Every document of a run is in
  * var/saml-idp/captured/.
@@ -76,7 +77,7 @@ const SAML_IDP_BINDINGS = [
 
 #[AsTask(
     name: 'saml-idp',
-    description: 'The service provider of the stack judged by a SimpleSAMLphp 2.5.3.1 identity provider (issue #788): the identity provider is started on https://saml-idp.localhost with a key drawn under var/saml-idp/, its metadata verified by xmlsec1 and read by the model, then federated (its metadata refreshed, its key to encrypt for drawn, the group of its mapping created); then alice signs in twice through oidc-demo, over HTTP-Redirect from the address she types and over HTTP-POST from the address her client hints, created at the first and not at the second, and bob once, his assertion encrypted, in his group; then the response of bob posted again and a response SimpleSAMLphp sends unasked are refused. Every request and every response verified by OpenSSL and Python or by xmlsec1',
+    description: 'The service provider of the stack judged by a SimpleSAMLphp 2.5.3.1 identity provider (issue #788): the identity provider is started on https://saml-idp.localhost with a key drawn under var/saml-idp/, its metadata verified by xmlsec1 and read by the model, then federated (its metadata refreshed, its key to encrypt for drawn, the group of its mapping created); then alice signs in twice through oidc-demo, over HTTP-Redirect from the address she types and over HTTP-POST from the address her client hints, created at the first and not at the second, and bob once, his assertion encrypted, in his group; carol, whom SimpleSAMLphp refuses with the status AuthnFailed, answered access_denied and created nowhere; then the response of bob posted again and a response SimpleSAMLphp sends unasked are refused. Every request and every response verified by OpenSSL and Python or by xmlsec1',
 )]
 function saml_idp(
     #[AsOption(description: 'Only start the identity provider, judge its metadata and federate it: no sign-in')]
@@ -165,6 +166,9 @@ function saml_idp(
     demo_expect($alice['groups'] === [], 'alice, whose provider asserts no group of hers, is in none');
     saml_idp_claims('What oidc-demo received for bob', $third);
 
+    io()->section('carol, whom the identity provider signs in and then refuses');
+    saml_idp_failed_at_the_provider($client);
+
     io()->section('What the provider refuses');
     saml_idp_replayed($issuer, $ca, $third);
     saml_idp_unsolicited($issuer, $ca, $third, $serviceProvider);
@@ -176,7 +180,7 @@ function saml_idp(
 
     file_put_contents(SAML_IDP_DIRECTORY . '/assertion-encryption', '');
     io()->success(sprintf(
-        'SimpleSAMLphp signed alice and bob in at %s through oidc-demo, over HTTP-Redirect and HTTP-POST, alice created at her first sign-in%s and not at her second, bob in his group, his assertion encrypted; a response replayed and a response nobody asked for refused; every signature verified.',
+        'SimpleSAMLphp signed alice and bob in at %s through oidc-demo, over HTTP-Redirect and HTTP-POST, alice created at her first sign-in%s and not at her second, bob in his group, his assertion encrypted; carol, whom it refused, answered access_denied; a response replayed and a response nobody asked for refused; every signature verified.',
         $issuer,
         $before === null ? '' : ' (in an earlier run)',
     ));
@@ -430,6 +434,89 @@ function saml_idp_sign_in(array $client, string $username, string $binding, bool
     saml_idp_publish($binding, $ca);
     file_put_contents(SAML_IDP_DIRECTORY . '/assertion-encryption', $encrypted ? 'yes' : '');
     $cookies = [];
+    $asked = saml_idp_ask($client, $cookies, $address, $binding, $hinted, $capture);
+    ['login' => $login, 'state' => $state, 'nonce' => $nonce, 'verifier' => $verifier] = $asked;
+
+    // SimpleSAMLphp signs the person in
+    [$status, $location, $page] = saml_idp_log_in($cookies, $ca, $asked['status'], $asked['location'], $username, $person['password']);
+    demo_expect($status === 200, sprintf(
+        '%s signs in at SimpleSAMLphp, which answers with the page that posts its Response (got %d %s)',
+        $username,
+        $status,
+        substr($location, 0, 120),
+    ));
+    $acs = saml_sp_page_form($page);
+    demo_expect(
+        $acs['action'] === $client['serviceProvider']['acs'] && isset($acs['fields']['SAMLResponse'], $acs['fields']['RelayState']),
+        sprintf('which posts SAMLResponse and the RelayState to the assertion consumer service of the provider (it posts to %s)', $acs['action']),
+    );
+    $response = (string) base64_decode($acs['fields']['SAMLResponse'], true);
+    file_put_contents(SAML_IDP_CAPTURED . '/' . $capture . '-response.xml', $response);
+    saml_idp_response_on_the_wire($response, $encrypted);
+
+    // the assertion consumer service, posted from the site of SimpleSAMLphp, then from the origin of the provider
+    $again = saml_sp_posted_from_another_site($acs['action'], $acs['fields'], $ca);
+    [$status, $location, $page] = demo_request($cookies, $ca, 'POST', $again['url'], $again['fields']);
+    parse_str((string) parse_url($login, \PHP_URL_QUERY), $interaction);
+    demo_expect(
+        $status === 302 && str_starts_with($location, $issuer . '/login?') && str_contains($location, 'interaction=' . ($interaction['interaction'] ?? '?')),
+        sprintf(
+            'the provider takes the response and sends the browser back to the login page of the interaction, which resumes it (got %d %s%s)',
+            $status,
+            substr($location, 0, 120),
+            preg_match('/data-description><code>[^<]*<\/code>: ([^<]+)/', $page, $refusal) === 1 ? ': ' . html_entity_decode($refusal[1]) : '',
+        ),
+    );
+
+    // the authorization answered, the code spent
+    [$status, $location] = demo_resume($cookies, $ca, $issuer, $location);
+    demo_expect(
+        $status === 302 && str_starts_with($location, DEMO_URL . '/oidc/callback?'),
+        sprintf('the provider sends the browser to the callback of oidc-demo (got %d %s)', $status, substr($location, 0, 120)),
+    );
+    parse_str((string) parse_url($location, \PHP_URL_QUERY), $callback);
+    demo_expect(
+        isset($callback['code']) && ($callback['state'] ?? null) === $state && ($callback['iss'] ?? null) === $issuer,
+        'with a code, its state and iss',
+    );
+    $tokens = demo_exchange_code($issuer, $ca, DEMO_CLIENT_ID, $client['secret'], (string) $callback['code'], DEMO_URL . '/oidc/callback', $verifier);
+    $claims = demo_jwt((string) ($tokens['id_token'] ?? ''))['claims'];
+    demo_expect(($claims['nonce'] ?? null) === $nonce && ($claims['aud'] ?? null) === DEMO_CLIENT_ID, 'an ID token for oidc-demo, its nonce');
+    $userinfo = http_request('GET', $issuer . '/userinfo', [
+        'cafile' => $ca,
+        'auth_bearer' => (string) ($tokens['access_token'] ?? ''),
+    ]);
+    demo_expect($userinfo->getStatusCode() === 200, sprintf('UserInfo answers its access token (got %d)', $userinfo->getStatusCode()));
+    $described = (array) json_decode($userinfo->getContent(false), true, 8, \JSON_THROW_ON_ERROR);
+    demo_expect(
+        ($described['email'] ?? null) === $address
+        && ($described['given_name'] ?? null) === ($person['attributes']['givenName'][0] ?? null)
+        && ($described['family_name'] ?? null) === ($person['attributes']['sn'][0] ?? null),
+        sprintf('UserInfo says the address, the given name and the family name the identity provider asserted, %s', $address),
+    );
+
+    return [
+        'claims' => $claims,
+        'userinfo' => $described,
+        'cookies' => $cookies,
+        'acs' => $acs,
+    ];
+}
+
+/**
+ * The half of a sign-in before the identity provider signs anybody in: oidc-demo asks for an authorization, the login
+ * page of the provider asks for the address first (spec/saml.md S-61), or skips it for the address the client hints
+ * (S-62), and sends the browser to the sign-on of this provider (S-51), whose AuthnRequest goes over the binding the
+ * metadata the provider holds publish, captured. Returned is what the client holds and what SimpleSAMLphp answered.
+ *
+ * @param array{issuer: string, ca: string, secret: string, serviceProvider: array{entityId: string, acs: string}} $client
+ * @param array<string, array<string, string>> $cookies host => name => value
+ * @param 'redirect'|'post' $binding
+ * @return array{login: string, state: string, nonce: string, verifier: string, status: int, location: string, page: string}
+ */
+function saml_idp_ask(array $client, array &$cookies, string $address, string $binding, bool $hinted, string $capture): array
+{
+    ['issuer' => $issuer, 'ca' => $ca] = $client;
 
     // the client
     $base64url = static fn (string $bytes): string => rtrim(strtr(base64_encode($bytes), '+/', '-_'), '=');
@@ -513,7 +600,7 @@ function saml_idp_sign_in(array $client, string $username, string $binding, bool
             SAML_IDP_CAPTURED . '/' . $capture . '-authn-request.xml',
             (string) gzinflate((string) base64_decode((string) $request['SAMLRequest'], true)),
         );
-        [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
+        [$status, $location, $page] = demo_request($cookies, $ca, 'GET', $location);
     } else {
         demo_expect($status === 200, sprintf(
             'the sign-on answers with the page that posts the request over HTTP-POST (got %d %s)',
@@ -526,10 +613,29 @@ function saml_idp_sign_in(array $client, string $username, string $binding, bool
             sprintf('which posts it with a RelayState to the single sign-on service of SimpleSAMLphp (it posts to %s)', $form['action']),
         );
         file_put_contents(SAML_IDP_CAPTURED . '/' . $capture . '-authn-request.xml', (string) base64_decode($form['fields']['SAMLRequest'], true));
-        [$status, $location] = demo_request($cookies, $ca, 'POST', $form['action'], $form['fields']);
+        [$status, $location, $page] = demo_request($cookies, $ca, 'POST', $form['action'], $form['fields']);
     }
 
-    // SimpleSAMLphp signs the person in
+    return [
+        'login' => $login,
+        'state' => $state,
+        'nonce' => $nonce,
+        'verifier' => $verifier,
+        'status' => $status,
+        'location' => $location,
+        'page' => $page,
+    ];
+}
+
+/**
+ * The login of SimpleSAMLphp, from its answer to a request: its form opened, the username and the password posted, its
+ * redirections on its own site followed. Returned is where that leaves the browser.
+ *
+ * @param array<string, array<string, string>> $cookies host => name => value
+ * @return array{int, string, string} status, Location, body
+ */
+function saml_idp_log_in(array &$cookies, string $ca, int $status, string $location, string $username, string $password): array
+{
     demo_expect(
         in_array($status, [302, 303], true) && str_starts_with($location, SAML_IDP_URL . '/simplesaml/module.php/core/loginuserpass'),
         sprintf('SimpleSAMLphp accepts the request and asks for a login (got %d %s)', $status, substr($location, 0, 120)),
@@ -538,73 +644,13 @@ function saml_idp_sign_in(array $client, string $username, string $binding, bool
     demo_expect($status === 200 && preg_match('/<form\b[^>]*\baction="([^"]+)"/i', $page, $action) === 1, 'its login form opens');
     [$status, $location, $page] = demo_request($cookies, $ca, 'POST', html_entity_decode($action[1]), [
         'username' => $username,
-        'password' => $person['password'],
+        'password' => $password,
     ]);
     for ($hops = 0; in_array($status, [302, 303], true) && str_starts_with($location, SAML_IDP_URL) && $hops < 5; ++$hops) {
         [$status, $location, $page] = demo_request($cookies, $ca, 'GET', $location);
     }
-    demo_expect($status === 200, sprintf(
-        '%s signs in at SimpleSAMLphp, which answers with the page that posts its Response (got %d %s)',
-        $username,
-        $status,
-        substr($location, 0, 120),
-    ));
-    $acs = saml_sp_page_form($page);
-    demo_expect(
-        $acs['action'] === $client['serviceProvider']['acs'] && isset($acs['fields']['SAMLResponse'], $acs['fields']['RelayState']),
-        sprintf('which posts SAMLResponse and the RelayState to the assertion consumer service of the provider (it posts to %s)', $acs['action']),
-    );
-    $response = (string) base64_decode($acs['fields']['SAMLResponse'], true);
-    file_put_contents(SAML_IDP_CAPTURED . '/' . $capture . '-response.xml', $response);
-    saml_idp_response_on_the_wire($response, $encrypted);
 
-    // the assertion consumer service, posted from the site of SimpleSAMLphp, then from the origin of the provider
-    $again = saml_sp_posted_from_another_site($acs['action'], $acs['fields'], $ca);
-    [$status, $location, $page] = demo_request($cookies, $ca, 'POST', $again['url'], $again['fields']);
-    parse_str((string) parse_url($login, \PHP_URL_QUERY), $interaction);
-    demo_expect(
-        $status === 302 && str_starts_with($location, $issuer . '/login?') && str_contains($location, 'interaction=' . ($interaction['interaction'] ?? '?')),
-        sprintf(
-            'the provider takes the response and sends the browser back to the login page of the interaction, which resumes it (got %d %s%s)',
-            $status,
-            substr($location, 0, 120),
-            preg_match('/data-description><code>[^<]*<\/code>: ([^<]+)/', $page, $refusal) === 1 ? ': ' . html_entity_decode($refusal[1]) : '',
-        ),
-    );
-
-    // the authorization answered, the code spent
-    [$status, $location] = demo_resume($cookies, $ca, $issuer, $location);
-    demo_expect(
-        $status === 302 && str_starts_with($location, DEMO_URL . '/oidc/callback?'),
-        sprintf('the provider sends the browser to the callback of oidc-demo (got %d %s)', $status, substr($location, 0, 120)),
-    );
-    parse_str((string) parse_url($location, \PHP_URL_QUERY), $callback);
-    demo_expect(
-        isset($callback['code']) && ($callback['state'] ?? null) === $state && ($callback['iss'] ?? null) === $issuer,
-        'with a code, its state and iss',
-    );
-    $tokens = demo_exchange_code($issuer, $ca, DEMO_CLIENT_ID, $client['secret'], (string) $callback['code'], DEMO_URL . '/oidc/callback', $verifier);
-    $claims = demo_jwt((string) ($tokens['id_token'] ?? ''))['claims'];
-    demo_expect(($claims['nonce'] ?? null) === $nonce && ($claims['aud'] ?? null) === DEMO_CLIENT_ID, 'an ID token for oidc-demo, its nonce');
-    $userinfo = http_request('GET', $issuer . '/userinfo', [
-        'cafile' => $ca,
-        'auth_bearer' => (string) ($tokens['access_token'] ?? ''),
-    ]);
-    demo_expect($userinfo->getStatusCode() === 200, sprintf('UserInfo answers its access token (got %d)', $userinfo->getStatusCode()));
-    $described = (array) json_decode($userinfo->getContent(false), true, 8, \JSON_THROW_ON_ERROR);
-    demo_expect(
-        ($described['email'] ?? null) === $address
-        && ($described['given_name'] ?? null) === ($person['attributes']['givenName'][0] ?? null)
-        && ($described['family_name'] ?? null) === ($person['attributes']['sn'][0] ?? null),
-        sprintf('UserInfo says the address, the given name and the family name the identity provider asserted, %s', $address),
-    );
-
-    return [
-        'claims' => $claims,
-        'userinfo' => $described,
-        'cookies' => $cookies,
-        'acs' => $acs,
-    ];
+    return [$status, $location, $page];
 }
 
 /**
@@ -668,6 +714,82 @@ function saml_idp_claims(string $title, array $signedIn): void
     }
     io()->text($title . ':');
     io()->table(['', 'Claim', 'Value'], $rows);
+}
+
+/**
+ * carol signs in at SimpleSAMLphp, which then refuses her (docker/saml-idp/metadata/saml20-idp-hosted.php): at her login
+ * it shows its own error page and posts nothing; the next request the provider sends in the same browser finds her
+ * signed in there and is answered with a Response whose status is Responder and AuthnFailed, with no assertion. The
+ * assertion consumer service reads that status as the person authenticated by nobody and answers the client
+ * access_denied at its redirection URI with its state (spec/saml.md S-58), creating nobody.
+ *
+ * @param array{issuer: string, ca: string, secret: string, serviceProvider: array{entityId: string, acs: string}} $client
+ */
+function saml_idp_failed_at_the_provider(array $client): void
+{
+    ['issuer' => $issuer, 'ca' => $ca] = $client;
+    $person = saml_idp_person('carol');
+    $address = $person['attributes']['mail'][0] ?? '';
+    saml_idp_publish('redirect', $ca);
+    file_put_contents(SAML_IDP_DIRECTORY . '/assertion-encryption', '');
+    $cookies = [];
+
+    $asked = saml_idp_ask($client, $cookies, $address, 'redirect', false, 'carol-first');
+    [$status, , $page] = saml_idp_log_in($cookies, $ca, $asked['status'], $asked['location'], 'carol', $person['password']);
+    demo_expect(
+        $status !== 200 || ! str_contains($page, 'SAMLResponse'),
+        sprintf('carol signs in at SimpleSAMLphp, which refuses her on a page of its own and posts nothing (got %d)', $status),
+    );
+
+    $asked = saml_idp_ask($client, $cookies, $address, 'redirect', false, 'carol');
+    ['status' => $status, 'location' => $location, 'page' => $page] = $asked;
+    for ($hops = 0; in_array($status, [302, 303], true) && str_starts_with($location, SAML_IDP_URL) && $hops < 5; ++$hops) {
+        [$status, $location, $page] = demo_request($cookies, $ca, 'GET', $location);
+    }
+    demo_expect($status === 200, sprintf(
+        'the next request finds her signed in at SimpleSAMLphp, which answers it without a login (got %d %s)',
+        $status,
+        substr($location, 0, 120),
+    ));
+    $acs = saml_sp_page_form($page);
+    demo_expect(
+        $acs['action'] === $client['serviceProvider']['acs'] && isset($acs['fields']['SAMLResponse'], $acs['fields']['RelayState']),
+        sprintf('with a page that posts SAMLResponse and the RelayState to the assertion consumer service of the provider (it posts to %s)', $acs['action']),
+    );
+    $response = (string) base64_decode($acs['fields']['SAMLResponse'], true);
+    file_put_contents(SAML_IDP_CAPTURED . '/carol-response.xml', $response);
+    $dom = new DOMDocument();
+    demo_expect($dom->loadXML($response), 'the Response is well-formed XML');
+    $xpath = new DOMXPath($dom);
+    $xpath->registerNamespace('samlp', 'urn:oasis:names:tc:SAML:2.0:protocol');
+    $xpath->registerNamespace('saml', 'urn:oasis:names:tc:SAML:2.0:assertion');
+    $status = (string) $xpath->evaluate('string(/samlp:Response/samlp:Status/samlp:StatusCode/@Value)');
+    $second = (string) $xpath->evaluate('string(/samlp:Response/samlp:Status/samlp:StatusCode/samlp:StatusCode/@Value)');
+    demo_expect(
+        $status === 'urn:oasis:names:tc:SAML:2.0:status:Responder'
+        && $second === 'urn:oasis:names:tc:SAML:2.0:status:AuthnFailed'
+        && (int) $xpath->evaluate('count(//saml:Assertion) + count(//saml:EncryptedAssertion)') === 0,
+        sprintf('its status is not Success, %s and %s, and it carries no assertion', $status, $second),
+    );
+
+    $again = saml_sp_posted_from_another_site($acs['action'], $acs['fields'], $ca);
+    [$status, $location, $page] = demo_request($cookies, $ca, 'POST', $again['url'], $again['fields']);
+    parse_str((string) parse_url($location, \PHP_URL_QUERY), $callback);
+    demo_expect(
+        $status === 302
+        && str_starts_with($location, DEMO_URL . '/oidc/callback?')
+        && ($callback['error'] ?? null) === 'access_denied'
+        && ($callback['state'] ?? null) === $asked['state']
+        && ($callback['iss'] ?? null) === $issuer
+        && ! isset($callback['code']),
+        sprintf(
+            'the provider answers the client access_denied at its redirection URI, with its state and no code (got %d %s%s)',
+            $status,
+            substr($location, 0, 160),
+            preg_match('/data-description><code>[^<]*<\/code>: ([^<]+)/', $page, $refusal) === 1 ? ': ' . html_entity_decode($refusal[1]) : '',
+        ),
+    );
+    demo_expect(saml_idp_person_at_the_provider($address) === null, sprintf('and holds nobody named %s', $address));
 }
 
 /**

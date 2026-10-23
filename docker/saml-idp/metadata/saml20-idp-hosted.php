@@ -12,6 +12,11 @@
 //   both entity IDs: the same person at the same service provider gets the same one at every sign-in, which is what
 //   names her to the provider. Its format is the one published, and the one SimpleSAMLphp gives a request that asks
 //   for none; without the filter it would give a transient one whatever it published;
+// - carol refused once she has signed in, by a filter that throws the error of SimpleSAMLphp's SAML module with the
+//   status Responder and AuthnFailed: thrown at her first login, it is an error page of SimpleSAMLphp, the login having
+//   no request to answer by then; thrown when a request finds her signed in, SimpleSAMLphp answers that request with a
+//   Response of that status and no assertion (IdP::handleAuthenticationRequest(), SAML2::handleAuthError()), the
+//   failure the provider answers its client access_denied for (spec/saml.md S-58);
 // - the response and its assertion signed, both, as SimpleSAMLphp does by default, said here since the provider
 //   verifies both;
 // - the attributes named by their plain name, "mail", "givenName", "sn", "groups", the names the declaration of this
@@ -39,6 +44,10 @@ $metadata['https://saml-idp.localhost/simplesaml/module.php/saml/idp/metadata'] 
         10 => [
             'class' => 'saml:PersistentNameID',
             'identifyingAttribute' => 'uid',
+        ],
+        20 => [
+            'class' => 'core:PHP',
+            'code' => 'if (($attributes["uid"][0] ?? null) === "carol") { throw new \SimpleSAML\Module\saml\Error("urn:oasis:names:tc:SAML:2.0:status:Responder", "urn:oasis:names:tc:SAML:2.0:status:AuthnFailed", "The laboratory identity provider refuses carol."); }',
         ],
     ],
     'saml20.sign.response' => true,
