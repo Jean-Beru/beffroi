@@ -39,6 +39,7 @@ final readonly class LoginTarget
 
     public function __construct(
         private InteractionPages $pages,
+        private LoginAddresses $addresses = new LoginAddresses(),
     ) {
     }
 
@@ -67,6 +68,9 @@ final readonly class LoginTarget
                     'kinds' => $stepUp->kinds,
                 ],
         ]);
+        // a login a page asks for begins at the step of the address when the tenant federates a domain (beffroi/saml
+        // S-61), whatever was typed for the login another page asked for before
+        $this->addresses->forget($httpSession, null);
 
         return $this->pages->redirectToRoute(LoginController::ROUTE);
     }

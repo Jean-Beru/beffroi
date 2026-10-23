@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Controller;
 
+use function str_contains;
 use Beffroi\Bundle\Doctrine\TenantProvider;
 use Beffroi\Bundle\Http\AuthorizationResponder;
 use Beffroi\Bundle\Http\AuthorizationResponderInterface;
@@ -139,21 +140,25 @@ final readonly class LoginController
     /**
      * The step of the address (beffroi/saml S-61), of an interaction or of the login a page of the provider waits for:
      * one field, and no password, no passkey and no autofill of one, the domain of what is typed deciding where the
-     * browser goes (LoginAddressController). Its submission ends at the
+     * browser goes (LoginAddressController). Nothing on it reads a person: the field holds what this browser typed
+     * last, or the "login_hint" of the request when it is an address, as the client wrote it. Its submission ends at the
      * single sign-on service of a provider over HTTP-Redirect, whose origin it names in its "form-action".
      */
     private function address(Request $request, Tenant $tenant, ?Interaction $interaction, ?LoginRequirement $requirement, ?StepUpOffer $stepUp): Response
     {
         $this->discovery->mayReachTheProviders($request, $tenant);
         $lastUsername = $this->authentication->getLastUsername();
-        $hinted = $interaction === null ? null : $this->hints->userNamedBy($interaction->request);
+        // the hint as the client wrote it when it is an address, and never the person a reading of it finds: what
+        // a lookup filled in would say whether an account holds what the client named (S-61)
+        $hint = $interaction?->request->loginHint;
+        $hinted = $hint !== null && str_contains($hint, '@') ? $hint : null;
 
         return $this->pages->render('login_address.html.twig', [
             'interaction' => $interaction,
             'client' => $interaction?->request->client,
             'requirement' => $requirement,
             'step_up' => $stepUp,
-            'address' => $lastUsername === '' ? $hinted?->username : $lastUsername,
+            'address' => $lastUsername === '' ? $hinted : $lastUsername,
             'refusal' => $this->refusals->take($request),
         ]);
     }

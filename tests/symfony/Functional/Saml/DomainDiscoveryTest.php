@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Saml;
 
+use function preg_replace;
 use function array_map;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Tests\Functional\Controller\PasskeyTestCase;
@@ -244,6 +245,38 @@ final class DomainDiscoveryTest extends PasskeyTestCase
     }
 
     /**
+     * The acceptance of issue #785, S-61: the page of the address is the same whether the login_hint of the request
+     * names a person or not, the field holding the hint as the client wrote it when it is an address, and nothing a
+     * reading of it would find. The form tokens are drawn again at each render (BREACH), and set aside.
+     */
+    #[Test]
+    #[DataProvider('provideHints')]
+    public function theAddressPageIsTheSameWhetherTheHintNamesAPersonOrNot(string $hint): void
+    {
+        // Given
+        $interaction = $this->authorize([
+            'login_hint' => $hint,
+        ]);
+        $unknown = self::withoutTokens($this->loginPage($interaction)->html());
+        self::user('carol@umbrella.example', $hint);
+
+        // When
+        $known = self::withoutTokens($this->loginPage($interaction)->html());
+
+        // Then
+        static::assertSame($unknown, $known);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideHints(): iterable
+    {
+        yield 'a subject' => ['carol-subject'];
+        yield 'an address of another domain' => ['carol@umbrella.example'];
+    }
+
+    /**
      * S-61, S-44: an address whose domain the rule does not read comes back to the step of the address, which says so,
      * and is never taken for an address of no federated domain.
      */
@@ -379,6 +412,14 @@ final class DomainDiscoveryTest extends PasskeyTestCase
             [false, [AuthenticationFailureReason::FederatedDomain]],
             [$this->isBoundToASession(), self::failures()],
         );
+    }
+
+    /**
+     * The page with the value of each form token left out, a token being drawn again at each render.
+     */
+    private static function withoutTokens(string $html): string
+    {
+        return (string) preg_replace('/name="(_token|_csrf_token)" value="[^"]*"/', 'name="$1"', $html);
     }
 
     /**
