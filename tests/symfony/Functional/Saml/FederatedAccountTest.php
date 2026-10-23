@@ -4,6 +4,14 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Saml;
 
+use function intdiv;
+use Symfony\Component\Uid\Uuid;
+use DateTimeImmutable;
+use Beffroi\Core\Tests\Fixture\Totps;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Port\SecretSealerInterface;
+use Beffroi\Core\Domain\Event\BackupCodesRenewed;
+use Beffroi\Core\Domain\Credential\TotpCredential;
 use Beffroi\Bundle\Http\TotpProvisioningStore;
 use Beffroi\Bundle\Tests\Functional\Controller\PasskeyTestCase;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
@@ -90,7 +98,49 @@ final class FederatedAccountTest extends PasskeyTestCase
         $crawler = $this->page('/account/two-factor');
 
         // Then
-        static::assertSame([0, 1], self::offered($crawler, 'form[data-two-factor="begin"]'));
+        static::assertSame([0, 1], self::offered($crawler, 'form[data-two-factor="begin"], form[data-two-factor="backup-codes"]'));
+    }
+
+    /**
+     * S-63: the page of the second factor offers a person of a federated domain who set up an app before their domain was
+     * federated no new backup codes, and says why.
+     */
+    #[Test]
+    public function theTwoFactorPageOffersAPersonOfAFederatedDomainNoBackupCodes(): void
+    {
+        // Given
+        $this->signIn(self::federated($this->userWithTotp('alice')));
+
+        // When
+        $crawler = $this->page('/account/two-factor');
+
+        // Then
+        static::assertSame([0, 1], self::offered($crawler, 'form[data-two-factor="backup-codes"]'));
+    }
+
+    /**
+     * S-63: backup codes renewed by hand for a person of a federated domain are refused, and none is drawn.
+     */
+    #[Test]
+    public function backupCodesRenewedForAPersonOfAFederatedDomainAreRefused(): void
+    {
+        // Given
+        $alice = $this->userWithTotp('alice');
+        $this->signIn($alice);
+        $token = self::token($this->page('/account/two-factor'), 'form[data-two-factor="backup-codes"]');
+        self::federated($alice);
+        self::forgetEvents();
+
+        // When
+        $this->browser->request('POST', '/account/two-factor/backup-codes', [
+            '_token' => $token,
+        ]);
+
+        // Then
+        static::assertSame(
+            ['federated_domain', []],
+            [self::refusal($this->afterTheForm()), self::events(BackupCodesRenewed::class)],
+        );
     }
 
     /**
@@ -160,6 +210,27 @@ final class FederatedAccountTest extends PasskeyTestCase
             ['federated_domain', $held],
             [self::refusal($this->afterTheForm()), self::credentialsOf($alice, PasswordCredential::class)],
         );
+    }
+
+    /**
+     * A person with an authenticator app set up an hour ago.
+     */
+    private function userWithTotp(string $username): User
+    {
+        $user = self::user($username);
+        $sealed = self::service('test.beffroi.secret_sealer', SecretSealerInterface::class)->seal(self::tenant(), Totps::secret()->bytes);
+        $anHourAgo = new DateTimeImmutable('-1 hour');
+        self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
+            ->save(new TotpCredential(
+                Uuid::v7(),
+                $user,
+                $sealed,
+                Totps::credential($user, new FakePasswordHasher())->backupCodes,
+                intdiv($anHourAgo->getTimestamp(), TotpCredential::PERIOD),
+                $anHourAgo,
+            ));
+
+        return $user;
     }
 
     private function page(string $path): Crawler

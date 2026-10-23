@@ -223,7 +223,7 @@
       </trans-unit>
       <trans-unit id="account.federated_domain" resname="account.federated_domain">
         <source>account.federated_domain</source>
-        <target>Your organisation signs you in: this account holds no password, passkey or authenticator app of its own.</target>
+        <target>Your organisation signs you in: no password, passkey or authenticator app of this account signs you in, and none is added to it.</target>
       </trans-unit>
       <trans-unit id="passkeys.error.federated_domain" resname="passkeys.error.federated_domain">
         <source>passkeys.error.federated_domain</source>
