@@ -46,6 +46,11 @@ final class UpstreamSignOnTest extends TestCase
                         'domains' => ['acme.example'],
                         'email_attribute' => 'mail',
                     ],
+                    RecordingAuthnRequestSender::REFUSED => [
+                        'metadata' => '/srv/saml/refused.xml',
+                        'domains' => ['refused.example'],
+                        'email_attribute' => 'mail',
+                    ],
                 ],
                 new FixedProfileClaims(),
             ),
@@ -141,6 +146,27 @@ final class UpstreamSignOnTest extends TestCase
 
         // Then
         static::assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/', $sent->request->relayState);
+    }
+
+    /**
+     * S-61: a sign-on of the tenant may send a browser to the single sign-on service of each provider it declares, and
+     * to none of a provider whose sign-on would be refused.
+     */
+    #[Test]
+    public function aSignOnMaySendABrowserToTheServiceOfEachProviderItWouldStart(): void
+    {
+        // When / Then
+        static::assertSame([RecordingAuthnRequestSender::LOCATION], $this->signOn->destinations($this->tenant));
+    }
+
+    /**
+     * S-61: a tenant that declares no provider sends a browser nowhere.
+     */
+    #[Test]
+    public function aTenantThatDeclaresNoProviderSendsABrowserNowhere(): void
+    {
+        // When / Then
+        static::assertSame([], $this->signOn->destinations(Fixtures::tenant('initech', 'https://id.initech.example')));
     }
 
     /**

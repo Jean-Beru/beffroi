@@ -15,7 +15,9 @@ beffroi:
         identity_providers:
             'https://saml-idp.localhost/simplesaml/module.php/saml/idp/metadata':
                 metadata: '%kernel.cache_dir%/saml/simplesamlphp-idp-metadata.xml'
-                domains: ['example.org']
+                # example.org, the domain of its users, and a domain outside ASCII written as its A-label, bücher.example,
+                # which the login page reads an address of in any spelling (spec/saml.md S-60, S-61)
+                domains: ['example.org', 'xn--bcher-kva.example']
                 email_attribute: 'mail'
                 profile:
                     givenName: given_name

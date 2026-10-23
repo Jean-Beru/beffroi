@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Saml\Tests\Unit\Domain\Upstream;
+namespace Beffroi\Core\Tests\Domain\Identity;
 
+use Beffroi\Core\Domain\Identity\EmailDomain;
 use Beffroi\Core\Exception\InvalidArgumentException;
-use Beffroi\Saml\Domain\Upstream\EmailDomain;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -13,7 +13,8 @@ use function sprintf;
 use function str_repeat;
 
 /**
- * spec/saml.md S-44: an e-mail domain an upstream identity provider answers for, a name of the DNS kept in lower case.
+ * Decision 0029, spec/saml.md S-44 and S-60: an e-mail domain an upstream provider answers for, a name of the DNS kept
+ * in lower case, and the one reading of the domain of an address.
  */
 final class EmailDomainTest extends TestCase
 {
@@ -61,7 +62,7 @@ final class EmailDomainTest extends TestCase
         // Then
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessageIs(sprintf(
-            '"%s" is no e-mail domain: a name of the DNS of two labels at least, of letters, digits and hyphens, a name outside ASCII written as its A-label (spec/saml.md S-44).',
+            '"%s" is no e-mail domain: a name of the DNS of two labels at least, of letters, digits and hyphens, a name outside ASCII written as its A-label.',
             $domain,
         ));
 
@@ -85,6 +86,10 @@ final class EmailDomainTest extends TestCase
         yield 'an underscore' => ['ac_me.example'];
         yield 'a wildcard' => ['*.acme.example'];
         yield 'a name outside ASCII' => ['bücher.example'];
+        // an A-label the IDNA does not read back: a domain no address could ever be of
+        yield 'a broken A-label' => ['xn--a.example'];
+        // UTS #46 §4.1: two hyphens at the third and fourth characters are an A-label's, or nothing
+        yield 'two hyphens at the third and fourth characters' => ['ab--cd.example'];
         yield 'a name of 254 characters' => [self::longName(62)];
         yield 'an IPv4 address' => ['192.0.2.1'];
         yield 'an address' => ['alice@acme.example'];
@@ -117,6 +122,8 @@ final class EmailDomainTest extends TestCase
         yield 'an A-label' => ['alice@xn--bcher-kva.example', 'xn--bcher-kva.example'];
         yield 'a sharp s, kept by the non-transitional processing' => ['alice@faß.example', 'xn--fa-hia.example'];
         yield 'the last "@"' => ['"alice@home"@acme.example', 'acme.example'];
+        // the whole part after the "@": a subdomain is a domain of its own, and never its parent
+        yield 'a subdomain' => ['alice@eu.acme.example', 'eu.acme.example'];
     }
 
     /**
@@ -129,7 +136,7 @@ final class EmailDomainTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIs('An address holds a domain after its "@" (spec/saml.md S-44).');
+        $this->expectExceptionMessageIs('An address holds a domain after its "@".');
 
         // When
         EmailDomain::ofAddress($address);
@@ -153,7 +160,7 @@ final class EmailDomainTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIs('The domain of an address cannot be written as a name of the DNS by the IDNA of UTS #46 (spec/saml.md S-44).');
+        $this->expectExceptionMessageIs('The domain of an address cannot be written as a name of the DNS by the IDNA of UTS #46.');
 
         // When
         EmailDomain::ofAddress($address);
@@ -180,7 +187,7 @@ final class EmailDomainTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIs('The domain of an address is no name of the DNS of two labels at least (spec/saml.md S-44).');
+        $this->expectExceptionMessageIs('The domain of an address is no name of the DNS of two labels at least.');
 
         // When
         EmailDomain::ofAddress($address);

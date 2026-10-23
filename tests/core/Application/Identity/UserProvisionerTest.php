@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Beffroi\Core\Tests\Application\Identity;
 
+use Beffroi\Core\Domain\Identity\UpstreamProvider;
+use Beffroi\Core\Domain\Identity\EmailDomain;
+use Beffroi\Core\Bridge\InMemory\InMemoryUpstreamProviders;
+use Beffroi\Core\Application\Identity\FederatedDomains;
 use Beffroi\Core\Exception\CredentialEnrolmentFailedException;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Application\Identity\UserAlreadyExistsException;
@@ -65,6 +69,8 @@ final class UserProvisionerTest extends TestCase
 
     private UserProvisioner $provisioner;
 
+    private InMemoryUpstreamProviders $upstreamProviders;
+
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
@@ -72,6 +78,7 @@ final class UserProvisionerTest extends TestCase
         $this->credentials = new InMemoryCredentialRepository();
         $this->hasher = new NativePasswordHasher();
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
+        $this->upstreamProviders = new InMemoryUpstreamProviders();
         $breaches = BreachedPasswordsOfARecord::holding([self::BREACHED]);
         $this->provisioner = $this->provisionerAsking($breaches);
     }
@@ -591,6 +598,26 @@ final class UserProvisionerTest extends TestCase
     }
 
     /**
+     * Decision 0029, spec/saml.md S-63: an operator sets no password for a person of an e-mail domain the tenant
+     * federates to an upstream provider, through which alone they sign in.
+     */
+    #[Test]
+    public function aPasswordIsSetForNobodyOfAFederatedDomain(): void
+    {
+        // Given
+        $user = Fixtures::user($this->tenant);
+        $this->upstreamProviders->declare($user->tenant, new UpstreamProvider('https://idp.acme.example/saml', [new EmailDomain('acme.example')]));
+        $user->changeEmail(new EmailAddress('alice@acme.example'), true, Fixtures::now());
+
+        // Then
+        $this->expectException(CredentialEnrolmentFailedException::class);
+        $this->expectExceptionMessageIs('A password is posed for nobody of an e-mail domain the tenant "acme" federates to an upstream provider, through which alone they sign in.');
+
+        // When
+        $this->provisioner->setPassword($user, Fixtures::plainPassword(self::A_PASSWORD));
+    }
+
+    /**
      * A person an upstream provider created, with what it holds written the way a sign-in through it writes
      * it: through the entity, which is not a manual description.
      */
@@ -613,7 +640,7 @@ final class UserProvisionerTest extends TestCase
             new ActivePassword(new ActiveCredentials($this->credentials)),
             $this->hasher,
             new BreachedPasswordRefusal($breaches),
-            new EnrolmentRefusal(),
+            new EnrolmentRefusal(new FederatedDomains($this->upstreamProviders)),
             new SymfonyUuidGenerator(),
             $this->clock,
         );

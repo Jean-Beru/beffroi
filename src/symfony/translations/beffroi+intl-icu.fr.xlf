@@ -205,6 +205,38 @@
         <source>login.passkey_only</source>
         <target>Ce fournisseur vous connecte avec votre passkey.</target>
       </trans-unit>
+      <trans-unit id="login.address" resname="login.address">
+        <source>login.address</source>
+        <target>Adresse e-mail</target>
+      </trans-unit>
+      <trans-unit id="login.continue" resname="login.continue">
+        <source>login.continue</source>
+        <target>Continuer</target>
+      </trans-unit>
+      <trans-unit id="login.address_unreadable" resname="login.address_unreadable">
+        <source>login.address_unreadable</source>
+        <target>Cette adresse ne peut pas être lue. Vérifiez-la, puis réessayez.</target>
+      </trans-unit>
+      <trans-unit id="login.other_address" resname="login.other_address">
+        <source>login.other_address</source>
+        <target>Utiliser une autre adresse</target>
+      </trans-unit>
+      <trans-unit id="account.federated_domain" resname="account.federated_domain">
+        <source>account.federated_domain</source>
+        <target>Votre organisation vous connecte : aucun mot de passe, aucune passkey ni aucune application d’authentification de ce compte ne vous connecte, et aucun n’y est ajouté.</target>
+      </trans-unit>
+      <trans-unit id="passkeys.error.federated_domain" resname="passkeys.error.federated_domain">
+        <source>passkeys.error.federated_domain</source>
+        <target>Votre organisation vous connecte : aucune passkey n’est ajoutée à ce compte.</target>
+      </trans-unit>
+      <trans-unit id="two_factor.error.federated_domain" resname="two_factor.error.federated_domain">
+        <source>two_factor.error.federated_domain</source>
+        <target>Votre organisation vous connecte : aucune application d’authentification n’est configurée pour ce compte.</target>
+      </trans-unit>
+      <trans-unit id="password.error.federated_domain" resname="password.error.federated_domain">
+        <source>password.error.federated_domain</source>
+        <target>Votre organisation vous connecte : aucun mot de passe n’est posé pour ce compte.</target>
+      </trans-unit>
       <trans-unit id="a71d2a8f04" resname="account.title">
         <source>account.title</source>
         <target>Votre compte</target>

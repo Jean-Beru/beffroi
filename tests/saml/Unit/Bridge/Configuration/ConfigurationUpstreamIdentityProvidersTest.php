@@ -151,7 +151,7 @@ final class ConfigurationUpstreamIdentityProvidersTest extends TestCase
         yield 'no attribute of the e-mail' => [['metadata' => '/srv/saml/idp.xml', 'domains' => ['acme.example']], '"email_attribute" is a string.'];
         yield 'a domain that is none' => [
             self::declaration(['localhost']),
-            '"localhost" is no e-mail domain: a name of the DNS of two labels at least, of letters, digits and hyphens, a name outside ASCII written as its A-label (spec/saml.md S-44).',
+            '"localhost" is no e-mail domain: a name of the DNS of two labels at least, of letters, digits and hyphens, a name outside ASCII written as its A-label.',
         ];
         yield 'groups that are no map' => [[...self::declaration(['acme.example']), 'groups' => 'groups'], '"groups" is a map (spec/saml.md section 5.7).'];
         yield 'groups without their attribute' => [

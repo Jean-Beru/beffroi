@@ -9,6 +9,7 @@ use Beffroi\Bundle\Http\AuthorizationResponder;
 use Beffroi\Bundle\Http\AuthorizationResponderInterface;
 use Beffroi\Bundle\Http\BrowserSession;
 use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\LoginTarget;
 use Beffroi\Bundle\Saml\SamlPostPage;
 use Beffroi\Bundle\Saml\ServiceProviderRoutes;
 use Beffroi\Bundle\Saml\UpstreamSignOns;
@@ -33,10 +34,11 @@ use Symfony\Component\Routing\Attribute\Route;
 /**
  * Where an interaction of the browser starts a sign-on at an upstream identity provider of the SAML service provider of
  * the tenant (beffroi/saml, spec/saml.md S-51, section 6.11): an interaction this browser began and can still resume,
- * and the entity ID of a provider the tenant declares, nothing else; the request forces a login when the authorization
- * request of the interaction asks for a fresh one (S-49), is remembered in the HTTP session of the browser under its
- * RelayState (S-50), and is carried to the provider by a redirection over HTTP-Redirect or by the page that posts it
- * over HTTP-POST. Which provider an address goes to is the discovery of the login page (issue #785), which sends the
+ * or none, for the login a page of the provider waits for (LoginTarget, S-61), and the entity ID of a provider the
+ * tenant declares, nothing else; the request forces a login when the authorization request of the interaction asks for
+ * a fresh one, or when a page asks it of a browser signed in already (S-49), is remembered in the HTTP session of the
+ * browser under its RelayState with the interaction or the page it serves (S-50), and is carried to the provider by a
+ * redirection over HTTP-Redirect or by the page that posts it over HTTP-POST. Which provider an address goes to is the discovery of the login page (issue #785), which sends the
  * browser here.
  *
  * A deployment that does not enable "beffroi.saml.service_provider" wires no sign-on and answers 404, as the metadata
@@ -58,6 +60,7 @@ final readonly class SamlUpstreamSignOnController
         private SamlPostPage $page,
         private InteractionPages $pages,
         private ClockInterface $clock,
+        private LoginTarget $loginTargets,
         private ?UpstreamSignOn $signOn = null,
     ) {
     }
@@ -69,28 +72,37 @@ final readonly class SamlUpstreamSignOnController
             throw new NotFoundHttpException('This tenant serves no SAML service provider.');
         }
         $tenant = $this->tenants->provide();
-        $interaction = $this->browser->pending($request, $tenant, $request->query->getString(AuthorizationResponder::INTERACTION_PARAMETER));
-        if ($interaction === null) {
-            return $this->responder->unknownInteraction();
-        }
+        $session = $this->browser->authenticationSession($request, $tenant);
         $now = $this->clock->now();
-        try {
-            $interaction->assertResumable($now);
-        } catch (InteractionExpiredException|InteractionCompletedException $exception) {
-            return $this->responder->unresumable($request, $interaction, $exception);
+        $id = $request->query->getString(AuthorizationResponder::INTERACTION_PARAMETER);
+        if ($id === '') {
+            // the login a page of the provider waits for (LoginTarget, S-61): it comes back to that page, and a
+            // person signed in already is asked for a fresh proof, which is all such a page asks of one (S-49)
+            $for = $this->loginTargets->waiting($request->getSession());
+            if ($for === null) {
+                return $this->responder->unknownInteraction();
+            }
+            $forceAuthn = $session instanceof AuthenticationSession;
+        } else {
+            $for = $this->browser->pending($request, $tenant, $id);
+            if ($for === null) {
+                return $this->responder->unknownInteraction();
+            }
+            try {
+                $for->assertResumable($now);
+            } catch (InteractionExpiredException|InteractionCompletedException $exception) {
+                return $this->responder->unresumable($request, $for, $exception);
+            }
+            $forceAuthn = self::forceAuthn($for, $session, $now);
         }
         try {
-            $sent = $this->signOn->start(
-                $tenant,
-                $request->query->getString(ServiceProviderRoutes::IDENTITY_PROVIDER_PARAMETER),
-                self::forceAuthn($interaction, $this->browser->authenticationSession($request, $tenant), $now),
-            );
+            $sent = $this->signOn->start($tenant, $request->query->getString(ServiceProviderRoutes::IDENTITY_PROVIDER_PARAMETER), $forceAuthn);
         } catch (UpstreamSignOnRefusedException $exception) {
             return $this->pages->error(Response::HTTP_BAD_REQUEST, self::REFUSED, $exception->getMessage());
         } catch (KeyNotFoundException $exception) {
             throw new NotFoundHttpException('This tenant serves no SAML service provider.', $exception);
         }
-        $this->signOns->keep($request->getSession(), $tenant, $interaction, $sent);
+        $this->signOns->keep($request->getSession(), $tenant, $for, $sent);
         if ($sent->message instanceof RedirectedMessage) {
             return new RedirectResponse($sent->message->url, Response::HTTP_FOUND, [
                 ...InteractionPages::HEADERS,

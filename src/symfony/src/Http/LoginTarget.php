@@ -39,6 +39,7 @@ final readonly class LoginTarget
 
     public function __construct(
         private InteractionPages $pages,
+        private LoginAddresses $addresses = new LoginAddresses(),
     ) {
     }
 
@@ -67,6 +68,9 @@ final readonly class LoginTarget
                     'kinds' => $stepUp->kinds,
                 ],
         ]);
+        // a login a page asks for begins at the step of the address when the tenant federates a domain (beffroi/saml
+        // S-61), whatever was typed for the login another page asked for before
+        $this->addresses->forget($httpSession, null);
 
         return $this->pages->redirectToRoute(LoginController::ROUTE);
     }
@@ -78,6 +82,18 @@ final readonly class LoginTarget
     public function isPending(SessionInterface $httpSession): bool
     {
         return self::remembered($httpSession) !== null;
+    }
+
+    /**
+     * The page that is waiting for a login, null when none is: what a sign-on at an upstream provider remembers
+     * for the login it serves (beffroi/saml S-50), the step-up it asked for aside, the provider proving what it
+     * proves.
+     */
+    public function waiting(SessionInterface $httpSession): ?WaitingPage
+    {
+        $remembered = self::remembered($httpSession);
+
+        return $remembered === null ? null : new WaitingPage($remembered['route'], $remembered['parameters']);
     }
 
     /**

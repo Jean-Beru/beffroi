@@ -205,6 +205,38 @@
         <source>login.passkey_only</source>
         <target>This provider signs you in with your passkey.</target>
       </trans-unit>
+      <trans-unit id="login.address" resname="login.address">
+        <source>login.address</source>
+        <target>Email address</target>
+      </trans-unit>
+      <trans-unit id="login.continue" resname="login.continue">
+        <source>login.continue</source>
+        <target>Continue</target>
+      </trans-unit>
+      <trans-unit id="login.address_unreadable" resname="login.address_unreadable">
+        <source>login.address_unreadable</source>
+        <target>This address cannot be read. Check it, then try again.</target>
+      </trans-unit>
+      <trans-unit id="login.other_address" resname="login.other_address">
+        <source>login.other_address</source>
+        <target>Use another address</target>
+      </trans-unit>
+      <trans-unit id="account.federated_domain" resname="account.federated_domain">
+        <source>account.federated_domain</source>
+        <target>Your organisation signs you in: no password, passkey or authenticator app of this account signs you in, and none is added to it.</target>
+      </trans-unit>
+      <trans-unit id="passkeys.error.federated_domain" resname="passkeys.error.federated_domain">
+        <source>passkeys.error.federated_domain</source>
+        <target>Your organisation signs you in: no passkey is added to this account.</target>
+      </trans-unit>
+      <trans-unit id="two_factor.error.federated_domain" resname="two_factor.error.federated_domain">
+        <source>two_factor.error.federated_domain</source>
+        <target>Your organisation signs you in: no authenticator app is set up for this account.</target>
+      </trans-unit>
+      <trans-unit id="password.error.federated_domain" resname="password.error.federated_domain">
+        <source>password.error.federated_domain</source>
+        <target>Your organisation signs you in: no password is posed for this account.</target>
+      </trans-unit>
       <trans-unit id="a71d2a8f04" resname="account.title">
         <source>account.title</source>
         <target>Your account</target>

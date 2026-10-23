@@ -882,7 +882,9 @@ const INFECTION_STRICT_FILES = [
     // beffroi/saml, section 9: the upstream identity providers of a tenant, their declaration, their domains, the
     // reading of their metadata and the role the refresh reads them by (S-42 to S-45)
     'src/saml/src/Domain/Upstream/AcceptedUpstreamMetadata.php',
-    'src/saml/src/Domain/Upstream/EmailDomain.php',
+    // the domain of S-44, the core's since S-60, so that the discovery of the login page, the first sign-in and the
+    // refusal of a local credential read it by one rule: held as it was, by the suite of the core
+    'src/core/src/Domain/Identity/EmailDomain.php',
     'src/saml/src/Domain/Upstream/GroupMapping.php',
     'src/saml/src/Domain/Upstream/ProfileAttribute.php',
     'src/saml/src/Domain/Upstream/UpstreamIdentityProvider.php',
@@ -1017,7 +1019,7 @@ function infect(
     #[AsOption(description: 'Mutate only the lines added or modified since --base, committed or not')]
     bool $diff = false,
     #[AsOption(
-        description: 'Mutate the files of INFECTION_STRICT_FILES whole, uncovered lines included, and fail under a hundred percent, whatever --min-msi and --min-covered-msi say, on a coverage of its own: the suites of the SAML packages measured by Xdebug in .ci-tools/coverage-strict',
+        description: 'Mutate the files of INFECTION_STRICT_FILES whole, uncovered lines included, and fail under a hundred percent, whatever --min-msi and --min-covered-msi say, on a coverage of its own: the suites of the SAML packages and of the core measured by Xdebug in .ci-tools/coverage-strict',
     )]
     bool $strict = false,
     #[AsOption(
@@ -1042,9 +1044,9 @@ function infect(
     }
 
     // The XML coverage and the JUnit report of a "castor phpunit" run are what Infection reads from .ci-tools/coverage.
-    // The strict run reads a coverage of its own, the suites of the SAML packages measured by Xdebug: pcov reports no line for a
-    // "continue" statement, so the mutant that turns one into "break" is not covered under it, and the hundred percent
-    // the specifications ask for is out of reach on a line every test of the corpus runs.
+    // The strict run reads a coverage of its own, the suites of the SAML packages and of the core measured by Xdebug:
+    // pcov reports no line for a "continue" statement, so the mutant that turns one into "break" is not covered under
+    // it, and the hundred percent the specifications ask for is out of reach on a line every test of the corpus runs.
     $coverage = $strict ? '.ci-tools/coverage-strict' : '.ci-tools/coverage';
     if ($reuseCoverage) {
         if (! is_file($coverage . '/index.xml') || ! is_file($coverage . '/junit.xml')) {
@@ -1093,8 +1095,9 @@ function infect(
 }
 
 /**
- * The coverage the strict mutation run reads: the suites of the SAML packages alone, measured by Xdebug, which counts a
- * "continue" statement as a line, where pcov does not.
+ * The coverage the strict mutation run reads: the suites of the SAML packages, and the one of the core, which tests the
+ * domain of an address all of them read (spec/saml.md S-60), measured by Xdebug, which counts a "continue" statement as
+ * a line, where pcov does not.
  */
 function strict_coverage(): void
 {
@@ -1110,7 +1113,7 @@ function strict_coverage(): void
             '--configuration',
             '.ci-tools/phpunit.xml.dist',
             '--testsuite',
-            'xml-security,saml2-model,saml2-bindings,saml',
+            'xml-security,saml2-model,saml2-bindings,saml,core',
         ],
         ['XDEBUG_MODE' => 'coverage'],
     );
