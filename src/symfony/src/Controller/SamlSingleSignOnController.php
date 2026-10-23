@@ -11,13 +11,10 @@ use Beffroi\Bundle\Saml\IdentityProviderRoutes;
 use Beffroi\Bundle\Saml\SignOnAnswers;
 use Beffroi\Saml\Application\SingleSignOn\SingleSignOn;
 use Beffroi\Saml\Exception\SignOnRefusedException;
-use function explode;
-use function strtolower;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
-use function trim;
 
 /**
  * The single sign-on service of the SAML identity provider of the tenant (beffroi/saml, spec/saml.md section 6.4),
@@ -30,11 +27,6 @@ use function trim;
 #[AsController]
 final readonly class SamlSingleSignOnController
 {
-    /**
-     * The one body HTTP-POST carries (SAML Bindings §3.5.4).
-     */
-    private const string FORM = 'application/x-www-form-urlencoded';
-
     public function __construct(
         private TenantProvider $tenants,
         private SingleSignOn $singleSignOn,
@@ -50,7 +42,7 @@ final readonly class SamlSingleSignOnController
         $tenant = $this->tenants->provide();
         try {
             if ($request->isMethod(Request::METHOD_POST)) {
-                if (strtolower(trim(explode(';', $request->headers->get('Content-Type') ?? '')[0])) !== self::FORM) {
+                if (! CrossSitePost::isAForm($request)) {
                     return $this->pages->error(
                         Response::HTTP_UNSUPPORTED_MEDIA_TYPE,
                         SignOnAnswers::REFUSED,

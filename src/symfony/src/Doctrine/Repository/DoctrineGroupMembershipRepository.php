@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Doctrine\Repository;
 
+use Beffroi\Core\Application\Group\MembershipAlreadyHeldException;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Core\Domain\Group\GroupMembership;
 use Beffroi\Core\Domain\Identity\User;
@@ -40,9 +42,21 @@ final readonly class DoctrineGroupMembershipRepository extends DoctrineRepositor
         return $memberships;
     }
 
+    /**
+     * The unique constraint on the group and the person is what refuses a membership another sign-in of the same
+     * person wrote between the reading of the memberships and this write (beffroi/saml S-56): the violation becomes
+     * the exception of the core the unit answers, naming nothing. The failed flush closes the manager, which the
+     * registry replaces (EntityManagers).
+     *
+     * @throws MembershipAlreadyHeldException when the table refuses the membership at its unique constraint
+     */
     public function save(GroupMembership $membership): void
     {
-        $this->store($membership);
+        try {
+            $this->store($membership);
+        } catch (UniqueConstraintViolationException $exception) {
+            throw MembershipAlreadyHeldException::writtenMeanwhile($exception);
+        }
     }
 
     public function remove(GroupMembership $membership): void

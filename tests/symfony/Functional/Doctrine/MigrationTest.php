@@ -67,6 +67,7 @@ use Beffroi\Bundle\Migrations\Version20261020153500;
 use Beffroi\Bundle\Migrations\Version20261022120000;
 use Beffroi\Bundle\Migrations\Version20261022150000;
 use Beffroi\Bundle\Migrations\Version20261022180000;
+use Beffroi\Bundle\Migrations\Version20261023120000;
 use function implode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -144,6 +145,7 @@ final class MigrationTest extends DatabaseTestCase
         Version20261022120000::class,
         Version20261022150000::class,
         Version20261022180000::class,
+        Version20261023120000::class,
     ];
 
     #[Test]
@@ -490,6 +492,19 @@ final class MigrationTest extends DatabaseTestCase
                         static fn (string $earlier): string => str_contains($earlier, $matches[1])
                             ? self::renamed($earlier, $matches[2], $matches[3])
                             : $earlier,
+                        $statements,
+                    );
+
+                    continue;
+                }
+                // a table a later migration renames, and the constraint of one, are those the mappings describe,
+                // wherever an earlier statement named them
+                if (
+                    preg_match('/^ALTER TABLE (\S+) RENAME TO (\S+)$/', $statement, $matches) === 1
+                    || preg_match('/^ALTER TABLE \S+ RENAME CONSTRAINT (\S+) TO (\S+)$/', $statement, $matches) === 1
+                ) {
+                    $statements = array_map(
+                        static fn (string $earlier): string => self::renamed($earlier, $matches[1], $matches[2]),
                         $statements,
                     );
 

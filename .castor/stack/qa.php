@@ -898,6 +898,12 @@ const INFECTION_STRICT_FILES = [
     'src/saml/src/Domain/Upstream/SentAuthnRequest.php',
     'src/saml/src/Application/Upstream/UpstreamSignOn.php',
     'src/saml/src/Bridge/Model/ModelAuthnRequestSender.php',
+    // the assertion consumer service (spec/saml.md S-52 to S-59, issue #784)
+    'src/saml/src/Domain/Upstream/VerifiedAssertion.php',
+    'src/saml/src/Domain/Upstream/UpstreamAssertion.php',
+    'src/saml/src/Domain/Upstream/AuthnContextMethods.php',
+    'src/saml/src/Application/Upstream/AssertionConsumerService.php',
+    'src/saml/src/Bridge/Model/ModelResponseReceiver.php',
     // beffroi/saml, section 9: the signature an authentication request needs and its translation to the model's terms
     // (section 6.3).
     'src/saml/src/Domain/ServiceProvider/AuthnRequestSigning.php',
@@ -924,7 +930,7 @@ const INFECTION_STRICT_FILES = [
     'src/saml/src/Domain/SingleLogout/SignOutResponse.php',
     'src/saml/src/Domain/SingleLogout/RedirectedMessage.php',
     'src/saml/src/Domain/SingleLogout/SessionParticipation.php',
-    'src/saml/src/Domain/SingleLogout/RememberedLogoutMessage.php',
+    'src/saml/src/Domain/Replay/RememberedMessage.php',
     'src/saml/src/Domain/Event/ServiceProviderSignedIn.php',
     'src/saml/src/Application/SingleLogout/SingleLogout.php',
     'src/saml/src/Application/SingleLogout/SessionParticipants.php',

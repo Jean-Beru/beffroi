@@ -10,21 +10,17 @@ use Beffroi\Bundle\Http\AuthorizationResponderInterface;
 use Beffroi\Bundle\Http\BrowserSession;
 use Beffroi\Bundle\Http\InteractionPages;
 use Beffroi\Bundle\Http\LoginTarget;
-use Beffroi\Bundle\Saml\SamlPostPage;
+use Beffroi\Bundle\Saml\UpstreamLoginRequirement;
+use Beffroi\Bundle\Saml\UpstreamSignOnAnswer;
 use Beffroi\Bundle\Saml\ServiceProviderRoutes;
 use Beffroi\Bundle\Saml\UpstreamSignOns;
-use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Exception\KeyNotFoundException;
-use Beffroi\Oidc\Domain\Authorization\Prompt;
-use Beffroi\Oidc\Domain\Interaction\Interaction;
 use Beffroi\Oidc\Exception\InteractionCompletedException;
 use Beffroi\Oidc\Exception\InteractionExpiredException;
+use Beffroi\Oidc\Exception\OAuth2Exception;
 use Beffroi\Saml\Application\Upstream\UpstreamSignOn;
-use Beffroi\Saml\Domain\SingleLogout\RedirectedMessage;
 use Beffroi\Saml\Exception\UpstreamSignOnRefusedException;
-use DateTimeImmutable;
 use Psr\Clock\ClockInterface;
-use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -35,11 +31,11 @@ use Symfony\Component\Routing\Attribute\Route;
  * Where an interaction of the browser starts a sign-on at an upstream identity provider of the SAML service provider of
  * the tenant (beffroi/saml, spec/saml.md S-51, section 6.11): an interaction this browser began and can still resume,
  * or none, for the login a page of the provider waits for (LoginTarget, S-61), and the entity ID of a provider the
- * tenant declares, nothing else; the request forces a login when the authorization request of the interaction asks for
- * a fresh one, or when a page asks it of a browser signed in already (S-49), is remembered in the HTTP session of the
- * browser under its RelayState with the interaction or the page it serves (S-50), and is carried to the provider by a
- * redirection over HTTP-Redirect or by the page that posts it over HTTP-POST. Which provider an address goes to is the discovery of the login page (issue #785), which sends the
- * browser here.
+ * tenant declares, nothing else; the request forces a login by the one rule of S-49, read from the rule of the login
+ * page (UpstreamLoginRequirement), is remembered in the HTTP session of the browser under its RelayState with the
+ * interaction or the page it serves (S-50), and is carried to the provider by a redirection over HTTP-Redirect or by the
+ * page that posts it over HTTP-POST. Which provider an address goes to is the discovery of the login page (S-61), which
+ * sends the browser here.
  *
  * A deployment that does not enable "beffroi.saml.service_provider" wires no sign-on and answers 404, as the metadata
  * of the role does (S-41); so does a tenant that holds no SAML key.
@@ -57,10 +53,11 @@ final readonly class SamlUpstreamSignOnController
         private BrowserSession $browser,
         private AuthorizationResponderInterface $responder,
         private UpstreamSignOns $signOns,
-        private SamlPostPage $page,
+        private UpstreamSignOnAnswer $answers,
         private InteractionPages $pages,
         private ClockInterface $clock,
         private LoginTarget $loginTargets,
+        private UpstreamLoginRequirement $requirement,
         private ?UpstreamSignOn $signOn = null,
     ) {
     }
@@ -82,7 +79,7 @@ final readonly class SamlUpstreamSignOnController
             if ($for === null) {
                 return $this->responder->unknownInteraction();
             }
-            $forceAuthn = $session instanceof AuthenticationSession;
+            $forceAuthn = $this->requirement->forcesALogin(null, $session, $now);
         } else {
             $for = $this->browser->pending($request, $tenant, $id);
             if ($for === null) {
@@ -93,7 +90,11 @@ final readonly class SamlUpstreamSignOnController
             } catch (InteractionExpiredException|InteractionCompletedException $exception) {
                 return $this->responder->unresumable($request, $for, $exception);
             }
-            $forceAuthn = self::forceAuthn($for, $session, $now);
+            try {
+                $forceAuthn = $this->requirement->forcesALogin($for, $session, $now);
+            } catch (OAuth2Exception $exception) {
+                return $this->responder->failure($request, $for->request->redirectTarget(), $exception, $for);
+            }
         }
         try {
             $sent = $this->signOn->start($tenant, $request->query->getString(ServiceProviderRoutes::IDENTITY_PROVIDER_PARAMETER), $forceAuthn);
@@ -103,25 +104,7 @@ final readonly class SamlUpstreamSignOnController
             throw new NotFoundHttpException('This tenant serves no SAML service provider.', $exception);
         }
         $this->signOns->keep($request->getSession(), $tenant, $for, $sent);
-        if ($sent->message instanceof RedirectedMessage) {
-            return new RedirectResponse($sent->message->url, Response::HTTP_FOUND, [
-                ...InteractionPages::HEADERS,
-                'Cache-Control' => 'no-cache, no-store',
-                'Pragma' => 'no-cache',
-            ]);
-        }
 
-        return $this->page->signOnRequest($sent->message);
-    }
-
-    /**
-     * S-49: a fresh login when the authorization request asks for one, prompt=login, or a max_age the session the
-     * browser holds exceeds (OIDC Core §3.1.2.1); a browser that holds none exceeds no max_age.
-     */
-    private static function forceAuthn(Interaction $interaction, ?AuthenticationSession $session, DateTimeImmutable $now): bool
-    {
-        $authorization = $interaction->request;
-
-        return $authorization->hasPrompt(Prompt::Login) || $session instanceof AuthenticationSession && $authorization->maxAgeExceededBy($session, $now);
+        return $this->answers->of($sent);
     }
 }

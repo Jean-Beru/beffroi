@@ -10,11 +10,20 @@ use Beffroi\Core\Application\Credential\ActiveCredentials;
 use Beffroi\Core\Application\Credential\ActivePassword;
 use Beffroi\Core\Application\Credential\BreachedPasswordRefusal;
 use Beffroi\Core\Application\Credential\EnrolmentRefusal;
+use Beffroi\Core\Application\Group\MembershipAlreadyHeldException;
+use Beffroi\Core\Application\Group\UpstreamMemberships;
+use Beffroi\Core\Application\Identity\IdentityAlreadyLinkedException;
 use Beffroi\Core\Application\Identity\IdentityLinker;
 use Beffroi\Core\Application\Identity\JustInTimeProvisioning;
 use Beffroi\Core\Application\Identity\UpstreamProvisioningRefusalReason;
 use Beffroi\Core\Application\Identity\UpstreamProvisioningRefusedException;
+use Beffroi\Core\Application\Identity\UserAlreadyExistsException;
 use Beffroi\Core\Application\Identity\UserProvisioner;
+use Beffroi\Core\Bridge\InMemory\InMemoryGroupMembershipRepository;
+use Beffroi\Core\Domain\Group\Group;
+use Beffroi\Core\Domain\Group\GroupMapping;
+use Beffroi\Core\Domain\Group\GroupMembership;
+use Beffroi\Core\Domain\Group\GroupSource;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Beffroi\Core\Bridge\InMemory\InMemoryLinkedIdentityRepository;
 use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
@@ -33,7 +42,9 @@ use Beffroi\Core\Domain\Identity\UserSource;
 use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Port\GroupMembershipRepositoryInterface;
 use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use Beffroi\Core\Port\UuidGeneratorInterface;
 use Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord;
 use Beffroi\Core\Tests\Fixture\Fixtures;
@@ -42,6 +53,7 @@ use Beffroi\Core\Tests\Fixture\WritesAsTheyCome;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
@@ -79,6 +91,8 @@ final class JustInTimeProvisioningTest extends TestCase
 
     private JustInTimeProvisioning $provisioning;
 
+    private InMemoryGroupMembershipRepository $memberships;
+
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
@@ -100,6 +114,7 @@ final class JustInTimeProvisioningTest extends TestCase
             $this->clock,
         );
         $this->linker = new IdentityLinker($this->identities, new SymfonyUuidGenerator(), $this->clock);
+        $this->memberships = new InMemoryGroupMembershipRepository();
         $this->provisioning = $this->provisioningDrawing(new SymfonyUuidGenerator());
     }
 
@@ -664,21 +679,306 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
+     * beffroi/saml S-56, issue #782: the groups the provider asserts are written in the unit of the person, so that
+     * the person and its memberships are kept together or not at all.
+     */
+    #[Test]
+    public function theGroupsTheProviderAssertsAreWrittenInTheUnitOfThePerson(): void
+    {
+        // Given
+        $memberships = new class($this->memberships, $this->writes) implements GroupMembershipRepositoryInterface {
+            /**
+             * @var list<bool> whether each membership was written inside a unit
+             */
+            public private(set) array $inside = [];
+
+            public function __construct(
+                private readonly GroupMembershipRepositoryInterface $stored,
+                private readonly WritesAsTheyCome $writes,
+            ) {
+            }
+
+            public function save(GroupMembership $membership): void
+            {
+                $this->inside[] = $this->writes->open;
+                $this->stored->save($membership);
+            }
+
+            public function remove(GroupMembership $membership): void
+            {
+                $this->stored->remove($membership);
+            }
+        };
+        $provisioning = $this->provisioningDrawing(new SymfonyUuidGenerator(), memberships: $memberships);
+
+        // When
+        $alice = $provisioning->personNamedBy(
+            $this->tenant,
+            $this->provider,
+            self::SUBJECT,
+            new EmailAddress(self::ADDRESS),
+            [],
+            Fixtures::context(),
+            null,
+            $this->members(),
+            ['staff'],
+        );
+
+        // Then
+        static::assertSame([true], $memberships->inside);
+        static::assertSame(1, $this->writes->units);
+        static::assertSame('Staff', $this->memberships->of($alice)[0]->group->name);
+    }
+
+    /**
+     * beffroi/saml S-56: a person whose memberships could not be written is not announced, the event coming once all
+     * of the unit is kept.
+     */
+    #[Test]
+    public function aPersonWhoseGroupsFailToBeWrittenIsNotAnnounced(): void
+    {
+        // Given
+        $memberships = new class implements GroupMembershipRepositoryInterface {
+            public function save(GroupMembership $membership): void
+            {
+                throw new RuntimeException('The membership could not be written.');
+            }
+
+            public function remove(GroupMembership $membership): void
+            {
+            }
+        };
+        $provisioning = $this->provisioningDrawing(new SymfonyUuidGenerator(), memberships: $memberships);
+
+        // When
+        try {
+            $provisioning->personNamedBy(
+                $this->tenant,
+                $this->provider,
+                self::SUBJECT,
+                new EmailAddress(self::ADDRESS),
+                [],
+                Fixtures::context(),
+                null,
+                $this->members(),
+                ['staff'],
+            );
+        } catch (RuntimeException) {
+        }
+
+        // Then
+        static::assertSame([], $this->events->of(PersonProvisioned::class));
+    }
+
+    /**
+     * beffroi/saml S-45, S-56: a telephone number the provider says is written unverified, being never verified by
+     * being filled, and held by the source of the person as a claim it fills.
+     */
+    #[Test]
+    public function theTelephoneNumberTheProviderSaysIsWrittenUnverifiedAndHeld(): void
+    {
+        // When
+        $alice = $this->provisioning->personNamedBy(
+            $this->tenant,
+            $this->provider,
+            self::SUBJECT,
+            new EmailAddress(self::ADDRESS),
+            [],
+            Fixtures::context(),
+            '+33 1 23 45 67 89',
+        );
+
+        // Then
+        static::assertSame(['+33 1 23 45 67 89', false, true], [$alice->phoneNumber, $alice->phoneNumberVerified, $alice->source->holds('phone_number')]);
+    }
+
+    /**
+     * beffroi/saml S-56: a telephone number the provider no longer says is released to a manual description, with the
+     * value it wrote last, as a claim of the profile is.
+     */
+    #[Test]
+    public function aTelephoneNumberTheProviderNoLongerSaysIsReleased(): void
+    {
+        // Given
+        $this->provisioning->personNamedBy(
+            $this->tenant,
+            $this->provider,
+            self::SUBJECT,
+            new EmailAddress(self::ADDRESS),
+            [],
+            Fixtures::context(),
+            '+33 1 23 45 67 89',
+        );
+
+        // When
+        $alice = $this->provisioning->personNamedBy($this->tenant, $this->provider, self::SUBJECT, new EmailAddress(self::ADDRESS), [], Fixtures::context());
+
+        // Then
+        static::assertSame(['+33 1 23 45 67 89', false], [$alice->phoneNumber, $alice->source->holds('phone_number')]);
+    }
+
+    /**
+     * beffroi/saml S-56: a first sign-in that loses a race at the store, the person or its linked identity written by
+     * another sign-in between the checks and the unit, is refused as the collision the linker sees is, without what
+     * the store said of whom.
+     */
+    #[Test]
+    #[DataProvider('provideRacesLostAtTheStore')]
+    public function aFirstSignInThatLosesARaceAtTheStoreIsRefused(bool $atTheLinkedIdentity): void
+    {
+        // Given
+        $violation = new RuntimeException('The unique constraint refused the row.');
+        $identities = new readonly class($this->identities, $atTheLinkedIdentity, $violation) implements LinkedIdentityRepositoryInterface {
+            public function __construct(
+                private LinkedIdentityRepositoryInterface $stored,
+                private bool $refuses,
+                private RuntimeException $violation,
+            ) {
+            }
+
+            public function find(Tenant $tenant, string $provider, string $subject): ?LinkedIdentity
+            {
+                return $this->stored->find($tenant, $provider, $subject);
+            }
+
+            public function save(LinkedIdentity $identity): void
+            {
+                if ($this->refuses) {
+                    throw IdentityAlreadyLinkedException::linkedMeanwhile($this->violation);
+                }
+                $this->stored->save($identity);
+            }
+        };
+        $users = new readonly class($this->users, ! $atTheLinkedIdentity, $violation) implements UserRepositoryInterface {
+            public function __construct(
+                private InMemoryUserRepository $stored,
+                private bool $refuses,
+                private RuntimeException $violation,
+            ) {
+            }
+
+            public function find(Uuid $id): ?User
+            {
+                return $this->stored->find($id);
+            }
+
+            public function findBySubject(Tenant $tenant, Subject $subject): ?User
+            {
+                return $this->stored->findBySubject($tenant, $subject);
+            }
+
+            public function findByUsername(Tenant $tenant, string $username): ?User
+            {
+                return $this->stored->findByUsername($tenant, $username);
+            }
+
+            public function findAllByEmail(Tenant $tenant, EmailAddress $email): array
+            {
+                return $this->stored->findAllByEmail($tenant, $email);
+            }
+
+            public function save(User $user): void
+            {
+                if ($this->refuses) {
+                    throw UserAlreadyExistsException::writtenMeanwhile($this->violation);
+                }
+                $this->stored->save($user);
+            }
+        };
+        $this->linker = new IdentityLinker($identities, new SymfonyUuidGenerator(), $this->clock);
+        $provisioning = $this->provisioningDrawing(new SymfonyUuidGenerator(), $identities, users: $users);
+
+        // When
+        try {
+            $provisioning->personNamedBy($this->tenant, $this->provider, self::SUBJECT, new EmailAddress(self::ADDRESS), [], Fixtures::context());
+            static::fail('The sign-in was not refused.');
+        } catch (UpstreamProvisioningRefusedException $refusal) {
+            // Then
+            static::assertSame([UpstreamProvisioningRefusalReason::IdentityLinkedMeanwhile, null], [$refusal->reason, $refusal->getPrevious()]);
+        }
+    }
+
+    /**
+     * beffroi/saml S-56: a sign-in of a person that loses a race on a membership, another sign-in of the same person
+     * having given it the same group meanwhile, is refused, the store refusing the second membership.
+     */
+    #[Test]
+    public function aSignInThatLosesARaceOnAMembershipIsRefused(): void
+    {
+        // Given
+        $this->provisioning->personNamedBy($this->tenant, $this->provider, self::SUBJECT, new EmailAddress(self::ADDRESS), [], Fixtures::context());
+        $memberships = new class implements GroupMembershipRepositoryInterface {
+            public function save(GroupMembership $membership): void
+            {
+                throw MembershipAlreadyHeldException::writtenMeanwhile(new RuntimeException('The unique constraint refused the row.'));
+            }
+
+            public function remove(GroupMembership $membership): void
+            {
+            }
+        };
+        $provisioning = $this->provisioningDrawing(new SymfonyUuidGenerator(), memberships: $memberships);
+
+        // When
+        try {
+            $provisioning->personNamedBy(
+                $this->tenant,
+                $this->provider,
+                self::SUBJECT,
+                new EmailAddress(self::ADDRESS),
+                [],
+                Fixtures::context(),
+                null,
+                $this->members(),
+                ['staff'],
+            );
+            static::fail('The sign-in was not refused.');
+        } catch (UpstreamProvisioningRefusedException $refusal) {
+            // Then
+            static::assertSame([UpstreamProvisioningRefusalReason::MembershipWrittenMeanwhile, null], [$refusal->reason, $refusal->getPrevious()]);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{bool}>
+     */
+    public static function provideRacesLostAtTheStore(): iterable
+    {
+        yield 'the linked identity' => [true];
+        yield 'the person' => [false];
+    }
+
+    /**
      * The use case on the adapters of the suite, the subject of a person it creates drawn from those
      * identifiers, and what it looks a linked identity up in, when a test says it.
      */
-    private function provisioningDrawing(UuidGeneratorInterface $uuids, ?LinkedIdentityRepositoryInterface $identities = null): JustInTimeProvisioning
-    {
+    private function provisioningDrawing(
+        UuidGeneratorInterface $uuids,
+        ?LinkedIdentityRepositoryInterface $identities = null,
+        ?GroupMembershipRepositoryInterface $memberships = null,
+        ?UserRepositoryInterface $users = null,
+    ): JustInTimeProvisioning {
         return new JustInTimeProvisioning(
             $identities ?? $this->identities,
-            $this->users,
+            $users ?? $this->users,
             $this->provisioner,
             $this->linker,
             $this->events,
             $this->clock,
             $this->writes,
             $uuids,
+            new UpstreamMemberships($this->memberships, $memberships ?? $this->memberships, new SymfonyUuidGenerator(), $this->clock),
         );
+    }
+
+    /**
+     * The groups of the tenant the provider of the suite asserts, by the values it sends.
+     */
+    private function members(): GroupMapping
+    {
+        return new GroupMapping([
+            'staff' => new Group(Uuid::v7(), $this->tenant, 'Staff', GroupSource::Local, Fixtures::now()),
+        ]);
     }
 
     /**

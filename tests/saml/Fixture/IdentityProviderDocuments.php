@@ -48,6 +48,16 @@ final readonly class IdentityProviderDocuments
         return __DIR__ . '/metadata/simplesamlphp-2.5.3.1-idp-metadata-https.xml';
     }
 
+    /**
+     * The document of the entity SIGNED as a file of the fixtures, its single sign-on service at SIGNED/sso on
+     * HTTP-Redirect, the test key of an identity provider of saml2-model for signing: what signingOnAt() writes for
+     * that service, kept so that a deployment of the tests declares it (config_test_service_provider.yml).
+     */
+    public static function signedPath(): string
+    {
+        return __DIR__ . '/metadata/signed-idp-metadata.xml';
+    }
+
     public static function simpleSamlPhp(): string
     {
         return (string) file_get_contents(self::path());

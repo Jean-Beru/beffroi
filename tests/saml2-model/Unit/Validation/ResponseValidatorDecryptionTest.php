@@ -58,7 +58,43 @@ final class ResponseValidatorDecryptionTest extends TestCase
         $accepted = $this->validator()->validate($response, self::identityProvider()->withDecryptionKey(self::decryptionKey()), self::expected());
 
         // Then
-        static::assertEquals($clear, $accepted);
+        static::assertEquals(
+            [$clear->responseId, $clear->assertion, $clear->coverage],
+            [$accepted->responseId, $accepted->assertion, $accepted->coverage],
+        );
+    }
+
+    /**
+     * §9.3 row 26, M-18, section 6.1 step 14: an assertion the model decrypted is said to have arrived encrypted, which the
+     * consumer that requires a provider to encrypt reads (saml.md S-67).
+     */
+    #[Test]
+    public function itSaysAnAssertionItDecryptedArrivedEncrypted(): void
+    {
+        // Given
+        $response = $this->unverified('encrypted/response-encrypted-signed-assertion-accepted.xml');
+
+        // When
+        $accepted = $this->validator()->validate($response, self::identityProvider()->withDecryptionKey(self::decryptionKey()), self::expected());
+
+        // Then
+        static::assertTrue($accepted->encrypted);
+    }
+
+    /**
+     * §9.3 row 26, M-18: the same assertion in clear is said to have arrived in clear, whoever signed it.
+     */
+    #[Test]
+    public function itSaysAnAssertionInClearArrivedInClear(): void
+    {
+        // Given
+        $response = $this->unverified('behaviour/response-signed-assertion-accepted.xml');
+
+        // When
+        $accepted = $this->validator()->validate($response, self::identityProvider()->withDecryptionKey(self::decryptionKey()), self::expected());
+
+        // Then
+        static::assertFalse($accepted->encrypted);
     }
 
     /**

@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
-use Beffroi\Bundle\Doctrine\Repository\DoctrineLogoutReplayStore;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineReplayStore;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * beffroi/saml, spec/saml.md S-23, model.md M-11: the store of the logout messages the model accepted forgets a message
+ * beffroi/saml, spec/saml.md S-23, model.md M-11: the store of the assertions and of the logout messages the model accepted forgets a message
  * once the window in which the model would accept it again has closed, the rows past it deleted before each insertion,
  * and never one whose window is still open.
  */
-final class DoctrineLogoutReplayStoreTest extends DatabaseTestCase
+final class DoctrineReplayStoreTest extends DatabaseTestCase
 {
     private const string ISSUER = 'https://sp.example.org/saml';
 
@@ -70,8 +70,8 @@ final class DoctrineLogoutReplayStoreTest extends DatabaseTestCase
         return self::now()->modify('+480 seconds');
     }
 
-    private function store(): DoctrineLogoutReplayStore
+    private function store(): DoctrineReplayStore
     {
-        return new DoctrineLogoutReplayStore(self::managers(), $this->clock);
+        return new DoctrineReplayStore(self::managers(), $this->clock);
     }
 }

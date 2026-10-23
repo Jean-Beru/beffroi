@@ -16,10 +16,19 @@ final class WritesAsTheyCome implements AtomicWritesInterface
 {
     public private(set) int $units = 0;
 
+    /**
+     * Whether a unit is running, which a store of the suite reads to say a write was made inside one.
+     */
+    public private(set) bool $open = false;
+
     public function atomically(Closure $writes): mixed
     {
         ++$this->units;
-
-        return $writes();
+        $this->open = true;
+        try {
+            return $writes();
+        } finally {
+            $this->open = false;
+        }
     }
 }

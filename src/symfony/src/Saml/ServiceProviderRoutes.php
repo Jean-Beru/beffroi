@@ -6,9 +6,9 @@ namespace Beffroi\Bundle\Saml;
 
 /**
  * The routes of the SAML service provider of a tenant, their names and their paths under the prefix the bundle is
- * mounted at, which is the path of the issuer (spec/saml.md sections 5.6 and 5.8). The metadata names two of them and
- * one is served today: the assertion consumer service is issue #784's, whose controller takes its route from here, so
- * that what the metadata announced is where it answers (S-39). The third, named by no metadata, is where an interaction
+ * mounted at, which is the path of the issuer (spec/saml.md sections 5.6, 5.8 and 5.10). The metadata names two of
+ * them: the assertion consumer service, whose controller takes its route from here and whose URL the router generates
+ * for the metadata, so that what the metadata announce is where it answers (S-39, S-52). The third, named by no metadata, is where an interaction
  * of the browser starts a sign-on at an upstream identity provider (S-51); the fourth serves the metadata given to one
  * upstream identity provider, its certificates for encryption among them (S-65).
  *

@@ -8,12 +8,14 @@ use Beffroi\Core\Application\Credential\ActiveCredentials;
 use Beffroi\Core\Application\Credential\ActivePassword;
 use Beffroi\Core\Application\Credential\BreachedPasswordRefusal;
 use Beffroi\Core\Application\Credential\EnrolmentRefusal;
+use Beffroi\Core\Application\Group\UpstreamMemberships;
 use Beffroi\Core\Application\Identity\FederatedDomains;
 use Beffroi\Core\Application\Identity\IdentityLinker;
 use Beffroi\Core\Application\Identity\JustInTimeProvisioning;
 use Beffroi\Core\Application\Identity\UpstreamProvisioningRefusedException;
 use Beffroi\Core\Application\Identity\UserProvisioner;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Bridge\InMemory\InMemoryGroupMembershipRepository;
 use Beffroi\Core\Bridge\InMemory\InMemoryLinkedIdentityRepository;
 use Beffroi\Core\Bridge\InMemory\InMemoryUpstreamProviders;
 use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
@@ -105,6 +107,7 @@ final class OneDomainRuleTest extends TestCase
             $clock,
             new WritesAsTheyCome(),
             new SymfonyUuidGenerator(),
+            new UpstreamMemberships(new InMemoryGroupMembershipRepository(), new InMemoryGroupMembershipRepository(), new SymfonyUuidGenerator(), $clock),
         );
     }
 

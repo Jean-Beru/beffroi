@@ -179,6 +179,7 @@ use Beffroi\Bundle\Security\LoginFailureListener;
 use Beffroi\Bundle\Security\LoginSuccessListener;
 use Beffroi\Bundle\Security\PasskeyLogin;
 use Beffroi\Bundle\Security\PasskeyLoginAuthenticator;
+use Beffroi\Bundle\Security\UpstreamAssertionAuthenticator;
 use Beffroi\Bundle\Security\PasswordLoginAuthenticator;
 use Beffroi\Bundle\Security\PassportProofs;
 use Beffroi\Bundle\Security\PwnedPasswords;
@@ -259,6 +260,7 @@ use Beffroi\Core\Application\Credential\CredentialRevocation;
 use Beffroi\Core\Application\Group\GroupProvisioner;
 use Beffroi\Core\Application\Group\UpstreamMemberships;
 use Beffroi\Core\Application\Identity\IdentityLinker;
+use Beffroi\Core\Application\Identity\JustInTimeProvisioning;
 use Beffroi\Core\Application\Identity\UserProvisioner;
 use Beffroi\Core\Application\Key\KeyRetirement;
 use Beffroi\Core\Application\Key\KeyStaging;
@@ -303,6 +305,8 @@ use Beffroi\Saml\Bridge\Model\ModelAuthnRequestReceiver;
 use Beffroi\Saml\Bridge\Model\DeclaredServiceProviderReader;
 use Beffroi\Saml\Bridge\Model\ModelAuthnRequestSender;
 use Beffroi\Saml\Port\AuthnRequestSenderInterface;
+use Beffroi\Bundle\Saml\UpstreamLoginRequirement;
+use Beffroi\Bundle\Saml\UpstreamSignOnAnswer;
 use Beffroi\Bundle\Saml\UpstreamSignOns;
 use Beffroi\Saml\Bridge\Model\ModelLogoutMessageReceiver;
 use Beffroi\Saml\Bridge\Model\ModelSignOutNotifier;
@@ -313,13 +317,13 @@ use Beffroi\Saml\Domain\Key\SamlEncryptionAlgorithmInterface;
 use Beffroi\Saml\Application\SingleLogout\ProviderLogout;
 use Beffroi\Saml\Application\SingleLogout\SessionParticipants;
 use Beffroi\Saml\Application\SingleLogout\SingleLogout;
-use Beffroi\Saml\Port\LogoutReplayStoreInterface;
+use Beffroi\Saml\Port\ReplayStoreInterface;
 use Beffroi\Saml\Port\LogoutChainRepositoryInterface;
 use Beffroi\Saml\Port\LogoutMessageReceiverInterface;
 use Beffroi\Saml\Port\SignOutNotifierInterface;
 use Beffroi\Saml\Port\SessionParticipationRepositoryInterface;
 use Beffroi\Saml\Port\SignOutResponderInterface;
-use Beffroi\Bundle\Doctrine\Repository\DoctrineLogoutReplayStore;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineReplayStore;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineSessionParticipationRepository;
 use Beffroi\Saml\Bridge\Model\ModelSignOnResponder;
 use Beffroi\Saml\Port\AuthnRequestReceiverInterface;
@@ -1068,6 +1072,9 @@ return static function (ContainerConfigurator $container): void {
     // a password of a user who holds a second factor is held until the code, verified by the third authenticator of the firewall
     $services->set(SecondFactorGate::class);
     $services->set(TotpLoginAuthenticator::class);
+    // the assertion consumer service of the SAML service provider of the tenant, a fourth login of the firewall
+    // (beffroi/saml S-52); its use case and its login are wired by the SAML section when the service provider is enabled
+    $services->set(UpstreamAssertionAuthenticator::class);
     // what the logins of the firewall prove, read by the listener and announced by the discovery (decision 0010):
     // one class per login, and what is tagged is what the provider announces
     // "beffroi.login" is every login; "beffroi.login.refusal" is those whose refusals the listener
@@ -1464,6 +1471,9 @@ return static function (ContainerConfigurator $container): void {
     // Decision 0002: the memberships a sign-in through an upstream provider asserts, mapped to the groups of
     // the tenant by the declaration of that provider, which the caller hands over (issue #782)
     $services->set(UpstreamMemberships::class);
+    // Decision 0002: the person an upstream provider names at a sign-in through it, created at the first one, its
+    // groups and its telephone number written in the same unit (beffroi/saml S-56)
+    $services->set(JustInTimeProvisioning::class);
     $services->set(GroupProvisioner::class);
     // Decision 0029: the e-mail domains of a tenant federated to an upstream provider, read by the one rule of the
     // core (EmailDomain), where the login page sends an address of one and whom no local credential signs in; the
@@ -2050,13 +2060,17 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ModelAuthnRequestSender::class)->arg('$accepted', service('beffroi.saml.identity_providers.accepted_metadata'));
     $services->alias(AuthnRequestSenderInterface::class, ModelAuthnRequestSender::class);
     $services->set(UpstreamSignOns::class);
+    $services->set(UpstreamSignOnAnswer::class);
+    // beffroi/saml: what a login at an upstream identity provider is asked, read from the rule of the login page,
+    // whether its request forces a login and what the client still asks once the provider answered (S-49, S-58)
+    $services->set(UpstreamLoginRequirement::class);
     // beffroi/saml: Single Logout started by a service provider (spec/saml.md section 6.5), a request received over
     // either binding, validated by the model and remembered in a store every worker shares, written atomically (S-23);
     // the sessions it names ended by the core as every session ends (S-25) and the answer signed by the SAML key of
     // the tenant (S-27); each service provider's part in a session recorded from the event single sign-on announces,
     // on the lane of the events (S-26)
-    $services->set(DoctrineLogoutReplayStore::class);
-    $services->alias(LogoutReplayStoreInterface::class, DoctrineLogoutReplayStore::class);
+    $services->set(DoctrineReplayStore::class);
+    $services->alias(ReplayStoreInterface::class, DoctrineReplayStore::class);
     $services->set(ModelLogoutMessageReceiver::class);
     $services->alias(LogoutMessageReceiverInterface::class, ModelLogoutMessageReceiver::class);
     $services->set(ModelSignOutResponder::class);
