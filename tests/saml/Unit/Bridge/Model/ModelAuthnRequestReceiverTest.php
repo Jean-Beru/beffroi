@@ -10,7 +10,7 @@ use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use Beffroi\Saml\Bridge\Model\DeclaredServiceProviderReader;
 use Beffroi\Saml\Bridge\Model\ModelAuthnRequestReceiver;
 use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataReader;
-use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
 use Beffroi\Saml\Domain\SingleSignOn\SignOnRequest;
 use Beffroi\Saml\Exception\SignOnRefusedException;
 use Beffroi\Saml\Tests\Fixture\FixedClaims;
@@ -55,7 +55,7 @@ final class ModelAuthnRequestReceiverTest extends TestCase
         $this->tenant = Fixtures::tenant('acme', self::ISSUER);
         $this->accepted = new InMemoryAcceptedMetadata();
         $this->clock = new MockClock(Fixtures::now());
-        $this->accepted->save(new AcceptedMetadata(
+        $this->accepted->save(new AcceptedServiceProviderMetadata(
             Uuid::v7(),
             $this->tenant,
             ServiceProviderDocuments::SIGNED,
@@ -209,7 +209,7 @@ final class ModelAuthnRequestReceiverTest extends TestCase
     public function anAcceptedDocumentRefusedNowIsRefused(): void
     {
         // Given
-        $this->accepted->save(new AcceptedMetadata(
+        $this->accepted->save(new AcceptedServiceProviderMetadata(
             Uuid::v7(),
             $this->tenant,
             ServiceProviderDocuments::SIGNED,

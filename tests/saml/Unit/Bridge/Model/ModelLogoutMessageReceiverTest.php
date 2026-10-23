@@ -11,7 +11,7 @@ use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use Beffroi\Saml\Bridge\Model\DeclaredServiceProviderReader;
 use Beffroi\Saml\Bridge\Model\ModelLogoutMessageReceiver;
 use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataReader;
-use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
 use Beffroi\Saml\Domain\SingleLogout\LogoutChain;
 use Beffroi\Saml\Domain\SingleLogout\LogoutChainSecret;
 use Beffroi\Saml\Domain\SingleLogout\LogoutProgress;
@@ -562,7 +562,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
      */
     private function accept(array $singleLogoutServices): void
     {
-        $this->accepted->save(new AcceptedMetadata(
+        $this->accepted->save(new AcceptedServiceProviderMetadata(
             Uuid::v7(),
             $this->tenant,
             ServiceProviderDocuments::SIGNED,

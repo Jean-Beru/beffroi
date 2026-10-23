@@ -6,12 +6,13 @@ namespace Beffroi\Bundle\Saml;
 
 /**
  * The routes of the SAML service provider of a tenant, their names and their paths under the prefix the bundle is
- * mounted at, which is the path of the issuer (spec/saml.md section 5.6). The metadata names both and one is served
- * today: the assertion consumer service is issue #784's, whose controller takes its route from here, so that what the
- * metadata announced is where it answers (S-39).
+ * mounted at, which is the path of the issuer (spec/saml.md sections 5.6 and 5.8). The metadata names two of them and
+ * one is served today: the assertion consumer service is issue #784's, whose controller takes its route from here, so
+ * that what the metadata announced is where it answers (S-39). The third, named by no metadata, is where an interaction
+ * of the browser starts a sign-on at an upstream identity provider (S-51).
  *
  * The metadata is read server to server, the protocol plane; the assertion consumer service is where the browser posts
- * a response, the plane of the interactions (architecture §5.2).
+ * a response, and the sign-on where it is sent from an interaction, the plane of the interactions (architecture §5.2).
  */
 final class ServiceProviderRoutes
 {
@@ -22,6 +23,19 @@ final class ServiceProviderRoutes
     public const string ASSERTION_CONSUMER_SERVICE = 'beffroi_interaction_saml_assertion_consumer_service';
 
     public const string ASSERTION_CONSUMER_SERVICE_PATH = '/saml/sp/acs';
+
+    /**
+     * Where an interaction of the browser starts a sign-on at an upstream identity provider (spec/saml.md S-51).
+     */
+    public const string UPSTREAM_SIGN_ON = 'beffroi_interaction_saml_upstream_sign_on';
+
+    public const string UPSTREAM_SIGN_ON_PATH = '/saml/sp/sign-on';
+
+    /**
+     * The parameter of that route that names the provider, its entity ID; the interaction is named as on every page of
+     * an interaction (AuthorizationResponder::INTERACTION_PARAMETER).
+     */
+    public const string IDENTITY_PROVIDER_PARAMETER = 'identity_provider';
 
     private function __construct()
     {

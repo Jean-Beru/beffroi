@@ -10,7 +10,7 @@ use Beffroi\Bundle\Message\ForgetTheChangesPastTheirRetention;
 use Beffroi\Bundle\Message\ForgetTheExpiredArchives;
 use Beffroi\Bundle\Message\ForgetTheRecordsThatAreDead;
 use Beffroi\Bundle\Message\RefreshTheAddressDatabases;
-use Beffroi\Bundle\Message\RefreshTheServiceProviderMetadata;
+use Beffroi\Bundle\Message\RefreshTheSamlMetadata;
 use Beffroi\Bundle\Message\RemoveUnusedClients;
 use Symfony\Component\Scheduler\Attribute\AsSchedule;
 use Symfony\Component\Scheduler\RecurringMessage;
@@ -82,13 +82,13 @@ final readonly class BeffroiSchedule implements ScheduleProviderInterface
     public const string DEAD_RECORDS_EVERY = '1 hour';
 
     /**
-     * What the metadata of the service providers are worth waiting for (beffroi/saml, spec/saml.md section 6.2): a
-     * service provider that publishes a new key publishes it ahead of using it, and an hour is short enough that it is
-     * read before then, long enough that a deployment with nothing new costs one request per service provider and no
-     * write. `cacheDuration` is not read: how long to keep a document is this provider's to say (model.md section
+     * What the metadata of the SAML peers are worth waiting for, the service providers and the upstream identity
+     * providers (beffroi/saml, spec/saml.md sections 6.2 and 6.10): a peer that publishes a new key publishes it ahead
+     * of using it, and an hour is short enough that it is read before then, long enough that a deployment with nothing
+     * new costs one request per peer and no write. `cacheDuration` is not read: how long to keep a document is this provider's to say (model.md section
      * 6.5 step 3), and a document refused leaves the accepted one serving until its own validUntil.
      */
-    public const string SERVICE_PROVIDER_METADATA_EVERY = '1 hour';
+    public const string SAML_METADATA_EVERY = '1 hour';
 
     public function getSchedule(): Schedule
     {
@@ -116,8 +116,8 @@ final readonly class BeffroiSchedule implements ScheduleProviderInterface
                 new ForgetTheRecordsThatAreDead(),
             ))
             ->add(RecurringMessage::every(
-                self::SERVICE_PROVIDER_METADATA_EVERY,
-                new RefreshTheServiceProviderMetadata(),
+                self::SAML_METADATA_EVERY,
+                new RefreshTheSamlMetadata(),
             ));
     }
 }

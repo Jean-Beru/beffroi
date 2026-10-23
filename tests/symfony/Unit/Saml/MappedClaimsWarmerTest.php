@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Tests\Unit\Saml;
 
 use Beffroi\Bundle\Saml\MappedClaimsWarmer;
+use Beffroi\Saml\Port\ProfileClaimsInterface;
 use Beffroi\Saml\Port\ServedClaimsInterface;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -12,7 +13,9 @@ use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
 /**
  * Spec/saml.md S-16, section 6.2 step 1: the claim of each mapping of the declarations the compilation built, checked
- * against the claims the provider serves right after the compilation, in the same build.
+ * against the claims the provider serves right after the compilation, in the same build; S-45, section 6.10 step 1:
+ * the claim each attribute of the profile of an upstream identity provider fills, checked against the claims the
+ * profile holds.
  */
 final class MappedClaimsWarmerTest extends TestCase
 {
@@ -28,7 +31,7 @@ final class MappedClaimsWarmerTest extends TestCase
     public function aMappingOfAClaimTheProviderDoesNotServeFailsTheBuild(): void
     {
         // Given
-        $warmer = new MappedClaimsWarmer(self::mapping('a_claim_no_provider_serves'), self::served(['sub', 'email']));
+        $warmer = new MappedClaimsWarmer(self::mapping('a_claim_no_provider_serves'), self::served(['sub', 'email']), self::profile([]));
 
         // Then
         $this->expectException(InvalidConfigurationException::class);
@@ -48,7 +51,7 @@ final class MappedClaimsWarmerTest extends TestCase
     public function aMappingOfAClaimTheProviderServesBuilds(): void
     {
         // Given
-        $warmer = new MappedClaimsWarmer(self::mapping('email'), self::served(['sub', 'email']));
+        $warmer = new MappedClaimsWarmer(self::mapping('email'), self::served(['sub', 'email']), self::profile([]));
 
         // When / Then
         static::assertSame([], $warmer->warmUp(self::CACHE_DIRECTORY));
@@ -62,7 +65,7 @@ final class MappedClaimsWarmerTest extends TestCase
     public function itIsNotOptional(): void
     {
         // Given
-        $warmer = new MappedClaimsWarmer([], self::served([]));
+        $warmer = new MappedClaimsWarmer([], self::served([]), self::profile([]));
 
         // When / Then
         static::assertFalse($warmer->isOptional());
@@ -77,13 +80,94 @@ final class MappedClaimsWarmerTest extends TestCase
         // Given
         $claims = $this->createMock(ServedClaimsInterface::class);
         $claims->expects(static::never())->method('names');
-        $warmer = new MappedClaimsWarmer([], $claims);
+        $warmer = new MappedClaimsWarmer([], $claims, self::profile([]));
 
         // When
         $preloaded = $warmer->warmUp(self::CACHE_DIRECTORY);
 
         // Then
         static::assertSame([], $preloaded);
+    }
+
+    /**
+     * S-45, section 6.10 step 1: an attribute of an upstream identity provider filling a claim the profile of a
+     * person does not hold fails the build, naming the key of the configuration, the identity provider, the attribute
+     * and the claim.
+     */
+    #[Test]
+    public function anAttributeFillingAClaimTheProfileDoesNotHoldFailsTheBuild(): void
+    {
+        // Given
+        $warmer = new MappedClaimsWarmer([], self::served([]), self::profile(['given_name']), self::filling('email'));
+
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIs('Invalid configuration for path "beffroi.saml.identity_providers": The identity provider "https://idp.example.com/saml": '
+        . 'the attribute "givenName" fills the claim "email", which the profile of a person does not hold in this deployment (spec/saml.md S-45).');
+
+        // When
+        $warmer->warmUp(self::CACHE_DIRECTORY);
+    }
+
+    /**
+     * S-45, section 6.10 step 1: an attribute of an upstream identity provider filling a claim the profile holds
+     * builds.
+     */
+    #[Test]
+    public function anAttributeFillingAClaimTheProfileHoldsBuilds(): void
+    {
+        // Given
+        $warmer = new MappedClaimsWarmer([], self::served([]), self::profile(['given_name']), self::filling('given_name'));
+
+        // When / Then
+        static::assertSame([], $warmer->warmUp(self::CACHE_DIRECTORY));
+    }
+
+    /**
+     * Section 6.10 step 1: a deployment that declares no upstream identity provider asks nothing of the claims of the
+     * profile.
+     */
+    #[Test]
+    public function noUpstreamDeclarationAsksNothingOfTheProfile(): void
+    {
+        // Given
+        $profile = $this->createMock(ProfileClaimsInterface::class);
+        $profile->expects(static::never())->method('names');
+        $warmer = new MappedClaimsWarmer([], self::served([]), $profile);
+
+        // When
+        $preloaded = $warmer->warmUp(self::CACHE_DIRECTORY);
+
+        // Then
+        static::assertSame([], $preloaded);
+    }
+
+    /**
+     * A declaration of an upstream identity provider whose one attribute fills that claim.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private static function filling(string $claim): array
+    {
+        return [
+            'https://idp.example.com/saml' => [
+                'metadata' => '/srv/saml/idp-metadata.xml',
+                'domains' => ['example.com'],
+                'email_attribute' => 'mail',
+                'profile' => ['givenName' => $claim],
+            ],
+        ];
+    }
+
+    /**
+     * @param list<string> $names
+     */
+    private static function profile(array $names): ProfileClaimsInterface
+    {
+        $claims = static::createStub(ProfileClaimsInterface::class);
+        $claims->method('names')->willReturn($names);
+
+        return $claims;
     }
 
     /**

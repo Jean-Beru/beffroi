@@ -294,6 +294,9 @@ use Beffroi\Saml\Application\SingleSignOn\AttributeRelease;
 use Beffroi\Saml\Application\SingleSignOn\SingleSignOn;
 use Beffroi\Saml\Bridge\Model\ModelAuthnRequestReceiver;
 use Beffroi\Saml\Bridge\Model\DeclaredServiceProviderReader;
+use Beffroi\Saml\Bridge\Model\ModelAuthnRequestSender;
+use Beffroi\Saml\Port\AuthnRequestSenderInterface;
+use Beffroi\Bundle\Saml\UpstreamSignOns;
 use Beffroi\Saml\Bridge\Model\ModelLogoutMessageReceiver;
 use Beffroi\Saml\Bridge\Model\ModelSignOutNotifier;
 use Beffroi\Saml\Bridge\Model\ModelSignOutResponder;
@@ -328,12 +331,27 @@ use Beffroi\Saml\Port\MetadataWriterInterface;
 use Beffroi\Saml\Port\ServiceProviderMetadataWriterInterface;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineAcceptedMetadataRepository;
 use Beffroi\Bundle\Saml\MetadataFetcher;
-use Beffroi\Saml\Application\ServiceProvider\ServiceProviderMetadataRefresh;
+use Beffroi\Saml\Application\Metadata\MetadataRefresh;
+use Beffroi\Saml\Application\ServiceProvider\ServiceProviderRole;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
+use Beffroi\Bundle\Command\SamlServiceProviderRefreshCommand;
+use Beffroi\Bundle\Command\SamlServiceProviderForgetCommand;
+use Beffroi\Bundle\MessageHandler\RefreshTheSamlMetadataHandler;
+use Beffroi\Bundle\Command\SamlIdentityProviderRefreshCommand;
+use Beffroi\Bundle\Command\SamlIdentityProviderForgetCommand;
+use Beffroi\Bundle\Saml\WiredProfileClaims;
+use Beffroi\Saml\Application\Upstream\UpstreamIdentityProviderRole;
+use Beffroi\Saml\Bridge\Configuration\ConfigurationUpstreamIdentityProviders;
+use Beffroi\Saml\Bridge\Model\ModelUpstreamMetadataReader;
+use Beffroi\Saml\Domain\Upstream\AcceptedUpstreamMetadata;
+use Beffroi\Saml\Port\ProfileClaimsInterface;
+use Beffroi\Saml\Port\UpstreamIdentityProvidersInterface;
+use Beffroi\Saml\Port\UpstreamMetadataReaderInterface;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataReader;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Port\CanForgetAcceptedMetadataInterface;
-use Beffroi\Saml\Application\ServiceProvider\AcceptedMetadataForgetting;
+use Beffroi\Saml\Application\Metadata\AcceptedMetadataForgetting;
 use Beffroi\Saml\Port\MetadataFetcherInterface;
 use Beffroi\Saml\Port\ServiceProviderMetadataReaderInterface;
 use Beffroi\Saml\Port\ServedClaimsInterface;
@@ -668,6 +686,7 @@ use Symfony\Component\RateLimiter\Storage\CacheStorage;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\inline_service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_iterator;
+use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_locator;
 use Webauthn\MetadataService\CertificateChain\CertificateChainValidator;
 use Webauthn\MetadataService\CertificateChain\PhpCertificateChainValidator;
 use Webauthn\MetadataService\MetadataStatementRepository;
@@ -1907,16 +1926,65 @@ return static function (ContainerConfigurator $container): void {
     // same build; ServiceProvidersPass hands it the declarations it built (spec/saml.md S-16, section 6.2 step 1)
     $services->set(MappedClaimsWarmer::class)->args([
         '$declarations' => [],
+        '$upstreamDeclarations' => [],
     ]);
     $services->set(ModelServiceProviderMetadataReader::class);
     $services->alias(ServiceProviderMetadataReaderInterface::class, ModelServiceProviderMetadataReader::class);
     $services->set(MetadataFetcher::class);
     $services->alias(MetadataFetcherInterface::class, MetadataFetcher::class);
-    $services->set(DoctrineAcceptedMetadataRepository::class);
+    // the rows of the service providers, which single sign-on and single logout read through the port; the metadata
+    // of every role are refreshed by one procedure (MetadataRefresh), built with the role and the rows of its table,
+    // and every refresh is tagged for the hourly step of the schedule (spec/saml.md section 6.2, S-42)
+    $services->set(DoctrineAcceptedMetadataRepository::class)->arg('$entity', AcceptedServiceProviderMetadata::class);
     $services->alias(AcceptedMetadataRepositoryInterface::class, DoctrineAcceptedMetadataRepository::class);
     $services->alias(CanForgetAcceptedMetadataInterface::class, DoctrineAcceptedMetadataRepository::class);
-    $services->set(ServiceProviderMetadataRefresh::class);
-    $services->set(AcceptedMetadataForgetting::class);
+    $services->set(ServiceProviderRole::class);
+    $services
+        ->set('beffroi.saml.service_providers.refresh', MetadataRefresh::class)
+        ->args([
+            '$role' => service(ServiceProviderRole::class),
+            '$accepted' => service(DoctrineAcceptedMetadataRepository::class),
+        ])
+        ->tag(RefreshTheSamlMetadataHandler::TAG);
+    $services->set('beffroi.saml.service_providers.forgetting', AcceptedMetadataForgetting::class)->args([
+        '$accepted' => service(DoctrineAcceptedMetadataRepository::class),
+        '$forgetting' => service(DoctrineAcceptedMetadataRepository::class),
+    ]);
+    $services->get(SamlServiceProviderRefreshCommand::class)->arg('$refresh', service('beffroi.saml.service_providers.refresh'));
+    $services->get(SamlServiceProviderForgetCommand::class)->arg('$forgetting', service('beffroi.saml.service_providers.forgetting'));
+    // beffroi/saml: the upstream identity providers of the service provider of the tenant, declared in the
+    // configuration, which the SAML section hands the declarations and the slug of the tenant (S-42), their
+    // attributes filling the claims a person describes themselves with (S-45); their metadata read by the model,
+    // fetched as a service provider's, refreshed by the same procedure, and the newest document accepted kept in a
+    // table of their own, sealed (spec/saml.md section 6.10)
+    $services->set(WiredProfileClaims::class);
+    $services->alias(ProfileClaimsInterface::class, WiredProfileClaims::class);
+    $services->set(ConfigurationUpstreamIdentityProviders::class)->args([
+        '$tenantSlug' => '',
+        '$definitions' => [],
+    ]);
+    $services->alias(UpstreamIdentityProvidersInterface::class, ConfigurationUpstreamIdentityProviders::class);
+    $services->set(ModelUpstreamMetadataReader::class);
+    $services->alias(UpstreamMetadataReaderInterface::class, ModelUpstreamMetadataReader::class);
+    $services->set(UpstreamIdentityProviderRole::class);
+    $services->set('beffroi.saml.identity_providers.accepted_metadata', DoctrineAcceptedMetadataRepository::class)->arg(
+        '$entity',
+        AcceptedUpstreamMetadata::class,
+    );
+    $services
+        ->set('beffroi.saml.identity_providers.refresh', MetadataRefresh::class)
+        ->args([
+            '$role' => service(UpstreamIdentityProviderRole::class),
+            '$accepted' => service('beffroi.saml.identity_providers.accepted_metadata'),
+        ])
+        ->tag(RefreshTheSamlMetadataHandler::TAG);
+    $services->set('beffroi.saml.identity_providers.forgetting', AcceptedMetadataForgetting::class)->args([
+        '$accepted' => service('beffroi.saml.identity_providers.accepted_metadata'),
+        '$forgetting' => service('beffroi.saml.identity_providers.accepted_metadata'),
+    ]);
+    $services->get(SamlIdentityProviderRefreshCommand::class)->arg('$refresh', service('beffroi.saml.identity_providers.refresh'));
+    $services->get(SamlIdentityProviderForgetCommand::class)->arg('$forgetting', service('beffroi.saml.identity_providers.forgetting'));
+    $services->get(RefreshTheSamlMetadataHandler::class)->arg('$refreshes', tagged_locator(RefreshTheSamlMetadataHandler::TAG));
     // beffroi/saml: single sign-on (spec/saml.md section 6.4), a request received over either binding and validated by
     // the model, answered from the session of the browser or after its login, the request waiting in its HTTP session
     // (S-18); the assertion signed by the active SAML key of the tenant, opened by the KMS once per process to sign,
@@ -1937,6 +2005,14 @@ return static function (ContainerConfigurator $container): void {
     $services->set(WaitingSignOns::class);
     $services->set(SamlPostPage::class);
     $services->set(SignOnAnswers::class);
+    // beffroi/saml: the request the service provider of the tenant sends an upstream identity provider for an
+    // interaction of the browser (spec/saml.md S-48 to S-51), written to a single sign-on service of the accepted
+    // document read back from the table of the upstream identity providers, and not of the service providers the port
+    // is aliased to, signed by the SAML key of the tenant, remembered in the HTTP session of the browser under its
+    // RelayState; the use case is wired by the SAML section when the service provider is enabled
+    $services->set(ModelAuthnRequestSender::class)->arg('$accepted', service('beffroi.saml.identity_providers.accepted_metadata'));
+    $services->alias(AuthnRequestSenderInterface::class, ModelAuthnRequestSender::class);
+    $services->set(UpstreamSignOns::class);
     // beffroi/saml: Single Logout started by a service provider (spec/saml.md section 6.5), a request received over
     // either binding, validated by the model and remembered in a store every worker shares, written atomically (S-23);
     // the sessions it names ended by the core as every session ends (S-25) and the answer signed by the SAML key of

@@ -16,7 +16,7 @@ use Beffroi\Saml\Application\SingleSignOn\SingleSignOn;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use Beffroi\Saml\Domain\Event\ServiceProviderSignedIn;
 use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataReader;
-use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
 use Beffroi\Saml\Domain\ServiceProvider\AttributeNameFormat;
 use Beffroi\Saml\Domain\SingleSignOn\AttributeValue;
 use Beffroi\Saml\Domain\SingleSignOn\PersistentNameId;
@@ -573,7 +573,7 @@ final class SingleSignOnTest extends TestCase
      */
     private function accepted(string $document, string $entityId = self::ENCRYPTING): void
     {
-        $this->acceptedMetadata->save(new AcceptedMetadata(Uuid::v7(), $this->tenant, $entityId, $document, null, Fixtures::now()));
+        $this->acceptedMetadata->save(new AcceptedServiceProviderMetadata(Uuid::v7(), $this->tenant, $entityId, $document, null, Fixtures::now()));
     }
 
     /**

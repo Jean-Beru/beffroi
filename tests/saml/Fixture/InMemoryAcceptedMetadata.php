@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Tests\Fixture;
 
 use Beffroi\Core\Domain\Tenant\Tenant;
-use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Domain\Metadata\AcceptedMetadata;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Port\CanForgetAcceptedMetadataInterface;
 

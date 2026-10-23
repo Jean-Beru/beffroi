@@ -11,7 +11,7 @@ use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\UserRepositoryInterface;
-use Beffroi\Saml\Domain\ServiceProvider\AcceptedMetadata;
+use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
 use Beffroi\Saml2\Bindings\PostReceiver;
@@ -69,7 +69,7 @@ final class SingleSignOnTest extends ConsoleTestCase
         ]);
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         self::service('test.beffroi.saml_accepted_metadata', AcceptedMetadataRepositoryInterface::class)
-            ->save(new AcceptedMetadata(
+            ->save(new AcceptedServiceProviderMetadata(
                 Uuid::v7(),
                 self::tenant(),
                 self::SERVICE_PROVIDER,

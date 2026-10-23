@@ -7,3 +7,19 @@ beffroi:
     saml:
         identity_provider: false
         service_provider: ~
+        # The SimpleSAMLphp identity provider of the judge (spec/saml.md S-42, issue #788): its metadata read from a
+        # file the tests write in the cache directory of the kernel, the one of their worker, by
+        # "beffroi:saml:identity-provider:refresh" (UpstreamIdentityProvidersTest); the attributes its authentication
+        # source sends, the e-mail, the profile and the groups.
+        identity_providers:
+            'https://saml-idp.localhost/simplesaml/module.php/saml/idp/metadata':
+                metadata: '%kernel.cache_dir%/saml/simplesamlphp-idp-metadata.xml'
+                domains: ['example.org']
+                email_attribute: 'mail'
+                profile:
+                    givenName: given_name
+                    sn: family_name
+                groups:
+                    attribute: 'eduPersonAffiliation'
+                    map:
+                        member: 'Members'

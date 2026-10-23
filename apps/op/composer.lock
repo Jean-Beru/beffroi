@@ -293,13 +293,14 @@
             "dist": {
                 "type": "path",
                 "url": "../../src/saml",
-                "reference": "822a622978e4cd45da6de4e861ca592c8bf37a76"
+                "reference": "11c4a09dfa3bd040fa31bbc57427d96ad8f8963c"
             },
             "require": {
                 "beffroi/core": "self.version",
                 "beffroi/saml2-bindings": "self.version",
                 "beffroi/saml2-model": "self.version",
                 "beffroi/xml-security": "self.version",
+                "ext-intl": "*",
                 "php": ">=8.4",
                 "spomky-labs/pki-framework": "^1.2.1"
             },

@@ -46,6 +46,35 @@ final class ModelEntityIdTest extends TestCase
     }
 
     /**
+     * S-42, M-6: the entity ID an upstream identity provider is declared under is read as it was written.
+     */
+    #[Test]
+    public function theEntityIdOfAnIdentityProviderIsRead(): void
+    {
+        // When / Then
+        static::assertSame(
+            'https://saml-idp.localhost/simplesaml/module.php/saml/idp/metadata',
+            ModelEntityId::ofIdentityProvider('https://saml-idp.localhost/simplesaml/module.php/saml/idp/metadata'),
+        );
+    }
+
+    /**
+     * S-42, M-6: the entity ID of an upstream identity provider that is no URI of the model is refused, naming the
+     * rule and never the value (M-16).
+     */
+    #[Test]
+    #[DataProvider('provideEntityIdsRefused')]
+    public function anEntityIdOfAnIdentityProviderThatIsNoUriOfTheModelIsRefused(string $entityId, string $rule): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The entity ID of an identity provider is refused (spec/saml.md S-42): ' . $rule);
+
+        // When
+        ModelEntityId::ofIdentityProvider($entityId);
+    }
+
+    /**
      * @return iterable<string, array{string, string}>
      */
     public static function provideEntityIdsRefused(): iterable

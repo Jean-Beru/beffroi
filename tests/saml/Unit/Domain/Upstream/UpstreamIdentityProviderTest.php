@@ -1,0 +1,357 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Beffroi\Saml\Tests\Unit\Domain\Upstream;
+
+use function array_fill;
+use function array_map;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Saml\Domain\Metadata\MetadataLocation;
+use Beffroi\Saml\Domain\Upstream\EmailDomain;
+use Beffroi\Saml\Domain\Upstream\GroupMapping;
+use Beffroi\Saml\Domain\Upstream\ProfileAttribute;
+use Beffroi\Saml\Domain\Upstream\UpstreamIdentityProvider;
+use Beffroi\Saml\Tests\Fixture\IdentityProviderDocuments;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+use function range;
+use function sprintf;
+
+/**
+ * spec/saml.md S-42, S-44, S-45, section 6.10 step 1: the declaration of an upstream identity provider holds together
+ * or is refused.
+ */
+final class UpstreamIdentityProviderTest extends TestCase
+{
+    private const string ENTITY_ID = 'https://saml-idp.localhost/simplesaml/module.php/saml/idp/metadata';
+
+    private const string OBJECT_ID = 'http://schemas.microsoft.com/identity/claims/objectidentifier';
+
+    /**
+     * S-42, S-45: a declaration holds what it was given, its subject and its groups when declared.
+     */
+    #[Test]
+    public function aDeclarationHoldsWhatItWasGiven(): void
+    {
+        // Given
+        $groups = new GroupMapping('groups', ['member' => 'Members']);
+
+        // When
+        $identityProvider = new UpstreamIdentityProvider(
+            self::ENTITY_ID,
+            new MetadataLocation('/srv/saml/idp.xml'),
+            [],
+            [new EmailDomain('acme.example')],
+            'mail',
+            [new ProfileAttribute('givenName', 'given_name')],
+            self::OBJECT_ID,
+            $groups,
+        );
+
+        // Then
+        static::assertSame(self::ENTITY_ID, $identityProvider->entityId);
+        static::assertSame('/srv/saml/idp.xml', $identityProvider->metadata->value);
+        static::assertSame('acme.example', $identityProvider->domains[0]->value);
+        static::assertSame('mail', $identityProvider->emailAttribute);
+        static::assertSame('given_name', $identityProvider->profile[0]->claim);
+        static::assertSame(self::OBJECT_ID, $identityProvider->subjectAttribute);
+        static::assertSame($groups, $identityProvider->groups);
+    }
+
+    /**
+     * S-45: the attribute of the subject and the groups are optional, the profile empty unless declared.
+     */
+    #[Test]
+    public function theSubjectTheProfileAndTheGroupsAreOptional(): void
+    {
+        // When
+        $identityProvider = self::declaration([new EmailDomain('acme.example')]);
+
+        // Then
+        static::assertSame([], $identityProvider->profile);
+        static::assertNull($identityProvider->subjectAttribute);
+        static::assertNull($identityProvider->groups);
+    }
+
+    /**
+     * S-42: the metadata are read signed when the declaration pins a signer, and trusted by their channel otherwise.
+     */
+    #[Test]
+    public function theMetadataAreReadSignedWhenASignerIsPinned(): void
+    {
+        // Given
+        $identityProvider = new UpstreamIdentityProvider(
+            self::ENTITY_ID,
+            new MetadataLocation('/srv/saml/idp.xml'),
+            [IdentityProviderDocuments::signer()],
+            [new EmailDomain('acme.example')],
+            'mail',
+        );
+
+        // When / Then
+        static::assertTrue($identityProvider->readsSigned());
+    }
+
+    /**
+     * S-42: no signer pinned, the metadata are trusted by their channel.
+     */
+    #[Test]
+    public function theMetadataAreTrustedByTheirChannelWithoutASigner(): void
+    {
+        // When / Then
+        static::assertFalse(self::declaration([new EmailDomain('acme.example')])->readsSigned());
+    }
+
+    /**
+     * Section 7: sixteen signers of the metadata at most.
+     */
+    #[Test]
+    public function seventeenSignersAreRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('An identity provider pins at most 16 signers of its metadata (spec/saml.md section 7).');
+
+        // When
+        new UpstreamIdentityProvider(
+            self::ENTITY_ID,
+            new MetadataLocation('/srv/saml/idp.xml'),
+            array_fill(0, 17, IdentityProviderDocuments::signer()),
+            [new EmailDomain('acme.example')],
+            'mail',
+        );
+    }
+
+    /**
+     * Section 7: sixteen signers of the metadata are pinned.
+     */
+    #[Test]
+    public function sixteenSignersArePinned(): void
+    {
+        // When
+        $identityProvider = new UpstreamIdentityProvider(
+            self::ENTITY_ID,
+            new MetadataLocation('/srv/saml/idp.xml'),
+            array_fill(0, 16, IdentityProviderDocuments::signer()),
+            [new EmailDomain('acme.example')],
+            'mail',
+        );
+
+        // Then
+        static::assertCount(16, $identityProvider->metadataSigners);
+    }
+
+    /**
+     * S-44: an identity provider answers for one domain at least.
+     */
+    #[Test]
+    public function noDomainIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('An identity provider answers for one e-mail domain at least (spec/saml.md S-44).');
+
+        // When
+        self::declaration([]);
+    }
+
+    /**
+     * Section 7: 256 domains at most.
+     */
+    #[Test]
+    public function moreThan256DomainsAreRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('An identity provider answers for 256 e-mail domains at most (spec/saml.md section 7).');
+
+        // When
+        self::declaration(self::domains(257));
+    }
+
+    /**
+     * Section 7: 256 domains are declared.
+     */
+    #[Test]
+    public function twoHundredAndFiftySixDomainsAreDeclared(): void
+    {
+        // When / Then
+        static::assertCount(256, self::declaration(self::domains(256))->domains);
+    }
+
+    /**
+     * S-44: a domain declared twice by one provider, in two spellings, is refused.
+     */
+    #[Test]
+    public function aDomainDeclaredTwiceIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The domain "acme.example" is declared twice (spec/saml.md S-44).');
+
+        // When
+        self::declaration([new EmailDomain('acme.example'), new EmailDomain('ACME.example')]);
+    }
+
+    /**
+     * S-45: the attributes of the e-mail and of the subject are names.
+     */
+    #[Test]
+    #[DataProvider('provideAttributesThatAreNoName')]
+    public function anAttributeThatIsNoNameIsRefused(string $email, ?string $subject, string $message): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs($message);
+
+        // When
+        new UpstreamIdentityProvider(self::ENTITY_ID, new MetadataLocation('/srv/saml/idp.xml'), [], [new EmailDomain('acme.example')], $email, [], $subject);
+    }
+
+    /**
+     * @return iterable<string, array{string, ?string, string}>
+     */
+    public static function provideAttributesThatAreNoName(): iterable
+    {
+        yield 'no attribute of the e-mail' => [
+            '',
+            null,
+            'The attribute of the e-mail is not empty, holds no whitespace and is at most 1024 characters (spec/saml.md S-45).',
+        ];
+        yield 'an attribute of the subject with a space' => [
+            'mail',
+            'object identifier',
+            'The attribute of the subject is not empty, holds no whitespace and is at most 1024 characters (spec/saml.md S-45).',
+        ];
+    }
+
+    /**
+     * S-45: the attribute of the subject is never the attribute of the e-mail, an address being given again to
+     * another person.
+     */
+    #[Test]
+    public function aSubjectNamedByTheAttributeOfTheEmailIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The attribute of the subject is the attribute of the e-mail, and an address is given again to another person (spec/saml.md S-45).');
+
+        // When
+        new UpstreamIdentityProvider(self::ENTITY_ID, new MetadataLocation('/srv/saml/idp.xml'), [], [new EmailDomain('acme.example')], 'mail', [], 'mail');
+    }
+
+    /**
+     * S-45: one attribute per claim of the profile.
+     */
+    #[Test]
+    public function twoAttributesFillingOneClaimAreRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The claim "given_name" is filled by two attributes (spec/saml.md S-45).');
+
+        // When
+        new UpstreamIdentityProvider(
+            self::ENTITY_ID,
+            new MetadataLocation('/srv/saml/idp.xml'),
+            [],
+            [new EmailDomain('acme.example')],
+            'mail',
+            [new ProfileAttribute('givenName', 'given_name'), new ProfileAttribute('firstName', 'given_name')],
+        );
+    }
+
+    /**
+     * S-45: an attribute fills the profile once.
+     */
+    #[Test]
+    public function oneAttributeFillingTwoClaimsIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The attribute "displayName" fills the profile twice (spec/saml.md S-45).');
+
+        // When
+        new UpstreamIdentityProvider(
+            self::ENTITY_ID,
+            new MetadataLocation('/srv/saml/idp.xml'),
+            [],
+            [new EmailDomain('acme.example')],
+            'mail',
+            [new ProfileAttribute('displayName', 'name'), new ProfileAttribute('displayName', 'nickname')],
+        );
+    }
+
+    /**
+     * S-42: an identity provider declared under the entity ID of the identity provider of the tenant is refused, the
+     * tenant never being upstream of itself.
+     */
+    #[Test]
+    public function theEntityIdOfTheIdentityProviderOfTheTenantIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The identity provider "https://op.test/saml/metadata" is declared under the entity ID of the identity provider of the tenant, and a tenant is never upstream of itself (spec/saml.md S-42).');
+
+        // When
+        UpstreamIdentityProvider::assertNotTheTenant('https://op.test/saml/metadata', 'https://op.test/saml/metadata', 'https://op.test/saml/sp/metadata');
+    }
+
+    /**
+     * S-42, S-38: an identity provider declared under the entity ID of the service provider of the tenant is refused,
+     * one entity ID never naming two roles.
+     */
+    #[Test]
+    public function theEntityIdOfTheServiceProviderOfTheTenantIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The identity provider "https://op.test/saml/sp/metadata" is declared under the entity ID of the service provider of the tenant, and a tenant is never upstream of itself (spec/saml.md S-42).');
+
+        // When
+        UpstreamIdentityProvider::assertNotTheTenant('https://op.test/saml/sp/metadata', 'https://op.test/saml/metadata', 'https://op.test/saml/sp/metadata');
+    }
+
+    /**
+     * S-42: an entity ID that is none of the tenant's, or compared with entity IDs not known yet, is accepted.
+     *
+     */
+    #[Test]
+    #[DataProvider('provideEntityIdsOfAnother')]
+    public function anEntityIdOfAnotherIsAccepted(string $entityId, ?string $identityProvider, ?string $serviceProvider): void
+    {
+        // Then
+        $this->expectNotToPerformAssertions();
+
+        // When
+        UpstreamIdentityProvider::assertNotTheTenant($entityId, $identityProvider, $serviceProvider);
+    }
+
+    /**
+     * @return iterable<string, array{string, ?string, ?string}>
+     */
+    public static function provideEntityIdsOfAnother(): iterable
+    {
+        yield 'another entity' => [self::ENTITY_ID, 'https://op.test/saml/metadata', 'https://op.test/saml/sp/metadata'];
+        yield 'a trailing slash' => ['https://op.test/saml/metadata/', 'https://op.test/saml/metadata', 'https://op.test/saml/sp/metadata'];
+        yield 'entity IDs not known yet' => ['https://op.test/saml/metadata', null, null];
+    }
+
+    /**
+     * @param list<EmailDomain> $domains
+     */
+    private static function declaration(array $domains): UpstreamIdentityProvider
+    {
+        return new UpstreamIdentityProvider(self::ENTITY_ID, new MetadataLocation('/srv/saml/idp.xml'), [], $domains, 'mail');
+    }
+
+    /**
+     * @return list<EmailDomain>
+     */
+    private static function domains(int $count): array
+    {
+        return array_map(static fn (int $index): EmailDomain => new EmailDomain(sprintf('d%d.example', $index)), range(1, $count));
+    }
+}

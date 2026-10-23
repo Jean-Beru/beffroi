@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Saml\Tests\Fixture;
 
-use Beffroi\Saml\Domain\ServiceProvider\MetadataLocation;
+use Beffroi\Saml\Domain\Metadata\MetadataLocation;
 use Beffroi\Saml\Exception\MetadataRefusedException;
 use Beffroi\Saml\Port\MetadataFetcherInterface;
 use Exception;

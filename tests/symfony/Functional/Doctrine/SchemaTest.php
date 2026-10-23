@@ -51,6 +51,7 @@ final class SchemaTest extends DatabaseTestCase
         'beffroi_claim_change',
         'beffroi_disclosure',
         'beffroi_saml_service_provider',
+        'beffroi_saml_upstream_identity_provider',
         'beffroi_saml_logout_message',
         'beffroi_saml_session_participant',
         'beffroi_saml_logout_chain',
