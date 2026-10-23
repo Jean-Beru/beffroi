@@ -308,9 +308,14 @@ function cost_journey(string $issuer, string $password, string $secret, string $
         cost_expect(in_array($status, [302, 303], true), sprintf('the address was not taken (got %d)', $status));
         [$status, , $page] = cost_request($steps, $cookies, 'login page after the address', $ca, 'GET', $location);
     }
+    // The form of the password, named by its field: the layout of the page puts the forms of the locale and of the
+    // theme before it, each with a token of its own (demo_form_with()).
     cost_expect(
-        $status === 200 && preg_match('/name="_csrf_token" value="([^"]+)"/', $page, $csrf) === 1 && preg_match('/action="([^"]+)"/', $page, $loginForm) === 1,
-        sprintf('the login page did not carry the form (got %d)', $status),
+        $status === 200
+        && preg_match('/<form\b(?:(?!<\/form>).)*?name="_username"(?:(?!<\/form>).)*<\/form>/s', $page, $form) === 1
+        && preg_match('/name="_csrf_token" value="([^"]+)"/', $form[0], $csrf) === 1
+        && preg_match('/action="([^"]+)"/', $form[0], $loginForm) === 1,
+        sprintf('the login page did not carry the form of the password (got %d)', $status),
     );
 
     [$status, $location] = cost_request($steps, $cookies, 'password', $ca, 'POST', $issuer . html_entity_decode($loginForm[1]), [
@@ -335,12 +340,14 @@ function cost_journey(string $issuer, string $password, string $secret, string $
     );
 
     [$status, , $page] = cost_request($steps, $cookies, 'consent page', $ca, 'GET', $location);
+    // the form of the answer, named by its field, after the forms of the layout as on the login page
     cost_expect(
         $status === 200
-        && preg_match('/name="_token" value="([^"]+)"/', $page, $consentToken) === 1
-        && preg_match('/name="interaction" value="([^"]+)"/', $page, $interaction) === 1
-        && preg_match('/action="([^"]+)"/', $page, $consentForm) === 1,
-        sprintf('the consent page did not carry the form (got %d)', $status),
+        && preg_match('/<form\b(?:(?!<\/form>).)*?name="answer"(?:(?!<\/form>).)*<\/form>/s', $page, $form) === 1
+        && preg_match('/name="_token" value="([^"]+)"/', $form[0], $consentToken) === 1
+        && preg_match('/name="interaction" value="([^"]+)"/', $form[0], $interaction) === 1
+        && preg_match('/action="([^"]+)"/', $form[0], $consentForm) === 1,
+        sprintf('the consent page did not carry the form of the answer (got %d)', $status),
     );
 
     [$status, $location] = cost_request($steps, $cookies, 'consent', $ca, 'POST', $issuer . html_entity_decode($consentForm[1]), [
