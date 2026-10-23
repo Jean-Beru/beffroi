@@ -555,6 +555,7 @@ final class RealDocumentsTest extends TestCase
     {
         yield 'one second behind' => ['2026-10-23T13:08:16.595Z'];
         yield '179 seconds behind' => ['2026-10-23T13:05:18.595Z'];
+        yield 'the skew itself, 180 seconds behind' => ['2026-10-23T13:05:17.595Z'];
     }
 
     /**
