@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Tests\Unit\Bridge\Model;
 
 use function base64_decode;
+use function sprintf;
 use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
 use Beffroi\Saml\Bridge\Model\ModelAuthnRequestSender;
@@ -404,6 +406,40 @@ final class ModelAuthnRequestSenderTest extends TestCase
         $this->expectException(UpstreamSignOnRefusedException::class);
         $this->expectExceptionMessageIs('The request to the identity provider is one the model or the binding refuses to write (spec/saml.md S-48).');
         $this->expectExceptionCode(0);
+
+        // When
+        $this->sender()->send($this->tenant, self::request());
+    }
+
+    /**
+     * S-48, section 6.11 step 5: a key of the tenant whose private half is not the one of its public JWK is a fault of
+     * the deployment, which goes on as it is, and never a request refused as one the model refuses to write, which
+     * would answer a person with a page and write nothing to the log.
+     */
+    #[Test]
+    public function aKeyWhosePrivateHalfIsNotItsOwnIsNoRequestRefused(): void
+    {
+        // Given
+        $pair = SamlKeys::pair();
+        $key = new TenantKey(
+            $pair->kid,
+            $this->tenant,
+            SamlKeys::algorithm(),
+            $pair->publicJwk,
+            Keys::sealer()->seal($this->tenant, SamlKeys::otherPair()->privateJwk),
+            Fixtures::now(),
+            Fixtures::now(),
+        );
+        $key->activate(Fixtures::now());
+        $this->keys = new InMemoryTenantKeyRepository();
+        $this->keys->save($key);
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs(sprintf(
+            'The private half of the key "%s" is not the one of its public JWK: its "n" differs (spec/saml.md section 6.1 step 2).',
+            $pair->kid,
+        ));
 
         // When
         $this->sender()->send($this->tenant, self::request());
