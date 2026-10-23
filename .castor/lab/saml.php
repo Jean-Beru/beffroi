@@ -1761,6 +1761,13 @@ function saml_entra_upstream(): void
         'an AuthnRequest, signed over the query string, with a RelayState',
     );
     demo_expect(
+        ($parameters['login_hint'] ?? null) === SAML_ENTRA_PEOPLE['alice'] && str_ends_with($raw, '&login_hint=' . rawurlencode(SAML_ENTRA_PEOPLE['alice'])),
+        sprintf(
+            'the address typed, %s, in the login_hint Entra prefills its sign-in with, after the Signature (spec/saml.md S-68)',
+            SAML_ENTRA_PEOPLE['alice'],
+        ),
+    );
+    demo_expect(
         $request['issuer'] === SAML_ENTRA_SP_IDENTIFIER && $request['facts']['AssertionConsumerServiceURL'] === SAML_ENTRA_SP_REPLY_URL,
         sprintf(
             'its Issuer and its AssertionConsumerServiceURL are the Identifier and the Reply URL Entra holds (%s, %s)',
@@ -1779,7 +1786,7 @@ function saml_entra_upstream(): void
     io()->listing([
         sprintf('"castor demo" serves oidc-demo on %s ("--dir" names its checkout when it is not next to this one).', DEMO_URL),
         sprintf('In a private window, open %s/profile: the login page of the provider asks for the address, %s.', DEMO_URL, SAML_ENTRA_PEOPLE['alice']),
-        'Entra signs her in, then posts its response to the provider, which creates her and answers oidc-demo: /profile shows email, given_name and family_name under "Standard claims", and amr under "ID token".',
+        'Entra shows its sign-in with her address filled in (login_hint, spec/saml.md S-68), signs her in, then posts its response to the provider, which creates her and answers oidc-demo: /profile shows email, given_name and family_name under "Standard claims", and amr under "ID token".',
         sprintf('Then bob, in another private window, %s: Entra holds the session of alice in the first one.', SAML_ENTRA_PEOPLE['bob']),
         sprintf(
             '"castor console beffroi:user:show <address>" says what the provider holds of each, its source, and bob in the group "%s".',

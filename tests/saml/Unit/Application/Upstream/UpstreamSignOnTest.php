@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Beffroi\Saml\Tests\Unit\Application\Upstream;
 
+use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Saml\Application\Upstream\UpstreamSignOn;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationUpstreamIdentityProviders;
+use Beffroi\Saml\Domain\Upstream\AddressHint;
 use Beffroi\Saml\Exception\UpstreamSignOnRefusedException;
 use Beffroi\Saml\Tests\Fixture\FixedProfileClaims;
 use Beffroi\Saml\Tests\Fixture\FixedServiceProviderEndpoints;
@@ -19,9 +21,10 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * spec/saml.md section 6.11, S-48, S-50: a sign-on at an upstream identity provider started for a provider the tenant
- * declares, the request written from that provider, the service provider of the tenant, whether the bundle forces a
- * login and the instant of the clock, under a reference drawn for it.
+ * spec/saml.md section 6.11, S-48, S-50, S-68: a sign-on at an upstream identity provider started for a provider the
+ * tenant declares, the request written from that provider, the service provider of the tenant, whether the bundle
+ * forces a login, the instant of the clock and the address the bundle hands for a provider that reads one, under a
+ * reference drawn for it.
  */
 final class UpstreamSignOnTest extends TestCase
 {
@@ -45,6 +48,7 @@ final class UpstreamSignOnTest extends TestCase
                         'metadata' => '/srv/saml/idp.xml',
                         'domains' => ['acme.example'],
                         'email_attribute' => 'mail',
+                        'address_parameter' => 'login_hint',
                     ],
                     RecordingAuthnRequestSender::REFUSED => [
                         'metadata' => '/srv/saml/refused.xml',
@@ -116,6 +120,46 @@ final class UpstreamSignOnTest extends TestCase
     {
         yield 'a fresh login' => [true];
         yield 'any login' => [false];
+    }
+
+    /**
+     * S-68, section 6.11 step 3: the request to a provider that reads the address carries the address the bundle
+     * handed, in the parameter its declaration names, its domain written as its A-label.
+     */
+    #[Test]
+    public function theRequestCarriesTheAddressToAProviderThatReadsOne(): void
+    {
+        // When
+        $this->signOn->start($this->tenant, IdentityProviderDocuments::SIGNED, false, 'Alice@ACME.example');
+
+        // Then
+        $request = $this->sender->sent[0] ?? static::fail('Nothing was sent.');
+        static::assertEquals(new AddressHint('login_hint', new EmailAddress('Alice@acme.example')), $request->addressHint);
+    }
+
+    /**
+     * S-68: a provider whose declaration names no parameter of the address is sent none, nor is a request for which
+     * the bundle handed none.
+     */
+    #[Test]
+    #[DataProvider('provideSignOnsWithoutAHint')]
+    public function noAddressIsSent(string $identityProvider, ?string $address): void
+    {
+        // When
+        $this->signOn->start($this->tenant, $identityProvider, false, $address);
+
+        // Then
+        $request = $this->sender->sent[0] ?? static::fail('Nothing was sent.');
+        static::assertNull($request->addressHint);
+    }
+
+    /**
+     * @return iterable<string, array{string, ?string}>
+     */
+    public static function provideSignOnsWithoutAHint(): iterable
+    {
+        yield 'a provider that reads none' => [RecordingAuthnRequestSender::REFUSED, 'bob@refused.example'];
+        yield 'no address handed' => [IdentityProviderDocuments::SIGNED, null];
     }
 
     /**

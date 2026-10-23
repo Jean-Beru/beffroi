@@ -298,6 +298,11 @@ when@dev:
                         attribute: 'http://schemas.microsoft.com/ws/2008/06/identity/claims/groups'
                         map:
                             '72ab10ba-c2a2-4021-bdaa-9eb4ae7b00e0': finance
+                    # Entra reads the address on its single sign-on URL, in login_hint, and prefills its sign-in with
+                    # it (Microsoft, "Single sign-on SAML protocol", section Subject; played by hand on 23 October
+                    # 2026): the address typed on the login page goes there, so that alice and bob type it once
+                    # (spec/saml.md S-68). A hint and nothing more: the person is who the signed assertion names.
+                    address_parameter: login_hint
         # The issuer of the development stack whose signature the tenant trusts (RFC 7523 §3, issue #299),
         # which "castor demo --assertion" signs with. Whoever holds its key can name a user of this tenant,
         # so everything about it is written here and nothing is asked for: the keys are the ones below and

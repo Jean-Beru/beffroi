@@ -1996,6 +1996,11 @@
                                             "default": false,
                                             "description": "An assertion of this identity provider arrives encrypted for the key it is given, or it is refused, whatever signs it (spec/saml.md S-67). The certificate it encrypts for is in the metadata of the service provider given to it alone, at /saml/sp/metadata/ followed by its entity ID in base64url, once its key is drawn with \"beffroi:keys:generate --algorithm=SAML-ENCRYPTION:\" and its entity ID (S-64, S-65)."
                                         },
+                                        "address_parameter": {
+                                            "$ref": "#/$defs/types/scalar",
+                                            "default": null,
+                                            "description": "The query parameter of the single sign-on service of this identity provider that takes the address a person gave the login page, which it prefills its sign-in with: \"login_hint\" for Entra. One to 64 unreserved characters of RFC 3986, none of the parameters of the binding (SAMLRequest, SAMLResponse, SAMLEncoding, RelayState, SigAlg, Signature) in any case (spec/saml.md S-68). Left out, no address is sent. The address is a hint and nothing more: the person is who the signed assertion names."
+                                        },
                                         "groups": {
                                             "$ref": "#/$defs/types/object_null",
                                             "properties": {

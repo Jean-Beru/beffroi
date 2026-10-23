@@ -896,6 +896,8 @@ const INFECTION_STRICT_FILES = [
     // from, the use case that starts it and the sender that writes and signs it (S-48 to S-50, section 6.11)
     'src/saml/src/Domain/Upstream/UpstreamAuthnRequest.php',
     'src/saml/src/Domain/Upstream/SentAuthnRequest.php',
+    // the address a person gave the login page, carried to the provider that reads one (S-68, issue #816)
+    'src/saml/src/Domain/Upstream/AddressHint.php',
     'src/saml/src/Application/Upstream/UpstreamSignOn.php',
     'src/saml/src/Bridge/Model/ModelAuthnRequestSender.php',
     // the assertion consumer service (spec/saml.md S-52 to S-59, issue #784)

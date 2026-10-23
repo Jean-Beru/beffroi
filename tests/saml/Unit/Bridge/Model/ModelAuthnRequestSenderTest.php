@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Beffroi\Saml\Tests\Unit\Bridge\Model;
 
+use function array_map;
 use function base64_decode;
+use function chunk_split;
+use function explode;
 use function sprintf;
 use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
+use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidArgumentException;
@@ -18,6 +22,7 @@ use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
 use Beffroi\Saml\Domain\Metadata\ServiceProviderEndpoints;
 use Beffroi\Saml\Domain\SingleLogout\RedirectedMessage;
 use Beffroi\Saml\Domain\SingleSignOn\PostedForm;
+use Beffroi\Saml\Domain\Upstream\AddressHint;
 use Beffroi\Saml\Domain\Upstream\AcceptedUpstreamMetadata;
 use Beffroi\Saml\Domain\Upstream\SentAuthnRequest;
 use Beffroi\Saml\Domain\Upstream\UpstreamAuthnRequest;
@@ -45,8 +50,12 @@ use Beffroi\Saml2\Model\Validation\AcceptedAuthnRequest;
 use Beffroi\Saml2\Model\Validation\Authentication;
 use Beffroi\Saml2\Model\Validation\AuthnRequestValidator;
 use Beffroi\Xml\Core\Document;
+use const OPENSSL_ALGO_SHA256;
+use function openssl_pkey_get_public;
+use function openssl_verify;
 use function parse_url;
 use const PHP_URL_QUERY;
+use function rawurldecode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -455,6 +464,109 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
+     * S-68, Bindings §3.4.4.1: over HTTP-Redirect, the hint of the address comes after the Signature, the last
+     * parameter of the URL, its value percent-encoded.
+     */
+    #[Test]
+    public function overHttpRedirectTheHintComesAfterTheSignature(): void
+    {
+        // When
+        $url = self::redirected($this->sent(self::hinted()));
+
+        // Then
+        static::assertSame(['SAMLRequest', 'RelayState', 'SigAlg', 'Signature', 'login_hint'], self::parameterNames($url));
+        static::assertStringEndsWith('&login_hint=alice%40acme.example', $url);
+    }
+
+    /**
+     * S-68, S-48: over HTTP-Redirect, the request carrying a hint is still accepted signed over its query string, the
+     * hint outside the octets the signature covers.
+     */
+    #[Test]
+    public function overHttpRedirectTheRequestCarryingAHintIsStillAcceptedSigned(): void
+    {
+        // When
+        $sent = $this->sent(self::hinted());
+
+        // Then
+        static::assertSame(Authentication::Binding, $this->acceptedBy($sent, Binding::HttpRedirect)->authentication);
+    }
+
+    /**
+     * S-68, Bindings §3.4.4.1, bindings.md section 9.1: OpenSSL verifies the signature of the URL carrying a hint over
+     * the octets the oracle of saml2-bindings rebuilds from it, the raw values of SAMLRequest, RelayState and SigAlg
+     * taken by name and every other parameter skipped (tests/saml2-bindings/Fixture/oracle/read-redirect-url.py),
+     * under the certificate of the key of the tenant.
+     */
+    #[Test]
+    public function overHttpRedirectOpenSslVerifiesTheOctetsTheOracleRebuilds(): void
+    {
+        // Given
+        $raw = [];
+        foreach (explode('&', (string) parse_url(self::redirected($this->sent(self::hinted())), PHP_URL_QUERY)) as $segment) {
+            [$name, $value] = explode('=', $segment, 2);
+            $raw[$name] = $value;
+        }
+        $octets = sprintf('SAMLRequest=%s&RelayState=%s&SigAlg=%s', $raw['SAMLRequest'] ?? '', $raw['RelayState'] ?? '', $raw['SigAlg'] ?? '');
+        $certificate = new SelfSignedCertificateIssuer()->selfSigned(SamlKeys::opened($this->key));
+        $public = openssl_pkey_get_public(sprintf("-----BEGIN CERTIFICATE-----\n%s-----END CERTIFICATE-----\n", chunk_split($certificate->base64, 64, "\n")));
+        static::assertNotFalse($public);
+
+        // When
+        $verified = openssl_verify($octets, (string) base64_decode(rawurldecode($raw['Signature'] ?? ''), true), $public, OPENSSL_ALGO_SHA256);
+
+        // Then
+        static::assertSame(1, $verified);
+    }
+
+    /**
+     * S-68: over HTTP-POST, the hint of the address is in the query of the action of the form, after the query the
+     * single sign-on service holds, and the request posted is still accepted signed in its XML.
+     */
+    #[Test]
+    #[DataProvider('provideSingleSignOnServicesOverPost')]
+    public function overHttpPostTheHintIsInTheQueryOfTheAction(string $location, string $action): void
+    {
+        // Given
+        $this->accept([new Endpoint(Binding::HttpPost, $location)]);
+
+        // When
+        $sent = $this->sent(self::hinted());
+
+        // Then
+        static::assertSame($action, $sent->message instanceof PostedForm ? $sent->message->action : null);
+        static::assertSame(Authentication::XmlSignature, $this->acceptedBy($sent, Binding::HttpPost, $location)->authentication);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideSingleSignOnServicesOverPost(): iterable
+    {
+        yield 'a service without a query' => [self::SINGLE_SIGN_ON, self::SINGLE_SIGN_ON . '?login_hint=alice%40acme.example'];
+        yield 'a service with a query' => [self::SINGLE_SIGN_ON . '?tenant=acme', self::SINGLE_SIGN_ON . '?tenant=acme&login_hint=alice%40acme.example'];
+    }
+
+    /**
+     * S-68: a request without a hint is sent as the binding wrote it, the Signature last over HTTP-Redirect and the
+     * single sign-on service the action over HTTP-POST.
+     */
+    #[Test]
+    public function withoutAHintTheMessageIsTheOneTheBindingWrote(): void
+    {
+        // Given
+        $redirected = self::redirected($this->sent());
+        $this->accept([new Endpoint(Binding::HttpPost, self::SINGLE_SIGN_ON)]);
+
+        // When
+        $posted = $this->sent();
+
+        // Then
+        static::assertSame(['SAMLRequest', 'RelayState', 'SigAlg', 'Signature'], self::parameterNames($redirected));
+        static::assertSame(self::SINGLE_SIGN_ON, $posted->message instanceof PostedForm ? $posted->message->action : null);
+    }
+
+    /**
      * The metadata of the provider accepted for the tenant, listing the single sign-on services given.
      *
      * @param list<Endpoint> $singleSignOnServices
@@ -485,7 +597,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
         );
     }
 
-    private static function request(bool $forceAuthn = false): UpstreamAuthnRequest
+    private static function request(bool $forceAuthn = false, ?AddressHint $addressHint = null): UpstreamAuthnRequest
     {
         return new UpstreamAuthnRequest(
             IdentityProviderDocuments::SIGNED,
@@ -493,6 +605,36 @@ final class ModelAuthnRequestSenderTest extends TestCase
             $forceAuthn,
             self::REFERENCE,
             Fixtures::now(),
+            $addressHint,
+        );
+    }
+
+    private static function hinted(): UpstreamAuthnRequest
+    {
+        return self::request(addressHint: new AddressHint('login_hint', new EmailAddress('alice@acme.example')));
+    }
+
+    /**
+     * The URL of HTTP-Redirect the request was sent with.
+     */
+    private static function redirected(SentAuthnRequest $sent): string
+    {
+        $message = $sent->message;
+        static::assertInstanceOf(RedirectedMessage::class, $message);
+
+        return $message->url;
+    }
+
+    /**
+     * The names of the parameters of the query of a URL, in their order.
+     *
+     * @return list<string>
+     */
+    private static function parameterNames(string $url): array
+    {
+        return array_map(
+            static fn (string $segment): string => explode('=', $segment, 2)[0],
+            explode('&', (string) parse_url($url, PHP_URL_QUERY)),
         );
     }
 
@@ -525,7 +667,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
      * The request as the provider validates it, at its single sign-on service, under the certificate of the key of the
      * tenant the metadata of the service provider publish.
      */
-    private function acceptedBy(SentAuthnRequest $sent, Binding $binding): AcceptedAuthnRequest
+    private function acceptedBy(SentAuthnRequest $sent, Binding $binding, string $location = self::SINGLE_SIGN_ON): AcceptedAuthnRequest
     {
         $certificate = new SelfSignedCertificateIssuer()->selfSigned(SamlKeys::opened($this->key));
 
@@ -542,9 +684,9 @@ final class ModelAuthnRequestSenderTest extends TestCase
                     IdentityProviderDocuments::SIGNED,
                     [MetadataFixtures::certificate('idp')],
                     [],
-                    [new Endpoint($binding, self::SINGLE_SIGN_ON)],
+                    [new Endpoint($binding, $location)],
                 ),
-                self::SINGLE_SIGN_ON,
+                $location,
             );
     }
 }

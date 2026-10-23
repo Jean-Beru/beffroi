@@ -9,6 +9,7 @@ use Beffroi\Bundle\Http\AuthorizationResponder;
 use Beffroi\Bundle\Http\AuthorizationResponderInterface;
 use Beffroi\Bundle\Http\BrowserSession;
 use Beffroi\Bundle\Http\InteractionPages;
+use Beffroi\Bundle\Http\LoginAddresses;
 use Beffroi\Bundle\Http\LoginTarget;
 use Beffroi\Bundle\Saml\UpstreamLoginRequirement;
 use Beffroi\Bundle\Saml\UpstreamSignOnAnswer;
@@ -34,8 +35,9 @@ use Symfony\Component\Routing\Attribute\Route;
  * tenant declares, nothing else; the request forces a login by the one rule of S-49, read from the rule of the login
  * page (UpstreamLoginRequirement), is remembered in the HTTP session of the browser under its RelayState with the
  * interaction or the page it serves (S-50), and is carried to the provider by a redirection over HTTP-Redirect or by the
- * page that posts it over HTTP-POST. Which provider an address goes to is the discovery of the login page (S-61), which
- * sends the browser here.
+ * page that posts it over HTTP-POST, with the address the discovery kept for that interaction or that page, taken from
+ * the HTTP session once and never from the query, for a provider that reads one (S-68). Which provider an address goes
+ * to is the discovery of the login page (S-61), which sends the browser here.
  *
  * A deployment that does not enable "beffroi.saml.service_provider" wires no sign-on and answers 404, as the metadata
  * of the role does (S-41); so does a tenant that holds no SAML key.
@@ -58,6 +60,7 @@ final readonly class SamlUpstreamSignOnController
         private ClockInterface $clock,
         private LoginTarget $loginTargets,
         private UpstreamLoginRequirement $requirement,
+        private LoginAddresses $addresses,
         private ?UpstreamSignOn $signOn = null,
     ) {
     }
@@ -80,6 +83,7 @@ final readonly class SamlUpstreamSignOnController
                 return $this->responder->unknownInteraction();
             }
             $forceAuthn = $this->requirement->forcesALogin(null, $session, $now);
+            $address = $this->addresses->takeSent($request->getSession(), null, $now);
         } else {
             $for = $this->browser->pending($request, $tenant, $id);
             if ($for === null) {
@@ -95,9 +99,10 @@ final readonly class SamlUpstreamSignOnController
             } catch (OAuth2Exception $exception) {
                 return $this->responder->failure($request, $for->request->redirectTarget(), $exception, $for);
             }
+            $address = $this->addresses->takeSent($request->getSession(), $for, $now);
         }
         try {
-            $sent = $this->signOn->start($tenant, $request->query->getString(ServiceProviderRoutes::IDENTITY_PROVIDER_PARAMETER), $forceAuthn);
+            $sent = $this->signOn->start($tenant, $request->query->getString(ServiceProviderRoutes::IDENTITY_PROVIDER_PARAMETER), $forceAuthn, $address);
         } catch (UpstreamSignOnRefusedException $exception) {
             return $this->pages->error(Response::HTTP_BAD_REQUEST, self::REFUSED, $exception->getMessage());
         } catch (KeyNotFoundException $exception) {
