@@ -15,21 +15,21 @@
 
 splits:
   - prefix: "src/core"
-    target: "https://${GH_TOKEN}@github.com/beffroi-php/core.git"
+    target: "https://${GH_TOKEN}@github.com/beffroi-auth/core.git"
   - prefix: "src/oidc"
-    target: "https://${GH_TOKEN}@github.com/beffroi-php/oidc.git"
+    target: "https://${GH_TOKEN}@github.com/beffroi-auth/oidc.git"
   - prefix: "src/symfony"
-    target: "https://${GH_TOKEN}@github.com/beffroi-php/symfony-bundle.git"
+    target: "https://${GH_TOKEN}@github.com/beffroi-auth/symfony-bundle.git"
   - prefix: "src/xml-security"
-    target: "https://${GH_TOKEN}@github.com/beffroi-php/xml-security.git"
+    target: "https://${GH_TOKEN}@github.com/beffroi-auth/xml-security.git"
   - prefix: "src/saml2-model"
-    target: "https://${GH_TOKEN}@github.com/beffroi-php/saml2-model.git"
+    target: "https://${GH_TOKEN}@github.com/beffroi-auth/saml2-model.git"
   - prefix: "src/saml2-bindings"
-    target: "https://${GH_TOKEN}@github.com/beffroi-php/saml2-bindings.git"
+    target: "https://${GH_TOKEN}@github.com/beffroi-auth/saml2-bindings.git"
   - prefix: "src/saml"
-    target: "https://${GH_TOKEN}@github.com/beffroi-php/saml.git"
+    target: "https://${GH_TOKEN}@github.com/beffroi-auth/saml.git"
   - prefix: "apps/op"
-    target: "https://${GH_TOKEN}@github.com/beffroi-php/op.git"
+    target: "https://${GH_TOKEN}@github.com/beffroi-auth/op.git"
 
 origins:
   - ^\d+\.\d+\.x$
