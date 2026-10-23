@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
+use Beffroi\Core\Application\Identity\UserAlreadyExistsException;
 use function array_keys;
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Beffroi\Core\Domain\Identity\Address;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\Subject;
@@ -244,7 +244,8 @@ final class UserColumnsTest extends DatabaseTestCase
 
     /**
      * The unicity of a username within a tenant, held on the index column: a sealed column holds a
-     * different ciphertext for every write of the same value, so the constraint had nowhere else to go.
+     * different ciphertext for every write of the same value, so the constraint had nowhere else to go. Its
+     * violation is the exception of the core, naming nothing (beffroi/saml S-56).
      */
     #[Test]
     public function aSecondUserOfTheTenantWithTheSameUsernameIsRefused(): void
@@ -254,7 +255,8 @@ final class UserColumnsTest extends DatabaseTestCase
         self::reload();
 
         // Then
-        $this->expectException(UniqueConstraintViolationException::class);
+        $this->expectException(UserAlreadyExistsException::class);
+        $this->expectExceptionMessageIs('A user of this name or of this subject was written meanwhile in this tenant.');
 
         // When
         self::users()

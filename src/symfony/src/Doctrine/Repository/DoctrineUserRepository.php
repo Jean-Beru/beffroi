@@ -7,12 +7,14 @@ namespace Beffroi\Bundle\Doctrine\Repository;
 use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Bundle\Doctrine\PersonalData\BlindIndexedColumns;
 use Beffroi\Bundle\Doctrine\PersonalData\TenantBlindIndexes;
+use Beffroi\Core\Application\Identity\UserAlreadyExistsException;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use function array_values;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -77,8 +79,20 @@ final readonly class DoctrineUserRepository extends DoctrineRepository implement
         ]));
     }
 
+    /**
+     * The unique constraints on the subject and on the name are what refuse a person another request wrote between the
+     * checks of a use case and this write, a first sign-in through an upstream provider racing another (beffroi/saml
+     * S-56): the violation becomes the exception of the core the unit answers, naming nothing. The failed flush closes
+     * the manager, which the registry replaces (EntityManagers).
+     *
+     * @throws UserAlreadyExistsException when the table refuses the person at one of its unique constraints
+     */
     public function save(User $user): void
     {
-        $this->store($user);
+        try {
+            $this->store($user);
+        } catch (UniqueConstraintViolationException $exception) {
+            throw UserAlreadyExistsException::writtenMeanwhile($exception);
+        }
     }
 }

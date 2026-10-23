@@ -259,6 +259,7 @@ use Beffroi\Core\Application\Credential\CredentialRevocation;
 use Beffroi\Core\Application\Group\GroupProvisioner;
 use Beffroi\Core\Application\Group\UpstreamMemberships;
 use Beffroi\Core\Application\Identity\IdentityLinker;
+use Beffroi\Core\Application\Identity\JustInTimeProvisioning;
 use Beffroi\Core\Application\Identity\UserProvisioner;
 use Beffroi\Core\Application\Key\KeyRetirement;
 use Beffroi\Core\Application\Key\KeyStaging;
@@ -1464,6 +1465,9 @@ return static function (ContainerConfigurator $container): void {
     // Decision 0002: the memberships a sign-in through an upstream provider asserts, mapped to the groups of
     // the tenant by the declaration of that provider, which the caller hands over (issue #782)
     $services->set(UpstreamMemberships::class);
+    // Decision 0002: the person an upstream provider names at a sign-in through it, created at the first one, its
+    // groups and its telephone number written in the same unit (beffroi/saml S-56)
+    $services->set(JustInTimeProvisioning::class);
     $services->set(GroupProvisioner::class);
     // Decision 0029: the e-mail domains of a tenant federated to an upstream provider, read by the one rule of the
     // core (EmailDomain), where the login page sends an address of one and whom no local credential signs in; the
