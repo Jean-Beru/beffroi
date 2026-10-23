@@ -65,6 +65,15 @@ const COST_MARGIN = 1.20;
 const COST_CEILING = 0.800;
 
 /**
+ * The requests of the step of the address, which a tenant that federates an e-mail domain to an upstream identity
+ * provider asks for before the login page (beffroi/saml S-61), as the development tenant does since issue #788: the
+ * address posted, and the usual login page opened again. They are measured apart and left out of the sum of the
+ * journey, whose p95 stays the one of the eight requests the baselines of decision 0018 were taken on; each of them is
+ * still held to the ceiling, as every request is.
+ */
+const COST_ADDRESS_STEPS = ['address', 'login page after the address'];
+
+/**
  * The KMS the count is read from, which is the value "--kms" takes for it, the compose profile that runs it
  * and the name of its service, all three being the same word (KMS_BACKENDS, compose.yaml).
  *
@@ -156,6 +165,12 @@ function login_cost(
         ' read with it (OIDC Core §5.3). The Symfony application of the demonstration is left out: what is',
         ' measured is what the provider spends.',
         '',
+        ' A tenant that federates an e-mail domain to an upstream identity provider, as the development tenant',
+        ' does since issue #788, asks for the address first (beffroi/saml S-61): two requests more, the address',
+        ' posted and the login page opened again. They are measured apart and left out of the journey, so that',
+        ' its p95 is still the one of the eight requests the baselines of decision 0018 were taken on; each of',
+        ' them is held to the ceiling all the same.',
+        '',
         ' Every journey carries a cookie jar of its own, so every one of them is a login and not a session',
         ' already open, and every one of them asks for a consent, so that the last journey is the same journey',
         ' as the first. The seconds are taken on this machine over the loopback interface, so they are the',
@@ -184,12 +199,21 @@ function login_cost(
     io()->progressFinish();
     $asked = cost_kms_calls($since);
 
-    $p95 = cost_p95(cost_journey_times($steps));
+    $addressSteps = array_intersect_key($steps, array_flip(COST_ADDRESS_STEPS));
+    $p95 = cost_p95(cost_journey_times(array_diff_key($steps, $addressSteps)));
     [$slowestStep, $slowestP95] = cost_slowest_request($steps);
 
     io()->section('Result');
     io()->table(['Measured', 'Result'], [
-        ['p95 of the login journey', sprintf('%d ms', cost_milliseconds($p95))],
+        [sprintf('p95 of the login journey, %d requests', count($steps) - count($addressSteps)), sprintf('%d ms', cost_milliseconds($p95))],
+        ...(
+            $addressSteps === []
+                ? []
+                : [[
+                    sprintf('p95 of the step of the address, %d requests, left out of the journey', count($addressSteps)),
+                    sprintf('%d ms', cost_milliseconds(cost_p95(cost_journey_times($addressSteps)))),
+                ]]
+        ),
         [sprintf('Calls to the KMS while the %d journeys were served', $journeys), (string) $asked],
     ]);
     io()->text([
