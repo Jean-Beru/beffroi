@@ -23,7 +23,7 @@ use Beffroi\Saml\Tests\Fixture\FixedClaims;
 use Beffroi\Saml\Tests\Fixture\FixedEndpoints;
 use Beffroi\Saml\Tests\Fixture\InMemoryAcceptedMetadata;
 use Beffroi\Saml\Tests\Fixture\InMemoryLogoutChains;
-use Beffroi\Saml\Tests\Fixture\InMemoryLogoutReplayStore;
+use Beffroi\Saml\Tests\Fixture\InMemoryReplayStore;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
 use Beffroi\Saml\Tests\Fixture\SignOutRequests;
 use Beffroi\Saml2\Bindings\PostSender;
@@ -80,7 +80,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
 
     private InMemoryAcceptedMetadata $accepted;
 
-    private InMemoryLogoutReplayStore $replay;
+    private InMemoryReplayStore $replay;
 
     private MockClock $clock;
 
@@ -96,7 +96,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
         $this->secret = LogoutChainSecret::draw();
         $this->tenant = Fixtures::tenant('acme', self::ISSUER);
         $this->accepted = new InMemoryAcceptedMetadata();
-        $this->replay = new InMemoryLogoutReplayStore();
+        $this->replay = new InMemoryReplayStore();
         $this->clock = new MockClock(Fixtures::now());
         $this->chains = new InMemoryLogoutChains();
         $this->accept([

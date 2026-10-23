@@ -4,15 +4,16 @@
                   xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
     <!--
-      The logout messages the model accepted (beffroi/saml, spec/saml.md S-23, model.md M-11), shared by every worker
-      of the deployment: a row per message under its tenant, its key the SHA-256 of the tenant, the issuer and the ID,
+      The assertions of the upstream identity providers and the logout messages the model accepted (beffroi/saml,
+      spec/saml.md S-23, S-53, model.md M-11), shared by every worker of the deployment: a row per message under its
+      tenant, its key the SHA-256 of the tenant, the issuer and the ID,
       inserted with ON CONFLICT DO NOTHING so that of two workers handed the same message one only is told it is new,
       and kept until the window in which the model would accept the message again has closed, the rows past it being
       deleted before each insertion.
     -->
-    <entity name="Beffroi\Saml\Domain\SingleLogout\RememberedLogoutMessage" table="beffroi_saml_logout_message">
+    <entity name="Beffroi\Saml\Domain\Replay\RememberedMessage" table="beffroi_saml_remembered_message">
         <indexes>
-            <index name="beffroi_saml_logout_message_expiry" columns="expires_at"/>
+            <index name="beffroi_saml_remembered_message_expiry" columns="expires_at"/>
         </indexes>
         <id name="key" type="string" column="message_key" length="64">
             <options>

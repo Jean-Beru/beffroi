@@ -6,16 +6,16 @@ namespace Beffroi\Bundle\Doctrine\Repository;
 
 use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Core\Domain\Tenant\Tenant;
-use Beffroi\Saml\Domain\SingleLogout\RememberedLogoutMessage;
-use Beffroi\Saml\Port\LogoutReplayStoreInterface;
+use Beffroi\Saml\Domain\Replay\RememberedMessage;
+use Beffroi\Saml\Port\ReplayStoreInterface;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Psr\Clock\ClockInterface;
 use function sprintf;
 
 /**
- * The logout messages the model accepted, in beffroi_saml_logout_message (beffroi/saml, spec/saml.md S-23, model.md
- * M-11): the store every worker of the deployment shares, written atomically.
+ * The assertions and the logout messages the model accepted, in beffroi_saml_remembered_message (beffroi/saml,
+ * spec/saml.md S-23, S-53, model.md M-11): the store every worker of the deployment shares, written atomically.
  *
  * Two statements through the connection and not the unit of work: the rows whose window has closed are deleted, then
  * the message is inserted with ON CONFLICT DO NOTHING, the database telling how many rows the insertion wrote. Two
@@ -24,21 +24,21 @@ use function sprintf;
  * not give (SeenOnce). A row deleted while its window is open would accept the message again; none is, the deletion
  * reading the clock the validator reads.
  *
- * @extends DoctrineRepository<RememberedLogoutMessage>
+ * @extends DoctrineRepository<RememberedMessage>
  */
-final readonly class DoctrineLogoutReplayStore extends DoctrineRepository implements LogoutReplayStoreInterface
+final readonly class DoctrineReplayStore extends DoctrineRepository implements ReplayStoreInterface
 {
     public function __construct(
         EntityManagers $managers,
         private ClockInterface $clock,
     ) {
-        parent::__construct($managers, RememberedLogoutMessage::class);
+        parent::__construct($managers, RememberedMessage::class);
     }
 
     public function remember(Tenant $tenant, string $issuer, string $id, DateTimeImmutable $expiresAt): bool
     {
         $manager = $this->manager();
-        $metadata = $manager->getClassMetadata(RememberedLogoutMessage::class);
+        $metadata = $manager->getClassMetadata(RememberedMessage::class);
         $connection = $manager->getConnection();
         $table = $metadata->getTableName();
         $expiry = $metadata->getColumnName('expiresAt');
@@ -56,7 +56,7 @@ final readonly class DoctrineLogoutReplayStore extends DoctrineRepository implem
                 $expiry,
             ),
             [
-                'key' => RememberedLogoutMessage::keyOf($tenant, $issuer, $id),
+                'key' => RememberedMessage::keyOf($tenant, $issuer, $id),
                 'tenant' => $tenant->id,
                 'expiresAt' => $expiresAt,
             ],

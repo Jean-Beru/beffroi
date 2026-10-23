@@ -2,21 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Saml\Tests\Unit\Domain\SingleLogout;
+namespace Beffroi\Saml\Tests\Unit\Domain\Replay;
 
 use Beffroi\Core\Domain\PersonalData\NoPersonalDatum;
 use Beffroi\Core\Domain\PersonalData\Reason;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\Fixtures;
-use Beffroi\Saml\Domain\SingleLogout\RememberedLogoutMessage;
+use Beffroi\Saml\Domain\Replay\RememberedMessage;
 use function hash;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-23: the key a logout message is remembered under, the SHA-256 of its tenant, its issuer and its ID.
+ * spec/saml.md S-23: the key an assertion or a logout message is remembered under, the SHA-256 of its tenant, its issuer and its ID.
  */
-final class RememberedLogoutMessageTest extends TestCase
+final class RememberedMessageTest extends TestCase
 {
     private Tenant $tenant;
 
@@ -34,7 +34,7 @@ final class RememberedLogoutMessageTest extends TestCase
         // When / Then
         static::assertSame(
             hash('sha256', $this->tenant->id->toRfc4122() . "\0https://sp.example.org/saml\0_id\0"),
-            RememberedLogoutMessage::keyOf($this->tenant, 'https://sp.example.org/saml', '_id'),
+            RememberedMessage::keyOf($this->tenant, 'https://sp.example.org/saml', '_id'),
         );
     }
 
@@ -46,8 +46,8 @@ final class RememberedLogoutMessageTest extends TestCase
     {
         // When / Then
         static::assertNotSame(
-            RememberedLogoutMessage::keyOf($this->tenant, 'https://sp.example.org/saml', '_id'),
-            RememberedLogoutMessage::keyOf($this->tenant, 'https://other.example.org/saml', '_id'),
+            RememberedMessage::keyOf($this->tenant, 'https://sp.example.org/saml', '_id'),
+            RememberedMessage::keyOf($this->tenant, 'https://other.example.org/saml', '_id'),
         );
     }
 
@@ -59,8 +59,8 @@ final class RememberedLogoutMessageTest extends TestCase
     {
         // When / Then
         static::assertNotSame(
-            RememberedLogoutMessage::keyOf($this->tenant, 'https://sp.example.org/saml', '_id'),
-            RememberedLogoutMessage::keyOf(Fixtures::tenant('globex', 'https://id.globex.example'), 'https://sp.example.org/saml', '_id'),
+            RememberedMessage::keyOf($this->tenant, 'https://sp.example.org/saml', '_id'),
+            RememberedMessage::keyOf(Fixtures::tenant('globex', 'https://id.globex.example'), 'https://sp.example.org/saml', '_id'),
         );
     }
 
@@ -77,7 +77,7 @@ final class RememberedLogoutMessageTest extends TestCase
                 'tenant' => new NoPersonalDatum(Reason::THE_TENANT),
                 'expiresAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
             ],
-            RememberedLogoutMessage::classifiedFields(),
+            RememberedMessage::classifiedFields(),
         );
     }
 }

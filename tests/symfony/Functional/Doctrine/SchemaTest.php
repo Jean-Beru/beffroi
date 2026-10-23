@@ -52,7 +52,7 @@ final class SchemaTest extends DatabaseTestCase
         'beffroi_disclosure',
         'beffroi_saml_service_provider',
         'beffroi_saml_upstream_identity_provider',
-        'beffroi_saml_logout_message',
+        'beffroi_saml_remembered_message',
         'beffroi_saml_session_participant',
         'beffroi_saml_logout_chain',
         // The one table of this schema no mapping of the bundle describes: the store of the data keys puts

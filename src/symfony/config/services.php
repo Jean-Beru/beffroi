@@ -314,13 +314,13 @@ use Beffroi\Saml\Domain\Key\SamlEncryptionAlgorithmInterface;
 use Beffroi\Saml\Application\SingleLogout\ProviderLogout;
 use Beffroi\Saml\Application\SingleLogout\SessionParticipants;
 use Beffroi\Saml\Application\SingleLogout\SingleLogout;
-use Beffroi\Saml\Port\LogoutReplayStoreInterface;
+use Beffroi\Saml\Port\ReplayStoreInterface;
 use Beffroi\Saml\Port\LogoutChainRepositoryInterface;
 use Beffroi\Saml\Port\LogoutMessageReceiverInterface;
 use Beffroi\Saml\Port\SignOutNotifierInterface;
 use Beffroi\Saml\Port\SessionParticipationRepositoryInterface;
 use Beffroi\Saml\Port\SignOutResponderInterface;
-use Beffroi\Bundle\Doctrine\Repository\DoctrineLogoutReplayStore;
+use Beffroi\Bundle\Doctrine\Repository\DoctrineReplayStore;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineSessionParticipationRepository;
 use Beffroi\Saml\Bridge\Model\ModelSignOnResponder;
 use Beffroi\Saml\Port\AuthnRequestReceiverInterface;
@@ -2059,8 +2059,8 @@ return static function (ContainerConfigurator $container): void {
     // the sessions it names ended by the core as every session ends (S-25) and the answer signed by the SAML key of
     // the tenant (S-27); each service provider's part in a session recorded from the event single sign-on announces,
     // on the lane of the events (S-26)
-    $services->set(DoctrineLogoutReplayStore::class);
-    $services->alias(LogoutReplayStoreInterface::class, DoctrineLogoutReplayStore::class);
+    $services->set(DoctrineReplayStore::class);
+    $services->alias(ReplayStoreInterface::class, DoctrineReplayStore::class);
     $services->set(ModelLogoutMessageReceiver::class);
     $services->alias(LogoutMessageReceiverInterface::class, ModelLogoutMessageReceiver::class);
     $services->set(ModelSignOutResponder::class);

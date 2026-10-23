@@ -924,7 +924,7 @@ const INFECTION_STRICT_FILES = [
     'src/saml/src/Domain/SingleLogout/SignOutResponse.php',
     'src/saml/src/Domain/SingleLogout/RedirectedMessage.php',
     'src/saml/src/Domain/SingleLogout/SessionParticipation.php',
-    'src/saml/src/Domain/SingleLogout/RememberedLogoutMessage.php',
+    'src/saml/src/Domain/Replay/RememberedMessage.php',
     'src/saml/src/Domain/Event/ServiceProviderSignedIn.php',
     'src/saml/src/Application/SingleLogout/SingleLogout.php',
     'src/saml/src/Application/SingleLogout/SessionParticipants.php',
