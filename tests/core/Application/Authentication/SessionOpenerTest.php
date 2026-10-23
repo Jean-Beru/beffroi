@@ -21,6 +21,7 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -119,6 +120,37 @@ final class SessionOpenerTest extends TestCase
 
         // Then
         static::assertEquals($this->clock->now(), $session->authenticatedAt());
+    }
+
+    /**
+     * beffroi/saml S-57, SAML Core §2.7.2: a session an upstream identity provider allows until an instant before the
+     * end of its lifetime ends then; one it allows longer ends with its lifetime.
+     */
+    #[Test]
+    #[DataProvider('provideBounds')]
+    public function theSessionEndsNoLaterThanWhatProvedItAllows(string $bound, string $expiresAt): void
+    {
+        // When
+        $session = $this->opener->open(
+            $this->tenant,
+            $this->alice,
+            [AuthenticationMethod::password()],
+            $this->context,
+            null,
+            $this->clock->now()->modify($bound),
+        );
+
+        // Then
+        static::assertEquals($this->clock->now()->modify($expiresAt), $session->expiresAt);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideBounds(): iterable
+    {
+        yield 'before the end of its lifetime' => ['+2 hours', '+2 hours'];
+        yield 'after it' => ['+10 hours', '+8 hours'];
     }
 
     #[Test]

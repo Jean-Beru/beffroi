@@ -11,6 +11,9 @@ use Beffroi\Core\Application\Identity\UpstreamProvisioningRefusalReason;
 use Beffroi\Core\Application\Identity\UpstreamProvisioningRefusedException;
 use Beffroi\Core\Application\Identity\UserProvisioner;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Domain\Group\Group;
+use Beffroi\Core\Domain\Group\GroupMapping;
+use Beffroi\Core\Domain\Group\GroupSource;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\EmailDomain;
 use Beffroi\Core\Domain\Identity\LinkedIdentity;
@@ -19,6 +22,9 @@ use Beffroi\Core\Domain\Identity\UpstreamProvider;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\AtomicWritesInterface;
+use Beffroi\Core\Port\GroupMembershipRepositoryInterface;
+use Beffroi\Core\Port\GroupRepositoryInterface;
+use Beffroi\Core\Port\GroupsOfAPersonInterface;
 use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
@@ -190,8 +196,76 @@ final class JustInTimeProvisioningTest extends DatabaseTestCase
         }
     }
 
-    private static function provisioning(LinkedIdentityRepositoryInterface $identities, UserRepositoryInterface $users): JustInTimeProvisioning
+    /**
+     * beffroi/saml S-56: a sign-in that loses a race on a membership, another sign-in of the same person having given it
+     * the group meanwhile, which the memberships read here do not see yet, is answered by the refusal of the core and
+     * not by the violation of the table, and leaves nothing managed by the entity manager.
+     */
+    #[Test]
+    public function aSignInThatLosesARaceOnAMembershipIsRefusedAndLeavesNothingManaged(): void
     {
+        // Given
+        $staff = new Group(Uuid::v7(), self::tenant(), 'Staff', GroupSource::Local, self::now());
+        self::service('test.beffroi.groups', GroupRepositoryInterface::class)->save($staff);
+        $mapping = new GroupMapping(['staff' => $staff]);
+        self::provisioning(self::linkedIdentities(), self::users())
+            ->personNamedBy(
+                self::tenant(),
+                self::provider(),
+                'a7f3c2e1-alice',
+                new EmailAddress(self::ADDRESS),
+                [],
+                self::context(),
+                null,
+                $mapping,
+                ['staff'],
+            );
+        self::entityManager()->clear();
+        $notThereYet = new readonly class implements GroupsOfAPersonInterface {
+            public function of(User $user): array
+            {
+                return [];
+            }
+        };
+        $memberships = new UpstreamMemberships(
+            $notThereYet,
+            self::service('test.beffroi.group_memberships', GroupMembershipRepositoryInterface::class),
+            new SymfonyUuidGenerator(),
+            new MockClock(self::now()),
+        );
+
+        // When
+        try {
+            self::provisioning(self::linkedIdentities(), self::users(), $memberships)
+                ->personNamedBy(
+                    self::tenant(),
+                    self::provider(),
+                    'a7f3c2e1-alice',
+                    new EmailAddress(self::ADDRESS),
+                    [],
+                    self::context(),
+                    null,
+                    new GroupMapping([
+                        'staff' => self::service('test.beffroi.groups', GroupRepositoryInterface::class)
+                            ->findByName(self::tenant(), 'Staff') ?? static::fail('The group is gone.'),
+                    ]),
+                    ['staff'],
+                );
+            static::fail('The sign-in was not refused.');
+        } catch (UpstreamProvisioningRefusedException $refusal) {
+            // Then
+            static::assertSame(
+                [UpstreamProvisioningRefusalReason::MembershipWrittenMeanwhile, []],
+                [$refusal->reason, self::entityManager()->getUnitOfWork()->getIdentityMap()[User::class] ?? []],
+            );
+        }
+    }
+
+    private static function provisioning(
+        LinkedIdentityRepositoryInterface $identities,
+        UserRepositoryInterface $users,
+        ?UpstreamMemberships $memberships = null,
+    ): JustInTimeProvisioning {
         $clock = new MockClock(self::now());
 
         return new JustInTimeProvisioning(
@@ -203,7 +277,7 @@ final class JustInTimeProvisioningTest extends DatabaseTestCase
             $clock,
             self::service('test.beffroi.atomic_writes', AtomicWritesInterface::class),
             new SymfonyUuidGenerator(),
-            self::service('test.beffroi.upstream_memberships', UpstreamMemberships::class),
+            $memberships ?? self::service('test.beffroi.upstream_memberships', UpstreamMemberships::class),
         );
     }
 

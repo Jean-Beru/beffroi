@@ -10,6 +10,7 @@ use Beffroi\Core\Application\Credential\ActiveCredentials;
 use Beffroi\Core\Application\Credential\ActivePassword;
 use Beffroi\Core\Application\Credential\BreachedPasswordRefusal;
 use Beffroi\Core\Application\Credential\EnrolmentRefusal;
+use Beffroi\Core\Application\Group\MembershipAlreadyHeldException;
 use Beffroi\Core\Application\Group\UpstreamMemberships;
 use Beffroi\Core\Application\Identity\IdentityAlreadyLinkedException;
 use Beffroi\Core\Application\Identity\IdentityLinker;
@@ -894,6 +895,47 @@ final class JustInTimeProvisioningTest extends TestCase
         } catch (UpstreamProvisioningRefusedException $refusal) {
             // Then
             static::assertSame([UpstreamProvisioningRefusalReason::IdentityLinkedMeanwhile, null], [$refusal->reason, $refusal->getPrevious()]);
+        }
+    }
+
+    /**
+     * beffroi/saml S-56: a sign-in of a person that loses a race on a membership, another sign-in of the same person
+     * having given it the same group meanwhile, is refused, the store refusing the second membership.
+     */
+    #[Test]
+    public function aSignInThatLosesARaceOnAMembershipIsRefused(): void
+    {
+        // Given
+        $this->provisioning->personNamedBy($this->tenant, $this->provider, self::SUBJECT, new EmailAddress(self::ADDRESS), [], Fixtures::context());
+        $memberships = new class implements GroupMembershipRepositoryInterface {
+            public function save(GroupMembership $membership): void
+            {
+                throw MembershipAlreadyHeldException::writtenMeanwhile(new RuntimeException('The unique constraint refused the row.'));
+            }
+
+            public function remove(GroupMembership $membership): void
+            {
+            }
+        };
+        $provisioning = $this->provisioningDrawing(new SymfonyUuidGenerator(), memberships: $memberships);
+
+        // When
+        try {
+            $provisioning->personNamedBy(
+                $this->tenant,
+                $this->provider,
+                self::SUBJECT,
+                new EmailAddress(self::ADDRESS),
+                [],
+                Fixtures::context(),
+                null,
+                $this->members(),
+                ['staff'],
+            );
+            static::fail('The sign-in was not refused.');
+        } catch (UpstreamProvisioningRefusedException $refusal) {
+            // Then
+            static::assertSame([UpstreamProvisioningRefusalReason::MembershipWrittenMeanwhile, null], [$refusal->reason, $refusal->getPrevious()]);
         }
     }
 
