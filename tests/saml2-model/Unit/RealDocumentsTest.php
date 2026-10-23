@@ -42,8 +42,9 @@ final class RealDocumentsTest extends TestCase
 
     /**
      * Section 9.4, section 6.5: the metadata of an identity provider, as Entra, Keycloak 26.7.4 and SimpleSAMLphp
-     * 2.5.3.1 publish it, the last both in plain http and as the upstream identity provider of the stack, over https and
-     * signed, and as its library 4.20.3 writes it, read by readTrusted().
+     * 2.5.3.1 publish it, the first both for every tenant and for the enterprise application upstream of the stack, the
+     * last both in plain http and as the upstream identity provider of the stack, over https and signed, and as its
+     * library 4.20.3 writes it, read by readTrusted().
      *
      * @param list<Endpoint> $singleSignOn
      * @param list<Endpoint> $singleLogout
@@ -108,6 +109,17 @@ final class RealDocumentsTest extends TestCase
             0,
             [new Endpoint(Binding::HttpRedirect, $entra), new Endpoint(Binding::HttpPost, $entra)],
             [new Endpoint(Binding::HttpRedirect, $entra)],
+            [],
+            false,
+        ];
+        $application = 'https://login.microsoftonline.com/20a6e528-cf9e-4f79-8949-bbd59006eff5/saml2';
+        yield 'Entra, the enterprise application upstream of the stack, a BOM, two RoleDescriptor skipped, one signing key' => [
+            'entra-app-federation-metadata-2026-10-23.xml',
+            'https://sts.windows.net/20a6e528-cf9e-4f79-8949-bbd59006eff5/',
+            1,
+            0,
+            [new Endpoint(Binding::HttpRedirect, $application), new Endpoint(Binding::HttpPost, $application)],
+            [new Endpoint(Binding::HttpRedirect, $application)],
             [],
             false,
         ];
@@ -332,6 +344,7 @@ final class RealDocumentsTest extends TestCase
     public static function provideSignedByTheirPublisher(): iterable
     {
         yield 'Entra' => ['entra-common-federation-metadata-2026-09-23.xml'];
+        yield 'Entra, the enterprise application upstream of the stack' => ['entra-app-federation-metadata-2026-10-23.xml'];
         yield 'SimpleSAMLphp upstream of the stack' => ['simplesamlphp-2.5.3.1-idp-metadata-signed-2026-10-22.xml'];
     }
 
