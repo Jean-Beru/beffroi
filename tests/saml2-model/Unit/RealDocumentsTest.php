@@ -42,7 +42,8 @@ final class RealDocumentsTest extends TestCase
 
     /**
      * Section 9.4, section 6.5: the metadata of an identity provider, as Entra, Keycloak 26.7.4 and SimpleSAMLphp
-     * 2.5.3.1 publish it and as its library 4.20.3 writes it, read by readTrusted().
+     * 2.5.3.1 publish it, the last both in plain http and as the upstream identity provider of the stack, over https and
+     * signed, and as its library 4.20.3 writes it, read by readTrusted().
      *
      * @param list<Endpoint> $singleSignOn
      * @param list<Endpoint> $singleLogout
@@ -130,6 +131,17 @@ final class RealDocumentsTest extends TestCase
             [new Endpoint(Binding::HttpRedirect, $simplesamlphp . 'singleSignOnService')],
             [new Endpoint(Binding::HttpRedirect, $simplesamlphp . 'singleLogout')],
             [NameIdFormat::Transient],
+            false,
+        ];
+        $upstream = 'https://saml-idp.localhost/simplesaml/module.php/saml/idp/';
+        yield 'SimpleSAMLphp upstream of the stack, signed, both bindings, a persistent NameID' => [
+            'simplesamlphp-2.5.3.1-idp-metadata-signed-2026-10-22.xml',
+            $upstream . 'metadata',
+            1,
+            1,
+            [new Endpoint(Binding::HttpRedirect, $upstream . 'singleSignOnService'), new Endpoint(Binding::HttpPost, $upstream . 'singleSignOnService')],
+            [new Endpoint(Binding::HttpRedirect, $upstream . 'singleLogout')],
+            [NameIdFormat::Persistent],
             false,
         ];
         yield 'the SimpleSAMLphp library' => [
@@ -292,14 +304,14 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, M-2: Entra's metadata verified by readSigned() under the certificate of its own KeyInfo, which
-     * proves the signature and not the trust, reads as by readTrusted().
+     * Section 9.4, M-2: the metadata Entra and SimpleSAMLphp 2.5.3.1 signed themselves, verified by readSigned() under
+     * the certificate of their own KeyInfo, which proves the signature and not the trust, read as by readTrusted().
      */
     #[Test]
-    public function itVerifiesEntraMetadataUnderTheCertificateOfItsOwnKeyInfo(): void
+    #[DataProvider('provideSignedByTheirPublisher')]
+    public function itVerifiesRealMetadataUnderTheCertificateOfItsOwnKeyInfo(string $file): void
     {
         // Given
-        $file = 'entra-common-federation-metadata-2026-09-23.xml';
         $document = MetadataFixtures::load('real/' . $file);
         $certificate = $document->root();
         foreach (['Signature', 'KeyInfo', 'X509Data', 'X509Certificate'] as $local) {
@@ -312,6 +324,15 @@ final class RealDocumentsTest extends TestCase
 
         // Then
         static::assertEquals($this->reader($file)->readTrusted(MetadataFixtures::load('real/' . $file)), $descriptor);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideSignedByTheirPublisher(): iterable
+    {
+        yield 'Entra' => ['entra-common-federation-metadata-2026-09-23.xml'];
+        yield 'SimpleSAMLphp upstream of the stack' => ['simplesamlphp-2.5.3.1-idp-metadata-signed-2026-10-22.xml'];
     }
 
     /**

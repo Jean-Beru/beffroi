@@ -554,6 +554,7 @@ function saml_sp_sign_on_at_the_provider(array $journey, string $issuer, string 
     if ($status === 302 && strtok($location, '?') === $issuer . '/login') {
         [$status, , $login] = demo_request($cookies, $ca, 'GET', $location);
         demo_expect($status === 200, sprintf('the provider takes the browser to its login page (got %d)', $status));
+        $login = demo_past_the_address($cookies, $ca, $issuer, $login);
         $form = demo_form_with($login, '_username', 'which carries the form of the password');
         demo_expect(
             preg_match('/name="_csrf_token" value="([^"]+)"/', $form, $csrf) === 1 && preg_match('/action="([^"]+)"/', $form, $action) === 1,
