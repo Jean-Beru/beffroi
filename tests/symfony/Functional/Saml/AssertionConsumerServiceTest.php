@@ -30,6 +30,7 @@ use Beffroi\Saml2\Model\Assertion\NameId;
 use Beffroi\Saml2\Model\Assertion\NameIdFormat;
 use Beffroi\Saml2\Model\Metadata\MetadataReader;
 use Beffroi\Saml2\Model\Protocol\AuthnRequest;
+use Beffroi\Saml2\Model\Protocol\SecondLevelStatusCode;
 use Beffroi\Saml2\Model\SamlLoader;
 use Beffroi\Saml2\Model\Tests\Unit\Metadata\MetadataFixtures;
 use Beffroi\Saml2\Model\Validation\AuthnRequestValidator;
@@ -39,6 +40,7 @@ use function array_map;
 use function http_build_query;
 use function parse_url;
 use function str_starts_with;
+use function strtok;
 use function ucfirst;
 use const PHP_URL_QUERY;
 use PHPUnit\Framework\Attributes\Test;
@@ -71,6 +73,11 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     private const string SINGLE_SIGN_ON = 'https://saml-idp.localhost/simplesaml/module.php/saml/idp/singleSignOnService';
 
     private const string ADDRESS = 'alice@example.org';
+
+    /**
+     * The single sign-on service of the second provider of the kernel, which requires its assertions encrypted.
+     */
+    private const string ENCRYPTING_SINGLE_SIGN_ON = 'https://idp.example.org/saml/sso';
 
     protected static function kernelOptions(): array
     {
@@ -673,7 +680,114 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The tenant holds a SAML key, a key that signs its ID tokens, and the document of the provider of the judge.
+     * The acceptance of issue #784 as amended, S-54, S-67: a provider declared with require_encrypted_assertions has a
+     * clear assertion it signed refused, whatever signatures held.
+     */
+    #[Test]
+    public function aClearAssertionOfAProviderAskedToEncryptIsRefused(): void
+    {
+        // Given
+        self::provisioned();
+        $request = $this->signOn($this->beginAuthorization(), IdentityProviderDocuments::SIGNED);
+
+        // When
+        $this->post(UpstreamResponses::form(
+            MetadataFixtures::signingKey('idp'),
+            IdentityProviderDocuments::SIGNED,
+            self::ASSERTION_CONSUMER_SERVICE,
+            self::AUDIENCE,
+            $request['id'],
+            Clock::get()->now(),
+            ['mail' => ['carol@encrypting.example']],
+            $request['relay_state'],
+        ));
+
+        // Then
+        $this->assertRefused('The identity provider is required to encrypt its assertions and sent one in clear (spec/saml.md S-54, S-67).');
+    }
+
+    /**
+     * S-53, M-3, M-8: an assertion the first provider signed, posted for a request sent to the second, is verified under
+     * the metadata of the second, and refused.
+     */
+    #[Test]
+    public function anAssertionOfOneProviderForARequestSentToAnotherIsRefused(): void
+    {
+        // Given
+        self::provisioned();
+        $request = $this->signOn($this->beginAuthorization(), IdentityProviderDocuments::SIGNED);
+
+        // When
+        $this->post($this->response($request));
+
+        // Then
+        $this->assertRefused('No trusted key verifies the signature over SignedInfo (D-7, D-8).');
+    }
+
+    /**
+     * S-58, OIDC Core §3.1.2.6: a response whose status is not Success, the person having failed at the provider, ends
+     * the interaction with access_denied at the redirection URI of the client, its state given back, and nothing of the
+     * provider in it.
+     */
+    #[Test]
+    public function aFailedAuthenticationAnswersTheClientAccessDenied(): void
+    {
+        // Given
+        self::provisioned();
+        $request = $this->signOn($this->beginAuthorization());
+
+        // When
+        $this->post(UpstreamResponses::failure(
+            UpstreamResponses::simpleSamlPhpKey(),
+            IdentityProviderDocuments::SIMPLESAMLPHP,
+            self::ASSERTION_CONSUMER_SERVICE,
+            $request['id'],
+            Clock::get()->now(),
+            SecondLevelStatusCode::AuthnFailed,
+            $request['relay_state'],
+        ));
+
+        // Then
+        $query = self::redirectedQuery($this->browser->getResponse());
+        static::assertSame(
+            ['http://127.0.0.1/callback', 'access_denied', 'state-of-the-client', 'The identity provider authenticated nobody.'],
+            [
+                strtok(self::string($this->browser->getResponse()->headers->get('Location')), '?'),
+                $query['error'] ?? null,
+                $query['state'] ?? null,
+                $query['error_description'] ?? null,
+            ],
+        );
+    }
+
+    /**
+     * S-58, S-59: a response whose status is not Success for the login a page waits for is the page of a refusal.
+     */
+    #[Test]
+    public function aFailedAuthenticationForAPageIsRefused(): void
+    {
+        // Given
+        self::provisioned();
+        $request = $this->signOnFromTheAccount();
+
+        // When
+        $this->post(UpstreamResponses::failure(
+            UpstreamResponses::simpleSamlPhpKey(),
+            IdentityProviderDocuments::SIMPLESAMLPHP,
+            self::ASSERTION_CONSUMER_SERVICE,
+            $request['id'],
+            Clock::get()->now(),
+            SecondLevelStatusCode::AuthnFailed,
+            $request['relay_state'],
+        ));
+
+        // Then
+        $this->assertRefused('The identity provider authenticated nobody (spec/saml.md S-58).');
+    }
+
+    /**
+     * The tenant holds a SAML key, a key that signs its ID tokens, the document of the provider of the judge and the one
+     * of the second provider of the kernel.
      */
     private static function provisioned(): void
     {
@@ -685,6 +799,15 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
                 self::tenant(),
                 IdentityProviderDocuments::SIMPLESAMLPHP,
                 IdentityProviderDocuments::simpleSamlPhp(),
+                null,
+                self::currentSecond(),
+            ));
+        self::service('test.beffroi.saml_upstream_accepted_metadata', AcceptedMetadataRepositoryInterface::class)
+            ->save(new AcceptedUpstreamMetadata(
+                Uuid::v7(),
+                self::tenant(),
+                IdentityProviderDocuments::SIGNED,
+                self::encryptingDocument(),
                 null,
                 self::currentSecond(),
             ));
@@ -715,14 +838,22 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
      *
      * @return array{id: string, relay_state: string}
      */
-    private function signOn(string $interaction): array
+    private function signOn(string $interaction, string $identityProvider = IdentityProviderDocuments::SIMPLESAMLPHP): array
     {
         $this->browser->request('GET', '/saml/sp/sign-on', [
             'interaction' => $interaction,
-            'identity_provider' => IdentityProviderDocuments::SIMPLESAMLPHP,
+            'identity_provider' => $identityProvider,
         ]);
 
-        return $this->sentRequestOfTheAnswer();
+        return $this->sentRequestOfTheAnswer($identityProvider);
+    }
+
+    /**
+     * The document of the second provider of the kernel, which requires its assertions encrypted.
+     */
+    private static function encryptingDocument(): string
+    {
+        return self::string(file_get_contents(IdentityProviderDocuments::signedPath()));
     }
 
     /**
@@ -745,11 +876,11 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
      *
      * @return array{id: string, relay_state: string}
      */
-    private function sentRequestOfTheAnswer(): array
+    private function sentRequestOfTheAnswer(string $identityProvider = IdentityProviderDocuments::SIMPLESAMLPHP): array
     {
         $location = self::string($this->browser->getResponse()->headers->get('Location'));
         $received = new RedirectReceiver(SamlLoader::create())->authnRequest((string) parse_url($location, PHP_URL_QUERY));
-        $request = $this->sentRequest();
+        $request = $this->sentRequest($identityProvider);
 
         return [
             'id' => $request->id,
@@ -761,26 +892,28 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
      * The request the last answer carries to the provider, validated on its side under the metadata the service
      * provider serves.
      */
-    private function sentRequest(): AuthnRequest
+    private function sentRequest(string $identityProvider = IdentityProviderDocuments::SIMPLESAMLPHP): AuthnRequest
     {
+        $singleSignOn = $identityProvider === IdentityProviderDocuments::SIGNED ? self::ENCRYPTING_SINGLE_SIGN_ON : self::SINGLE_SIGN_ON;
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode(), self::string($response->getContent()));
         $location = self::string($response->headers->get('Location'));
-        static::assertStringStartsWith(self::SINGLE_SIGN_ON . '?', $location);
+        static::assertStringStartsWith($singleSignOn . '?', $location);
         $received = new RedirectReceiver(SamlLoader::create())->authnRequest((string) parse_url($location, PHP_URL_QUERY));
         $this->browser->request('GET', '/saml/sp/metadata');
         $serviceProvider = new MetadataReader(SamlLoader::create(), new MockClock())->readTrusted(
             SamlLoader::create()->load(self::string($this->browser->getResponse()->getContent())),
         )->serviceProvider ?? static::fail('The tenant serves no service provider.');
-        $identityProvider = new MetadataReader(SamlLoader::create(), new MockClock())->readTrusted(
-            SamlLoader::create()->load(IdentityProviderDocuments::simpleSamlPhp()),
+        $document = $identityProvider === IdentityProviderDocuments::SIGNED ? self::encryptingDocument() : IdentityProviderDocuments::simpleSamlPhp();
+        $read = new MetadataReader(SamlLoader::create(), new MockClock())->readTrusted(
+            SamlLoader::create()->load($document),
         )->identityProvider ?? static::fail('The document holds no identity provider.');
 
         return $received->validate(
             new AuthnRequestValidator(SamlLoader::create(), Clock::get()),
             $serviceProvider,
-            $identityProvider,
-            self::SINGLE_SIGN_ON,
+            $read,
+            $singleSignOn,
         )->request;
     }
 

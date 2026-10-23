@@ -26,6 +26,16 @@ beffroi:
                     attribute: 'eduPersonAffiliation'
                     map:
                         member: 'Members'
+            # A second identity provider, whose declaration requires its assertions encrypted (spec/saml.md S-54, S-67):
+            # its document is the one the model's writer signs for the test key of an identity provider of saml2-model,
+            # a file of the fixtures, so that a refresh of every provider reads it; what the assertion consumer service
+            # refuses of it, and of the first provider presented for a request sent to it, is played against both
+            # (AssertionConsumerServiceTest).
+            'https://idp.example.org/saml':
+                metadata: '%kernel.project_dir%/../saml/Fixture/metadata/signed-idp-metadata.xml'
+                domains: ['encrypting.example']
+                email_attribute: 'mail'
+                require_encrypted_assertions: true
 
 services:
     # Two more upstream identity providers, each the algorithm of the key it encrypts for (spec/saml.md S-64), tagged

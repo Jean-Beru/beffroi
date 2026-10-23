@@ -27,8 +27,10 @@ use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Exception\KeyNotFoundException;
+use Beffroi\Oidc\Domain\Authorization\Prompt;
 use Beffroi\Oidc\Domain\Interaction\Interaction;
 use Beffroi\Oidc\Domain\Interaction\LoginRequirement;
+use Beffroi\Oidc\Exception\AccessDeniedException;
 use Beffroi\Oidc\Exception\AccountSelectionRequiredException;
 use Beffroi\Oidc\Exception\InteractionCompletedException;
 use Beffroi\Oidc\Exception\InteractionExpiredException;
@@ -39,6 +41,7 @@ use Beffroi\Saml\Application\Upstream\UpstreamSignOn;
 use Beffroi\Saml\Domain\Upstream\AuthnContextMethods;
 use Beffroi\Saml\Domain\Upstream\UpstreamAssertion;
 use Beffroi\Saml\Exception\AssertionRefusedException;
+use Beffroi\Saml\Exception\UpstreamAuthenticationFailedException;
 use Beffroi\Saml\Exception\UpstreamSignOnRefusedException;
 use DateTimeImmutable;
 use Psr\Clock\ClockInterface;
@@ -132,6 +135,8 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
         $interaction = $remembered->interaction === null ? null : $this->resumable($request, $tenant, $remembered->interaction, $now);
         try {
             $assertion = $consumer->receive($tenant, $request->request->all(), $remembered->identityProvider, $remembered->requestId);
+        } catch (UpstreamAuthenticationFailedException $failure) {
+            throw $this->failedAtTheProvider($request, $interaction, $failure);
         } catch (AssertionRefusedException $exception) {
             throw $this->refused($exception->getMessage(), AuthenticationFailureReason::UpstreamResponseRefused);
         } catch (KeyNotFoundException) {
@@ -320,6 +325,29 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
                 $person,
             );
         }
+    }
+
+    /**
+     * S-58: the provider authenticated nobody, the person having cancelled or failed there. The client is answered
+     * access_denied at its redirection URI with its state, login_required for NoPassive under prompt=none, the
+     * interaction over; a page that waited is the page of a refusal. Nothing of the provider travels in either.
+     */
+    private function failedAtTheProvider(
+        Request $request,
+        ?Interaction $interaction,
+        UpstreamAuthenticationFailedException $failure,
+    ): UpstreamLoginRefusedException {
+        if (! $interaction instanceof Interaction) {
+            return $this->refused($failure->getMessage(), null);
+        }
+        $answer = $failure->noPassive && $interaction->request->hasPrompt(Prompt::None)
+            ? new LoginRequiredException('The identity provider authenticated nobody without asking the person.')
+            : new AccessDeniedException('The identity provider authenticated nobody.');
+
+        return new UpstreamLoginRefusedException(
+            $this->responder->failure($request, $interaction->request->redirectTarget(), $answer, $interaction),
+            $failure->getMessage(),
+        );
     }
 
     /**
