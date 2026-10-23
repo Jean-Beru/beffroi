@@ -146,11 +146,13 @@ function start(
         // change, so the op container is created again rather than left serving the one it read.
         $environment['BEFFROI_STACK_CERTIFICATE_FINGERPRINT'] = stack_certificate_fingerprint($certificate);
     }
-    // The directory compose.yaml mounts into op and worker for the metadata of the SAML judge: made here by whoever
-    // runs the task, or Docker makes it as root and "castor saml-sp" cannot write the file into it.
-    if (! is_dir('var/saml-sp/metadata') && ! mkdir('var/saml-sp/metadata', 0o777, true) && ! is_dir('var/saml-sp/metadata')) {
-        io()->error('Cannot create var/saml-sp/metadata.');
-        exit(1);
+    // The directories compose.yaml mounts into op and worker for the metadata of the SAML judges: made here by whoever
+    // runs the task, or Docker makes them as root and "castor saml-sp" or "castor saml-idp" cannot write a file into them.
+    foreach (['var/saml-sp/metadata', 'var/saml-idp/metadata'] as $directory) {
+        if (! is_dir($directory) && ! mkdir($directory, 0o777, true) && ! is_dir($directory)) {
+            io()->error(sprintf('Cannot create %s.', $directory));
+            exit(1);
+        }
     }
     $up = ['up', '-d', '--remove-orphans', '--wait'];
     if ($build) {

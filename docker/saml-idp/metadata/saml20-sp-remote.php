@@ -16,6 +16,13 @@
 // becomes validate.authnrequest (SAMLParser::getMetadata20SP()), under which an AuthnRequest without a signature is
 // refused. They list no NameID format: the one the NameID is given in is the persistent one the NameIDPolicy of the
 // request asks for (issue #783), which the identity provider draws (saml20-idp-hosted.php).
+//
+// The assertion is encrypted when the file /saml-idp/assertion-encryption, which "castor saml-idp" writes before a
+// journey, says "yes": for the first certificate for encryption of these metadata, the one the provider gives this
+// identity provider alone (spec/saml.md S-64, S-65), its session key under rsa-oaep-mgf1p and its content under
+// aes128-cbc, the one content algorithm SimpleSAMLphp 2.5.3.1 encrypts for a certificate with (EncryptedAssertion::
+// setAssertion() of simplesamlphp/saml2), which the provider opens only under the verified signature of the response
+// (decision 0013), signed here (saml20-idp-hosted.php).
 use SimpleSAML\Metadata\SAMLParser;
 
 // Variables and not constants: SimpleSAMLphp includes this file once per lookup.
@@ -45,6 +52,8 @@ if (!is_string($document) || $document === '') {
 foreach (SAMLParser::parseDescriptorsString($document) as $entityId => $parser) {
     $sp = $parser->getMetadata20SP();
     if ($sp !== null) {
+        $sp['assertion.encryption'] = is_file('/saml-idp/assertion-encryption')
+            && trim((string) file_get_contents('/saml-idp/assertion-encryption')) === 'yes';
         $metadata[$entityId] = $sp;
     }
 }

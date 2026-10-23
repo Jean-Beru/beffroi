@@ -91,6 +91,11 @@ services:
       # declares ("castor saml-sp" writes it); the directory holds nothing else, the private key of the service
       # provider being beside it, not in it. The worker below reads the same file for its hourly refresh.
       - ./var/saml-sp/metadata:/saml-sp:ro
+      # The metadata of the identity provider of the SAML judge, the file the development declaration of
+      # beffroi.saml.identity_providers names ("castor saml-idp" writes it from what the identity provider serves);
+      # nothing else is in the directory, its key being under var/saml-idp/ and not in it. The worker below reads
+      # the same file for its hourly refresh.
+      - ./var/saml-idp/metadata:/saml-idp-metadata:ro
       # The sealed signing keys are files (architecture §3.3): the process that serves them and the process
       # that rotates them (the worker below) share the directory, or a rotation would change nothing here.
       - keys_data:/app/var/keys
@@ -182,6 +187,7 @@ services:
       - ./src:/src
       - /app/var/
       - ./var/saml-sp/metadata:/saml-sp:ro
+      - ./var/saml-idp/metadata:/saml-idp-metadata:ro
       - keys_data:/app/var/keys
       - kms_data:/app/var/kms
       - geoip_data:/app/var/geoip

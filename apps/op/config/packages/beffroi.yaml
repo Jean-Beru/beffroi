@@ -186,6 +186,12 @@ when@dev:
         # Three claims of "alice" are sent under the OID names (urn:oid, the "uri" format the SAML V2.0
         # interoperability profiles ask for) the way a SimpleSAMLphp or a Shibboleth expects them.
         saml:
+            # The tenant is a SAML service provider as well in development (spec/saml.md section 6.9, issue
+            # beffroi-php/beffroi#788): its metadata at /saml/sp/metadata, and at /saml/sp/metadata/{identity
+            # provider} for each provider below, its assertion consumer service at /saml/sp/acs, under the SAML key
+            # of the identity provider above (S-40).
+            service_provider:
+                enabled: true
             service_providers:
                 'https://saml-sp.localhost/simplesaml/module.php/saml/sp/metadata/beffroi':
                     metadata: '/saml-sp/sp-metadata.xml'
@@ -230,6 +236,31 @@ when@dev:
                     attributes:
                         'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress':
                             claim: email
+            # The upstream identity providers of the tenant in development, one entry per judge, keyed by its entity
+            # ID, compared exactly (spec/saml.md S-42). Declaring one federates its domains: every login page of the
+            # development stack asks for the address first (S-61), an address of these domains goes to its provider,
+            # and any other address, or a username, goes on to the usual page.
+            identity_providers:
+                # SimpleSAMLphp 2.5.3.1, the identity provider of the judge of sub-spike 9d ("castor saml-idp", issue
+                # beffroi-php/beffroi#788), on https://saml-idp.localhost. Its metadata are a file, the one that task
+                # writes from what the identity provider serves into the directory compose.yaml mounts into op and
+                # the worker, and that "beffroi:saml:identity-provider:refresh" reads; the channel is the machine, so
+                # no signer is pinned. It names its people by a persistent NameID (S-55) and sends the attributes
+                # below under their plain names (docker/saml-idp/); its group "beffroi-admins" is the group
+                # "Administrators" of the tenant, which that task creates, no group being created from what a
+                # provider sends (S-45, S-56). Its assertions arrive in clear or encrypted for its own key (S-64), as
+                # the walk asks it.
+                'https://saml-idp.localhost/simplesaml/module.php/saml/idp/metadata':
+                    metadata: '/saml-idp-metadata/idp-metadata.xml'
+                    domains: ['idp.example']
+                    email_attribute: mail
+                    profile:
+                        givenName: given_name
+                        sn: family_name
+                    groups:
+                        attribute: groups
+                        map:
+                            beffroi-admins: Administrators
         # The issuer of the development stack whose signature the tenant trusts (RFC 7523 §3, issue #299),
         # which "castor demo --assertion" signs with. Whoever holds its key can name a user of this tenant,
         # so everything about it is written here and nothing is asked for: the keys are the ones below and
