@@ -65,6 +65,29 @@ final class EncryptionCertificatesTest extends TestCase
     }
 
     /**
+     * S-65: a retiring key is no longer announced, so that no provider takes it in its last hour; the key that took
+     * over is.
+     */
+    #[Test]
+    public function aRetiringKeyIsNoLongerAnnounced(): void
+    {
+        // Given
+        $previous = SamlKeys::encryptionKey($this->tenant, self::PROVIDER);
+        $previous->activate(Fixtures::now());
+        $previous->startRetiring(Fixtures::now(), Fixtures::now()->modify('+1 hour'));
+        $current = SamlKeys::encryptionKey($this->tenant, self::PROVIDER, 1, Fixtures::now()->modify('+1 day'));
+        $current->activate(Fixtures::now());
+        $this->keys->save($previous);
+        $this->keys->save($current);
+
+        // When
+        $certificates = $this->certificates->of($this->tenant, self::PROVIDER);
+
+        // Then
+        static::assertSame(self::base64Of([$current]), self::base64($certificates));
+    }
+
+    /**
      * S-3: a key is opened by the KMS once per process for its certificate, whatever the number of times the metadata
      * are asked for.
      */

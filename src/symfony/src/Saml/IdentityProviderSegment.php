@@ -18,9 +18,10 @@ use Beffroi\Saml\Bridge\Model\ModelEntityId;
 final class IdentityProviderSegment
 {
     /**
-     * What the route requires of the segment: base64url, which the router refuses otherwise before anything is read.
+     * What the route requires of the segment: base64url, at most the 1 366 characters of the 1 024 octets of the
+     * longest entity ID (M-6), which the router refuses otherwise before anything is read.
      */
-    public const string REQUIREMENT = '[A-Za-z0-9_-]+';
+    public const string REQUIREMENT = '[A-Za-z0-9_-]{1,1366}';
 
     private function __construct()
     {
@@ -32,17 +33,19 @@ final class IdentityProviderSegment
     }
 
     /**
-     * The entity ID the segment names, null when it is not base64url or its value is no entity ID (M-6).
+     * The entity ID the segment names, null when it is not base64url, is not the one way of writing it, so that a
+     * provider has one URL and not several that a cache or a rule at the edge would tell apart, or its value is no
+     * entity ID of an identity provider (M-6).
      */
     public static function entityIdOf(string $segment): ?string
     {
         $entityId = Base64Url::decode($segment);
-        if ($entityId === null) {
+        if ($entityId === null || Base64Url::encode($entityId) !== $segment) {
             return null;
         }
 
         try {
-            return ModelEntityId::read($entityId);
+            return ModelEntityId::ofIdentityProvider($entityId);
         } catch (InvalidArgumentException) {
             return null;
         }

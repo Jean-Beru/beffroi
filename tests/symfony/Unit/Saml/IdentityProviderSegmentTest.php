@@ -36,7 +36,8 @@ final class IdentityProviderSegmentTest extends TestCase
     }
 
     /**
-     * S-65: a segment that is not base64url, and one whose value is no entity ID of M-6, name no provider.
+     * S-65: a segment that is not base64url, one that writes an entity ID otherwise than the one way, and one whose
+     * value is no entity ID of M-6, name no provider.
      */
     #[Test]
     #[DataProvider('provideSegmentsOfNoProvider')]
@@ -53,6 +54,7 @@ final class IdentityProviderSegmentTest extends TestCase
     {
         yield 'padded' => ['aHR0cHM6Ly9pZHAuZXhhbXBsZQ=='];
         yield 'the standard alphabet' => ['aHR0cHM6Ly9pZHAuZXhhbXBsZS9zYW1sMi8/aWQ9MQ'];
+        yield 'other trailing bits' => ['aHR0cHM6Ly9pZHAuZXhhbXBsZS9zYW1sMi8_aWQ9MR'];
         yield 'not absolute' => [IdentityProviderSegment::of('idp.example')];
         yield 'empty' => [''];
     }
