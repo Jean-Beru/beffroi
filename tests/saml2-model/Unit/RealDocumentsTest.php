@@ -525,24 +525,58 @@ final class RealDocumentsTest extends TestCase
     /**
      * Section 7, M-7, issue #722: Entra writes the bearer NotOnOrAfter of its assertion one hour after the instant it
      * begins its windows from, which comes 161 ms before the IssueInstant of its response, so that its bearer window is
-     * maxBearerWindow itself, 3 600 s, with no margin: a service provider whose clock is one second behind Entra's
-     * accepts the IssueInstant within the skew and refuses the bearer confirmation. A measure for the decision of the
-     * bounds, not the decision.
+     * maxBearerWindow itself, 3 600 s, with no margin. The bearer limit takes the clock skew as every instant ahead of
+     * now does, so that a service provider whose clock is behind Entra's within the skew accepts its response, the
+     * bearer confirmation included.
      */
     #[Test]
-    public function itRefusesTheResponseOfEntraUnderAClockOneSecondBehindItsOwn(): void
+    #[DataProvider('provideClocksBehindEntraWithinTheSkew')]
+    public function itAcceptsTheResponseOfEntraUnderAClockBehindItsOwnWithinTheSkew(string $now): void
     {
         // Given
         $response = UnverifiedResponse::of(MetadataFixtures::load('real/' . self::ENTRA_RESPONSE));
         $validator = new ResponseValidator(
             SamlLoader::create(),
-            new FrozenClock(new DateTimeImmutable('2026-10-23T13:08:16.595Z')),
+            new FrozenClock(new DateTimeImmutable($now)),
+            new InMemoryReplayGuard(),
+        );
+
+        // When
+        $accepted = $validator->validate($response, self::identityProviderOf(self::ENTRA_METADATA), self::entraRequest());
+
+        // Then
+        static::assertSame(SignatureCoverage::AssertionAndResponse, $accepted->coverage);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideClocksBehindEntraWithinTheSkew(): iterable
+    {
+        yield 'one second behind' => ['2026-10-23T13:08:16.595Z'];
+        yield '179 seconds behind' => ['2026-10-23T13:05:18.595Z'];
+        yield 'the skew itself, 180 seconds behind' => ['2026-10-23T13:05:17.595Z'];
+    }
+
+    /**
+     * Section 7, M-7, issue #722: a service provider whose clock is the clock skew and one second behind Entra's
+     * refuses its response, whose IssueInstant is then later than now plus the skew (section 6.1 step 6), before its
+     * bearer confirmation is read.
+     */
+    #[Test]
+    public function itRefusesTheResponseOfEntraUnderAClockBehindItsOwnByMoreThanTheSkew(): void
+    {
+        // Given
+        $response = UnverifiedResponse::of(MetadataFixtures::load('real/' . self::ENTRA_RESPONSE));
+        $validator = new ResponseValidator(
+            SamlLoader::create(),
+            new FrozenClock(new DateTimeImmutable('2026-10-23T13:05:16.595Z')),
             new InMemoryReplayGuard(),
         );
 
         // Then
         $this->expectException(OutsideValidityWindow::class);
-        $this->expectExceptionMessageIs('The NotOnOrAfter of the bearer confirmation is later than now plus maxBearerWindow (M-7).');
+        $this->expectExceptionMessageIs('The IssueInstant of the response is later than now plus the clock skew (M-7).');
 
         // When
         $validator->validate($response, self::identityProviderOf(self::ENTRA_METADATA), self::entraRequest());
