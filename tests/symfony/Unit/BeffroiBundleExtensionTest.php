@@ -9,13 +9,16 @@ use Beffroi\Bundle\BeffroiBundle;
 use Beffroi\Bundle\Key\DormantKeyAlgorithms;
 use Beffroi\Bundle\Key\FileTenantKeyRepository;
 use Beffroi\Bundle\Key\StagingDelay;
+use Beffroi\Bundle\Saml\JoseSamlEncryptionAlgorithms;
 use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
 use Beffroi\Bundle\Saml\RouterServiceProviderEndpoints;
+use Beffroi\Bundle\Saml\SamlEncryption;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Tenant\TenantFactory;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Beffroi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
+use Beffroi\Saml\Domain\Key\SamlEncryptionAlgorithmInterface;
 use Beffroi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
 use Beffroi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Beffroi\Oidc\Application\Token\JwtAccessTokenIssuer;
@@ -308,6 +311,20 @@ final class BeffroiBundleExtensionTest extends TestCase
 
         // Then
         static::assertFalse($container->getDefinition(SamlSigning::class)->hasTag(JoseSamlSigningAlgorithms::TAG));
+    }
+
+    /**
+     * Spec/saml.md S-64: the key files read past the key of an upstream identity provider nothing wires any more, every
+     * algorithm of that family named "SAML-ENCRYPTION:" and the entity ID of its provider.
+     */
+    #[Test]
+    public function theKeyOfAProviderNothingWiresIsDormant(): void
+    {
+        // When
+        $container = self::load([]);
+
+        // Then
+        static::assertSame([SamlEncryptionAlgorithmInterface::NAME_PREFIX], $container->getDefinition(DormantKeyAlgorithms::class)->getArgument(1));
     }
 
     /**
@@ -733,10 +750,47 @@ final class BeffroiBundleExtensionTest extends TestCase
                     'metadata_signers' => [],
                     'profile' => [],
                     'subject_attribute' => null,
+                    'require_encrypted_assertions' => false,
                 ],
             ],
             $declarations->getArgument('$definitions'),
         );
+    }
+
+    /**
+     * Spec/saml.md S-64: each upstream identity provider declared has the algorithm of the key it encrypts for wired in
+     * the family of those keys, named after its entity ID.
+     */
+    #[Test]
+    public function eachDeclaredIdentityProviderHasTheAlgorithmOfItsKeyWired(): void
+    {
+        // When
+        $container = self::load([
+            'saml' => [
+                'service_provider' => null,
+                'identity_providers' => [
+                    'https://idp.acme.example/saml' => [
+                        'metadata' => 'https://idp.acme.example/saml/metadata',
+                        'domains' => ['acme.example'],
+                        'email_attribute' => 'mail',
+                    ],
+                    'https://idp.other.example/saml' => [
+                        'metadata' => 'https://idp.other.example/saml/metadata',
+                        'domains' => ['other.example'],
+                        'email_attribute' => 'mail',
+                    ],
+                ],
+            ],
+        ]);
+
+        // Then
+        $wired = [];
+        foreach ($container->findTaggedServiceIds(JoseSamlEncryptionAlgorithms::TAG) as $id => $tags) {
+            $definition = $container->getDefinition($id);
+            static::assertSame(SamlEncryption::class, $definition->getClass());
+            $wired[] = $definition->getArgument(0);
+        }
+        static::assertSame(['https://idp.acme.example/saml', 'https://idp.other.example/saml'], $wired);
     }
 
     /**

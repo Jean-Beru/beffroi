@@ -6,6 +6,7 @@ namespace Beffroi\Bundle\Tests\Functional\Saml;
 
 use Beffroi\Bundle\Key\StagingDelay;
 use Beffroi\Bundle\Message\AdvanceKeyLifecycle;
+use Beffroi\Bundle\Saml\IdentityProviderSegment;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
 use Beffroi\Core\Domain\Key\KeyStatus;
@@ -331,6 +332,22 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
             'interaction' => 'an-interaction',
             'identity_provider' => 'https://idp.example.org/saml',
         ]);
+
+        // Then
+        static::assertSame(Response::HTTP_NOT_FOUND, $this->browser->getResponse()->getStatusCode());
+    }
+
+    /**
+     * S-41, S-65: the service provider of the tenant left off gives no upstream identity provider its metadata.
+     */
+    #[Test]
+    public function theServiceProviderLeftOffGivesNoProviderItsMetadata(): void
+    {
+        // Given
+        self::generate();
+
+        // When
+        $this->browser->request('GET', '/saml/sp/metadata/' . IdentityProviderSegment::of('https://idp-a.example/metadata'));
 
         // Then
         static::assertSame(Response::HTTP_NOT_FOUND, $this->browser->getResponse()->getStatusCode());

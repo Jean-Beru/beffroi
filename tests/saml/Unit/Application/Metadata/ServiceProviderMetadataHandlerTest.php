@@ -11,6 +11,7 @@ use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Exception\KeyNotFoundException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
+use Beffroi\Saml\Application\Metadata\EncryptionCertificates;
 use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
 use Beffroi\Saml\Application\Metadata\ServiceProviderMetadataHandler;
 use Beffroi\Saml\Application\Metadata\SigningCertificates;
@@ -38,6 +39,10 @@ use Symfony\Component\Clock\MockClock;
 final class ServiceProviderMetadataHandlerTest extends TestCase
 {
     private const string ISSUER = 'https://id.acme.example';
+
+    private const string PROVIDER = 'https://idp-a.example/metadata';
+
+    private const string OTHER_PROVIDER = 'https://idp-b.example/metadata';
 
     private Tenant $tenant;
 
@@ -126,6 +131,134 @@ final class ServiceProviderMetadataHandlerTest extends TestCase
     }
 
     /**
+     * S-65, section 6.12: the metadata given to an upstream identity provider are those of S-39 with the certificate
+     * of its key as a key for encryption.
+     */
+    #[Test]
+    public function aProviderIsGivenTheCertificateOfItsKey(): void
+    {
+        // Given
+        $signing = SamlKeys::activeKey($this->tenant);
+        $encryption = SamlKeys::encryptionKey($this->tenant, self::PROVIDER);
+        $this->keys->save($signing);
+        $this->keys->save($encryption);
+
+        // When
+        $metadata = $this->handler()->handleFor($this->tenant, self::PROVIDER);
+
+        // Then
+        $entityId = self::ISSUER . FixedServiceProviderEndpoints::METADATA;
+        static::assertEquals(new EntityDescriptor($entityId, null, null, new ServiceProvider(
+            $entityId,
+            [$this->certificateOf($signing)],
+            [$this->certificateOf($encryption)],
+            new IndexedEndpoints([
+                new IndexedEndpoint(Binding::HttpPost, self::ISSUER . FixedServiceProviderEndpoints::ASSERTION_CONSUMER_SERVICE, 0),
+            ]),
+            [],
+            [],
+            authnRequestsSigned: true,
+            wantAssertionsSigned: true,
+        )), self::read($metadata->document));
+    }
+
+    /**
+     * S-65: the metadata given to a provider never carry the certificate of the key of another.
+     */
+    #[Test]
+    public function aProviderIsNeverGivenTheCertificateOfAnother(): void
+    {
+        // Given
+        $this->keys->save(SamlKeys::activeKey($this->tenant));
+        $this->keys->save(SamlKeys::encryptionKey($this->tenant, self::PROVIDER));
+        $other = SamlKeys::encryptionKey($this->tenant, self::OTHER_PROVIDER, 1);
+        $this->keys->save($other);
+
+        // When
+        $metadata = $this->handler()->handleFor($this->tenant, self::OTHER_PROVIDER);
+
+        // Then
+        static::assertSame([$this->certificateOf($other)], self::read($metadata->document)->serviceProvider?->encryptionCertificates);
+    }
+
+    /**
+     * S-65: during a rotation, the certificate of the next key comes first, the one a provider takes from its staging.
+     */
+    #[Test]
+    public function theNextCertificateOfAProviderComesFirst(): void
+    {
+        // Given
+        $this->keys->save(SamlKeys::activeKey($this->tenant));
+        $current = SamlKeys::encryptionKey($this->tenant, self::PROVIDER);
+        $current->activate(Fixtures::now());
+        $next = SamlKeys::encryptionKey($this->tenant, self::PROVIDER, 1, Fixtures::now()->modify('+1 day'));
+        $this->keys->save($current);
+        $this->keys->save($next);
+
+        // When
+        $metadata = $this->handler()->handleFor($this->tenant, self::PROVIDER);
+
+        // Then
+        static::assertSame(
+            [$this->certificateOf($next), $this->certificateOf($current)],
+            self::read($metadata->document)->serviceProvider?->encryptionCertificates,
+        );
+    }
+
+    /**
+     * S-39, S-65: the metadata at the URL of the entity ID carry no key for encryption, whatever keys the providers
+     * hold.
+     */
+    #[Test]
+    public function theMetadataOfTheEntityIdCarryNoKeyForEncryption(): void
+    {
+        // Given
+        $this->keys->save(SamlKeys::activeKey($this->tenant));
+        $this->keys->save(SamlKeys::encryptionKey($this->tenant, self::PROVIDER));
+
+        // When
+        $metadata = $this->handler()->handle($this->tenant);
+
+        // Then
+        static::assertSame([], self::read($metadata->document)->serviceProvider?->encryptionCertificates);
+    }
+
+    /**
+     * Section 6.12 step 1: a provider for which the tenant holds no key in service is given no metadata.
+     */
+    #[Test]
+    public function aProviderWithoutAKeyIsGivenNoMetadata(): void
+    {
+        // Given
+        $this->keys->save(SamlKeys::activeKey($this->tenant));
+        $this->keys->save(SamlKeys::encryptionKey($this->tenant, self::OTHER_PROVIDER));
+
+        // Then
+        $this->expectException(KeyNotFoundException::class);
+        $this->expectExceptionMessageIs('Tenant "acme" holds no key the identity provider "https://idp-a.example/metadata" encrypts for: its service provider has no metadata to give it (spec/saml.md section 6.12 step 1).');
+
+        // When
+        $this->handler()->handleFor($this->tenant, self::PROVIDER);
+    }
+
+    /**
+     * Section 6.12 step 3: a provider is given no metadata while the tenant holds no SAML signing key in service.
+     */
+    #[Test]
+    public function aProviderIsGivenNoMetadataWithoutASigningKey(): void
+    {
+        // Given
+        $this->keys->save(SamlKeys::encryptionKey($this->tenant, self::PROVIDER));
+
+        // Then
+        $this->expectException(KeyNotFoundException::class);
+        $this->expectExceptionMessageIs('Tenant "acme" holds no SAML signing key: its service provider has no metadata to publish (spec/saml.md section 6.9 step 1).');
+
+        // When
+        $this->handler()->handleFor($this->tenant, self::PROVIDER);
+    }
+
+    /**
      * Section 6.9 step 1: a tenant that holds no SAML key in service has no metadata of its service provider.
      */
     #[Test]
@@ -185,6 +318,7 @@ final class ServiceProviderMetadataHandlerTest extends TestCase
         $this->keys->save(SamlKeys::activeKey($this->tenant));
         $handler = new ServiceProviderMetadataHandler(
             new SigningCertificates($this->keys, Keys::sealer(), new SelfSignedCertificateIssuer()),
+            new EncryptionCertificates($this->keys, Keys::sealer(), new SelfSignedCertificateIssuer()),
             new FixedServiceProviderEndpoints(),
             new ModelServiceProviderMetadataWriter(),
         );
@@ -250,6 +384,7 @@ final class ServiceProviderMetadataHandlerTest extends TestCase
     ): ServiceProviderMetadataHandler {
         return new ServiceProviderMetadataHandler(
             new SigningCertificates($this->keys, Keys::sealer(), new SelfSignedCertificateIssuer()),
+            new EncryptionCertificates($this->keys, Keys::sealer(), new SelfSignedCertificateIssuer()),
             $endpoints,
             new ModelServiceProviderMetadataWriter(),
             $maxAge,

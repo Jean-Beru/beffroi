@@ -853,6 +853,14 @@ const INFECTION_STRICT_FILES = [
     'src/saml/src/Application/Metadata/ServiceProviderMetadataHandler.php',
     'src/saml/src/Bridge/Model/ModelServiceProviderMetadataWriter.php',
     'src/saml/src/Bridge/Model/ModelEntityId.php',
+    // beffroi/saml, section 9: the key each upstream identity provider encrypts for, its certificates given to that
+    // provider alone, and the key that opens what it encrypted and nothing another provider encrypted (S-64 to S-66,
+    // sections 6.12 and 6.13).
+    'src/saml/src/Domain/Key/UpstreamEncryptionKeys.php',
+    'src/saml/src/Application/Metadata/BuiltCertificates.php',
+    'src/saml/src/Application/Metadata/EncryptionCertificates.php',
+    'src/saml/src/Bridge/Model/UpstreamDecryptionKeys.php',
+    'src/saml/src/Bridge/Model/ProviderDecryptionKey.php',
     // beffroi/saml, section 9: the service providers of a tenant, their declaration, the reading of their metadata and
     // the document kept against a rollback (section 6.2).
     'src/saml/src/Domain/Metadata/AcceptedMetadata.php',

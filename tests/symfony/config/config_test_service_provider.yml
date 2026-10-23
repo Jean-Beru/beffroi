@@ -2,7 +2,8 @@
 # S-38 to S-41): the SAML key drawn for the service provider alone, its metadata served, and nothing of the identity
 # provider served with that key (ServiceProviderMetadataTest). The declarations of config_test.yml are under
 # "when@test", so this environment declares no service provider, as a tenant that is no identity provider declares
-# none.
+# none. The upstream identity provider it declares, and two more an extension tags, each have the algorithm of the
+# key they encrypt for wired (S-64, S-65).
 beffroi:
     saml:
         identity_provider: false
@@ -23,3 +24,23 @@ beffroi:
                     attribute: 'eduPersonAffiliation'
                     map:
                         member: 'Members'
+
+services:
+    # Two more upstream identity providers, each the algorithm of the key it encrypts for (spec/saml.md S-64), tagged
+    # as an extension of a deployment may tag one beside those the SAML section tags for the providers declared above:
+    # what the metadata given to each provider (S-65) and the key that opens what it encrypted (S-66) are played
+    # against, apart from the provider of the judge.
+    beffroi_test.saml_encryption.a:
+        class: Beffroi\Bundle\Saml\SamlEncryption
+        arguments: ['https://idp-a.example/metadata', '@Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits']
+        tags: ['beffroi.saml_encryption_algorithm']
+    beffroi_test.saml_encryption.b:
+        class: Beffroi\Bundle\Saml\SamlEncryption
+        arguments: ['https://idp-b.example/metadata', '@Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits']
+        tags: ['beffroi.saml_encryption_algorithm']
+
+    # Reachable from the tests: the key the assertion consumer service gives the model with a provider (S-66), which
+    # nothing of the bundle references until issue #784 serves it.
+    test.beffroi.upstream_decryption_keys:
+        alias: Beffroi\Saml\Bridge\Model\UpstreamDecryptionKeys
+        public: true

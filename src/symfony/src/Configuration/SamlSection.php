@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Configuration;
 
 use Beffroi\Bundle\Key\DormantKeyAlgorithms;
+use Beffroi\Bundle\Saml\JoseSamlEncryptionAlgorithms;
 use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
 use Beffroi\Bundle\Saml\RouterServiceProviderEndpoints;
+use Beffroi\Bundle\Saml\SamlEncryption;
 use Beffroi\Bundle\Saml\SamlSigning;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits;
 use Beffroi\Core\Domain\Key\RotationSchedule;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
@@ -18,12 +21,15 @@ use Beffroi\Saml\Bridge\Configuration\ConfigurationUpstreamIdentityProviders;
 use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
 use Beffroi\Saml\Domain\Metadata\PublishedMetadata;
 use Beffroi\Saml\Port\ServiceProviderEndpointsInterface;
+use function array_keys;
+use function hash;
 use function is_array;
 use function is_int;
 use function is_string;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
+use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 
 /**
  * Whether the tenant of this deployment is a SAML identity provider (beffroi/saml, spec/saml.md section 6.1), whether
@@ -214,6 +220,10 @@ final readonly class SamlSection extends ConfigurationSection
             ->info('The name of the attribute that names a person when the NameID of an assertion is not persistent (spec/saml.md S-45): a value the identity provider keeps for that person and never one the person changes, "http://schemas.microsoft.com/identity/claims/objectidentifier" for Entra rather than an address. Left out, a person is named by a persistent NameID only.')
             ->defaultNull()
             ->end()
+            ->booleanNode('require_encrypted_assertions')
+            ->info('An assertion of this identity provider arrives encrypted for the key it is given, or it is refused, whatever signs it (spec/saml.md S-67). The certificate it encrypts for is in the metadata of the service provider given to it alone, at /saml/sp/metadata/ followed by its entity ID in base64url, once its key is drawn with "beffroi:keys:generate --algorithm=SAML-ENCRYPTION:" and its entity ID (S-64, S-65).')
+            ->defaultFalse()
+            ->end()
             ->arrayNode('groups')
             ->info('The attribute of an assertion that carries the groups of a person, and the group of the tenant each of its values stands for (spec/saml.md S-45). A value the map does not name is no group, and no group is created from what an identity provider sends.')
             ->children()
@@ -302,6 +312,14 @@ final readonly class SamlSection extends ConfigurationSection
                 );
             // the sign-on at an upstream identity provider, which needs the endpoints of the role (spec/saml.md S-51)
             $services->set(UpstreamSignOn::class)->autowire();
+            // the key each upstream identity provider declared encrypts for, an algorithm of its own (spec/saml.md S-64),
+            // named by the digest of its entity ID, which a service identifier holds whatever the URI
+            foreach (array_keys(self::section($this->own($config), 'identity_providers')) as $identityProvider) {
+                $services
+                    ->set('beffroi.saml.encryption_algorithm.' . hash('sha256', (string) $identityProvider), SamlEncryption::class)
+                    ->args([(string) $identityProvider, service(RsaKeyBits::class)])
+                    ->tag(JoseSamlEncryptionAlgorithms::TAG);
+            }
         }
     }
 

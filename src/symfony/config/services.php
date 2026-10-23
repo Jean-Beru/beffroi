@@ -282,6 +282,7 @@ use Beffroi\Core\Bridge\JwtLibrary\JoseContentEncryptionAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyFamily;
+use Beffroi\Bundle\Saml\JoseSamlEncryptionAlgorithms;
 use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
 use Beffroi\Bundle\Saml\MappedClaimsWarmer;
 use Beffroi\Bundle\Saml\ProviderServedClaims;
@@ -289,6 +290,7 @@ use Beffroi\Bundle\Saml\SamlPostPage;
 use Beffroi\Bundle\Saml\SignOnAnswers;
 use Beffroi\Bundle\Saml\TenantPersistentIdentifierSalt;
 use Beffroi\Bundle\Saml\WaitingSignOns;
+use Beffroi\Core\Port\KeptDecryptionKeyProviderInterface;
 use Beffroi\Core\Port\KeptSigningKeyProviderInterface;
 use Beffroi\Saml\Application\SingleSignOn\AttributeRelease;
 use Beffroi\Saml\Application\SingleSignOn\SingleSignOn;
@@ -301,6 +303,8 @@ use Beffroi\Saml\Bridge\Model\ModelLogoutMessageReceiver;
 use Beffroi\Saml\Bridge\Model\ModelSignOutNotifier;
 use Beffroi\Saml\Bridge\Model\ModelSignOutResponder;
 use Beffroi\Saml\Bridge\Model\TenantSigning;
+use Beffroi\Saml\Bridge\Model\UpstreamDecryptionKeys;
+use Beffroi\Saml\Domain\Key\SamlEncryptionAlgorithmInterface;
 use Beffroi\Saml\Application\SingleLogout\ProviderLogout;
 use Beffroi\Saml\Application\SingleLogout\SessionParticipants;
 use Beffroi\Saml\Application\SingleLogout\SingleLogout;
@@ -321,6 +325,7 @@ use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Saml\LogoutChainCookie;
 use Beffroi\Bundle\Saml\LogoutChainPages;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineLogoutChainRepository;
+use Beffroi\Saml\Application\Metadata\EncryptionCertificates;
 use Beffroi\Saml\Application\Metadata\SigningCertificates;
 use Beffroi\Saml\Bridge\Model\ModelMetadataWriter;
 use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataWriter;
@@ -1208,6 +1213,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(PublicKeySetProviderInterface::class, SealedKeyProvider::class);
     $services->alias(ApplicationServerKeyProviderInterface::class, SealedKeyProvider::class);
     $services->alias(KeptSigningKeyProviderInterface::class, SealedKeyProvider::class);
+    $services->alias(KeptDecryptionKeyProviderInterface::class, SealedKeyProvider::class);
     $services->alias(MessageKeyProviderInterface::class, SealedKeyProvider::class);
     // The algorithms the provider signs with: one class per algorithm, tagged; the first tagged one is
     // the default, the one an access token, a signed introspection response and a client that registered
@@ -1268,6 +1274,9 @@ return static function (ContainerConfigurator $container): void {
     // otherwise.
     $services->set(SamlSigning::class)->args([service(RsaKeyBits::class)]);
     $services->set(JoseSamlSigningAlgorithms::class)->args([tagged_iterator(JoseSamlSigningAlgorithms::TAG)]);
+    // the keys the upstream SAML identity providers encrypt for, one algorithm per provider, tagged by what declares
+    // the provider (beffroi/saml, spec/saml.md S-64)
+    $services->set(JoseSamlEncryptionAlgorithms::class)->args([tagged_iterator(JoseSamlEncryptionAlgorithms::TAG)]);
     $services->set(JwtLibraryMessageBodySealer::class);
     $services->alias(MessageBodySealerInterface::class, JwtLibraryMessageBodySealer::class);
     $services->set(JwtLibraryMessageBodyOpener::class);
@@ -1278,21 +1287,27 @@ return static function (ContainerConfigurator $container): void {
     //
     // Each registry is a family of keys and comes with the schedule its keys rotate by (issue #738): the
     // JOSE families share the staging delay and the age of "beffroi.keys", the SAML signing key has its
-    // own, counted in days (beffroi/saml, spec/saml.md S-12). The two schedules are built from the
-    // configuration by the sections that own it (KeysSection, SamlSection); the staging and the
-    // succession of a key read the schedule of its family here, and nowhere else.
+    // own, counted in days (beffroi/saml, spec/saml.md S-12), which the keys the upstream SAML identity
+    // providers encrypt for read too (S-64). The two schedules are built from the configuration by the
+    // sections that own it (KeysSection, SamlSection); the staging and the succession of a key read the
+    // schedule of its family here, and nowhere else.
     $services->set(JoseKeyAlgorithms::class)->args([[
         inline_service(JoseKeyFamily::class)->args([service(JoseSignatureAlgorithms::class), service('beffroi.keys.rotation_schedule')]),
         inline_service(JoseKeyFamily::class)->args([service(JoseKeyEncryptionAlgorithms::class), service('beffroi.keys.rotation_schedule')]),
         inline_service(JoseKeyFamily::class)->args([service(JoseApplicationServerAlgorithms::class), service('beffroi.keys.rotation_schedule')]),
         inline_service(JoseKeyFamily::class)->args([service(JoseMessageSealingAlgorithms::class), service('beffroi.keys.rotation_schedule')]),
         inline_service(JoseKeyFamily::class)->args([service(JoseSamlSigningAlgorithms::class), service('beffroi.saml.rotation_schedule')]),
+        inline_service(JoseKeyFamily::class)->args([service(JoseSamlEncryptionAlgorithms::class), service('beffroi.saml.rotation_schedule')]),
     ]]);
     $services->alias(KeyAlgorithmsInterface::class, JoseKeyAlgorithms::class);
     $services->alias(RotationSchedulesInterface::class, JoseKeyAlgorithms::class);
     // The algorithms a section of the configuration leaves off, each tagged by the section that owns it: what the key
-    // files read past, so that a key drawn before its capability was turned off waits for it to be turned on again
-    $services->set(DormantKeyAlgorithms::class)->args([tagged_iterator(DormantKeyAlgorithms::TAG)]);
+    // files read past, so that a key drawn before its capability was turned off waits for it to be turned on again; and
+    // the key of an upstream SAML identity provider no longer declared, whose algorithm nothing is left to tag
+    $services->set(DormantKeyAlgorithms::class)->args([
+        tagged_iterator(DormantKeyAlgorithms::TAG),
+        [SamlEncryptionAlgorithmInterface::NAME_PREFIX],
+    ]);
     $services->set(JwtLibraryKeyPairGenerator::class);
     $services->alias(KeyPairGeneratorInterface::class, JwtLibraryKeyPairGenerator::class);
     $services->set(JwtLibraryJwsSigner::class);
@@ -1911,6 +1926,11 @@ return static function (ContainerConfigurator $container): void {
     $services->set(RouterIdentityProviderEndpoints::class);
     $services->alias(IdentityProviderEndpointsInterface::class, RouterIdentityProviderEndpoints::class);
     $services->set(SigningCertificates::class);
+    // the certificates given to each upstream identity provider, in the metadata of the service provider at a URL that
+    // names it (S-65), and the key that opens what it encrypted, which the assertion consumer service gives the model
+    // with that provider (S-66)
+    $services->set(EncryptionCertificates::class);
+    $services->set(UpstreamDecryptionKeys::class);
     // beffroi/saml: the service providers of the tenant, declared in the configuration, which the SAML section hands
     // the declarations and the slug of the tenant (S-5); their metadata read by the model, fetched from a file or an
     // https URL, and the newest document accepted kept in the database, sealed (spec/saml.md section 6.2)

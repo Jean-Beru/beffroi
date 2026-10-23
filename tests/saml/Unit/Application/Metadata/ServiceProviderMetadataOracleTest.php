@@ -8,6 +8,7 @@ use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
+use Beffroi\Saml\Application\Metadata\EncryptionCertificates;
 use Beffroi\Saml\Application\Metadata\ServiceProviderMetadataHandler;
 use Beffroi\Saml\Application\Metadata\SigningCertificates;
 use Beffroi\Saml\Bridge\Model\ModelServiceProviderMetadataWriter;
@@ -51,6 +52,7 @@ final class ServiceProviderMetadataOracleTest extends TestCase
         $keys->save($staged);
         $handler = new ServiceProviderMetadataHandler(
             new SigningCertificates($keys, Keys::sealer(), new SelfSignedCertificateIssuer()),
+            new EncryptionCertificates($keys, Keys::sealer(), new SelfSignedCertificateIssuer()),
             new FixedServiceProviderEndpoints(),
             new ModelServiceProviderMetadataWriter(),
         );

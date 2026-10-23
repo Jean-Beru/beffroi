@@ -1991,6 +1991,11 @@
                                             "default": null,
                                             "description": "The name of the attribute that names a person when the NameID of an assertion is not persistent (spec/saml.md S-45): a value the identity provider keeps for that person and never one the person changes, \"http://schemas.microsoft.com/identity/claims/objectidentifier\" for Entra rather than an address. Left out, a person is named by a persistent NameID only."
                                         },
+                                        "require_encrypted_assertions": {
+                                            "$ref": "#/$defs/types/boolean",
+                                            "default": false,
+                                            "description": "An assertion of this identity provider arrives encrypted for the key it is given, or it is refused, whatever signs it (spec/saml.md S-67). The certificate it encrypts for is in the metadata of the service provider given to it alone, at /saml/sp/metadata/ followed by its entity ID in base64url, once its key is drawn with \"beffroi:keys:generate --algorithm=SAML-ENCRYPTION:\" and its entity ID (S-64, S-65)."
+                                        },
                                         "groups": {
                                             "$ref": "#/$defs/types/object_null",
                                             "properties": {
