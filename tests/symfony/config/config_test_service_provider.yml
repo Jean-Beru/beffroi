@@ -42,7 +42,7 @@ services:
         tags: ['beffroi.saml_encryption_algorithm']
 
     # Reachable from the tests: the key the assertion consumer service gives the model with a provider (S-66), which
-    # nothing of the bundle references until issue #784 serves it.
+    # the tests of the keys of the upstream identity providers open apart from a response.
     test.beffroi.upstream_decryption_keys:
         alias: Beffroi\Saml\Bridge\Model\UpstreamDecryptionKeys
         public: true

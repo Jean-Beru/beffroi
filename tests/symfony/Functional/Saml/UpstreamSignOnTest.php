@@ -137,7 +137,8 @@ final class UpstreamSignOnTest extends ConsoleTestCase
     /**
      * The acceptance of issue #783, S-50: the RelayState is a reference of 43 characters of base64url, the one key of
      * what the HTTP session of the browser remembers, under which are the ID of the request, the provider it was sent
-     * to, the interaction it serves and the tenant, and nothing else.
+     * to, whether it carried ForceAuthn and the instant it was issued, the interaction it serves and the tenant, and
+     * nothing else.
      */
     #[Test]
     public function theRelayStateNamesTheRememberedRequestAndNothingElse(): void
@@ -148,7 +149,7 @@ final class UpstreamSignOnTest extends ConsoleTestCase
         $interaction = $this->beginAuthorization();
         $this->signOn($interaction);
         $relayState = $this->received()->relayState ?? static::fail('The request carries no RelayState.');
-        $id = $this->acceptedRequest()->request->id;
+        $request = $this->acceptedRequest()->request;
 
         // When
         $remembered = $this->readHttpSession()->get(UpstreamSignOns::SESSION_KEY);
@@ -160,8 +161,10 @@ final class UpstreamSignOnTest extends ConsoleTestCase
                 $relayState => [
                     'tenant' => self::tenant()->id->toRfc4122(),
                     'interaction' => $interaction,
-                    'request' => $id,
+                    'request' => $request->id,
                     'identity_provider' => IdentityProviderDocuments::SIMPLESAMLPHP,
+                    'force_authn' => false,
+                    'issued_at' => $request->issueInstant->getTimestamp(),
                 ],
             ],
             $remembered,

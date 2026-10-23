@@ -18,9 +18,10 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * of a request (spec/saml.md S-39, section 6.9 step 3), as RouterIdentityProviderEndpoints locates those of its
  * identity provider, and the entity ID it goes by (S-38).
  *
- * The path of the metadata is the router's, compared with the one the issuer makes a reader expect: routes mounted
- * elsewhere are refused at the first request. The assertion consumer service is the issuer and the path of its route
- * until issue #784 routes it. The entity ID is the URL of the metadata unless the deployment names another, a URI of M-6
+ * The path of the metadata and the one of the assertion consumer service are the router's, each compared with the one
+ * the issuer makes a reader expect: routes mounted elsewhere are refused at the first request. The route of the
+ * assertion consumer service is the one statement of where it answers (S-39, S-52): its URL is generated, never its
+ * path written again beside the route. The entity ID is the URL of the metadata unless the deployment names another, a URI of M-6
  * that is never the one of the identity provider of the tenant: ServiceProviderEntityIdPass refuses another when the
  * container is compiled, and this refuses it again at the first use, should the issuer or the entity ID hold an
  * environment variable.
@@ -39,24 +40,47 @@ final readonly class RouterServiceProviderEndpoints implements ServiceProviderEn
 
     public function locate(Tenant $tenant): ServiceProviderEndpoints
     {
-        $issuer = $tenant->issuer->value;
-        $metadata = $tenant->issuer->origin() . $this->router->generate(ServiceProviderRoutes::METADATA, [], UrlGeneratorInterface::ABSOLUTE_PATH);
-        $expected = $issuer . ServiceProviderRoutes::METADATA_PATH;
-        if ($metadata !== $expected) {
-            throw new LogicException(sprintf(
-                'The SAML metadata of the service provider is served at "%s" but the issuer "%s" puts it under "%s": mount the routes of the bundle under the path of the issuer.',
-                $metadata,
-                $issuer,
-                $expected,
-            ));
-        }
+        $metadata = $this->underTheIssuer(
+            $tenant,
+            ServiceProviderRoutes::METADATA,
+            ServiceProviderRoutes::METADATA_PATH,
+            'The SAML metadata of the service provider',
+        );
         $endpoints = new ServiceProviderEndpoints(
             $this->entityId === null ? $metadata : ModelEntityId::read($this->entityId),
             $metadata,
-            $issuer . ServiceProviderRoutes::ASSERTION_CONSUMER_SERVICE_PATH,
+            $this->underTheIssuer(
+                $tenant,
+                ServiceProviderRoutes::ASSERTION_CONSUMER_SERVICE,
+                ServiceProviderRoutes::ASSERTION_CONSUMER_SERVICE_PATH,
+                'The assertion consumer service of the service provider',
+            ),
         );
         ServiceProviderEndpoints::assertOwnEntityId($endpoints->entityId, $this->identityProvider->locate($tenant)->metadata);
 
         return $endpoints;
+    }
+
+    /**
+     * The URL the router generates for a route under the origin of the issuer, refused unless it is the one the issuer
+     * makes a reader expect.
+     *
+     * @throws LogicException when the routes of the bundle are not mounted under the path of the issuer
+     */
+    private function underTheIssuer(Tenant $tenant, string $route, string $path, string $what): string
+    {
+        $generated = $tenant->issuer->origin() . $this->router->generate($route, [], UrlGeneratorInterface::ABSOLUTE_PATH);
+        $expected = $tenant->issuer->value . $path;
+        if ($generated !== $expected) {
+            throw new LogicException(sprintf(
+                '%s is served at "%s" but the issuer "%s" puts it under "%s": mount the routes of the bundle under the path of the issuer.',
+                $what,
+                $generated,
+                $tenant->issuer->value,
+                $expected,
+            ));
+        }
+
+        return $generated;
     }
 }

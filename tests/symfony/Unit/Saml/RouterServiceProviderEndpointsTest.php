@@ -119,10 +119,36 @@ final class RouterServiceProviderEndpointsTest extends TestCase
         $endpoints->locate(self::tenant('https://op.example'));
     }
 
-    private static function endpoints(string $prefix, ?string $entityId = null, ?RequestContext $context = null): RouterServiceProviderEndpoints
+    /**
+     * S-52, section 6.9 step 3: the route of the assertion consumer service mounted elsewhere than the issuer names it
+     * would be announced where nothing answers; a configuration fault, refused rather than announced.
+     */
+    #[Test]
+    public function anAssertionConsumerServiceMountedElsewhereThanTheIssuerIsRefused(): void
     {
+        // Given
+        $endpoints = self::endpoints('', acsPrefix: '/elsewhere');
+
+        // Then
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessageIs('The assertion consumer service of the service provider is served at "https://op.example/elsewhere/saml/sp/acs" but the issuer "https://op.example" puts it under "https://op.example/saml/sp/acs": mount the routes of the bundle under the path of the issuer.');
+
+        // When
+        $endpoints->locate(self::tenant('https://op.example'));
+    }
+
+    private static function endpoints(
+        string $prefix,
+        ?string $entityId = null,
+        ?RequestContext $context = null,
+        ?string $acsPrefix = null,
+    ): RouterServiceProviderEndpoints {
         $routes = new RouteCollection();
         $routes->add(ServiceProviderRoutes::METADATA, new Route($prefix . ServiceProviderRoutes::METADATA_PATH));
+        $routes->add(
+            ServiceProviderRoutes::ASSERTION_CONSUMER_SERVICE,
+            new Route(($acsPrefix ?? $prefix) . ServiceProviderRoutes::ASSERTION_CONSUMER_SERVICE_PATH),
+        );
         $identityProviderRoutes = new RouteCollection();
         $identityProviderRoutes->add(IdentityProviderRoutes::METADATA, new Route(IdentityProviderRoutes::METADATA_PATH));
         $identityProviderRoutes->add(IdentityProviderRoutes::SINGLE_SIGN_ON, new Route(IdentityProviderRoutes::SINGLE_SIGN_ON_PATH));

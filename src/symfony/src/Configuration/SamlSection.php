@@ -10,16 +10,20 @@ use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
 use Beffroi\Bundle\Saml\RouterServiceProviderEndpoints;
 use Beffroi\Bundle\Saml\SamlEncryption;
 use Beffroi\Bundle\Saml\SamlSigning;
+use Beffroi\Bundle\Security\UpstreamLogin;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits;
 use Beffroi\Core\Domain\Key\RotationSchedule;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
 use Beffroi\Saml\Application\Metadata\ServiceProviderMetadataHandler;
+use Beffroi\Saml\Application\Upstream\AssertionConsumerService;
 use Beffroi\Saml\Application\Upstream\UpstreamSignOn;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationUpstreamIdentityProviders;
+use Beffroi\Saml\Bridge\Model\ModelResponseReceiver;
 use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
 use Beffroi\Saml\Domain\Metadata\PublishedMetadata;
+use Beffroi\Saml\Port\ResponseReceiverInterface;
 use Beffroi\Saml\Port\ServiceProviderEndpointsInterface;
 use function array_keys;
 use function hash;
@@ -312,6 +316,13 @@ final readonly class SamlSection extends ConfigurationSection
                 );
             // the sign-on at an upstream identity provider, which needs the endpoints of the role (spec/saml.md S-51)
             $services->set(UpstreamSignOn::class)->autowire();
+            // the assertion consumer service (spec/saml.md S-52 to S-59): the response read under the accepted document
+            // of the provider, from the table of the upstream identity providers, and the login of the firewall it
+            // proves, announced only by a deployment that receives assertions
+            $services->set(ModelResponseReceiver::class)->autowire()->arg('$accepted', service('beffroi.saml.identity_providers.accepted_metadata'));
+            $services->alias(ResponseReceiverInterface::class, ModelResponseReceiver::class);
+            $services->set(AssertionConsumerService::class)->autowire();
+            $services->set(UpstreamLogin::class)->tag('beffroi.login');
             // the key each upstream identity provider declared encrypts for, an algorithm of its own (spec/saml.md S-64),
             // named by the digest of its entity ID, which a service identifier holds whatever the URI
             foreach (array_keys(self::section($this->own($config), 'identity_providers')) as $identityProvider) {
