@@ -595,6 +595,71 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
+     * beffroi/saml S-56: a person an administrator disabled is refused, whatever the provider says of them now.
+     */
+    #[Test]
+    public function aDisabledPersonIsRefused(): void
+    {
+        // Given
+        $this->signIn()->disable($this->clock->now());
+
+        // When
+        $refusal = $this->failToSignIn(self::ADDRESS);
+
+        // Then
+        static::assertSame(UpstreamProvisioningRefusalReason::PersonDisabled, $refusal->reason);
+    }
+
+    /**
+     * beffroi/saml S-56: the refusal of a disabled person comes before the unit, so that a person disabled follows the
+     * provider no more: its address, its name, its profile and its snapshot are what they were.
+     */
+    #[Test]
+    public function aDisabledPersonIsWrittenNothing(): void
+    {
+        // Given
+        $alice = $this->signIn();
+        $alice->disable($this->clock->now());
+
+        // When
+        try {
+            $this->signIn('alicia@acme.example', [
+                'given_name' => 'Alicia',
+            ]);
+        } catch (UpstreamProvisioningRefusedException) {
+        }
+
+        // Then
+        static::assertSame(1, $this->writes->units);
+        static::assertSame(self::ADDRESS, $alice->email?->value);
+        static::assertSame(self::ADDRESS, $alice->username);
+        static::assertEquals(new Profile(givenName: 'Alice', familyName: 'Liddell'), $alice->profile);
+        static::assertSame(self::ADDRESS, $this->identities->of($alice)[0]->claims['email']);
+    }
+
+    /**
+     * beffroi/saml S-56: a disabled person the console linked to the provider, which is not their source, is refused
+     * before the snapshot of the identity moves.
+     */
+    #[Test]
+    public function aDisabledPersonTheConsoleLinkedKeepsTheirSnapshot(): void
+    {
+        // Given
+        $alice = $this->provisioner->create($this->tenant, 'alice', new EmailAddress('alice@home.example'));
+        $this->linker->link($alice, self::PROVIDER, self::SUBJECT);
+        $alice->disable($this->clock->now());
+
+        // When
+        try {
+            $this->signIn();
+        } catch (UpstreamProvisioningRefusedException) {
+        }
+
+        // Then
+        static::assertSame([0, []], [$this->writes->units, $this->identities->of($alice)[0]->claims]);
+    }
+
+    /**
      * The username follows the address: a provider that sends another one has the person renamed to it in
      * the same unit, so that the pages a person reads call them by the address they have.
      */

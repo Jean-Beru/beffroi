@@ -582,6 +582,56 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
+     * The acceptance of issue #820, S-56: a valid assertion for a person an administrator disabled writes nothing of
+     * what it says, the address, the username, the profile and the groups of the person being what they were.
+     */
+    #[Test]
+    public function aValidAssertionForADisabledPersonWritesNothing(): void
+    {
+        // Given
+        self::provisioned();
+        $this->disabledAliceSigningOnAgain();
+        $request = $this->signOn($this->beginAuthorization());
+
+        // When
+        $this->post($this->response($request, ['mail' => ['alicia@example.org'], 'givenName' => ['Alicia']]));
+
+        // Then
+        $alice = self::person();
+        static::assertSame([self::ADDRESS, self::ADDRESS, 'Alice', ['Members']], [
+            $alice->email?->value,
+            $alice->username,
+            $alice->profile->givenName,
+            array_map(
+                static fn ($membership): string => $membership->group->name,
+                self::service('test.beffroi.groups_of_a_person', GroupsOfAPersonInterface::class)->of($alice),
+            ),
+        ]);
+    }
+
+    /**
+     * The acceptance of issue #820, S-56, S-53: a valid assertion for a disabled person is refused with the page of
+     * every refusal of the person, which says nothing of the state of the account, and announced as a login refused
+     * for a disabled account, nothing typed.
+     */
+    #[Test]
+    public function aValidAssertionForADisabledPersonIsRefusedAndAnnounced(): void
+    {
+        // Given
+        self::provisioned();
+        $this->disabledAliceSigningOnAgain();
+        $request = $this->signOn($this->beginAuthorization());
+        self::forgetEvents();
+
+        // When
+        $this->post($this->response($request));
+
+        // Then
+        $this->assertRefused('The person the identity provider named is not one this provider signs in (spec/saml.md S-56).');
+        static::assertSame([AuthenticationFailureReason::DisabledUser, 'fed', null, null], self::failures());
+    }
+
+    /**
      * S-57, SAML Core §2.7.2, issue #813: the session the login opens ends at the SessionNotOnOrAfter the provider
      * allows, before the lifetime of the tenant.
      */
@@ -1083,6 +1133,21 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
             ],
             self::string($response->getContent()),
         );
+    }
+
+    /**
+     * Alice signed in once through the provider, a member of the group her value maps to, then disabled by an
+     * administrator, in a browser that holds no session of hers.
+     */
+    private function disabledAliceSigningOnAgain(): void
+    {
+        $members = new Group(Uuid::v7(), self::tenant(), 'Members', GroupSource::Local, self::currentSecond());
+        self::service('test.beffroi.groups', GroupRepositoryInterface::class)->save($members);
+        $this->post($this->response($this->signOn($this->beginAuthorization()), ['eduPersonAffiliation' => ['member']]));
+        $this->browser->getCookieJar()->clear();
+        $alice = self::person();
+        $alice->disable(Clock::get()->now());
+        self::service('test.beffroi.users', UserRepositoryInterface::class)->save($alice);
     }
 
     private static function person(): User
