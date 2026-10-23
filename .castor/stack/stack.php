@@ -458,7 +458,7 @@ function compose_recreate_redirectors(array $restarted): void
  * A migration that seals a column recreates it as BYTEA, and a process that booted before the mapping
  * changed still holds the type registry it built then: it reads that column with the type it had, which
  * throws on a column typed "string" and, on one typed "text", hands its caller the raw ciphertext as a
- * string with nothing at all to say so ([beffroi#430](https://github.com/beffroi-php/beffroi/issues/430)). The
+ * string with nothing at all to say so ([beffroi#430](https://github.com/beffroi-auth/beffroi/issues/430)). The
  * op container holds the kernel of the application for every request its FrankenPHP workers serve, the
  * worker container runs for an hour, and neither restarts on a write in the database.
  *

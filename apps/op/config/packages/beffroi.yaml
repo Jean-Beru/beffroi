@@ -4,7 +4,7 @@
 beffroi:
     tenant:
         issuer: '%env(BEFFROI_ISSUER)%'
-        # What this tenant shows of itself on every page (issue beffroi-php/beffroi#449). The logo is the
+        # What this tenant shows of itself on every page (issue beffroi-auth/beffroi#449). The logo is the
         # placeholder mark of public/tenant-logo.svg, served from the origin of the application itself,
         # which is why the policy of every page allows it without naming an origin; a deployment points
         # this at the mark it owns, anywhere over HTTPS. The two colours go together: the accent the
@@ -14,7 +14,7 @@ beffroi:
             logo_uri: '%env(BEFFROI_ISSUER)%/tenant-logo.svg'
             primary_color: '#1f6feb'
             primary_content_color: '#ffffff'
-        # What the people of this tenant may change of themselves (issue beffroi-php/beffroi#452). All of
+        # What the people of this tenant may change of themselves (issue beffroi-auth/beffroi#452). All of
         # them, because this is the tenant that creates its people by hand, which is the case the rule
         # exists for; a tenant whose directory owns the data declares none of this and its people read
         # their record without changing it. The address and the email address are not claims a person
@@ -56,13 +56,13 @@ beffroi:
     # "mailto:" or "https:" URI at which a push service can reach the operator (RFC 8292 §2.1).
     web_push:
         subject: 'mailto:operator@op.localhost'
-    # The tenant is a SAML identity provider (beffroi/saml, issue beffroi-php/beffroi#728): its signing key is drawn
+    # The tenant is a SAML identity provider (beffroi/saml, issue beffroi-auth/beffroi#728): its signing key is drawn
     # by "castor provision" under SAML-SIGNING, kept by the KMS and rotated as every key of the tenant, and its
     # metadata is served at /saml/metadata, the certificate of each key in service in it. Every service provider is
     # asked to sign its requests, which is the default and the setting a broker configured from that metadata signs
     # its requests by (spec/model.md section 6.9); a deployment that serves no SAML drops this section, and its
     # tenant then draws no SAML key and serves no metadata. Its key is a family of its own (issue
-    # beffroi-php/beffroi#738, spec/saml.md S-12): a rotation publishes the next certificate seven days before it
+    # beffroi-auth/beffroi#738, spec/saml.md S-12): a rotation publishes the next certificate seven days before it
     # signs, the key works a year, and the metadata tells a service provider to fetch it again every day; the keys of
     # the JWK Set keep the figures of "keys".
     saml:
@@ -87,7 +87,7 @@ beffroi:
     passwords:
         breached:
             # The list of compromised passwords a password posed here is compared against (NIST SP
-            # 800-63B §3.1.1.2, issue beffroi-php/beffroi#552): five hexadecimal characters of the SHA-1
+            # 800-63B §3.1.1.2, issue beffroi-auth/beffroi#552): five hexadecimal characters of the SHA-1
             # leave, the comparison of the thirty-five that are left is local, there is no API key and no
             # subscription. Empty until a deployment names it, which is what makes the lookup a decision
             # and not a default; a deployment that leaves it empty poses passwords and signs people in on
@@ -178,7 +178,7 @@ when@dev:
                 'https://attestation.demo.localhost':
                     jwks: '%env(json:base64:DEMO_ATTESTATION_JWKS)%'
                     signing_algorithms: ['ES256']
-        # The service provider of the SAML judge (issue beffroi-php/beffroi#732), in development only: the
+        # The service provider of the SAML judge (issue beffroi-auth/beffroi#732), in development only: the
         # SimpleSAMLphp that "castor saml-sp" serves on https://saml-sp.localhost. Its entity ID is the one its own
         # metadata carry, compared exactly (spec/saml.md S-5). Its metadata are a file, the one that task writes from
         # the service provider itself into the directory compose.yaml mounts into the op container and the worker, and
@@ -200,7 +200,7 @@ when@dev:
                             claim: name
                             friendly_name: displayName
                 # The same SimpleSAMLphp as a second service provider that demands its assertion encrypted ("castor
-                # saml-sp --encrypted", issue beffroi-php/beffroi#733): encrypted for the first key for encryption
+                # saml-sp --encrypted", issue beffroi-auth/beffroi#733): encrypted for the first key for encryption
                 # of its metadata, under aes256-gcm and rsa-oaep-mgf1p (spec/saml.md S-19, S-20).
                 'https://saml-sp.localhost/simplesaml/module.php/saml/sp/metadata/beffroi-encrypted':
                     metadata: '/saml-sp/sp-encrypted-metadata.xml'
@@ -215,7 +215,7 @@ when@dev:
                         'urn:oid:2.16.840.1.113730.3.1.241':
                             claim: name
                             friendly_name: displayName
-                # The service provider of the Entra judge (issue beffroi-php/beffroi#736): the SAML federation of
+                # The service provider of the Entra judge (issue beffroi-auth/beffroi#736): the SAML federation of
                 # guests of the maintainer's test tenant, Entra ID Free, set up without a domain. Its entity ID is
                 # the tenanted issuer of the AuthnRequest Entra sends for a new federation, the trailing slash
                 # included, which is also the Audience it expects (spec/saml.md section 7). Entra publishes no
