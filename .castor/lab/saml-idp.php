@@ -126,20 +126,19 @@ function saml_idp(
         'serviceProvider' => $serviceProvider,
     ];
 
+    saml_idp_nobody_yet();
+
     io()->section('alice, whom the provider has never seen, over HTTP-Redirect from the address she types');
-    $before = saml_idp_person_at_the_provider('alice@idp.example');
-    if ($before !== null) {
-        io()->warning('alice@idp.example exists already, from an earlier run on this database: her first sign-in is not played again, and what follows checks that a sign-in creates nothing.');
-    }
     $first = saml_idp_sign_in($client, 'alice', 'redirect', encrypted: false, hinted: false, capture: 'alice-first');
     $alice = saml_idp_person_at_the_provider('alice@idp.example');
-    demo_expect($alice !== null, 'the provider holds alice@idp.example');
-    if ($before === null) {
-        demo_expect(
-            str_contains($alice['source'], SAML_IDP_ENTITY_ID),
-            sprintf('created at this sign-in, by the provider she came from (%s, created %s)', $alice['source'], $alice['created']),
-        );
-    }
+    demo_expect(
+        $alice !== null && str_contains($alice['source'], SAML_IDP_ENTITY_ID),
+        sprintf(
+            'alice@idp.example, whom the provider did not hold before, is created at this sign-in, by the provider she came from (%s, created %s)',
+            $alice['source'] ?? '?',
+            $alice['created'] ?? '?',
+        ),
+    );
     demo_expect($first['claims']['sub'] === $alice['subject'], 'the subject of her ID token is hers');
     saml_idp_claims('What oidc-demo received for alice', $first);
 
@@ -154,16 +153,24 @@ function saml_idp(
     io()->section('bob, his assertion encrypted for the key of this provider, and his group');
     $third = saml_idp_sign_in($client, 'bob', 'redirect', encrypted: true, hinted: false, capture: 'bob');
     $bob = saml_idp_person_at_the_provider('bob@idp.example');
-    demo_expect($bob !== null && $third['claims']['sub'] === $bob['subject'], 'the provider holds bob@idp.example, the subject of his ID token');
     demo_expect(
-        in_array(SAML_IDP_GROUP, $bob['groups'], true),
-        sprintf(
-            'in the group "%s" of the tenant, the value "beffroi-admins" his provider asserts mapped by its declaration (groups: %s)',
+        $bob !== null && str_contains($bob['source'], SAML_IDP_ENTITY_ID) && $third['claims']['sub'] === $bob['subject'],
+        'bob@idp.example, whom the provider did not hold before, is created at this sign-in, the subject of his ID token',
+    );
+    io()->text('The groups of bob at the provider (beffroi:user:show):');
+    io()->table(['Group', 'Source', 'Added'], array_map(array_values(...), $bob['groups']));
+    demo_expect(
+        array_map(static fn (array $membership): array => [$membership['group'], $membership['source']], $bob['groups']) === [[
             SAML_IDP_GROUP,
-            implode(', ', $bob['groups']),
+            'upstream_claims',
+        ]],
+        sprintf(
+            'he is in the group "%s" of the tenant and in no other, the value "beffroi-admins" his provider asserts mapped by its declaration, a membership the claims of that provider hold (upstream_claims)',
+            SAML_IDP_GROUP,
         ),
     );
-    demo_expect($alice['groups'] === [], 'alice, whose provider asserts no group of hers, is in none');
+    $alice = saml_idp_person_at_the_provider('alice@idp.example');
+    demo_expect($alice !== null && $alice['groups'] === [], 'alice, whose provider asserts no group of hers, is in none');
     saml_idp_claims('What oidc-demo received for bob', $third);
 
     io()->section('carol, whom the identity provider signs in and then refuses');
@@ -180,9 +187,8 @@ function saml_idp(
 
     file_put_contents(SAML_IDP_DIRECTORY . '/assertion-encryption', '');
     io()->success(sprintf(
-        'SimpleSAMLphp signed alice and bob in at %s through oidc-demo, over HTTP-Redirect and HTTP-POST, alice created at her first sign-in%s and not at her second, bob in his group, his assertion encrypted; carol, whom it refused, answered access_denied; a response replayed and a response nobody asked for refused; every signature verified.',
+        'SimpleSAMLphp signed alice and bob in at %s through oidc-demo, over HTTP-Redirect and HTTP-POST, alice created at her first sign-in and not at her second, bob created in his group, his assertion encrypted; carol, whom it refused, answered access_denied; a response replayed and a response nobody asked for refused; every signature verified.',
         $issuer,
-        $before === null ? '' : ' (in an earlier run)',
     ));
 }
 
@@ -362,10 +368,40 @@ function saml_idp_publish(string $binding, string $ca): void
 }
 
 /**
+ * The walk proves that a first sign-in creates a person, and that the group of bob is the mapping's, which a database
+ * that holds one of the three people already cannot show: no command deletes a person, so a run on such a database is
+ * refused, with how to empty it, rather than taken for a proof.
+ */
+function saml_idp_nobody_yet(): void
+{
+    $held = array_values(array_filter(
+        ['alice@idp.example', 'bob@idp.example', 'carol@idp.example'],
+        static fn (string $address): bool => saml_idp_person_at_the_provider($address) !== null,
+    ));
+    if ($held === []) {
+        io()->text(' <info>✓</info> the provider holds none of the people of the identity provider yet');
+
+        return;
+    }
+    $project = preg_replace('/[^a-z0-9_-]/', '', strtolower(basename((string) getcwd())));
+    io()->error([
+        sprintf('The provider holds %s already, from an earlier run on this database: a sign-in cannot be shown to create a person there, nor a group to come from the mapping.', implode(
+            ', ',
+            $held,
+        )),
+        sprintf(
+            'Empty the database first: castor stop, docker volume rm %s_database_data, castor start, castor provision; then run "castor saml-idp" again.',
+            $project,
+        ),
+    ]);
+    exit(1);
+}
+
+/**
  * What the provider holds of a person, from "beffroi:user:show", the username of a person an upstream provider created
  * being their address: null when it holds nobody of that name.
  *
- * @return array{subject: string, created: string, source: string, groups: list<string>}|null
+ * @return array{subject: string, created: string, source: string, groups: list<array{group: string, source: string, added: string}>}|null
  */
 function saml_idp_person_at_the_provider(string $username): ?array
 {
@@ -377,10 +413,18 @@ function saml_idp_person_at_the_provider(string $username): ?array
     $read = static fn (string $name): string => preg_match(sprintf('/^\s*%s\s{2,}(.+?)\s*$/m', preg_quote($name, '/')), $output, $matches) === 1
         ? $matches[1]
         : '';
+    // the table of the section "Groups", one row per membership: the name of the group, the source of the membership
+    // (local, upstream_claims or scim, the core's GroupSource) and when it was added; the section says "The user is in
+    // no group." otherwise
     $groups = [];
-    $section = strstr($output, 'Groups') ?: '';
-    if (str_contains($section, SAML_IDP_GROUP)) {
-        $groups[] = SAML_IDP_GROUP;
+    $section = (string) preg_replace('/\A.*?^\s*Groups\s*$/ms', '', $output, 1);
+    preg_match_all('/^\s*(\S.*?)\s{2,}(local|upstream_claims|scim)\s{2,}(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s*$/m', $section, $rows, \PREG_SET_ORDER);
+    foreach ($rows as $row) {
+        $groups[] = [
+            'group' => $row[1],
+            'source' => $row[2],
+            'added' => $row[3],
+        ];
     }
 
     return [
@@ -612,7 +656,14 @@ function saml_idp_ask(array $client, array &$cookies, string $address, string $b
             $form['action'] === $sso && isset($form['fields']['SAMLRequest'], $form['fields']['RelayState']),
             sprintf('which posts it with a RelayState to the single sign-on service of SimpleSAMLphp (it posts to %s)', $form['action']),
         );
-        file_put_contents(SAML_IDP_CAPTURED . '/' . $capture . '-authn-request.xml', (string) base64_decode($form['fields']['SAMLRequest'], true));
+        $request = (string) base64_decode($form['fields']['SAMLRequest'], true);
+        file_put_contents(SAML_IDP_CAPTURED . '/' . $capture . '-authn-request.xml', $request);
+        $dom = new DOMDocument();
+        demo_expect($dom->loadXML($request), 'the request is well-formed XML');
+        $xpath = new DOMXPath($dom);
+        $xpath->registerNamespace('samlp', 'urn:oasis:names:tc:SAML:2.0:protocol');
+        $xpath->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
+        demo_expect((int) $xpath->evaluate('count(/samlp:AuthnRequest/ds:Signature)') === 1, 'its request signed in its XML');
         [$status, $location, $page] = demo_request($cookies, $ca, 'POST', $form['action'], $form['fields']);
     }
 
@@ -737,8 +788,8 @@ function saml_idp_failed_at_the_provider(array $client): void
     $asked = saml_idp_ask($client, $cookies, $address, 'redirect', false, 'carol-first');
     [$status, , $page] = saml_idp_log_in($cookies, $ca, $asked['status'], $asked['location'], 'carol', $person['password']);
     demo_expect(
-        $status !== 200 || ! str_contains($page, 'SAMLResponse'),
-        sprintf('carol signs in at SimpleSAMLphp, which refuses her on a page of its own and posts nothing (got %d)', $status),
+        $status >= 400 && str_contains($page, 'The laboratory identity provider refuses carol.') && ! str_contains($page, 'SAMLResponse'),
+        sprintf('carol signs in at SimpleSAMLphp, which refuses her on its error page, saying why, and posts nothing (got %d)', $status),
     );
 
     $asked = saml_idp_ask($client, $cookies, $address, 'redirect', false, 'carol');
@@ -763,6 +814,8 @@ function saml_idp_failed_at_the_provider(array $client): void
     $xpath = new DOMXPath($dom);
     $xpath->registerNamespace('samlp', 'urn:oasis:names:tc:SAML:2.0:protocol');
     $xpath->registerNamespace('saml', 'urn:oasis:names:tc:SAML:2.0:assertion');
+    $xpath->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
+    demo_expect((int) $xpath->evaluate('count(/samlp:Response/ds:Signature)') === 1, 'the Response is signed');
     $status = (string) $xpath->evaluate('string(/samlp:Response/samlp:Status/samlp:StatusCode/@Value)');
     $second = (string) $xpath->evaluate('string(/samlp:Response/samlp:Status/samlp:StatusCode/samlp:StatusCode/@Value)');
     demo_expect(
@@ -838,6 +891,7 @@ function saml_idp_unsolicited(string $issuer, string $ca, array $signedIn, array
     $response = (string) base64_decode($acs['fields']['SAMLResponse'], true);
     file_put_contents(SAML_IDP_CAPTURED . '/unsolicited-response.xml', $response);
     demo_expect(! str_contains($response, 'InResponseTo='), 'which answers no request: no InResponseTo');
+    saml_idp_response_on_the_wire($response, false);
     $again = saml_sp_posted_from_another_site($acs['action'], $acs['fields'], $ca);
     [$status, , $page] = demo_request($cookies, $ca, 'POST', $again['url'], $again['fields']);
     saml_idp_refused($status, $page, 'the provider refuses it, no request of this browser naming it (decision 0029)');
@@ -881,14 +935,31 @@ function saml_idp_verify_requests(): void
  * both metadata among them (tests/saml2-model/Interop/simplesamlphp/xmlsec1-verify.sh): the request posted under the
  * service provider of the tenant, every Response and every assertion in clear under the identity provider; the signature
  * of an encrypted assertion is inside its ciphertext, which only the provider opens, so the signature of its Response,
- * over that ciphertext, is the one verified. A request redirected carries no XML signature, and is listed and skipped.
+ * over that ciphertext, is the one verified. The script lists and skips a document that carries no XML signature, which
+ * two kinds of document may be and no other: a request redirected, whose signature is over its query string and which
+ * OpenSSL verified (saml_idp_verify_requests()), and the metadata of the service provider, which the provider does not
+ * sign. Any other document skipped lost its signature, and fails the walk.
  */
 function saml_idp_xmlsec1(): void
 {
-    in_alpine(
+    $run = run(alpine_command(
         'apk add -q xmlsec libxml2-utils >/dev/null 2>&1 && xmlsec1 --version && sh tests/saml2-model/Interop/simplesamlphp/xmlsec1-verify.sh '
         . SAML_IDP_CAPTURED
         . ' "*.xml"',
         ['tests/saml2-model/Interop/simplesamlphp/xmlsec1-verify.sh', SAML_IDP_CAPTURED],
+    ), context: context()->withQuiet()->withAllowFailure());
+    io()->write($run->getOutput());
+    demo_expect($run->isSuccessful(), 'xmlsec1 verifies every signature it finds');
+    preg_match_all('/^SKIP (\S+): no XML signature$/m', $run->getOutput(), $skipped);
+    $unsigned = array_values(array_filter(
+        $skipped[1],
+        static fn (string $file): bool => (
+            $file !== 'sp-metadata.xml'
+            && ! (str_ends_with($file, '-authn-request.xml') && is_file(SAML_IDP_CAPTURED . '/' . substr($file, 0, -4) . '.url'))
+        ),
+    ));
+    demo_expect(
+        $unsigned === [],
+        sprintf('and no document that has to be signed came without its signature%s', $unsigned === [] ? '' : ': ' . implode(', ', $unsigned)),
     );
 }

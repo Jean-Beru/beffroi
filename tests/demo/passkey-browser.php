@@ -78,8 +78,9 @@ final class PasskeyBrowser
         [$status, , $page] = $this->request('GET', '/login?interaction=' . rawurlencode($interaction));
         self::expect($status === 200, sprintf('the login page opens (got %d)', $status));
         if (str_contains($page, 'data-step="address"')) {
-            $token = self::capture('/data-step="address".*?name="_token" value="([^"]+)"/s', $page, 'the login page asks for the address first');
-            [$status] = $this->request('POST', '/login/address?interaction=' . rawurlencode($interaction), [
+            $action = self::capture('/<form method="post" action="([^"]+)" data-step="address"/', $page, 'the login page asks for the address first');
+            $token = self::capture('/data-step="address".*?name="_token" value="([^"]+)"/s', $page, 'and carries the token of its form');
+            [$status] = $this->request('POST', $action, [
                 '_address' => $username,
                 '_token' => $token,
             ]);
