@@ -261,6 +261,43 @@ when@dev:
                         attribute: groups
                         map:
                             beffroi-admins: Administrators
+                # Entra ID, the identity provider of the Entra judge of sub-spike 9d ("castor saml-entra --upstream",
+                # issue beffroi-auth/beffroi#789): the enterprise application "Beffroi OP dev" of the maintainer's test
+                # tenant, Entra ID Free, whose Identifier is the entity ID of the service provider of this tenant and
+                # whose Reply URL is its assertion consumer service, set by hand in its portal. Its entity ID is the
+                # one of its Federation Metadata XML, the tenanted issuer of sts.windows.net, the trailing slash
+                # included (S-42). Its metadata are that document, fetched once from the App Federation Metadata URL
+                # on 23 October 2026 and committed as it came (config/saml/), so that nothing reaches Microsoft when
+                # the provider reads them: they carry no validUntil, which readSigned() demands (S-6), so no signer is
+                # pinned and the repository vouches for them; a certificate rolled over in the portal is a new file.
+                # Entra signs the response and the assertion, under SHA-256 ("Sign SAML response and assertion"), and
+                # encrypts nothing, Entra ID Free having no token encryption, so no key to encrypt for is drawn.
+                # Every attribute is named by its claim type, the URI and not the short name the portal shows.
+                'https://sts.windows.net/20a6e528-cf9e-4f79-8949-bbd59006eff5/':
+                    metadata: '%kernel.project_dir%/config/saml/entra-enterprise-application-idp.xml'
+                    # The domain of the tenant, the one of the UPN of alice and bob: an address of it typed on the
+                    # login page goes to Entra (S-61), and the first sign-in refuses an address of another (S-56).
+                    domains: ['beffroilaboutlook.onmicrosoft.com']
+                    # emailaddress is user.mail, the Email field of a member, which is filled for alice and bob; the
+                    # UPN goes under "name", which nothing here reads.
+                    email_attribute: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
+                    # The request asks for a persistent NameID (S-48), which Entra answers with a pairwise identifier
+                    # of the person for this application, the subject then (S-55). Its portal shows "Email address"
+                    # as the format: should that be what it sends, an address names nobody (S-55), and the object ID
+                    # of the user, which Entra always sends and never changes, is the subject instead.
+                    subject_attribute: 'http://schemas.microsoft.com/identity/claims/objectidentifier'
+                    profile:
+                        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname': given_name
+                        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname': family_name
+                    # The groups claim of the application, "Security groups" sent as their object IDs, the default of
+                    # Entra, which a display name renamed in the portal does not change. "Lab Finance", bob's, is the
+                    # group "finance" of the tenant, which "castor saml-entra --upstream" creates; "Lab Unmapped",
+                    # alice's, is mapped to nothing, on purpose: a value the map does not name is no group, and none
+                    # is created (S-56).
+                    groups:
+                        attribute: 'http://schemas.microsoft.com/ws/2008/06/identity/claims/groups'
+                        map:
+                            '72ab10ba-c2a2-4021-bdaa-9eb4ae7b00e0': finance
         # The issuer of the development stack whose signature the tenant trusts (RFC 7523 §3, issue #299),
         # which "castor demo --assertion" signs with. Whoever holds its key can name a user of this tenant,
         # so everything about it is written here and nothing is asked for: the keys are the ones below and

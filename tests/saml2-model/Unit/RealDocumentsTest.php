@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Saml2\Model\Tests\Unit;
 
 use Beffroi\Saml2\Model\Assertion\NameIdFormat;
+use Beffroi\Saml2\Model\Exception\OutsideValidityWindow;
 use Beffroi\Saml2\Model\Metadata\Binding;
 use Beffroi\Saml2\Model\Metadata\Endpoint;
 use Beffroi\Saml2\Model\Metadata\IdentityProvider;
@@ -21,14 +22,21 @@ use Beffroi\Saml2\Model\Validation\SignatureCoverage;
 use Beffroi\Xml\Core\Children;
 use Beffroi\Xml\Core\Name;
 use Beffroi\Xml\Core\Text;
+use Beffroi\Xml\Dsig\SignatureAlgorithm;
 use Beffroi\Xml\Dsig\VerificationKey;
 use Beffroi\Xml\Dsig\VerificationKeys;
+use Beffroi\Xml\Dsig\Verifier;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function array_map;
+use function base64_decode;
 use function count;
+use function gzinflate;
+use function is_string;
 use LogicException;
+use function parse_str;
 use function preg_replace;
 use function sprintf;
 
@@ -41,9 +49,25 @@ final class RealDocumentsTest extends TestCase
     private const string DSIG = 'http://www.w3.org/2000/09/xmldsig#';
 
     /**
+     * The walk of issue #789 on 23 October 2026: the App Federation Metadata of the enterprise application of the test
+     * tenant, the response its Entra posted for alice, the assertion of that response, and the request of the service
+     * provider of the stack that response answers, as HTTP-Redirect carried it and inflated.
+     */
+    private const string ENTRA_METADATA = 'entra-app-federation-metadata-2026-10-23.xml';
+
+    private const string ENTRA_RESPONSE = 'entra-idp-response-signed-both-2026-10-23.xml';
+
+    private const string ENTRA_ASSERTION = 'entra-idp-assertion-2026-10-23.xml';
+
+    private const string ENTRA_REQUEST = 'beffroi-sp-authnrequest-to-entra-2026-10-23.xml';
+
+    private const string ENTRA_REQUEST_QUERY = 'beffroi-sp-authnrequest-to-entra-query-2026-10-23.txt';
+
+    /**
      * Section 9.4, section 6.5: the metadata of an identity provider, as Entra, Keycloak 26.7.4 and SimpleSAMLphp
-     * 2.5.3.1 publish it, the last both in plain http and as the upstream identity provider of the stack, over https and
-     * signed, and as its library 4.20.3 writes it, read by readTrusted().
+     * 2.5.3.1 publish it, the first both for every tenant and for the enterprise application upstream of the stack, the
+     * last both in plain http and as the upstream identity provider of the stack, over https and signed, and as its
+     * library 4.20.3 writes it, read by readTrusted().
      *
      * @param list<Endpoint> $singleSignOn
      * @param list<Endpoint> $singleLogout
@@ -108,6 +132,17 @@ final class RealDocumentsTest extends TestCase
             0,
             [new Endpoint(Binding::HttpRedirect, $entra), new Endpoint(Binding::HttpPost, $entra)],
             [new Endpoint(Binding::HttpRedirect, $entra)],
+            [],
+            false,
+        ];
+        $application = 'https://login.microsoftonline.com/20a6e528-cf9e-4f79-8949-bbd59006eff5/saml2';
+        yield 'Entra, the enterprise application upstream of the stack, a BOM, two RoleDescriptor skipped, one signing key' => [
+            'entra-app-federation-metadata-2026-10-23.xml',
+            'https://sts.windows.net/20a6e528-cf9e-4f79-8949-bbd59006eff5/',
+            1,
+            0,
+            [new Endpoint(Binding::HttpRedirect, $application), new Endpoint(Binding::HttpPost, $application)],
+            [new Endpoint(Binding::HttpRedirect, $application)],
             [],
             false,
         ];
@@ -332,6 +367,7 @@ final class RealDocumentsTest extends TestCase
     public static function provideSignedByTheirPublisher(): iterable
     {
         yield 'Entra' => ['entra-common-federation-metadata-2026-09-23.xml'];
+        yield 'Entra, the enterprise application upstream of the stack' => ['entra-app-federation-metadata-2026-10-23.xml'];
         yield 'SimpleSAMLphp upstream of the stack' => ['simplesamlphp-2.5.3.1-idp-metadata-signed-2026-10-22.xml'];
     }
 
@@ -400,6 +436,13 @@ final class RealDocumentsTest extends TestCase
             ),
             SignatureCoverage::Response,
         ];
+        yield 'Entra, the enterprise application upstream of the stack, the response and the assertion signed' => [
+            self::ENTRA_RESPONSE,
+            self::identityProviderOf(self::ENTRA_METADATA),
+            '2026-10-23T13:08:17.595Z',
+            self::entraRequest(),
+            SignatureCoverage::AssertionAndResponse,
+        ];
         $library = new IdentityProvider(
             'https://idp.example.org',
             [(string) preg_replace(
@@ -434,6 +477,90 @@ final class RealDocumentsTest extends TestCase
     /**
      * The identity provider of a real metadata of tests/saml2-model/Fixture/real/, read by readTrusted().
      */
+    /**
+     * Section 9.4, M-2: the assertion of Entra's response, its bytes as the response carries them, verified alone under
+     * the signing certificate of the metadata of the enterprise application, Entra signing it apart from the response
+     * ("Sign SAML response and assertion").
+     */
+    #[Test]
+    public function itVerifiesTheAssertionOfEntraAloneUnderTheKeyOfItsMetadata(): void
+    {
+        // Given
+        $assertion = MetadataFixtures::load('real/' . self::ENTRA_ASSERTION);
+        $keys = new VerificationKeys(array_map(
+            VerificationKey::fromCertificateBase64(...),
+            self::identityProviderOf(self::ENTRA_METADATA)->signingCertificates,
+        ));
+
+        // When
+        $verified = new Verifier(SamlLoader::create())->verify($assertion->root(), $keys);
+
+        // Then
+        static::assertSame(SignatureAlgorithm::RsaSha256, $verified->algorithm);
+    }
+
+    /**
+     * Section 9.4, issue #722: the request of the service provider of the stack that Entra answered, as HTTP-Redirect
+     * carried it, its SAMLRequest inflating to the document of the corpus byte for byte. The query string measures
+     * 1 267 bytes under the 8 192 of maxQueryStringBytes (bindings.md section 7), its message 664 bytes inflated under
+     * the 65 536 of maxInflatedBytes.
+     */
+    #[Test]
+    public function itCarriesTheRequestEntraAnsweredInItsQueryString(): void
+    {
+        // Given
+        parse_str(MetadataFixtures::bytes('real/' . self::ENTRA_REQUEST_QUERY), $query);
+        $message = $query['SAMLRequest'] ?? null;
+        if (! is_string($message)) {
+            throw new LogicException(sprintf('%s carries no SAMLRequest.', self::ENTRA_REQUEST_QUERY));
+        }
+
+        // When
+        $inflated = gzinflate((string) base64_decode($message, true));
+
+        // Then
+        static::assertSame(MetadataFixtures::bytes('real/' . self::ENTRA_REQUEST), $inflated);
+    }
+
+    /**
+     * Section 7, M-7, issue #722: Entra writes the bearer NotOnOrAfter of its assertion one hour after the instant it
+     * begins its windows from, which comes 161 ms before the IssueInstant of its response, so that its bearer window is
+     * maxBearerWindow itself, 3 600 s, with no margin: a service provider whose clock is one second behind Entra's
+     * accepts the IssueInstant within the skew and refuses the bearer confirmation. A measure for the decision of the
+     * bounds, not the decision.
+     */
+    #[Test]
+    public function itRefusesTheResponseOfEntraUnderAClockOneSecondBehindItsOwn(): void
+    {
+        // Given
+        $response = UnverifiedResponse::of(MetadataFixtures::load('real/' . self::ENTRA_RESPONSE));
+        $validator = new ResponseValidator(
+            SamlLoader::create(),
+            new FrozenClock(new DateTimeImmutable('2026-10-23T13:08:16.595Z')),
+            new InMemoryReplayGuard(),
+        );
+
+        // Then
+        $this->expectException(OutsideValidityWindow::class);
+        $this->expectExceptionMessageIs('The NotOnOrAfter of the bearer confirmation is later than now plus maxBearerWindow (M-7).');
+
+        // When
+        $validator->validate($response, self::identityProviderOf(self::ENTRA_METADATA), self::entraRequest());
+    }
+
+    /**
+     * What the service provider of the stack expected of the response of Entra: the request it sent, its assertion
+     * consumer service and its entity ID, the Reply URL and the Identifier of the enterprise application.
+     */
+    private static function entraRequest(): ExpectedResponse
+    {
+        return ExpectedResponse::toRequest(
+            '_dab29399768c8da8366dda8d328659700b6623a0',
+            'https://op.localhost/saml/sp/acs',
+            'https://op.localhost/saml/sp/metadata',
+        );
+    }
+
     private static function identityProviderOf(string $file): IdentityProvider
     {
         $date = preg_match('~(\d{4}-\d{2}-\d{2})\.xml\z~', $file, $parts) === 1 ? $parts[1] : '';
