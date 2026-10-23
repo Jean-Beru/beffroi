@@ -83,6 +83,44 @@ final class SessionOpenerTest extends TestCase
         static::assertEquals($this->clock->now(), $session->authenticatedAt());
     }
 
+    /**
+     * beffroi/saml S-57, OIDC Core §2: what an upstream identity provider proved is dated by the instant it says the
+     * person authenticated, its AuthnInstant, which is the auth_time of the session, and not by the instant the
+     * session is opened.
+     */
+    #[Test]
+    public function itDatesTheProofsWhenWhatProvedThemSaysTheyWereGiven(): void
+    {
+        // Given
+        $authnInstant = $this->clock->now()->modify('-3 minutes');
+
+        // When
+        $session = $this->opener->open($this->tenant, $this->alice, [AuthenticationMethod::password()], $this->context, $authnInstant);
+
+        // Then
+        static::assertEquals([$authnInstant, $this->clock->now()], [$session->authenticatedAt(), $session->establishedAt]);
+    }
+
+    /**
+     * beffroi/saml S-57, saml2-model M-7: an instant ahead of the clock, which the model admits within its skew, is
+     * dated by the clock, no proof being later than the session that holds it.
+     */
+    #[Test]
+    public function aProofDatedAheadOfTheClockIsDatedByTheClock(): void
+    {
+        // When
+        $session = $this->opener->open(
+            $this->tenant,
+            $this->alice,
+            [AuthenticationMethod::password()],
+            $this->context,
+            $this->clock->now()->modify('+2 minutes'),
+        );
+
+        // Then
+        static::assertEquals($this->clock->now(), $session->authenticatedAt());
+    }
+
     #[Test]
     public function itProvesEveryMethodGivenAtOnce(): void
     {

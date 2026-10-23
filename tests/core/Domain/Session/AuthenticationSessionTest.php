@@ -113,6 +113,50 @@ final class AuthenticationSessionTest extends TestCase
         static::assertSame('2', $session->authenticationContextClass()->value);
     }
 
+    /**
+     * beffroi/saml S-57: a proof an upstream identity provider gave is dated by its AuthnInstant, the auth_time it
+     * leaves the session with, and not by the request that carried it.
+     */
+    #[Test]
+    public function aProofIsDatedWhenWhatProvedItSaysItWasGiven(): void
+    {
+        // Given
+        $session = Fixtures::session();
+        $authnInstant = Fixtures::now()->modify('+4 minutes');
+
+        // When
+        $session->recordProof(
+            new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD),
+            Fixtures::context(Fixtures::now()->modify('+5 minutes')),
+            $authnInstant,
+        );
+
+        // Then
+        static::assertEquals($authnInstant, $session->authenticatedAt());
+    }
+
+    /**
+     * beffroi/saml S-57: a proof dated after the request that carried it, an upstream clock ahead of ours, is dated by
+     * the request.
+     */
+    #[Test]
+    public function aProofIsNeverDatedAfterTheRequestThatCarriedIt(): void
+    {
+        // Given
+        $session = Fixtures::session();
+        $receivedAt = Fixtures::now()->modify('+5 minutes');
+
+        // When
+        $session->recordProof(
+            new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD),
+            Fixtures::context($receivedAt),
+            $receivedAt->modify('+1 minute'),
+        );
+
+        // Then
+        static::assertEquals($receivedAt, $session->authenticatedAt());
+    }
+
     #[Test]
     public function itRecordsEveryMethodProven(): void
     {
