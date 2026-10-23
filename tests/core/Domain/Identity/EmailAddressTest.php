@@ -97,4 +97,56 @@ final class EmailAddressTest extends TestCase
         yield 'another domain' => ['alice@acme.example', 'alice@acme.test', false];
         yield 'another local part' => ['alice@acme.example', 'bob@acme.example', false];
     }
+
+    /**
+     * Decision 0029, beffroi/saml S-60: an address however it was written holds its domain as its A-label, read by the
+     * one rule of the domain, and its local part as it was written.
+     */
+    #[Test]
+    #[DataProvider('provideSpellings')]
+    public function itReadsAnAddressOfAnySpelling(string $written, string $read): void
+    {
+        // When / Then
+        static::assertSame($read, EmailAddress::ofAnySpelling($written)->value);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideSpellings(): iterable
+    {
+        yield 'in lowercase' => ['alice@acme.example', 'alice@acme.example'];
+        yield 'the domain in capitals' => ['alice@ACME.Example', 'alice@acme.example'];
+        yield 'the local part in capitals' => ['Alice@acme.example', 'Alice@acme.example'];
+        yield 'the domain in a U-label' => ['alice@bücher.example', 'alice@xn--bcher-kva.example'];
+        yield 'the domain in a U-label in capitals' => ['alice@BÜCHER.example', 'alice@xn--bcher-kva.example'];
+        yield 'a local part in Unicode' => ['zoé@Bücher.example', 'zoé@xn--bcher-kva.example'];
+        yield 'after the last at sign of a quoted local part' => ['"alice@home"@Acme.example', '"alice@home"@acme.example'];
+    }
+
+    /**
+     * Decision 0029, beffroi/saml S-60: what holds no "@", a domain the rule refuses and a local part this class
+     * refuses are no address of any spelling.
+     */
+    #[Test]
+    #[DataProvider('provideUnreadSpellings')]
+    public function itRefusesWhatItCannotRead(string $written): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+
+        // When
+        EmailAddress::ofAnySpelling($written);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideUnreadSpellings(): iterable
+    {
+        yield 'no at sign' => ['alice.acme.example'];
+        yield 'a domain of one label' => ['alice@localhost'];
+        yield 'a local part with a space' => ['alice smith@acme.example'];
+        yield 'an empty local part' => ['@acme.example'];
+    }
 }

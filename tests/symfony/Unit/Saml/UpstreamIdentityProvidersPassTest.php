@@ -209,6 +209,14 @@ final class UpstreamIdentityProvidersPassTest extends TestCase
             [...self::declaration('/srv/saml/acme-idp.xml', ['acme.example']), 'groups' => ['attribute' => 'groups', 'map' => ['member' => '']]],
             'The value "member" of the groups names no group (spec/saml.md S-45).',
         ];
+        yield 'a parameter of the address that is no token' => [
+            [...self::declaration('/srv/saml/acme-idp.xml', ['acme.example']), 'address_parameter' => 'login%5Fhint'],
+            'The parameter of the address is one to 64 unreserved characters of RFC 3986 (spec/saml.md S-68).',
+        ];
+        yield 'a parameter of the address the binding holds' => [
+            [...self::declaration('/srv/saml/acme-idp.xml', ['acme.example']), 'address_parameter' => 'relaystate'],
+            'The parameter of the address "relaystate" is a parameter of the binding (spec/saml.md S-68).',
+        ];
     }
 
     /**

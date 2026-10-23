@@ -126,7 +126,11 @@ final readonly class LoginController
         $asksForAnAddress = $this->discovery->asksForAnAddress($tenant);
         if ($asksForAnAddress) {
             $hinted = $this->discovery->hintedProvider($tenant, $interaction);
-            if ($hinted !== null) {
+            $hint = $interaction->request->loginHint;
+            if ($hinted !== null && $hint !== null) {
+                // beffroi/saml S-68: the hint goes on to the provider that reads one, as a typed address does
+                $this->addresses->sendOn($request->getSession(), $interaction, $hint);
+
                 return $this->pages->redirectToRoute(ServiceProviderRoutes::UPSTREAM_SIGN_ON, UpstreamDiscovery::signOn($interaction, $hinted));
             }
             if (! $this->addresses->passed($request->getSession(), $interaction)) {

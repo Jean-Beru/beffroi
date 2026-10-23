@@ -19,6 +19,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function range;
 use function sprintf;
+use function str_repeat;
 
 /**
  * spec/saml.md S-42, S-44, S-45, section 6.10 step 1: the declaration of an upstream identity provider holds together
@@ -396,11 +397,121 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
+     * S-68: a declaration names no parameter of the address unless it says so, so that nothing is sent to a provider
+     * that does not read one.
+     */
+    #[Test]
+    public function noParameterOfTheAddressIsNamedUnlessDeclared(): void
+    {
+        // When
+        $identityProvider = self::declaration([new EmailDomain('acme.example')]);
+
+        // Then
+        static::assertNull($identityProvider->addressParameter);
+    }
+
+    /**
+     * S-68, section 6.10 step 1: a parameter of the address that is a parameter of the binding is refused with the
+     * declaration.
+     */
+    #[Test]
+    public function aParameterOfTheAddressTheBindingHoldsIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The parameter of the address "RelayState" is a parameter of the binding (spec/saml.md S-68).');
+
+        // When
+        self::declaration([new EmailDomain('acme.example')], 'RelayState');
+    }
+
+    /**
+     * S-68, section 6.10 step 1: a parameter of the address that is no token of a query is refused with the
+     * declaration.
+     */
+    #[Test]
+    public function aParameterOfTheAddressThatIsNoTokenIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The parameter of the address is one to 64 unreserved characters of RFC 3986 (spec/saml.md S-68).');
+
+        // When
+        self::declaration([new EmailDomain('acme.example')], 'login hint');
+    }
+
+    /**
+     * S-68, S-60: the hint of an address of a domain the provider answers for is the parameter it declares and the
+     * address, its domain written as its A-label and its local part as it was given.
+     */
+    #[Test]
+    #[DataProvider('provideAddressesOfItsDomains')]
+    public function theHintOfAnAddressOfItsDomainIsBuilt(string $given, string $address): void
+    {
+        // Given
+        $identityProvider = self::declaration([new EmailDomain('acme.example'), new EmailDomain('xn--bcher-kva.example')], 'login_hint');
+
+        // When
+        $hint = $identityProvider->addressHint($given);
+
+        // Then
+        static::assertSame(['login_hint', $address], [$hint?->parameter, $hint?->address->value]);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideAddressesOfItsDomains(): iterable
+    {
+        yield 'as it is declared' => ['alice@acme.example', 'alice@acme.example'];
+        yield 'in capitals' => ['Alice@ACME.example', 'Alice@acme.example'];
+        yield 'in a U-label' => ['alice@Bücher.example', 'alice@xn--bcher-kva.example'];
+        yield 'in its A-label' => ['alice@xn--bcher-kva.example', 'alice@xn--bcher-kva.example'];
+    }
+
+    /**
+     * S-68: no hint for a provider that names no parameter, without an address, for an address the core does not
+     * read, and for an address of a domain the provider does not answer for, a subdomain among them.
+     */
+    #[Test]
+    #[DataProvider('provideAddressesWithoutAHint')]
+    public function noHintIsBuilt(?string $parameter, ?string $given): void
+    {
+        // Given
+        $identityProvider = self::declaration([new EmailDomain('acme.example')], $parameter);
+
+        // When / Then
+        static::assertNull($identityProvider->addressHint($given));
+    }
+
+    /**
+     * @return iterable<string, array{?string, ?string}>
+     */
+    public static function provideAddressesWithoutAHint(): iterable
+    {
+        yield 'a provider that names no parameter' => [null, 'alice@acme.example'];
+        yield 'no address' => ['login_hint', null];
+        yield 'a username' => ['login_hint', 'alice'];
+        yield 'a domain the rule refuses' => ['login_hint', 'alice@acme.example.'];
+        yield 'a local part the core refuses' => ['login_hint', 'alice smith@acme.example'];
+        yield 'a local part of 65 characters' => ['login_hint', str_repeat('a', 65) . '@acme.example'];
+        yield 'another domain' => ['login_hint', 'alice@other.example'];
+        yield 'a subdomain' => ['login_hint', 'alice@eu.acme.example'];
+    }
+
+    /**
      * @param list<EmailDomain> $domains
      */
-    private static function declaration(array $domains): UpstreamIdentityProvider
+    private static function declaration(array $domains, ?string $addressParameter = null): UpstreamIdentityProvider
     {
-        return new UpstreamIdentityProvider(self::ENTITY_ID, new MetadataLocation('/srv/saml/idp.xml'), [], $domains, 'mail');
+        return new UpstreamIdentityProvider(
+            self::ENTITY_ID,
+            new MetadataLocation('/srv/saml/idp.xml'),
+            [],
+            $domains,
+            'mail',
+            addressParameter: $addressParameter,
+        );
     }
 
     /**

@@ -167,6 +167,18 @@ final class ConfigurationUpstreamIdentityProvidersTest extends TestCase
             [...self::declaration(['acme.example']), 'require_encrypted_assertions' => 'yes'],
             '"require_encrypted_assertions" is a boolean.',
         ];
+        yield 'a parameter of the address that is no string' => [
+            [...self::declaration(['acme.example']), 'address_parameter' => ['login_hint']],
+            '"address_parameter" is a string.',
+        ];
+        yield 'a parameter of the address that is no token' => [
+            [...self::declaration(['acme.example']), 'address_parameter' => 'login hint'],
+            'The parameter of the address is one to 64 unreserved characters of RFC 3986 (spec/saml.md S-68).',
+        ];
+        yield 'a parameter of the address the binding holds' => [
+            [...self::declaration(['acme.example']), 'address_parameter' => 'Signature'],
+            'The parameter of the address "Signature" is a parameter of the binding (spec/saml.md S-68).',
+        ];
     }
 
     /**
@@ -204,6 +216,43 @@ final class ConfigurationUpstreamIdentityProvidersTest extends TestCase
         yield 'not declared' => [[], false];
         yield 'declared false' => [['require_encrypted_assertions' => false], false];
         yield 'declared true' => [['require_encrypted_assertions' => true], true];
+    }
+
+    /**
+     * S-68: the parameter of the address of an identity provider is read from its declaration, and there is none unless
+     * it names one.
+     *
+     * @param array<string, mixed> $declared
+     */
+    #[Test]
+    #[DataProvider('provideParametersOfTheAddress')]
+    public function theParameterOfTheAddressIsRead(array $declared, ?string $parameter): void
+    {
+        // Given
+        $identityProviders = new ConfigurationUpstreamIdentityProviders(
+            'acme',
+            ['https://idp.acme.example/saml' => [...self::declaration(['acme.example']), ...$declared]],
+            new FixedProfileClaims(),
+        );
+
+        // When
+        $identityProvider = $identityProviders->find(
+            Fixtures::tenant('acme'),
+            'https://idp.acme.example/saml',
+        ) ?? static::fail('The identity provider is not declared.');
+
+        // Then
+        static::assertSame($parameter, $identityProvider->addressParameter);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, ?string}>
+     */
+    public static function provideParametersOfTheAddress(): iterable
+    {
+        yield 'not declared' => [[], null];
+        yield 'declared null' => [['address_parameter' => null], null];
+        yield 'declared' => [['address_parameter' => 'login_hint'], 'login_hint'];
     }
 
     /**

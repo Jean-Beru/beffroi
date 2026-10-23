@@ -751,6 +751,7 @@ final class BeffroiBundleExtensionTest extends TestCase
                     'profile' => [],
                     'subject_attribute' => null,
                     'require_encrypted_assertions' => false,
+                    'address_parameter' => null,
                 ],
             ],
             $declarations->getArgument('$definitions'),
