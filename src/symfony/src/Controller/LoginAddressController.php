@@ -17,6 +17,7 @@ use Beffroi\Bundle\Saml\ServiceProviderRoutes;
 use Beffroi\Bundle\Saml\UpstreamDiscovery;
 use Beffroi\Core\Application\Identity\FederatedDomains;
 use Beffroi\Core\Exception\InvalidArgumentException;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -60,6 +61,7 @@ final readonly class LoginAddressController
         private WhatWasRefused $refusals,
         private InteractionPages $pages,
         private LoginTarget $loginTargets,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -96,7 +98,7 @@ final readonly class LoginAddressController
             return $this->pages->afterTheForm(LoginController::ROUTE, $back);
         }
         if ($provider !== null) {
-            $this->addresses->sendOn($request->getSession(), $interaction, $address);
+            $this->addresses->sendOn($request->getSession(), $interaction, $address, $this->clock->now());
 
             return $this->pages->afterTheForm(ServiceProviderRoutes::UPSTREAM_SIGN_ON, UpstreamDiscovery::signOn($interaction, $provider));
         }

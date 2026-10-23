@@ -19,6 +19,7 @@ use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Twig\Environment;
+use function sprintf;
 
 /**
  * beffroi/saml S-61: the step of the address of the login a page of the provider asks for is asked again for the next
@@ -54,10 +55,10 @@ final class LoginAddressesTest extends TestCase
         // Given
         $httpSession = new Session(new MockArraySessionStorage());
         $addresses = new LoginAddresses();
-        $addresses->sendOn($httpSession, null, 'alice@Bücher.example');
+        $addresses->sendOn($httpSession, null, 'alice@Bücher.example', Fixtures::now());
 
         // When / Then
-        static::assertSame('alice@Bücher.example', $addresses->takeSent($httpSession, null));
+        static::assertSame('alice@Bücher.example', $addresses->takeSent($httpSession, null, Fixtures::now()));
     }
 
     /**
@@ -70,11 +71,11 @@ final class LoginAddressesTest extends TestCase
         $httpSession = new Session(new MockArraySessionStorage());
         $addresses = new LoginAddresses();
         $interaction = self::interaction();
-        $addresses->sendOn($httpSession, $interaction, 'alice@example.org');
-        $addresses->takeSent($httpSession, $interaction);
+        $addresses->sendOn($httpSession, $interaction, 'alice@example.org', Fixtures::now());
+        $addresses->takeSent($httpSession, $interaction, Fixtures::now());
 
         // When / Then
-        static::assertNull($addresses->takeSent($httpSession, $interaction));
+        static::assertNull($addresses->takeSent($httpSession, $interaction, Fixtures::now()));
     }
 
     /**
@@ -87,13 +88,13 @@ final class LoginAddressesTest extends TestCase
         $httpSession = new Session(new MockArraySessionStorage());
         $addresses = new LoginAddresses();
         $interaction = self::interaction();
-        $addresses->sendOn($httpSession, $interaction, 'alice@example.org');
-        $addresses->sendOn($httpSession, null, 'bob@example.org');
+        $addresses->sendOn($httpSession, $interaction, 'alice@example.org', Fixtures::now());
+        $addresses->sendOn($httpSession, null, 'bob@example.org', Fixtures::now());
 
         // When / Then
         static::assertSame(['alice@example.org', null], [
-            $addresses->takeSent($httpSession, $interaction),
-            $addresses->takeSent($httpSession, self::interaction()),
+            $addresses->takeSent($httpSession, $interaction, Fixtures::now()),
+            $addresses->takeSent($httpSession, self::interaction(), Fixtures::now()),
         ]);
     }
 
@@ -109,17 +110,20 @@ final class LoginAddressesTest extends TestCase
         $addresses = new LoginAddresses();
         $first = self::interaction();
         $second = self::interaction();
-        $addresses->sendOn($httpSession, $first, 'first@example.org');
-        $addresses->sendOn($httpSession, $second, 'second@example.org');
-        $addresses->sendOn($httpSession, $first, 'first@example.org');
+        $addresses->sendOn($httpSession, $first, 'first@example.org', Fixtures::now());
+        $addresses->sendOn($httpSession, $second, 'second@example.org', Fixtures::now());
+        $addresses->sendOn($httpSession, $first, 'first@example.org', Fixtures::now());
 
         // When
         for ($login = 0; $login < (LoginAddresses::MAX_KEPT - 1); ++$login) {
-            $addresses->sendOn($httpSession, self::interaction(), 'other@example.org');
+            $addresses->sendOn($httpSession, self::interaction(), 'other@example.org', Fixtures::now());
         }
 
         // Then
-        static::assertSame(['first@example.org', null], [$addresses->takeSent($httpSession, $first), $addresses->takeSent($httpSession, $second)]);
+        static::assertSame(['first@example.org', null], [
+            $addresses->takeSent($httpSession, $first, Fixtures::now()),
+            $addresses->takeSent($httpSession, $second, Fixtures::now()),
+        ]);
     }
 
     /**
@@ -131,13 +135,13 @@ final class LoginAddressesTest extends TestCase
         // Given
         $httpSession = new Session(new MockArraySessionStorage());
         $addresses = new LoginAddresses();
-        $addresses->sendOn($httpSession, null, 'alice@example.org');
+        $addresses->sendOn($httpSession, null, 'alice@example.org', Fixtures::now());
 
         // When
         $addresses->forget($httpSession, null);
 
         // Then
-        static::assertNull($addresses->takeSent($httpSession, null));
+        static::assertNull($addresses->takeSent($httpSession, null, Fixtures::now()));
     }
 
     /**
@@ -152,7 +156,7 @@ final class LoginAddressesTest extends TestCase
         $httpSession->set(LoginAddresses::SENT_SESSION_KEY, $stored);
 
         // When / Then
-        static::assertNull(new LoginAddresses()->takeSent($httpSession, null));
+        static::assertNull(new LoginAddresses()->takeSent($httpSession, null, Fixtures::now()));
     }
 
     /**
@@ -161,7 +165,77 @@ final class LoginAddressesTest extends TestCase
     public static function provideStoredValuesThatAreNoAddresses(): iterable
     {
         yield 'no map' => [':page'];
-        yield 'an address that is no string' => [[':page' => ['alice@example.org']]];
+        yield 'an address alone' => [[':page' => 'alice@example.org']];
+        yield 'an address that is no string' => [[':page' => ['address' => ['alice@example.org'], 'sent_at' => Fixtures::now()->getTimestamp()]]];
+        yield 'an instant that is no number' => [[':page' => ['address' => 'alice@example.org', 'sent_at' => 'now']]];
+    }
+
+    /**
+     * S-68, section 7: the address kept for a sign-on waits as long as a request for a login, and is taken by no
+     * sign-on once that wait is over.
+     */
+    #[Test]
+    #[DataProvider('provideWaits')]
+    public function anAddressIsTakenWithinItsWaitAlone(int $seconds, ?string $taken): void
+    {
+        // Given
+        $httpSession = new Session(new MockArraySessionStorage());
+        $addresses = new LoginAddresses();
+        $addresses->sendOn($httpSession, null, 'alice@example.org', Fixtures::now());
+
+        // When / Then
+        static::assertSame($taken, $addresses->takeSent($httpSession, null, Fixtures::now()->modify(sprintf('+%d seconds', $seconds))));
+    }
+
+    /**
+     * @return iterable<string, array{int, ?string}>
+     */
+    public static function provideWaits(): iterable
+    {
+        yield 'at the end of its wait' => [LoginAddresses::SENT_WAIT, 'alice@example.org'];
+        yield 'a second past it' => [LoginAddresses::SENT_WAIT + 1, null];
+    }
+
+    /**
+     * S-68: an address whose wait is over leaves the HTTP session when the addresses of the browser are written next,
+     * its sign-on never reached.
+     */
+    #[Test]
+    public function anAddressPastItsWaitLeavesTheSession(): void
+    {
+        // Given
+        $httpSession = new Session(new MockArraySessionStorage());
+        $addresses = new LoginAddresses();
+        $addresses->sendOn($httpSession, self::interaction(), 'alice@example.org', Fixtures::now());
+
+        // When
+        $addresses->sendOn($httpSession, null, 'bob@example.org', Fixtures::now()->modify(sprintf('+%d seconds', LoginAddresses::SENT_WAIT + 1)));
+
+        // Then
+        static::assertSame(
+            [':page' => ['address' => 'bob@example.org', 'sent_at' => Fixtures::now()->getTimestamp() + LoginAddresses::SENT_WAIT + 1]],
+            $httpSession->get(LoginAddresses::SENT_SESSION_KEY),
+        );
+    }
+
+    /**
+     * S-68: the page that waited for a login served, the address kept for the sign-on of that login leaves with it.
+     */
+    #[Test]
+    public function thePageServedTakesTheAddressOfItsLoginWithIt(): void
+    {
+        // Given
+        $httpSession = new Session(new MockArraySessionStorage());
+        $addresses = new LoginAddresses();
+        $addresses->sendOn($httpSession, null, 'alice@example.org', Fixtures::now());
+        $urls = static::createStub(UrlGeneratorInterface::class);
+        $targets = new LoginTarget(new InteractionPages(static::createStub(Environment::class), $urls), $addresses);
+
+        // When
+        $targets->forget($httpSession);
+
+        // Then
+        static::assertSame([], $httpSession->get(LoginAddresses::SENT_SESSION_KEY));
     }
 
     private static function interaction(): Interaction

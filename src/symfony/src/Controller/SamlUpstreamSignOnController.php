@@ -83,7 +83,7 @@ final readonly class SamlUpstreamSignOnController
                 return $this->responder->unknownInteraction();
             }
             $forceAuthn = $this->requirement->forcesALogin(null, $session, $now);
-            $address = $this->addresses->takeSent($request->getSession(), null);
+            $address = $this->addresses->takeSent($request->getSession(), null, $now);
         } else {
             $for = $this->browser->pending($request, $tenant, $id);
             if ($for === null) {
@@ -99,7 +99,7 @@ final readonly class SamlUpstreamSignOnController
             } catch (OAuth2Exception $exception) {
                 return $this->responder->failure($request, $for->request->redirectTarget(), $exception, $for);
             }
-            $address = $this->addresses->takeSent($request->getSession(), $for);
+            $address = $this->addresses->takeSent($request->getSession(), $for, $now);
         }
         try {
             $sent = $this->signOn->start($tenant, $request->query->getString(ServiceProviderRoutes::IDENTITY_PROVIDER_PARAMETER), $forceAuthn, $address);

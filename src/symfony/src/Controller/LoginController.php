@@ -29,6 +29,7 @@ use Beffroi\Oidc\Exception\InteractionCompletedException;
 use Beffroi\Oidc\Exception\InteractionExpiredException;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Oidc\Exception\OAuth2Exception;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -76,6 +77,7 @@ final readonly class LoginController
         private UpstreamDiscovery $discovery,
         private LoginAddresses $addresses,
         private WhatWasRefused $refusals,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -129,7 +131,7 @@ final readonly class LoginController
             $hint = $interaction->request->loginHint;
             if ($hinted !== null && $hint !== null) {
                 // beffroi/saml S-68: the hint goes on to the provider that reads one, as a typed address does
-                $this->addresses->sendOn($request->getSession(), $interaction, $hint);
+                $this->addresses->sendOn($request->getSession(), $interaction, $hint, $this->clock->now());
 
                 return $this->pages->redirectToRoute(ServiceProviderRoutes::UPSTREAM_SIGN_ON, UpstreamDiscovery::signOn($interaction, $hinted));
             }

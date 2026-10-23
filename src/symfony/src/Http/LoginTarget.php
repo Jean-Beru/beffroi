@@ -113,9 +113,13 @@ final readonly class LoginTarget
         return new StepUpOffer($remembered['step_up']['classes'], $remembered['step_up']['kinds']);
     }
 
+    /**
+     * The page served, or let go of: what the step of the address kept for its login goes with it (beffroi/saml S-68).
+     */
     public function forget(SessionInterface $httpSession): void
     {
         $httpSession->remove(self::SESSION_KEY);
+        $this->addresses->forget($httpSession, null);
     }
 
     /**

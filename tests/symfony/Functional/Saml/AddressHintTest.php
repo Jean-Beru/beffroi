@@ -282,6 +282,28 @@ final class AddressHintTest extends ConsoleTestCase
     }
 
     /**
+     * S-68, section 7: an interaction that ends before its sign-on is reached, here once its ten minutes
+     * are over, takes the address kept for that sign-on with it, which the HTTP session holds no longer.
+     */
+    #[Test]
+    public function anInteractionThatEndsTakesTheAddressItsSignOnNeverTookWithIt(): void
+    {
+        // Given
+        $interaction = $this->beginAuthorization();
+        $this->typeAddress($interaction, 'alice@example.org');
+        self::mockTime(Clock::get()->now()->modify('+11 minutes'));
+
+        // When
+        $this->browser->request('GET', '/login', [
+            'interaction' => $interaction,
+        ]);
+
+        // Then
+        static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
+        static::assertSame([], $this->readHttpSession()->get(LoginAddresses::SENT_SESSION_KEY));
+    }
+
+    /**
      * An interaction begun at the authorization endpoint, which sends the browser to the login.
      *
      * @param array<string, string> $parameters
