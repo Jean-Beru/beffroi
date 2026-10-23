@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Beffroi\Saml\Tests\Fixture;
 
 use Beffroi\Core\Domain\Key\KeptEncryptionAlgorithmInterface;
-use Beffroi\Core\Domain\Key\UnsealedKey;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\KeptDecryptionKeyProviderInterface;
 
@@ -25,10 +24,12 @@ final class RecordingKeptDecryptionKeys implements KeptDecryptionKeyProviderInte
     ) {
     }
 
-    public function keptDecryptionKey(Tenant $tenant, KeptEncryptionAlgorithmInterface $algorithm, string $kid): UnsealedKey
+    public function keptDecryptionKeys(Tenant $tenant, KeptEncryptionAlgorithmInterface $algorithm, array $kids): array
     {
-        $this->asked[] = $kid;
+        foreach ($kids as $kid) {
+            $this->asked[] = $kid;
+        }
 
-        return $this->keys->keptDecryptionKey($tenant, $algorithm, $kid);
+        return $this->keys->keptDecryptionKeys($tenant, $algorithm, $kids);
     }
 }

@@ -17,7 +17,10 @@ use Beffroi\Saml\Application\Metadata\EncryptionCertificates;
 use Beffroi\Saml\Bridge\Model\UpstreamDecryptionKeys;
 use Beffroi\Saml\Bridge\Pki\SelfSignedCertificateIssuer;
 use Beffroi\Saml\Tests\Fixture\RecordingKeptDecryptionKeys;
+use Beffroi\Saml\Tests\Fixture\SamlEncryption;
 use Beffroi\Saml\Tests\Fixture\SamlKeys;
+use Beffroi\Saml\Tests\Fixture\WiredAlgorithmsOf;
+use Beffroi\Core\Tests\Fixture\FakeSignatureAlgorithm;
 use Beffroi\Saml2\Model\Metadata\Binding;
 use Beffroi\Saml2\Model\Metadata\Endpoint;
 use Beffroi\Saml2\Model\Metadata\IdentityProvider;
@@ -69,13 +72,24 @@ final class UpstreamDecryptionKeysTest extends TestCase
 
     private InMemoryTenantKeyRepository $keys;
 
+    private OpenedKeys $held;
+
     private RecordingKeptDecryptionKeys $opened;
+
+    private WiredAlgorithmsOf $wired;
 
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
         $this->keys = new InMemoryTenantKeyRepository();
-        $this->opened = new RecordingKeptDecryptionKeys(new SealedKeyProvider($this->keys, Keys::opened()));
+        $this->held = Keys::opened();
+        $this->opened = new RecordingKeptDecryptionKeys(new SealedKeyProvider($this->keys, $this->held));
+        $this->wired = new WiredAlgorithmsOf([
+            new SamlEncryption(self::PROVIDER),
+            new SamlEncryption(self::OTHER_PROVIDER),
+            new SamlEncryption(self::FIXTURE_PROVIDER),
+            new SamlEncryption(self::FIXTURE_OTHER_PROVIDER),
+        ]);
     }
 
     /**
@@ -294,10 +308,91 @@ final class UpstreamDecryptionKeysTest extends TestCase
         $this->keys->save(SamlKeys::encryptionKey($this->tenant, self::OTHER_PROVIDER));
 
         // When
-        $key = new UpstreamDecryptionKeys($this->keys, $this->opened)->of($this->tenant, self::PROVIDER);
+        $key = new UpstreamDecryptionKeys($this->keys, $this->wired, $this->opened)->of($this->tenant, self::PROVIDER);
 
         // Then
         static::assertNull($key);
+    }
+
+    /**
+     * Section 6.13 step 1: a provider the deployment does not wire, which declares no such provider, is given none, and
+     * nothing is opened for it.
+     */
+    #[Test]
+    public function aProviderNothingWiresIsGivenNone(): void
+    {
+        // Given
+        $this->keys->save(SamlKeys::encryptionKey($this->tenant, self::PROVIDER));
+        $keys = new UpstreamDecryptionKeys($this->keys, new WiredAlgorithmsOf([new SamlEncryption(self::OTHER_PROVIDER)]), $this->opened);
+
+        // When
+        $key = $keys->of($this->tenant, self::PROVIDER);
+
+        // Then
+        static::assertSame([null, []], [$key, $this->opened->asked]);
+    }
+
+    /**
+     * S-64: an algorithm wired under the name of a provider that is not the key of a provider gives no key.
+     */
+    #[Test]
+    public function anAlgorithmThatIsNoKeyOfAProviderGivesNone(): void
+    {
+        // Given
+        $keys = new UpstreamDecryptionKeys(
+            $this->keys,
+            new WiredAlgorithmsOf([new FakeSignatureAlgorithm('SAML-ENCRYPTION:' . self::PROVIDER)]),
+            $this->opened,
+        );
+
+        // When / Then
+        static::assertNull($keys->of($this->tenant, self::PROVIDER));
+    }
+
+    /**
+     * Section 6.13 step 2: a key of the provider that has retired since the last response leaves a process that lives
+     * for months, the key that took over opened in its place.
+     */
+    #[Test]
+    public function aKeyRetiredSinceTheLastResponseLeavesTheProcess(): void
+    {
+        // Given
+        $previous = SamlKeys::encryptionKey($this->tenant, self::PROVIDER);
+        $previous->activate(Fixtures::now());
+        $this->keys->save($previous);
+        $this->keyOf(self::PROVIDER);
+        $held = $this->held->open($this->tenant, $previous);
+        $this->rotate($previous);
+        $previous->retire(Fixtures::now());
+
+        // When
+        $this->keyOf(self::PROVIDER);
+
+        // Then
+        static::assertNotSame($held, $this->held->open($this->tenant, $previous));
+    }
+
+    /**
+     * Section 6.13 step 2: the keys of a provider that have all retired leave the process too, though the provider is
+     * given none.
+     */
+    #[Test]
+    public function theKeysOfAProviderThatHaveAllRetiredLeaveTheProcess(): void
+    {
+        // Given
+        $previous = SamlKeys::encryptionKey($this->tenant, self::PROVIDER);
+        $previous->activate(Fixtures::now());
+        $this->keys->save($previous);
+        $this->keyOf(self::PROVIDER);
+        $held = $this->held->open($this->tenant, $previous);
+        $previous->startRetiring(Fixtures::now(), Fixtures::now());
+        $previous->retire(Fixtures::now());
+
+        // When
+        new UpstreamDecryptionKeys($this->keys, $this->wired, $this->opened)->of($this->tenant, self::PROVIDER);
+
+        // Then
+        static::assertNotSame($held, $this->held->open($this->tenant, $previous));
     }
 
     /**
@@ -310,7 +405,7 @@ final class UpstreamDecryptionKeysTest extends TestCase
         $this->keys->save(SamlKeys::encryptionKey($this->tenant, self::PROVIDER));
         $sealer = self::createStub(KeySealerInterface::class);
         $sealer->method('unseal')->willThrowException(new KmsUnavailableException('The KMS does not answer.'));
-        $keys = new UpstreamDecryptionKeys($this->keys, new SealedKeyProvider($this->keys, new OpenedKeys($sealer)));
+        $keys = new UpstreamDecryptionKeys($this->keys, $this->wired, new SealedKeyProvider($this->keys, new OpenedKeys($sealer)));
 
         // Then
         $this->expectException(KmsUnavailableException::class);
@@ -325,7 +420,7 @@ final class UpstreamDecryptionKeysTest extends TestCase
      */
     private function keyOf(string $identityProvider): DecryptionKeyInterface
     {
-        $key = new UpstreamDecryptionKeys($this->keys, $this->opened)->of($this->tenant, $identityProvider);
+        $key = new UpstreamDecryptionKeys($this->keys, $this->wired, $this->opened)->of($this->tenant, $identityProvider);
         static::assertNotNull($key);
 
         return $key;

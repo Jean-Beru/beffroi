@@ -4,17 +4,19 @@ declare(strict_types=1);
 
 namespace Beffroi\Saml\Tests\Unit\Domain\Key;
 
+use Beffroi\Core\Domain\Encoding\Base64Url;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
 use Beffroi\Saml\Domain\Key\UpstreamEncryptionKeys;
-use Beffroi\Saml\Tests\Fixture\SamlEncryption;
 use Beffroi\Saml\Tests\Fixture\SamlKeys;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function strpos;
+use function substr;
 
 /**
  * spec/saml.md S-64, S-65, section 6.12 step 1: the keys one upstream identity provider encrypts for, among the keys of
@@ -76,23 +78,7 @@ final class UpstreamEncryptionKeysTest extends TestCase
     }
 
     /**
-     * S-64: the algorithm of the keys is the one of the provider, the one its keys are opened under.
-     */
-    #[Test]
-    public function theAlgorithmIsTheOneOfTheProvider(): void
-    {
-        // Given
-        $inService = [SamlKeys::encryptionKey($this->tenant, self::OTHER_PROVIDER, 1), SamlKeys::encryptionKey($this->tenant, self::PROVIDER)];
-
-        // When
-        $keys = UpstreamEncryptionKeys::of($inService, self::PROVIDER);
-
-        // Then
-        static::assertSame(new SamlEncryption(self::PROVIDER)->name(), $keys->algorithm?->name());
-    }
-
-    /**
-     * Section 6.13 step 1: a provider for which the tenant holds no key in service has none, and no algorithm.
+     * Section 6.13 step 1: a provider for which the tenant holds no key in service has none.
      */
     #[Test]
     public function aProviderWithoutAKeyHasNone(): void
@@ -104,13 +90,14 @@ final class UpstreamEncryptionKeysTest extends TestCase
         $keys = UpstreamEncryptionKeys::of($inService, self::PROVIDER);
 
         // Then
-        static::assertSame([null, []], [$keys->algorithm, $keys->keys]);
+        static::assertSame([], $keys->keys);
     }
 
     /**
      * S-64: a key of the provider whose modulus another key of the tenant in service holds, the key of another provider
      * or the SAML signing key, is refused, whichever of the two is asked for, naming the two algorithms and not the
-     * material.
+     * material; one integer spelt otherwise, a leading zero octet or other trailing bits, is the same modulus, and a
+     * modulus that is not base64url, a line feed in it, is refused rather than compared as text.
      *
      * @param list<TenantKey> $inService
      */
@@ -150,6 +137,53 @@ final class UpstreamEncryptionKeysTest extends TestCase
             self::PROVIDER,
             'A key of SAML-ENCRYPTION:https://idp-a.example/metadata holds the modulus of a key of SAML-SIGNING: one key belongs to one identity provider (spec/saml.md S-64).',
         ];
+        $modulus = SamlKeys::encryptionPair()->publicJwk['n'];
+        yield 'the same integer with a leading zero octet' => [
+            [
+                $first,
+                self::sameMaterial(
+                    SamlKeys::encryptionKey($tenant, self::OTHER_PROVIDER),
+                    'second',
+                    Base64Url::encode("\0" . (Base64Url::decode($modulus) ?? '')),
+                ),
+            ],
+            self::OTHER_PROVIDER,
+            'A key of SAML-ENCRYPTION:https://idp-b.example/metadata holds the modulus of a key of SAML-ENCRYPTION:https://idp-a.example/metadata: one key belongs to one identity provider (spec/saml.md S-64).',
+        ];
+        yield 'the same integer with other trailing bits' => [
+            [$first, self::sameMaterial(SamlKeys::encryptionKey($tenant, self::OTHER_PROVIDER), 'second', self::withOtherTrailingBits($modulus))],
+            self::OTHER_PROVIDER,
+            'A key of SAML-ENCRYPTION:https://idp-b.example/metadata holds the modulus of a key of SAML-ENCRYPTION:https://idp-a.example/metadata: one key belongs to one identity provider (spec/saml.md S-64).',
+        ];
+        yield 'a line feed in the modulus of the copy, asked for the first' => [
+            [
+                $first,
+                self::sameMaterial(SamlKeys::encryptionKey($tenant, self::OTHER_PROVIDER), 'second', substr($modulus, 0, 64) . "\n" . substr($modulus, 64)),
+            ],
+            self::PROVIDER,
+            'A key of SAML-ENCRYPTION:https://idp-b.example/metadata carries a modulus that is not base64url (RFC 7518 §6.3.1.1, spec/saml.md S-64).',
+        ];
+        yield 'a line feed in the modulus of the copy, asked for the copy' => [
+            [
+                $first,
+                self::sameMaterial(SamlKeys::encryptionKey($tenant, self::OTHER_PROVIDER), 'second', substr($modulus, 0, 64) . "\n" . substr($modulus, 64)),
+            ],
+            self::OTHER_PROVIDER,
+            'A key of SAML-ENCRYPTION:https://idp-b.example/metadata carries a modulus that is not base64url (RFC 7518 §6.3.1.1, spec/saml.md S-64).',
+        ];
+    }
+
+    /**
+     * The same base64url text but for the bits of its last character that encode no octet, which a decoder reads past:
+     * a modulus of 2 048 bits, 256 octets, ends on one octet in two characters, four of whose bits are such.
+     */
+    private static function withOtherTrailingBits(string $modulus): string
+    {
+        $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+        $last = strpos($alphabet, $modulus[-1]);
+        static::assertIsInt($last);
+
+        return substr($modulus, 0, -1) . $alphabet[$last | 0b0001];
     }
 
     /**

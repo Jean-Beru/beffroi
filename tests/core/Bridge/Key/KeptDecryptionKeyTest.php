@@ -53,10 +53,10 @@ final class KeptDecryptionKeyTest extends TestCase
         $key = $this->key(new KeptEncryption(), Keys::pair());
 
         // When
-        $opened = $this->provider->keptDecryptionKey($this->tenant, new KeptEncryption(), $key->kid);
+        $opened = $this->provider->keptDecryptionKeys($this->tenant, new KeptEncryption(), [$key->kid]);
 
         // Then
-        static::assertSame([$key, Keys::pair()->privateJwk], [$opened->key, $opened->privateJwk]);
+        static::assertSame([[$key, Keys::pair()->privateJwk]], [[$opened[0]->key, $opened[0]->privateJwk]]);
     }
 
     /**
@@ -67,13 +67,13 @@ final class KeptDecryptionKeyTest extends TestCase
     {
         // Given
         $key = $this->key(new KeptEncryption(), Keys::pair());
-        $first = $this->provider->keptDecryptionKey($this->tenant, new KeptEncryption(), $key->kid);
+        $first = $this->provider->keptDecryptionKeys($this->tenant, new KeptEncryption(), [$key->kid]);
 
         // When
-        $second = $this->provider->keptDecryptionKey($this->tenant, new KeptEncryption(), $key->kid);
+        $second = $this->provider->keptDecryptionKeys($this->tenant, new KeptEncryption(), [$key->kid]);
 
         // Then
-        static::assertSame($first, $second);
+        static::assertSame($first[0], $second[0]);
     }
 
     /**
@@ -91,7 +91,7 @@ final class KeptDecryptionKeyTest extends TestCase
         $this->expectExceptionMessageIs(sprintf('The key "%s" of tenant "acme" is a key of KEPT-ENCRYPTION:b, not of KEPT-ENCRYPTION:a.', $key->kid));
 
         // When
-        $this->provider->keptDecryptionKey($this->tenant, new KeptEncryption('a'), $key->kid);
+        $this->provider->keptDecryptionKeys($this->tenant, new KeptEncryption('a'), [$key->kid]);
     }
 
     /**
@@ -105,7 +105,7 @@ final class KeptDecryptionKeyTest extends TestCase
         $this->expectExceptionMessageIs('Tenant "acme" holds no key "unknown".');
 
         // When
-        $this->provider->keptDecryptionKey($this->tenant, new KeptEncryption(), 'unknown');
+        $this->provider->keptDecryptionKeys($this->tenant, new KeptEncryption(), ['unknown']);
     }
 
     /**
@@ -122,7 +122,7 @@ final class KeptDecryptionKeyTest extends TestCase
         $this->expectExceptionMessageIs(sprintf('The key "%s" of tenant "acme" has retired: what was encrypted to it is not opened any more.', $key->kid));
 
         // When
-        $this->provider->keptDecryptionKey($this->tenant, new KeptEncryption(), $key->kid);
+        $this->provider->keptDecryptionKeys($this->tenant, new KeptEncryption(), [$key->kid]);
     }
 
     /**
@@ -133,17 +133,73 @@ final class KeptDecryptionKeyTest extends TestCase
     {
         // Given
         $key = $this->key(new KeptEncryption(), Keys::pair());
-        $opened = $this->provider->keptDecryptionKey($this->tenant, new KeptEncryption(), $key->kid);
+        $opened = $this->provider->keptDecryptionKeys($this->tenant, new KeptEncryption(), [$key->kid])[0];
         $this->retired($key);
 
         // When
         try {
-            $this->provider->keptDecryptionKey($this->tenant, new KeptEncryption(), $key->kid);
+            $this->provider->keptDecryptionKeys($this->tenant, new KeptEncryption(), [$key->kid]);
         } catch (KeyNotFoundException) {
         }
 
         // Then
         static::assertNotSame($opened, $this->opened->open($this->tenant, $key));
+    }
+
+    /**
+     * The keys are answered in the order the caller names them, which is the order it tries them in.
+     */
+    #[Test]
+    public function theKeysAreAnsweredInTheOrderNamed(): void
+    {
+        // Given
+        $first = $this->key(new KeptEncryption(), Keys::pair());
+        $second = $this->key(new KeptEncryption(), Keys::otherPair());
+
+        // When
+        $opened = $this->provider->keptDecryptionKeys($this->tenant, new KeptEncryption(), [$second->kid, $first->kid]);
+
+        // Then
+        static::assertSame([$second, $first], [$opened[0]->key, $opened[1]->key]);
+    }
+
+    /**
+     * A key of the algorithm the caller no longer names, one that left the service since its last call, leaves the
+     * process; the one it names stays open.
+     */
+    #[Test]
+    public function aKeyNoLongerNamedLeavesTheProcess(): void
+    {
+        // Given
+        $previous = $this->key(new KeptEncryption(), Keys::pair());
+        $next = $this->key(new KeptEncryption(), Keys::otherPair());
+        $opened = $this->provider->keptDecryptionKeys($this->tenant, new KeptEncryption(), [$next->kid, $previous->kid]);
+
+        // When
+        $this->provider->keptDecryptionKeys($this->tenant, new KeptEncryption(), [$next->kid]);
+
+        // Then
+        static::assertSame([false, true], [
+            $opened[1] === $this->opened->open($this->tenant, $previous),
+            $opened[0] === $this->opened->open($this->tenant, $next),
+        ]);
+    }
+
+    /**
+     * What another algorithm holds open is not the business of a caller of this one: the keys of another holder stay.
+     */
+    #[Test]
+    public function theKeysOfAnotherAlgorithmStayOpen(): void
+    {
+        // Given
+        $elsewhere = $this->key(new KeptEncryption('b'), Keys::pair());
+        $opened = $this->provider->keptDecryptionKeys($this->tenant, new KeptEncryption('b'), [$elsewhere->kid])[0];
+
+        // When
+        $this->provider->keptDecryptionKeys($this->tenant, new KeptEncryption('a'), []);
+
+        // Then
+        static::assertSame($opened, $this->opened->open($this->tenant, $elsewhere));
     }
 
     /**
@@ -160,7 +216,7 @@ final class KeptDecryptionKeyTest extends TestCase
         $this->expectExceptionMessageIsOrContains('"use": "sig"; it is not a key that opens');
 
         // When
-        $this->provider->keptDecryptionKey($this->tenant, new KeptEncryption('a', KeyUse::Signature), $key->kid);
+        $this->provider->keptDecryptionKeys($this->tenant, new KeptEncryption('a', KeyUse::Signature), [$key->kid]);
     }
 
     /**
