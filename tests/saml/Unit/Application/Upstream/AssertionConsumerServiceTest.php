@@ -218,7 +218,7 @@ final class AssertionConsumerServiceTest extends TestCase
     {
         // Given
         $consumer = $this->consumer(
-            self::verified(nameId: 'alice@acme.example', persistent: false, attributes: [self::SUBJECT_ATTRIBUTE => $values]),
+            self::verified(nameId: 'alice@acme.example', persistent: false, attributes: ['mail' => ['alice@acme.example'], self::SUBJECT_ATTRIBUTE => $values]),
             [self::provider(subjectAttribute: self::SUBJECT_ATTRIBUTE)],
         );
 
@@ -256,6 +256,113 @@ final class AssertionConsumerServiceTest extends TestCase
 
         // When
         $consumer->receive($this->tenant, [], self::PROVIDER, self::REQUEST);
+    }
+
+    /**
+     * S-55, decision 0029: a subject that is the address of the person, which a mailbox given again to another would
+     * hand them, is refused whatever names it and however it is spelt.
+     *
+     * @param array<string, list<string>> $attributes
+     */
+    #[Test]
+    #[DataProvider('provideSubjectsThatAreTheAddress')]
+    public function aSubjectThatIsTheAddressIsRefused(string $nameId, bool $persistent, array $attributes): void
+    {
+        // Given
+        $consumer = $this->consumer(
+            self::verified(nameId: $nameId, persistent: $persistent, attributes: ['mail' => ['alice@acme.example'], ...$attributes]),
+            [self::provider(subjectAttribute: self::SUBJECT_ATTRIBUTE)],
+        );
+
+        // Then
+        $this->expectException(AssertionRefusedException::class);
+        $this->expectExceptionMessageIs('The subject is the address of the person, which is given again to another (spec/saml.md S-55).');
+
+        // When
+        $consumer->receive($this->tenant, [], self::PROVIDER, self::REQUEST);
+    }
+
+    /**
+     * @return iterable<string, array{string, bool, array<string, list<string>>}>
+     */
+    public static function provideSubjectsThatAreTheAddress(): iterable
+    {
+        yield 'a persistent NameID' => ['alice@acme.example', true, []];
+        yield 'a persistent NameID in capitals' => ['Alice@ACME.example', true, []];
+        yield 'the attribute of the subject' => ['transient-4f2a', false, [self::SUBJECT_ATTRIBUTE => ['ALICE@acme.example']]];
+    }
+
+    /**
+     * S-55: an address in a U-label the subject names is the same mailbox as the address in its A-label, and refused.
+     */
+    #[Test]
+    public function aSubjectThatIsTheAddressInAULabelIsRefused(): void
+    {
+        // Given
+        $consumer = $this->consumer(self::verified(nameId: 'alice@Bücher.example', attributes: ['mail' => [
+            'alice@xn--bcher-kva.example',
+        ]]), [self::provider()]);
+
+        // Then
+        $this->expectException(AssertionRefusedException::class);
+        $this->expectExceptionMessageIs('The subject is the address of the person, which is given again to another (spec/saml.md S-55).');
+
+        // When
+        $consumer->receive($this->tenant, [], self::PROVIDER, self::REQUEST);
+    }
+
+    /**
+     * S-55: a persistent NameID that holds an "@" and is another address than the person's is a subject as any other.
+     */
+    #[Test]
+    public function aSubjectThatIsAnotherAddressIsTaken(): void
+    {
+        // Given
+        $consumer = $this->consumer(self::verified(nameId: 'alice-7f3c@idp.acme.example'), [self::provider()]);
+
+        // When
+        $assertion = $consumer->receive($this->tenant, [], self::PROVIDER, self::REQUEST);
+
+        // Then
+        static::assertSame('alice-7f3c@idp.acme.example', $assertion->subject);
+    }
+
+    /**
+     * S-53, M-16: the refusal of an address the core refuses carries no exception of the core, whose message holds
+     * the address, since what the firewall logs is the whole chain.
+     */
+    #[Test]
+    public function theRefusalOfAnAddressCarriesNoValue(): void
+    {
+        // Given
+        $consumer = $this->consumer(self::verified(attributes: ['mail' => ['al ice@acme.example']]), [self::provider()]);
+
+        // When
+        try {
+            $consumer->receive($this->tenant, [], self::PROVIDER, self::REQUEST);
+            static::fail('The address was not refused.');
+        } catch (AssertionRefusedException $refusal) {
+            // Then
+            static::assertNull($refusal->getPrevious());
+        }
+    }
+
+    /**
+     * S-57, SAML Core §2.7.2: the SessionNotOnOrAfter of the authentication statement is handed on, the bound of the
+     * session the login opens.
+     */
+    #[Test]
+    public function theSessionNotOnOrAfterIsHandedOn(): void
+    {
+        // Given
+        $bound = new DateTimeImmutable('2026-10-23T17:00:00+00:00');
+        $consumer = $this->consumer(self::verified(sessionNotOnOrAfter: $bound), [self::provider()]);
+
+        // When
+        $assertion = $consumer->receive($this->tenant, [], self::PROVIDER, self::REQUEST);
+
+        // Then
+        static::assertSame($bound, $assertion->sessionNotOnOrAfter);
     }
 
     /**
@@ -560,6 +667,7 @@ final class AssertionConsumerServiceTest extends TestCase
         array $attributes = ['mail' => ['alice@acme.example']],
         ?DateTimeImmutable $authenticatedAt = null,
         bool $encrypted = false,
+        ?DateTimeImmutable $sessionNotOnOrAfter = null,
     ): VerifiedAssertion {
         return new VerifiedAssertion(
             $nameId,
@@ -568,6 +676,7 @@ final class AssertionConsumerServiceTest extends TestCase
             $authenticatedAt ?? new DateTimeImmutable('2026-10-23T09:00:00+00:00'),
             'urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport',
             $encrypted,
+            $sessionNotOnOrAfter,
         );
     }
 

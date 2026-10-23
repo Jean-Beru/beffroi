@@ -23,6 +23,7 @@ use Beffroi\Saml2\Model\Writing\ResponseWriter;
 use Beffroi\Saml2\Model\Writing\Signing;
 use Beffroi\Xml\Core\Serializer;
 use Beffroi\Xml\Dsig\PrivateKey;
+use Beffroi\Xml\Dsig\SignatureAlgorithm;
 use DateTimeImmutable;
 use function file_get_contents;
 
@@ -70,6 +71,8 @@ final class UpstreamResponses
         ?string $assertionId = null,
         ?Encryption $encryption = null,
         array $repeated = [],
+        ?DateTimeImmutable $sessionNotOnOrAfter = null,
+        ?string $certificatePem = null,
     ): array {
         $fields = [
             'SAMLResponse' => base64_encode(self::document(
@@ -86,6 +89,8 @@ final class UpstreamResponses
                 $assertionId,
                 $encryption,
                 $repeated,
+                $sessionNotOnOrAfter,
+                $certificatePem,
             )),
         ];
         if ($relayState !== null) {
@@ -98,6 +103,7 @@ final class UpstreamResponses
     /**
      * @param array<string, list<string>> $attributes
      * @param array<string, list<string>> $repeated
+     * @param string|null $certificatePem the certificate of the key the signature carries in its KeyInfo, none when null
      */
     private static function document(
         PrivateKey $key,
@@ -113,6 +119,8 @@ final class UpstreamResponses
         ?string $assertionId,
         ?Encryption $encryption,
         array $repeated,
+        ?DateTimeImmutable $sessionNotOnOrAfter,
+        ?string $certificatePem,
     ): string {
         $statement = [];
         foreach ([$attributes, $repeated] as $written) {
@@ -127,7 +135,7 @@ final class UpstreamResponses
             $nameId,
             new SubjectConfirmation($assertionConsumerService, $now->modify('+5 minutes'), $inResponseTo, null),
             new Conditions($now, $now->modify('+5 minutes'), [[$audience]], false),
-            new AuthnStatement($authnInstant ?? $now, '_session-at-the-provider', null, $contextClass),
+            new AuthnStatement($authnInstant ?? $now, '_session-at-the-provider', $sessionNotOnOrAfter, $contextClass),
             $statement,
         );
         $response = new Response(
@@ -140,6 +148,10 @@ final class UpstreamResponses
             $assertion,
         );
 
-        return new Serializer()->serialize(new ResponseWriter()->write($response, new Signing($key), encryption: $encryption));
+        return new Serializer()->serialize(new ResponseWriter()->write(
+            $response,
+            new Signing($key, SignatureAlgorithm::RsaSha256, $certificatePem),
+            encryption: $encryption,
+        ));
     }
 }

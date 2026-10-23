@@ -36,6 +36,7 @@ use Beffroi\Saml2\Model\Tests\Unit\Metadata\MetadataFixtures;
 use Beffroi\Saml2\Model\Writing\Encryption;
 use Beffroi\Xml\Enc\PeerKey;
 use function array_key_exists;
+use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -76,7 +77,11 @@ final class ModelResponseReceiverTest extends TestCase
         $this->receiver = new ModelResponseReceiver(
             $this->accepted,
             new ModelUpstreamMetadataReader($this->clock),
-            new UpstreamDecryptionKeys($this->keys, new WiredAlgorithmsOf([new SamlEncryption(IdentityProviderDocuments::SIGNED)]), new SealedKeyProvider($this->keys, Keys::opened())),
+            new UpstreamDecryptionKeys(
+                $this->keys,
+                new WiredAlgorithmsOf([new SamlEncryption(IdentityProviderDocuments::SIGNED)]),
+                new SealedKeyProvider($this->keys, Keys::opened()),
+            ),
             new FixedServiceProviderEndpoints(),
             new InMemoryReplayStore(),
             $this->clock,
@@ -102,7 +107,7 @@ final class ModelResponseReceiverTest extends TestCase
         $form = $this->form(attributes: [
             'mail' => ['alice@acme.example'],
             'eduPersonAffiliation' => ['member', 'staff'],
-        ]);
+        ], sessionNotOnOrAfter: $this->clock->now()->modify('+8 hours'));
 
         // When
         $verified = $this->receiver->receive($this->tenant, self::provider(), $form, self::REQUEST);
@@ -119,6 +124,7 @@ final class ModelResponseReceiverTest extends TestCase
                 $this->clock->now(),
                 UpstreamResponses::PASSWORD_PROTECTED_TRANSPORT,
                 false,
+                $this->clock->now()->modify('+8 hours'),
             ),
             $verified,
         );
@@ -312,6 +318,7 @@ final class ModelResponseReceiverTest extends TestCase
         string $audience = self::AUDIENCE,
         NameId $nameId = new NameId('a7f3c2e1-persistent-alice', NameIdFormat::Persistent),
         ?string $assertionId = null,
+        ?DateTimeImmutable $sessionNotOnOrAfter = null,
     ): array {
         return UpstreamResponses::form(
             MetadataFixtures::signingKey($key),
@@ -324,6 +331,7 @@ final class ModelResponseReceiverTest extends TestCase
             nameId: $nameId,
             assertionId: $assertionId,
             repeated: $repeated,
+            sessionNotOnOrAfter: $sessionNotOnOrAfter,
         );
     }
 
