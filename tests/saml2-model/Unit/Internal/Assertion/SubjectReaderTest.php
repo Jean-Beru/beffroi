@@ -107,8 +107,8 @@ final class SubjectReaderTest extends TestCase
     }
 
     /**
-     * M-7: a bearer NotOnOrAfter one second after now minus the skew, and one at now plus maxBearerWindow, the edges
-     * of the bearer window, are accepted.
+     * M-7: a bearer NotOnOrAfter one second after now minus the skew, and one at now plus maxBearerWindow and the
+     * skew, the edges of the bearer window, are accepted.
      */
     #[Test]
     #[DataProvider('provideBearerWindowEdges')]
@@ -133,15 +133,15 @@ final class SubjectReaderTest extends TestCase
             'behaviour/assertion-bearer-not-on-or-after-after-skew-accepted.xml',
             '2026-09-30T11:57:01Z',
         ];
-        yield 'now plus maxBearerWindow' => [
+        yield 'now plus maxBearerWindow and the skew' => [
             'behaviour/assertion-bearer-window-at-bound-accepted.xml',
-            '2026-09-30T13:00:00Z',
+            '2026-09-30T13:03:00Z',
         ];
     }
 
     /**
      * §9.2 row 18, M-7: the bearer NotOnOrAfter passed, at now minus the skew; a bearer window beyond maxBearerWindow
-     * by one second; each message names its window.
+     * and the skew by one second; each message names its window.
      */
     #[Test]
     #[DataProvider('provideBearerWindowsOutside')]
@@ -168,9 +168,9 @@ final class SubjectReaderTest extends TestCase
             'hostile/assertion-bearer-not-on-or-after-passed-refused.xml',
             'The NotOnOrAfter of the bearer confirmation is at or before now minus the clock skew (M-7).',
         ];
-        yield 'a second beyond now plus maxBearerWindow' => [
+        yield 'a second beyond now plus maxBearerWindow and the skew' => [
             'hostile/assertion-bearer-window-beyond-refused.xml',
-            'The NotOnOrAfter of the bearer confirmation is later than now plus maxBearerWindow (M-7).',
+            'The NotOnOrAfter of the bearer confirmation is later than now plus maxBearerWindow and the clock skew (M-7).',
         ];
     }
 
