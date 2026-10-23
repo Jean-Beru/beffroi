@@ -15,6 +15,7 @@ use Beffroi\Saml2\Model\Assertion\NameId;
 use Beffroi\Saml2\Model\Assertion\NameIdFormat;
 use Beffroi\Saml2\Model\Assertion\SubjectConfirmation;
 use Beffroi\Saml2\Model\Protocol\Response;
+use Beffroi\Saml2\Model\Protocol\SecondLevelStatusCode;
 use Beffroi\Saml2\Model\Protocol\Status;
 use Beffroi\Saml2\Model\Protocol\StatusCode;
 use Beffroi\Saml2\Model\Value\SamlId;
@@ -92,6 +93,40 @@ final class UpstreamResponses
                 $sessionNotOnOrAfter,
                 $certificatePem,
             )),
+        ];
+        if ($relayState !== null) {
+            $fields['RelayState'] = $relayState;
+        }
+
+        return $fields;
+    }
+
+    /**
+     * The fields of the form of a response whose status is not Success, Responder with the second-level code given, the
+     * person having cancelled or failed at the provider, signed by the key given (model.md M-13).
+     *
+     * @return array<string, string>
+     */
+    public static function failure(
+        PrivateKey $key,
+        string $issuer,
+        string $assertionConsumerService,
+        string $inResponseTo,
+        DateTimeImmutable $now,
+        SecondLevelStatusCode $secondLevel,
+        ?string $relayState = null,
+    ): array {
+        $response = new Response(
+            SamlId::generate(),
+            $now,
+            new Issuer($issuer),
+            $assertionConsumerService,
+            $inResponseTo,
+            new Status(StatusCode::Responder, $secondLevel),
+            null,
+        );
+        $fields = [
+            'SAMLResponse' => base64_encode(new Serializer()->serialize(new ResponseWriter()->writeFailure($response, new Signing($key)))),
         ];
         if ($relayState !== null) {
             $fields['RelayState'] = $relayState;

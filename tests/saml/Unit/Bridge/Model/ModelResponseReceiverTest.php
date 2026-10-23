@@ -20,6 +20,7 @@ use Beffroi\Saml\Domain\Upstream\AcceptedUpstreamMetadata;
 use Beffroi\Saml\Domain\Upstream\UpstreamIdentityProvider;
 use Beffroi\Saml\Domain\Upstream\VerifiedAssertion;
 use Beffroi\Saml\Exception\AssertionRefusedException;
+use Beffroi\Saml\Exception\UpstreamAuthenticationFailedException;
 use Beffroi\Saml\Tests\Fixture\FixedServiceProviderEndpoints;
 use Beffroi\Saml\Tests\Fixture\IdentityProviderDocuments;
 use Beffroi\Saml\Tests\Fixture\InMemoryAcceptedMetadata;
@@ -32,6 +33,7 @@ use Beffroi\Saml2\Model\Assertion\NameId;
 use Beffroi\Saml2\Model\Assertion\NameIdFormat;
 use Beffroi\Saml2\Model\Metadata\Binding;
 use Beffroi\Saml2\Model\Metadata\Endpoint;
+use Beffroi\Saml2\Model\Protocol\SecondLevelStatusCode;
 use Beffroi\Saml2\Model\Tests\Unit\Metadata\MetadataFixtures;
 use Beffroi\Saml2\Model\Writing\Encryption;
 use Beffroi\Xml\Enc\PeerKey;
@@ -239,6 +241,72 @@ final class ModelResponseReceiverTest extends TestCase
         ];
         yield 'another provider' => [['issuer' => 'https://idp.other.example/saml'], 'The Issuer is not the entity ID of the peer (M-8).'];
         yield 'a key outside the metadata' => [['key' => 'sp'], 'No trusted key verifies the signature over SignedInfo (D-7, D-8).'];
+    }
+
+    /**
+     * S-58, model.md M-13, Core §3.2.2.2: a response whose status is not Success, held to the request it answers, is an
+     * authentication the provider failed, which says whether it is NoPassive and nothing else of it.
+     */
+    #[Test]
+    #[DataProvider('provideFailures')]
+    public function aResponseWhoseStatusIsNotSuccessIsAFailedAuthentication(SecondLevelStatusCode $secondLevel, bool $noPassive): void
+    {
+        // Given
+        $form = UpstreamResponses::failure(
+            MetadataFixtures::signingKey('idp'),
+            IdentityProviderDocuments::SIGNED,
+            self::ASSERTION_CONSUMER_SERVICE,
+            self::REQUEST,
+            $this->clock->now(),
+            $secondLevel,
+        );
+
+        // When
+        try {
+            $this->receiver->receive($this->tenant, self::provider(), $form, self::REQUEST);
+            static::fail('The failure was taken.');
+        } catch (UpstreamAuthenticationFailedException $failure) {
+            // Then
+            static::assertSame(['The identity provider authenticated nobody (spec/saml.md S-58).', $noPassive, null], [
+                $failure->getMessage(),
+                $failure->noPassive,
+                $failure->getPrevious(),
+            ]);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{SecondLevelStatusCode, bool}>
+     */
+    public static function provideFailures(): iterable
+    {
+        yield 'AuthnFailed' => [SecondLevelStatusCode::AuthnFailed, false];
+        yield 'RequestDenied' => [SecondLevelStatusCode::RequestDenied, false];
+        yield 'NoPassive' => [SecondLevelStatusCode::NoPassive, true];
+    }
+
+    /**
+     * S-58, M-10: a failure for another request is refused for its InResponseTo, and is no failure of this one.
+     */
+    #[Test]
+    public function aFailureForAnotherRequestIsRefused(): void
+    {
+        // Given
+        $form = UpstreamResponses::failure(
+            MetadataFixtures::signingKey('idp'),
+            IdentityProviderDocuments::SIGNED,
+            self::ASSERTION_CONSUMER_SERVICE,
+            '_ffffffffffffffffffffffffffffffffffffffff',
+            $this->clock->now(),
+            SecondLevelStatusCode::AuthnFailed,
+        );
+
+        // Then
+        $this->expectException(AssertionRefusedException::class);
+        $this->expectExceptionMessageIs('The InResponseTo of the response is not the one the consumer expects (M-10).');
+
+        // When
+        $this->receiver->receive($this->tenant, self::provider(), $form, self::REQUEST);
     }
 
     /**
