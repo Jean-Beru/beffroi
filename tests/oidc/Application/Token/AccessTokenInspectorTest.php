@@ -240,6 +240,47 @@ final class AccessTokenInspectorTest extends TestCase
     }
 
     /**
+     * Issue #831, RFC 7523 §2.1: a token issued on the assertion of an issuer the tenant trusts descends from
+     * no sign-in of this provider and still says who it is about, in either shape, so the resource that asked
+     * is handed that person as it is for a token somebody signed in for.
+     */
+    #[Test]
+    #[DataProvider('provideAccessTokenShapes')]
+    public function itNamesThePersonOfATokenNobodySignedInFor(string $shape): void
+    {
+        // Given
+        $token = $this->tokenOfAnAssertion($shape);
+
+        // When
+        $inspected = $this->inspector->inspect($this->tenant, $token, Fixtures::now());
+
+        // Then
+        static::assertSame($this->user, $inspected->user);
+        static::assertNull($inspected->token->signIn);
+    }
+
+    /**
+     * Issue #831: a token that descends from no sign-in has no session to have ended, and its person is asked
+     * all the same. A person the provider no longer serves is refused whichever way a token came to name
+     * them.
+     */
+    #[Test]
+    #[DataProvider('provideAccessTokenShapes')]
+    public function itRefusesATokenNobodySignedInForOfADisabledPerson(string $shape): void
+    {
+        // Given
+        $token = $this->tokenOfAnAssertion($shape);
+        $this->user->disable(Fixtures::now());
+
+        // Then
+        $this->expectException(InvalidTokenException::class);
+        $this->expectExceptionMessageIs('invalid_token: The access token names a user this provider no longer serves.');
+
+        // When
+        $this->inspector->inspect($this->tenant, $token, Fixtures::now());
+    }
+
+    /**
      * RFC 6749 §4.1.2: the replay of the code revoked the grant; every token descending from it is refused.
      */
     #[Test]
@@ -453,6 +494,40 @@ final class AccessTokenInspectorTest extends TestCase
                 new TokenSignIn($this->session->id, AuthenticationSnapshot::ofSession($this->session, $this->session->authenticationContextClass())),
                 person: $person,
             ),
+            Fixtures::now(),
+        )->value;
+    }
+
+    /**
+     * RFC 7523 §2.1: a token of the job runner for the person an assertion named, in the shape the test asks
+     * for. Nobody signed in for it here, its grant was drawn for that one response, and it says who it is
+     * about, the record of the opaque shape naming them and the "at+jwt" carrying them sealed (issue #588).
+     */
+    private function tokenOfAnAssertion(string $shape): string
+    {
+        $runner = Clients::presentingAssertions(
+            $this->tenant,
+            new FakePasswordHasher()->hash(Clients::SECRET),
+            accessTokenShape: $shape === 'opaque' ? Shapes::opaque() : Shapes::jwt(),
+        );
+        $this->clients->save($runner);
+        $authorization = new SubjectAuthorization(
+            Grants::jwtBearer(),
+            Uuid::v7(),
+            $runner,
+            $this->user->subject,
+            new Scopes([new Scope('invoices.read')]),
+            new Scopes([new Scope('invoices.read')]),
+            ResourceIndicators::of([Clients::CALENDAR]),
+            ResourceIndicators::of([Clients::CALENDAR]),
+            person: $this->user->subject,
+        );
+        if ($shape === 'opaque') {
+            return $this->opaque()->issue($authorization, Fixtures::now())->value;
+        }
+
+        return new JwtAccessTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator(), $this->persons)->issue(
+            $authorization,
             Fixtures::now(),
         )->value;
     }
