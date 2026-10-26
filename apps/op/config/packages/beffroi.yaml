@@ -460,7 +460,7 @@ when@dev:
                 authorization_signed_response_alg: ES256
                 request_object_signing_alg: ES256
             # The Message Signing runs hold their clients to signing every authorization request they
-            # start (OIDC Registration, require_signed_request_object): that is a registration and not a
+            # start (RFC 9101 §10.5, require_signed_request_object): that is a registration and not a
             # mode, so the same client cannot also send the unsigned requests the Security Profile plan
             # sends, and each profile gets a pair of its own.
             conformance-fapi-signing-private-key-jwt:
