@@ -119,6 +119,32 @@ final class InteractionTest extends TestCase
         static::assertTrue($interaction->isExpired(Fixtures::now()->modify('+10 minutes')));
     }
 
+    /**
+     * OIDC Core §3.1.2.1: a login done during the interaction is one whose latest proof is at or after the instant
+     * the interaction began, compared exactly.
+     */
+    #[Test]
+    #[DataProvider('provideLatestProofs')]
+    public function itSawTheLoginOfASessionProvenSinceItBegan(string $latestProof, bool $saw): void
+    {
+        // Given
+        $interaction = $this->interaction();
+        $session = Fixtures::session($this->user, Fixtures::now()->modify($latestProof));
+
+        // When / Then
+        static::assertSame($saw, $interaction->sawTheLoginOf($session));
+    }
+
+    /**
+     * @return iterable<string, array{string, bool}>
+     */
+    public static function provideLatestProofs(): iterable
+    {
+        yield 'a second before it began' => ['-1 second', false];
+        yield 'at the instant it began' => ['+0 seconds', true];
+        yield 'while it waits' => ['+5 minutes', true];
+    }
+
     #[Test]
     public function itRecordsTheSession(): void
     {

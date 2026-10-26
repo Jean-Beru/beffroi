@@ -423,6 +423,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
         $bob = $this->idTokenOf('bob');
         $this->browser->getCookieJar()->clear();
         $this->idTokenOf('alice');
+        self::aSecondLater();
         $interaction = $this->beginAuthorization(['id_token_hint' => $bob]);
 
         // When
@@ -444,6 +445,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
         $bob = $this->idTokenOf('bob');
         $this->browser->getCookieJar()->clear();
         $this->idTokenOf('alice');
+        self::aSecondLater();
         $request = $this->signOn($this->beginAuthorization(['id_token_hint' => $bob]));
 
         // When

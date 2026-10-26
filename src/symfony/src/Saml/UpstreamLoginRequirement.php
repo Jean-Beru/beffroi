@@ -48,7 +48,7 @@ final readonly class UpstreamLoginRequirement
      * @param Interaction|null $interaction the interaction the login serves, null for the login a page waits for
      *
      * @throws OAuth2Exception when the authorization request is one the login page answers with an error, a hint whose
-     *                         signature is not ours or an essential class nobody can prove
+     *                         signature is not ours or that names nobody, or an essential class nobody can prove
      */
     public function forcesALogin(?Interaction $interaction, ?AuthenticationSession $session, DateTimeImmutable $now): bool
     {
