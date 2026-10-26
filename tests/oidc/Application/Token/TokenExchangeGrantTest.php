@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Token;
 
+use function array_filter;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\RequestContext;
@@ -21,11 +22,11 @@ use Beffroi\Oidc\Domain\Exchange\Actor;
 use Beffroi\Oidc\Domain\Exchange\MayAct;
 use Beffroi\Oidc\Domain\Exchange\PresentedToken;
 use Beffroi\Oidc\Domain\Exchange\TokenTypeIdentifier;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicator;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Domain\Token\SubjectAuthorization;
 use Beffroi\Oidc\Domain\Token\UserAuthorizationInterface;
-use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Beffroi\Oidc\Exception\InvalidRequestException;
 use Beffroi\Oidc\Exception\InvalidScopeException;
 use Beffroi\Oidc\Exception\InvalidTargetException;
@@ -38,6 +39,7 @@ use Beffroi\Oidc\Tests\Fixture\Grants;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
 use Beffroi\Oidc\Tests\Fixture\TokenTypes;
 use Beffroi\Oidc\Tests\Fixture\Tokens;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -295,23 +297,78 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.3: the scopes of a response are among the ones the client that receives it registered, here
-     * as in every other grant; a gateway is not served what it never registered because somebody else was.
+     * RFC 6749 §3.3, §5.2: the scopes of a response are among the ones the client that receives it registered,
+     * here as in every other grant; a gateway is not served what it never registered because somebody else
+     * was, whether the request names that scope or takes it from the presented token by naming none, and it
+     * is told so in the error of the protocol.
+     *
+     * @param array<string, string|null> $parameters
      */
     #[Test]
-    public function aScopeTheClientDidNotRegisterIsRefused(): void
+    #[DataProvider('provideScopesTheClientDidNotRegister')]
+    public function aScopeTheClientDidNotRegisterIsRefused(array $parameters): void
     {
         // Given
         $grant = $this->grant([
-            self::SUBJECT_TOKEN => $this->userToken(['openid']),
+            self::SUBJECT_TOKEN => $this->userToken(['invoices.read', 'openid']),
         ]);
 
         // Then
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIsOrContains('among the ones the client registered (RFC 6749 section 3.3)');
+        $this->expectException(InvalidScopeException::class);
+        $this->expectExceptionMessageIs('invalid_scope: The requested scope is not allowed for this client.');
 
         // When
-        $grant->grant($this->authenticated(), $this->request(), $this->context);
+        $grant->grant($this->authenticated(), $this->request($parameters), $this->context);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, string|null>}>
+     */
+    public static function provideScopesTheClientDidNotRegister(): iterable
+    {
+        yield 'named by the request' => [[
+            'scope' => 'invoices.read openid',
+        ]];
+        yield 'taken from the presented token by a request that names none' => [[]];
+    }
+
+    /**
+     * RFC 8707 §2, RFC 6749 §5.2: the resources of a response are among the ones the client that receives it
+     * registered; the presented token may be addressed to a resource the gateway never registered, and the
+     * gateway is not served it whether the request names it or takes it from the presented token by naming
+     * none.
+     *
+     * @param array<string, string|null> $parameters
+     */
+    #[Test]
+    #[DataProvider('provideResourcesTheClientDidNotRegister')]
+    public function aResourceTheClientDidNotRegisterIsRefused(array $parameters): void
+    {
+        // Given
+        $grant = $this->grant([
+            self::SUBJECT_TOKEN => $this->userToken(audience: [Clients::CALENDAR, Clients::CONTACTS]),
+        ]);
+        $gateway = Clients::gateway($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET), resources: [new ResourceIndicator(Clients::CALENDAR)]);
+
+        // Then
+        $this->expectException(InvalidTargetException::class);
+        $this->expectExceptionMessageIs('invalid_target: The requested resource is not one this client is registered for (RFC 8707 section 2).');
+
+        // When
+        $grant->grant(new AuthenticatedClient($gateway), $this->request($parameters), $this->context);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, string|null>}>
+     */
+    public static function provideResourcesTheClientDidNotRegister(): iterable
+    {
+        yield 'named by the request' => [[
+            'resource' => Clients::CONTACTS,
+        ]];
+        yield 'taken from the presented token by a request that names none' => [[
+            'resource' => null,
+        ]];
     }
 
     /**
@@ -784,19 +841,22 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * @param array<string, string> $overrides
+     * @param array<string, string|null> $overrides null for a parameter the request does not carry
      *
      * @throws OAuth2Exception
      */
     private function request(array $overrides = []): RequestParameters
     {
-        return RequestParameters::of([
-            'grant_type' => TokenExchangeGrant::GRANT_TYPE,
-            'subject_token' => self::SUBJECT_TOKEN,
-            'subject_token_type' => TokenTypeIdentifier::ACCESS_TOKEN,
-            'resource' => Clients::CALENDAR,
-            ...$overrides,
-        ]);
+        return RequestParameters::of(array_filter(
+            [
+                'grant_type' => TokenExchangeGrant::GRANT_TYPE,
+                'subject_token' => self::SUBJECT_TOKEN,
+                'subject_token_type' => TokenTypeIdentifier::ACCESS_TOKEN,
+                'resource' => Clients::CALENDAR,
+                ...$overrides,
+            ],
+            static fn (?string $value): bool => $value !== null,
+        ));
     }
 
     private static function clock(): MockClock
