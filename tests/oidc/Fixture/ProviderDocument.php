@@ -116,7 +116,7 @@ final class ProviderDocument
             new AnnouncedMutualTls($methods),
             new AnnouncedDpop($algorithms),
             new AnnouncedSignedAuthorizationResponse($responseModes, $algorithms),
-            new AnnouncedMutualTlsEndpoints($mutualTlsEndpoints),
+            new AnnouncedMutualTlsEndpoints($mutualTlsEndpoints, $grantTypes),
             new AnnouncedClientRegistration($endpoints, $registrationPolicy ?? RegistrationPolicies::closed()),
         ], $maxAge);
     }

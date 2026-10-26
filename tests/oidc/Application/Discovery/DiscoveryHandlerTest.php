@@ -121,7 +121,7 @@ final class DiscoveryHandlerTest extends TestCase
                     'self_signed_tls_client_auth',
                 ],
                 'introspection_endpoint_auth_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA', 'HS256'],
-                'introspection_signing_alg_values_supported' => ['RS256', 'PS256', 'ES256', 'EdDSA'],
+                'introspection_signing_alg_values_supported' => ['RS256'],
                 'authorization_response_iss_parameter_supported' => true,
                 'end_session_endpoint' => 'https://id.acme.example/logout',
                 'backchannel_logout_supported' => true,

@@ -7,6 +7,7 @@ namespace Beffroi\Oidc\Tests\Application\Discovery\Metadata;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedDeviceAuthorization;
 use Beffroi\Oidc\Tests\Fixture\Endpoints;
+use Beffroi\Oidc\Tests\Fixture\Grants;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -20,7 +21,7 @@ final class AnnouncedDeviceAuthorizationTest extends TestCase
     public function itNamesTheEndpointOfTheTenant(): void
     {
         // Given
-        $announced = new AnnouncedDeviceAuthorization(new Endpoints());
+        $announced = new AnnouncedDeviceAuthorization(new Endpoints(), Grants::servedWithDeviceCode());
 
         // When
         $members = $announced->metadata(Fixtures::tenant('acme', 'https://as.example/acme'));
@@ -32,5 +33,19 @@ final class AnnouncedDeviceAuthorizationTest extends TestCase
             ],
             $members,
         );
+    }
+
+    /**
+     * A contributor announces nothing rather than an endpoint nothing serves: a provider wired with no
+     * grant whose user is asked on another device would refuse every client there (issue #839).
+     */
+    #[Test]
+    public function aProviderWiredWithNoSuchGrantAnnouncesNothing(): void
+    {
+        // Given
+        $announced = new AnnouncedDeviceAuthorization(new Endpoints(), Grants::served());
+
+        // When / Then
+        static::assertSame([], $announced->metadata(Fixtures::tenant()));
     }
 }

@@ -51,6 +51,23 @@ final class AnnouncedAlgorithmsTest extends TestCase
     }
 
     /**
+     * What signs when nobody named an algorithm is the first one wired, and the document names that one
+     * alone where no client chooses (RFC 9701 §6, issue #839).
+     */
+    #[Test]
+    public function theDefaultSigningIsTheOneAlgorithmWiredFirst(): void
+    {
+        // Given
+        $announced = self::announced(new JoseSignatureAlgorithms([Algorithms::es256(), Algorithms::rs256()]));
+
+        // When
+        $signing = $announced->defaultSigning();
+
+        // Then
+        static::assertSame(['ES256'], $signing);
+    }
+
+    /**
      * OIDC Discovery §3 and issue #164: the pair of members named after the document, the key management
      * algorithms a client encrypts with and the content encryption ones.
      */
