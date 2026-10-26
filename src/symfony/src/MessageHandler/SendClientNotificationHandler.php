@@ -6,8 +6,8 @@ namespace Beffroi\Bundle\MessageHandler;
 
 use Beffroi\Bundle\Http\ClientNotificationSender;
 use Beffroi\Bundle\Message\SendClientNotification;
+use Beffroi\Bundle\Messenger\NotificationNotDeliveredException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Symfony\Component\Messenger\Exception\RecoverableMessageHandlingException;
 
 /**
  * Carries one notification to its client and says what became of it (CIBA Core §10.2). A client that
@@ -36,6 +36,6 @@ final readonly class SendClientNotificationHandler
             return;
         }
 
-        throw new RecoverableMessageHandlingException($delivery->detail);
+        throw new NotificationNotDeliveredException($delivery->detail);
     }
 }

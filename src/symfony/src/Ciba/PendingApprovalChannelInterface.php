@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Ciba;
 
+use Beffroi\Bundle\Messenger\NotificationNotDeliveredException;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Oidc\Domain\Ciba\PendingApproval;
 
@@ -25,5 +26,9 @@ use Beffroi\Oidc\Domain\Ciba\PendingApproval;
  */
 interface PendingApprovalChannelInterface
 {
+    /**
+     * @throws NotificationNotDeliveredException when the user was not reached this time and may be at a
+     *                                           later attempt: the lane brings the message back on its policy
+     */
     public function tell(User $user, PendingApproval $approval): void;
 }

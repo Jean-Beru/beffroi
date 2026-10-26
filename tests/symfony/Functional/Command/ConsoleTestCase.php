@@ -17,10 +17,10 @@ use Symfony\Component\Console\Tester\CommandTester;
 abstract class ConsoleTestCase extends BrowserTestCase
 {
     /**
-     * Runs a command of the bundle on the kernel of the test; the inputs are the lines of the terminal, or
-     * of the standard input.
+     * Runs a command on the kernel of the test, one of the bundle or one a deployment runs beside them (the
+     * worker of a lane); the inputs are the lines of the terminal, or of the standard input.
      *
-     * @param array<string, string|bool|list<string>> $input an option a command takes more than once is handed a list, as the console hands it one
+     * @param array<string, string|bool|list<string>|null> $input an option a command takes more than once is handed a list and an option written without its value is null, as the console hands them
      * @param list<string> $inputs
      */
     protected static function console(string $name, array $input = [], array $inputs = [], bool $interactive = true): CommandTester

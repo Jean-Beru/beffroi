@@ -6,11 +6,11 @@ namespace Beffroi\Bundle\MessageHandler;
 
 use Beffroi\Bundle\Http\LogoutTokenSender;
 use Beffroi\Bundle\Message\SendLogoutToken;
+use Beffroi\Bundle\Messenger\NotificationNotDeliveredException;
 use Beffroi\Oidc\Domain\Event\LogoutTokenGivenUp;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Symfony\Component\Messenger\Exception\RecoverableMessageHandlingException;
 
 /**
  * Carries one logout token to its client and says what became of it (Back-Channel Logout 1.0 §2.8). A
@@ -37,7 +37,7 @@ final readonly class SendLogoutTokenHandler
             return;
         }
         if (! $delivery->final) {
-            throw new RecoverableMessageHandlingException($delivery->detail);
+            throw new NotificationNotDeliveredException($delivery->detail);
         }
         $this->events->dispatch(
             new LogoutTokenGivenUp(
