@@ -266,6 +266,30 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
     }
 
     /**
+     * Decision 0009: a member of this provider alone is written by whoever declares a client or by the
+     * registration policy of the tenant, and a statement that carries one is refused at the registration as
+     * a request body that carries one is. Registered, the client would be answered 201 and then served as no
+     * client, its row refused at every read.
+     */
+    #[Test]
+    public function aStatementCarryingAMemberOfTheDeploymentIsRefusedAsAnyMemberIs(): void
+    {
+        // When
+        $this->register(statement: SoftwareStatements::statement(
+            (string) self::tenant()->issuer,
+            self::currentSecond(),
+            [
+                'requires_consent' => false,
+            ],
+        ));
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        static::assertSame('invalid_client_metadata', self::json($response)['error']);
+    }
+
+    /**
      * @param array<string, mixed> $members what the client sends in the clear beside the statement
      */
     private function register(array $members = [], ?string $statement = null): void
