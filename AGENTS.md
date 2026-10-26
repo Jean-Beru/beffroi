@@ -23,7 +23,7 @@ Inside each pure-PHP package of the identity provider: `Domain`, `Port`, `Applic
 
 ## Working on an issue
 
-One issue, one worktree, one branch, one pull request here, one documentation pull request in the parent repository.
+One issue, one worktree, one branch, one pull request here, one documentation pull request in the parent repository. The `pr-authoring` skill is the procedure that applies this section.
 
 - **Worktree.** `git worktree add` under the session scratchpad, branched from `origin/HEAD`, the maintenance branch the clone points at. The shared checkout at `~/Projects/idp/code` belongs to whoever is using it; never move its branch.
 - **Branch.** `feat|fix|test|refactor|ci|chore/<issue>-<slug>`, for instance `feat/162-dpop`.
@@ -31,7 +31,7 @@ One issue, one worktree, one branch, one pull request here, one documentation pu
 - **Before the pull request.** `castor prepare-pr`, then `castor phpunit`, `castor phpstan`, `castor deptrac`, and `castor app-phpunit` when the change touches the application or anything its kernel wires. Infection runs on the diff in CI; run `castor infect --diff` yourself when the change is a rule rather than plumbing.
 - **Opening it.** `gh pr create --head <branch>` always: another session can move the current branch of a shared checkout under you.
 - **Status.** A long-running issue keeps **one** status comment, edited in place. Never a new comment per update.
-- **The documentation pull request** goes to `beffroi-auth/design`, branch `docs/<issue>-<slug>`: the journal row of the spike, and whatever page the change makes false (`docs/11-architecture/` first). Its rules are that repository's `AGENTS.md`; the one that bites most often is that a page states the present state and never how it got there.
+- **The documentation pull request** goes to `beffroi-auth/design`, branch `docs/<issue>-<slug>`: the journal row of the spike, and whatever page the change makes false (`docs/11-architecture/` first). Its rules are that repository's `AGENTS.md`, and its procedure is the skill `../.agents/skills/docs-authoring/SKILL.md`; the rule that bites most often is that a page states the present state and never how it got there.
 - **What the spike cannot absorb** becomes an issue tied to the spike that makes it necessary, naming the pattern to reproduce. It is not built ahead, and it is not left unwritten.
 
 ## Closing a spike
@@ -45,7 +45,7 @@ One issue, one worktree, one branch, one pull request here, one documentation pu
 5. **Update the pages the spike made false**, at least `../docs/07-certifications.md` (the state of each plan), `../docs/08-roadmap.md` and `../docs/10-questions-ouvertes.md`, from which an answered question leaves for `../docs/decisions/`.
 6. **Close the epic** with the documentation pull request that carries the conclusion.
 
-The journal is written as the spike runs, one row per working day, `Fait` and `Appris`, not reconstructed at the end. A row already written is never rewritten to look better.
+The journal is written as the spike runs, one row per working day, `Fait` and `Appris`, not reconstructed at the end. A row already written is never rewritten to look better. The journal, the conclusion and the pages follow the skill `../.agents/skills/spike-lifecycle/SKILL.md` of the parent repository.
 
 ## Commands
 
@@ -175,3 +175,7 @@ Same form as the maintainer's other projects. Every test, unit or functional, pr
 - Expected exception: `// Given`, then `// Then` with `expectException()` and `expectExceptionMessageIs()` (or `expectExceptionMessageIsOrContains()` for a fragment; `expectExceptionMessage()` is deprecated in PHPUnit 13), then `// When` with the call as the last statement. When the test needs a property of the exception the message does not carry (`redirectable`, `reason`, `interactionId`, `getPrevious()`), catch it: `// When` on the `try`, `static::fail()` right after the call, `// Then` inside the `catch`. The state left after a failure is another test, whose `// When` swallows the exception with an empty `catch`. A class that repeats the same failing call may wrap it in a private helper whose name says so (`failToAuthenticate()`), returning the exception or nothing, called under `// When`.
 - Same behaviour on several inputs: `#[DataProvider('provideXxx')]` and a `public static function provideXxx(): iterable` with named cases (`yield 'empty' => ['']`), declared right after the test that uses it.
 - Doubles: the fixtures (`tests/*/Fixture`) and the in-memory adapters of the `Bridge` first; `createStub()` for a dependency without expectations, `createMock()` only to verify a call.
+
+## Skills
+
+The procedures that apply these rules are skills, one directory each under `.agents/skills/`, the layout other agents read too. Claude Code does not read that directory: `.claude/skills` is a link to it, which is how Claude Code loads them, and `claude import` is not used, because it copies them and the copy drifts from its source. A skill is edited under `.agents/skills/`, and its name carries the prefix `beffroi-` when the plain name is a common one, since a skill of the user with the same name hides it. The parent repository keeps the skills of its documentation under `../.agents/skills/`; a session started here does not list them, and reads them by their path. A rule is stated once, in this file or in the parent's, and a skill points to it rather than copying it.
