@@ -55,7 +55,7 @@ jobs:
 
   release:
     name: "Release"
-    runs-on: [self-hosted, kloude-light]
+    runs-on: [self-hosted, kloude-light, X64]
 
     needs: "version"
     if: "needs.version.outputs.release == 'true'"
