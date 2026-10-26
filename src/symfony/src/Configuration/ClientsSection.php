@@ -189,7 +189,7 @@ final readonly class ClientsSection extends ConfigurationSection
             ->defaultNull()
             ->end()
             ->scalarNode('request_object_signing_alg')
-            ->info('The JWS algorithm the request objects of this client are signed with (OIDC Registration §2), among those the provider is wired with; left out, any of them verifies one. The value "none" is the named exception of decision 0006: the objects of that client carry no signature and are read all the same, which no FAPI client registers. A client that names an algorithm publishes its keys in jwks or behind a jwks_uri.')
+            ->info('The JWS algorithm the request objects of this client are signed with (OIDC Registration §2), among those the provider is wired with; left out, any of them verifies one. The value "none" is the named exception of decision 0006: the objects of that client carry no signature and are read all the same, which no FAPI client registers and a client with require_signed_request_object cannot (RFC 9101 §10.5). A client that names an algorithm publishes its keys in jwks or behind a jwks_uri.')
             ->defaultNull()
             ->end()
             ->scalarNode('backchannel_token_delivery_mode')
