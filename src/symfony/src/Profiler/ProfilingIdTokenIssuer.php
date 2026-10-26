@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Profiler;
 
 use DateTimeImmutable;
+use Beffroi\Oidc\Domain\Client\AddressedFormat;
+use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Token\AccessToken;
 use Beffroi\Oidc\Domain\Token\UserAuthorizationInterface;
 use Beffroi\Oidc\Exception\InvalidJwtException;
@@ -32,9 +34,14 @@ final readonly class ProfilingIdTokenIssuer implements IdTokenIssuerInterface
     ) {
     }
 
-    public function issue(UserAuthorizationInterface $authorization, AccessToken $accessToken, DateTimeImmutable $now): string
+    public function address(Client $client): AddressedFormat
     {
-        $idToken = $this->issuer->issue($authorization, $accessToken, $now);
+        return $this->issuer->address($client);
+    }
+
+    public function issue(UserAuthorizationInterface $authorization, AccessToken $accessToken, AddressedFormat $addressed, DateTimeImmutable $now): string
+    {
+        $idToken = $this->issuer->issue($authorization, $accessToken, $addressed, $now);
         $requested = $authorization->claimsRequest->idToken ?? [];
         $this->profile->record(new Observation('Tokens', 'ID token', [
             'aud' => $authorization->client->registration->clientId,

@@ -32,6 +32,7 @@ use Beffroi\Oidc\Domain\Token\KeyConfirmation;
 use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
 use Beffroi\Oidc\Domain\Token\RefreshToken;
 use Beffroi\Oidc\Domain\Token\RefreshTokenFamily;
+use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Beffroi\Oidc\Exception\InvalidAuthorizationDetailsException;
 use Beffroi\Oidc\Exception\InvalidGrantException;
@@ -307,6 +308,30 @@ final class RefreshTokenGrantTest extends TestCase
 
         // When
         $this->grant->grant(new AuthenticatedClient($this->client), $this->request(scope: 'openid email'), $this->context);
+    }
+
+    /**
+     * OIDC Core §3.1.3.7 (issue #836): the key the ID token is encrypted to is read before the token is
+     * rotated, so keys the client cannot serve right now leave the token as it was and issue no successor:
+     * presented again once they can be read, it is no reuse.
+     */
+    #[Test]
+    public function aTokenIsNotRotatedWhileTheKeysOfItsClientCannotBeRead(): void
+    {
+        // Given
+        $token = $this->token('the-token', ['openid', 'profile']);
+        $this->idTokens->unreadableKeys = new ClientKeysUnavailableException('The keys of the client cannot be read.');
+
+        // When
+        try {
+            $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+        } catch (ClientKeysUnavailableException) {
+        }
+
+        // Then
+        static::assertFalse($token->isRotated());
+        static::assertSame([$token], $this->refreshTokens->all());
+        static::assertSame([], $this->events->events);
     }
 
     #[Test]

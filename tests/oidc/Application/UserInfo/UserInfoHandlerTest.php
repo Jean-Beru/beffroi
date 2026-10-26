@@ -464,9 +464,11 @@ final class UserInfoHandlerTest extends TestCase
     {
         // Given
         $authorization = $this->authorization(['openid', 'email']);
-        $idToken = new JwtIdTokenIssuer($this->jwts->documents, Subjects::publicKind(), new StandardClaimsProvider(), Algorithms::all())->issue(
+        $issuer = new JwtIdTokenIssuer($this->jwts->documents, Subjects::publicKind(), new StandardClaimsProvider(), Algorithms::all());
+        $idToken = $issuer->issue(
             $authorization,
             $this->accessTokens->issue($authorization, Fixtures::now()),
+            $issuer->address($authorization->client),
             Fixtures::now(),
         );
 

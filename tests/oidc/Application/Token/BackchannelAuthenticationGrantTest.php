@@ -32,6 +32,7 @@ use Beffroi\Oidc\Domain\Token\KeyConfirmation;
 use Beffroi\Oidc\Domain\Token\UserAuthorizationInterface;
 use Beffroi\Oidc\Exception\AccessDeniedException;
 use Beffroi\Oidc\Exception\AuthorizationPendingException;
+use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
 use Beffroi\Oidc\Exception\ExpiredTokenException;
 use Beffroi\Oidc\Exception\InvalidGrantException;
 use Beffroi\Oidc\Exception\InvalidRequestException;
@@ -67,6 +68,8 @@ final class BackchannelAuthenticationGrantTest extends TestCase
 
     private InMemoryRefreshTokenRepository $refreshTokens;
 
+    private FakeIdTokenIssuer $idTokens;
+
     private RecordingEventDispatcher $events;
 
     private MockClock $clock;
@@ -84,6 +87,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
         $this->context = Fixtures::context($this->clock->now());
         $this->records = new InMemoryBackchannelAuthenticationRecordRepository();
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
+        $this->idTokens = new FakeIdTokenIssuer();
         $this->events = new RecordingEventDispatcher();
         $this->grant = $this->grant();
     }
@@ -150,6 +154,29 @@ final class BackchannelAuthenticationGrantTest extends TestCase
 
         // Then
         static::assertTrue($record->isUsed());
+    }
+
+    /**
+     * OIDC Core §3.1.3.7 (issue #836): the key the ID token is encrypted to is read before the identifier
+     * is spent, so keys the client cannot serve right now leave it to the next request, with nothing issued.
+     */
+    #[Test]
+    public function anIdentifierIsLeftUnspentWhileTheKeysOfItsClientCannotBeRead(): void
+    {
+        // Given
+        $record = $this->approved();
+        $this->idTokens->unreadableKeys = new ClientKeysUnavailableException('The keys of the client cannot be read.');
+
+        // When
+        try {
+            $this->poll();
+        } catch (ClientKeysUnavailableException) {
+        }
+
+        // Then
+        static::assertFalse($record->isUsed());
+        static::assertSame([], $this->refreshTokens->all());
+        static::assertSame([], $this->events->events);
     }
 
     /**
@@ -497,7 +524,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     {
         return new BackchannelAuthenticationGrant(
             $this->records,
-            new TokenIssuer(new FakeAccessTokenIssuer(), new FakeIdTokenIssuer(), $this->refreshTokens, Secrets::drawer(), $this->events),
+            new TokenIssuer(new FakeAccessTokenIssuer(), $this->idTokens, $this->refreshTokens, Secrets::drawer(), $this->events),
             new RefreshTokenDue(Grants::servedWithCiba()),
             new SymfonyUuidGenerator(),
             $this->clock,

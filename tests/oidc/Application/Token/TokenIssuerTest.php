@@ -15,6 +15,7 @@ use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Application\Token\TokenIssuer;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
+use Beffroi\Oidc\Domain\Client\AddressedFormat;
 use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Event\TokensIssued;
 use Beffroi\Oidc\Domain\Scope\Scope;
@@ -22,6 +23,8 @@ use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
 use Beffroi\Oidc\Domain\Token\ClientAuthorization;
 use Beffroi\Oidc\Domain\Token\UserAuthorization;
 use Beffroi\Oidc\Domain\Token\RefreshToken;
+use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
+use Beffroi\Oidc\Exception\LogicException;
 use Beffroi\Oidc\Tests\Fixture\Clients;
 use Beffroi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
 use Beffroi\Oidc\Tests\Fixture\FakeIdTokenIssuer;
@@ -93,7 +96,7 @@ final class TokenIssuerTest extends TestCase
         $authorization = $this->authorizationFromCode();
 
         // When
-        $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
+        $this->issuer->issue($authorization, null, $this->context, Fixtures::now(), $this->addressed($authorization));
 
         // Then
         static::assertTrue($this->events->of(TokensIssued::class)[0]->subject()?->equals($this->session->user->subject));
@@ -127,7 +130,7 @@ final class TokenIssuerTest extends TestCase
         $authorization = $this->authorizationFromCode();
 
         // When
-        $issued = $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
+        $issued = $this->issuer->issue($authorization, null, $this->context, Fixtures::now(), $this->addressed($authorization));
 
         // Then
         static::assertSame($authorization, $issued->authorization);
@@ -149,7 +152,7 @@ final class TokenIssuerTest extends TestCase
         $refreshToken = $this->issuer->refreshToken(Tokens::family(Fixtures::now(), $authorization->tenant), $authorization, Fixtures::now());
 
         // When
-        $issued = $this->issuer->issue($authorization, $refreshToken, $this->context, Fixtures::now());
+        $issued = $this->issuer->issue($authorization, $refreshToken, $this->context, Fixtures::now(), $this->addressed($authorization));
 
         // Then
         static::assertSame($refreshToken, $issued->refreshToken);
@@ -166,7 +169,7 @@ final class TokenIssuerTest extends TestCase
         $refreshToken = $this->issuer->refreshToken(Tokens::family(Fixtures::now(), $authorization->tenant), $authorization, Fixtures::now());
 
         // When
-        $this->issuer->issue($authorization, $refreshToken, $this->context, Fixtures::now());
+        $this->issuer->issue($authorization, $refreshToken, $this->context, Fixtures::now(), $this->addressed($authorization));
 
         // Then
         $events = $this->events->of(TokensIssued::class);
@@ -197,6 +200,59 @@ final class TokenIssuerTest extends TestCase
         static::assertNull($issued->idToken);
         static::assertSame([], $this->idTokens->issued);
         static::assertFalse($this->events->of(TokensIssued::class)[0]->idTokenIssued);
+    }
+
+    /**
+     * OIDC Core §3.1.3.3: a response without "openid" carries no ID token, so nothing of the client is read
+     * for one, whatever the client publishes.
+     */
+    #[Test]
+    public function theIdTokenOfAResponseWithoutOpenidIsNotAddressed(): void
+    {
+        // Given
+        $this->idTokens->unreadableKeys = new ClientKeysUnavailableException('The keys of the client cannot be read.');
+
+        // When
+        $format = $this->issuer->addressIdToken($this->client, new Scopes([new Scope('profile')]));
+
+        // Then
+        static::assertNull($format);
+    }
+
+    /**
+     * OIDC Core §3.1.3.7 (issue #836): the key the ID token is encrypted to is read when the grant addresses
+     * it, before it spends anything, and keys the client cannot serve right now are said then.
+     */
+    #[Test]
+    public function keysThatCannotBeReadAreToldWhenTheIdTokenIsAddressed(): void
+    {
+        // Given
+        $this->idTokens->unreadableKeys = new ClientKeysUnavailableException('The keys of the client cannot be read.');
+
+        // Then
+        $this->expectException(ClientKeysUnavailableException::class);
+        $this->expectExceptionMessageIs('The keys of the client cannot be read.');
+
+        // When
+        $this->issuer->addressIdToken($this->client, new Scopes([Scope::openid()]));
+    }
+
+    /**
+     * An ID token is struck for the shape the grant addressed before it spent anything, so a response that
+     * carries one the grant did not address is a fault of that grant, said before any ID token leaves.
+     */
+    #[Test]
+    public function anIdTokenTheGrantDidNotAddressIsAFaultOfTheGrant(): void
+    {
+        // Given
+        $authorization = $this->authorizationFromCode();
+
+        // Then
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessageIs('The ID token of this response was not addressed before the grant spent what the request presented (OIDC Core section 3.1.3.7).');
+
+        // When
+        $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
     }
 
     #[Test]
@@ -354,6 +410,14 @@ final class TokenIssuerTest extends TestCase
             Fixtures::now(),
             ['openid', 'profile'],
         ));
+    }
+
+    /**
+     * What the grant reads before it spends anything: the ID token of the authorization, addressed.
+     */
+    private function addressed(UserAuthorization $authorization): ?AddressedFormat
+    {
+        return $this->issuer->addressIdToken($authorization->client, $authorization->scopes);
     }
 
     private function authorizationNarrowedToProfile(): UserAuthorization

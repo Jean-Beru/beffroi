@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace Beffroi\Oidc\Tests\Fixture;
 
 use DateTimeImmutable;
+use Beffroi\Oidc\Domain\Client\AddressedFormat;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ResponseFormat;
 use Beffroi\Oidc\Domain\Token\AccessToken;
 use Beffroi\Oidc\Domain\Token\UserAuthorizationInterface;
+use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
 use Beffroi\Oidc\Port\IdTokenIssuerInterface;
 use function sprintf;
 
@@ -21,7 +25,22 @@ final class FakeIdTokenIssuer implements IdTokenIssuerInterface
      */
     public private(set) array $issued = [];
 
-    public function issue(UserAuthorizationInterface $authorization, AccessToken $accessToken, DateTimeImmutable $now): string
+    /**
+     * What addressing an ID token throws while the keys of the client cannot be read, which a test sets and
+     * takes back; null while they can.
+     */
+    public ?ClientKeysUnavailableException $unreadableKeys = null;
+
+    public function address(Client $client): AddressedFormat
+    {
+        if ($this->unreadableKeys !== null) {
+            throw $this->unreadableKeys;
+        }
+
+        return new AddressedFormat(ResponseFormat::signed());
+    }
+
+    public function issue(UserAuthorizationInterface $authorization, AccessToken $accessToken, AddressedFormat $addressed, DateTimeImmutable $now): string
     {
         $this->issued[] = [$authorization, $accessToken];
 
