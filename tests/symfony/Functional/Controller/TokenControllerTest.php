@@ -80,6 +80,26 @@ final class TokenControllerTest extends BrowserTestCase
     }
 
     /**
+     * RFC 7523 §2.2, RFC 6749 §5.2 (issue #863): an assertion of another type than the one of the specification is
+     * answered invalid_request, never a server error.
+     */
+    #[Test]
+    public function anAssertionOfAnotherTypeIsAnInvalidRequest(): void
+    {
+        // When
+        $this->browser->request('POST', '/token', [
+            'grant_type' => 'client_credentials',
+            'client_assertion' => 'an.assertion.here',
+            'client_assertion_type' => 'urn:ietf:params:oauth:client-assertion-type:saml2-bearer',
+        ]);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        static::assertSame('invalid_request', self::json($response)['error']);
+    }
+
+    /**
      * RFC 6749 §3.2: the parameters are read from the form body, never from the query string.
      */
     #[Test]
