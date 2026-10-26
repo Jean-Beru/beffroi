@@ -99,6 +99,36 @@ final class RevocationControllerTest extends BrowserTestCase
     }
 
     /**
+     * RFC 7009 §2.2, issue #847: a self-contained access token of a session that ended is refused by UserInfo
+     * and the introspection, so it is an invalid token here too, answered 200 with nothing, and not a token
+     * the endpoint cannot take back.
+     */
+    #[Test]
+    public function aJwtAccessTokenOfASessionThatEndedIsAnsweredWithNothing(): void
+    {
+        // Given
+        self::signingKey();
+        $session = $this->signIn(self::user('alice'));
+        $accessToken = $this->jwtAccessTokenOfTheSignedInBrowser();
+        $this->endSession($session);
+
+        // When
+        $this->browser->request(
+            'POST',
+            '/revoke',
+            [
+                'token' => $accessToken,
+            ],
+            server: self::demoCredentials(),
+        );
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        static::assertSame('', $response->getContent());
+    }
+
+    /**
      * RFC 7009 §2.1: a refresh token given back is refused by the token endpoint from then on.
      */
     #[Test]
@@ -142,6 +172,15 @@ final class RevocationControllerTest extends BrowserTestCase
     {
         self::signingKey();
         $this->signIn(self::user('alice'));
+
+        return $this->jwtAccessTokenOfTheSignedInBrowser();
+    }
+
+    /**
+     * The access token oidc-demo gets from the code flow of the browser, signed in already.
+     */
+    private function jwtAccessTokenOfTheSignedInBrowser(): string
+    {
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));
         $code = self::redirectedQuery($this->browser->getResponse())['code'];
         $this->browser->request(
