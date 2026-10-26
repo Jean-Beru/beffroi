@@ -78,7 +78,7 @@ function check_licenses(
  * of the host that the mount of the working directory does not cover, so every tool that reads the
  * repository from the container stops on "not a git repository: ...". What carries the objects, the refs and
  * the worktree's own directory is the common directory, so mounting it at the very path that pointer names
- * is what makes the repository readable. Every issue is worked on in a worktree (CLAUDE.md), and the one
+ * is what makes the repository readable. Every issue is worked on in a worktree (AGENTS.md), and the one
  * mutation run a change of a rule asks for by hand, "castor infect --diff", is a tool that reads it.
  *
  * A main checkout keeps its common directory under the working directory, where /project already carries
