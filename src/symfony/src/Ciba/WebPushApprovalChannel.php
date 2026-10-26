@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Ciba;
 
 use Beffroi\Bundle\Locale\UserLocale;
+use Beffroi\Bundle\Messenger\NotificationNotDeliveredException;
 use Beffroi\Bundle\Push\PushMessage;
 use Beffroi\Bundle\Push\WebPushSender;
 use Beffroi\Core\Application\Push\PushSubscriptionRevocation;
@@ -16,7 +17,6 @@ use function implode;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use function sprintf;
-use Symfony\Component\Messenger\Exception\RecoverableMessageHandlingException;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -80,7 +80,7 @@ final readonly class WebPushApprovalChannel implements PendingApprovalChannelInt
             $this->logger->warning('A push notification was not taken.', self::trail($subscription, $delivery->detail));
         }
         if (! $reached && $failures !== []) {
-            throw new RecoverableMessageHandlingException(sprintf(
+            throw new NotificationNotDeliveredException(sprintf(
                 'No browser of this user was reached: %s.',
                 implode('; ', $failures),
             ));

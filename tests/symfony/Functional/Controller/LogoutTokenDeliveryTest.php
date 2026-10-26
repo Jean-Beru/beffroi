@@ -10,6 +10,9 @@ use Closure;
 use Beffroi\Bundle\Http\LogoutTokenSender;
 use Beffroi\Bundle\Message\SendLogoutToken;
 use Beffroi\Bundle\MessageHandler\SendLogoutTokenHandler;
+use Beffroi\Bundle\Messenger\NotificationNotDeliveredException;
+use Beffroi\Bundle\Messenger\NotificationRetryPolicy;
+use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
 use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
 use Beffroi\Bundle\Tests\Functional\Messenger\LogoutEndpoints;
 use Beffroi\Core\Domain\Identity\Subject;
@@ -19,17 +22,18 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\Envelope;
-use Symfony\Component\Messenger\Exception\RecoverableMessageHandlingException;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Transport\TransportInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
  * Back-Channel Logout 1.0 §2.5 and §2.8, architecture §5.6: what the provider does with the logout token
  * it minted, and what it does when the relying party does not take it. The delivery is asynchronous in
- * production; the transports of this kernel are synchronous, so what a worker would do later happens
- * here, in the request or on the call of the handler.
+ * production; the token waits in the queue of this kernel as it waits on a broker, and what a worker does
+ * with it happens here on the call of the handler, or under the worker of the lane itself when what is
+ * judged is how often the lane brings the token back.
  */
-final class LogoutTokenDeliveryTest extends BrowserTestCase
+final class LogoutTokenDeliveryTest extends ConsoleTestCase
 {
     private const string URI = 'https://demo.test/backchannel-logout';
 
@@ -118,7 +122,7 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
         $this->endpoints->willAnswer([LogoutEndpoints::answering(500)]);
 
         // Then
-        $this->expectException(RecoverableMessageHandlingException::class);
+        $this->expectException(NotificationNotDeliveredException::class);
         $this->expectExceptionMessageIsOrContains('the client answered 500');
 
         // When
@@ -137,7 +141,7 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
         $message = self::message();
         try {
             self::handler()($message);
-        } catch (RecoverableMessageHandlingException) {
+        } catch (NotificationNotDeliveredException) {
             // the first attempt, which the transport would bring back
         }
 
@@ -159,11 +163,51 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
         $this->endpoints->willAnswer([LogoutEndpoints::timingOut()]);
 
         // Then
-        $this->expectException(RecoverableMessageHandlingException::class);
+        $this->expectException(NotificationNotDeliveredException::class);
         $this->expectExceptionMessageIsOrContains('the client cannot be reached');
 
         // When
         $this->deliver();
+    }
+
+    /**
+     * §2.8, architecture §5.6: a client that never comes back is asked as many times as the policy of the
+     * notifications lane allows, the first send and each of its retries, and then no more.
+     */
+    #[Test]
+    public function aClientThatNeverComesBackIsAskedAsOftenAsTheLaneAllows(): void
+    {
+        // Given
+        $this->endpoints->willAnswer([LogoutEndpoints::answering(503)]);
+        self::queue(self::message());
+
+        // When
+        self::work();
+
+        // Then
+        static::assertCount(self::policy()->attempts(), $this->endpoints->requests);
+    }
+
+    /**
+     * §2.8: once the policy of the lane runs out, the provider says which client it gave up on and what the
+     * last attempt got back, as it does for a client that refused.
+     */
+    #[Test]
+    public function aClientTheLaneRunsOutOnIsGivenUpOn(): void
+    {
+        // Given
+        $this->endpoints->willAnswer([LogoutEndpoints::answering(503)]);
+        self::queue(self::message());
+
+        // When
+        self::work();
+
+        // Then
+        $events = self::givenUp();
+        static::assertCount(1, $events);
+        [$givenUp] = $events;
+        static::assertSame('oidc-demo', $givenUp->clientId);
+        static::assertStringContainsString('the client answered 503', $givenUp->reason);
     }
 
     /**
@@ -219,6 +263,37 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
     private function deliver(): void
     {
         self::handler()(self::message());
+    }
+
+    /**
+     * The token put on the command bus as the provider puts it there, which routes it to the notifications
+     * lane.
+     */
+    private static function queue(SendLogoutToken $message): void
+    {
+        self::service('command.bus', MessageBusInterface::class)->dispatch($message);
+    }
+
+    /**
+     * What the worker of a deployment does with the lane, "messenger:consume async_notifications", for the
+     * whole schedule of the policy and as long again, where a lane that never gives up would still be
+     * trying: the clock of the kernel is mocked, so the waits between two attempts pass without the test
+     * sleeping. Nothing is reset between two messages, the queue of this kernel living in memory, where a
+     * reset empties it.
+     */
+    private static function work(): void
+    {
+        self::mockTime();
+        self::console('messenger:consume', [
+            'receivers' => ['async_notifications'],
+            '--time-limit' => (string) (2 * self::policy()->waiting()),
+            '--no-reset' => null,
+        ]);
+    }
+
+    private static function policy(): NotificationRetryPolicy
+    {
+        return self::service(NotificationRetryPolicy::class, NotificationRetryPolicy::class);
     }
 
     /**

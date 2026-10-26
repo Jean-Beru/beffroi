@@ -7,6 +7,7 @@ namespace Beffroi\Bundle\Tests\Unit\Push;
 use Beffroi\Bundle\Ciba\WebPushApprovalChannel;
 use Beffroi\Bundle\Locale\ServedLocales;
 use Beffroi\Bundle\Locale\UserLocale;
+use Beffroi\Bundle\Messenger\NotificationNotDeliveredException;
 use Beffroi\Bundle\Push\WebPushSender;
 use Beffroi\Core\Application\Push\PushSubscriptionRevocation;
 use Beffroi\Core\Bridge\InMemory\InMemoryPushSubscriptionRepository;
@@ -29,7 +30,6 @@ use Psr\Log\NullLogger;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
-use Symfony\Component\Messenger\Exception\RecoverableMessageHandlingException;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -185,7 +185,7 @@ final class WebPushApprovalChannelTest extends TestCase
 
     /**
      * Architecture §5.6: a push service that did not answer may answer in a minute, and the lane is what
-     * comes back, as it does for a logout token.
+     * comes back, on its policy and not beyond it, as it does for a logout token.
      */
     #[Test]
     public function aPushServiceThatDidNotAnswerBringsTheLaneBack(): void
@@ -197,7 +197,7 @@ final class WebPushApprovalChannelTest extends TestCase
         ]));
 
         // Then
-        $this->expectException(RecoverableMessageHandlingException::class);
+        $this->expectException(NotificationNotDeliveredException::class);
         $this->expectExceptionMessageIsOrContains('No browser of this user was reached');
 
         // When
