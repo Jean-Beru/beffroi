@@ -180,6 +180,36 @@ final class IntrospectionControllerTest extends BrowserTestCase
     }
 
     /**
+     * RFC 9701 §6 and §7: the provider determines what a signed response is signed with, and its document
+     * announces that algorithm, the one the response carries, and no other it could sign with (issue #839).
+     */
+    #[Test]
+    public function theDocumentAnnouncesTheAlgorithmASignedResponseCarries(): void
+    {
+        // Given
+        $accessToken = $this->opaqueAccessToken();
+        $this->browser->request('GET', '/.well-known/openid-configuration');
+        $announced = self::json($this->browser->getResponse())['introspection_signing_alg_values_supported'];
+
+        // When
+        $this->browser->request(
+            'POST',
+            '/introspect',
+            [
+                'token' => $accessToken,
+            ],
+            server: self::credentials('opaque-app')
+            + [
+                'HTTP_ACCEPT' => 'application/token-introspection+jwt',
+            ],
+        );
+
+        // Then
+        [$header] = explode('.', self::string($this->browser->getResponse()->getContent()));
+        static::assertSame([self::decodeSegment($header)['alg']], $announced);
+    }
+
+    /**
      * RFC 7009 and RFC 7662 together: a token given back is inactive from then on, and UserInfo refuses it.
      */
     #[Test]
