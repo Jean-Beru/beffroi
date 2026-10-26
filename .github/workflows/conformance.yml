@@ -47,7 +47,7 @@ concurrency:
 jobs:
   conformance:
     name: "OpenID Conformance (Basic, Config, Form Post, the three logout profiles, the four FAPI 2 runs, the two FAPI-CIBA runs, Dynamic OP and 3rd Party-Init OP)"
-    runs-on: [self-hosted, kloude]
+    runs-on: [self-hosted, kloude, X64]
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
@@ -58,6 +58,8 @@ jobs:
         with:
           php-version: '8.5'
           coverage: none
+        env:
+          runner: self-hosted
       # The application is pinned by its own lock, the way a developer runs it; the jobs of "ci.yml" are the
       # ones that follow the dev branches of Symfony.
       - uses: ramsey/composer-install@v4
@@ -67,7 +69,12 @@ jobs:
           composer-options: --optimize-autoloader
       - name: "Install Castor"
         run: |
-          curl -fsSL -o "${RUNNER_TEMP}/castor" https://github.com/jolicode/castor/releases/download/v1.7.0/castor.linux-amd64
+          case "${RUNNER_ARCH}" in
+            X64) build=linux-amd64 ;;
+            ARM64) build=linux-arm64 ;;
+            *) echo "::error title=Castor::Castor publishes no build for a runner of architecture ${RUNNER_ARCH}."; exit 1 ;;
+          esac
+          curl -fsSL -o "${RUNNER_TEMP}/castor" "https://github.com/jolicode/castor/releases/download/v1.7.0/castor.${build}"
           chmod +x "${RUNNER_TEMP}/castor"
           echo "${RUNNER_TEMP}" >> "$GITHUB_PATH"
       # Docker Hub under the account the secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN of this repository name,

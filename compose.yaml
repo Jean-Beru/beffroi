@@ -372,7 +372,7 @@ services:
       - conformance_mongo:/data/db
 
   conformance-server:
-    image: registry.gitlab.com/openid/conformance-suite:${CONFORMANCE_SUITE_VERSION:-release-v5.2.1}
+    image: registry.gitlab.com/openid/conformance-suite:${CONFORMANCE_SUITE_VERSION:-release-v5.3.3}
     profiles: [conformance]
     # Same environment as the official docker-compose-prebuilt.yml: the dev Spring profile needs no
     # login, but the OAuth registrations must be non-empty for the context to start.
@@ -409,7 +409,7 @@ services:
         max-file: "5"
 
   conformance-nginx:
-    image: registry.gitlab.com/openid/conformance-suite/nginx:${CONFORMANCE_NGINX_VERSION:-release-v5.2.0}
+    image: registry.gitlab.com/openid/conformance-suite/nginx:${CONFORMANCE_NGINX_VERSION:-release-v5.3.3}
     profiles: [conformance]
     ports:
       - "8443:8443"

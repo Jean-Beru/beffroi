@@ -76,7 +76,7 @@ env:
 
 jobs:
   gitsplit:
-    runs-on: [self-hosted, kloude-light]
+    runs-on: [self-hosted, kloude-light, X64]
     steps:
       - name: "Checkout"
         uses: "actions/checkout@v7"
