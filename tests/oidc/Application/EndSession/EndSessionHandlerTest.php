@@ -6,6 +6,7 @@ namespace Beffroi\Oidc\Tests\Application\EndSession;
 
 use Beffroi\Core\Application\Authentication\SessionTerminator;
 use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
+use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Beffroi\Core\Domain\Event\AuthenticationSessionEnded;
 use Beffroi\Core\Domain\Identity\Subject;
@@ -19,6 +20,7 @@ use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Oidc\Application\Authorization\IdTokenHintVerifier;
+use Beffroi\Oidc\Application\Claims\AssignedSubjectIdentifiers;
 use Beffroi\Oidc\Application\Claims\StandardClaimsProvider;
 use Beffroi\Oidc\Application\EndSession\EndSessionHandler;
 use Beffroi\Oidc\Application\EndSession\EndSessionRequestParser;
@@ -64,6 +66,8 @@ final class EndSessionHandlerTest extends TestCase
 
     private RecordingEventDispatcher $events;
 
+    private AssignedSubjectIdentifiers $subjects;
+
     private EndSessionHandler $handler;
 
     protected function setUp(): void
@@ -77,8 +81,13 @@ final class EndSessionHandlerTest extends TestCase
         $this->sessions = new InMemoryAuthenticationSessionRepository();
         $this->sessions->save($this->session);
         $this->events = new RecordingEventDispatcher();
+        $users = new InMemoryUserRepository();
+        $users->save($this->alice);
+        $users->save(Fixtures::user($this->tenant, 'bob', 'bob-subject'));
+        $this->subjects = Subjects::bothKinds($users);
         $this->handler = new EndSessionHandler(
             new SessionTerminator($this->sessions, $this->clock, $this->events),
+            $this->subjects,
             $this->clock,
         );
     }
@@ -208,6 +217,10 @@ final class EndSessionHandlerTest extends TestCase
             static fn (self $test): IdTokenHint => new IdTokenHint(new Subject('bob-subject'), ['oidc-demo'], $test->session->id),
             LogoutConfirmationReason::DifferentUser,
         ];
+        yield 'a subject that names nobody' => [
+            static fn (self $test): IdTokenHint => new IdTokenHint(new Subject('nobody-subject'), ['oidc-demo'], $test->session->id),
+            LogoutConfirmationReason::DifferentUser,
+        ];
         yield 'another session of the user' => [
             static fn (self $test): IdTokenHint => $test->hint(Fixtures::session($test->alice)),
             LogoutConfirmationReason::DifferentSession,
@@ -216,6 +229,44 @@ final class EndSessionHandlerTest extends TestCase
             static fn (self $test): IdTokenHint => new IdTokenHint(new Subject('alice-subject'), ['oidc-demo'], null),
             LogoutConfirmationReason::DifferentSession,
         ];
+    }
+
+    /**
+     * OIDC Core §8.1, RP-Initiated Logout §2: a client of pairwise subjects holds the identifier of its sector,
+     * and its hint names the user of the session all the same, read back for that client (issue #838).
+     */
+    #[Test]
+    public function aHintOfAPairwiseClientNamingTheSessionEndsItWithoutAsking(): void
+    {
+        // Given
+        $client = Clients::pairwise($this->tenant);
+        $hint = new IdTokenHint($this->subjects->resolve($this->alice, $client), ['pairwise-app'], $this->session->id);
+
+        // When
+        $decision = $this->handler->begin(new EndSessionRequest($this->tenant, $client, $hint, null), $this->session, $this->context);
+
+        // Then
+        static::assertInstanceOf(LoggedOut::class, $decision);
+        static::assertSame($this->session, $decision->endedSession);
+    }
+
+    /**
+     * OIDC Core §8: what a "sub" means is decided by the kind its client registered, so the subject the core
+     * keeps names nobody to a client of pairwise subjects.
+     */
+    #[Test]
+    public function theSubjectTheCoreKeepsNamesNobodyToAPairwiseClient(): void
+    {
+        // Given
+        $client = Clients::pairwise($this->tenant);
+        $hint = new IdTokenHint($this->alice->subject, ['pairwise-app'], $this->session->id);
+
+        // When
+        $decision = $this->handler->begin(new EndSessionRequest($this->tenant, $client, $hint, null), $this->session, $this->context);
+
+        // Then
+        static::assertInstanceOf(LogoutConfirmationRequired::class, $decision);
+        static::assertSame(LogoutConfirmationReason::DifferentUser, $decision->reason);
     }
 
     /**

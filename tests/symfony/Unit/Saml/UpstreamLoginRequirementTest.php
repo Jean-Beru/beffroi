@@ -25,6 +25,7 @@ use Beffroi\Oidc\Tests\Fixture\Clients;
 use Beffroi\Oidc\Tests\Fixture\FakeJwsVerifier;
 use Beffroi\Oidc\Tests\Fixture\Logins;
 use Beffroi\Oidc\Tests\Fixture\Requests;
+use Beffroi\Oidc\Tests\Fixture\Subjects;
 use DateTimeImmutable;
 use function str_repeat;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -58,7 +59,7 @@ final class UpstreamLoginRequirementTest extends TestCase
         $hints = new FakeJwsVerifier();
         $hints->knows($this->tenant, self::BOB_HINT, '{"iss":"https://id.acme.example","sub":"bob-subject","aud":"oidc-demo"}');
         $this->requirement = new UpstreamLoginRequirement(
-            new AuthenticationRequirement(Logins::passwordAndPasskey(), $this->credentials, new IdTokenHintVerifier($hints)),
+            new AuthenticationRequirement(Logins::passwordAndPasskey(), $this->credentials, new IdTokenHintVerifier($hints), Subjects::ofAProvider()),
         );
     }
 
