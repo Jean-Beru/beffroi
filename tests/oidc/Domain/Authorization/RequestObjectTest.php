@@ -7,6 +7,8 @@ namespace Beffroi\Oidc\Tests\Domain\Authorization;
 use Beffroi\Oidc\Domain\Authorization\RequestObject;
 use Beffroi\Oidc\Domain\Token\UnverifiedJwt;
 use Beffroi\Oidc\Exception\InvalidRequestObjectException;
+use function json_decode;
+use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -206,7 +208,7 @@ final class RequestObjectTest extends TestCase
 
         // Then
         $this->expectException(InvalidRequestObjectException::class);
-        $this->expectExceptionMessageIsOrContains('The prompt claim of a request object is not a value an authorization request carries');
+        $this->expectExceptionMessageIsOrContains('A claim of the request object holds a value no authorization request carries');
 
         // When
         $object->parameters();
@@ -220,6 +222,39 @@ final class RequestObjectTest extends TestCase
         yield 'a boolean' => [true];
         yield 'a fraction' => [1.5];
         yield 'null' => [null];
+    }
+
+    /**
+     * RFC 6749 §5.2: an error description is printable ASCII without a double quote or a backslash, and
+     * the name of a claim is a string the client chose, so the refusal of what a claim holds names the
+     * rule and never the claim.
+     */
+    #[Test]
+    #[DataProvider('provideNamesNoDescriptionCarries')]
+    public function theRefusalOfAValueNamesNoClaim(string $name): void
+    {
+        // Given
+        $object = self::objectOf([
+            $name => true,
+        ]);
+
+        // Then
+        $this->expectException(InvalidRequestObjectException::class);
+        $this->expectExceptionMessageIs('invalid_request_object: A claim of the request object holds a value no authorization request carries (OIDC Core section 6.1).');
+
+        // When
+        $object->parameters();
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideNamesNoDescriptionCarries(): iterable
+    {
+        yield 'a double quote' => ['pro"mpt'];
+        yield 'a backslash' => ['pro\\mpt'];
+        yield 'a line feed' => ["pro\nmpt"];
+        yield 'a character outside ASCII' => ['prömpt'];
     }
 
     /**
@@ -249,6 +284,54 @@ final class RequestObjectTest extends TestCase
     {
         yield 'request' => ['request'];
         yield 'request_uri' => ['request_uri'];
+    }
+
+    /**
+     * RFC 9101 §4 lets an object carry any extension parameter and RFC 6749 §3.1 has the authorization
+     * server ignore one it does not recognise: a claim named by a number is such a parameter, whatever it
+     * holds, and decoding the JSON made its name an integer.
+     */
+    #[Test]
+    #[DataProvider('provideClaimsNamedByANumber')]
+    public function aClaimNamedByANumberIsIgnored(string $json): void
+    {
+        // Given
+        $object = self::objectOfJson($json);
+
+        // When
+        $parameters = $object->parameters();
+
+        // Then
+        static::assertSame(
+            [
+                'scope' => 'openid',
+            ],
+            $parameters,
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideClaimsNamedByANumber(): iterable
+    {
+        yield 'digits' => ['{"scope":"openid","123":"x"}'];
+        yield 'zero' => ['{"scope":"openid","0":"x"}'];
+        yield 'a negative number' => ['{"scope":"openid","-1":"x"}'];
+        yield 'a value no request carries' => ['{"scope":"openid","123":true}'];
+    }
+
+    /**
+     * The claims as a reader hands them over, decoded from the JSON the client wrote: json_decode() turns
+     * a name made of a number into an integer key, whatever type the reader declares for them.
+     */
+    private static function objectOfJson(string $json): RequestObject
+    {
+        $claims = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        static::assertIsArray($claims);
+
+        /** @var array<string, mixed> $claims */
+        return self::objectOf($claims);
     }
 
     /**

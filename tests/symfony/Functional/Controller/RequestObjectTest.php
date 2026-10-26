@@ -15,6 +15,8 @@ use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Core\JWK;
 use Jose\Component\Signature\JWSBuilder;
 use Jose\Component\Signature\Serializer\CompactSerializer;
+use function json_encode;
+use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\Test;
 use function rtrim;
 use function strtr;
@@ -148,6 +150,57 @@ final class RequestObjectTest extends BrowserTestCase
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
         static::assertStringContainsString('data-error="invalid_request_object"', self::string($response->getContent()));
+    }
+
+    /**
+     * RFC 6749 §5.2 and issue #837: a value no authorization request carries is refused on a page under
+     * a name no error description can hold, and the description the page shows names the rule and
+     * nothing the client wrote.
+     */
+    #[Test]
+    public function aValueUnderANameNoDescriptionHoldsIsRefusedOnAPage(): void
+    {
+        // When
+        $crawler = $this->browser->request('GET', '/authorize', [
+            'client_id' => 'jar-app',
+            'request' => $this->signed([
+                ...self::request(),
+                'prömpt' => true,
+            ]),
+        ]);
+
+        // Then
+        static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
+        static::assertSame(
+            'invalid_request_object: A claim of the request object holds a value no authorization request carries (OIDC Core section 6.1).',
+            $crawler->filter('p[data-description]')->text(),
+        );
+    }
+
+    /**
+     * RFC 9101 §4, RFC 6749 §3.1 and issue #837: a claim named by a number is an extension parameter the
+     * provider does not recognise, and the request it travels in starts the flow without it.
+     */
+    #[Test]
+    public function aClaimNamedByANumberIsIgnoredAndTheFlowStarts(): void
+    {
+        // Given
+        // in a PHP array, a member named by a number is an integer key, and the claims signed() takes
+        // are named by strings: the payload is written from an object, as a client in another language
+        // writes it
+        $claims = (object) self::request();
+        $claims->{'123'} = 'x';
+
+        // When
+        $this->browser->request('GET', '/authorize', [
+            'client_id' => 'jar-app',
+            'request' => $this->signedPayload(json_encode($claims, JSON_THROW_ON_ERROR)),
+        ]);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        static::assertStringStartsWith('/login?', self::string($response->headers->get('Location')));
     }
 
     /**
@@ -386,9 +439,18 @@ final class RequestObjectTest extends BrowserTestCase
      */
     private function signed(array $claims, ?JWK $key = null): string
     {
+        return $this->signedPayload(JwtPayload::encode($claims), $key);
+    }
+
+    /**
+     * RFC 7515 §7.1: the claims as the client wrote them, signed with the key it publishes unless the
+     * test names another.
+     */
+    private function signedPayload(string $payload, ?JWK $key = null): string
+    {
         $jws = new JWSBuilder(new AlgorithmManager([Algorithms::es256()->joseAlgorithm()]))
             ->create()
-            ->withPayload(JwtPayload::encode($claims))
+            ->withPayload($payload)
             ->addSignature($key ?? new JWK(self::PRIVATE_KEY), [
                 'alg' => 'ES256',
                 'kid' => 'jar-key',
