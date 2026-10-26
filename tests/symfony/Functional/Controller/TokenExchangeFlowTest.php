@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Tests\Functional\Controller;
 
 use function base64_encode;
+use function http_build_query;
+use function rawurlencode;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -27,6 +30,14 @@ final class TokenExchangeFlowTest extends BrowserTestCase
     private const string GATEWAY_ID = 'gateway-app';
 
     private const string GATEWAY_SECRET = 'gateway-secret-of-at-least-32-characters-l';
+
+    private const string OPAQUE_SERVICE_ID = 'service-opaque-app';
+
+    private const string OPAQUE_SERVICE_SECRET = 'service-opaque-secret-of-at-least-32-chars';
+
+    private const string PERSON_GATEWAY_ID = 'person-gateway-app';
+
+    private const string PERSON_GATEWAY_SECRET = 'person-gateway-secret-of-at-least-32-chara';
 
     private const string CALENDAR = 'https://cal.example.com/';
 
@@ -189,6 +200,59 @@ final class TokenExchangeFlowTest extends BrowserTestCase
     }
 
     /**
+     * RFC 6749 §3.3, RFC 8707 §2, RFC 6749 §5.2: what an exchange hands a gateway stays within what that
+     * gateway registered. A presented token may carry more, the client it was issued to having registered
+     * more, and a request that takes it all by naming nothing is answered with the error of the protocol for
+     * what goes beyond, never with a server error.
+     *
+     * @param array<string, string> $parameters
+     */
+    #[Test]
+    #[DataProvider('provideExchangesBeyondWhatTheGatewayRegistered')]
+    public function anExchangeBeyondWhatTheGatewayRegisteredIsAnErrorOfTheProtocol(array $parameters, string $error): void
+    {
+        // Given
+        $subjectToken = $this->tokenOfTheWholeRegistrationOfAService();
+
+        // When
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'urn:ietf:params:oauth:grant-type:token-exchange',
+                'subject_token' => $subjectToken,
+                'subject_token_type' => self::ACCESS_TOKEN_TYPE,
+                ...$parameters,
+            ],
+            server: self::credentials(self::PERSON_GATEWAY_ID, self::PERSON_GATEWAY_SECRET),
+        );
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertSame($error, self::json($response)['error']);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, string>, string}>
+     */
+    public static function provideExchangesBeyondWhatTheGatewayRegistered(): iterable
+    {
+        yield 'a scope the gateway did not register, taken from the presented token' => [
+            [
+                'resource' => self::CALENDAR,
+            ],
+            'invalid_scope',
+        ];
+        yield 'a resource the gateway did not register, taken from the presented token' => [
+            [
+                'scope' => 'invoices.read',
+            ],
+            'invalid_target',
+        ];
+    }
+
+    /**
      * The token a service holds for itself (RFC 6749 §4.4), addressed to the resource the exchange will
      * narrow to.
      */
@@ -212,6 +276,35 @@ final class TokenExchangeFlowTest extends BrowserTestCase
                 'resource' => self::CALENDAR,
             ],
             server: self::credentials($clientId, $secret),
+        );
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
+
+        return self::string(self::json($response)['access_token']);
+    }
+
+    /**
+     * The token a service holds for itself (RFC 6749 §4.4) for everything it registered, both scopes and both
+     * resources, which is more than the gateway that acts for a person registered: one scope of the two and
+     * one resource of the two.
+     */
+    private function tokenOfTheWholeRegistrationOfAService(): string
+    {
+        self::signingKey();
+        $parameters = [
+            'grant_type' => 'client_credentials',
+            'scope' => 'invoices.read invoices.write',
+        ];
+        $this->browser->request(
+            'POST',
+            '/token',
+            $parameters,
+            [],
+            self::credentials(self::OPAQUE_SERVICE_ID, self::OPAQUE_SERVICE_SECRET)
+            + [
+                'CONTENT_TYPE' => 'application/x-www-form-urlencoded',
+            ],
+            http_build_query($parameters) . '&resource=' . rawurlencode(self::CALENDAR) . '&resource=' . rawurlencode(self::CONTACTS),
         );
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));

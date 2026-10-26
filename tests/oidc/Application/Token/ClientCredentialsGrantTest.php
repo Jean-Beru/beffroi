@@ -22,7 +22,6 @@ use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Domain\Token\ClientAuthorization;
 use Beffroi\Oidc\Domain\Token\UserAuthorizationInterface;
-use Beffroi\Oidc\Exception\InvalidClientException;
 use Beffroi\Oidc\Exception\InvalidRequestException;
 use Beffroi\Oidc\Exception\InvalidScopeException;
 use Beffroi\Oidc\Exception\InvalidTargetException;
@@ -229,24 +228,6 @@ final class ClientCredentialsGrantTest extends TestCase
         yield 'another resource' => ['https://payroll.example.com/'];
         yield 'one registered and one not' => [[Clients::CALENDAR, 'https://payroll.example.com/']];
         yield 'not an absolute URI' => ['/calendar'];
-    }
-
-    /**
-     * RFC 6749 §4.4: the client authenticates itself. A public client proves nothing, and is refused here
-     * as it is refused a registration for this grant.
-     */
-    #[Test]
-    public function itRefusesAPublicClient(): void
-    {
-        // Given
-        $client = Clients::public($this->tenant, resources: Clients::resources(), grantTypes: [Grants::clientCredentials()]);
-
-        // Then
-        $this->expectException(InvalidClientException::class);
-        $this->expectExceptionMessageIs('invalid_client: This grant type requires client authentication, and the client authenticated as a public client (RFC 6749 section 4.4).');
-
-        // When
-        $this->grant->grant(new AuthenticatedClient($client), $this->request(scope: 'openid'), $this->context);
     }
 
     /**

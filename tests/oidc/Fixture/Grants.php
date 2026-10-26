@@ -113,6 +113,20 @@ final readonly class Grants
     }
 
     /**
+     * The same wiring with a grant served only to a client that authenticates itself, and declaring nothing
+     * else, beside them, which is what the JWT bearer grant declares (RFC 7523 §2.1), for what a registration
+     * of such a grant must not carry.
+     */
+    public static function servedWithJwtBearer(): ServedGrants
+    {
+        return new ServedGrants([
+            new FakeRefreshTokenIssuingGrant(self::authorizationCode()),
+            new FakeRefreshTokenSpendingGrant(self::refreshToken()),
+            new FakeClientAuthenticatingGrant(self::jwtBearer()),
+        ]);
+    }
+
+    /**
      * The same wiring with a grant whose user this provider reaches itself beside them (CIBA Core §7),
      * for the endpoint where such a flow starts.
      */

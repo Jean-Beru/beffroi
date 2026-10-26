@@ -16,6 +16,7 @@ use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Oidc\Application\Client\ClientAuthenticator;
 use Beffroi\Oidc\Application\Token\AuthorizationCodeGrant;
 use Beffroi\Oidc\Application\Token\BackchannelAuthenticationGrant;
+use Beffroi\Oidc\Application\Token\GrantInterface;
 use Beffroi\Oidc\Application\Token\RefreshTokenDue;
 use Beffroi\Oidc\Application\Token\RequestedAuthorizationDetails;
 use Beffroi\Oidc\Application\Token\RefreshTokenGrant;
@@ -53,7 +54,10 @@ use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
 use Beffroi\Oidc\Tests\Fixture\Clients;
 use Beffroi\Oidc\Tests\Fixture\Endpoints;
 use Beffroi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
+use Beffroi\Oidc\Tests\Fixture\FakeClientActingGrant;
+use Beffroi\Oidc\Tests\Fixture\FakeClientAuthenticatingGrant;
 use Beffroi\Oidc\Tests\Fixture\FakeClientLoadBudget;
+use Beffroi\Oidc\Tests\Fixture\FakeExchangingGrant;
 use Beffroi\Oidc\Tests\Fixture\FakeGrant;
 use Beffroi\Oidc\Tests\Fixture\FakeIdTokenIssuer;
 use Beffroi\Oidc\Tests\Fixture\Grants;
@@ -436,6 +440,45 @@ final class TokenHandlerTest extends TestCase
             ],
             $this->context,
         );
+    }
+
+    /**
+     * RFC 6749 §2.1, §5.2: a grant served only to a client that authenticates itself refuses a public client,
+     * which proves nothing, with "invalid_client" and before the grant reads anything of the request,
+     * whichever grant declares it.
+     */
+    #[Test]
+    #[DataProvider('provideGrantsThatRequireClientAuthentication')]
+    public function aPublicClientIsRefusedAGrantThatRequiresClientAuthentication(GrantInterface $grant): void
+    {
+        // Given
+        $this->clients->save(Clients::public($this->tenant, 'public-service', grantTypes: [$grant->grantType()]));
+        $handler = new TokenHandler($this->authenticator(), Proofs::verifier(), new Endpoints(), new ServedGrants([$grant]));
+
+        // Then
+        $this->expectException(InvalidClientException::class);
+        $this->expectExceptionMessageIs('invalid_client: This grant type requires client authentication, and the client authenticated as a public client (RFC 6749 section 2.1).');
+
+        // When
+        $handler->handle(
+            $this->tenant,
+            null,
+            [
+                'grant_type' => $grant->grantType()->value,
+                'client_id' => 'public-service',
+            ],
+            $this->context,
+        );
+    }
+
+    /**
+     * @return iterable<string, array{GrantInterface}>
+     */
+    public static function provideGrantsThatRequireClientAuthentication(): iterable
+    {
+        yield 'a grant a client uses for itself (RFC 6749 §4.4)' => [new FakeClientActingGrant(Grants::clientCredentials())];
+        yield 'a grant that exchanges a token (RFC 8693 §2.1)' => [new FakeExchangingGrant(Grants::tokenExchange())];
+        yield 'a grant that declares nothing else (RFC 7523 §2.1)' => [new FakeClientAuthenticatingGrant(Grants::jwtBearer())];
     }
 
     /**
