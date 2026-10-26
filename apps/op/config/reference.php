@@ -518,9 +518,13 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     store?: array{ // Data key store: payloads then refer to a stored data key instead of carrying it, so the KMS is reached once per key and per process, and that key can be rewrapped under another provider without rewriting a payload.
  *         connection?: scalar|Param|null, // Service id of the DBAL connection holding the table. // Default: "doctrine.dbal.default_connection"
  *         client?: scalar|Param|null, // Name of the client wrapping the data keys this store creates (must match an entry of "clients"); defaults to the default client. // Default: null
+ *         allowed_clients?: list<scalar|Param|null>,
  *         key_id?: scalar|Param|null, // Master key wrapping the data keys this store creates (backend-specific: alias, ARN, key URL, ...).
+ *         secret?: Param|string|list<scalar|Param|null>,
  *         table?: scalar|Param|null, // Name of the table holding the wrapped data keys. // Default: "key_management_data_keys"
- *         max_age?: mixed, // Seconds after which the current data key of a scope is retired in favour of a fresh one; the default of 30 days keeps what one key seals under the collision bound of the random 96-bit IV each payload carries. 0 retires the key on every call, null never retires it. // Default: 2592000
+ *         read_self_contained?: bool|Param, // Whether a payload carrying its own wrapped data key is still read, through the default client. On while migrating to the stored format, off afterwards: such a payload resolves no row, so nothing the store checks applies to it. // Default: false
+ *         bind_wrapping_context?: bool|Param, // Whether the backend authenticates the reference and the scope of each data key as it wraps it. Off by default: not every backend accepts authenticated data, and turning it on needs the stored keys rewrapped. // Default: false
+ *         max_age?: mixed, // Seconds after which the current data key of a scope is retired; this does not enforce a usage limit. The default is 30 days; 0 forces rotation on every call and null disables retirement. // Default: 2592000
  *     },
  *     doctrine_dbal?: array{
  *         types?: array<string, array{ // Default: []
@@ -1528,6 +1532,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     keys?: array{ // Where the keys of the tenants live: sealed by the KMS named here, stored as files until a table takes over (architecture §3.3).
  *         kms?: scalar|Param|null, // Name of the KMS client that seals the private keys, an entry of "key_management.clients" of the framework configuration (a DSN there, or the members of a composite client); the KMS keeps, it never signs.
  *         key_id?: scalar|Param|null, // The key of that KMS the keys of the tenants are sealed under (backend-specific: the id of a sodium key, a Vault transit key name, an ARN); "{tenant}" stands for the slug of the tenant, one master key each.
+ *         data_key_secrets?: list<scalar|Param|null>,
  *         storage?: scalar|Param|null, // Directory of the sealed keys, one file per key and per tenant, and of the pairwise salt of each tenant, one file beside them (OIDC Core section 8.1). // Default: "%kernel.project_dir%/var/keys"
  *         jwks_max_age?: int|Param, // How long a relying party may cache the JWK Set, in seconds (RFC 7517 §5, architecture §4.8); the staging window of a rotation derives from it, so that the two cannot drift apart (§3.3). // Default: 300
  *         staging_delay?: int|Param, // How long a new key is published before it signs, in seconds (architecture §3.3, §9), for every family of keys but the SAML signing key, which has its own ("saml.identity_provider.staging_delay"); unless set, jwks_max_age plus the 60 s refetch cooldown of oidc_login: the max-age is what a relying party with a warm cache needs to see the new key, the cooldown what one served by a shared HTTP cache needs to refetch it. // Default: null
