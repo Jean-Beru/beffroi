@@ -195,7 +195,7 @@ final class ClientAuthenticationRequestParserTest extends TestCase
         // Then
         static::assertSame(ClientAuthenticationFailureReason::MalformedCredentials, $failure->reason);
         static::assertSame(
-            'The client_assertion_type parameter must be "urn:ietf:params:oauth:client-assertion-type:jwt-bearer" (RFC 7523 section 2.2).',
+            'The client_assertion_type parameter must be urn:ietf:params:oauth:client-assertion-type:jwt-bearer (RFC 7523 section 2.2).',
             $failure->description,
         );
     }

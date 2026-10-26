@@ -589,6 +589,25 @@ final class ClientAuthenticatorTest extends TestCase
         $this->assertFailureAnnounced(ClientAuthenticationFailureReason::MalformedCredentials, null, null);
     }
 
+    /**
+     * RFC 7523 §2.2, RFC 6749 §5.2 (issue #863): an assertion of another type than the one of the specification is a
+     * request no method can read, answered invalid_request with a description the client can read, and never a
+     * server error.
+     */
+    #[Test]
+    public function anAssertionOfAnotherTypeIsAnInvalidRequest(): void
+    {
+        // When
+        $exception = $this->failToAuthenticate(null, [
+            'client_assertion' => 'an.assertion.here',
+            'client_assertion_type' => 'urn:ietf:params:oauth:client-assertion-type:saml2-bearer',
+        ]);
+
+        // Then
+        static::assertInstanceOf(InvalidRequestException::class, $exception);
+        static::assertSame('invalid_request', $exception->error);
+    }
+
     #[Test]
     public function itRefusesABodySecretWithoutAClientId(): void
     {
