@@ -57,6 +57,7 @@ use Beffroi\Oidc\Domain\Introspection\IntrospectionResponse;
 use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Token\ClientAuthorization;
+use Beffroi\Oidc\Domain\Token\SubjectAuthorization;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 use PHPUnit\Framework\TestCase;
@@ -79,6 +80,8 @@ final class IntrospectionHandlerTest extends TestCase
     private Client $other;
 
     private Client $service;
+
+    private Client $runner;
 
     private MockClock $clock;
 
@@ -109,8 +112,9 @@ final class IntrospectionHandlerTest extends TestCase
         $this->client = Clients::confidential($this->tenant, $hasher->hash(Clients::SECRET), accessTokenShape: Shapes::opaque());
         $this->other = Clients::confidential($this->tenant, $hasher->hash(Clients::SECRET), Methods::clientSecretPost(), 'other');
         $this->service = Clients::service($this->tenant, $hasher->hash(Clients::SECRET), accessTokenShape: Shapes::opaque());
+        $this->runner = Clients::presentingAssertions($this->tenant, $hasher->hash(Clients::SECRET), accessTokenShape: Shapes::opaque());
         $clients = new InMemoryClientRepository();
-        foreach ([$this->client, $this->other, $this->service, Clients::public($this->tenant)] as $client) {
+        foreach ([$this->client, $this->other, $this->service, $this->runner, Clients::public($this->tenant)] as $client) {
             $clients->save($client);
         }
         $this->jwts = new Jwts($this->tenant);
@@ -256,6 +260,50 @@ final class IntrospectionHandlerTest extends TestCase
         // Then
         static::assertTrue($response->isActive());
         static::assertSame([], $this->events->of(IntrospectionAnswered::class));
+    }
+
+    /**
+     * Issue #831, RFC 7523 §2.1: a token issued on an assertion names the person the assertion was validated
+     * for though nobody signed in for it here, so describing it hands that person to the client that asked,
+     * which is an act like any other read of them (issue #589).
+     */
+    #[Test]
+    public function describingATokenOfAnAssertionIsAnActOfItsPerson(): void
+    {
+        // Given
+        $token = $this->tokenOfAnAssertion();
+
+        // When
+        $this->describe($token, self::basic('job-runner'));
+
+        // Then
+        $acts = $this->events->of(IntrospectionAnswered::class);
+        static::assertCount(1, $acts);
+        static::assertSame('job-runner', $acts[0]->clientId);
+        static::assertTrue($acts[0]->subject()->equals($this->session->user->subject));
+    }
+
+    /**
+     * Issue #831, RFC 7662 §2.2: the token of an assertion whose person was disabled since is a token this
+     * provider no longer honours, "active": false as the token of a disabled user somebody signed in for is.
+     */
+    #[Test]
+    public function aTokenOfAnAssertionWhosePersonWasDisabledIsInactive(): void
+    {
+        // Given
+        $token = $this->tokenOfAnAssertion();
+        $this->session->user->disable($this->clock->now());
+
+        // When
+        $response = $this->describe($token, self::basic('job-runner'));
+
+        // Then
+        static::assertSame(
+            [
+                'active' => false,
+            ],
+            $response->members,
+        );
     }
 
     /**
@@ -617,7 +665,7 @@ final class IntrospectionHandlerTest extends TestCase
     }
 
     /**
-     * One request of a caller describing one token, the shape the three tests of the act above share.
+     * One request of a caller describing one token, the shape the tests of the act above share.
      */
     private function describe(string $token, string $authorization): IntrospectionResponse
     {
@@ -645,6 +693,30 @@ final class IntrospectionHandlerTest extends TestCase
                 null,
                 null,
                 AuthenticationSnapshot::ofSession($this->session, $this->session->authenticationContextClass()),
+            ),
+            $this->clock->now(),
+        )->value;
+    }
+
+    /**
+     * RFC 7523 §2.1: an opaque token of the job runner for the person an assertion named, whose record keeps
+     * that person (issue #588) and no sign-in.
+     */
+    private function tokenOfAnAssertion(): string
+    {
+        $person = $this->session->user->subject;
+
+        return $this->opaqueIssuer()->issue(
+            new SubjectAuthorization(
+                Grants::jwtBearer(),
+                Uuid::v7(),
+                $this->runner,
+                $person,
+                new Scopes([new Scope('invoices.read')]),
+                new Scopes([new Scope('invoices.read')]),
+                ResourceIndicators::of([Clients::CALENDAR]),
+                ResourceIndicators::of([Clients::CALENDAR]),
+                person: $person,
             ),
             $this->clock->now(),
         )->value;

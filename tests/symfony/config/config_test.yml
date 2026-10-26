@@ -139,6 +139,11 @@ parameters:
     # declared for every test because YAML cannot declare it only for one, and an anchor nothing verifies
     # against is exactly a tenant that accepts no statement.
     env(BEFFROI_TEST_STATEMENT_JWKS): 'eyJrZXlzIjpbeyJraWQiOiJ1bnVzZWQtYnktYW55LXRlc3QiLCJ1c2UiOiJzaWciLCJhbGciOiJFUzI1NiIsImt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoibnZmeUxHQ2g0QnhheXFwNHJwUWlnSlJoQ0lhb2ZvQlpLZGRua2pJaWhpVSIsInkiOiJaY01YMVFsT3NnY3dzMWFZNnlURlBkVTl3Q3A2WndndEtRRWFqUzVpV1prIn1dfQ=='
+    # RFC 7523 §2.1: the keys of the issuer the tenant of the tests trusts the assertions of, which the test
+    # that plays the grant replaces with the ones it signs with. The default is the key no test signs
+    # anything with, for the reason the authority above has it: an issuer nothing verifies against is a
+    # tenant that accepts no assertion.
+    env(BEFFROI_TEST_TRUSTED_ISSUER_JWKS): 'eyJrZXlzIjpbeyJraWQiOiJ1bnVzZWQtYnktYW55LXRlc3QiLCJ1c2UiOiJzaWciLCJhbGciOiJFUzI1NiIsImt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoibnZmeUxHQ2g0QnhheXFwNHJwUWlnSlJoQ0lhb2ZvQlpLZGRua2pJaWhpVSIsInkiOiJaY01YMVFsT3NnY3dzMWFZNnlURlBkVTl3Q3A2WndndEtRRWFqUzVpV1prIn1dfQ=='
 
 # The KMS clients of an application, where every application declares them: the bundle seals with the one
 # "beffroi.keys.kms" names and builds none itself. One client here, whose DSN the environment gives, so that
@@ -186,6 +191,15 @@ beffroi:
             'https://store.example.com':
                 jwks: '%env(json:base64:BEFFROI_TEST_STATEMENT_JWKS)%'
                 signing_algorithms: ['ES256']
+    # RFC 7523 §2.1: the one issuer the tenant of the tests trusts the assertions of, for the two job runners
+    # below and for the identities of its own source (decision 0002).
+    trusted_issuers:
+        'https://workforce.example.com':
+            jwks: '%env(json:base64:BEFFROI_TEST_TRUSTED_ISSUER_JWKS)%'
+            signing_algorithms: ['ES256']
+            clients: ['assertion-app', 'assertion-opaque-app']
+            identity_provider: 'workforce'
+            trusted_scopes: ['invoices.read']
     # Reaching a user through the push service of a browser they signed in with (RFC 8030): naming a
     # subject is what wires it, here as in any deployment (architecture §5.6).
     web_push:
@@ -451,6 +465,26 @@ beffroi:
             scope: 'invoices.read invoices.write'
             access_token_format: opaque
             resources: ['https://cal.example.com/', 'https://contacts.example.com/']
+        # RFC 7523 §2.1 (issue #831): a job runner that presents the assertions of the trusted issuer, in the
+        # two shapes, so that the person a token of an assertion names is answered for off the record the
+        # provider keeps of the opaque one and off the claim the self-contained one carries sealed. It
+        # registers no redirect URI, nobody's browser coming into this grant.
+        assertion-app:
+            client_name: 'Job runner presenting assertions'
+            secret: 'assertion-secret-of-at-least-32-character'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['urn:ietf:params:oauth:grant-type:jwt-bearer']
+            scope: 'invoices.read'
+            access_token_format: jwt
+            resources: ['https://cal.example.com/']
+        assertion-opaque-app:
+            client_name: 'Job runner presenting assertions, with opaque tokens'
+            secret: 'assertion-opaque-secret-of-at-least-32-ch'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['urn:ietf:params:oauth:grant-type:jwt-bearer']
+            scope: 'invoices.read'
+            access_token_format: opaque
+            resources: ['https://cal.example.com/']
         # RFC 8628 §3.1 (issue #219): a client with no browser. It registers no redirect URI, there being
         # nothing of anybody's to send anywhere, and the refresh token grant beside the device one, a
         # television not being asked to pair again every ten minutes. "appliance-public-app" is the same

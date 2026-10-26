@@ -28,6 +28,7 @@ use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Domain\Token\ClientAuthorization;
+use Beffroi\Oidc\Domain\Token\SubjectAuthorization;
 use Beffroi\Oidc\Domain\Token\UserAuthorization;
 use Beffroi\Oidc\Exception\InvalidRequestException;
 use Beffroi\Oidc\Tests\Fixture\AccessTokenShapes;
@@ -35,6 +36,7 @@ use Beffroi\Oidc\Tests\Fixture\Clients;
 use Beffroi\Oidc\Tests\Fixture\Grants;
 use Beffroi\Oidc\Tests\Fixture\Jwts;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
+use Beffroi\Oidc\Tests\Fixture\Shapes;
 use Beffroi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -155,6 +157,43 @@ final class PresentedAccessTokenTypeTest extends TestCase
     }
 
     /**
+     * Issue #831, RFC 7523 §2.1: a token issued on an assertion names the person the assertion was validated
+     * for though nobody signed in for it here, so what the exchange gets for it names that person too, and
+     * answers for them wherever it is presented in turn.
+     */
+    #[Test]
+    public function itReadsThePersonATokenOfAnAssertionNames(): void
+    {
+        // Given
+        $token = $this->tokenOfAnAssertion();
+
+        // When
+        $presented = $this->type->read($this->tenant, $token, Fixtures::now());
+
+        // Then
+        static::assertSame('alice-subject', $presented->person?->value);
+    }
+
+    /**
+     * Issue #831: the token of an assertion whose person was disabled since is a token this provider refuses
+     * at its own resources, so a service that kept it cannot turn it into a fresh one.
+     */
+    #[Test]
+    public function itRefusesATokenOfAnAssertionWhosePersonWasDisabled(): void
+    {
+        // Given
+        $token = $this->tokenOfAnAssertion();
+        $this->session->user->disable(Fixtures::now());
+
+        // Then
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessageIs('invalid_request: The presented token is not one this provider honours (RFC 8693 section 2.2.2).');
+
+        // When
+        $this->type->read($this->tenant, $token, Fixtures::now());
+    }
+
+    /**
      * RFC 8693 §4.4: who may act for the subject of a token of this client, as its registration says it. One
      * place decides, and the claim the self-contained shape carries is written from it.
      */
@@ -250,6 +289,32 @@ final class PresentedAccessTokenTypeTest extends TestCase
                 $client,
                 new Scopes([new Scope('invoices.read')]),
                 ResourceIndicators::of([Clients::CALENDAR]),
+            ),
+            Fixtures::now(),
+        )->value;
+    }
+
+    /**
+     * RFC 7523 §2.1: an opaque token of the job runner for the person an assertion named, whose record keeps
+     * that person (issue #588) and no sign-in.
+     */
+    private function tokenOfAnAssertion(): string
+    {
+        $runner = Clients::presentingAssertions($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET), accessTokenShape: Shapes::opaque());
+        $this->clients->save($runner);
+        $person = $this->session->user->subject;
+
+        return $this->opaque()->issue(
+            new SubjectAuthorization(
+                Grants::jwtBearer(),
+                Uuid::v7(),
+                $runner,
+                $person,
+                new Scopes([new Scope('invoices.read')]),
+                new Scopes([new Scope('invoices.read')]),
+                ResourceIndicators::of([Clients::CALENDAR]),
+                ResourceIndicators::of([Clients::CALENDAR]),
+                person: $person,
             ),
             Fixtures::now(),
         )->value;
