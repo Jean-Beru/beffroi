@@ -47,7 +47,7 @@ concurrency:
 jobs:
   conformance:
     name: "OpenID Conformance (Basic, Config, Form Post, the three logout profiles, the four FAPI 2 runs, the two FAPI-CIBA runs, Dynamic OP and 3rd Party-Init OP)"
-    runs-on: [self-hosted, kloude, X64]
+    runs-on: [self-hosted, kloude]
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
