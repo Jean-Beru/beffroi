@@ -2,6 +2,8 @@
 
 Monorepo of an identity provider for the Symfony ecosystem. The design lives in the parent repository: `../docs/11-architecture/` and `../docs/decisions/`. Those decisions are settled; do not reopen them here.
 
+This file gives the agents that work in this repository their instructions. `CLAUDE.md` only imports it, because Claude Code reads no `AGENTS.md` once a `CLAUDE.md` exists in the directory a session starts in or in one above it; the parent repository does the same, so a session started here reads both.
+
 Work is organised in spikes, each one a question with a success criterion, a failure criterion and an end date, written before it starts. The spike in progress owns what gets built: **nothing outside its scope is built, even when it is easy** (decision 0005). The spike READMEs live in `../spikes/`.
 
 ## Packages
