@@ -126,7 +126,7 @@ const DEV_CONFORMANCE_DIRECTORY = 'var/conformance';
  * client authenticated, and the suite refusing to configure a static client of that plan without one.
  *
  * The Security Profile and Message Signing runs do not share their clients. Message Signing holds a
- * client to signing every authorization request it starts (OIDC Registration,
+ * client to signing every authorization request it starts (RFC 9101 §10.5,
  * require_signed_request_object), which is a registration and not a mode: the same client cannot both
  * require an object and start the unsigned requests the Security Profile plan sends. The FAPI-CIBA runs
  * do not share theirs either: a client registers one backchannel token delivery mode (CIBA Core §4), and
