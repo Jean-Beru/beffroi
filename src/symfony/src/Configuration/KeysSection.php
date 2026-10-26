@@ -38,7 +38,10 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_iterator;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_locator;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
+use function is_array;
+use function is_string;
 
 /**
  * Where the keys of the tenant live and what seals them (architecture §3.3): the KMS is named here and built by the framework, and what the bundle holds is that name.
@@ -66,6 +69,17 @@ final readonly class KeysSection extends ConfigurationSection
             ->info('The key of that KMS the keys of the tenants are sealed under (backend-specific: the id of a sodium key, a Vault transit key name, an ARN); "{tenant}" stands for the slug of the tenant, one master key each.')
             ->isRequired()
             ->cannotBeEmpty()
+            ->end()
+            ->arrayNode('data_key_secrets')
+            ->info('What binds each stored data key to its reference and its scope (StoredDataKey::bindingFor() of symfony/key-management): an HMAC keyed by the data key and by a secret the database does not hold, so that whoever writes the table cannot plant a key they wrapped themselves. The first one binds a new row and every one is accepted when a row is read, so a secret is rotated by writing the new one first, running "beffroi:data-keys:rewrap" for every tenant towards the client that already wraps its keys, which binds each row again under the first, then dropping the old one. Unless set, the secret of the kernel ("kernel.secret"), which is then rotated the same way: a row whose secret is no longer listed opens nothing, nor does anything sealed under its key.')
+            ->beforeNormalization()
+            ->castToArray()
+            ->end()
+            ->scalarPrototype()
+            ->cannotBeEmpty()
+            ->end()
+            ->requiresAtLeastOneElement()
+            ->defaultValue(['%kernel.secret%'])
             ->end()
             ->scalarNode('storage')
             ->info('Directory of the sealed keys, one file per key and per tenant, and of the pairwise salt of each tenant, one file beside them (OIDC Core section 8.1).')
@@ -115,16 +129,19 @@ final readonly class KeysSection extends ConfigurationSection
         // family of columns, wrapped by the master key of that tenant, the one its signing keys are already
         // sealed under, and a payload that carries a 16-byte reference to it rather than the wrapped key.
         //
-        // Three services and no configuration of their own: the table is the bundle's, and what a
-        // deployment chooses of the rest it has already chosen above, by naming its KMS and the pattern of
-        // its master keys. None of them is tagged "kernel.reset": the component tags its own store with it
-        // and "forget()" would put the KMS back on the path of every request that touches a column, where a
-        // thread is to keep open what it has opened (decision 0018, 12-garde-des-cles.md §1.5).
+        // Three services and one setting of their own, the secrets that bind a row to its reference and its
+        // scope: the table is the bundle's, and what a deployment chooses of the rest it has already chosen
+        // above, by naming its KMS and the pattern of its master keys. None of them is tagged
+        // "kernel.reset": the component tags its own store with it and "forget()" would put the KMS back on
+        // the path of every request that touches a column, where a thread is to keep open what it has
+        // opened (decision 0018, 12-garde-des-cles.md §1.5).
+        $secrets = self::secrets($keys);
         $services->set('beffroi.data_keys', TenantDataKeyStores::class)->args([
             service(Connection::class),
             tagged_locator('key_management.client', 'key'),
             self::string($keys, 'kms'),
             self::string($keys, 'key_id'),
+            $secrets,
             TenantDataKeyStores::TABLE,
         ]);
         // The index key of a tenant, which is what a search matches a sealed column by: a row of the same
@@ -138,6 +155,7 @@ final readonly class KeysSection extends ConfigurationSection
             tagged_locator('key_management.client', 'key'),
             self::string($keys, 'kms'),
             self::string($keys, 'key_id'),
+            $secrets,
             TenantDataKeyStores::TABLE,
             null,
         ]);
@@ -252,5 +270,31 @@ final readonly class KeysSection extends ConfigurationSection
                 ->args([isset($keys['staging_delay']) ? self::integer($keys, 'staging_delay') : null, self::integer($keys, 'jwks_max_age')]),
             inline_service(DateInterval::class)->factory(KeyAge::interval(...))->args([self::integer($keys, 'age')]),
         ]);
+    }
+
+    /**
+     * The secrets that bind a stored data key, in the order the deployment wrote them: the first one binds
+     * and every one is accepted.
+     *
+     * @param array<array-key, mixed> $keys
+     *
+     * @return non-empty-list<string> each a secret, or the parameter or environment placeholder that stands
+     *                                for one until runtime
+     */
+    private static function secrets(array $keys): array
+    {
+        $written = $keys['data_key_secrets'] ?? null;
+        $secrets = [];
+        foreach (is_array($written) ? $written : [] as $secret) {
+            if (! is_string($secret)) {
+                throw new InvalidConfigurationException('The "beffroi" configuration key "data_key_secrets" must be a list of strings.');
+            }
+            $secrets[] = $secret;
+        }
+        if ($secrets === []) {
+            throw new InvalidConfigurationException('The "beffroi" configuration key "data_key_secrets" names at least one secret.');
+        }
+
+        return $secrets;
     }
 }
