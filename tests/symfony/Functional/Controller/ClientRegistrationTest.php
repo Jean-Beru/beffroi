@@ -292,6 +292,15 @@ final class ClientRegistrationTest extends BrowserTestCase
             'requires_consent',
         ];
 
+        yield 'a public client for a grant served only to a client that authenticates itself (RFC 6749 section 2.1)' => [
+            [
+                'grant_types' => ['urn:ietf:params:oauth:grant-type:jwt-bearer'],
+                'token_endpoint_auth_method' => 'none',
+            ],
+            'invalid_client_metadata',
+            'which requires client authentication, and authenticates with none, which proves nothing',
+        ];
+
         yield 'signed request objects required, and read unsigned (RFC 9101 section 10.5)' => [
             [
                 'redirect_uris' => [self::REDIRECT_URI],

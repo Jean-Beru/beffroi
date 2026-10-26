@@ -399,14 +399,6 @@ final class ConfigurationClientRepositoryTest extends TestCase
      */
     public static function provideRegistrationsTheseGrantsRefuse(): iterable
     {
-        yield 'a public client for a grant that authenticates it (RFC 6749 §4.4)' => [
-            [
-                'token_endpoint_auth_method' => 'none',
-                'grant_types' => ['client_credentials'],
-                'resources' => [Clients::CALENDAR],
-            ],
-            'which requires client authentication, and authenticates with none, which proves nothing',
-        ];
         yield 'a redirect URI no grant would send the user to' => [
             [
                 'secret' => Clients::SECRET,
@@ -424,6 +416,62 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 'grant_types' => ['authorization_code'],
             ],
             'whose flow sends the user back to it, and therefore registers at least one redirect URI',
+        ];
+    }
+
+    /**
+     * RFC 6749 §2.1: a public client proves nothing, so a registration of it for a grant served only to
+     * a client that authenticates itself fails at boot rather than at its first request, whichever grant
+     * declares it.
+     *
+     * @param array<string, mixed> $definition
+     */
+    #[Test]
+    #[DataProvider('providePublicRegistrationsOfGrantsThatRequireClientAuthentication')]
+    public function aPublicClientIsRefusedAGrantThatRequiresClientAuthenticationAtBoot(array $definition, ServedGrantsInterface $grants): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('which requires client authentication, and authenticates with none, which proves nothing (RFC 6749 section 2.1)');
+
+        // When
+        $this->repository([
+            'public' => $definition,
+        ], grants: $grants);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, ServedGrantsInterface}>
+     */
+    public static function providePublicRegistrationsOfGrantsThatRequireClientAuthentication(): iterable
+    {
+        yield 'a grant a client uses for itself (RFC 6749 §4.4)' => [
+            [
+                'token_endpoint_auth_method' => 'none',
+                'grant_types' => ['client_credentials'],
+                'resources' => [Clients::CALENDAR],
+            ],
+            Grants::servedWithClientCredentials(),
+        ];
+        yield 'a grant that exchanges a token (RFC 8693 §2.1)' => [
+            [
+                'token_endpoint_auth_method' => 'none',
+                'grant_types' => ['urn:ietf:params:oauth:grant-type:token-exchange'],
+                'resources' => [Clients::CALENDAR],
+                'token_exchange' => [
+                    'subject_token_types' => ['urn:ietf:params:oauth:token-type:access_token'],
+                    'may_act_for_a_user' => true,
+                ],
+            ],
+            Grants::servedWithTokenExchange(),
+        ];
+        yield 'a grant that presents the assertion of a trusted issuer (RFC 7523 §2.1)' => [
+            [
+                'token_endpoint_auth_method' => 'none',
+                'grant_types' => ['urn:ietf:params:oauth:grant-type:jwt-bearer'],
+                'resources' => [Clients::CALENDAR],
+            ],
+            Grants::servedWithJwtBearer(),
         ];
     }
 

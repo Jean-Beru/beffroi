@@ -8,6 +8,8 @@ use Beffroi\Oidc\Application\Token\GrantNames;
 use Beffroi\Oidc\Application\Token\ServedGrants;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Beffroi\Oidc\Tests\Fixture\FakeClientActingGrant;
+use Beffroi\Oidc\Tests\Fixture\FakeClientAuthenticatingGrant;
+use Beffroi\Oidc\Tests\Fixture\FakeExchangingGrant;
 use Beffroi\Oidc\Tests\Fixture\FakeGrant;
 use Beffroi\Oidc\Tests\Fixture\FakeRefreshTokenIssuingGrant;
 use Beffroi\Oidc\Tests\Fixture\FakeRefreshTokenSpendingGrant;
@@ -110,6 +112,37 @@ final class ServedGrantsTest extends TestCase
     }
 
     /**
+     * RFC 6749 §2.1: which of the wired grants is served only to a client that authenticates itself is
+     * what they declare, a grant a client uses for itself and one that exchanges a token among them, and is
+     * what decides which registrations a public client is refused and which requests of one the token
+     * endpoint refuses.
+     */
+    #[Test]
+    public function whichGrantsRequireClientAuthenticationIsWhatTheyDeclare(): void
+    {
+        // Given
+        $served = new ServedGrants([
+            new FakeRefreshTokenIssuingGrant(Grants::authorizationCode()),
+            new FakeClientActingGrant(Grants::clientCredentials()),
+            new FakeExchangingGrant(Grants::tokenExchange()),
+            new FakeClientAuthenticatingGrant(Grants::jwtBearer()),
+        ]);
+
+        // When
+        $authenticating = $served->requiringClientAuthentication();
+
+        // Then
+        static::assertSame(
+            [
+                'client_credentials',
+                'urn:ietf:params:oauth:grant-type:token-exchange',
+                'urn:ietf:params:oauth:grant-type:jwt-bearer',
+            ],
+            GrantNames::of($authenticating),
+        );
+    }
+
+    /**
      * Every wired grant that declares a capability is listed, in the order they are wired: the list is what
      * they all declare and not what the first of them does.
      */
@@ -143,6 +176,7 @@ final class ServedGrantsTest extends TestCase
         static::assertSame([], $served->actingForTheClientItself());
         static::assertSame([], $served->sendingTheUserToTheClient());
         static::assertSame([], $served->askingTheUserOnAnotherDevice());
+        static::assertSame([], $served->requiringClientAuthentication());
     }
 
     /**
