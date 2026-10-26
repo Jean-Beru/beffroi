@@ -99,6 +99,11 @@ final class AuthorizationHandlerTest extends TestCase
 
     private User $alice;
 
+    /**
+     * The person BOB_HINT names, of the same tenant as Alice.
+     */
+    private User $bob;
+
     private Client $client;
 
     private Client $firstParty;
@@ -150,8 +155,10 @@ final class AuthorizationHandlerTest extends TestCase
         $this->credentials = new InMemoryCredentialRepository();
         $this->credentials->save(Fixtures::password($this->alice));
         $this->events = new RecordingEventDispatcher();
+        $this->bob = Fixtures::user($this->tenant, 'bob', 'bob-subject');
         $users = new InMemoryUserRepository();
         $users->save($this->alice);
+        $users->save($this->bob);
         $this->subjects = Subjects::bothKinds($users);
         $jws = new FakeJwsVerifier();
         $jws->knows($this->tenant, self::ALICE_HINT, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"oidc-demo"}');
@@ -724,25 +731,6 @@ final class AuthorizationHandlerTest extends TestCase
         $this->granted($decision);
     }
 
-    /**
-     * OIDC Core §8: what a "sub" means is decided by the kind its client registered, so the subject the core
-     * keeps names nobody to a client of pairwise subjects, and the user of the session is not the one hinted.
-     */
-    #[Test]
-    public function theSubjectTheCoreKeepsInTheHintOfAPairwiseClientRequiresALogin(): void
-    {
-        // Given
-        $client = Clients::pairwise($this->tenant);
-        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $client, new Scopes([Scope::openid()]), Fixtures::now()));
-        $handler = $this->handlerWith(hints: $this->hintOf($client, $this->alice->subject));
-
-        // When
-        $decision = $handler->begin(Requests::authorization($client, idTokenHint: self::PAIRWISE_HINT), $this->session(), $this->context);
-
-        // Then
-        $this->loginRequired($decision, LoginRequirement::DifferentUser);
-    }
-
     #[Test]
     public function itRequiresALoginWhenThereIsNoSessionForTheIdTokenHint(): void
     {
@@ -751,6 +739,90 @@ final class AuthorizationHandlerTest extends TestCase
 
         // Then
         $this->loginRequired($decision, LoginRequirement::NoSession);
+    }
+
+    /**
+     * OIDC Core §3.1.2.1 id_token_hint, §3.1.2.6 (issue #854): the person who signed in during the interaction is not
+     * the one the hint names, and the login page would ask whoever signs in next the same thing, so the client is
+     * answered login_required instead of the page again, whatever the browser held before.
+     *
+     * @param callable(self): ?AuthenticationSession $held
+     */
+    #[Test]
+    #[DataProvider('provideTheLoginPagesOfAHint')]
+    public function aLoginDuringTheInteractionAsAnotherPersonThanTheHintNamesIsAnsweredLoginRequired(callable $held, LoginRequirement $asked): void
+    {
+        // Given
+        $login = $this->loginRequired($this->handler->begin($this->request(idTokenHint: self::BOB_HINT), $held($this), $this->context), $asked);
+        $this->clock->sleep(30);
+
+        // When
+        try {
+            $this->handler->resume($login->interaction, $this->session($this->clock->now()), $this->context);
+            static::fail('The request should have been refused.');
+        } catch (LoginRequiredException $exception) {
+            // Then
+            static::assertTrue($exception->redirectable);
+            static::assertStringContainsString('during this interaction', $exception->errorDescription);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{callable(self): ?AuthenticationSession, LoginRequirement}>
+     */
+    public static function provideTheLoginPagesOfAHint(): iterable
+    {
+        yield 'no session' => [
+            static fn (self $test): ?AuthenticationSession => null,
+            LoginRequirement::NoSession,
+        ];
+        yield 'a session of another person' => [
+            static fn (self $test): AuthenticationSession => $test->session(),
+            LoginRequirement::DifferentUser,
+        ];
+    }
+
+    /**
+     * OIDC Core §3.1.2.6: the interaction answered login_required after a login as another person is over.
+     */
+    #[Test]
+    public function theInteractionAnsweredAfterALoginAsAnotherPersonIsOver(): void
+    {
+        // Given
+        $login = $this->loginRequired($this->handler->begin($this->request(idTokenHint: self::BOB_HINT), null, $this->context), LoginRequirement::NoSession);
+        $this->clock->sleep(30);
+
+        // When
+        try {
+            $this->handler->resume($login->interaction, $this->session($this->clock->now()), $this->context);
+        } catch (LoginRequiredException) {
+        }
+
+        // Then
+        static::assertTrue($this->savedInteraction()->isCompleted());
+    }
+
+    /**
+     * OIDC Core §3.1.2.1 id_token_hint: a login during the interaction as the person the hint names is the way out, and
+     * the code is issued for the session of that person.
+     */
+    #[Test]
+    public function aLoginDuringTheInteractionAsThePersonTheHintNamesGoesOn(): void
+    {
+        // Given
+        $this->consents->save(new Consent(Uuid::v7(), $this->bob, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
+        $login = $this->loginRequired(
+            $this->handler->begin($this->request(idTokenHint: self::BOB_HINT), $this->session(), $this->context),
+            LoginRequirement::DifferentUser,
+        );
+        $this->clock->sleep(30);
+        $bob = Fixtures::session($this->bob, $this->clock->now());
+
+        // When
+        $decision = $this->handler->resume($login->interaction, $bob, $this->context);
+
+        // Then
+        static::assertSame($bob, $this->granted($decision)->code->session);
     }
 
     /**
@@ -791,6 +863,54 @@ final class AuthorizationHandlerTest extends TestCase
         try {
             $this->handler->begin($this->request(idTokenHint: self::FORGED_HINT), $current, $this->context);
         } catch (InvalidRequestException) {
+        }
+
+        // Then
+        static::assertTrue($this->savedInteraction()->isCompleted());
+    }
+
+    /**
+     * OIDC Core §3.1.2.1 id_token_hint, §8 (issue #854): what a "sub" means is decided by the kind its client
+     * registered, so the subject the core keeps names nobody to a client of pairwise subjects, as the "sub" a client
+     * was given names nobody once it registers another kind. No login can meet such a hint, so it is answered
+     * login_required before any page, with or without a session.
+     *
+     * @param callable(self): ?AuthenticationSession $session
+     */
+    #[Test]
+    #[DataProvider('provideSessionsOrNone')]
+    public function theSubjectTheCoreKeepsInTheHintOfAPairwiseClientIsAnsweredLoginRequiredBeforeAnyPage(callable $session): void
+    {
+        // Given
+        $client = Clients::pairwise($this->tenant);
+        $handler = $this->handlerWith(hints: $this->hintOf($client, $this->alice->subject));
+
+        // When
+        try {
+            $handler->begin(Requests::authorization($client, idTokenHint: self::PAIRWISE_HINT), $session($this), $this->context);
+            static::fail('The request should have been refused.');
+        } catch (LoginRequiredException $exception) {
+            // Then
+            static::assertTrue($exception->redirectable);
+            static::assertStringContainsString('id_token_hint', $exception->errorDescription);
+        }
+    }
+
+    /**
+     * @param callable(self): ?AuthenticationSession $session
+     */
+    #[Test]
+    #[DataProvider('provideSessionsOrNone')]
+    public function theInteractionAnsweredForAHintThatNamesNobodyIsOver(callable $session): void
+    {
+        // Given
+        $client = Clients::pairwise($this->tenant);
+        $handler = $this->handlerWith(hints: $this->hintOf($client, $this->alice->subject));
+
+        // When
+        try {
+            $handler->begin(Requests::authorization($client, idTokenHint: self::PAIRWISE_HINT), $session($this), $this->context);
+        } catch (LoginRequiredException) {
         }
 
         // Then

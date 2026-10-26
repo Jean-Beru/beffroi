@@ -7,6 +7,7 @@ namespace Beffroi\Bundle\Tests\Unit\Saml;
 use Beffroi\Bundle\Http\StepUpOffer;
 use Beffroi\Bundle\Saml\UpstreamLoginRequirement;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
 use Beffroi\Core\Domain\Session\AuthenticationProofs;
@@ -58,8 +59,11 @@ final class UpstreamLoginRequirementTest extends TestCase
         $this->credentials = new InMemoryCredentialRepository();
         $hints = new FakeJwsVerifier();
         $hints->knows($this->tenant, self::BOB_HINT, '{"iss":"https://id.acme.example","sub":"bob-subject","aud":"oidc-demo"}');
+        // the person BOB_HINT names is one of the tenant: a hint that names nobody is refused before any login
+        $users = new InMemoryUserRepository();
+        $users->save(Fixtures::user($this->tenant, 'bob', 'bob-subject'));
         $this->requirement = new UpstreamLoginRequirement(
-            new AuthenticationRequirement(Logins::passwordAndPasskey(), $this->credentials, new IdTokenHintVerifier($hints), Subjects::ofAProvider()),
+            new AuthenticationRequirement(Logins::passwordAndPasskey(), $this->credentials, new IdTokenHintVerifier($hints), Subjects::ofAProvider($users)),
         );
     }
 

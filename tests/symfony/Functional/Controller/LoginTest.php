@@ -840,6 +840,35 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
+     * OIDC Core §3.1.2.1 id_token_hint, §3.1.2.6 (issue #854): the client names bob by the ID token it holds of him,
+     * and alice signs in on the login page of the interaction. The page is not shown again: the client is answered
+     * login_required where it asked to be answered.
+     */
+    #[Test]
+    public function aLoginAsAnotherPersonThanTheIdTokenHintNamesIsAnsweredLoginRequired(): void
+    {
+        // Given
+        self::signingKey();
+        self::userWithPassword('alice', self::PASSWORD);
+        $this->signIn(self::userWithPassword('bob', self::PASSWORD));
+        $this->signInClient('native-app', 'http://127.0.0.1/callback', null);
+        $hint = self::string(self::json($this->browser->getResponse())['id_token'] ?? null);
+        $this->browser->getCookieJar()->clear();
+        $interaction = $this->authorize([
+            'id_token_hint' => $hint,
+        ]);
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+
+        // When
+        $this->browser->request('GET', '/login', [
+            'interaction' => $interaction,
+        ]);
+
+        // Then
+        static::assertSame('login_required', self::redirectedQuery($this->browser->getResponse())['error'] ?? null);
+    }
+
+    /**
      * Architecture §5.2: the protocol plane sits outside of the firewall, no cookie is read there and no
      * session started, whatever the request.
      */
