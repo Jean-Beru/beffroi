@@ -43,7 +43,8 @@ COPY --link apps/op/frankenphp/conf.d/20-app.dev.ini $PHP_INI_DIR/app.conf.d/
 
 CMD [ "frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile", "--watch" ]
 
-# Production image: the whole monorepo is copied so that the path repositories resolve, then the application is installed.
+# Production image: the packages and the application are copied so that the path repositories resolve, then
+# the application is installed.
 FROM frankenphp_base AS frankenphp_prod
 
 ENV APP_ENV=prod
@@ -53,8 +54,10 @@ RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
 COPY --link apps/op/frankenphp/conf.d/20-app.prod.ini $PHP_INI_DIR/app.conf.d/
 
-# Build context is the monorepo root (see compose.yaml). The packages land in /src so that the
-# path repositories of composer.json (../../src/<package>, relative to /app) resolve unchanged.
+# Build context is the monorepo root (see compose.yaml), which Dockerfile.dockerignore narrows to the
+# packages and the application without what a working copy holds beside the repository: its .env.local,
+# var/ and vendor/ never reach an image. The packages land in /src so that the path repositories of
+# composer.json (../../src/<package>, relative to /app) resolve unchanged.
 COPY --link src/ /src/
 COPY --link apps/op/ /app/
 

@@ -1,0 +1,56 @@
+# The ignore file of apps/op/Dockerfile. The context of that build is the root of the monorepo (compose.yaml),
+# so the paths below are read from that root, and BuildKit reads this file, named after the Dockerfile and
+# beside it, in place of a .dockerignore at that root.
+
+# Nothing but what the Dockerfile copies: the packages, where the path repositories of the application
+# resolve, and the application.
+*
+!src/
+!apps/op/
+
+# What a working copy holds beside the repository, the paths the .gitignore of the application names: the
+# environment "castor provision" writes, with the DSN of the KMS (the key itself under the sodium backend, a
+# token under Vault), the secrets of the clients and the password of the development user, and its compiled
+# form; the key that decrypts the secrets of production; what Composer, the asset mapper and the suite of the
+# application install, build or leave behind. The image compiles its environment from the files the
+# repository holds, and installs and builds the rest itself.
+apps/op/.env.local
+apps/op/.env.local.php
+apps/op/.env.*.local
+apps/op/config/secrets/prod/prod.decrypt.private.php
+apps/op/public/bundles/
+apps/op/var/
+apps/op/vendor/
+apps/op/public/assets/
+apps/op/assets/vendor/
+apps/op/phpunit.xml
+apps/op/.phpunit.cache/
+
+# What the image does not serve: the suite of the application and its environment, and what a repository,
+# an editor or a system leaves in a tree.
+apps/op/.env.test
+apps/op/tests/
+apps/op/.editorconfig
+**/*.log
+**/*.md
+**/*.php~
+**/*.dist.php
+**/*.dist
+**/*.cache
+**/._*
+**/*.dockerignore
+**/.DS_Store
+**/.git/
+**/.gitattributes
+**/.gitignore
+**/.gitmodules
+**/compose.*.yaml
+**/compose.*.yml
+**/compose.yaml
+**/compose.yml
+**/docker-compose.*.yaml
+**/docker-compose.*.yml
+**/docker-compose.yaml
+**/docker-compose.yml
+**/Dockerfile
+**/Thumbs.db
