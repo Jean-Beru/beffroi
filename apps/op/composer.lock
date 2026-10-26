@@ -201,9 +201,10 @@
             "dist": {
                 "type": "path",
                 "url": "../../src/core",
-                "reference": "7268ae416b09a5fb0b60e1fc660314007a0a5dab"
+                "reference": "4570030c8ab4a23a95d25acfba9fa288a501ab02"
             },
             "require": {
+                "ext-intl": "*",
                 "paragonie/constant_time_encoding": "^3.1",
                 "php": ">=8.4",
                 "psr/clock": "^1.0",
@@ -3465,18 +3466,19 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/aws-key-management.git",
-                "reference": "85eb6eade2ca37f3e0aa58aaad2e79c47c999cac"
+                "reference": "f374c4b5087da393d7b4ac9528db0829924e13a3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/aws-key-management/zipball/85eb6eade2ca37f3e0aa58aaad2e79c47c999cac",
-                "reference": "85eb6eade2ca37f3e0aa58aaad2e79c47c999cac",
+                "url": "https://api.github.com/repos/symfony/aws-key-management/zipball/f374c4b5087da393d7b4ac9528db0829924e13a3",
+                "reference": "f374c4b5087da393d7b4ac9528db0829924e13a3",
                 "shasum": ""
             },
             "require": {
-                "async-aws/core": "^1.7",
+                "async-aws/core": "^1.15",
                 "async-aws/kms": "^1.0",
                 "php": ">=8.4.1",
+                "symfony/http-client": "^7.4|^8.0",
                 "symfony/key-management": "^8.2"
             },
             "default-branch": true,
@@ -3536,7 +3538,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-09-28T08:23:12+00:00"
+            "time": "2026-10-25T14:17:14+00:00"
         },
         {
             "name": "symfony/cache",
@@ -4252,12 +4254,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/doctrine-dbal-key-management.git",
-                "reference": "4ba5c8c2583853bea24d49531e4c15227477fb8a"
+                "reference": "e8e9a3b4e5a57fb5dc5784ec586f1d04a8315485"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/doctrine-dbal-key-management/zipball/4ba5c8c2583853bea24d49531e4c15227477fb8a",
-                "reference": "4ba5c8c2583853bea24d49531e4c15227477fb8a",
+                "url": "https://api.github.com/repos/symfony/doctrine-dbal-key-management/zipball/e8e9a3b4e5a57fb5dc5784ec586f1d04a8315485",
+                "reference": "e8e9a3b4e5a57fb5dc5784ec586f1d04a8315485",
                 "shasum": ""
             },
             "require": {
@@ -4268,6 +4270,7 @@
                 "symfony/uid": "^7.4|^8.0"
             },
             "require-dev": {
+                "symfony/clock": "^7.4|^8.0",
                 "symfony/dependency-injection": "^7.4|^8.0"
             },
             "default-branch": true,
@@ -4327,7 +4330,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-10T15:08:25+00:00"
+            "time": "2026-10-26T07:14:11+00:00"
         },
         {
             "name": "symfony/doctrine-messenger",
@@ -4411,17 +4414,18 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/doctrine-orm-key-management.git",
-                "reference": "b17c030ffa9a6a777ecccad659d8bce444cc5eeb"
+                "reference": "e3653d7f11bec996bb6c62b9a26a7c1882af9e6b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/doctrine-orm-key-management/zipball/b17c030ffa9a6a777ecccad659d8bce444cc5eeb",
-                "reference": "b17c030ffa9a6a777ecccad659d8bce444cc5eeb",
+                "url": "https://api.github.com/repos/symfony/doctrine-orm-key-management/zipball/e3653d7f11bec996bb6c62b9a26a7c1882af9e6b",
+                "reference": "e3653d7f11bec996bb6c62b9a26a7c1882af9e6b",
                 "shasum": ""
             },
             "require": {
                 "doctrine/orm": "^3.4",
                 "php": ">=8.4.1",
+                "psr/cache": "^1.0|^2.0|^3.0",
                 "psr/container": "^1.1|^2.0",
                 "symfony/doctrine-bridge": "^7.4.10|^8.0.10",
                 "symfony/doctrine-dbal-key-management": "^8.2",
@@ -4484,7 +4488,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-09T05:58:54+00:00"
+            "time": "2026-10-26T06:59:49+00:00"
         },
         {
             "name": "symfony/dotenv",
@@ -5301,12 +5305,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/hashicorp-vault-key-management.git",
-                "reference": "e66a418837f12b927c983d458ba3f2d913800dd4"
+                "reference": "6926c35ca4aba06c6a220b487ebb251dd0d71ff2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/hashicorp-vault-key-management/zipball/e66a418837f12b927c983d458ba3f2d913800dd4",
-                "reference": "e66a418837f12b927c983d458ba3f2d913800dd4",
+                "url": "https://api.github.com/repos/symfony/hashicorp-vault-key-management/zipball/6926c35ca4aba06c6a220b487ebb251dd0d71ff2",
+                "reference": "6926c35ca4aba06c6a220b487ebb251dd0d71ff2",
                 "shasum": ""
             },
             "require": {
@@ -5372,7 +5376,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-09-22T10:29:43+00:00"
+            "time": "2026-10-26T06:59:49+00:00"
         },
         {
             "name": "symfony/http-client",
@@ -5853,21 +5857,22 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/key-management.git",
-                "reference": "3ed1b3dea011f94e4ae8b58068ba1d1c42dd438f"
+                "reference": "587b1bfd16c6a3ebff5094ab23cfaa47053e691c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/key-management/zipball/3ed1b3dea011f94e4ae8b58068ba1d1c42dd438f",
-                "reference": "3ed1b3dea011f94e4ae8b58068ba1d1c42dd438f",
+                "url": "https://api.github.com/repos/symfony/key-management/zipball/587b1bfd16c6a3ebff5094ab23cfaa47053e691c",
+                "reference": "587b1bfd16c6a3ebff5094ab23cfaa47053e691c",
                 "shasum": ""
             },
             "require": {
                 "php": ">=8.4.1",
+                "symfony/polyfill-intl-idn": "^1.18",
                 "symfony/polyfill-mbstring": "^1.0"
             },
             "conflict": {
                 "symfony/config": "<8.2",
-                "symfony/console": "<7.4",
+                "symfony/console": "<8.2",
                 "symfony/dependency-injection": "<8.2",
                 "symfony/serializer": "<7.4",
                 "symfony/service-contracts": "<2.5",
@@ -5876,8 +5881,9 @@
             "require-dev": {
                 "psr/container": "^1.1|^2.0",
                 "psr/log": "^1|^2|^3",
+                "symfony/clock": "^7.4|^8.0",
                 "symfony/config": "^8.2",
-                "symfony/console": "^7.4|^8.0",
+                "symfony/console": "^8.2",
                 "symfony/dependency-injection": "^8.2",
                 "symfony/filesystem": "^7.4|^8.0",
                 "symfony/http-kernel": "^7.4|^8.0",
@@ -5915,7 +5921,7 @@
                     "homepage": "https://symfony.com/contributors"
                 }
             ],
-            "description": "Abstracts Key Management Systems (AWS KMS, Azure Key Vault, Google Cloud KMS, HashiCorp Vault Transit, KMIP, ...) behind a single interface",
+            "description": "Abstracts Key Management Systems (AWS KMS, Azure Key Vault, Google Cloud KMS, HashiCorp Vault Transit, Scaleway Key Manager, KMIP, ...) behind a single interface",
             "homepage": "https://symfony.com",
             "keywords": [
                 "encryption",
@@ -5945,7 +5951,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-10T15:40:54+00:00"
+            "time": "2026-10-26T07:14:11+00:00"
         },
         {
             "name": "symfony/messenger",
@@ -6612,6 +6618,93 @@
                 }
             ],
             "time": "2026-09-25T15:46:47+00:00"
+        },
+        {
+            "name": "symfony/polyfill-intl-idn",
+            "version": "v1.43.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/polyfill-intl-idn.git",
+                "reference": "533d68cf99c8f8ee2e8893c59ed59192e92cfd74"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/polyfill-intl-idn/zipball/533d68cf99c8f8ee2e8893c59ed59192e92cfd74",
+                "reference": "533d68cf99c8f8ee2e8893c59ed59192e92cfd74",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.2",
+                "symfony/polyfill-intl-normalizer": "^1.10"
+            },
+            "suggest": {
+                "ext-intl": "For best performance"
+            },
+            "type": "library",
+            "extra": {
+                "thanks": {
+                    "url": "https://github.com/symfony/polyfill",
+                    "name": "symfony/polyfill"
+                }
+            },
+            "autoload": {
+                "files": [
+                    "bootstrap.php"
+                ],
+                "psr-4": {
+                    "Symfony\\Polyfill\\Intl\\Idn\\": ""
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Laurent Bassin",
+                    "email": "laurent@bassin.info"
+                },
+                {
+                    "name": "Trevor Rowbotham",
+                    "email": "trevor.rowbotham@pm.me"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Symfony polyfill for intl's idn_to_ascii and idn_to_utf8 functions",
+            "homepage": "https://symfony.com",
+            "keywords": [
+                "compatibility",
+                "idn",
+                "intl",
+                "polyfill",
+                "portable",
+                "shim"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/polyfill-intl-idn/tree/v1.43.0"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-09-23T14:40:04+00:00"
         },
         {
             "name": "symfony/polyfill-intl-normalizer",
