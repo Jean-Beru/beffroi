@@ -11,6 +11,7 @@ use Beffroi\Bundle\Messenger\NotificationRetryPolicy;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Stamp\RedeliveryStamp;
 
@@ -35,6 +36,70 @@ final class NotificationRetryPolicyTest extends TestCase
 
         // Then
         static::assertSame([2000, 6000, 18000, 54000, 60000, 60000], $waits);
+    }
+
+    /**
+     * Issue #915: the four numbers of the schedule are those of "beffroi.back_channel_logout", which an environment
+     * variable may carry, so the policy holds each to the floor the tree holds its node to when it is built.
+     */
+    #[Test]
+    #[DataProvider('provideNumbersBelowTheirFloor')]
+    public function aNumberOfTheScheduleBelowTheFloorOfItsNodeIsRefused(int $retries, int $delay, int $multiplier, int $maxDelay, string $message): void
+    {
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIs($message);
+
+        // When
+        new NotificationRetryPolicy($retries, $delay, $multiplier, $maxDelay);
+    }
+
+    /**
+     * @return iterable<string, array{int, int, int, int, string}>
+     */
+    public static function provideNumbersBelowTheirFloor(): iterable
+    {
+        yield 'fewer than no retry' => [
+            -1,
+            2,
+            3,
+            60,
+            'The "beffroi" configuration key "back_channel_logout.retries" is a number of retries of at least 0, -1 given.',
+        ];
+        yield 'a first wait of nothing' => [
+            6,
+            0,
+            3,
+            60,
+            'The "beffroi" configuration key "back_channel_logout.retry_delay" is a number of seconds of at least 1, 0 given.',
+        ];
+        yield 'waits multiplied by nothing' => [
+            6,
+            2,
+            0,
+            60,
+            'The "beffroi" configuration key "back_channel_logout.retry_multiplier" is a number of times of at least 1, 0 given.',
+        ];
+        yield 'a ceiling of nothing' => [
+            6,
+            2,
+            3,
+            0,
+            'The "beffroi" configuration key "back_channel_logout.retry_max_delay" is a number of seconds of at least 1, 0 given.',
+        ];
+    }
+
+    /**
+     * A policy that never comes back is one the tree accepts: a deployment that gives up on the first send.
+     */
+    #[Test]
+    public function aPolicyOfNoRetryIsAPolicy(): void
+    {
+        // When
+        $policy = new NotificationRetryPolicy(0, 1, 1, 1);
+
+        // Then
+        static::assertSame(1, $policy->attempts());
     }
 
     /**

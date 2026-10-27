@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Unit\MessageHandler;
 
+use Beffroi\Bundle\Http\Timeout;
 use Beffroi\Bundle\Http\ClientNotificationSender;
 use Beffroi\Bundle\Message\SendClientNotification;
 use Beffroi\Bundle\MessageHandler\SendClientNotificationHandler;
@@ -30,7 +31,7 @@ final class SendClientNotificationHandlerTest extends TestCase
         // Given
         $handler = new SendClientNotificationHandler(new ClientNotificationSender(new MockHttpClient(new MockResponse('', [
             'http_code' => 503,
-        ])), 3.0));
+        ])), new Timeout(3.0)));
 
         // Then
         $this->expectException(NotificationNotDeliveredException::class);

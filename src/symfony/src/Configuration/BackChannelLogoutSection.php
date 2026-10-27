@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Configuration;
 
 use Beffroi\Bundle\Http\LogoutTokenSender;
+use Beffroi\Bundle\Http\Timeout;
 use Beffroi\Bundle\Messenger\NotificationRetryPolicy;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
@@ -48,7 +49,7 @@ final readonly class BackChannelLogoutSection extends ConfigurationSection
             ->floatNode('timeout')
             ->info('Seconds one attempt is given, connection included. A relying party that hangs must not hold a worker; five seconds is long for a request that reads nothing back, and a client that needs longer is a client that is down, which the retries cover.')
             ->defaultValue(self::DEFAULT_BACK_CHANNEL_LOGOUT_TIMEOUT)
-            ->min(0.1)
+            ->min(Timeout::MINIMUM)
             ->end()
             ->integerNode('retries')
             ->info('How many times a send that did not reach its client comes back. A relying party that is restarting answers for a minute and then works; beyond the schedule below, it is down, and the provider says so rather than trying for ever.')
@@ -77,7 +78,7 @@ final readonly class BackChannelLogoutSection extends ConfigurationSection
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
     {
         $backChannelLogout = $this->own($config);
-        $services->get(LogoutTokenSender::class)->arg('$timeout', self::float($backChannelLogout, 'timeout'));
+        $services->get(LogoutTokenSender::class)->arg('$timeout', self::timeout($backChannelLogout, 'timeout', 'back_channel_logout.timeout'));
         $services->get(NotificationRetryPolicy::class)->arg('$retries', self::integer($backChannelLogout, 'retries'))->arg('$delay', self::integer(
             $backChannelLogout,
             'retry_delay',

@@ -69,14 +69,16 @@ final readonly class TenantSection extends ConfigurationSection
     }
 
     /**
-     * The factory of the tenant at runtime, from the claims and the classes the configuration or the environment
-     * names, held to the rules of the tree either way (decision 0030); every other argument is the one of the factory.
+     * The factory of the tenant at runtime, from the slug, the claims and the classes the configuration or the
+     * environment names, held to the rules of the tree either way (decision 0030); every other argument is the one of
+     * the factory. The slug is held here, where it becomes a tenant: the declarations that name it, the clients, the
+     * service providers, belong to a tenant this factory makes.
      *
      * @param mixed $authenticationClasses the classes, as the configuration or the environment carries them
      * @param array<array-key, mixed> $look
      * @param mixed $selfServedClaims the claims, as the configuration or the environment carries them
      *
-     * @throws InvalidConfigurationException when a list is one the tree refuses
+     * @throws InvalidConfigurationException when the slug is empty, or a list is one the tree refuses
      */
     public static function tenantFactory(
         string $issuer,
@@ -89,6 +91,10 @@ final readonly class TenantSection extends ConfigurationSection
         mixed $selfServedClaims = [],
         ?WiredClaims $claims = null,
     ): TenantFactory {
+        if ($slug === '') {
+            throw new InvalidConfigurationException('The "beffroi" configuration key "tenant.slug" is the stable name of the tenant, and it is empty.');
+        }
+
         return new TenantFactory(
             $issuer,
             $slug,

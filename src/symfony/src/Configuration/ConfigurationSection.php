@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Configuration;
 
+use Beffroi\Bundle\Http\ByteLimit;
+use Beffroi\Bundle\Http\Timeout;
 use Beffroi\Core\Domain\Listing\RetentionWindow;
 use DateInterval;
 use function is_array;
@@ -90,51 +92,55 @@ abstract readonly class ConfigurationSection implements ConfigurationSectionInte
     }
 
     /**
-     * @param array<array-key, mixed> $section
-     *
-     * @return float|string a number, or the environment placeholder the container resolves into one
-     */
-    protected static function float(array $section, string $key): float|string
-    {
-        $value = $section[$key] ?? null;
-        if (! is_float($value) && ! is_int($value) && ! is_string($value)) {
-            throw new InvalidConfigurationException(sprintf('The "beffroi" configuration key "%s" must be a number.', $key));
-        }
-
-        return is_int($value) ? (float) $value : $value;
-    }
-
-    /**
-     * A DateInterval built by the container from a number of seconds.
-     *
-     * @param array<array-key, mixed> $section
-     */
-    protected static function seconds(array $section, string $key): object
-    {
-        $value = $section[$key] ?? null;
-        if (! is_int($value) && ! is_string($value)) {
-            throw new InvalidConfigurationException(sprintf('The "beffroi" configuration key "%s" must be a number of seconds.', $key));
-        }
-
-        return inline_service(DateInterval::class)->args(['PT' . $value . 'S']);
-    }
-
-    /**
-     * A DateInterval built by the container from a number of seconds the tree holds to a second at least and,
-     * where it names one, to a maximum, held to the same bounds when it is built: an environment placeholder
-     * is a number only then (BoundedLifetime).
+     * A DateInterval built by the container from a number of seconds the tree holds to a floor, a second unless the
+     * node lets it be none, and, where it names one, to a maximum, held to the same bounds when it is built: an
+     * environment placeholder is a number only then (BoundedNumber).
      *
      * @param array<array-key, mixed> $section
      * @param string|null $named what the refusal calls the node, its key unless the key alone names several
      */
-    protected static function bounded(array $section, string $key, ?int $maximum = null, ?string $named = null): object
+    protected static function bounded(array $section, string $key, ?int $maximum = null, ?string $named = null, int $minimum = 1): object
     {
         $value = $section[$key] ?? null;
         if (! is_int($value) && ! is_string($value)) {
             throw new InvalidConfigurationException(sprintf('The "beffroi" configuration key "%s" must be a number of seconds.', $named ?? $key));
         }
 
-        return inline_service(DateInterval::class)->factory(BoundedLifetime::interval(...))->args([$value, $named ?? $key, $maximum]);
+        return inline_service(DateInterval::class)->factory(BoundedNumber::interval(...))->args([$value, $named ?? $key, $maximum, $minimum]);
+    }
+
+    /**
+     * A Timeout built by the container from a number of seconds the tree holds to Timeout::MINIMUM, held to it when it
+     * is built (BoundedNumber).
+     *
+     * @param array<array-key, mixed> $section
+     * @param string $named what the refusal calls the node, every section naming its timeout alike
+     */
+    protected static function timeout(array $section, string $key, string $named): object
+    {
+        $value = $section[$key] ?? null;
+        if (! is_float($value) && ! is_int($value) && ! is_string($value)) {
+            throw new InvalidConfigurationException(sprintf('The "beffroi" configuration key "%s" must be a number of seconds.', $named));
+        }
+
+        return inline_service(Timeout::class)->factory(BoundedNumber::timeout(...))->args([is_int($value) ? (float) $value : $value, $named]);
+    }
+
+    /**
+     * A ByteLimit built by the container from a number of bytes the tree holds to one at least, held to it when it is
+     * built (BoundedNumber).
+     *
+     * @param array<array-key, mixed> $section
+     * @param string $named what the refusal calls the node, every section naming its limit alike
+     */
+    protected static function bytes(array $section, string $key, string $named): object
+    {
+        $value = $section[$key] ?? null;
+        if (! is_int($value) && ! is_string($value)) {
+            throw new InvalidConfigurationException(sprintf('The "beffroi" configuration key "%s" must be a number of bytes.', $named));
+        }
+
+        return inline_service(ByteLimit::class)->factory(BoundedNumber::bytes(...))->args([$value, $named]);
     }
 
     /**

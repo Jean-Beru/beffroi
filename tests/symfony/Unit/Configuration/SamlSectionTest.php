@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Tests\Unit\Configuration;
 
 use Beffroi\Bundle\Configuration\SamlSection;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits;
 use Beffroi\Saml\Port\ProfileClaimsInterface;
 use Beffroi\Saml\Port\ServedClaimsInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -63,5 +64,30 @@ final class SamlSectionTest extends TestCase
             'https://op.test',
             null,
         );
+    }
+
+    /**
+     * Spec/saml.md S-64, decision 0030: the algorithm of the key of an upstream identity provider is wired while the
+     * service provider of the tenant is on, whatever the list declares while it is off, a role a value of the
+     * environment may turn off once the container runs.
+     */
+    #[Test]
+    public function noUpstreamIdentityProviderHasTheAlgorithmOfAKeyWhileTheServiceProviderIsOff(): void
+    {
+        // When
+        $algorithms = SamlSection::encryptionAlgorithms(
+            [
+                'https://idp.acme.example/saml' => [
+                    'metadata' => 'https://idp.acme.example/saml/metadata',
+                    'domains' => ['acme.example'],
+                    'email_attribute' => 'mail',
+                ],
+            ],
+            false,
+            new RsaKeyBits(),
+        );
+
+        // Then
+        static::assertSame([], $algorithms->all());
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Client;
 
+use Beffroi\Bundle\Http\ByteLimit;
+use Beffroi\Bundle\Http\Timeout;
 use function array_is_list;
 use Beffroi\Core\Exception\ExceptionTrail;
 use Beffroi\Oidc\Domain\Client\ClientUri;
@@ -14,7 +16,6 @@ use function is_string;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use function sprintf;
-use function strlen;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Throwable;
 
@@ -34,8 +35,8 @@ final readonly class SectorIdentifierDocumentFetcher implements SectorIdentifier
 {
     public function __construct(
         private HttpClientInterface $http,
-        private float $timeout,
-        private int $maximumSize,
+        private Timeout $timeout,
+        private ByteLimit $maximumSize,
     ) {
     }
 
@@ -78,8 +79,7 @@ final readonly class SectorIdentifierDocumentFetcher implements SectorIdentifier
                     'Accept' => 'application/json',
                 ],
                 'max_redirects' => 0,
-                'timeout' => $this->timeout,
-                'max_duration' => $this->timeout,
+                ...$this->timeout->options(),
             ]);
             $status = $response->getStatusCode();
             if ($status >= 300 && $status < 400) {
@@ -94,11 +94,11 @@ final readonly class SectorIdentifierDocumentFetcher implements SectorIdentifier
             $body = '';
             foreach ($this->http->stream($response) as $chunk) {
                 $body .= $chunk->getContent();
-                if (strlen($body) > $this->maximumSize) {
+                if ($this->maximumSize->isExceededBy($body)) {
                     throw new SectorIdentifierUnavailableException(sprintf(
                         '%s answers more than %d bytes, which no list of redirection URIs needs.',
                         $sectorIdentifierUri->value,
-                        $this->maximumSize,
+                        $this->maximumSize->bytes,
                     ));
                 }
             }

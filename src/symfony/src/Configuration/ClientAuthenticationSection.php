@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Configuration;
 
 use Beffroi\Bundle\Client\ClientJwksFetcher;
+use Beffroi\Bundle\Http\Timeout;
 use Beffroi\Oidc\Application\Client\ClientAssertionValidator;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
@@ -77,7 +78,7 @@ final readonly class ClientAuthenticationSection extends ConfigurationSection
             ->floatNode('jwks_timeout')
             ->info('Seconds one read of a jwks_uri is given, connection included. A client that hangs must not hold a worker: an endpoint authenticating it is waiting.')
             ->defaultValue(self::DEFAULT_JWKS_TIMEOUT)
-            ->min(0.1)
+            ->min(Timeout::MINIMUM)
             ->end()
             ->integerNode('jwks_max_size')
             ->info('Bytes a jwks_uri may answer before the read stops; a JWK Set of a client holds a handful of public keys.')
@@ -101,15 +102,57 @@ final readonly class ClientAuthenticationSection extends ConfigurationSection
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
     {
         $clientAuthentication = $this->own($config);
-        $services->get(ClientAssertionValidator::class)->arg('$maximumLifetime', self::seconds(
+        $services->get(ClientAssertionValidator::class)->arg('$maximumLifetime', self::assertionLifetime($clientAuthentication))->arg(
+            '$leeway',
+            self::assertionLeeway($clientAuthentication),
+        );
+        $services->get('beffroi.oidc.client_keys.provider')->arg('$cooldown', self::refetchCooldown($clientAuthentication));
+        $services->get(ClientJwksFetcher::class)->arg('$timeout', self::timeout(
             $clientAuthentication,
-            'assertion_max_lifetime',
-        ))->arg('$leeway', self::seconds($clientAuthentication, 'assertion_leeway'));
-        $services->get('beffroi.oidc.client_keys.provider')->arg('$cooldown', self::seconds($clientAuthentication, 'jwks_refetch_cooldown'));
-        $services->get(ClientJwksFetcher::class)->arg('$timeout', self::float($clientAuthentication, 'jwks_timeout'))->arg('$maximumSize', self::integer(
-            $clientAuthentication,
-            'jwks_max_size',
-        ));
-        $services->get('beffroi.oidc.client_keys.cache')->arg('$lifetime', self::integer($clientAuthentication, 'jwks_ttl'));
+            'jwks_timeout',
+            'client_authentication.jwks_timeout',
+        ))->arg('$maximumSize', self::bytes($clientAuthentication, 'jwks_max_size', 'client_authentication.jwks_max_size'));
+        $services->get('beffroi.oidc.client_keys.cache')->arg('$lifetime', self::keptFor($clientAuthentication));
+    }
+
+    /**
+     * How far ahead the "exp" of an assertion may be, which the assertions of a client and those of a trusted issuer
+     * are both held to (TrustedIssuersSection), as the container builds it from this section.
+     *
+     * @param array<array-key, mixed> $clientAuthentication
+     */
+    public static function assertionLifetime(array $clientAuthentication): object
+    {
+        return self::bounded($clientAuthentication, 'assertion_max_lifetime', named: 'client_authentication.assertion_max_lifetime');
+    }
+
+    /**
+     * What is allowed of the clock of whoever signs an assertion, a client or a trusted issuer.
+     *
+     * @param array<array-key, mixed> $clientAuthentication
+     */
+    public static function assertionLeeway(array $clientAuthentication): object
+    {
+        return self::bounded($clientAuthentication, 'assertion_leeway', named: 'client_authentication.assertion_leeway', minimum: 0);
+    }
+
+    /**
+     * How often an unknown "kid" may cost a read of a published set, a client's or a trusted issuer's.
+     *
+     * @param array<array-key, mixed> $clientAuthentication
+     */
+    public static function refetchCooldown(array $clientAuthentication): object
+    {
+        return self::bounded($clientAuthentication, 'jwks_refetch_cooldown', named: 'client_authentication.jwks_refetch_cooldown', minimum: 0);
+    }
+
+    /**
+     * How long the keys read back from a published set are kept, a client's or a trusted issuer's.
+     *
+     * @param array<array-key, mixed> $clientAuthentication
+     */
+    public static function keptFor(array $clientAuthentication): object
+    {
+        return self::bounded($clientAuthentication, 'jwks_ttl', named: 'client_authentication.jwks_ttl');
     }
 }

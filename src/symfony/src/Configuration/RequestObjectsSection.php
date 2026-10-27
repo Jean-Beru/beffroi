@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Configuration;
 
 use Beffroi\Bundle\Client\RequestObjectFetcher;
+use Beffroi\Bundle\Http\Timeout;
 use Beffroi\Oidc\Application\Authorization\RequestObjectValidator;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
@@ -61,7 +62,7 @@ final readonly class RequestObjectsSection extends ConfigurationSection
             ->floatNode('timeout')
             ->info('Seconds one read of a request_uri is given, connection included. The browser of a user is waiting on it; no redirect is followed and only a URL the client registered is ever read.')
             ->defaultValue(self::DEFAULT_REQUEST_OBJECT_TIMEOUT)
-            ->min(0.1)
+            ->min(Timeout::MINIMUM)
             ->end()
             ->integerNode('max_size')
             ->info('Bytes a request_uri may answer before the read stops; a request object carries the parameters of one request.')
@@ -75,13 +76,15 @@ final readonly class RequestObjectsSection extends ConfigurationSection
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
     {
         $requestObjects = $this->own($config);
-        $services->get(RequestObjectValidator::class)->arg('$maximumLifetime', self::seconds($requestObjects, 'max_lifetime'))->arg('$leeway', self::seconds(
+        $services->get(RequestObjectValidator::class)->arg('$maximumLifetime', self::bounded(
             $requestObjects,
-            'leeway',
-        ));
-        $services->get(RequestObjectFetcher::class)->arg('$timeout', self::float($requestObjects, 'timeout'))->arg('$maximumSize', self::integer(
+            'max_lifetime',
+            named: 'request_objects.max_lifetime',
+        ))->arg('$leeway', self::bounded($requestObjects, 'leeway', named: 'request_objects.leeway', minimum: 0));
+        $services->get(RequestObjectFetcher::class)->arg('$timeout', self::timeout(
             $requestObjects,
-            'max_size',
-        ));
+            'timeout',
+            'request_objects.timeout',
+        ))->arg('$maximumSize', self::bytes($requestObjects, 'max_size', 'request_objects.max_size'));
     }
 }

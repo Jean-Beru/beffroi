@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Client;
 
+use DateInterval;
 use DateTimeImmutable;
 use function hash;
 use Beffroi\Oidc\Domain\Client\CachedClientJwks;
@@ -29,7 +30,7 @@ final readonly class ClientJwksCache implements ClientJwksCacheInterface
 {
     public function __construct(
         private CacheItemPoolInterface $cache,
-        private int $lifetime,
+        private DateInterval $lifetime,
     ) {
     }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Unit\Client;
 
+use DateInterval;
 use Beffroi\Bundle\Client\ClientJwksCache;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Domain\Client\CachedClientJwks;
@@ -29,7 +30,7 @@ final class ClientJwksCacheTest extends TestCase
     protected function setUp(): void
     {
         $this->pool = new ArrayAdapter();
-        $this->cache = new ClientJwksCache($this->pool, 3600);
+        $this->cache = new ClientJwksCache($this->pool, new DateInterval('PT3600S'));
     }
 
     #[Test]

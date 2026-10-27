@@ -22,7 +22,9 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
  * Only a compiler pass tells a value from an environment variable, which only the running deployment knows: an entity
  * ID that holds one is left to RouterServiceProviderEndpoints, which applies both rules at its first use, and so is the
  * second rule when the issuer holds one. A deployment that names none goes by the URL of its metadata, which is a URI
- * and is not the identity provider's.
+ * and is not the identity provider's. The locator is wired in every image, whether the service provider is on or not,
+ * the role being one a value of the environment may turn on (decision 0030), so an entity ID written is held to both
+ * rules either way.
  */
 final class ServiceProviderEntityIdPass implements CompilerPassInterface
 {
@@ -36,9 +38,6 @@ final class ServiceProviderEntityIdPass implements CompilerPassInterface
      */
     public function process(ContainerBuilder $container): void
     {
-        if (! $container->hasDefinition(RouterServiceProviderEndpoints::class)) {
-            return;
-        }
         $entityId = $container->getDefinition(RouterServiceProviderEndpoints::class)->getArgument('$entityId');
         if (! is_string($entityId) || self::holdsAnEnvironmentVariable($container, $entityId)) {
             return;

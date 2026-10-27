@@ -1,0 +1,24 @@
+# A deployment that switches the roles of its tenant by environment (decision 0030, issue #915): the SAML identity
+# provider and the SAML service provider by a flag each, the entity ID of the service provider by a variable that is
+# none when empty, and web push by its subject, none when empty too, "default::" making an empty variable no value at
+# all. A test names the values before it boots this kernel (RolesFromTheEnvironmentTest), and left alone each variable
+# carries what the tenant of config_test.yml plays: an identity provider, no service provider, web push.
+parameters:
+    env(BEFFROI_TEST_SAML_IDENTITY_PROVIDER): 'true'
+    env(BEFFROI_TEST_SAML_SERVICE_PROVIDER): 'false'
+
+beffroi:
+    saml:
+        identity_provider:
+            enabled: '%env(bool:BEFFROI_TEST_SAML_IDENTITY_PROVIDER)%'
+        service_provider:
+            enabled: '%env(bool:BEFFROI_TEST_SAML_SERVICE_PROVIDER)%'
+            entity_id: '%env(default::BEFFROI_TEST_SAML_SERVICE_PROVIDER_ENTITY_ID)%'
+    web_push:
+        subject: '%env(default::BEFFROI_TEST_WEB_PUSH_SUBJECT)%'
+
+services:
+    # Reachable from the tests: the algorithms of the keys the tenant hands out, which web push brings while it is on.
+    test.beffroi.environment_roles.application_server_algorithms:
+        alias: Beffroi\Core\Port\ApplicationServerAlgorithmsInterface
+        public: true

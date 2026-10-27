@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Unit\Push;
 
+use Beffroi\Bundle\Http\Timeout;
 use Beffroi\Bundle\Push\WebPushSender;
 use Beffroi\Core\Port\ApplicationServerKeyProviderInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -27,6 +28,6 @@ final class WebPushSenderTest extends TestCase
         $this->expectExceptionMessageIs('The "beffroi" configuration key "web_push.subject" names the "mailto:" or "https:" URI a push service can reach the operator at (RFC 8292 section 2.1), and it is empty.');
 
         // When
-        new WebPushSender(static::createStub(ApplicationServerKeyProviderInterface::class), new MockHttpClient(), new MockClock(), '', 1.0);
+        new WebPushSender(static::createStub(ApplicationServerKeyProviderInterface::class), new MockHttpClient(), new MockClock(), '', new Timeout(1.0));
     }
 }

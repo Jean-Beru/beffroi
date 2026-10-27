@@ -86,8 +86,12 @@ final readonly class DpopSection extends ConfigurationSection
     {
         $dpop = $this->own($config);
         $nonces = self::section($dpop, 'nonce');
-        $services->get(DpopProofValidator::class)->arg('$maximumAge', self::seconds($dpop, 'proof_max_age'))->arg('$leeway', self::seconds($dpop, 'leeway'));
-        $services->get(CachedDpopNonce::class)->arg('$lifetime', self::seconds($nonces, 'ttl'));
+        $services->get(DpopProofValidator::class)->arg('$maximumAge', self::bounded(
+            $dpop,
+            'proof_max_age',
+            named: 'dpop.proof_max_age',
+        ))->arg('$leeway', self::bounded($dpop, 'leeway', named: 'dpop.leeway', minimum: 0));
+        $services->get(CachedDpopNonce::class)->arg('$lifetime', self::bounded($nonces, 'ttl', named: 'dpop.nonce.ttl'));
         // what the provider asks of a proof is a class it is wired with, never a flag read at every request;
         // the flag is read once, when the port is built, so that an environment variable can carry it
         $services

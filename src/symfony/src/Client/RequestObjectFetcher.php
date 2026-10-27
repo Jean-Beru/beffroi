@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Client;
 
+use Beffroi\Bundle\Http\ByteLimit;
+use Beffroi\Bundle\Http\Timeout;
 use Beffroi\Core\Exception\ExceptionTrail;
 use Beffroi\Oidc\Domain\Client\ClientUri;
 use Beffroi\Oidc\Exception\RequestObjectUnavailableException;
 use Beffroi\Oidc\Port\RequestObjectFetcherInterface;
 use function sprintf;
-use function strlen;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Throwable;
 
@@ -28,8 +29,8 @@ final readonly class RequestObjectFetcher implements RequestObjectFetcherInterfa
 {
     public function __construct(
         private HttpClientInterface $http,
-        private float $timeout,
-        private int $maximumSize,
+        private Timeout $timeout,
+        private ByteLimit $maximumSize,
     ) {
     }
 
@@ -41,8 +42,7 @@ final readonly class RequestObjectFetcher implements RequestObjectFetcherInterfa
                     'Accept' => 'application/oauth-authz-req+jwt, application/jwt',
                 ],
                 'max_redirects' => 0,
-                'timeout' => $this->timeout,
-                'max_duration' => $this->timeout,
+                ...$this->timeout->options(),
             ]);
             $status = $response->getStatusCode();
             if ($status >= 300 && $status < 400) {
@@ -57,11 +57,11 @@ final readonly class RequestObjectFetcher implements RequestObjectFetcherInterfa
             $body = '';
             foreach ($this->http->stream($response) as $chunk) {
                 $body .= $chunk->getContent();
-                if (strlen($body) > $this->maximumSize) {
+                if ($this->maximumSize->isExceededBy($body)) {
                     throw new RequestObjectUnavailableException(sprintf(
                         '%s answers more than %d bytes, which no request object needs.',
                         $requestUri->value,
-                        $this->maximumSize,
+                        $this->maximumSize->bytes,
                     ));
                 }
             }
