@@ -6,6 +6,7 @@ namespace Beffroi\Bundle\Tests\Functional\Profiler;
 
 use function array_keys;
 use function array_map;
+use function base64_encode;
 use Beffroi\Bundle\Profiler\OpCollector;
 use Beffroi\Bundle\Profiler\OpProfile;
 use Beffroi\Bundle\Tests\Functional\Controller\BrowserTestCase;
@@ -304,6 +305,105 @@ final class ProfilerPanelTest extends BrowserTestCase
         static::assertStringContainsString('id_token=(present, withheld)', $body);
         static::assertStringContainsString('token_type="Bearer"', $body);
         static::assertStringContainsString('scope="openid profile"', $body);
+    }
+
+    /**
+     * RFC 8628 §3.2: the answer of the device authorization endpoint says the two codes are there and writes
+     * neither, nor the verification URI that carries the user code (§3.3.1); the page where the user types
+     * it is written.
+     */
+    #[Test]
+    public function theAnswerOfTheDeviceAuthorizationEndpointIsShownWithoutItsCodes(): void
+    {
+        // Given
+        $this->browser->enableProfiler();
+
+        // When
+        $this->browser->request('POST', '/device_authorization', [
+            'client_id' => 'appliance-public-app',
+            'scope' => 'openid profile',
+        ]);
+
+        // Then
+        $body = $this->observation('Answer')['body'];
+        static::assertStringContainsString('device_code=(present, withheld)', $body);
+        static::assertStringContainsString('user_code=(present, withheld)', $body);
+        static::assertStringContainsString('verification_uri_complete=(present, withheld)', $body);
+        static::assertStringContainsString('verification_uri="https://op.test/device"', $body);
+    }
+
+    /**
+     * CIBA Core §7.3: the acknowledgement of the backchannel authentication endpoint says the identifier the
+     * client comes back with is there and never writes it.
+     */
+    #[Test]
+    public function theAnswerOfTheBackchannelAuthenticationEndpointIsShownWithoutItsIdentifier(): void
+    {
+        // Given
+        self::user('alice');
+        $this->browser->enableProfiler();
+
+        // When
+        $this->browser->request(
+            'POST',
+            '/backchannel_authentication',
+            [
+                'scope' => 'openid profile',
+                'login_hint' => 'alice-subject',
+            ],
+            server: [
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('terminal-app:terminal-secret-of-at-least-32-characters'),
+            ],
+        );
+
+        // Then
+        $body = $this->observation('Answer')['body'];
+        static::assertStringContainsString('auth_req_id=(present, withheld)', $body);
+        static::assertStringContainsString('expires_in=300', $body);
+    }
+
+    /**
+     * RFC 9126 §2.2: the answer of the pushed authorization request endpoint says the reference is there and
+     * never writes it, a reference of one use that is worth guessing (§7.1).
+     */
+    #[Test]
+    public function theAnswerOfThePushedAuthorizationRequestEndpointIsShownWithoutItsReference(): void
+    {
+        // Given
+        $this->browser->enableProfiler();
+
+        // When
+        $this->browser->request('POST', '/par', self::authorizationParameters());
+
+        // Then
+        $body = $this->observation('Answer')['body'];
+        static::assertStringContainsString('request_uri=(present, withheld)', $body);
+        static::assertStringContainsString('expires_in=60', $body);
+    }
+
+    /**
+     * RFC 9126 §4: the query of a request that was pushed carries the client and the reference, and the panel
+     * writes the one and says the other is there.
+     */
+    #[Test]
+    public function theQueryOfAPushedRequestIsShownWithoutItsReference(): void
+    {
+        // Given
+        $this->browser->request('POST', '/par', self::authorizationParameters());
+        $requestUri = self::string(self::json($this->browser->getResponse())['request_uri'] ?? null);
+        $this->browser->enableProfiler();
+
+        // When
+        $this->browser->request('GET', '/authorize', [
+            'client_id' => 'native-app',
+            'request_uri' => $requestUri,
+        ]);
+
+        // Then
+        static::assertSame(
+            "client_id=\"native-app\"\nrequest_uri=(present, withheld)",
+            $this->observation('Authorization request')['the query the browser carried'],
+        );
     }
 
     /**
