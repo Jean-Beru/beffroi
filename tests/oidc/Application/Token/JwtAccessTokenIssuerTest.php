@@ -4,8 +4,14 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Token;
 
+use Beffroi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Port\SecretSealerInterface;
+use Beffroi\Core\Tests\Fixture\EnvelopesThatThrow;
+use Beffroi\Core\Tests\Fixture\Keys;
+use Beffroi\Oidc\Exception\LogicException;
 use Beffroi\Oidc\Tests\Fixture\Grants;
+use Symfony\Component\KeyManagement\Exception\RuntimeException as KeyManagementRuntimeException;
 use function array_keys;
 use DateInterval;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
@@ -179,6 +185,89 @@ final class JwtAccessTokenIssuerTest extends TestCase
 
         // Then
         static::assertSame($this->jwts->key->kid, $this->jwts->verify($token->value, 'spa', Fixtures::now()->modify('+9 minutes'))['header']['kid']);
+    }
+
+    /**
+     * Issue #876: the person a token whose subject the client named is about is sealed when the token is
+     * addressed, so a KMS that does not answer to seal it is said then, before the grant spends anything.
+     */
+    #[Test]
+    public function aKmsThatDoesNotSealThePersonIsToldWhenTheTokenIsAddressed(): void
+    {
+        // Given
+        $issuer = $this->issuerSealingWith(self::sealerBehindAnOutage());
+        $authorization = $this->exchangedFor(Fixtures::user($this->session->tenant)->subject);
+
+        // Then
+        $this->expectException(KmsUnavailableException::class);
+        $this->expectExceptionMessageIsOrContains('could not be sealed under the KMS key');
+
+        // When
+        $issuer->addressFor($authorization);
+    }
+
+    /**
+     * Striking the token asks nothing of the KMS for the person either (issue #876): a token addressed while
+     * the KMS answered carries the person sealed then, whatever the KMS answers once the grant has spent what
+     * the request presented.
+     */
+    #[Test]
+    public function aTokenCarriesThePersonSealedWhenItWasAddressed(): void
+    {
+        // Given
+        $alice = Fixtures::user($this->session->tenant);
+        $authorization = $this->exchangedFor($alice->subject);
+        $addressed = $this->issuer->addressFor($authorization);
+        $issuer = $this->issuerSealingWith(self::sealerBehindAnOutage());
+
+        // When
+        $token = $issuer->issue($authorization, $addressed, Fixtures::now());
+
+        // Then
+        $claims = $this->jwts->verify($token->value, Clients::CALENDAR, Fixtures::now()->modify('+9 minutes'))['claims'];
+        static::assertSame($alice->subject->value, (string) $this->persons->of($this->session->tenant, $claims[JwtAccessTokenIssuer::PERSON] ?? null));
+    }
+
+    /**
+     * A token whose person was not sealed when it was addressed is a fault of the grant that addressed it,
+     * said before a token about that person leaves without saying so.
+     */
+    #[Test]
+    public function aTokenWhosePersonWasNotSealedIsAFaultOfTheGrant(): void
+    {
+        // Given
+        $authorization = $this->exchangedFor(Fixtures::user($this->session->tenant)->subject);
+        $addressed = $this->issuer->address($authorization->client);
+
+        // Then
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessageIs('The person this access token is about was not sealed when it was addressed, before the grant spent what the request presented (architecture section 4.6).');
+
+        // When
+        $this->issuer->issue($authorization, $addressed, Fixtures::now());
+    }
+
+    /**
+     * A token somebody signed in for carries no person, so addressing it seals nothing and it is struck while
+     * the KMS does not answer to seal.
+     */
+    #[Test]
+    public function aTokenSomebodySignedInForIsAddressedWithoutSealing(): void
+    {
+        // Given
+        $issuer = $this->issuerSealingWith(self::sealerBehindAnOutage());
+        $authorization = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+        ));
+
+        // When
+        $token = Tokens::accessToken($issuer, $authorization, Fixtures::now());
+
+        // Then
+        static::assertArrayNotHasKey(JwtAccessTokenIssuer::PERSON, $this->jwts->verify($token->value, 'spa', Fixtures::now()->modify('+9 minutes'))['claims']);
     }
 
     /**
@@ -851,6 +940,29 @@ final class JwtAccessTokenIssuerTest extends TestCase
             ResourceIndicators::of([Clients::CALENDAR]),
             person: $person,
         );
+    }
+
+    /**
+     * The issuer of the tests, sealing the persons of its tokens with that sealer.
+     */
+    private function issuerSealingWith(SecretSealerInterface $sealer): JwtAccessTokenIssuer
+    {
+        return new JwtAccessTokenIssuer(
+            $this->jwts->signer,
+            Subjects::publicKind(),
+            Algorithms::all(),
+            new SymfonyUuidGenerator(),
+            Subjects::sealedPerson($sealer),
+        );
+    }
+
+    /**
+     * The sealer of the shared secrets in front of a KMS that cannot be reached, as a bridge of
+     * symfony/key-management reports it.
+     */
+    private static function sealerBehindAnOutage(): SecretSealerInterface
+    {
+        return new EnvelopeSecretSealer(new EnvelopesThatThrow(new KeyManagementRuntimeException('Failed to reach the KMS.')), Keys::KMS_KEY_ID);
     }
 
     /**

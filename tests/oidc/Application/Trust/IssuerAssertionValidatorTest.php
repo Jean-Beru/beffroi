@@ -67,13 +67,15 @@ final class IssuerAssertionValidatorTest extends TestCase
 
     /**
      * RFC 7523 §3: signed by an issuer the tenant trusts, addressed to this provider, still valid, and about
-     * somebody.
+     * somebody; named by its issuer, and valid until it expires, which is what spending it remembers.
      */
     #[Test]
     public function itAcceptsAnAssertionOfATrustedIssuer(): void
     {
         // Given
-        $assertion = TrustedIssuers::assertion('employee-42', (string) $this->tenant->issuer, Fixtures::now());
+        $assertion = TrustedIssuers::assertion('employee-42', (string) $this->tenant->issuer, Fixtures::now(), [
+            'jti' => 'the-assertion',
+        ]);
 
         // When
         $verified = $this->validator->validate($this->tenant, $this->client, $assertion, Fixtures::now());
@@ -81,24 +83,45 @@ final class IssuerAssertionValidatorTest extends TestCase
         // Then
         static::assertSame('employee-42', $verified->subject);
         static::assertSame(TrustedIssuers::ISSUER, $verified->issuer->issuer);
+        static::assertSame('the-assertion', $verified->jti);
+        static::assertEquals(Fixtures::now()->modify('+60 seconds'), $verified->expiresAt);
     }
 
     /**
-     * RFC 7523 §3, §4: one assertion is exchanged once.
+     * RFC 7523 §3, §4: one assertion is exchanged once, so spent a second time it is refused.
      */
     #[Test]
-    public function itRefusesAnAssertionPresentedTwice(): void
+    public function itRefusesAnAssertionSpentAlready(): void
     {
         // Given
         $assertion = TrustedIssuers::assertion('employee-42', (string) $this->tenant->issuer, Fixtures::now());
-        $this->validator->validate($this->tenant, $this->client, $assertion, Fixtures::now());
+        $this->validator->spend($this->tenant, $this->validator->validate($this->tenant, $this->client, $assertion, Fixtures::now()));
+        $verified = $this->validator->validate($this->tenant, $this->client, $assertion, Fixtures::now());
 
         // Then
         $this->expectException(InvalidGrantException::class);
         $this->expectExceptionMessageIs(self::REFUSED);
 
         // When
+        $this->validator->spend($this->tenant, $verified);
+    }
+
+    /**
+     * Issue #876: judging an assertion remembers nothing of it, so an assertion whose response was never
+     * struck is the same assertion when the request is presented again.
+     */
+    #[Test]
+    public function anAssertionJudgedAndNeverSpentIsAcceptedAgain(): void
+    {
+        // Given
+        $assertion = TrustedIssuers::assertion('employee-42', (string) $this->tenant->issuer, Fixtures::now());
         $this->validator->validate($this->tenant, $this->client, $assertion, Fixtures::now());
+
+        // When
+        $verified = $this->validator->validate($this->tenant, $this->client, $assertion, Fixtures::now());
+
+        // Then
+        static::assertSame('employee-42', $verified->subject);
     }
 
     /**
