@@ -49,6 +49,27 @@ final class StoredSubjectAccessTokenTest extends TestCase
     }
 
     /**
+     * Issues #593 and #888: the row keeps its person itself, beside the session the presented token named, so no
+     * session is asked who that person is; the session is the sign-in of the token it came from (RFC 9068 §2.2.1).
+     */
+    #[Test]
+    public function itNamesItsPersonItselfWhateverSessionItNames(): void
+    {
+        // Given
+        $session = Fixtures::session();
+        $record = Tokens::storedSubjectAccessToken(
+            'the-value',
+            Clients::gateway($session->tenant, new FakePasswordHasher()->hash(Clients::SECRET)),
+            new Subject('the-sub-of-the-first-client'),
+            Fixtures::now(),
+            session: $session,
+        );
+
+        // When / Then
+        static::assertNull($record->sessionNamingItsPerson());
+    }
+
+    /**
      * RFC 6749 §4.4: a token a client holds for itself was never about a person, and neither is what an
      * exchange of it issues. The act of its revocation names nobody, which is the honest answer.
      */

@@ -55,6 +55,24 @@ final class StoredClientAccessTokenTest extends TestCase
     }
 
     /**
+     * RFC 6749 §4.4, issue #888: it descends from no session, so no session names a person for it either.
+     */
+    #[Test]
+    public function itNamesNoSessionForAPerson(): void
+    {
+        // Given
+        $token = StoredClientAccessToken::fromAuthorization(
+            DrawnSecret::digestOf('the-token'),
+            $this->authorization(Uuid::v7()),
+            Fixtures::now(),
+            Fixtures::now()->modify('+10 minutes'),
+        );
+
+        // When / Then
+        static::assertNull($token->sessionNamingItsPerson());
+    }
+
+    /**
      * Architecture §4.6: the row keeps what the introspection of the token answers with, and nothing of a
      * sign-in, there having been none (RFC 6749 §4.4).
      */
