@@ -24,8 +24,8 @@ use Symfony\Component\KeyManagement\Envelope;
  * Issue #58, the file backend: the same sodium backend as the development default, its key read from a
  * file of its own instead of the environment (FilesystemKeyLoader, "sodium+dir://<directory>?ext=.key"),
  * one file per tenant. Skipped unless the kernel seals with it (BEFFROI_TEST_KMS_DSN), which the CI does in
- * a job of its own with a key written the way "castor provision --kms file" writes it; every other test of
- * the suite then runs against it too.
+ * a job of its own with a key written the way "castor provision --kms file" writes it, for this directory,
+ * Functional/Security and the dump of the database (DumpGivesNothingAwayTest), and for no other test.
  */
 final class KeyFileCustodyTest extends DatabaseTestCase
 {

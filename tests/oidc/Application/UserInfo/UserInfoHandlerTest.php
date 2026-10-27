@@ -530,8 +530,8 @@ final class UserInfoHandlerTest extends TestCase
 
     /**
      * RFC 6749 §4.4, RFC 8707 §2: a token a client holds for itself is asked for a resource and addressed
-     * to it, and this endpoint is not that resource. It is refused there, before anything of it is read, so
-     * a service acting for itself never reads the claims of anybody.
+     * to it, and this endpoint is not that resource. It is refused there, before anything of a person is
+     * read, so a service acting for itself never reads the claims of anybody.
      */
     #[Test]
     public function itRefusesATokenNobodySignedInFor(): void
@@ -926,8 +926,8 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9449 §7.1: a token bound to a key is presented under the DPoP scheme, and refused as soon as
-     * it is presented as a bearer token, with the challenge naming the scheme that would have worked.
+     * RFC 9449 §7.1: a token bound to a key is presented under the DPoP scheme, and refused when it is
+     * presented as a bearer token, with the challenge naming the scheme that would have worked.
      */
     #[Test]
     #[DataProvider('provideBoundTokens')]
@@ -949,6 +949,31 @@ final class UserInfoHandlerTest extends TestCase
             static::assertSame('DPoP', $exception->challengeScheme());
             static::assertSame(
                 'DPoP error="invalid_token", error_description="The access token is bound to a key and was presented as a bearer token (RFC 9449 section 7.1)."',
+                UserInfoErrorResponse::fromException($exception, Bindings::schemes())->challenge(),
+            );
+        }
+    }
+
+    /**
+     * RFC 6750 §3.1: an expired token is invalid_token. What a token is bound to is read from the token, so
+     * the scheme it came under (RFC 9449 §7.2) is judged once it holds: a key-bound token presented as a
+     * bearer token after its expiry is refused as expired, with the Bearer challenge of any expired token.
+     */
+    #[Test]
+    #[DataProvider('provideBoundTokens')]
+    public function anExpiredKeyBoundTokenPresentedAsABearerTokenIsRefusedForItsExpiry(string $shape): void
+    {
+        // Given
+        $token = $this->keyBoundToken($shape);
+
+        // When
+        try {
+            $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context(Fixtures::now()->modify('+10 minutes')));
+            static::fail('The token should have been refused.');
+        } catch (InvalidTokenException $exception) {
+            // Then
+            static::assertSame(
+                'Bearer error="invalid_token", error_description="The access token expired."',
                 UserInfoErrorResponse::fromException($exception, Bindings::schemes())->challenge(),
             );
         }

@@ -61,7 +61,7 @@ final readonly class KeysSection extends ConfigurationSection
             ->isRequired()
             ->children()
             ->scalarNode('kms')
-            ->info('Name of the KMS client that seals the private keys, an entry of "key_management.clients" of the framework configuration (a DSN there, or the members of a composite client); the KMS keeps, it never signs.')
+            ->info('Name of the KMS client that seals the private keys, an entry of "key_management.clients", the configuration of KeyManagementBundle (a DSN there, or the members of a composite client); the KMS keeps, it never signs.')
             ->isRequired()
             ->cannotBeEmpty()
             ->end()
@@ -108,9 +108,9 @@ final readonly class KeysSection extends ConfigurationSection
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
     {
         $keys = $this->own($config);
-        // the client is named here and built there: the KMS clients live in "key_management.clients" of
-        // the framework configuration, which is also where a client made of several providers and a data
-        // key store are declared, and where a DSN that may carry key material already belongs. What the
+        // the client is named here and built there: the KMS clients live in "key_management.clients", the
+        // configuration of KeyManagementBundle, which is also where a client made of several providers and a
+        // data key store are declared, and where a DSN that may carry key material already belongs. What the
         // bundle holds is a name, and an alias to the client that name points at.
         $services->alias('beffroi.kms', 'key_management.' . self::string($keys, 'kms'));
         // Traced in debug, so that the panel of the profiler sees what this provider opens. The component
