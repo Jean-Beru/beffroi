@@ -58,6 +58,29 @@ final class AccountProfileDescriptionTest extends BrowserTestCase
     }
 
     /**
+     * Issue #887, OIDC Core §5.1: a day whose year is withheld is held under the year "0000", which a date
+     * input does not carry (HTML §2.3.5.1), so it is offered as a line of text that holds it and not to a
+     * calendar that renders it empty.
+     */
+    #[Test]
+    public function aBirthdateWhoseYearIsWithheldIsOfferedAsALineOfText(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $alice->updateProfile(new Profile(birthdate: '0000-05-21'), self::now());
+        self::service('test.beffroi.users', UserRepositoryInterface::class)->save($alice);
+        $this->signIn($alice);
+
+        // When
+        $page = $this->profilePage();
+
+        // Then
+        $field = $page->filter('form[data-changeable="birthdate"] input[name="value"]');
+        static::assertSame(['text'], $field->extract(['type']));
+        static::assertSame(['0000-05-21'], $field->extract(['value']));
+    }
+
+    /**
      * Issue #479: a set of several hundred is typed into with the whole set suggested, which is what the
      * languages that exist and the names of the zoneinfo database both are.
      */

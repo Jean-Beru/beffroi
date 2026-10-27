@@ -166,8 +166,11 @@ final class ClaimFieldTest extends TestCase
 
     /**
      * A date input renders a value it cannot carry empty, a year alone as much as a whole date with a
-     * line feed behind it, and a save on an empty input would quietly erase what an import wrote, so
-     * what is offered for such a value is a line of text.
+     * line feed behind it or a day whose year is withheld, and a save on an empty input would quietly
+     * erase what an import wrote, so what is offered for such a value is a line of text.
+     *
+     * Issue #887: OIDC Core §5.1 withholds a year by writing it "0000", and the year of a date input is
+     * above zero (HTML §2.3.5.1, §2.3.5.2).
      */
     #[Test]
     #[DataProvider('provideValuesADateInputCannotCarry')]
@@ -188,13 +191,28 @@ final class ClaimFieldTest extends TestCase
     {
         yield 'a year alone' => ['1815'];
         yield 'a line feed behind a whole date' => ["1815-12-10\n"];
+        yield 'a day whose year is withheld' => ['0000-05-21'];
+        yield 'the 29th of February of a year withheld' => ['0000-02-29'];
     }
 
+    /**
+     * HTML §2.3.5.1: every year above zero is one a date input carries, the first one included.
+     */
     #[Test]
-    public function awholeDateIsOfferedAsADate(): void
+    #[DataProvider('provideWholeDates')]
+    public function aWholeDateIsOfferedAsADate(string $date): void
     {
         // When / Then
-        static::assertSame('date', ClaimField::date('\d{4}(-\d{2}-\d{2})?')->forHolding('1815-12-10')->kind);
+        static::assertSame('date', ClaimField::date('\d{4}(-\d{2}-\d{2})?')->forHolding($date)->kind);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideWholeDates(): iterable
+    {
+        yield 'a day of the nineteenth century' => ['1815-12-10'];
+        yield 'a day of the first year' => ['0001-05-21'];
     }
 
     #[Test]

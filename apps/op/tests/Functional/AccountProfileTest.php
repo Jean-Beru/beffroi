@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use Beffroi\Core\Domain\Identity\Profile;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
 use Symfony\Component\DomCrawler\Crawler;
@@ -93,6 +95,29 @@ final class AccountProfileTest extends BrowserTestCase
         );
         static::assertCount(0, $page->filter('form[data-editable="nickname"] ul li'));
         static::assertNull(self::reread($alice)->profile->zoneinfo);
+    }
+
+    /**
+     * Issue beffroi-auth/beffroi#887, OIDC Core §5.1: a day whose year is withheld is held under the year
+     * "0000", which a date input does not carry (HTML §2.3.5.1), so the form of the component offers a line
+     * of text that holds it and not a calendar that renders it empty.
+     */
+    #[Test]
+    public function aBirthdateWhoseYearIsWithheldIsOfferedAsALineOfText(): void
+    {
+        // Given
+        $alice = self::user();
+        $alice->updateProfile(new Profile(birthdate: '0000-05-21'), self::now());
+        self::service('test.beffroi.users', UserRepositoryInterface::class)->save($alice);
+        $this->signIn($alice);
+
+        // When
+        $page = $this->profilePage();
+
+        // Then
+        $field = $page->filter('form[data-editable="birthdate"] input[name="claim[value]"]');
+        static::assertSame(['text'], $field->extract(['type']));
+        static::assertSame(['0000-05-21'], $field->extract(['value']));
     }
 
     /**
