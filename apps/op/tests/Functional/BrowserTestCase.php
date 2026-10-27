@@ -121,6 +121,19 @@ abstract class BrowserTestCase extends WebTestCase
     }
 
     /**
+     * The home of the account, which the browser must be served: every page of the account carries the look of
+     * the tenant, and its home lists the pages.
+     */
+    protected function accountHome(): Crawler
+    {
+        $page = $this->browser->request('GET', '/account');
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
+
+        return $page;
+    }
+
+    /**
      * An authorization request of the one client of this suite (config/packages/test/beffroi.yaml), which the
      * provider answers by sending the browser to the page of the interaction it began.
      */

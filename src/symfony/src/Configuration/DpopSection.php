@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Configuration;
 
 use Beffroi\Bundle\Dpop\CachedDpopNonce;
+use Beffroi\Bundle\Dpop\DpopNonceRequirement;
 use Beffroi\Oidc\Application\Dpop\DpopProofValidator;
 use Beffroi\Oidc\Bridge\Null\NoDpopNonce;
 use Beffroi\Oidc\Port\DpopNonceInterface;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
+use function Symfony\Component\DependencyInjection\Loader\Configurator\service_closure;
 
 /**
  * What the provider allows of a proof of possession (RFC 9449 §11.1), and whether it asks a proof to carry a nonce of its own (§8).
@@ -86,7 +88,15 @@ final readonly class DpopSection extends ConfigurationSection
         $nonces = self::section($dpop, 'nonce');
         $services->get(DpopProofValidator::class)->arg('$maximumAge', self::seconds($dpop, 'proof_max_age'))->arg('$leeway', self::seconds($dpop, 'leeway'));
         $services->get(CachedDpopNonce::class)->arg('$lifetime', self::seconds($nonces, 'ttl'));
-        // what the provider asks of a proof is a class it is wired with, never a flag read at every request
-        $services->alias(DpopNonceInterface::class, ($nonces['required'] ?? false) === true ? CachedDpopNonce::class : NoDpopNonce::class);
+        // what the provider asks of a proof is a class it is wired with, never a flag read at every request;
+        // the flag is read once, when the port is built, so that an environment variable can carry it
+        $services
+            ->set(DpopNonceInterface::class)
+            ->factory(DpopNonceRequirement::chosen(...))
+            ->args([
+                self::boolean($nonces, 'required'),
+                service_closure(CachedDpopNonce::class),
+                service_closure(NoDpopNonce::class),
+            ]);
     }
 }

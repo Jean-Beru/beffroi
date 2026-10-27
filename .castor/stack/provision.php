@@ -461,10 +461,10 @@ function provision_dev_subject(string $path): string
  * written in a file of the op container, a token minted on the Vault of the stack under the policy of the
  * OP and the Transit key of the tenant, the LocalStack of the stack and the alias of the tenant), one
  * secret per client, the password of the development user, the origin of the host that asks for a client
- * certificate. An existing value is kept, whoever wrote it: the sealed signing keys depend on the KMS key,
- * and a KMS is not switched by accident. The one exception is a Vault token that no longer works (the dev
- * server forgets everything when it restarts): a new one is minted in its place, and the check of the
- * published key says what became of the key files.
+ * certificate, the registration mode of its tenant. An existing value is kept, whoever wrote it: the sealed
+ * signing keys depend on the KMS key, and a KMS is not switched by accident. The one exception is a Vault
+ * token that no longer works (the dev server forgets everything when it restarts): a new one is minted in
+ * its place, and the check of the published key says what became of the key files.
  *
  * @return array<string, string>
  */
@@ -523,6 +523,10 @@ function provision_env_local(?string $kms): array
     // The host of this stack that asks for a client certificate, which apps/op/.env leaves empty: that file
     // is what an image is compiled from, and a deployment announces the host it serves or none.
     $values['BEFFROI_MTLS_ORIGIN'] = static fn (): string => 'https://' . DEV_MTLS_SERVER_NAME;
+    // The mode the tenant of this stack registers clients under, which apps/op/.env leaves empty for the
+    // same reason: whoever asks, which is what the Dynamic OP plan sends, and what no image may announce
+    // (decisions 0006 and 0009).
+    $values['BEFFROI_REGISTRATION_MODE'] = static fn (): string => 'open';
     foreach (DEV_CLIENT_SECRETS as $name) {
         $values[$name] = static fn (): string => $generate(32);
     }

@@ -5965,7 +5965,7 @@ function demo_register_check(string $issuer, string $password, string $ca): void
  *
  * What says the mode is in force is the endpoint itself: a registration presenting no credential is refused
  * in every mode but the open one, and answered 201 in that one, so the walk polls on that and on nothing
- * else. A mode of null is the default the tenant is given back.
+ * else. A mode of null gives the tenant back the one "castor provision" wrote above the block, "open".
  */
 function demo_registration_mode(string $issuer, string $ca, string $marker, ?string $mode): void
 {
