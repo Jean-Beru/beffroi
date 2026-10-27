@@ -1547,7 +1547,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         authentication_classes?: array<string, scalar|Param|null>,
  *     },
  *     keys?: array{ // Where the keys of the tenants live: sealed by the KMS named here, stored as files until a table takes over (architecture §3.3).
- *         kms?: scalar|Param|null, // Name of the KMS client that seals the private keys, an entry of "key_management.clients" of the framework configuration (a DSN there, or the members of a composite client); the KMS keeps, it never signs.
+ *         kms?: scalar|Param|null, // Name of the KMS client that seals the private keys, an entry of "key_management.clients", the configuration of KeyManagementBundle (a DSN there, or the members of a composite client); the KMS keeps, it never signs.
  *         key_id?: scalar|Param|null, // The key of that KMS the keys of the tenants are sealed under (backend-specific: the id of a sodium key, a Vault transit key name, an ARN); "{tenant}" stands for the slug of the tenant, one master key each.
  *         data_key_secrets?: list<scalar|Param|null>,
  *         storage?: scalar|Param|null, // Directory of the sealed keys, one file per key and per tenant, and of the pairwise salt of each tenant, one file beside them (OIDC Core section 8.1). // Default: "%kernel.project_dir%/var/keys"
@@ -1633,8 +1633,8 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         max_size?: int|Param, // Bytes a request_uri may answer before the read stops; a request object carries the parameters of one request. // Default: 65536
  *     },
  *     dpop?: array{ // How a proof of possession is read (RFC 9449 §4.3). What a proof may be signed with is the wiring, the same algorithms the provider signs with, and what the document announces in "dpop_signing_alg_values_supported"; nothing here weakens a proof, and a client that sends none is not concerned.
- *         proof_max_age?: int|Param, // Seconds a proof stands, from its "iat" (RFC 9449 §4.3). A proof is a signature over one request being sent; a long window is a window a proof taken off the wire may be sent again in. // Default: 60
- *         leeway?: int|Param, // Seconds allowed of the clock of a client, both ways. // Default: 30
+ *         proof_max_age?: int|Param, // Seconds a proof stands, from its "iat", before the leeway is added (RFC 9449 §4.3). A proof is a signature over one request being sent; a long window is a window a proof taken off the wire may be sent again in. // Default: 60
+ *         leeway?: int|Param, // Seconds allowed of the clock of a client, both ways: a proof is taken up to this many seconds ahead of the clock of the provider, and until "proof_max_age" plus this many seconds after its "iat". // Default: 30
  *         nonce?: array{ // Whether this provider asks a proof to carry a nonce of its own (RFC 9449 §8), which is the server's to decide: the "iat" of a proof is what its client says, a nonce is what the provider knows. A client that speaks DPoP handles the refusal that hands it one; one that does not is not concerned either way.
  *             required?: bool|Param, // Default: false
  *             ttl?: int|Param, // Seconds a nonce is accepted once issued. // Default: 300

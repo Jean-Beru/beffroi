@@ -16,8 +16,7 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Exception\LogicException;
 
 /**
- * Checks the KMS client the bundle is pointed at against the clients the framework configuration
- * registers.
+ * Checks the KMS client the bundle is pointed at against the clients KeyManagementBundle registers.
  *
  * The bundle seals with a client it does not build: "beffroi.keys.kms" names an entry of
  * "key_management.clients" and "beffroi.kms" is an alias to it. A name nothing answers to would
@@ -28,7 +27,7 @@ use Symfony\Component\DependencyInjection\Exception\LogicException;
 final class KmsClientPass implements CompilerPassInterface
 {
     /**
-     * The alias the bundle registers, and the prefix of the clients the framework registers.
+     * The alias the bundle registers, and the prefix of the clients KeyManagementBundle registers.
      */
     public const string ALIAS = 'beffroi.kms';
 

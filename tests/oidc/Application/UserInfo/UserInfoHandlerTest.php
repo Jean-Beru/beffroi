@@ -530,8 +530,8 @@ final class UserInfoHandlerTest extends TestCase
 
     /**
      * RFC 6749 §4.4, RFC 8707 §2: a token a client holds for itself is asked for a resource and addressed
-     * to it, and this endpoint is not that resource. It is refused there, before anything of it is read, so
-     * a service acting for itself never reads the claims of anybody.
+     * to it, and this endpoint is not that resource. It is refused there, before anything of a person is
+     * read, so a service acting for itself never reads the claims of anybody.
      */
     #[Test]
     public function itRefusesATokenNobodySignedInFor(): void
@@ -926,8 +926,8 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9449 §7.1: a token bound to a key is presented under the DPoP scheme, and refused as soon as
-     * it is presented as a bearer token, with the challenge naming the scheme that would have worked.
+     * RFC 9449 §7.1: a token bound to a key is presented under the DPoP scheme, and refused when it is
+     * presented as a bearer token, with the challenge naming the scheme that would have worked.
      */
     #[Test]
     #[DataProvider('provideBoundTokens')]

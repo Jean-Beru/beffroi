@@ -6,7 +6,7 @@ namespace Beffroi\Bundle\Profiler;
 
 /**
  * Which KMS client the deployment opens its envelopes with, by the name it carries in
- * "key_management.clients" of the framework configuration and by nothing else.
+ * "key_management.clients", the configuration of KeyManagementBundle, and by nothing else.
  *
  * A name is what an operator wrote and what the framework's own KMS panel lists the client under, so
  * the two panels say the same word of the same client. It is also all the panel needs to say: what

@@ -23,8 +23,10 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 /**
  * Issue #57, against a real Vault: the Transit key of the tenant is what docker/vault/init.sh creates, the
  * OP holds a token under the policy of docker/vault/beffroi-op.hcl and that policy allows the sealing and
- * nothing else. Skipped unless the kernel seals with Vault (BEFFROI_TEST_KMS_DSN), which the CI does in a
- * job of its own against a Vault service; every other test of the suite then runs against it too.
+ * nothing else. Skipped unless the kernel seals with Vault (BEFFROI_TEST_KMS_DSN), which no job of the CI
+ * does and which "castor phpunit" does not pass to its container: it is run by hand, BEFFROI_TEST_KMS_DSN
+ * naming the Vault of the development stack ("castor start --kms vault") and BEFFROI_TEST_KMS_KEY_ID its
+ * key ("beffroi-{tenant}"), and every other test of that run then seals with that Vault too.
  */
 final class VaultTransitCustodyTest extends DatabaseTestCase
 {

@@ -17,9 +17,10 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurat
 final readonly class DpopSection extends ConfigurationSection
 {
     /**
-     * RFC 9449 §11.1: how long a proof stands, from its "iat". A proof is made for one request that is
-     * being sent; what the window has to cover is the time that request spends on the wire, and every
-     * second beyond it is a second a proof taken off that wire may be sent again.
+     * RFC 9449 §11.1: how long a proof stands, from its "iat", before the leeway below is added. A proof
+     * is made for one request that is being sent; what the window has to cover is the time that request
+     * spends on the wire, and every second beyond it is a second a proof taken off that wire may be sent
+     * again.
      */
     public const int DEFAULT_DPOP_PROOF_MAX_AGE = 60;
 
@@ -27,7 +28,9 @@ final readonly class DpopSection extends ConfigurationSection
      * What is allowed of the clock of a client, both ways. Thirty seconds and not five: a client whose
      * clock runs ahead makes a proof dated after the request that carries it, and the conformance suite
      * of FAPI 2 makes one ten seconds ahead and expects it taken (RFC 9449 §11.1 leaves the window to
-     * the provider). What the window does not widen is the age of a proof, which "proof_max_age" bounds.
+     * the provider). The other way is the age of a proof: a client whose clock runs behind dates a proof
+     * before it was made, so a proof is taken until "proof_max_age" plus the leeway after its "iat",
+     * ninety seconds by default.
      */
     public const int DEFAULT_DPOP_LEEWAY = 30;
 
@@ -50,12 +53,12 @@ final readonly class DpopSection extends ConfigurationSection
             ->addDefaultsIfNotSet()
             ->children()
             ->integerNode('proof_max_age')
-            ->info('Seconds a proof stands, from its "iat" (RFC 9449 §4.3). A proof is a signature over one request being sent; a long window is a window a proof taken off the wire may be sent again in.')
+            ->info('Seconds a proof stands, from its "iat", before the leeway is added (RFC 9449 §4.3). A proof is a signature over one request being sent; a long window is a window a proof taken off the wire may be sent again in.')
             ->defaultValue(self::DEFAULT_DPOP_PROOF_MAX_AGE)
             ->min(1)
             ->end()
             ->integerNode('leeway')
-            ->info('Seconds allowed of the clock of a client, both ways.')
+            ->info('Seconds allowed of the clock of a client, both ways: a proof is taken up to this many seconds ahead of the clock of the provider, and until "proof_max_age" plus this many seconds after its "iat".')
             ->defaultValue(self::DEFAULT_DPOP_LEEWAY)
             ->min(0)
             ->end()

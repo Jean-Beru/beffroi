@@ -800,7 +800,7 @@
                         "properties": {
                             "kms": {
                                 "$ref": "#/$defs/types/scalar",
-                                "description": "Name of the KMS client that seals the private keys, an entry of \"key_management.clients\" of the framework configuration (a DSN there, or the members of a composite client); the KMS keeps, it never signs."
+                                "description": "Name of the KMS client that seals the private keys, an entry of \"key_management.clients\", the configuration of KeyManagementBundle (a DSN there, or the members of a composite client); the KMS keeps, it never signs."
                             },
                             "key_id": {
                                 "$ref": "#/$defs/types/scalar",
@@ -1333,13 +1333,13 @@
                                 "$ref": "#/$defs/types/integer",
                                 "minimum": 1,
                                 "default": 60,
-                                "description": "Seconds a proof stands, from its \"iat\" (RFC 9449 §4.3). A proof is a signature over one request being sent; a long window is a window a proof taken off the wire may be sent again in."
+                                "description": "Seconds a proof stands, from its \"iat\", before the leeway is added (RFC 9449 §4.3). A proof is a signature over one request being sent; a long window is a window a proof taken off the wire may be sent again in."
                             },
                             "leeway": {
                                 "$ref": "#/$defs/types/integer",
                                 "minimum": 0,
                                 "default": 30,
-                                "description": "Seconds allowed of the clock of a client, both ways."
+                                "description": "Seconds allowed of the clock of a client, both ways: a proof is taken up to this many seconds ahead of the clock of the provider, and until \"proof_max_age\" plus this many seconds after its \"iat\"."
                             },
                             "nonce": {
                                 "$ref": "#/$defs/types/object_null",

@@ -25,11 +25,13 @@ use Symfony\Component\KeyManagement\Dsn;
 use Symfony\Component\KeyManagement\Envelope;
 
 /**
- * Issue #58, against an AWS KMS (LocalStack in the CI and on the development stack, the same API): the
- * master key of the tenant is the one docker/localstack/init.sh creates under the alias the DSN names, and
- * the envelope holds the data key as that KMS wrapped it, bound to the tenant. Skipped unless the kernel
- * seals with AWS KMS (BEFFROI_TEST_KMS_DSN), which the CI does in a job of its own against a LocalStack
- * service; every other test of the suite then runs against it too.
+ * Issue #58, against an AWS KMS (LocalStack on the development stack, the same API): the master key of the
+ * tenant is the one docker/localstack/init.sh creates under the alias the DSN names, and the envelope holds
+ * the data key as that KMS wrapped it, bound to the tenant. Skipped unless the kernel seals with AWS KMS
+ * (BEFFROI_TEST_KMS_DSN), which no job of the CI does and which "castor phpunit" does not pass to its
+ * container: it is run by hand, BEFFROI_TEST_KMS_DSN naming the LocalStack of the development stack
+ * ("castor start --kms aws") and BEFFROI_TEST_KMS_KEY_ID its alias ("alias/beffroi-{tenant}"), and every
+ * other test of that run then seals with that KMS too.
  */
 final class AwsKmsCustodyTest extends DatabaseTestCase
 {

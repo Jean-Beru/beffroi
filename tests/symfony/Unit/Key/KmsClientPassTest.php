@@ -12,8 +12,8 @@ use Symfony\Component\DependencyInjection\Exception\LogicException;
 use Symfony\Component\KeyManagement\EncrypterInterface;
 
 /**
- * Issue #208: the bundle seals with a KMS client the framework configuration registers, and the pass is
- * what turns a name nothing answers to into a failure an operator can read.
+ * Issue #208: the bundle seals with a KMS client KeyManagementBundle registers, and the pass is what turns
+ * a name nothing answers to into a failure an operator can read.
  */
 final class KmsClientPassTest extends TestCase
 {

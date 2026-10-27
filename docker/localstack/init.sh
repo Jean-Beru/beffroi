@@ -1,8 +1,8 @@
 #!/bin/sh
 # Prepares a LocalStack KMS for the OP (issue #58): the master key of the tenant under the alias the DSN
 # names, alias/beffroi-<slug>. LocalStack runs it once ready (/etc/localstack/init/ready.d), at every start,
-# the community edition keeping nothing across a restart; the CI runs it with the AWS CLI against a service
-# container. Idempotent: a key whose alias resolves is left alone, a key is never deleted here.
+# the community edition keeping nothing across a restart. Idempotent: a key whose alias resolves is left
+# alone, a key is never deleted here.
 #
 # What a real account does with the key policy (Encrypt refused, GenerateDataKey and Decrypt under the alias
 # only, no export, no deletion without a waiting period) has no equivalent in LocalStack, which enforces no
