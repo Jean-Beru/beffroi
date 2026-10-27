@@ -86,9 +86,7 @@ final class UpstreamIdentityProvidersPass implements CompilerPassInterface
             $container,
             $container->hasDefinition(TenantFactory::class) ? $container->getDefinition(TenantFactory::class)->getArgument('$issuer') : null,
         );
-        $named = $container->hasDefinition(RouterServiceProviderEndpoints::class)
-            ? $container->getDefinition(RouterServiceProviderEndpoints::class)->getArgument('$entityId')
-            : null;
+        $named = $container->getDefinition(RouterServiceProviderEndpoints::class)->getArgument('$entityId');
         self::refuseTheTenantUnder(
             $entityIds,
             $issuer,

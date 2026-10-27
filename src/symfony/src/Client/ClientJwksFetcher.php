@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Client;
 
+use Beffroi\Bundle\Http\ByteLimit;
+use Beffroi\Bundle\Http\Timeout;
 use Beffroi\Core\Exception\ExceptionTrail;
 use Beffroi\Oidc\Domain\Client\ClientJwks;
 use Beffroi\Oidc\Domain\Client\ClientUri;
@@ -14,7 +16,6 @@ use function is_array;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use function sprintf;
-use function strlen;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Throwable;
 
@@ -30,8 +31,8 @@ final readonly class ClientJwksFetcher implements ClientJwksFetcherInterface
 {
     public function __construct(
         private HttpClientInterface $http,
-        private float $timeout,
-        private int $maximumSize,
+        private Timeout $timeout,
+        private ByteLimit $maximumSize,
     ) {
     }
 
@@ -64,8 +65,7 @@ final readonly class ClientJwksFetcher implements ClientJwksFetcherInterface
                     'Accept' => 'application/json',
                 ],
                 'max_redirects' => 0,
-                'timeout' => $this->timeout,
-                'max_duration' => $this->timeout,
+                ...$this->timeout->options(),
             ]);
             $status = $response->getStatusCode();
             if ($status >= 300 && $status < 400) {
@@ -80,11 +80,11 @@ final readonly class ClientJwksFetcher implements ClientJwksFetcherInterface
             $body = '';
             foreach ($this->http->stream($response) as $chunk) {
                 $body .= $chunk->getContent();
-                if (strlen($body) > $this->maximumSize) {
+                if ($this->maximumSize->isExceededBy($body)) {
                     throw new ClientKeysUnavailableException(sprintf(
                         '%s answers more than %d bytes, which no JWK Set needs.',
                         $jwksUri->value,
-                        $this->maximumSize,
+                        $this->maximumSize->bytes,
                     ));
                 }
             }

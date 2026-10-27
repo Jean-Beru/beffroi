@@ -1252,7 +1252,7 @@
                             "subject": {
                                 "$ref": "#/$defs/types/scalar",
                                 "default": null,
-                                "description": "The \"sub\" of the token this provider signs for a push service (RFC 8292 §2.1): a \"mailto:\" or \"https:\" URI at which the operator of this deployment can be reached about what it sends. Naming one is what turns web push on; absent, nothing of it is wired."
+                                "description": "The \"sub\" of the token this provider signs for a push service (RFC 8292 §2.1): a \"mailto:\" or \"https:\" URI at which the operator of this deployment can be reached about what it sends. Naming one is what turns web push on, and none turns it off; it may be an environment variable, read when the container builds what web push changes, which \"default::\" makes none when it is empty."
                             },
                             "timeout": {
                                 "$ref": "#/$defs/types/number",
@@ -1266,7 +1266,7 @@
                             "subject": null,
                             "timeout": 3
                         },
-                        "description": "Reaching a user through the push service of a browser they signed in with (RFC 8030, architecture §5.6). Absent, nothing of it is wired: no push leaves this deployment and the page where a browser would subscribe says so."
+                        "description": "Reaching a user through the push service of a browser they signed in with (RFC 8030, architecture §5.6). Absent, web push is off: no push leaves this deployment and the page where a browser would subscribe says so."
                     },
                     "client_authentication": {
                         "$ref": "#/$defs/types/object_null",
@@ -1910,7 +1910,7 @@
                                     "age": 31536000,
                                     "cache_duration": 86400
                                 },
-                                "description": "The tenant as a SAML identity provider (spec/saml.md section 6.1). Disabled, nothing of it is wired: it serves no metadata, and the tenant draws no SAML key unless its service provider is enabled, the key of both roles (S-40, S-41). Enabled, its key is drawn with \"beffroi:keys:generate --algorithm=SAML-SIGNING\" and rotates as every key of the tenant, by the figures of its own family below."
+                                "description": "The tenant as a SAML identity provider (spec/saml.md section 6.1), switched by \"enabled\", which may be an environment variable, read when the container builds what the role changes. Disabled, it serves nothing: no metadata, and the tenant draws no SAML key unless its service provider is enabled, the key of both roles (S-40, S-41). Enabled, its key is drawn with \"beffroi:keys:generate --algorithm=SAML-SIGNING\" and rotates as every key of the tenant, by the figures of its own family below."
                             },
                             "service_provider": {
                                 "anyOf": [
@@ -1939,7 +1939,7 @@
                                     "enabled": false,
                                     "entity_id": null
                                 },
-                                "description": "The tenant as a SAML service provider to the identity providers upstream of it (spec/saml.md section 6.9). Disabled, nothing of it is wired: its metadata answer that there are none. Enabled, it signs with the SAML signing key of the identity provider, drawn and rotated by the figures of \"identity_provider\" whichever role is enabled (S-40), and its metadata are served at /saml/sp/metadata."
+                                "description": "The tenant as a SAML service provider to the identity providers upstream of it (spec/saml.md section 6.9), switched by \"enabled\", which may be an environment variable, read when the container builds what the role changes. Disabled, it serves nothing: its metadata answer that there are none. Enabled, it signs with the SAML signing key of the identity provider, drawn and rotated by the figures of \"identity_provider\" whichever role is enabled (S-40), and its metadata are served at /saml/sp/metadata."
                             },
                             "service_providers": {
                                 "anyOf": [

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Unit\EndSession;
 
+use Beffroi\Bundle\Http\Timeout;
 use Beffroi\Bundle\Configuration\BackChannelLogoutSection;
 use DateInterval;
 use Beffroi\Bundle\EndSession\LogoutTokenDeliveryBudget;
@@ -57,6 +58,6 @@ final class LogoutTokenDeliveryBudgetTest extends TestCase
 
     private function sender(float $timeout): LogoutTokenSender
     {
-        return new LogoutTokenSender(static::createStub(HttpClientInterface::class), $timeout);
+        return new LogoutTokenSender(static::createStub(HttpClientInterface::class), new Timeout($timeout));
     }
 }

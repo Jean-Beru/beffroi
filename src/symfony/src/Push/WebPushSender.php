@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Push;
 
+use Beffroi\Bundle\Http\Timeout;
 use DateTimeImmutable;
 use Beffroi\Core\Domain\Identity\PushSubscription;
 use Beffroi\Core\Exception\ExceptionTrail;
@@ -71,7 +72,7 @@ final readonly class WebPushSender
      *                        reach this deployment at when something is wrong with what it sends
      *                        (RFC 8292 §2.1); not empty, which the tree refuses written and which a
      *                        variable of the environment can only be refused for here
-     * @param float $timeout seconds given to a push service before a worker is given back
+     * @param Timeout $timeout what a push service is given before a worker is given back
      *
      * @throws InvalidConfigurationException when the subject is empty
      */
@@ -80,8 +81,19 @@ final readonly class WebPushSender
         private HttpClientInterface $http,
         private ClockInterface $clock,
         public string $subject,
-        public float $timeout,
+        public Timeout $timeout,
     ) {
+        self::assertSubject($subject);
+    }
+
+    /**
+     * The rule of the subject, which the role of web push holds a subject of the environment to as well
+     * (WebPushSection::role()), the container building the role before anything sends.
+     *
+     * @throws InvalidConfigurationException when the subject is empty
+     */
+    public static function assertSubject(string $subject): void
+    {
         if ($subject === '') {
             throw new InvalidConfigurationException('The "beffroi" configuration key "web_push.subject" names the "mailto:" or "https:" URI a push service can reach the operator at (RFC 8292 section 2.1), and it is empty.');
         }
@@ -124,8 +136,7 @@ final readonly class WebPushSender
             ->add(VAPIDExtension::create($this->subject, new WebTokenProvider($publicKey, $privateKey), $this->clock));
 
         return WebPush::create($this->http->withOptions([
-            'timeout' => $this->timeout,
-            'max_duration' => $this->timeout,
+            ...$this->timeout->options(),
             'max_redirects' => 0,
         ]), $extensions);
     }

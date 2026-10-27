@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Unit\Push;
 
+use Beffroi\Bundle\Http\Timeout;
 use Beffroi\Bundle\Ciba\WebPushApprovalChannel;
 use Beffroi\Bundle\Locale\ServedLocales;
 use Beffroi\Bundle\Locale\UserLocale;
@@ -248,7 +249,7 @@ final class WebPushApprovalChannelTest extends TestCase
                 $http,
                 $this->clock,
                 'mailto:operator@acme.example',
-                1.0,
+                new Timeout(1.0),
             ),
             $this->translator(),
             new UserLocale(new ServedLocales(['en', 'fr'], 'en')),

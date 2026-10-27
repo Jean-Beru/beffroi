@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Security;
 
+use Beffroi\Bundle\Http\Timeout;
 use Beffroi\Core\Domain\Credential\BreachCount;
 use Beffroi\Core\Domain\Credential\PasswordDigest;
 use Beffroi\Core\Exception\BreachLookupFailedException;
@@ -57,7 +58,7 @@ final readonly class PwnedPasswords implements BreachedPasswordsInterface
     public function __construct(
         private HttpClientInterface $http,
         private string $endpoint = '',
-        private float $timeout = 2.0,
+        private Timeout $timeout = new Timeout(2.0),
     ) {
     }
 
@@ -88,8 +89,7 @@ final readonly class PwnedPasswords implements BreachedPasswordsInterface
                     'Add-Padding' => 'true',
                     'Accept' => 'text/plain',
                 ],
-                'timeout' => $this->timeout,
-                'max_duration' => $this->timeout,
+                ...$this->timeout->options(),
             ]);
             $status = $response->getStatusCode();
             if ($status !== 200) {

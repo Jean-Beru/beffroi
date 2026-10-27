@@ -9,15 +9,16 @@ use Beffroi\Core\Domain\Key\KeyAlgorithmInterface;
 use function str_starts_with;
 
 /**
- * The algorithms of the keys a capability of the bundle draws when a deployment turns it on, tagged by the section
- * of the configuration that owns the capability when the deployment left it off (spec/saml.md section 5.1): the SAML
- * signing key under "beffroi.saml.identity_provider", the application server key under "beffroi.web_push".
+ * The algorithms of the keys a capability of the bundle draws while a deployment has it on, tagged in every image by
+ * the wiring of the capability (spec/saml.md section 5.1): the SAML signing key of "beffroi.saml", the application
+ * server key of "beffroi.web_push". Whether the capability is on is read when the container builds the registry of its
+ * family (RoleSwitch, SwitchedServices), and the key files ask here only of a name that registry does not carry, so
+ * an algorithm held here is dormant exactly while its capability is off.
  *
- * A key file that names one is a key the tenant drew while the capability was on. It stays where it is and the key
- * files read past it, so that it is neither served, nor rotated, nor drawn again, and it is back in service as it was
- * the day the capability is turned on again. What a section leaves off is the one thing that tags here, so the names
- * are those of the algorithms themselves and no list of them is kept anywhere else; a name that neither the wiring
- * nor this knows is still a fault of the storage.
+ * A key file that names one is then a key the tenant drew while the capability was on. It stays where it is and the
+ * key files read past it, so that it is neither served, nor rotated, nor drawn again, and it is back in service as it
+ * was the day the capability is turned on again. The names are those of the algorithms themselves and no list of them
+ * is kept anywhere else; a name that neither the wiring nor this knows is still a fault of the storage.
  *
  * A family whose algorithms are one per holder, the keys the upstream SAML identity providers encrypt for, one per
  * provider declared (spec/saml.md S-64), is known here by what the names of its algorithms begin with: a provider no
@@ -26,7 +27,7 @@ use function str_starts_with;
 final readonly class DormantKeyAlgorithms
 {
     /**
-     * The tag a section puts on the algorithm of a capability it leaves off.
+     * The tag the algorithm of a capability a deployment may leave off is given in every image.
      */
     public const string TAG = 'beffroi.dormant_key_algorithm';
 

@@ -6,11 +6,12 @@ namespace Beffroi\Bundle\Tests\Unit;
 
 use DateInterval;
 use Beffroi\Bundle\BeffroiBundle;
+use Beffroi\Bundle\Configuration\SamlSection;
+use Beffroi\Bundle\Configuration\WebPushSection;
 use Beffroi\Bundle\Key\DormantKeyAlgorithms;
 use Beffroi\Bundle\Key\FileTenantKeyRepository;
 use Beffroi\Bundle\Key\StagingDelay;
 use Beffroi\Bundle\Saml\JoseSamlEncryptionAlgorithms;
-use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
 use Beffroi\Bundle\Saml\RouterServiceProviderEndpoints;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Tenant\TenantFactory;
@@ -32,6 +33,8 @@ use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
 use Beffroi\Saml\Application\Metadata\ServiceProviderMetadataHandler;
+use Beffroi\Saml\Application\Upstream\AssertionConsumerService;
+use Beffroi\Saml\Application\Upstream\UpstreamSignOn;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationUpstreamIdentityProviders;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -40,6 +43,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\Reference;
 
 /**
  * What the extension hands the services from the configuration, read on the definitions before the
@@ -301,20 +305,6 @@ final class BeffroiBundleExtensionTest extends TestCase
     }
 
     /**
-     * beffroi/saml, spec/saml.md section 5.1: a deployment that does not enable the SAML identity provider draws no
-     * SAML key, its algorithm being wired by nothing.
-     */
-    #[Test]
-    public function aDeploymentWithoutTheSamlIdentityProviderDrawsNoSamlKey(): void
-    {
-        // When
-        $container = self::load([]);
-
-        // Then
-        static::assertFalse($container->getDefinition(SamlSigning::class)->hasTag(JoseSamlSigningAlgorithms::TAG));
-    }
-
-    /**
      * Spec/saml.md S-64: the key files read past the key of an upstream identity provider nothing wires any more, every
      * algorithm of that family named "SAML-ENCRYPTION:" and the entity ID of its provider.
      */
@@ -329,51 +319,15 @@ final class BeffroiBundleExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md section 5.1, S-1, S-2: enabled, the algorithm of the SAML key is wired with the others, so that
-     * the key commands and the scheduled step treat it as every key of the tenant.
-     */
-    #[Test]
-    public function enablingTheSamlIdentityProviderWiresItsKey(): void
-    {
-        // When
-        $container = self::load([
-            'saml' => [
-                'identity_provider' => null,
-            ],
-        ]);
-
-        // Then
-        static::assertTrue($container->getDefinition(SamlSigning::class)->hasTag(JoseSamlSigningAlgorithms::TAG));
-    }
-
-    /**
-     * Spec/saml.md S-40: the service provider enabled alone wires the SAML key too, the key of both roles, so that the
-     * key commands draw it for a tenant that is no identity provider.
-     */
-    #[Test]
-    public function enablingTheSamlServiceProviderAloneWiresTheSamlKey(): void
-    {
-        // When
-        $container = self::load([
-            'saml' => [
-                'service_provider' => null,
-            ],
-        ]);
-
-        // Then
-        static::assertTrue($container->getDefinition(SamlSigning::class)->hasTag(JoseSamlSigningAlgorithms::TAG));
-    }
-
-    /**
-     * Spec/saml.md S-41: the handler of the metadata of a role is wired when the deployment enables that role, and
-     * not otherwise, so that a role left off serves no metadata whatever keys the tenant holds.
+     * Spec/saml.md S-40, S-41, decision 0030: each SAML role reaches its switch as the configuration writes it, which the
+     * container reads when it builds what the role changes.
      *
      * @param array<string, mixed> $saml
-     * @param array{bool, bool} $wired whether the handler of the identity provider and of the service provider are
+     * @param array{bool, bool} $on whether the identity provider and the service provider are
      */
     #[Test]
     #[DataProvider('provideRoles')]
-    public function theHandlerOfEachRoleIsWiredOnlyWhenTheRoleIsEnabled(array $saml, array $wired): void
+    public function eachSamlRoleReachesItsSwitchAsTheConfigurationWritesIt(array $saml, array $on): void
     {
         // When
         $container = self::load([
@@ -381,9 +335,9 @@ final class BeffroiBundleExtensionTest extends TestCase
         ]);
 
         // Then
-        static::assertSame($wired, [
-            $container->hasDefinition(IdentityProviderMetadataHandler::class),
-            $container->hasDefinition(ServiceProviderMetadataHandler::class),
+        static::assertSame($on, [
+            $container->getDefinition(SamlSection::IDENTITY_PROVIDER_ROLE)->getArgument(0),
+            $container->getDefinition(SamlSection::SERVICE_PROVIDER_ROLE)->getArgument(0),
         ]);
     }
 
@@ -411,6 +365,64 @@ final class BeffroiBundleExtensionTest extends TestCase
                 'service_provider' => null,
             ],
             [true, true],
+        ];
+    }
+
+    /**
+     * Spec/saml.md S-41: what the consumers of a service of a role are handed under the name of its class is what the
+     * role builds, the service while it is on and none while it is off, the route of the role being wired in every
+     * image.
+     */
+    #[Test]
+    #[DataProvider('provideServicesOfARole')]
+    public function theServiceOfARoleIsHandedOverByItsRole(string $class, string $role): void
+    {
+        // When
+        $container = self::load([]);
+
+        // Then
+        static::assertEquals([new Reference($role), 'served'], $container->getDefinition($class)->getFactory());
+    }
+
+    /**
+     * @return iterable<string, array{class-string, string}>
+     */
+    public static function provideServicesOfARole(): iterable
+    {
+        yield 'the metadata of the identity provider' => [IdentityProviderMetadataHandler::class, SamlSection::IDENTITY_PROVIDER_ROLE];
+        yield 'the metadata of the service provider' => [ServiceProviderMetadataHandler::class, SamlSection::SERVICE_PROVIDER_ROLE];
+        yield 'the sign-on at an upstream identity provider' => [UpstreamSignOn::class, SamlSection::SERVICE_PROVIDER_ROLE];
+        yield 'the assertion consumer service' => [AssertionConsumerService::class, SamlSection::SERVICE_PROVIDER_ROLE];
+    }
+
+    /**
+     * Architecture §5.6: naming a subject is what turns web push on, the subject reaching the role of web push as the
+     * configuration writes it, and none naming none.
+     */
+    #[Test]
+    #[DataProvider('provideWebPushSubjects')]
+    public function theSubjectOfWebPushReachesItsRole(mixed $webPush, ?string $subject): void
+    {
+        // When
+        $container = self::load([
+            'web_push' => $webPush,
+        ]);
+
+        // Then
+        static::assertSame($subject, $container->getDefinition(WebPushSection::ROLE)->getArgument(0));
+    }
+
+    /**
+     * @return iterable<string, array{mixed, ?string}>
+     */
+    public static function provideWebPushSubjects(): iterable
+    {
+        yield 'none' => [[], null];
+        yield 'a subject' => [
+            [
+                'subject' => 'mailto:operator@op.test',
+            ],
+            'mailto:operator@op.test',
         ];
     }
 
@@ -506,7 +518,7 @@ final class BeffroiBundleExtensionTest extends TestCase
         ]);
 
         // Then
-        $handler = $container->getDefinition(ServiceProviderMetadataHandler::class);
+        $handler = $container->getDefinition(SamlSection::SERVICE_PROVIDER_METADATA);
         static::assertSame(
             [90, 3_600, 172_800],
             [$handler->getArgument('$maxAge'), $handler->getArgument('$cacheDuration'), $handler->getArgument('$stagingDelay')],
@@ -514,54 +526,30 @@ final class BeffroiBundleExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md section 5.1: the algorithm of a capability a deployment leaves off is dormant, so that a key the
-     * tenant drew while it was on is read by nothing rather than refused as a fault of the storage.
+     * Spec/saml.md section 5.1: the algorithm of a capability a deployment may turn off is dormant in every image,
+     * whether the configuration turns the capability on or not, the key files asking whether it is dormant only of a
+     * name the registry of its family does not carry, which it carries while the capability is on.
      *
+     * @param array<string, mixed> $config
      * @param class-string $algorithm
      */
     #[Test]
-    #[DataProvider('provideCapabilitiesLeftOff')]
-    public function theAlgorithmOfACapabilityLeftOffIsDormant(string $algorithm): void
+    #[DataProvider('provideCapabilities')]
+    public function theAlgorithmOfACapabilityADeploymentMayTurnOffIsDormantInEveryImage(array $config, string $algorithm): void
     {
         // When
-        $container = self::load([]);
+        $container = self::load($config);
 
         // Then
         static::assertTrue($container->getDefinition($algorithm)->hasTag(DormantKeyAlgorithms::TAG));
     }
 
     /**
-     * @return iterable<string, array{class-string}>
-     */
-    public static function provideCapabilitiesLeftOff(): iterable
-    {
-        yield 'the SAML identity provider' => [SamlSigning::class];
-        yield 'web push' => [Vapid::class];
-    }
-
-    /**
-     * Spec/saml.md section 5.1: turned on, the algorithm of the capability is not dormant, so that the key the tenant
-     * drew is in service as it was.
-     *
-     * @param array<string, mixed> $config
-     * @param class-string $algorithm
-     */
-    #[Test]
-    #[DataProvider('provideCapabilitiesTurnedOn')]
-    public function theAlgorithmOfACapabilityTurnedOnIsNotDormant(array $config, string $algorithm): void
-    {
-        // When
-        $container = self::load($config);
-
-        // Then
-        static::assertFalse($container->getDefinition($algorithm)->hasTag(DormantKeyAlgorithms::TAG));
-    }
-
-    /**
      * @return iterable<string, array{array<string, mixed>, class-string}>
      */
-    public static function provideCapabilitiesTurnedOn(): iterable
+    public static function provideCapabilities(): iterable
     {
+        yield 'SAML left off' => [[], SamlSigning::class];
         yield 'the SAML service provider' => [
             [
                 'saml' => [
@@ -578,6 +566,7 @@ final class BeffroiBundleExtensionTest extends TestCase
             ],
             SamlSigning::class,
         ];
+        yield 'web push left off' => [[], Vapid::class];
         yield 'web push' => [
             [
                 'web_push' => [
@@ -611,7 +600,7 @@ final class BeffroiBundleExtensionTest extends TestCase
         ]);
 
         // Then
-        $handler = $container->getDefinition(IdentityProviderMetadataHandler::class);
+        $handler = $container->getDefinition(SamlSection::IDENTITY_PROVIDER_METADATA);
         static::assertSame(
             [$wantAuthnRequestsSigned, 90],
             [$handler->getArgument('$wantAuthnRequestsSigned'), $handler->getArgument('$maxAge')],
@@ -789,7 +778,7 @@ final class BeffroiBundleExtensionTest extends TestCase
         $definition = $container->getDefinition(JoseSamlEncryptionAlgorithms::class);
         $factory = $definition->getFactory();
         static::assertIsCallable($factory);
-        $algorithms = $factory($definition->getArgument('$identityProviders'), new RsaKeyBits());
+        $algorithms = $factory($definition->getArgument('$identityProviders'), $definition->getArgument('$serviceProviderEnabled'), new RsaKeyBits());
         static::assertInstanceOf(JoseSamlEncryptionAlgorithms::class, $algorithms);
         static::assertSame(
             ['https://idp.acme.example/saml', 'https://idp.other.example/saml'],
@@ -929,7 +918,7 @@ final class BeffroiBundleExtensionTest extends TestCase
         ]);
 
         // Then
-        $handler = $container->getDefinition(IdentityProviderMetadataHandler::class);
+        $handler = $container->getDefinition(SamlSection::IDENTITY_PROVIDER_METADATA);
         static::assertSame([3_600, 172_800], [$handler->getArgument('$cacheDuration'), $handler->getArgument('$stagingDelay')]);
     }
 
@@ -981,7 +970,7 @@ final class BeffroiBundleExtensionTest extends TestCase
     /**
      * The lifetime a service is handed, as the specification of a DateInterval: the one the definition carries,
      * or the one its factory builds from the numbers it is given, which is how a lifetime held to a bound or to
-     * a rule reaches its service (BoundedLifetime, SlidingRefreshLifetime).
+     * a rule reaches its service (BoundedNumber, SlidingRefreshLifetime).
      */
     private static function interval(ContainerBuilder $container, string $service, int|string $argument): string
     {

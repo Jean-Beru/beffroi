@@ -107,11 +107,11 @@ final readonly class TrustedIssuersSection extends ConfigurationSection
             'slug',
         ))->arg('$definitions', $config['trusted_issuers'] ?? []);
         $clientAuthentication = self::section($config, 'client_authentication');
-        $services->get(IssuerAssertionValidator::class)->arg('$maximumLifetime', self::seconds(
-            $clientAuthentication,
-            'assertion_max_lifetime',
-        ))->arg('$leeway', self::seconds($clientAuthentication, 'assertion_leeway'));
-        $services->get('beffroi.oidc.issuer_keys.provider')->arg('$cooldown', self::seconds($clientAuthentication, 'jwks_refetch_cooldown'));
-        $services->get('beffroi.oidc.issuer_keys.cache')->arg('$lifetime', self::integer($clientAuthentication, 'jwks_ttl'));
+        $services->get(IssuerAssertionValidator::class)->arg('$maximumLifetime', ClientAuthenticationSection::assertionLifetime($clientAuthentication))->arg(
+            '$leeway',
+            ClientAuthenticationSection::assertionLeeway($clientAuthentication),
+        );
+        $services->get('beffroi.oidc.issuer_keys.provider')->arg('$cooldown', ClientAuthenticationSection::refetchCooldown($clientAuthentication));
+        $services->get('beffroi.oidc.issuer_keys.cache')->arg('$lifetime', ClientAuthenticationSection::keptFor($clientAuthentication));
     }
 }

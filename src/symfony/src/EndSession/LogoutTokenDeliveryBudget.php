@@ -29,7 +29,7 @@ final readonly class LogoutTokenDeliveryBudget implements LogoutTokenDeliveryInt
 
     public function deliveryBudget(): DateInterval
     {
-        $seconds = $this->retries->waiting() + (int) ceil($this->retries->attempts() * $this->sender->timeout);
+        $seconds = $this->retries->waiting() + (int) ceil($this->retries->attempts() * $this->sender->timeout->seconds);
 
         return new DateInterval('PT' . $seconds . 'S');
     }

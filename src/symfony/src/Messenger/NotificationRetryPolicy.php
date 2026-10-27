@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Messenger;
 
+use Beffroi\Bundle\Configuration\BoundedNumber;
 use function min;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Retry\RetryStrategyInterface;
 use Symfony\Component\Messenger\Stamp\RedeliveryStamp;
@@ -25,12 +27,22 @@ use Throwable;
  */
 final readonly class NotificationRetryPolicy implements RetryStrategyInterface
 {
+    /**
+     * The four numbers are those of "beffroi.back_channel_logout" (BackChannelLogoutSection), held here to the floors
+     * the tree holds them to, which is where a number an environment variable carries is first a number.
+     *
+     * @throws InvalidConfigurationException when a number is below the floor of its node
+     */
     public function __construct(
         public int $retries = 6,
         public int $delay = 2,
         public int $multiplier = 3,
         public int $maxDelay = 60,
     ) {
+        BoundedNumber::assertAtLeast($retries, 0, 'back_channel_logout.retries', 'retries');
+        BoundedNumber::assertAtLeast($delay, 1, 'back_channel_logout.retry_delay', 'seconds');
+        BoundedNumber::assertAtLeast($multiplier, 1, 'back_channel_logout.retry_multiplier', 'times');
+        BoundedNumber::assertAtLeast($maxDelay, 1, 'back_channel_logout.retry_max_delay', 'seconds');
     }
 
     public function isRetryable(Envelope $message, ?Throwable $throwable = null): bool

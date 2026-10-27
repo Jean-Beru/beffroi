@@ -177,19 +177,26 @@ final class ServiceProviderEntityIdPassTest extends TestCase
     }
 
     /**
-     * S-41: a service provider left off wires no locator, and has no entity ID to check.
+     * S-38, decision 0030: an entity ID the deployment names is held to its rules whether its service provider is on or
+     * not, the locator being wired in every image and the role one a value of the environment may turn on.
      */
     #[Test]
-    public function aServiceProviderLeftOffHasNothingToCheck(): void
+    public function anEntityIdOfAServiceProviderLeftOffIsHeldToItsRules(): void
     {
         // Given
-        $container = self::container([]);
+        $container = self::container([
+            'service_provider' => [
+                'enabled' => false,
+                'entity_id' => 'sp.example',
+            ],
+        ]);
+
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIs('Invalid configuration for path "beffroi.saml.service_provider.entity_id": The entity ID of the service provider of a tenant is refused (spec/saml.md S-38): A URI is not absolute (M-6).');
 
         // When
         new ServiceProviderEntityIdPass()->process($container);
-
-        // Then
-        static::assertFalse($container->hasDefinition(RouterServiceProviderEndpoints::class));
     }
 
     /**

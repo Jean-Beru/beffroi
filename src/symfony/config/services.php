@@ -703,6 +703,7 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\RateLimiter\Storage\CacheStorage;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\inline_service;
+use function Symfony\Component\DependencyInjection\Loader\Configurator\iterator;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_iterator;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_locator;
@@ -718,8 +719,10 @@ use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
 use Beffroi\Core\Application\Push\PushSubscriptionNaming;
 use Beffroi\Core\Application\Push\PushSubscriptionRevocation;
 use Beffroi\Core\Application\Push\PushSubscriptionEnrolment;
-use Beffroi\Bundle\Configuration\PasswordsSection;
+use Beffroi\Bundle\Configuration\SamlSection;
+use Beffroi\Bundle\Configuration\SwitchedServices;
 use Beffroi\Bundle\Configuration\WebPushSection;
+use Beffroi\Bundle\Security\UpstreamLogin;
 use Beffroi\Bundle\Push\WebPushSender;
 use Beffroi\Bundle\Http\NotificationsPage;
 use Beffroi\Bundle\Http\BundleScript;
@@ -802,16 +805,14 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PendingApprovalsPage::class);
     // Reaching a user through the push service of a browser they signed in with (RFC 8030, §5.6): the
     // pages they subscribe on, what leaves this provider, and the channel the lane hands an approval to.
-    // The channel and the algorithm of the key are tagged by WebPushSection and only when a deployment
-    // names a subject, a channel nobody wired being a channel nobody wanted.
+    // The channel and the algorithm of the key are listed while a deployment names a subject, and in no
+    // list while it names none (WebPushSection), a channel nobody turned on being a channel nobody wanted;
+    // the sender is handed its subject and its timeout there.
     $services->set(PushSubscriptionEnrolment::class);
     $services->set(PushSubscriptionNaming::class);
     $services->set(PushSubscriptionRevocation::class);
     $services->set(NotificationsPage::class);
-    $services->set(WebPushSender::class)->args([
-        '$subject' => '',
-        '$timeout' => WebPushSection::DEFAULT_TIMEOUT,
-    ]);
+    $services->set(WebPushSender::class);
     $services->set(WebPushApprovalChannel::class);
     $services->set(AccountAccess::class);
     $services->set(BundleScript::class);
@@ -1044,11 +1045,16 @@ return static function (ContainerConfigurator $container): void {
     $services->set(BeffroiSchedule::class);
     // what tells a user that something is waiting for them, on the lane rather than in the request the
     // client is waiting on (CIBA Core §7); what carries the word at the end of it is whatever a
-    // deployment tagged "beffroi.pending_approval_channel", and the bundle tags nothing
+    // deployment tagged "beffroi.pending_approval_channel", the bundle tagging nothing, then the push
+    // service of the browsers of the user while the deployment reaches its users that way (WebPushSection)
     $services->set(QueuedPendingApprovalNotifier::class);
     $services->alias(PendingApprovalNotifierInterface::class, QueuedPendingApprovalNotifier::class);
     $services->get(TellUserOfPendingApprovalHandler::class)->args([
-        '$channels' => tagged_iterator('beffroi.pending_approval_channel'),
+        '$channels' => inline_service(SwitchedServices::class)->args([
+            tagged_iterator(WebPushSection::CHANNEL_TAG),
+            service(WebPushSection::ROLE),
+            iterator([service(WebPushApprovalChannel::class)]),
+        ]),
     ]);
     // what carries a logout token to a client, and what says the provider gave up on one (§4.9)
     $services->set(LogoutTokenSender::class);
@@ -1073,7 +1079,13 @@ return static function (ContainerConfigurator $container): void {
     $services->set(UserChecker::class);
     $services->set(InteractionLoginHandler::class);
     $services->set(LoginSuccessListener::class)->args(['$logins' => tagged_iterator('beffroi.login.dated')]);
-    $services->set(LoginFailureListener::class)->args(['$logins' => tagged_iterator('beffroi.login.refusal')]);
+    $services->set(LoginFailureListener::class)->args([
+        '$logins' => inline_service(SwitchedServices::class)->args([
+            tagged_iterator('beffroi.login.refusal'),
+            service(SamlSection::SERVICE_PROVIDER_ROLE),
+            iterator([service(UpstreamLogin::class)]),
+        ]),
+    ]);
     // the three logins of the firewall, each an authenticator of its own, each handing what it reads to a
     // use case of the core, where the order of a login is written once (issue #130)
     $services->set(PasswordLoginAuthenticator::class);
@@ -1082,7 +1094,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(SecondFactorGate::class);
     $services->set(TotpLoginAuthenticator::class);
     // the assertion consumer service of the SAML service provider of the tenant, a fourth login of the firewall
-    // (beffroi/saml S-52); its use case and its login are wired by the SAML section when the service provider is enabled
+    // (beffroi/saml S-52); its use case is the one the SAML section builds while the service provider is on, and its
+    // login one of the logins below while it is on
     $services->set(UpstreamAssertionAuthenticator::class);
     // what the logins of the firewall prove, read by the listener and announced by the discovery (decision 0010):
     // one class per login, and what is tagged is what the provider announces
@@ -1095,7 +1108,17 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PasswordLogin::class)->tag('beffroi.login')->tag('beffroi.login.offered');
     $services->set(PasskeyLogin::class)->tag('beffroi.login')->tag('beffroi.login.refusal')->tag('beffroi.login.dated')->tag('beffroi.login.offered');
     $services->set(TotpLogin::class)->tag('beffroi.login');
-    $services->set(PassportProofs::class)->args([tagged_iterator('beffroi.login')]);
+    // the login an upstream identity provider proves (beffroi/saml S-52, S-57), one of the logins of the firewall
+    // and one whose refusals the listener announces while the service provider of the tenant is on, and of no list
+    // while it is off, so that a deployment that receives no assertion announces nothing of one
+    $services->set(UpstreamLogin::class);
+    $services->set(PassportProofs::class)->args([
+        inline_service(SwitchedServices::class)->args([
+            tagged_iterator('beffroi.login'),
+            service(SamlSection::SERVICE_PROVIDER_ROLE),
+            iterator([service(UpstreamLogin::class)]),
+        ]),
+    ]);
     $services->set(OfferedLogins::class)->args([tagged_iterator('beffroi.login.offered')]);
     $services->alias(ProvableMethodsInterface::class, PassportProofs::class);
     // the attempts at a code and at a password, counted per user by the two limiters the bundle declares in the framework (architecture §3.4)
@@ -1112,7 +1135,6 @@ return static function (ContainerConfigurator $container): void {
     // the lane: a login keeps no third party on it.
     $services->set(PwnedPasswords::class)->args([
         '$endpoint' => '',
-        '$timeout' => PasswordsSection::DEFAULT_TIMEOUT,
     ]);
     $services->alias(BreachedPasswordsInterface::class, PwnedPasswords::class);
     $services->set(BreachedPasswordListener::class);
@@ -1276,11 +1298,18 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ContentEncryptionAlgorithmsInterface::class, JoseContentEncryptionAlgorithms::class);
     $services->set(JoseEncryptionAlgorithms::class);
     // The algorithms of the keys the tenant hands out itself rather than publishing in its JWK Set
-    // (RFC 8292 §2): wired by the deployment that reaches its users by push and by no other, so that a
-    // deployment that does not draws no such key and has no page that would hand one out (§5.6); the
-    // web push section leaves it dormant otherwise.
-    $services->set(Vapid::class);
-    $services->set(JoseApplicationServerAlgorithms::class)->args([tagged_iterator('beffroi.application_server_algorithm')]);
+    // (RFC 8292 §2): the one of web push while the deployment reaches its users by push, and none while it
+    // does not, so that such a deployment draws no such key and has no page that would hand one out (§5.6).
+    // Dormant in every image, the key files reading the dormant algorithms for a key the registry does not
+    // carry and for no other (DormantKeyAlgorithms).
+    $services->set(Vapid::class)->tag(DormantKeyAlgorithms::TAG);
+    $services->set(JoseApplicationServerAlgorithms::class)->args([
+        inline_service(SwitchedServices::class)->args([
+            tagged_iterator(WebPushSection::ALGORITHM_TAG),
+            service(WebPushSection::ROLE),
+            iterator([service(Vapid::class)]),
+        ]),
+    ]);
     $services->alias(ApplicationServerAlgorithmsInterface::class, JoseApplicationServerAlgorithms::class);
     // The algorithm of the key the tenant seals what leaves the process to (decision 0020): kept and
     // never published, so a reader of the discovery document cannot seal a body this provider would open.
@@ -1296,11 +1325,20 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(MessageSealingAlgorithmsInterface::class, JoseMessageSealingAlgorithms::class);
     // The algorithm of the key the tenant signs its SAML messages with (beffroi/saml, spec/saml.md S-1): an RSA pair
     // of the size above, kept out of the JWK Set and published as a certificate in the metadata of its identity
-    // provider. The SAML section of the configuration tags it when the deployment enables the identity provider, and
-    // nothing else does, so that a deployment that serves no SAML draws no such key; the section leaves it dormant
-    // otherwise.
-    $services->set(SamlSigning::class)->args([service(RsaKeyBits::class)]);
-    $services->set(JoseSamlSigningAlgorithms::class)->args([tagged_iterator(JoseSamlSigningAlgorithms::TAG)]);
+    // provider. It is in the registry while either SAML role of the tenant is on (S-40), and out of it while both
+    // are off, so that a deployment that serves no SAML draws no such key; dormant in every image, as the one of web
+    // push is.
+    $services
+        ->set(SamlSigning::class)
+        ->args([service(RsaKeyBits::class)])
+        ->tag(DormantKeyAlgorithms::TAG);
+    $services->set(JoseSamlSigningAlgorithms::class)->args([
+        inline_service(SwitchedServices::class)->args([
+            tagged_iterator(JoseSamlSigningAlgorithms::TAG),
+            service(SamlSection::ROLE),
+            iterator([service(SamlSigning::class)]),
+        ]),
+    ]);
     // the keys the upstream SAML identity providers encrypt for (beffroi/saml, spec/saml.md S-64): one algorithm per
     // provider the configuration or the environment declares, which the SAML section builds from that list, and those
     // an extension tags (SamlSection::encryptionAlgorithms())
@@ -1329,9 +1367,11 @@ return static function (ContainerConfigurator $container): void {
     ]]);
     $services->alias(KeyAlgorithmsInterface::class, JoseKeyAlgorithms::class);
     $services->alias(RotationSchedulesInterface::class, JoseKeyAlgorithms::class);
-    // The algorithms a section of the configuration leaves off, each tagged by the section that owns it: what the key
-    // files read past, so that a key drawn before its capability was turned off waits for it to be turned on again; and
-    // the key of an upstream SAML identity provider no longer declared, whose algorithm nothing is left to tag
+    // The algorithms of the capabilities a deployment may turn off, the SAML key and the VAPID key above, tagged dormant
+    // in every image: what the key files read past for a name the registry of its family does not carry, which it carries
+    // while the capability is on, so that a key drawn before its capability was turned off waits for it to be turned on
+    // again; and the key of an upstream SAML identity provider no longer declared, or of a tenant whose service provider
+    // is off, whose algorithm nothing builds
     $services->set(DormantKeyAlgorithms::class)->args([
         tagged_iterator(DormantKeyAlgorithms::TAG),
         [SamlEncryptionAlgorithmInterface::NAME_PREFIX],
@@ -1789,19 +1829,22 @@ return static function (ContainerConfigurator $container): void {
     // CIBA Core §7, §10.1: where a client asks for a user it names, and what the page that user answers
     // on asks. One class per way of telling the client its request was answered, tagged, and what is
     // tagged is what a client may register and what the document announces; one class per way a request
-    // may name its user, of which the deployment wires the one that reads a "login_hint"
+    // may name its user, of which the deployment names the one that reads a "login_hint"
     // (BackchannelAuthenticationSection) and this the one that reads an ID token we issued
     $services->set(PollDelivery::class)->tag('beffroi.oidc.ciba_delivery_mode');
     $services->set(PingDelivery::class)->tag('beffroi.oidc.ciba_delivery_mode');
     $services->set(ServedDeliveryModes::class)->args([tagged_iterator('beffroi.oidc.ciba_delivery_mode')]);
     $services->alias(ServedDeliveryModesInterface::class, ServedDeliveryModes::class);
     $services->set(IdTokenUserHint::class)->tag('beffroi.oidc.ciba_user_hint');
-    // the two ways of reading a "login_hint" the bundle ships, of which the deployment tags one per side
-    // it is read on, this one and the login page (InteractionSection, LoginHintReadings): two things
-    // reading one parameter would be a wiring with two answers to one question
+    // the two ways of reading a "login_hint" the bundle ships, of which the deployment names one per side
+    // it is read on, this one and the login page, built when the container builds that side
+    // (InteractionSection, LoginHintReadings): two things reading one parameter would be a wiring with two
+    // answers to one question
     $services->set(SubjectLoginHint::class);
     $services->set(UsernameLoginHint::class);
-    $services->set(UserHints::class)->args([tagged_iterator('beffroi.oidc.ciba_user_hint')]);
+    // the readings of a backchannel request: the ID token above, then the reading of the "login_hint" the
+    // deployment names (BackchannelAuthenticationSection, LoginHintReadings)
+    $services->set(UserHints::class);
     $services->set(SignedBackchannelRequest::class);
     $services->set(BackchannelAuthenticationHandler::class);
     // what a backchannel request asks of the authentication of whoever answers it (issue #266)
@@ -1825,9 +1868,9 @@ return static function (ContainerConfigurator $container): void {
     // it answers is a redirection to the client, which then makes the request the handler above reads
     $services->set(ThirdPartyInitiatedLoginHandler::class);
     // OIDC Core §3.1.2.1: and the way back, what the "login_hint" of that request names, read by the one
-    // reading the deployment tagged for this side (InteractionSection) so the page waiting for a login
+    // reading the deployment names for this side (InteractionSection) so the page waiting for a login
     // offers a name rather than the "sub" the client carried
-    $services->set(LoginHints::class)->args([tagged_iterator('beffroi.oidc.login_hint')]);
+    $services->set(LoginHints::class);
     // and its counterpart: a consent taken back takes back what was issued under it (issue #273)
     $services->set(ConsentRevocation::class);
     // JARM §2.1: what the two signed modes deliver, minted where every other JWS of the tenant is
@@ -1955,8 +1998,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(JwksHandler::class);
     // beffroi/saml: the identity provider and the service provider of the tenant, their certificates, built once per
     // process from keys the KMS opens (S-1, S-3), and their metadata under the issuer (spec/saml.md sections 6.1 and
-    // 6.9); the SAML section of the configuration wires the handler of each role it enables, and of no other (S-41),
-    // with what the tenant set
+    // 6.9); the SAML section of the configuration builds the handler of each role while the role is on, and none while
+    // it is off (S-41), with what the tenant set
     $services->set(SelfSignedCertificateIssuer::class);
     $services->alias(CertificateIssuerInterface::class, SelfSignedCertificateIssuer::class);
     $services->set(ModelMetadataWriter::class);
@@ -2069,7 +2112,7 @@ return static function (ContainerConfigurator $container): void {
     // interaction of the browser (spec/saml.md S-48 to S-51), written to a single sign-on service of the accepted
     // document read back from the table of the upstream identity providers, and not of the service providers the port
     // is aliased to, signed by the SAML key of the tenant, remembered in the HTTP session of the browser under its
-    // RelayState; the use case is wired by the SAML section when the service provider is enabled
+    // RelayState; the use case is the one the SAML section builds while the service provider is on
     $services->set(ModelAuthnRequestSender::class)->arg('$accepted', service('beffroi.saml.identity_providers.accepted_metadata'));
     $services->alias(AuthnRequestSenderInterface::class, ModelAuthnRequestSender::class);
     $services->set(UpstreamSignOns::class);

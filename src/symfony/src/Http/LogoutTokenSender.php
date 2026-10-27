@@ -27,7 +27,7 @@ final readonly class LogoutTokenSender
 
     public function __construct(
         private HttpClientInterface $http,
-        public float $timeout,
+        public Timeout $timeout,
     ) {
     }
 
@@ -43,8 +43,7 @@ final readonly class LogoutTokenSender
                     'Accept' => '*/*',
                 ],
                 'max_redirects' => 0,
-                'timeout' => $this->timeout,
-                'max_duration' => $this->timeout,
+                ...$this->timeout->options(),
             ]);
 
             return self::outcomeOf($response->getStatusCode(), $response->getHeaders(false)['location'][0] ?? null);

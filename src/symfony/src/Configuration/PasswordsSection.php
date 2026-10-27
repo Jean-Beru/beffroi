@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Configuration;
 
+use Beffroi\Bundle\Http\Timeout;
 use Beffroi\Bundle\Security\PwnedPasswords;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
@@ -59,7 +60,7 @@ final readonly class PasswordsSection extends ConfigurationSection
             ->floatNode('timeout')
             ->info('How long a request to the list may take, in seconds, for the whole exchange. It bounds the console that writes a password for somebody and the page where a person replaces their own, where the answer is waited for; the lookup of a password already posed is a lane and waits on nothing.')
             ->defaultValue(self::DEFAULT_TIMEOUT)
-            ->min(0.1)
+            ->min(Timeout::MINIMUM)
             ->end()
             ->end()
             ->end()
@@ -70,6 +71,10 @@ final readonly class PasswordsSection extends ConfigurationSection
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
     {
         $breached = self::section($this->own($config), 'breached');
-        $services->get(PwnedPasswords::class)->arg('$endpoint', self::string($breached, 'endpoint'))->arg('$timeout', self::float($breached, 'timeout'));
+        $services->get(PwnedPasswords::class)->arg('$endpoint', self::string($breached, 'endpoint'))->arg('$timeout', self::timeout(
+            $breached,
+            'timeout',
+            'passwords.breached.timeout',
+        ));
     }
 }

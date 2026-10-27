@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Configuration;
 
 use Beffroi\Bundle\Http\ClientNotificationSender;
+use Beffroi\Bundle\Http\Timeout;
+use Beffroi\Oidc\Application\Ciba\UserHints;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
@@ -39,7 +41,7 @@ final readonly class BackchannelAuthenticationSection extends ConfigurationSecti
             ->floatNode('client_notification_timeout')
             ->info('Seconds one call to a client notification endpoint is given, connection included (CIBA Core §10.2). A client that hangs must not hold a worker; how many times the call is tried again is the retry policy of the notifications lane, as it is for a logout token.')
             ->defaultValue(self::DEFAULT_NOTIFICATION_TIMEOUT)
-            ->min(0.1)
+            ->min(Timeout::MINIMUM)
             ->end()
             ->end()
             ->end();
@@ -48,7 +50,15 @@ final readonly class BackchannelAuthenticationSection extends ConfigurationSecti
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
     {
         $backchannel = $this->own($config);
-        $services->get(ClientNotificationSender::class)->arg('$timeout', self::float($backchannel, 'client_notification_timeout'));
-        LoginHintReadings::tag($services, self::string($backchannel, 'login_hint'), 'beffroi.oidc.ciba_user_hint');
+        $services->get(ClientNotificationSender::class)->arg('$timeout', self::timeout(
+            $backchannel,
+            'client_notification_timeout',
+            'backchannel_authentication.client_notification_timeout',
+        ));
+        $services->get(UserHints::class)->args([LoginHintReadings::wired(
+            'beffroi.oidc.ciba_user_hint',
+            self::string($backchannel, 'login_hint'),
+            'backchannel_authentication.login_hint',
+        )]);
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Unit\Client;
 
+use Beffroi\Bundle\Http\ByteLimit;
+use Beffroi\Bundle\Http\Timeout;
 use Beffroi\Bundle\Client\SectorIdentifierDocumentFetcher;
 use Beffroi\Oidc\Domain\Client\ClientUri;
 use Beffroi\Oidc\Exception\SectorIdentifierUnavailableException;
@@ -174,6 +176,6 @@ final class SectorIdentifierDocumentFetcherTest extends TestCase
 
     private function fetcher(ResponseInterface $response): SectorIdentifierDocumentFetcher
     {
-        return new SectorIdentifierDocumentFetcher(new MockHttpClient($response), 1.0, self::MAX_SIZE);
+        return new SectorIdentifierDocumentFetcher(new MockHttpClient($response), new Timeout(1.0), new ByteLimit(self::MAX_SIZE));
     }
 }

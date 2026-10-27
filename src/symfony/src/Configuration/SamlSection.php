@@ -4,14 +4,10 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Configuration;
 
-use Beffroi\Bundle\Key\DormantKeyAlgorithms;
 use Beffroi\Bundle\Saml\JoseSamlEncryptionAlgorithms;
-use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
 use Beffroi\Bundle\Saml\RouterServiceProviderEndpoints;
 use Beffroi\Bundle\Saml\SamlEncryption;
-use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Saml\UpstreamIdentityProvidersPass;
-use Beffroi\Bundle\Security\UpstreamLogin;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyAlgorithmInterface;
 use Beffroi\Core\Domain\Key\RotationSchedule;
@@ -34,22 +30,26 @@ use function array_keys;
 use function is_array;
 use function is_int;
 use function is_string;
+use Symfony\Component\Config\Definition\Builder\BooleanNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
+use function Symfony\Component\DependencyInjection\Loader\Configurator\service_closure;
 
 /**
  * Whether the tenant of this deployment is a SAML identity provider (beffroi/saml, spec/saml.md section 6.1), whether
  * it wants the requests it receives signed, and the service providers it serves (section 5.2); and whether it is a
  * SAML service provider to identity providers upstream of it, and the entity ID it goes by there (section 5.6).
  *
- * A role the deployment does not enable wires nothing: no handler serves its metadata, and its route answers that
- * there is none (S-41). The SAML signing key is the key of both roles (S-40): with neither enabled the tenant draws no
- * SAML key, its algorithm left dormant instead, so that a key the tenant drew before the deployment turned them off
- * stays in the key directory, read by nothing, and the other keys go on without it. With either enabled, the algorithm
- * of the SAML signing key is wired with the others, so that the key commands draw, list and rotate it, and the
- * scheduled step stages its successors, as every key of the tenant.
+ * Whether each role is on may be a value of the environment (decision 0030), which is one only when the container runs:
+ * the routes and the services of both roles are wired in every image, and each role is read once, when the container
+ * builds what it changes (RoleSwitch). A role that is off serves nothing: its handler is none, and its route answers
+ * that there is none (S-41). The SAML signing key is the key of both roles (S-40): with neither on the tenant draws no
+ * SAML key, its algorithm out of the registry of its family and dormant, so that a key the tenant drew before the
+ * deployment turned them off stays in the key directory, read by nothing, and the other keys go on without it. With
+ * either on, the algorithm of the SAML signing key is in the registry with the others, so that the key commands draw,
+ * list and rotate it, and the scheduled step stages its successors, as every key of the tenant.
  *
  * The entity ID of the service provider is its own (S-38): one the deployment names is a string here, and a URI of
  * M-6 that is not the entity ID of the identity provider once the container is compiled (ServiceProviderEntityIdPass);
@@ -69,12 +69,29 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
  *
  * The keys of the identity provider are a family of their own (spec/saml.md S-12, issue #738): their staging delay and their age are set here,
  * counted in days by default, and not by "beffroi.keys", whose figures suit a JWK Set refetched within minutes. The
- * schedule of the family is built whether the role is enabled or not, the registry of the SAML keys being wired in
- * both cases, empty in the second; the cacheDuration of the metadata is refused here, when the configuration is read,
- * unless it is shorter than the staging delay.
+ * schedule of the family is built whether a role is on or not, the registry of the SAML keys being wired in both
+ * cases, empty in the second; the cacheDuration of the metadata is refused here, when the configuration is read, unless
+ * it is shorter than the staging delay, and by the handler of each role when it is built.
  */
 final readonly class SamlSection extends ConfigurationSection
 {
+    /**
+     * The role of the identity provider, of the service provider, and of either, which the SAML key serves (S-40),
+     * each read once when the container builds what it changes (RoleSwitch).
+     */
+    public const string IDENTITY_PROVIDER_ROLE = 'beffroi.saml.identity_provider.role';
+
+    public const string SERVICE_PROVIDER_ROLE = 'beffroi.saml.service_provider.role';
+
+    public const string ROLE = 'beffroi.saml.role';
+
+    /**
+     * The handlers of the metadata of each role, built while the role is on for whoever asks for the class.
+     */
+    public const string IDENTITY_PROVIDER_METADATA = 'beffroi.saml.identity_provider.metadata';
+
+    public const string SERVICE_PROVIDER_METADATA = 'beffroi.saml.service_provider.metadata';
+
     /**
      * The refusal of service providers declared for a tenant that is no identity provider, which the tree makes of a
      * written list and the factory of the declarations of one the environment carries.
@@ -99,9 +116,10 @@ final readonly class SamlSection extends ConfigurationSection
             ->addDefaultsIfNotSet()
             ->children()
             ->arrayNode('identity_provider')
-            ->info('The tenant as a SAML identity provider (spec/saml.md section 6.1). Disabled, nothing of it is wired: it serves no metadata, and the tenant draws no SAML key unless its service provider is enabled, the key of both roles (S-40, S-41). Enabled, its key is drawn with "beffroi:keys:generate --algorithm=SAML-SIGNING" and rotates as every key of the tenant, by the figures of its own family below.')
+            ->info('The tenant as a SAML identity provider (spec/saml.md section 6.1), switched by "enabled", which may be an environment variable, read when the container builds what the role changes. Disabled, it serves nothing: no metadata, and the tenant draws no SAML key unless its service provider is enabled, the key of both roles (S-40, S-41). Enabled, its key is drawn with "beffroi:keys:generate --algorithm=SAML-SIGNING" and rotates as every key of the tenant, by the figures of its own family below.')
             ->canBeEnabled()
             ->children()
+            ->append(self::enabled())
             ->booleanNode('want_authn_requests_signed')
             ->info('What the metadata says in WantAuthnRequestsSigned (SAML Metadata section 2.4.3): true asks every service provider to sign its requests, which is what a broker configured from the metadata does (spec/model.md section 6.9). Turned off, the requests of service providers that cannot sign are accepted where their configuration says so, and the logout of a broker that signs only when asked is lost.')
             ->defaultTrue()
@@ -140,9 +158,10 @@ final readonly class SamlSection extends ConfigurationSection
             ->end()
             ->end()
             ->arrayNode('service_provider')
-            ->info('The tenant as a SAML service provider to the identity providers upstream of it (spec/saml.md section 6.9). Disabled, nothing of it is wired: its metadata answer that there are none. Enabled, it signs with the SAML signing key of the identity provider, drawn and rotated by the figures of "identity_provider" whichever role is enabled (S-40), and its metadata are served at /saml/sp/metadata.')
+            ->info('The tenant as a SAML service provider to the identity providers upstream of it (spec/saml.md section 6.9), switched by "enabled", which may be an environment variable, read when the container builds what the role changes. Disabled, it serves nothing: its metadata answer that there are none. Enabled, it signs with the SAML signing key of the identity provider, drawn and rotated by the figures of "identity_provider" whichever role is enabled (S-40), and its metadata are served at /saml/sp/metadata.')
             ->canBeEnabled()
             ->children()
+            ->append(self::enabled())
             ->stringNode('entity_id')
             ->info('The entity ID of the service provider (spec/saml.md S-38): the URL of its metadata when left out, as the identity provider is named by the URL of its own; another URI for a service provider its upstream identity providers already know by a name it keeps, absolute, at most 1024 characters, with no whitespace, control, format or invisible character (M-6). Never the entity ID of the identity provider of the tenant. Refused when the container is compiled, or at its first use when it or the issuer holds an environment variable.')
             ->defaultNull()
@@ -162,6 +181,22 @@ final readonly class SamlSection extends ConfigurationSection
             ->thenInvalid(self::IDENTITY_PROVIDERS_ALONE)
             ->end()
             ->end();
+    }
+
+    /**
+     * Whether a role is on, the node "canBeEnabled()" declares but read when the container builds what the role changes
+     * (RoleSwitch) and not when it is compiled, which is where symfony/config 8.2 resolves the placeholder of the node
+     * it declares: an image is compiled once, and a role its deployment names by environment would be the one the
+     * environment of the build named (decision 0030).
+     *
+     * @return BooleanNodeDefinition<null> a definition of no parent until a role appends it
+     */
+    private static function enabled(): BooleanNodeDefinition
+    {
+        $enabled = new BooleanNodeDefinition('enabled');
+        $enabled->defaultFalse();
+
+        return $enabled;
     }
 
     /**
@@ -216,17 +251,22 @@ final readonly class SamlSection extends ConfigurationSection
 
     /**
      * The algorithm of the key each upstream identity provider is encrypted for (spec/saml.md S-64): one per provider
-     * the list declares, named by its entity ID, none for a tenant whose service provider is off, which is handed no
-     * list; then those an extension of the deployment tags (JoseSamlEncryptionAlgorithms::TAG).
+     * the list declares, named by its entity ID, none for a tenant whose service provider is off, whatever the list
+     * declares; then those an extension of the deployment tags (JoseSamlEncryptionAlgorithms::TAG).
      *
      * @param iterable<JoseKeyAlgorithmInterface&SamlEncryptionAlgorithmInterface> $tagged
      *
      * @throws InvalidConfigurationException when the list is one the tree refuses
      */
-    public static function encryptionAlgorithms(mixed $identityProviders, RsaKeyBits $keyBits, iterable $tagged = []): JoseSamlEncryptionAlgorithms
-    {
+    public static function encryptionAlgorithms(
+        mixed $identityProviders,
+        bool $serviceProviderEnabled,
+        RsaKeyBits $keyBits,
+        iterable $tagged = [],
+    ): JoseSamlEncryptionAlgorithms {
         $algorithms = [];
-        foreach (array_keys(self::identityProviders()->normalized($identityProviders, 'saml.identity_providers')) as $identityProvider) {
+        $declared = $serviceProviderEnabled ? self::identityProviders()->normalized($identityProviders, 'saml.identity_providers') : [];
+        foreach (array_keys($declared) as $identityProvider) {
             $algorithms[] = new SamlEncryption((string) $identityProvider, $keyBits);
         }
         foreach ($tagged as $algorithm) {
@@ -377,12 +417,23 @@ final readonly class SamlSection extends ConfigurationSection
         $tenant = self::section($config, 'tenant');
         $identityProvider = self::section($own, 'identity_provider');
         $serviceProvider = self::section($own, 'service_provider');
-        $identityProviderEnabled = ($identityProvider['enabled'] ?? false) === true;
-        $serviceProviderEnabled = ($serviceProvider['enabled'] ?? false) === true;
+        // whether each role is on, a flag or the environment placeholder that stands for one until runtime
+        $identityProviderEnabled = self::boolean($identityProvider, 'enabled');
+        $serviceProviderEnabled = self::boolean($serviceProvider, 'enabled');
         // a string or nothing, which the node holds it to; ServiceProviderEntityIdPass checks it once compiled (S-38)
         $entityId = is_string($serviceProvider['entity_id'] ?? null) ? $serviceProvider['entity_id'] : null;
+        // each role read once, when the container builds what it changes, and the SAML key the key of both (S-40)
+        $services->set(self::IDENTITY_PROVIDER_ROLE, RoleSwitch::class)->args([$identityProviderEnabled]);
+        $services->set(self::SERVICE_PROVIDER_ROLE, RoleSwitch::class)->args([$serviceProviderEnabled]);
+        $services
+            ->set(self::ROLE, RoleSwitch::class)
+            ->factory(RoleSwitch::anyOf(...))
+            ->args([[
+                service(self::IDENTITY_PROVIDER_ROLE),
+                service(self::SERVICE_PROVIDER_ROLE),
+            ]]);
         // the two lists reach their declarations as the configuration or the environment carries them, the factory
-        // holding either to the rules of the tree (decision 0030)
+        // holding either to the rules of the tree and to the role that serves it (decision 0030)
         $services
             ->get(ConfigurationServiceProviders::class)
             ->factory(self::declaredServiceProviders(...))
@@ -401,60 +452,72 @@ final readonly class SamlSection extends ConfigurationSection
         // drawn from the list the declarations are, and none while the service provider is off
         $services->get(JoseSamlEncryptionAlgorithms::class)->factory(self::encryptionAlgorithms(...))->arg(
             '$identityProviders',
-            $serviceProviderEnabled ? $own['identity_providers'] ?? [] : [],
-        );
-        // the family of the SAML keys exists in every deployment (JoseKeyAlgorithms), so its schedule does too
+            $own['identity_providers'] ?? [],
+        )->arg('$serviceProviderEnabled', $serviceProviderEnabled);
+        // the family of the SAML keys exists in every deployment (JoseKeyAlgorithms), so its schedule does too, held to
+        // the floors of the tree when it is built
         $services->set('beffroi.saml.rotation_schedule', RotationSchedule::class)->args([
-            self::seconds($identityProvider, 'staging_delay'),
-            self::seconds($identityProvider, 'age'),
+            self::bounded($identityProvider, 'staging_delay', named: 'saml.identity_provider.staging_delay', minimum: 0),
+            self::bounded($identityProvider, 'age', named: 'saml.identity_provider.age'),
         ]);
-        if (! $identityProviderEnabled && ! $serviceProviderEnabled) {
-            $services->get(SamlSigning::class)->tag(DormantKeyAlgorithms::TAG);
-
-            return;
-        }
-        $services->get(SamlSigning::class)->tag(JoseSamlSigningAlgorithms::TAG);
         $maxAge = self::integer(self::section($config, 'keys'), 'jwks_max_age');
         $cacheDuration = self::integer($identityProvider, 'cache_duration');
         $stagingDelay = self::integer($identityProvider, 'staging_delay');
-        if ($identityProviderEnabled) {
-            $services
-                ->set(IdentityProviderMetadataHandler::class)
-                ->autowire()
-                ->arg('$wantAuthnRequestsSigned', self::boolean(
-                    $identityProvider,
-                    'want_authn_requests_signed',
-                ))
-                ->arg('$maxAge', $maxAge)
-                ->arg('$cacheDuration', $cacheDuration)
-                ->arg('$stagingDelay', $stagingDelay);
-        }
-        if ($serviceProviderEnabled) {
-            $services->set(RouterServiceProviderEndpoints::class)->autowire()->arg('$entityId', $entityId);
-            $services->alias(ServiceProviderEndpointsInterface::class, RouterServiceProviderEndpoints::class);
-            $services
-                ->set(ServiceProviderMetadataHandler::class)
-                ->autowire()
-                ->arg('$maxAge', $maxAge)
-                ->arg('$cacheDuration', $cacheDuration)
-                ->arg(
-                    '$stagingDelay',
-                    $stagingDelay,
-                );
-            // the sign-on at an upstream identity provider, which needs the endpoints of the role (spec/saml.md S-51)
-            $services->set(UpstreamSignOn::class)->autowire();
-            // the assertion consumer service (spec/saml.md S-52 to S-59): the response read under the accepted document
-            // of the provider, from the table of the upstream identity providers, and the login of the firewall it
-            // proves, announced only by a deployment that receives assertions
-            $services->set(ModelResponseReceiver::class)->autowire()->arg('$accepted', service('beffroi.saml.identity_providers.accepted_metadata'));
-            $services->alias(ResponseReceiverInterface::class, ModelResponseReceiver::class);
-            $services->set(AssertionConsumerService::class)->autowire();
-            $services->set(UpstreamLogin::class)->tag('beffroi.login')->tag('beffroi.login.refusal');
-        }
+        // The handler of each role is wired in every image and built for its consumers while the role is on, none while
+        // it is off, which is what a role never declared hands them (S-41, RoleSwitch): the routes of a role are known
+        // when the container is compiled, whether it is on only when it runs.
+        $services
+            ->set(self::IDENTITY_PROVIDER_METADATA, IdentityProviderMetadataHandler::class)
+            ->autowire()
+            ->arg('$wantAuthnRequestsSigned', self::boolean($identityProvider, 'want_authn_requests_signed'))
+            ->arg('$maxAge', $maxAge)
+            ->arg('$cacheDuration', $cacheDuration)
+            ->arg('$stagingDelay', $stagingDelay);
+        self::servedBy($services, IdentityProviderMetadataHandler::class, self::IDENTITY_PROVIDER_METADATA, self::IDENTITY_PROVIDER_ROLE);
+        $services->set(RouterServiceProviderEndpoints::class)->autowire()->arg('$entityId', $entityId);
+        $services->alias(ServiceProviderEndpointsInterface::class, RouterServiceProviderEndpoints::class);
+        $services
+            ->set(self::SERVICE_PROVIDER_METADATA, ServiceProviderMetadataHandler::class)
+            ->autowire()
+            ->arg('$maxAge', $maxAge)
+            ->arg('$cacheDuration', $cacheDuration)
+            ->arg('$stagingDelay', $stagingDelay);
+        self::servedBy($services, ServiceProviderMetadataHandler::class, self::SERVICE_PROVIDER_METADATA, self::SERVICE_PROVIDER_ROLE);
+        // the sign-on at an upstream identity provider, which needs the endpoints of the role (spec/saml.md S-51)
+        $services->set('beffroi.saml.service_provider.sign_on', UpstreamSignOn::class)->autowire();
+        self::servedBy($services, UpstreamSignOn::class, 'beffroi.saml.service_provider.sign_on', self::SERVICE_PROVIDER_ROLE);
+        // the assertion consumer service (spec/saml.md S-52 to S-59): the response read under the accepted document of
+        // the provider, from the table of the upstream identity providers, its login a login of the firewall while the
+        // service provider is on (PassportProofs, LoginFailureListener)
+        $services->set(ModelResponseReceiver::class)->autowire()->arg('$accepted', service('beffroi.saml.identity_providers.accepted_metadata'));
+        $services->alias(ResponseReceiverInterface::class, ModelResponseReceiver::class);
+        $services->set('beffroi.saml.service_provider.assertion_consumer_service', AssertionConsumerService::class)->autowire();
+        self::servedBy(
+            $services,
+            AssertionConsumerService::class,
+            'beffroi.saml.service_provider.assertion_consumer_service',
+            self::SERVICE_PROVIDER_ROLE,
+        );
     }
 
     /**
-     * Whether service providers are declared for a tenant that is no identity provider, which serves none of them.
+     * What the consumers of a service of a role are handed under the name of its class, the service while the role is
+     * on and none while it is off (RoleSwitch::served()).
+     *
+     * @param class-string $class
+     */
+    private static function servedBy(ServicesConfigurator $services, string $class, string $service, string $role): void
+    {
+        $services
+            ->set($class)
+            ->factory([service($role), 'served'])
+            ->args([service_closure($service)]);
+    }
+
+    /**
+     * Whether service providers are declared for a tenant that is no identity provider, which serves none of them. A
+     * role the environment switches is a placeholder here, left to the factory of the declarations, which holds the list
+     * to the role it is then.
      */
     private static function declaresServiceProvidersAlone(mixed $saml): bool
     {
@@ -462,12 +525,12 @@ final readonly class SamlSection extends ConfigurationSection
             return false;
         }
 
-        return self::section($saml, 'service_providers') !== [] && (self::section($saml, 'identity_provider')['enabled'] ?? false) !== true;
+        return self::section($saml, 'service_providers') !== [] && (self::section($saml, 'identity_provider')['enabled'] ?? false) === false;
     }
 
     /**
      * Whether upstream identity providers are declared for a tenant that is no service provider, which receives no
-     * assertion of theirs.
+     * assertion of theirs, a role the environment switches being left to the factory of the declarations.
      */
     private static function declaresIdentityProvidersAlone(mixed $saml): bool
     {
@@ -475,6 +538,6 @@ final readonly class SamlSection extends ConfigurationSection
             return false;
         }
 
-        return self::section($saml, 'identity_providers') !== [] && (self::section($saml, 'service_provider')['enabled'] ?? false) !== true;
+        return self::section($saml, 'identity_providers') !== [] && (self::section($saml, 'service_provider')['enabled'] ?? false) === false;
     }
 }

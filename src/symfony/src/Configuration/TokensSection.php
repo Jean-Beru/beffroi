@@ -157,7 +157,7 @@ final readonly class TokensSection extends ConfigurationSection
         $tokens = $this->own($config);
         // Every lifetime is handed over through the bounds the tree holds it to, a second at least and the
         // maximum where the tree names one, which is what holds a number an environment variable carries to
-        // them (BoundedLifetime).
+        // them (BoundedNumber).
         $services->get(AuthorizationCodeIssuer::class)->arg('$lifetime', self::bounded(
             $tokens,
             'authorization_code_ttl',

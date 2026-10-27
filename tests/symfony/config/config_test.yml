@@ -147,6 +147,47 @@ parameters:
     env(BEFFROI_TEST_ORIGIN_INTERVAL): 60
     env(BEFFROI_TEST_CLIENT_INTERVAL): 60
     env(BEFFROI_TEST_WEB_PUSH_SUBJECT): 'mailto:operator@op.test'
+    # The figures of issue #915, read the same way and left at the defaults of the bundle: the slug of the tenant, the
+    # family of the SAML keys, the window of a DPoP proof and of its nonce, the longest a backchannel request may ask
+    # for, the delivery of a logout token and its retries, what one call to a client, to a push service and to the list
+    # of compromised passwords is given, the window of a client assertion and what a read of a published set costs,
+    # the window of a request object and what a read of a request_uri costs, how long a registered client is kept,
+    # what a read of a sector identifier costs and the window of a software statement; then how a "login_hint" is read
+    # on either side, the defaults the container also validates the two names against.
+    env(BEFFROI_TEST_TENANT_SLUG): default
+    env(BEFFROI_TEST_SAML_STAGING_DELAY): 604800
+    env(BEFFROI_TEST_SAML_KEY_AGE): 31536000
+    env(BEFFROI_TEST_SAML_CACHE_DURATION): 86400
+    env(BEFFROI_TEST_DPOP_PROOF_MAX_AGE): 60
+    env(BEFFROI_TEST_DPOP_LEEWAY): 30
+    env(BEFFROI_TEST_DPOP_NONCE_TTL): 300
+    env(BEFFROI_TEST_BACKCHANNEL_AUTHENTICATION_MAX_REQUESTED_EXPIRY): 1800
+    env(BEFFROI_TEST_BACK_CHANNEL_LOGOUT_TIMEOUT): 5.0
+    env(BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRIES): 6
+    env(BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_DELAY): 2
+    env(BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_MULTIPLIER): 3
+    env(BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_MAX_DELAY): 60
+    env(BEFFROI_TEST_CLIENT_NOTIFICATION_TIMEOUT): 3.0
+    env(BEFFROI_TEST_WEB_PUSH_TIMEOUT): 3.0
+    env(BEFFROI_TEST_BREACHED_PASSWORDS_TIMEOUT): 2.0
+    env(BEFFROI_TEST_CLIENT_ASSERTION_MAX_LIFETIME): 300
+    env(BEFFROI_TEST_CLIENT_ASSERTION_LEEWAY): 30
+    env(BEFFROI_TEST_JWKS_TIMEOUT): 3.0
+    env(BEFFROI_TEST_JWKS_MAX_SIZE): 65536
+    env(BEFFROI_TEST_JWKS_TTL): 86400
+    env(BEFFROI_TEST_JWKS_REFETCH_COOLDOWN): 300
+    env(BEFFROI_TEST_REQUEST_OBJECT_MAX_LIFETIME): 3600
+    env(BEFFROI_TEST_REQUEST_OBJECT_LEEWAY): 30
+    env(BEFFROI_TEST_REQUEST_OBJECT_TIMEOUT): 3.0
+    env(BEFFROI_TEST_REQUEST_OBJECT_MAX_SIZE): 65536
+    env(BEFFROI_TEST_KEEP_A_CLIENT_UNUSED_FOR): 7776000
+    env(BEFFROI_TEST_KEEP_A_CLIENT_NEVER_USED_FOR): 604800
+    env(BEFFROI_TEST_SECTOR_IDENTIFIER_TIMEOUT): 3.0
+    env(BEFFROI_TEST_SECTOR_IDENTIFIER_MAX_SIZE): 65536
+    env(BEFFROI_TEST_STATEMENT_MAX_LIFETIME): 300
+    env(BEFFROI_TEST_STATEMENT_LEEWAY): 30
+    env(BEFFROI_TEST_LOGIN_HINT): sub
+    env(BEFFROI_TEST_CIBA_LOGIN_HINT): sub
     env(BEFFROI_TEST_KMS_DSN): 'sodium://?keys[signing]=PGI3BsLfSoNqJ2bNkhFrG4rqZoHn1dzo7OM52jV5lZw'
     env(BEFFROI_TEST_KMS_KEY_ID): signing
     # A second KMS client, which only the rewrap of the data keys needs: moving them from one client to
@@ -187,6 +228,7 @@ key_management:
 beffroi:
     tenant:
         issuer: 'https://op.test'
+        slug: '%env(BEFFROI_TEST_TENANT_SLUG)%'
         # Two of the claims a person may say of themselves (issue #452), so that both ends of the rule are
         # played: what this tenant opens is written, and what it does not is refused on the server.
         self_served_claims: ['nickname', 'zoneinfo', 'locale', 'birthdate']
@@ -211,9 +253,39 @@ beffroi:
         refresh_token_absolute_ttl: '%env(int:BEFFROI_TEST_REFRESH_TOKEN_ABSOLUTE_TTL)%'
         device_code_interval: '%env(int:BEFFROI_TEST_DEVICE_CODE_INTERVAL)%'
         backchannel_authentication_interval: '%env(int:BEFFROI_TEST_BACKCHANNEL_AUTHENTICATION_INTERVAL)%'
+        backchannel_authentication_max_requested_expiry: '%env(int:BEFFROI_TEST_BACKCHANNEL_AUTHENTICATION_MAX_REQUESTED_EXPIRY)%'
     dpop:
+        proof_max_age: '%env(int:BEFFROI_TEST_DPOP_PROOF_MAX_AGE)%'
+        leeway: '%env(int:BEFFROI_TEST_DPOP_LEEWAY)%'
         nonce:
             required: '%env(bool:BEFFROI_TEST_DPOP_NONCE_REQUIRED)%'
+            ttl: '%env(int:BEFFROI_TEST_DPOP_NONCE_TTL)%'
+    interaction:
+        login_hint: '%env(BEFFROI_TEST_LOGIN_HINT)%'
+    backchannel_authentication:
+        login_hint: '%env(BEFFROI_TEST_CIBA_LOGIN_HINT)%'
+        client_notification_timeout: '%env(float:BEFFROI_TEST_CLIENT_NOTIFICATION_TIMEOUT)%'
+    back_channel_logout:
+        timeout: '%env(float:BEFFROI_TEST_BACK_CHANNEL_LOGOUT_TIMEOUT)%'
+        retries: '%env(int:BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRIES)%'
+        retry_delay: '%env(int:BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_DELAY)%'
+        retry_multiplier: '%env(int:BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_MULTIPLIER)%'
+        retry_max_delay: '%env(int:BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_MAX_DELAY)%'
+    passwords:
+        breached:
+            timeout: '%env(float:BEFFROI_TEST_BREACHED_PASSWORDS_TIMEOUT)%'
+    client_authentication:
+        assertion_max_lifetime: '%env(int:BEFFROI_TEST_CLIENT_ASSERTION_MAX_LIFETIME)%'
+        assertion_leeway: '%env(int:BEFFROI_TEST_CLIENT_ASSERTION_LEEWAY)%'
+        jwks_timeout: '%env(float:BEFFROI_TEST_JWKS_TIMEOUT)%'
+        jwks_max_size: '%env(int:BEFFROI_TEST_JWKS_MAX_SIZE)%'
+        jwks_ttl: '%env(int:BEFFROI_TEST_JWKS_TTL)%'
+        jwks_refetch_cooldown: '%env(int:BEFFROI_TEST_JWKS_REFETCH_COOLDOWN)%'
+    request_objects:
+        max_lifetime: '%env(int:BEFFROI_TEST_REQUEST_OBJECT_MAX_LIFETIME)%'
+        leeway: '%env(int:BEFFROI_TEST_REQUEST_OBJECT_LEEWAY)%'
+        timeout: '%env(float:BEFFROI_TEST_REQUEST_OBJECT_TIMEOUT)%'
+        max_size: '%env(int:BEFFROI_TEST_REQUEST_OBJECT_MAX_SIZE)%'
     webauthn:
         metadata_storage: '%kernel.cache_dir%/webauthn'
     # Where a test that wants a provenance to say a place writes the databases of addresses (issue #473);
@@ -226,6 +298,12 @@ beffroi:
         mode: '%env(BEFFROI_TEST_REGISTRATION_MODE)%'
         exempt_confidential_clients_from_pkce: '%env(bool:BEFFROI_TEST_REGISTRATION_PKCE_EXEMPTION)%'
         default_scope: '%env(BEFFROI_TEST_REGISTRATION_DEFAULT_SCOPE)%'
+        keep_a_client_unused_for: '%env(int:BEFFROI_TEST_KEEP_A_CLIENT_UNUSED_FOR)%'
+        keep_a_client_never_used_for: '%env(int:BEFFROI_TEST_KEEP_A_CLIENT_NEVER_USED_FOR)%'
+        sector_identifier_timeout: '%env(float:BEFFROI_TEST_SECTOR_IDENTIFIER_TIMEOUT)%'
+        sector_identifier_max_size: '%env(int:BEFFROI_TEST_SECTOR_IDENTIFIER_MAX_SIZE)%'
+        statement_max_lifetime: '%env(int:BEFFROI_TEST_STATEMENT_MAX_LIFETIME)%'
+        statement_leeway: '%env(int:BEFFROI_TEST_STATEMENT_LEEWAY)%'
         # The one authority the tenant of the tests pins the software statements of (RFC 7591 §2.3). Only
         # the attested mode reads it, and a statement is verified against these keys and never against one
         # it carries itself (RFC 8725 §3.10).
@@ -246,11 +324,16 @@ beffroi:
     # subject is what wires it, here as in any deployment (architecture §5.6).
     web_push:
         subject: '%env(BEFFROI_TEST_WEB_PUSH_SUBJECT)%'
+        timeout: '%env(float:BEFFROI_TEST_WEB_PUSH_TIMEOUT)%'
     # The tenant of the tests is a SAML identity provider (beffroi/saml, spec/saml.md section 6.1): its key is
     # drawn by the key commands under SAML-SIGNING, as every key of the tenant, and its metadata is served at
-    # /saml/metadata, WantAuthnRequestsSigned left at its default.
+    # /saml/metadata, WantAuthnRequestsSigned left at its default; the figures of the family of its key are read
+    # from the environment, as the ones of "keys".
     saml:
-        identity_provider: ~
+        identity_provider:
+            staging_delay: '%env(int:BEFFROI_TEST_SAML_STAGING_DELAY)%'
+            age: '%env(int:BEFFROI_TEST_SAML_KEY_AGE)%'
+            cache_duration: '%env(int:BEFFROI_TEST_SAML_CACHE_DURATION)%'
     mutual_tls:
         # The host whose listener asks for a client certificate (RFC 8705 §5): the same application, the
         # aliases of the discovery document pointing at it.
@@ -928,6 +1011,71 @@ services:
         public: true
     test.beffroi.dpop_nonce:
         alias: Beffroi\Oidc\Port\DpopNonceInterface
+        public: true
+    # What the figures of issue #915 reach, built when a test asks for one, which is where a figure of the environment
+    # is first a number.
+    test.beffroi.tenant_factory:
+        alias: Beffroi\Bundle\Tenant\TenantFactory
+        public: true
+    test.beffroi.saml_rotation_schedule:
+        alias: beffroi.saml.rotation_schedule
+        public: true
+    test.beffroi.saml_identity_provider_metadata:
+        alias: beffroi.saml.identity_provider.metadata
+        public: true
+    test.beffroi.dpop_proof_validator:
+        alias: Beffroi\Oidc\Application\Dpop\DpopProofValidator
+        public: true
+    test.beffroi.cached_dpop_nonce:
+        alias: Beffroi\Bundle\Dpop\CachedDpopNonce
+        public: true
+    test.beffroi.logout_token_sender:
+        alias: Beffroi\Bundle\Http\LogoutTokenSender
+        public: true
+    test.beffroi.notification_retry_policy:
+        alias: Beffroi\Bundle\Messenger\NotificationRetryPolicy
+        public: true
+    test.beffroi.client_notification_sender:
+        alias: Beffroi\Bundle\Http\ClientNotificationSender
+        public: true
+    test.beffroi.pwned_passwords:
+        alias: Beffroi\Bundle\Security\PwnedPasswords
+        public: true
+    test.beffroi.client_assertion_validator:
+        alias: Beffroi\Oidc\Application\Client\ClientAssertionValidator
+        public: true
+    test.beffroi.issuer_assertion_validator:
+        alias: Beffroi\Oidc\Application\Trust\IssuerAssertionValidator
+        public: true
+    test.beffroi.client_keys_provider:
+        alias: beffroi.oidc.client_keys.provider
+        public: true
+    test.beffroi.client_keys_cache:
+        alias: beffroi.oidc.client_keys.cache
+        public: true
+    test.beffroi.client_jwks_fetcher:
+        alias: Beffroi\Bundle\Client\ClientJwksFetcher
+        public: true
+    test.beffroi.request_object_validator:
+        alias: Beffroi\Oidc\Application\Authorization\RequestObjectValidator
+        public: true
+    test.beffroi.request_object_fetcher:
+        alias: Beffroi\Bundle\Client\RequestObjectFetcher
+        public: true
+    test.beffroi.registration_policy:
+        alias: Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy
+        public: true
+    test.beffroi.software_statement_verifier:
+        alias: Beffroi\Oidc\Application\Client\Registration\SoftwareStatementVerifier
+        public: true
+    test.beffroi.sector_identifier_fetcher:
+        alias: Beffroi\Bundle\Client\SectorIdentifierDocumentFetcher
+        public: true
+    test.beffroi.login_hints:
+        alias: Beffroi\Oidc\Application\Hint\LoginHints
+        public: true
+    test.beffroi.user_hints:
+        alias: Beffroi\Oidc\Application\Ciba\UserHints
         public: true
     test.beffroi.notifications_lane:
         alias: Beffroi\Bundle\Doctor\NotificationsLanePatience

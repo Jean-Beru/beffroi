@@ -7,6 +7,7 @@ namespace Beffroi\Bundle\Configuration;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Beffroi\Oidc\Exception\LogicException;
 use Beffroi\Bundle\Client\SectorIdentifierDocumentFetcher;
+use Beffroi\Bundle\Http\Timeout;
 use Beffroi\Oidc\Application\Client\Registration\SoftwareStatementVerifier;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
 use Beffroi\Core\Port\SignatureAlgorithmsInterface;
@@ -78,7 +79,7 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
             ->floatNode('sector_identifier_timeout')
             ->info('Seconds one read of a sector_identifier_uri is given, connection included (OIDC Registration section 5). It is read once, when a client registers or replaces itself, and the registration waits for it.')
             ->defaultValue(self::DEFAULT_SECTOR_IDENTIFIER_TIMEOUT)
-            ->min(0.1)
+            ->min(Timeout::MINIMUM)
             ->end()
             ->integerNode('sector_identifier_max_size')
             ->info('Bytes a sector_identifier_uri may answer before the read stops; the document is the JSON array of the redirection URIs of the clients of one sector.')
@@ -185,19 +186,22 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
             )
             ->arg('$exemptsConfidentialClientsFromPkce', self::boolean($registration, 'exempt_confidential_clients_from_pkce'))
             ->arg('$defaultScope', is_string($defaultScope) ? $defaultScope : null)
-            ->arg(
-                '$keepsAClientUnusedFor',
-                self::seconds($registration, 'keep_a_client_unused_for'),
-            )
-            ->arg('$keepsAClientNeverUsedFor', self::seconds($registration, 'keep_a_client_never_used_for'))
+            ->arg('$keepsAClientUnusedFor', self::bounded($registration, 'keep_a_client_unused_for', named: 'client_registration.keep_a_client_unused_for'))
+            ->arg('$keepsAClientNeverUsedFor', self::bounded(
+                $registration,
+                'keep_a_client_never_used_for',
+                named: 'client_registration.keep_a_client_never_used_for',
+            ))
             ->arg('$statementIssuers', $registration['statement_issuers'] ?? []);
-        $services->get(SoftwareStatementVerifier::class)->arg('$maximumLifetime', self::seconds(
+        $services->get(SoftwareStatementVerifier::class)->arg('$maximumLifetime', self::bounded(
             $registration,
             'statement_max_lifetime',
-        ))->arg('$leeway', self::seconds($registration, 'statement_leeway'));
-        $services->get(SectorIdentifierDocumentFetcher::class)->arg('$timeout', self::float(
+            named: 'client_registration.statement_max_lifetime',
+        ))->arg('$leeway', self::bounded($registration, 'statement_leeway', named: 'client_registration.statement_leeway', minimum: 0));
+        $services->get(SectorIdentifierDocumentFetcher::class)->arg('$timeout', self::timeout(
             $registration,
             'sector_identifier_timeout',
-        ))->arg('$maximumSize', self::integer($registration, 'sector_identifier_max_size'));
+            'client_registration.sector_identifier_timeout',
+        ))->arg('$maximumSize', self::bytes($registration, 'sector_identifier_max_size', 'client_registration.sector_identifier_max_size'));
     }
 }
