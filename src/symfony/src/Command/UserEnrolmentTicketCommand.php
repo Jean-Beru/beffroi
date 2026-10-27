@@ -9,7 +9,6 @@ use Beffroi\Bundle\Http\PresentedEnrolmentTicket;
 use Beffroi\Bundle\Http\RequestContextFactory;
 use Beffroi\Core\Application\Enrolment\EnrolmentTicketIssue;
 use Beffroi\Core\Exception\EnrolmentTicketRefusedException;
-use function rtrim;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -25,6 +24,10 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * It prints the URL once, the row holding a hash of what it carries: whoever issued it hands it over, and
  * a link lost is a link issued again, which takes the first one away. It is the use case a screen of the
  * console will press (epic #194); what it does, a command does.
+ *
+ * The URL is the route of the page under the origin of the issuer, as RouterEndpointLocator locates the
+ * endpoints: the path the router generates already carries the prefix the routes are mounted under, which
+ * is the path of the issuer, so the issuer itself in front of it would say that path twice (issue #841).
  */
 #[AsCommand(
     name: self::NAME,
@@ -73,12 +76,15 @@ final readonly class UserEnrolmentTicketCommand
                 'Opens until' => $issued->ticket->expiresAt->format('c'),
             ],
             [
-                'Link' =>
-                    rtrim((string) $tenant->issuer, '/')
-                        . $this->router->generate(EnrolmentTicketController::ROUTE, [
+                'Link' => $tenant->issuer->origin()
+                    . $this->router->generate(
+                        EnrolmentTicketController::ROUTE,
+                        [
                             PresentedEnrolmentTicket::TICKET_PARAMETER => $issued->ticket->id->toRfc4122(),
                             PresentedEnrolmentTicket::VALUE_PARAMETER => $issued->value,
-                        ]),
+                        ],
+                        UrlGeneratorInterface::ABSOLUTE_PATH,
+                    ),
             ],
         );
         $io->success(sprintf(

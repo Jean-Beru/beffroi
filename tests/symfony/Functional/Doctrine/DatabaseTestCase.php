@@ -73,12 +73,17 @@ abstract class DatabaseTestCase extends WebTestCase
     }
 
     /**
-     * The database file of the first test of the process, once its schema is created and its tenant
-     * synchronised, kept beside it as the template every later test starts from: a copy of the file, a
-     * millisecond, where the schema dropped and created by every test was 160 ms of its time. The
-     * template is rebuilt by every process, never trusted from a previous run.
+     * The database file of the first test of the process in each environment, once its schema is created
+     * and its tenant synchronised, kept beside it as the template every later test of that environment
+     * starts from: a copy of the file, a millisecond, where the schema dropped and created by every test
+     * was 160 ms of its time. The template is rebuilt by every process, never trusted from a previous run.
+     * There is one per database file, which is one per environment, because an environment of its own may
+     * configure its tenant otherwise (config_test_issuer_with_a_path.yml), and the provider refuses a tenant
+     * row synchronised from another configuration.
+     *
+     * @var array<string, string> the template of each database file
      */
-    private static ?string $template = null;
+    private static array $templates = [];
 
     /**
      * Where the bundle writes the sealed keys of the tenant of the suite, which config_test.yml points at
@@ -103,13 +108,14 @@ abstract class DatabaseTestCase extends WebTestCase
         if (! is_string($database)) {
             static::fail('The database of the test kernel is not a file.');
         }
-        if (self::$template === null) {
+        $template = self::$templates[$database] ?? null;
+        if ($template === null) {
             self::createDatabase();
             $connection->close();
-            self::$template = $database . '.template';
-            copy($database, self::$template) || static::fail('The template of the database was not written.');
+            $template = self::$templates[$database] = $database . '.template';
+            copy($database, $template) || static::fail('The template of the database was not written.');
         } else {
-            copy(self::$template, $database) || static::fail('The database was not restored from its template.');
+            copy($template, $database) || static::fail('The database was not restored from its template.');
         }
         self::entityManager()->clear();
     }
