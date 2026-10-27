@@ -24,8 +24,9 @@ use Symfony\Component\HttpFoundation\Request;
  *
  * The two sets are shown side by side, the query as the browser carried it and the request as the
  * provider read it, because a request that was pushed or signed makes them differ and that difference
- * is what a browser stops showing. A parameter whose value is an assertion, a token, a verifier or a
- * secret is said to be there and never written down, whether the endpoint reads it or not.
+ * is what a browser stops showing. A parameter whose value is an assertion, a token, a verifier, a secret
+ * or the reference of a pushed request is said to be there and never written down, whether the endpoint
+ * reads it or not.
  */
 final readonly class ProfilingAuthorizationRequestReader implements AuthorizationRequestReaderInterface
 {
