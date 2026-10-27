@@ -1,0 +1,239 @@
+name: Image
+
+# The production image of the application, the "frankenphp_prod" stage of apps/op/Dockerfile, published as
+# ghcr.io/beffroi-auth/op for linux/amd64 and linux/arm64.
+#
+# It is built here and not in the mirror. Its build context is the root of this repository, where the path
+# repositories of apps/op/composer.json resolve beffroi/* to src/, which beffroi-auth/op does not carry; and a
+# commit that touches only the packages changes the image while it pushes nothing to the mirror. Every push
+# the mirror receives starts here anyway, a maintenance branch or a release tag that the split forwards, so
+# such a push builds the image as soon as it touches the packages or the application, and a release tag
+# always builds it: GitHub evaluates no path filter on a tag.
+#
+# Each platform is built natively, on a runner of its architecture, with no emulation: X64 on kloude, ARM64
+# on the Swarm runners. Each build pushes its image by digest and under no tag, and the last job writes the
+# index of the two and gives it its tags, so that a tag never names one platform alone and a platform that
+# fails publishes nothing.
+#
+# The tags. A push to a maintenance branch A.B.x tags "A.B.x", which follows the branch, and
+# "A.B.x-<commit>", which stays on the build of that commit. A release A.B.C tags "A.B.C", then "A.B", "A"
+# (from 1.0.0 on) and "latest", each one only when the release is the newest that tag can name: a patch
+# released from an older maintenance branch moves none of the tags of a newer line.
+#
+# A pull request builds both platforms and publishes nothing, the cache included, when it touches what only
+# this build reads: the Dockerfile and its ignore file, the configuration of FrankenPHP, the Composer files
+# of the application, which no other job installs without the development dependencies, and this workflow.
+#
+# The layers are kept in the cache of this repository, one scope per platform, read by every build and
+# written by the builds that publish. A cache that cannot be written fails no publication.
+
+on:
+  push:
+    branches:
+      - '*.*.x'
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+    paths:
+      - '.github/workflows/image.yml'
+      - 'apps/op/**'
+      - 'src/**'
+  pull_request:
+    paths:
+      - '.github/workflows/image.yml'
+      - 'apps/op/Dockerfile'
+      - 'apps/op/Dockerfile.dockerignore'
+      - 'apps/op/frankenphp/**'
+      - 'apps/op/composer.json'
+      - 'apps/op/composer.lock'
+  workflow_dispatch: ~
+
+# A newer push to a branch carries a newer image, so it cancels the build of the one before it, which would
+# otherwise be able to write "A.B.x" last. A release is built to the end.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/beffroi-auth/op
+  DESCRIPTION: "Beffroi: the standalone identity provider application (Symfony skeleton plus the bundle)."
+
+jobs:
+  prepare:
+    name: "What is published, and under which tags"
+    runs-on: [self-hosted, kloude-light]
+    outputs:
+      push: ${{ steps.tags.outputs.push }}
+      tags: ${{ steps.tags.outputs.tags }}
+      version: ${{ steps.tags.outputs.version }}
+      created: ${{ steps.tags.outputs.created }}
+    steps:
+      # Which of the moving tags a release takes depends on the releases before it, read from the tags of
+      # this repository.
+      - uses: actions/checkout@v7
+        if: startsWith(github.ref, 'refs/tags/')
+      - name: "The tags"
+        id: tags
+        run: |
+          set -o pipefail
+          commit="${GITHUB_SHA::7}"
+          tags=()
+          version=""
+          if [[ "${GITHUB_REF}" =~ ^refs/heads/([0-9]+\.[0-9]+\.x)$ ]]; then
+            branch="${BASH_REMATCH[1]}"
+            tags=("${branch}" "${branch}-${commit}")
+            version="${branch}-${commit}"
+          elif [[ "${GITHUB_REF}" =~ ^refs/tags/(([0-9]+)\.([0-9]+)\.[0-9]+)$ ]]; then
+            release="${BASH_REMATCH[1]}"
+            major="${BASH_REMATCH[2]}"
+            minor="${BASH_REMATCH[3]}"
+            releases=$(git ls-remote --tags --refs origin | sed 's#.*refs/tags/##' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V)
+            newest() { grep -E "^$1" <<< "${releases}" | tail -n 1; }
+            tags=("${release}")
+            if [ "$(newest "${major}\.${minor}\.")" = "${release}" ]; then tags+=("${major}.${minor}"); fi
+            if [ "${major}" != "0" ] && [ "$(newest "${major}\.")" = "${release}" ]; then tags+=("${major}"); fi
+            if [ "$(newest "")" = "${release}" ]; then tags+=("latest"); fi
+            version="${release}"
+          fi
+
+          if [ ${#tags[@]} -gt 0 ]; then
+            push=true
+            echo "${IMAGE}, version ${version}: ${tags[*]}" >> "${GITHUB_STEP_SUMMARY}"
+          else
+            push=false
+            echo "${GITHUB_REF} is neither a maintenance branch nor a release tag: both platforms are built and nothing is published." >> "${GITHUB_STEP_SUMMARY}"
+          fi
+          {
+            echo "push=${push}"
+            echo "tags=${tags[*]}"
+            echo "version=${version}"
+            echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } >> "${GITHUB_OUTPUT}"
+
+  build:
+    name: "Build for ${{ matrix.platform }}"
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            arch: amd64
+            runner: X64
+          - platform: linux/arm64
+            arch: arm64
+            runner: ARM64
+    runs-on: [self-hosted, "${{ matrix.runner }}"]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # The base image, the frontend of the Dockerfile and BuildKit itself are pulled from Docker Hub under the
+      # account of the secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN of this repository, and not against the
+      # address of the runner, which the pool shares (gitsplit.yml). The action logs out when the job ends,
+      # and a Swarm runner keeps its home from one job to the next.
+      - name: "Docker Hub, under the account of the repository"
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: "The registry of GitHub"
+        if: needs.prepare.outputs.push == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v4
+      # The image inherits the labels of dunglas/frankenphp, its source repository and its description among
+      # them, and the registry links a package to the repository its source names: every label it reads is
+      # set here, and the index carries them again as annotations, where the registry reads a multi-platform
+      # image.
+      - name: "Build"
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/op/Dockerfile
+          target: frankenphp_prod
+          platforms: ${{ matrix.platform }}
+          labels: |
+            org.opencontainers.image.title=beffroi/op
+            org.opencontainers.image.description=${{ env.DESCRIPTION }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.url=https://doc.beffroi.tech/
+            org.opencontainers.image.vendor=Beffroi
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
+            org.opencontainers.image.created=${{ needs.prepare.outputs.created }}
+          outputs: ${{ needs.prepare.outputs.push == 'true' && format('type=image,name={0},push-by-digest=true,name-canonical=true,push=true', env.IMAGE) || 'type=cacheonly' }}
+          cache-from: type=gha,scope=op-${{ matrix.arch }}
+          cache-to: ${{ needs.prepare.outputs.push == 'true' && format('type=gha,mode=max,scope=op-{0},ignore-error=true', matrix.arch) || '' }}
+      - name: "Its digest, for the index"
+        if: needs.prepare.outputs.push == 'true'
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p "${RUNNER_TEMP}/digests"
+          touch "${RUNNER_TEMP}/digests/${DIGEST#sha256:}"
+      - uses: actions/upload-artifact@v7
+        if: needs.prepare.outputs.push == 'true'
+        with:
+          name: digest-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true
+
+  merge:
+    name: "The index of both platforms, under its tags"
+    needs: [prepare, build]
+    if: needs.prepare.outputs.push == 'true'
+    runs-on: [self-hosted, kloude-light]
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digest-*
+          merge-multiple: true
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # The index is written by the registry client of Buildx and needs no builder, so none is started.
+      - uses: docker/setup-buildx-action@v4
+        with:
+          driver: docker
+      - name: "Write the index and tag it"
+        working-directory: ${{ runner.temp }}/digests
+        env:
+          TAGS: ${{ needs.prepare.outputs.tags }}
+          SOURCE: ${{ github.server_url }}/${{ github.repository }}
+          REVISION: ${{ github.sha }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          CREATED: ${{ needs.prepare.outputs.created }}
+        run: |
+          read -ra names <<< "${TAGS}"
+          options=()
+          for name in "${names[@]}"; do options+=(--tag "${IMAGE}:${name}"); done
+          images=()
+          for digest in *; do images+=("${IMAGE}@sha256:${digest}"); done
+          docker buildx imagetools create "${options[@]}" \
+            --annotation "index:org.opencontainers.image.title=beffroi/op" \
+            --annotation "index:org.opencontainers.image.description=${DESCRIPTION}" \
+            --annotation "index:org.opencontainers.image.source=${SOURCE}" \
+            --annotation "index:org.opencontainers.image.licenses=MIT" \
+            --annotation "index:org.opencontainers.image.revision=${REVISION}" \
+            --annotation "index:org.opencontainers.image.version=${VERSION}" \
+            --annotation "index:org.opencontainers.image.created=${CREATED}" \
+            "${images[@]}"
+          docker buildx imagetools inspect "${IMAGE}:${names[0]}"
