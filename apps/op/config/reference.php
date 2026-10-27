@@ -143,7 +143,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     default_uri?: scalar|Param|null, // The default URI used to generate URLs in a non-HTTP context. // Default: null
  *     http_port?: scalar|Param|null, // Default: 80
  *     https_port?: scalar|Param|null, // Default: 443
- *     strict_requirements?: scalar|Param|null, // set to true to throw an exception when a parameter does not match the requirements set to false to disable exceptions when a parameter does not match the requirements (and return null instead) set to null to disable parameter checks against requirements 'true' is the preferred configuration in development mode, while 'false' or 'null' might be preferred in production // Default: true
+ *     strict_requirements?: scalar|Param|null, // Set to true to throw an exception when a parameter does not match the requirements. Set to false to disable exceptions when a parameter does not match the requirements (and return null instead). Set to null to disable parameter checks against requirements. Defaults to true in debug mode and to null otherwise.
  *     utf8?: bool|Param, // Default: true
  * }
  * @psalm-type CacheConfig = array{
@@ -216,7 +216,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         paths?: list<scalar|Param|null>,
  *     },
  *     not_compromised_password?: bool|array{
- *         enabled?: bool|Param, // When disabled, compromised passwords will be accepted as valid. // Default: true
+ *         enabled?: bool|Param|null, // When disabled, compromised passwords will be accepted as valid. Defaults to false when "framework.test" is enabled, to true otherwise. // Default: null
  *         endpoint?: scalar|Param|null, // API endpoint for the NotCompromisedPassword Validator. // Default: null
  *     },
  *     disable_translation?: bool|Param, // Default: false
@@ -268,14 +268,20 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     transports?: array<string, Param|string|array{ // Default: []
  *         dsn?: scalar|Param|null,
  *         serializer?: scalar|Param|null, // Service id of a custom serializer to use. // Default: null
- *         sign?: bool|Param, // Whether to sign every message sent to this transport with its trust level, and to refuse any message received from it that is unsigned, or signed as unverified when this is not a failure transport. When false, only the messages whose handlers ask for it are signed. // Default: false
+ *         sign?: bool|Param, // Whether to sign every message sent to this transport with its trust level, and to refuse any message received from it that is unsigned, or signed as unverified when this is not a failure transport. Handlers with the "sign" option require it on the transports their messages come from. // Default: false
  *         claim_check?: array{
  *             cache_pool?: scalar|Param|null, // Service id of the dedicated cache pool used to store claims. Pools declared under "framework.cache.pools" must define a "default_lifetime".
  *             max_size?: int|Param, // Maximum encoded message size in bytes before using a claim check.
  *         },
  *         options?: array<string, mixed>,
  *         failure_transport?: scalar|Param|null, // Transport name to send failed messages to (after all retries have failed). // Default: null
- *         outbox?: scalar|Param|null, // Name of the transport that stores the messages inside the current database transaction; consume that transport to forward them to this one. // Default: null
+ *         outbox?: scalar|Param|null, // Name or DSN of the transport that stores the messages inside the current database transaction; consume that transport to forward them to this one. A value that is not the name of a configured transport is a DSN, used to create the "orders.outbox" transport for an "orders" transport. // Default: null
+ *         inbox?: bool|array{ // Records the handled messages in a database table, in the transaction of their handlers, so that a redelivered message is not handled twice. Needs the "identity_stamps" option and a middleware that runs the handlers in a transaction.
+ *             enabled?: bool|Param, // Default: false
+ *             connection?: scalar|Param|null, // Name of the Doctrine DBAL connection of that transaction, the default connection when not set. // Default: null
+ *             table_name?: scalar|Param|null, // Default: "messenger_inbox"
+ *             retention?: int|Param, // Number of seconds a record is kept, which must exceed the time the transport can take to redeliver a message. // Default: 604800
+ *         },
  *         retry_strategy?: Param|string|array{
  *             service?: scalar|Param|null, // Service id to override the retry strategy entirely. // Default: null
  *             max_retries?: int|Param, // Default: 3
@@ -283,6 +289,15 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             multiplier?: float|Param, // If greater than 1, delay will grow exponentially for each retry: this delay = (delay * (multiple ^ retries)). // Default: 2
  *             max_delay?: int|Param, // Max time in ms that a retry should ever be delayed (0 = infinite). // Default: 0
  *             jitter?: float|Param, // Randomness to apply to the delay (between 0 and 1). // Default: 0.1
+ *         },
+ *         cooldown_strategy?: Param|bool|string|array{ // Stops consuming this transport for a while after its messages fail. With the default strategy, each worker counts its own failures.
+ *             enabled?: bool|Param, // Default: false
+ *             service?: scalar|Param|null, // Service id to override the cooldown strategy entirely. // Default: null
+ *             failure_threshold?: int|Param, // Number of failures in a row that start a cooldown. // Default: 5
+ *             delay?: int|Param, // Duration in ms of the first cooldown (or the initial value when multiplier is used). // Default: 1000
+ *             multiplier?: float|Param, // If greater than 1, the cooldown will grow exponentially for each further failure in a row: this delay = (delay * (multiplier ^ (failures - failure_threshold))). // Default: 2
+ *             max_delay?: int|Param, // Max duration in ms of a cooldown (0 = infinite). // Default: 60000
+ *             jitter?: float|Param, // Randomness to apply to the duration (between 0 and 1). // Default: 0.1
  *         },
  *         rate_limiter?: scalar|Param|null, // Rate limiter name to use when processing messages. // Default: null
  *         priority?: int|Param, // Order in which "messenger:consume --all" consumes this transport, higher comes first. // Default: 0
@@ -353,7 +368,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     server?: bool|Param, // If true, a "dev server" will return the assets from the public directory (true in "debug" mode only by default). // Default: "%kernel.debug%"
  *     public_prefix?: scalar|Param|null, // The public path where the assets will be written to (and served from when "server" is true). // Default: "/assets/"
  *     metadata_dir?: scalar|Param|null, // The directory where "asset-map:compile" writes manifest.json, importmap.json and entrypoint.*.json. These files are read by PHP only, so they do not need to be exposed to the browser. // Default: null
- *     missing_import_mode?: "strict"|"warn"|"ignore"|Param, // Behavior if an asset cannot be found when imported from JavaScript or CSS files - e.g. "import './non-existent.js'". "strict" means an exception is thrown, "warn" means a warning is logged, "ignore" means the import is left as-is. // Default: "warn"
+ *     missing_import_mode?: "strict"|"warn"|"ignore"|Param|null, // Behavior if an asset cannot be found when imported from JavaScript or CSS files - e.g. "import './non-existent.js'". "strict" means an exception is thrown, "warn" means a warning is logged, "ignore" means the import is left as-is. Defaults to "strict" in debug mode and to "warn" otherwise. // Default: null
  *     extensions?: array<string, scalar|Param|null>,
  *     importmap_path?: scalar|Param|null, // The path of the importmap.php file. // Default: "%kernel.project_dir%/importmap.php"
  *     importmap_polyfill?: scalar|Param|null, // The importmap name that will be used to load the polyfill. Set to false to disable. // Default: "es-module-shims"
@@ -396,7 +411,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     enabled?: bool|Param, // Default: true
  *     max_host_connections?: int|Param, // The maximum number of connections to a single host.
  *     recorder?: bool|array{ // Record HTTP exchanges into HAR files and replay them in tests (see RecorderHttpClient).
- *         enabled?: bool|Param, // Default: false
+ *         enabled?: bool|Param|null, // Defaults to true when "framework.test" is enabled, to false otherwise. // Default: null
  *         redactor?: scalar|Param|null, // Service id of a RedactorInterface; when set, "redact" and "redact_except" are ignored. // Default: null
  *         redact?: list<scalar|Param|null>,
  *         redact_except?: list<scalar|Param|null>,
@@ -632,7 +647,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     json_streamer?: mixed,
  *     session?: bool|array{ // Session configuration
  *         enabled?: bool|Param, // Default: false
- *         storage_factory_id?: scalar|Param|null, // Default: "session.storage.factory.native"
+ *         storage_factory_id?: scalar|Param|null, // Defaults to "session.storage.factory.mock_file" when "framework.test" is true, to "session.storage.factory.native" otherwise. // Default: null
  *         handler_id?: scalar|Param|null, // Defaults to using the native session handler, or to the native *file* session handler if "save_path" is not null.
  *         name?: scalar|Param|null,
  *         cookie_lifetime?: scalar|Param|null,
@@ -1060,9 +1075,9 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         ignore_case?: bool|Param, // Default: false
  *         encode_as_base64?: bool|Param, // Default: true
  *         iterations?: scalar|Param|null, // Default: 5000
- *         cost?: int|Param, // Default: null
- *         memory_cost?: scalar|Param|null, // Default: null
- *         time_cost?: scalar|Param|null, // Default: null
+ *         cost?: int|Param, // Defaults to the lowest value bcrypt accepts when "framework.test" is enabled. // Default: null
+ *         memory_cost?: scalar|Param|null, // Defaults to the lowest value argon2 accepts when "framework.test" is enabled. // Default: null
+ *         time_cost?: scalar|Param|null, // Defaults to the lowest value argon2 accepts when "framework.test" is enabled. // Default: null
  *         id?: scalar|Param|null,
  *     }>,
  *     providers?: array<string, array{ // Default: []
@@ -1109,7 +1124,8 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         access_denied_url?: scalar|Param|null,
  *         access_denied_handler?: scalar|Param|null,
  *         entry_point?: scalar|Param|null, // An enabled authenticator name or a service id that implements "Symfony\Component\Security\Http\EntryPoint\AuthenticationEntryPointInterface".
- *         re_authentication_entry_point?: scalar|Param|null, // An enabled authenticator name or a service id implementing "Symfony\Component\Security\Http\EntryPoint\ReAuthenticationEntryPointInterface", asking an already authenticated user to prove possession of their credentials again when IS_AUTHENTICATED_RECENTLY or IS_AUTHENTICATED_VERY_RECENTLY is denied. Defaults to the firewall entry point when that one implements it.
+ *         entry_point_path?: scalar|Param|null, // A path, an absolute URL or a route name to redirect anonymous users to when they need to authenticate.
+ *         re_authentication_entry_point?: scalar|Param|null, // An enabled authenticator name or a service id implementing "Symfony\Component\Security\Http\EntryPoint\ReAuthenticationEntryPointInterface", started when the vote denying access asks for a re-authentication. Defaults to the firewall entry point when it implements this interface.
  *         provider?: scalar|Param|null,
  *         stateless?: bool|Param, // Default: false
  *         lazy?: bool|Param, // Default: false
@@ -1187,7 +1203,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             remember_me?: bool|Param, // Deprecated: Setting the "security.firewalls..oidc_login.remember_me.remember_me" configuration option has no effect and is deprecated. It will be removed in Symfony 9.0. // Default: true
  *             success_handler?: scalar|Param|null,
  *             failure_handler?: scalar|Param|null,
- *             check_path?: scalar|Param|null, // The firewall path where the OIDC provider redirects after authentication. Must match a redirect URI registered with the provider. A route is declared for this path by the "security.authenticator.oidc_login.route_loader" service, which the application must import (see the OIDC login documentation), as it does for the logout routes. A route name is accepted too, in which case no route is declared for it. // Default: "/oidc/callback"
+ *             check_path?: scalar|Param|null, // The firewall path where the OIDC provider redirects after authentication. Must match a redirect URI registered with the provider. A route is declared for this path by the "security.route_loader" service, which the application must import. A route name is accepted too, in which case no route is declared for it. // Default: "/oidc/callback"
  *             use_forward?: bool|Param, // Default: false
  *             login_path?: scalar|Param|null, // Default: "/login"
  *             always_use_default_target_path?: bool|Param, // Default: false
@@ -1197,8 +1213,9 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             failure_path?: scalar|Param|null, // Default: null
  *             failure_forward?: bool|Param, // Default: false
  *             failure_path_parameter?: scalar|Param|null, // Default: "_failure_path"
- *             provider_uri?: scalar|Param|null, // The OIDC Issuer URL (e.g. "https://accounts.example.com"). Used for .well-known/openid-configuration discovery.
- *             http_client?: scalar|Param|null, // The id of the HttpClient service every call to the provider is made with: discovery, JWKS, token and UserInfo endpoints. Defaults to "http_client". A scoped client must scope every host the provider announces, not only the issuer. // Default: null
+ *             provider_uri?: scalar|Param|null, // The OIDC Issuer URL (e.g. "https://accounts.example.com"). Used for .well-known/openid-configuration discovery unless "discovery_uri" is set.
+ *             discovery_uri?: scalar|Param|null, // Absolute URL of the discovery document. The "issuer" it announces is still checked against "provider_uri". // Default: null
+ *             http_client?: scalar|Param|null, // The id of the HttpClient service every call to the provider is made with: discovery, JWKS, token and UserInfo endpoints. Defaults to "http_client". A scoped client must scope the discovery host and every host the provider announces. // Default: null
  *             client_id?: scalar|Param|null, // The OIDC client identifier.
  *             client_certificate?: Param|string|array{ // The TLS client certificate presented to the token and UserInfo endpoints.
  *                 certificate?: scalar|Param|null, // Path to the PEM file of the certificate.
@@ -1223,7 +1240,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *                 },
  *                 tls_client_auth?: bool|Param, // Authenticate with "client_certificate", issued by a certificate authority.
  *                 self_signed_tls_client_auth?: bool|Param, // Authenticate with "client_certificate", self-signed.
- *                 id?: scalar|Param|null, // The id of a service implementing "ClientAuthenticationInterface", for a scheme Symfony does not ship. The method it reports is only known once it is built, so the rules a public client cannot bend are then checked on the first request to this firewall instead of while the container compiles.
+ *                 id?: scalar|Param|null, // The id of a service implementing "ClientAuthenticationInterface", for a scheme Symfony does not ship. The method it reports is only known once it is built, so the rules a public client cannot bend are then checked when a login starts on this firewall instead of while the container compiles.
  *             },
  *             dpop?: Param|string|array{ // Binds the tokens the provider issues to a key held by this client (DPoP); a token the provider did not bind is refused.
  *                 key?: scalar|Param|null, // The private key the proofs are signed with, as a JSON-encoded JWK.
@@ -1255,7 +1272,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             backchannel_logout?: bool|array{ // Accept the logout tokens the OIDC provider posts when one of its sessions ends.
  *                 enabled?: bool|Param, // Default: false
  *                 path?: scalar|Param|null, // Path where the OIDC provider posts its logout tokens. // Default: "/oidc/backchannel-logout"
- *                 cache?: scalar|Param|null, // Id of the cache pool remembering the ended provider sessions, shared by every server of the application. // Default: "cache.app"
+ *                 cache?: scalar|Param|null, // Id of the cache pool remembering the ended provider sessions, shared by every server of the application. // Default: "cache.security"
  *                 lifetime?: int|Param, // How long an ended provider session is remembered, in seconds; at least how long a session can stay idle. // Default: 86400
  *             },
  *         },
@@ -1352,7 +1369,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *                     base_uri?: scalar|Param|null, // Base URI of the userinfo endpoint on the OIDC server, or the OIDC server URI to use the discovery (require "discovery" to be configured). The latter must end with a slash when it has a path, as the discovery path is resolved against it as a relative URL.
  *                     discovery?: array{ // Enable the OIDC discovery.
  *                         cache?: array{
- *                             id?: scalar|Param|null, // Cache service id to use to cache the OIDC discovery configuration.
+ *                             id?: scalar|Param|null, // Cache service id to use to cache the OIDC discovery configuration. // Default: "cache.security.discovery"
  *                         },
  *                     },
  *                     claim?: scalar|Param|null, // Claim which contains the user identifier (e.g. sub, email, etc.). // Default: "sub"
@@ -1362,7 +1379,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *                     discovery?: array{ // Enable the OIDC discovery.
  *                         base_uri?: Param|string|list<scalar|Param|null>,
  *                         cache?: array{
- *                             id?: scalar|Param|null, // Cache service id to use to cache the OIDC discovery configuration.
+ *                             id?: scalar|Param|null, // Cache service id to use to cache the OIDC discovery configuration. // Default: "cache.security.discovery"
  *                         },
  *                         enforce_key_usage_verification?: bool|Param, // When enabled (default), only keys explicitly designated for signature (via "use":"sig" or a "key_ops" entry containing "sign"/"verify") are accepted. When disabled, keys without any usage designation are also accepted; keys explicitly restricted to encryption are still rejected. // Default: true
  *                         check_issuer?: bool|null|array<string, string|Param>,
@@ -1403,14 +1420,14 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *                         discovery?: bool|array{ // Read the keys the introspection response is verified against from the RFC 8414 metadata of the authorization server, whose URL is derived from the "issuer" this handler already declares. Only the "jwks_uri" is read from it: which algorithms are accepted stays declared here, so that an authorization server cannot widen it by announcing more.
  *                             enabled?: bool|Param, // Default: false
  *                             cache?: array{
- *                                 id?: scalar|Param|null, // Cache service id the metadata document and the keys it points at are stored in. // Default: "cache.app"
+ *                                 id?: scalar|Param|null, // Cache service id the metadata document and the keys it points at are stored in. // Default: "cache.security.discovery"
  *                             },
  *                         },
  *                         keyset?: scalar|Param|null, // JSON-encoded JWKSet holding the public keys of your authorization server, the ones it announces at its "jwks_uri", which the introspection response is verified against. // Default: null
  *                     },
  *                 },
  *             },
- *             resource_metadata?: array{ // Declaring this node serves the RFC 9728 protected resource metadata document of the firewall at "/.well-known/oauth-protected-resource" and advertises its URL in the "resource_metadata" parameter of the "WWW-Authenticate" header, which is how a client discovers where to get a token this firewall accepts. The route is declared by the "security.authenticator.access_token.route_loader" service, which the application must import as it does for the logout routes; make sure it is reachable without a token.
+ *             resource_metadata?: array{ // Declaring this node serves the RFC 9728 protected resource metadata document of the firewall at "/.well-known/oauth-protected-resource" and advertises its URL in the "resource_metadata" parameter of the "WWW-Authenticate" header, which is how a client discovers where to get a token this firewall accepts. The route is declared by the "security.route_loader" service, which the application must import. Make sure the route is reachable without a token.
  *                 resource?: scalar|Param|null, // The resource identifier of this firewall: an HTTPS URL, without a fragment (e.g. "https://api.example.com" or "https://example.com/api"). Its path component is inserted after the well-known path, as RFC 9728, Section 3.1 prescribes, so that one host can serve the metadata of several protected resources. Defaults to the origin the document is served from, which is what a firewall covering a whole application wants. // Default: null
  *                 authorization_servers?: Param|string|list<scalar|Param|null>,
  *                 jwks_uri?: scalar|Param|null, // URL of the JWK Set holding the keys this resource signs its own responses with. Unrelated to the keys the access tokens are verified against, which belong to the authorization server. // Default: null
@@ -1424,7 +1441,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             dpop?: bool|array{ // Accepts only the access tokens bound to a key the request proves it holds (DPoP), presented under the "DPoP" scheme.
  *                 enabled?: bool|Param, // Default: false
  *                 algorithms?: list<scalar|Param|null>,
- *                 cache?: scalar|Param|null, // The cache pool proofs are remembered in to refuse a replay, shared by all the instances of the application. // Default: "cache.app"
+ *                 cache?: scalar|Param|null, // The cache pool proofs are remembered in to refuse a replay, shared by all the instances of the application. // Default: "cache.security"
  *                 proof_lifetime?: int|Param, // How long a proof is accepted after its "iat", in seconds. // Default: 60
  *                 allowed_time_drift?: int|Param, // Allowed time drift in seconds for the "iat" of a proof, both ways. // Default: 5
  *             },
@@ -2151,6 +2168,9 @@ namespace Symfony\Component\Routing\Loader\Configurator;
  * @psalm-type RouteConfig = array{
  *     path: string|array<string,string>,
  *     controller?: string,
+ *     template?: string,
+ *     redirect_to_route?: string,
+ *     redirect_to?: string,
  *     methods?: string|list<string>,
  *     requirements?: array<string,string>,
  *     defaults?: array<string,mixed>,

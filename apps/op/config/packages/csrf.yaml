@@ -4,6 +4,13 @@
 # double submit whose hidden field is filled by a Stimulus controller, so a form protected that way does
 # not work in a browser that runs nothing. These pages must, as every page of the bundle does, so the
 # token is the session-backed one the pages of the bundle already carry.
+#
+# The recipe of symfony/security-csrf declares three stateless tokens, "authenticate", "logout" and
+# "switch_user", and this file declares none. "authenticate" is the token the login and code pages of the
+# bundle post, under "Referrer-Policy: no-referrer": a browser that sends no "Sec-Fetch-Site" posts those
+# forms with "Origin: null" and no "Referer", which leaves a stateless token nothing to be checked against
+# but the double submit above. The recipe stands in symfony.lock without its file, so that Flex does not
+# write it again.
 framework:
     form:
         csrf_protection:
