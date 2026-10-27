@@ -39,10 +39,11 @@ final class AccountProfileTest extends BrowserTestCase
     }
 
     /**
-     * Issue beffroi-auth/beffroi#452: what a person may change is what the tenant opens, and this tenant
-     * opens fourteen claims (config/packages/beffroi.yaml). The page is one list of what the record holds,
-     * so they are offered in the order the record is read in and not in the order the tenant named them:
-     * a line is where the reader expects the claim, whether they may change it or only read it.
+     * Issue beffroi-auth/beffroi#452: what a person may change is what the tenant opens, and the tenant of an
+     * image that names nothing opens fourteen claims (BEFFROI_TENANT_SELF_SERVED_CLAIMS of .env). The page is
+     * one list of what the record holds, so they are offered in the order the record is read in and not in the
+     * order the tenant named them: a line is where the reader expects the claim, whether they may change it or
+     * only read it.
      */
     #[Test]
     public function thePageOffersAFormPerClaimTheTenantOpens(): void
@@ -174,10 +175,6 @@ final class AccountProfileTest extends BrowserTestCase
 
     private function profilePage(): Crawler
     {
-        $crawler = $this->browser->request('GET', '/account/profile');
-        $response = $this->browser->getResponse();
-        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
-
-        return $crawler;
+        return $this->page('/account/profile');
     }
 }

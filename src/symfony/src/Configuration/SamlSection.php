@@ -10,8 +10,10 @@ use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
 use Beffroi\Bundle\Saml\RouterServiceProviderEndpoints;
 use Beffroi\Bundle\Saml\SamlEncryption;
 use Beffroi\Bundle\Saml\SamlSigning;
+use Beffroi\Bundle\Saml\UpstreamIdentityProvidersPass;
 use Beffroi\Bundle\Security\UpstreamLogin;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits;
+use Beffroi\Core\Bridge\JwtLibrary\JoseKeyAlgorithmInterface;
 use Beffroi\Core\Domain\Key\RotationSchedule;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Application\Metadata\IdentityProviderMetadataHandler;
@@ -21,12 +23,14 @@ use Beffroi\Saml\Application\Upstream\UpstreamSignOn;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationUpstreamIdentityProviders;
 use Beffroi\Saml\Bridge\Model\ModelResponseReceiver;
+use Beffroi\Saml\Domain\Key\SamlEncryptionAlgorithmInterface;
 use Beffroi\Saml\Domain\Key\SamlSigningAlgorithmInterface;
 use Beffroi\Saml\Domain\Metadata\PublishedMetadata;
+use Beffroi\Saml\Port\ProfileClaimsInterface;
 use Beffroi\Saml\Port\ResponseReceiverInterface;
+use Beffroi\Saml\Port\ServedClaimsInterface;
 use Beffroi\Saml\Port\ServiceProviderEndpointsInterface;
 use function array_keys;
-use function hash;
 use function is_array;
 use function is_int;
 use function is_string;
@@ -71,6 +75,17 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
  */
 final readonly class SamlSection extends ConfigurationSection
 {
+    /**
+     * The refusal of service providers declared for a tenant that is no identity provider, which the tree makes of a
+     * written list and the factory of the declarations of one the environment carries.
+     */
+    private const string SERVICE_PROVIDERS_ALONE = 'Service providers are declared for a tenant that is a SAML identity provider: enable "beffroi.saml.identity_provider", or remove "beffroi.saml.service_providers".';
+
+    /**
+     * The same refusal for upstream identity providers declared for a tenant that is no service provider.
+     */
+    private const string IDENTITY_PROVIDERS_ALONE = 'Upstream identity providers are declared for a tenant that is a SAML service provider: enable "beffroi.saml.service_provider", or remove "beffroi.saml.identity_providers".';
+
     public function name(): string
     {
         return 'saml';
@@ -135,7 +150,99 @@ final readonly class SamlSection extends ConfigurationSection
             ->end()
             ->end()
             ->end()
-            ->arrayNode('service_providers')
+            ->append(self::serviceProviders())
+            ->append(self::identityProviders())
+            ->end()
+            ->validate()
+            ->ifTrue(self::declaresServiceProvidersAlone(...))
+            ->thenInvalid(self::SERVICE_PROVIDERS_ALONE)
+            ->end()
+            ->validate()
+            ->ifTrue(self::declaresIdentityProvidersAlone(...))
+            ->thenInvalid(self::IDENTITY_PROVIDERS_ALONE)
+            ->end()
+            ->end();
+    }
+
+    /**
+     * The service providers of the tenant at runtime, from the list the configuration or the environment carries,
+     * held to the rules of the tree either way, and declared for a tenant that is an identity provider only
+     * (decision 0030). A written list is also built when the container is compiled (ServiceProvidersPass).
+     *
+     * @throws InvalidConfigurationException when the list is one the tree refuses, or one a tenant that is no identity provider declares
+     * @throws InvalidArgumentException when a declaration does not hold together
+     */
+    public static function declaredServiceProviders(
+        string $tenantSlug,
+        mixed $definitions,
+        ServedClaimsInterface $claims,
+        bool $identityProviderEnabled,
+    ): ConfigurationServiceProviders {
+        $serviceProviders = self::serviceProviders()->normalized($definitions, 'saml.service_providers');
+        if ($serviceProviders !== [] && ! $identityProviderEnabled) {
+            throw new InvalidConfigurationException(self::SERVICE_PROVIDERS_ALONE);
+        }
+
+        return new ConfigurationServiceProviders($tenantSlug, $serviceProviders, $claims);
+    }
+
+    /**
+     * The upstream identity providers of the tenant at runtime, from the list the configuration or the environment
+     * carries, held to the rules of the tree either way, declared for a tenant that is a service provider only, and none
+     * under an entity ID of the tenant itself (S-42, decision 0030). A written list is also built when the container is
+     * compiled (UpstreamIdentityProvidersPass).
+     *
+     * @param string|null $serviceProviderEntityId the entity ID the service provider of the tenant is given, null for the URL of its metadata
+     *
+     * @throws InvalidConfigurationException when the list is one the tree refuses, one a tenant that is no service provider declares, or one naming the tenant
+     * @throws InvalidArgumentException when a declaration does not hold together
+     */
+    public static function declaredIdentityProviders(
+        string $tenantSlug,
+        mixed $definitions,
+        ProfileClaimsInterface $claims,
+        bool $serviceProviderEnabled,
+        string $issuer,
+        ?string $serviceProviderEntityId,
+    ): ConfigurationUpstreamIdentityProviders {
+        $identityProviders = self::identityProviders()->normalized($definitions, 'saml.identity_providers');
+        if ($identityProviders !== [] && ! $serviceProviderEnabled) {
+            throw new InvalidConfigurationException(self::IDENTITY_PROVIDERS_ALONE);
+        }
+        UpstreamIdentityProvidersPass::refuseTheTenantAt(array_keys($identityProviders), $issuer, $serviceProviderEntityId);
+
+        return new ConfigurationUpstreamIdentityProviders($tenantSlug, $identityProviders, $claims);
+    }
+
+    /**
+     * The algorithm of the key each upstream identity provider is encrypted for (spec/saml.md S-64): one per provider
+     * the list declares, named by its entity ID, none for a tenant whose service provider is off, which is handed no
+     * list; then those an extension of the deployment tags (JoseSamlEncryptionAlgorithms::TAG).
+     *
+     * @param iterable<JoseKeyAlgorithmInterface&SamlEncryptionAlgorithmInterface> $tagged
+     *
+     * @throws InvalidConfigurationException when the list is one the tree refuses
+     */
+    public static function encryptionAlgorithms(mixed $identityProviders, RsaKeyBits $keyBits, iterable $tagged = []): JoseSamlEncryptionAlgorithms
+    {
+        $algorithms = [];
+        foreach (array_keys(self::identityProviders()->normalized($identityProviders, 'saml.identity_providers')) as $identityProvider) {
+            $algorithms[] = new SamlEncryption((string) $identityProvider, $keyBits);
+        }
+        foreach ($tagged as $algorithm) {
+            $algorithms[] = $algorithm;
+        }
+
+        return new JoseSamlEncryptionAlgorithms($algorithms);
+    }
+
+    /**
+     * The service providers as the tree declares them, which the environment may carry whole.
+     */
+    private static function serviceProviders(): EnvironmentListDefinition
+    {
+        $serviceProviders = new EnvironmentListDefinition('service_providers');
+        $serviceProviders
             ->info('The service providers of the tenant, keyed by entity ID, compared exactly with the one of their metadata (spec/saml.md S-5). Their metadata are read by "beffroi:saml:service-provider:refresh" and every hour after, refused when expired, older than the document accepted, or without a key for encryption where the declaration asks for encryption (S-6, S-7). Declared only for a tenant that is an identity provider.')
             ->useAttributeAsKey('entity_id')
             ->normalizeKeys(false)
@@ -183,9 +290,18 @@ final readonly class SamlSection extends ConfigurationSection
             ->defaultTrue()
             ->end()
             ->end()
-            ->end()
-            ->end()
-            ->arrayNode('identity_providers')
+            ->end();
+
+        return $serviceProviders;
+    }
+
+    /**
+     * The upstream identity providers as the tree declares them, which the environment may carry whole.
+     */
+    private static function identityProviders(): EnvironmentListDefinition
+    {
+        $identityProviders = new EnvironmentListDefinition('identity_providers');
+        $identityProviders
             ->info('The upstream identity providers of the tenant, keyed by entity ID, compared exactly with the one of their metadata (spec/saml.md S-42): identity providers whose assertions the service provider of the tenant receives. Their metadata are read by "beffroi:saml:identity-provider:refresh" and every hour after, refused when expired, older than the document accepted, without an identity provider role, without a key for signing, or with a single sign-on service that is not https (S-6, S-43). Declared only for a tenant that is a service provider.')
             ->useAttributeAsKey('entity_id')
             ->normalizeKeys(false)
@@ -250,39 +366,48 @@ final readonly class SamlSection extends ConfigurationSection
             ->end()
             ->end()
             ->end()
-            ->end()
-            ->end()
-            ->end()
-            ->validate()
-            ->ifTrue(self::declaresServiceProvidersAlone(...))
-            ->thenInvalid('Service providers are declared for a tenant that is a SAML identity provider: enable "beffroi.saml.identity_provider", or remove "beffroi.saml.service_providers".')
-            ->end()
-            ->validate()
-            ->ifTrue(self::declaresIdentityProvidersAlone(...))
-            ->thenInvalid('Upstream identity providers are declared for a tenant that is a SAML service provider: enable "beffroi.saml.service_provider", or remove "beffroi.saml.identity_providers".')
-            ->end()
             ->end();
+
+        return $identityProviders;
     }
 
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
     {
-        $services->get(ConfigurationServiceProviders::class)->arg('$tenantSlug', self::string(self::section($config, 'tenant'), 'slug'))->arg(
-            '$definitions',
-            self::section($this->own($config), 'service_providers'),
+        $own = $this->own($config);
+        $tenant = self::section($config, 'tenant');
+        $identityProvider = self::section($own, 'identity_provider');
+        $serviceProvider = self::section($own, 'service_provider');
+        $identityProviderEnabled = ($identityProvider['enabled'] ?? false) === true;
+        $serviceProviderEnabled = ($serviceProvider['enabled'] ?? false) === true;
+        // a string or nothing, which the node holds it to; ServiceProviderEntityIdPass checks it once compiled (S-38)
+        $entityId = is_string($serviceProvider['entity_id'] ?? null) ? $serviceProvider['entity_id'] : null;
+        // the two lists reach their declarations as the configuration or the environment carries them, the factory
+        // holding either to the rules of the tree (decision 0030)
+        $services
+            ->get(ConfigurationServiceProviders::class)
+            ->factory(self::declaredServiceProviders(...))
+            ->arg('$tenantSlug', self::string($tenant, 'slug'))
+            ->arg('$definitions', $own['service_providers'] ?? [])
+            ->arg('$identityProviderEnabled', $identityProviderEnabled);
+        $services
+            ->get(ConfigurationUpstreamIdentityProviders::class)
+            ->factory(self::declaredIdentityProviders(...))
+            ->arg('$tenantSlug', self::string($tenant, 'slug'))
+            ->arg('$definitions', $own['identity_providers'] ?? [])
+            ->arg('$serviceProviderEnabled', $serviceProviderEnabled)
+            ->arg('$issuer', self::string($tenant, 'issuer'))
+            ->arg('$serviceProviderEntityId', $entityId);
+        // the key each upstream identity provider declared encrypts for, an algorithm of its own (spec/saml.md S-64),
+        // drawn from the list the declarations are, and none while the service provider is off
+        $services->get(JoseSamlEncryptionAlgorithms::class)->factory(self::encryptionAlgorithms(...))->arg(
+            '$identityProviders',
+            $serviceProviderEnabled ? $own['identity_providers'] ?? [] : [],
         );
-        $services->get(ConfigurationUpstreamIdentityProviders::class)->arg('$tenantSlug', self::string(self::section($config, 'tenant'), 'slug'))->arg(
-            '$definitions',
-            self::section($this->own($config), 'identity_providers'),
-        );
-        $identityProvider = self::section($this->own($config), 'identity_provider');
-        $serviceProvider = self::section($this->own($config), 'service_provider');
         // the family of the SAML keys exists in every deployment (JoseKeyAlgorithms), so its schedule does too
         $services->set('beffroi.saml.rotation_schedule', RotationSchedule::class)->args([
             self::seconds($identityProvider, 'staging_delay'),
             self::seconds($identityProvider, 'age'),
         ]);
-        $identityProviderEnabled = ($identityProvider['enabled'] ?? false) === true;
-        $serviceProviderEnabled = ($serviceProvider['enabled'] ?? false) === true;
         if (! $identityProviderEnabled && ! $serviceProviderEnabled) {
             $services->get(SamlSigning::class)->tag(DormantKeyAlgorithms::TAG);
 
@@ -305,8 +430,6 @@ final readonly class SamlSection extends ConfigurationSection
                 ->arg('$stagingDelay', $stagingDelay);
         }
         if ($serviceProviderEnabled) {
-            // a string or nothing, which the node holds it to; ServiceProviderEntityIdPass checks it once compiled (S-38)
-            $entityId = is_string($serviceProvider['entity_id'] ?? null) ? $serviceProvider['entity_id'] : null;
             $services->set(RouterServiceProviderEndpoints::class)->autowire()->arg('$entityId', $entityId);
             $services->alias(ServiceProviderEndpointsInterface::class, RouterServiceProviderEndpoints::class);
             $services
@@ -327,14 +450,6 @@ final readonly class SamlSection extends ConfigurationSection
             $services->alias(ResponseReceiverInterface::class, ModelResponseReceiver::class);
             $services->set(AssertionConsumerService::class)->autowire();
             $services->set(UpstreamLogin::class)->tag('beffroi.login')->tag('beffroi.login.refusal');
-            // the key each upstream identity provider declared encrypts for, an algorithm of its own (spec/saml.md S-64),
-            // named by the digest of its entity ID, which a service identifier holds whatever the URI
-            foreach (array_keys(self::section($this->own($config), 'identity_providers')) as $identityProvider) {
-                $services
-                    ->set('beffroi.saml.encryption_algorithm.' . hash('sha256', (string) $identityProvider), SamlEncryption::class)
-                    ->args([(string) $identityProvider, service(RsaKeyBits::class)])
-                    ->tag(JoseSamlEncryptionAlgorithms::TAG);
-            }
         }
     }
 

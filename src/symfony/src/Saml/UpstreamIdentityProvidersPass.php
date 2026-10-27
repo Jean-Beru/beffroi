@@ -89,8 +89,38 @@ final class UpstreamIdentityProvidersPass implements CompilerPassInterface
         $named = $container->hasDefinition(RouterServiceProviderEndpoints::class)
             ? $container->getDefinition(RouterServiceProviderEndpoints::class)->getArgument('$entityId')
             : null;
+        self::refuseTheTenantUnder(
+            $entityIds,
+            $issuer,
+            $named === null ? self::under($issuer, ServiceProviderRoutes::METADATA_PATH) : self::literal($container, $named),
+        );
+    }
+
+    /**
+     * S-42 when the container runs, for a list the environment carries (SamlSection): the issuer and the entity ID the
+     * service provider is named by are values then.
+     *
+     * @param list<array-key> $entityIds
+     * @param string|null $namedServiceProvider the entity ID the service provider is given, null for the URL of its metadata
+     *
+     * @throws InvalidConfigurationException
+     */
+    public static function refuseTheTenantAt(array $entityIds, string $issuer, ?string $namedServiceProvider): void
+    {
+        self::refuseTheTenantUnder($entityIds, $issuer, $namedServiceProvider ?? self::under($issuer, ServiceProviderRoutes::METADATA_PATH));
+    }
+
+    /**
+     * The identity provider of the tenant named by the URL of its metadata under the issuer, its service provider by
+     * the entity ID given; a name not known yet is no name to compare.
+     *
+     * @param list<array-key> $entityIds
+     *
+     * @throws InvalidConfigurationException
+     */
+    private static function refuseTheTenantUnder(array $entityIds, ?string $issuer, ?string $serviceProvider): void
+    {
         $identityProvider = self::under($issuer, IdentityProviderRoutes::METADATA_PATH);
-        $serviceProvider = $named === null ? self::under($issuer, ServiceProviderRoutes::METADATA_PATH) : self::literal($container, $named);
         try {
             foreach ($entityIds as $entityId) {
                 UpstreamIdentityProvider::assertNotTheTenant((string) $entityId, $identityProvider, $serviceProvider);

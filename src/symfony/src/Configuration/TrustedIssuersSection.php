@@ -6,7 +6,8 @@ namespace Beffroi\Bundle\Configuration;
 
 use Beffroi\Oidc\Application\Trust\IssuerAssertionValidator;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationTrustedIssuers;
-use function is_array;
+use Beffroi\Core\Port\SignatureAlgorithmsInterface;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
@@ -37,8 +38,30 @@ final readonly class TrustedIssuersSection extends ConfigurationSection
 
     public function describe(NodeBuilder $children): void
     {
-        $children
-            ->arrayNode('trusted_issuers')
+        $children->append(self::issuers());
+    }
+
+    /**
+     * The trusted issuers of the tenant at runtime, from the list the configuration or the environment carries,
+     * held to the rules of the tree either way (decision 0030).
+     *
+     * @throws InvalidConfigurationException when the list is one the tree refuses
+     */
+    public static function trustedIssuers(string $tenantSlug, mixed $definitions, SignatureAlgorithmsInterface $algorithms): ConfigurationTrustedIssuers
+    {
+        /** @var array<string, array<string, mixed>> $issuers the tree declares each one the array of its children, keyed by its "iss" */
+        $issuers = self::issuers()->normalized($definitions, 'trusted_issuers');
+
+        return new ConfigurationTrustedIssuers($tenantSlug, $issuers, $algorithms);
+    }
+
+    /**
+     * The list as the tree declares it, which the environment may carry whole.
+     */
+    private static function issuers(): EnvironmentListDefinition
+    {
+        $issuers = new EnvironmentListDefinition('trusted_issuers');
+        $issuers
             ->info('The issuers whose assertions this tenant accepts as an authorization (RFC 7523 §2.1), keyed by the "iss" they sign with. Each one is a closed declaration: nothing about it is inferred, and an issuer nobody declared is unknown.')
             ->useAttributeAsKey('issuer')
             ->normalizeKeys(false)
@@ -72,16 +95,17 @@ final readonly class TrustedIssuersSection extends ConfigurationSection
             ->end()
             ->end()
             ->end()
-            ->end()
             ->end();
+
+        return $issuers;
     }
 
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
     {
-        $services->get(ConfigurationTrustedIssuers::class)->arg('$tenantSlug', self::string(self::section($config, 'tenant'), 'slug'))->arg(
-            '$definitions',
-            is_array($config['trusted_issuers'] ?? null) ? $config['trusted_issuers'] : [],
-        );
+        $services->get(ConfigurationTrustedIssuers::class)->factory(self::trustedIssuers(...))->arg('$tenantSlug', self::string(
+            self::section($config, 'tenant'),
+            'slug',
+        ))->arg('$definitions', $config['trusted_issuers'] ?? []);
         $clientAuthentication = self::section($config, 'client_authentication');
         $services->get(IssuerAssertionValidator::class)->arg('$maximumLifetime', self::seconds(
             $clientAuthentication,
