@@ -63,7 +63,7 @@ final class AddressedAccessTokenTest extends TestCase
         $subjectIdentifier = new OpenedPublicSubjectIdentifier();
 
         // When
-        $addressed = new AddressedAccessToken(Keys::openedSigningKey(Fixtures::tenant()), $subjectIdentifier);
+        $addressed = new AddressedAccessToken(Keys::openedSigningKey(Fixtures::tenant()), subjectIdentifier: $subjectIdentifier);
 
         // Then
         static::assertSame($subjectIdentifier, $addressed->subjectIdentifier());

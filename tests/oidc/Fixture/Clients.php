@@ -414,6 +414,32 @@ final class Clients
     }
 
     /**
+     * A client of a sector that also acts for itself (RFC 6749 §4.4, OIDC Core §8.1): confidential, registered for
+     * the client credentials grant beside the browser flow and for a pairwise "sub", its sector the host its browser
+     * comes back to.
+     */
+    public static function pairwiseService(Tenant $tenant, PasswordHash $secretHash): Client
+    {
+        return new Client(
+            $tenant,
+            new ClientRegistration(
+                'pairwise-batch',
+                new ClientPresentation('Batch of a sector'),
+                Methods::clientSecretBasic(),
+                true,
+                [new RedirectUri('https://rp.example/callback')],
+                Shapes::jwt(),
+                [],
+                [Grants::authorizationCode(), Grants::clientCredentials()],
+                new Scopes([new Scope('invoices.read')]),
+                resources: self::resources(),
+                subjectType: PairwiseSubjectIdentifierResolver::SUBJECT_TYPE,
+            ),
+            new HashedClientSecret($secretHash),
+        );
+    }
+
+    /**
      * A client this provider begins a login at (OIDC Core §4): the "initiate_login_uri" it registered,
      * which is where the browser is sent, and the redirection URIs a "target_link_uri" is held to.
      *

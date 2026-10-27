@@ -10,6 +10,7 @@ use Beffroi\Core\Domain\Identity\LinkedIdentity;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
@@ -34,6 +35,7 @@ use Beffroi\Oidc\Tests\Fixture\FakeTrustedIssuers;
 use Beffroi\Oidc\Tests\Fixture\Grants;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
 use Beffroi\Oidc\Tests\Fixture\TrustedIssuers;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -59,6 +61,8 @@ final class JwtBearerGrantTest extends TestCase
 
     private RequestContext $context;
 
+    private FakeAccessTokenIssuer $accessTokens;
+
     private FakeIdTokenIssuer $idTokens;
 
     private FakeTrustedIssuers $issuers;
@@ -74,6 +78,7 @@ final class JwtBearerGrantTest extends TestCase
         $this->client = Clients::presentingAssertions($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
         $this->clock = new MockClock('2026-09-27T12:00:00+00:00');
         $this->context = Fixtures::context($this->clock->now());
+        $this->accessTokens = new FakeAccessTokenIssuer();
         $this->idTokens = new FakeIdTokenIssuer();
         $refreshTokens = new InMemoryRefreshTokenRepository();
         $identities = new InMemoryLinkedIdentityRepository();
@@ -84,7 +89,7 @@ final class JwtBearerGrantTest extends TestCase
             TrustedIssuers::validator($this->issuers),
             $identities,
             Subjects::publicKind(),
-            new TokenIssuer(new FakeAccessTokenIssuer(), $this->idTokens, $refreshTokens, Secrets::drawer(), new RecordingEventDispatcher()),
+            new TokenIssuer($this->accessTokens, $this->idTokens, $refreshTokens, Secrets::drawer(), new RecordingEventDispatcher()),
             new SymfonyUuidGenerator(),
             $this->clock,
         );
@@ -167,6 +172,65 @@ final class JwtBearerGrantTest extends TestCase
 
         // When
         $this->grant->grant(new AuthenticatedClient($this->client), $request, $this->context);
+    }
+
+    /**
+     * RFC 7523 §3 (issue #876): what the response reads from outside the provider is read before the "jti" of
+     * the assertion is remembered, so a KMS that does not answer leaves the assertion to the same request,
+     * which is served once the KMS answers again and is never taken for a replay.
+     */
+    #[Test]
+    public function anAssertionLeftUnspentByAnOutageIsExchangedOnceTheKmsAnswers(): void
+    {
+        // Given
+        $request = $this->request();
+        $this->accessTokens->kmsOutage = new KmsUnavailableException('The KMS did not answer.');
+        try {
+            $this->grant->grant(new AuthenticatedClient($this->client), $request, $this->context);
+        } catch (KmsUnavailableException) {
+        }
+        $this->accessTokens->kmsOutage = null;
+
+        // When
+        $issued = $this->grant->grant(new AuthenticatedClient($this->client), $request, $this->context);
+
+        // Then
+        static::assertSame('alice-subject', $issued->authorization->person()?->value);
+    }
+
+    /**
+     * RFC 7523 §3 (issue #876): an assertion is spent by the response it is exchanged for, so a request
+     * refused for what it asks leaves its assertion to the next request, which is served.
+     */
+    #[Test]
+    #[DataProvider('provideRequestsRefusedForWhatTheyAsk')]
+    public function theAssertionOfARefusedRequestIsExchangedByTheNextOne(?string $scope, ?string $resource): void
+    {
+        // Given
+        $assertion = $this->assertion();
+        try {
+            $this->grant->grant(
+                new AuthenticatedClient($this->client),
+                $this->request(scope: $scope, resource: $resource, assertion: $assertion),
+                $this->context,
+            );
+        } catch (OAuth2Exception) {
+        }
+
+        // When
+        $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(assertion: $assertion), $this->context);
+
+        // Then
+        static::assertSame('alice-subject', $issued->authorization->person()?->value);
+    }
+
+    /**
+     * @return iterable<string, array{string|null, string|null}>
+     */
+    public static function provideRequestsRefusedForWhatTheyAsk(): iterable
+    {
+        yield 'a scope the client did not register' => ['payments.write', Clients::CALENDAR];
+        yield 'no resource' => ['invoices.read', null];
     }
 
     /**
@@ -310,13 +374,19 @@ final class JwtBearerGrantTest extends TestCase
     }
 
     /**
+     * @param string|null $assertion the assertion the request presents, a fresh one about that subject unless the test holds its own
+     *
      * @throws OAuth2Exception
      */
-    private function request(string $subject = self::EMPLOYEE, ?string $scope = 'invoices.read', ?string $resource = Clients::CALENDAR): RequestParameters
-    {
+    private function request(
+        string $subject = self::EMPLOYEE,
+        ?string $scope = 'invoices.read',
+        ?string $resource = Clients::CALENDAR,
+        ?string $assertion = null,
+    ): RequestParameters {
         $parameters = [
             'grant_type' => JwtBearerGrant::GRANT_TYPE,
-            'assertion' => TrustedIssuers::assertion($subject, (string) $this->tenant->issuer, $this->clock->now()),
+            'assertion' => $assertion ?? $this->assertion($subject),
         ];
         if ($scope !== null) {
             $parameters['scope'] = $scope;
@@ -326,5 +396,13 @@ final class JwtBearerGrantTest extends TestCase
         }
 
         return RequestParameters::of($parameters);
+    }
+
+    /**
+     * RFC 7523 §3: an assertion of the trusted issuer about that subject, addressed to this provider.
+     */
+    private function assertion(string $subject = self::EMPLOYEE): string
+    {
+        return TrustedIssuers::assertion($subject, (string) $this->tenant->issuer, $this->clock->now());
     }
 }

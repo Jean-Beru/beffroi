@@ -33,8 +33,15 @@ final class FakeAccessTokenIssuer implements AccessTokenShapeIssuerInterface
     public private(set) array $addressed = [];
 
     /**
-     * What addressing a token throws while the KMS does not answer to open the key it is signed with, which a
-     * test sets and takes back; null while it answers.
+     * The authorizations whose tokens were addressed once they existed, in order.
+     *
+     * @var list<AuthorizationInterface>
+     */
+    public private(set) array $addressedFor = [];
+
+    /**
+     * What addressing a token throws while the KMS does not answer to open the key it is signed with, or to seal
+     * what it carries sealed, which a test sets and takes back; null while it answers.
      */
     public ?KmsUnavailableException $kmsOutage = null;
 
@@ -58,6 +65,16 @@ final class FakeAccessTokenIssuer implements AccessTokenShapeIssuerInterface
             throw $this->kmsOutage;
         }
         $this->addressed[] = $client;
+
+        return new AddressedAccessToken();
+    }
+
+    public function addressFor(AuthorizationInterface $authorization): AddressedAccessToken
+    {
+        if ($this->kmsOutage !== null) {
+            throw $this->kmsOutage;
+        }
+        $this->addressedFor[] = $authorization;
 
         return new AddressedAccessToken();
     }

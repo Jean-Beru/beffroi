@@ -17,17 +17,24 @@ use Beffroi\Core\Domain\Event\AuthenticationFailed;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
 use Beffroi\Core\Domain\Event\KmsUnavailable;
 use Beffroi\Core\Domain\Event\TotpUsed;
+use Beffroi\Core\Domain\Identity\LinkedIdentity;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
 use Beffroi\Core\Port\SecretSealerInterface;
 use Beffroi\Core\Port\TotpAlgorithmInterface;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Totps;
+use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
+use Beffroi\Oidc\Tests\Fixture\TrustedIssuers;
 use function intdiv;
+use function json_encode;
+use const JSON_THROW_ON_ERROR;
 use ParagonIE\ConstantTime\Base32;
 use PHPUnit\Framework\Attributes\Test;
 use function str_replace;
+use Symfony\Component\Clock\Clock;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
@@ -38,10 +45,19 @@ use Symfony\Component\Uid\Uuid;
  * enrolment of a TOTP; nothing is counted against the user, nothing is forgotten, the same request is
  * served once the KMS is back, and the audit sees the outage. The KMS of the kernel is taken down
  * between two requests by KmsOutage; the secrets and the keys were sealed while it was up.
+ *
+ * The issuer the job runner presents the assertions of is declared by the test kernel, its keys the ones of
+ * the suite, named before the kernel boots.
  */
 final class KmsOutageTest extends PasskeyTestCase
 {
     private const string PASSWORD = 'correct horse battery staple';
+
+    /**
+     * The name the trusted issuer knows alice by, which a linked identity of its source turns into her
+     * account (decision 0002).
+     */
+    private const string EMPLOYEE = 'employee-42';
 
     private const string PAIRWISE_REDIRECT_URI = 'https://pairwise.test/callback';
 
@@ -54,8 +70,18 @@ final class KmsOutageTest extends PasskeyTestCase
     protected function setUp(): void
     {
         $this->kms = new KmsOutage();
+        $_SERVER['BEFFROI_TEST_TRUSTED_ISSUER_JWKS'] = base64_encode(json_encode(
+            ['keys' => ClientAssertions::publishedKeys()->keys],
+            JSON_THROW_ON_ERROR,
+        ));
         parent::setUp();
         $this->secret = Totps::secret();
+    }
+
+    protected function tearDown(): void
+    {
+        parent::tearDown();
+        unset($_SERVER['BEFFROI_TEST_TRUSTED_ISSUER_JWKS'], $_ENV['BEFFROI_TEST_TRUSTED_ISSUER_JWKS']);
     }
 
     protected function configureContainer(): Closure
@@ -287,6 +313,63 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
+     * RFC 7523 §3 (issue #876): the "jti" of an assertion is remembered once the key its token is signed with is
+     * open, so the assertion a 503 answered is an assertion nobody exchanged. The same request, once the KMS is
+     * back, is answered with a token and is never taken for a replay.
+     */
+    #[Test]
+    public function theSameAssertionIsExchangedOnceTheKmsIsBack(): void
+    {
+        // Given
+        self::signingKey();
+        $this->linkTheEmployeeTo(self::user('alice'));
+        $assertion = self::assertion();
+        $this->kms->down = true;
+        $this->postAssertion($assertion);
+        static::assertSame(Response::HTTP_SERVICE_UNAVAILABLE, $this->browser->getResponse()->getStatusCode());
+        $this->kms->down = false;
+
+        // When
+        $this->postAssertion($assertion);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), (string) $response->getContent());
+        static::assertArrayHasKey('access_token', self::json($response));
+    }
+
+    /**
+     * Issue #876: on a worker whose key is open already, what the KMS is asked at every token of the job runner
+     * is the envelope of the person the token is about, and that envelope is sealed before the "jti" is
+     * remembered too. The assertion the outage turned away is exchanged by the same request once the KMS is
+     * back.
+     */
+    #[Test]
+    public function theAssertionWhosePersonTheKmsDidNotSealIsExchangedOnceTheKmsIsBack(): void
+    {
+        // Given
+        $this->browser->disableReboot();
+        self::signingKey();
+        $this->linkTheEmployeeTo(self::user('alice'));
+        $this->postAssertion(self::assertion());
+        static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode(), 'The worker did not open its key.');
+        $assertion = self::assertion();
+        $this->kms->down = true;
+        $this->postAssertion($assertion);
+        static::assertSame(Response::HTTP_SERVICE_UNAVAILABLE, $this->browser->getResponse()->getStatusCode());
+        static::assertStringContainsString('could not be sealed', self::events(KmsUnavailable::class)[0]->reason ?? '');
+        $this->kms->down = false;
+
+        // When
+        $this->postAssertion($assertion);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), (string) $response->getContent());
+        static::assertArrayHasKey('access_token', self::json($response));
+    }
+
+    /**
      * Architecture §5.2: the provisioning of an enrolment is sealed in the session before it is shown;
      * without the KMS there is nothing to show, and nothing is kept.
      */
@@ -431,6 +514,45 @@ final class KmsOutageTest extends PasskeyTestCase
                 'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
             ],
         );
+    }
+
+    /**
+     * RFC 7523 §2.1: the job runner, registered for tokens in the JWT shape, presents an assertion of the
+     * trusted issuer for a token addressed to the calendar.
+     */
+    private function postAssertion(string $assertion): void
+    {
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                'assertion' => $assertion,
+                'scope' => 'invoices.read',
+                'resource' => 'https://cal.example.com/',
+            ],
+            server: [
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('assertion-app:assertion-secret-of-at-least-32-character'),
+            ],
+        );
+    }
+
+    /**
+     * RFC 7523 §3: an assertion of the trusted issuer about the employee, addressed to this provider, under a
+     * "jti" of its own.
+     */
+    private static function assertion(): string
+    {
+        return TrustedIssuers::assertion(self::EMPLOYEE, self::tenant()->issuer->value, Clock::get()->now(), [
+            'jti' => Uuid::v4()->toRfc4122(),
+        ]);
+    }
+
+    private function linkTheEmployeeTo(User $user): void
+    {
+        $now = Clock::get()->now();
+        self::service('test.beffroi.linked_identities', LinkedIdentityRepositoryInterface::class)
+            ->save(new LinkedIdentity(Uuid::v7(), $user, TrustedIssuers::PROVIDER, self::EMPLOYEE, [], $now, $now));
     }
 
     private function twoFactorPage(): Crawler
