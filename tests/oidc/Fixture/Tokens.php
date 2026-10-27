@@ -23,6 +23,8 @@ use Beffroi\Oidc\Domain\Exchange\MayAct;
 use Beffroi\Oidc\Domain\Exchange\PresentedToken;
 use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
 use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Token\AccessToken;
+use Beffroi\Oidc\Domain\Token\AuthorizationInterface;
 use Beffroi\Oidc\Domain\Token\ConfirmationInterface;
 use Beffroi\Oidc\Domain\Token\KeyConfirmation;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
@@ -34,6 +36,7 @@ use Beffroi\Oidc\Domain\Token\StoredClientAccessToken;
 use Beffroi\Oidc\Domain\Token\StoredSubjectAccessToken;
 use Beffroi\Oidc\Domain\Token\StoredUserAccessToken;
 use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
+use Beffroi\Oidc\Port\AccessTokenIssuerInterface;
 use Beffroi\Oidc\Domain\Token\TokenAudience;
 use Beffroi\Oidc\Domain\Token\TokenSignIn;
 use Symfony\Component\Uid\Uuid;
@@ -273,6 +276,16 @@ final class Tokens
             // descends from, there being nobody behind a token a client holds for itself
             $session?->user->subject,
         );
+    }
+
+    /**
+     * The access token that issuer writes for that authorization, addressed and struck at once, as a caller that
+     * spends nothing on the way to it does both: what a test asks for when it needs a token, and not the order
+     * of the two steps.
+     */
+    public static function accessToken(AccessTokenIssuerInterface $issuer, AuthorizationInterface $authorization, DateTimeImmutable $now): AccessToken
+    {
+        return $issuer->issue($authorization, $issuer->address($authorization->client), $now);
     }
 
     /**

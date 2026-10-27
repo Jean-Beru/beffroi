@@ -12,12 +12,16 @@ use Beffroi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
+use Beffroi\Core\Bridge\Key\OpenedKeys;
 use Beffroi\Core\Bridge\Key\SealedKeyProvider;
+use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Beffroi\Core\Domain\Key\GeneratedKeyPair;
 use Beffroi\Core\Domain\Key\KeyAlgorithmInterface;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\SigningKeyOpenerInterface;
 use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\EnvelopesThatThrow;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
 use Beffroi\Oidc\Application\Client\ClientDocumentIssuer;
@@ -37,6 +41,7 @@ use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Assert;
 use function strtr;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\KeyManagement\Exception\RuntimeException as KeyManagementRuntimeException;
 
 /**
  * A tenant with one real active RS256 key, signing through the bridge of the core, and the verification a
@@ -74,16 +79,29 @@ final readonly class Jwts
 
     /**
      * The document issuer, reading the keys a client publishes through the fetcher given, or through the
-     * one every other fixture uses.
+     * one every other fixture uses, and opening the keys of the tenant through the signer given, or through
+     * the one of this tenant.
      */
-    public function documentsFor(?ClientJwksFetcherInterface $fetcher = null): ClientDocumentIssuer
+    public function documentsFor(?ClientJwksFetcherInterface $fetcher = null, ?SigningKeyOpenerInterface $signer = null): ClientDocumentIssuer
     {
         return new ClientDocumentIssuer(
-            $this->signer,
+            $signer ?? $this->signer,
             $this->algorithms,
             Methods::keySetProvider($fetcher),
             new JwtLibraryJweEncrypter(new JoseEncryptionAlgorithms(Algorithms::keyEncryption(), Algorithms::contentEncryption())->manager()),
         );
+    }
+
+    /**
+     * What signs for the tenant behind a KMS that does not answer, in a process that has opened none of its
+     * keys: what a worker meets during an outage before its first signature.
+     */
+    public function signerBehindAnOutage(): JwtLibraryJwsSigner
+    {
+        return new JwtLibraryJwsSigner(new SealedKeyProvider($this->repository, new OpenedKeys(new EnvelopeKeySealer(
+            new EnvelopesThatThrow(new KeyManagementRuntimeException('Failed to reach the KMS.')),
+            Keys::KMS_KEY_ID,
+        ))), $this->algorithms);
     }
 
     /**

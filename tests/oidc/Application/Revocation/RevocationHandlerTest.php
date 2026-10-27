@@ -518,7 +518,8 @@ final class RevocationHandlerTest extends TestCase
 
     private function accessToken(Client $client): string
     {
-        return new OpaqueAccessTokenIssuer($this->accessTokens, Secrets::drawer())->issue(
+        return Tokens::accessToken(
+            new OpaqueAccessTokenIssuer($this->accessTokens, Secrets::drawer()),
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code('the-code', $client, $this->session, $this->clock->now())),
             $this->clock->now(),
         )->value;
@@ -537,13 +538,14 @@ final class RevocationHandlerTest extends TestCase
 
     private function jwt(AuthorizationCode $code, DateTimeImmutable $issuedAt): string
     {
-        return new JwtAccessTokenIssuer(
-            $this->jwts->signer,
-            Subjects::publicKind(),
-            Algorithms::all(),
-            new SymfonyUuidGenerator(),
-            Subjects::sealedPerson(),
-        )->issue(
+        return Tokens::accessToken(
+            new JwtAccessTokenIssuer(
+                $this->jwts->signer,
+                Subjects::publicKind(),
+                Algorithms::all(),
+                new SymfonyUuidGenerator(),
+                Subjects::sealedPerson(),
+            ),
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             $issuedAt,
         )->value;

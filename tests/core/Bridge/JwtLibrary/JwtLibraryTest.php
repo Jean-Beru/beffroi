@@ -122,6 +122,35 @@ final class JwtLibraryTest extends TestCase
     }
 
     /**
+     * RFC 7515 §7.1 (issue #870): a key is opened first and signs afterwards without the store or the KMS being
+     * asked again, so a key that stopped being the active one since it was opened still signs what it was opened
+     * for, the header naming it and its algorithm.
+     */
+    #[Test]
+    public function aKeyOpenedBeforeSignsWithoutBeingLookedUpAgain(): void
+    {
+        // Given
+        $opened = new JwtLibraryJwsSigner($this->provider, Algorithms::all())->open($this->tenant, Algorithms::rs256());
+        $this->active->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+
+        // When
+        $jws = $opened->sign('{"sub":"alice"}', [
+            'typ' => 'at+jwt',
+        ]);
+
+        // Then
+        [$header] = explode('.', $jws);
+        static::assertSame(
+            [
+                'typ' => 'at+jwt',
+                'alg' => 'RS256',
+                'kid' => $this->active->kid,
+            ],
+            json_decode((string) base64_decode(strtr($header, '-_', '+/'), true), true),
+        );
+    }
+
+    /**
      * Verified by the library against the published JWK Set, the way a relying party would.
      */
     #[Test]

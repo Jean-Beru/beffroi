@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Oidc\Tests\Application\Client;
 
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Domain\Client\AddressedFormat;
 use Beffroi\Oidc\Domain\Client\ClientJwks;
@@ -140,5 +141,45 @@ final class ClientDocumentIssuerTest extends TestCase
 
         // Then
         static::assertSame(ClientEncryption::KEY_ID, ClientEncryption::open($document)['header']['kid']);
+    }
+
+    /**
+     * Architecture §4.5 (issue #870): the key of the tenant a document is signed with is opened when the
+     * document is addressed, so a KMS that does not answer is said then, before anything is struck.
+     */
+    #[Test]
+    public function aKmsThatDoesNotAnswerIsToldWhenTheDocumentIsAddressed(): void
+    {
+        // Given
+        $client = Clients::public($this->tenant);
+        $documents = $this->jwts->documentsFor(signer: $this->jwts->signerBehindAnOutage());
+
+        // Then
+        $this->expectException(KmsUnavailableException::class);
+        $this->expectExceptionMessageIs('The sealed key could not be opened.');
+
+        // When
+        $documents->address($client, ResponseFormat::signed());
+    }
+
+    /**
+     * Striking a document asks nothing of the KMS (issue #870): one addressed while the KMS answered is signed
+     * with the key opened then, whatever the KMS answers by the time it is struck.
+     */
+    #[Test]
+    public function aDocumentIsSignedWithTheKeyOpenedWhenItWasAddressed(): void
+    {
+        // Given
+        $client = Clients::public($this->tenant);
+        $addressed = $this->jwts->documents->address($client, ResponseFormat::signed());
+        $documents = $this->jwts->documentsFor(signer: $this->jwts->signerBehindAnOutage());
+
+        // When
+        $document = $documents->issue($client, $addressed, [
+            'sub' => 'alice',
+        ]);
+
+        // Then
+        static::assertSame($this->jwts->key->kid, $this->jwts->verify($document, 'nobody', Fixtures::now(), [])['header']['kid']);
     }
 }

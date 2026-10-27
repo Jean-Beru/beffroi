@@ -48,7 +48,7 @@ final class ServedAccessTokenShapesTest extends TestCase
         $authorization = $this->authorization(Shapes::jwt());
 
         // When
-        $token = $this->shapes->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($this->shapes, $authorization, Fixtures::now());
 
         // Then
         static::assertSame([$authorization], $this->jwt->issued);
@@ -63,12 +63,30 @@ final class ServedAccessTokenShapesTest extends TestCase
         $authorization = $this->authorization(Shapes::opaque());
 
         // When
-        $token = $this->shapes->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($this->shapes, $authorization, Fixtures::now());
 
         // Then
         static::assertSame([$authorization], $this->opaque->issued);
         static::assertSame([], $this->jwt->issued);
         static::assertStringStartsWith('at:oidc-demo:', $token->value);
+    }
+
+    /**
+     * Architecture §4.6 (issue #870): the registration of the client picks the issuer that addresses its token,
+     * as it picks the one that mints it, so the key opened is the key of the shape the token is written in.
+     */
+    #[Test]
+    public function theTokenOfAClientIsAddressedByTheIssuerOfItsShape(): void
+    {
+        // Given
+        $client = $this->authorization(Shapes::opaque())->client;
+
+        // When
+        $this->shapes->address($client);
+
+        // Then
+        static::assertSame([$client], $this->opaque->addressed);
+        static::assertSame([], $this->jwt->addressed);
     }
 
     /**
@@ -84,7 +102,7 @@ final class ServedAccessTokenShapesTest extends TestCase
         $authorization = $this->authorization(Shapes::invented());
 
         // When
-        $shapes->issue($authorization, Fixtures::now());
+        Tokens::accessToken($shapes, $authorization, Fixtures::now());
 
         // Then
         static::assertSame([$authorization], $invented->issued);
@@ -168,7 +186,7 @@ final class ServedAccessTokenShapesTest extends TestCase
         $this->expectExceptionMessageIs('No issuer writes access tokens in the "invented" shape; the wired shapes are jwt, opaque.');
 
         // When
-        $this->shapes->issue($authorization, Fixtures::now());
+        Tokens::accessToken($this->shapes, $authorization, Fixtures::now());
     }
 
     private function authorization(AccessTokenShapeInterface $shape): UserAuthorization

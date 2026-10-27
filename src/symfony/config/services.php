@@ -439,6 +439,7 @@ use Beffroi\Core\Port\UuidGeneratorInterface;
 use Beffroi\Core\Port\PublicKeySetProviderInterface;
 use Beffroi\Core\Port\SecretSealerInterface;
 use Beffroi\Core\Port\SignatureAlgorithmsInterface;
+use Beffroi\Core\Port\SigningKeyOpenerInterface;
 use Beffroi\Core\Port\SigningKeyProviderInterface;
 use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use Beffroi\Core\Port\TotpAlgorithmInterface;
@@ -1332,6 +1333,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(KeyPairGeneratorInterface::class, JwtLibraryKeyPairGenerator::class);
     $services->set(JwtLibraryJwsSigner::class);
     $services->alias(JwsSignerInterface::class, JwtLibraryJwsSigner::class);
+    $services->alias(SigningKeyOpenerInterface::class, JwtLibraryJwsSigner::class);
     $services->set(JwtLibraryJwsVerifier::class);
     $services->alias(JwsVerifierInterface::class, JwtLibraryJwsVerifier::class);
     $services->set(JwtLibraryJweDecrypter::class);

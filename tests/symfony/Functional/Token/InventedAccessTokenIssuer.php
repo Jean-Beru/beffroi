@@ -6,7 +6,9 @@ namespace Beffroi\Bundle\Tests\Functional\Token;
 
 use DateTimeImmutable;
 use Beffroi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
+use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Token\AccessToken;
+use Beffroi\Oidc\Domain\Token\AddressedAccessToken;
 use Beffroi\Oidc\Domain\Token\AuthorizationInterface;
 use Beffroi\Oidc\Port\AccessTokenShapeIssuerInterface;
 
@@ -34,9 +36,14 @@ final readonly class InventedAccessTokenIssuer implements AccessTokenShapeIssuer
         return self::NAME;
     }
 
-    public function issue(AuthorizationInterface $authorization, DateTimeImmutable $now): AccessToken
+    public function address(Client $client): AddressedAccessToken
     {
-        $token = $this->issuer->issue($authorization, $now);
+        return $this->issuer->address($client);
+    }
+
+    public function issue(AuthorizationInterface $authorization, AddressedAccessToken $addressed, DateTimeImmutable $now): AccessToken
+    {
+        $token = $this->issuer->issue($authorization, $addressed, $now);
 
         return new AccessToken(self::PREFIX . $token->value, $token->issuedAt, $token->expiresAt);
     }

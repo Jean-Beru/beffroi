@@ -243,7 +243,8 @@ final class IntrospectionHandlerTest extends TestCase
     public function describingATokenAClientHoldsForItselfIsNoAct(): void
     {
         // Given
-        $token = $this->opaqueIssuer()->issue(
+        $token = Tokens::accessToken(
+            $this->opaqueIssuer(),
             new ClientAuthorization(
                 Grants::clientCredentials(),
                 Uuid::v7(),
@@ -315,7 +316,8 @@ final class IntrospectionHandlerTest extends TestCase
     {
         // Given
         $certificate = Certificates::client();
-        $token = $this->opaqueIssuer()->issue(
+        $token = Tokens::accessToken(
+            $this->opaqueIssuer(),
             UserAuthorization::fromAuthorizationCode(
                 Grants::authorizationCode(),
                 $this->code($this->client, ['openid']),
@@ -353,13 +355,14 @@ final class IntrospectionHandlerTest extends TestCase
     {
         // Given
         $code = $this->code($this->other, ['openid']);
-        $token = new JwtAccessTokenIssuer(
-            $this->jwts->signer,
-            Subjects::publicKind(),
-            Algorithms::all(),
-            new SymfonyUuidGenerator(),
-            Subjects::sealedPerson(),
-        )->issue(
+        $token = Tokens::accessToken(
+            new JwtAccessTokenIssuer(
+                $this->jwts->signer,
+                Subjects::publicKind(),
+                Algorithms::all(),
+                new SymfonyUuidGenerator(),
+                Subjects::sealedPerson(),
+            ),
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             $this->clock->now(),
         )->value;
@@ -682,7 +685,8 @@ final class IntrospectionHandlerTest extends TestCase
 
     private function tokenOfTheRecord(Uuid $grantId, Scopes $scopes): string
     {
-        return $this->opaqueIssuer()->issue(
+        return Tokens::accessToken(
+            $this->opaqueIssuer(),
             new UserAuthorization(
                 Grants::deviceCode(),
                 $grantId,
@@ -706,7 +710,8 @@ final class IntrospectionHandlerTest extends TestCase
     {
         $person = $this->session->user->subject;
 
-        return $this->opaqueIssuer()->issue(
+        return Tokens::accessToken(
+            $this->opaqueIssuer(),
             new SubjectAuthorization(
                 Grants::jwtBearer(),
                 Uuid::v7(),
@@ -737,10 +742,7 @@ final class IntrospectionHandlerTest extends TestCase
     {
         $issuedAt ??= $this->clock->now();
 
-        return $this->opaqueIssuer()->issue(
-            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
-            $issuedAt,
-        )->value;
+        return Tokens::accessToken($this->opaqueIssuer(), UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code), $issuedAt)->value;
     }
 
     private function opaqueIssuer(): OpaqueAccessTokenIssuer

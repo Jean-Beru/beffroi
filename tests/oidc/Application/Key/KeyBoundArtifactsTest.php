@@ -257,7 +257,13 @@ final class KeyBoundArtifactsTest extends TestCase
             accessTokenShape: Shapes::opaque(),
         ));
         $kind = new AccessTokenJwsKind(
-            new JwtAccessTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator(), Subjects::sealedPerson()),
+            new JwtAccessTokenIssuer(
+                $this->jwts->signer,
+                Subjects::publicKind(),
+                Algorithms::all(),
+                new SymfonyUuidGenerator(),
+                Subjects::sealedPerson(),
+            ),
             new RegisteredClients([$this->clients]),
         );
 

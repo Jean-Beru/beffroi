@@ -162,7 +162,7 @@ final class UserInfoHandlerTest extends TestCase
     {
         // Given
         $refreshed = $this->refreshed(['openid', 'email'], new Scopes([new Scope('email')]));
-        $token = $this->accessTokens->issue($refreshed, Fixtures::now())->value;
+        $token = Tokens::accessToken($this->accessTokens, $refreshed, Fixtures::now())->value;
 
         // When
         try {
@@ -210,10 +210,7 @@ final class UserInfoHandlerTest extends TestCase
     public function itServesTheClaimsOfAnOpaqueToken(): void
     {
         // Given
-        $token = $this->opaque()->issue(
-            $this->authorization(['openid', 'email'], '{"userinfo":{"nickname":null}}'),
-            Fixtures::now(),
-        )->value;
+        $token = Tokens::accessToken($this->opaque(), $this->authorization(['openid', 'email'], '{"userinfo":{"nickname":null}}'), Fixtures::now())->value;
 
         // When
         $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
@@ -377,7 +374,7 @@ final class UserInfoHandlerTest extends TestCase
     {
         // Given
         $refreshed = $this->refreshed(['openid', 'email'], new Scopes([Scope::openid()]));
-        $token = $this->accessTokens->issue($refreshed, Fixtures::now())->value;
+        $token = Tokens::accessToken($this->accessTokens, $refreshed, Fixtures::now())->value;
 
         // When
         $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
@@ -467,7 +464,7 @@ final class UserInfoHandlerTest extends TestCase
         $issuer = new JwtIdTokenIssuer($this->jwts->documents, Subjects::publicKind(), new StandardClaimsProvider(), Algorithms::all());
         $idToken = $issuer->issue(
             $authorization,
-            $this->accessTokens->issue($authorization, Fixtures::now()),
+            Tokens::accessToken($this->accessTokens, $authorization, Fixtures::now()),
             $issuer->address($authorization->client),
             Fixtures::now(),
         );
@@ -496,10 +493,7 @@ final class UserInfoHandlerTest extends TestCase
             resources: ResourceIndicators::of([Clients::CALENDAR]),
         );
         $this->grants->save($code);
-        $token = $this->accessTokens->issue(
-            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
-            Fixtures::now(),
-        )->value;
+        $token = Tokens::accessToken($this->accessTokens, UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code), Fixtures::now())->value;
 
         // Then
         $this->expectException(InvalidTokenException::class);
@@ -518,7 +512,7 @@ final class UserInfoHandlerTest extends TestCase
     {
         // Given
         $refreshed = $this->refreshed(['openid', 'email'], new Scopes([new Scope('email')]));
-        $token = $this->accessTokens->issue($refreshed, Fixtures::now())->value;
+        $token = Tokens::accessToken($this->accessTokens, $refreshed, Fixtures::now())->value;
 
         // When
         try {
@@ -543,7 +537,8 @@ final class UserInfoHandlerTest extends TestCase
     public function itRefusesATokenNobodySignedInFor(): void
     {
         // Given
-        $token = $this->accessTokens->issue(
+        $token = Tokens::accessToken(
+            $this->accessTokens,
             new ClientAuthorization(
                 Grants::clientCredentials(),
                 Uuid::v7(),
@@ -572,7 +567,7 @@ final class UserInfoHandlerTest extends TestCase
     {
         // Given
         $code = $this->code(['openid', 'email']);
-        $token = $this->accessTokens->issue(UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code), Fixtures::now())->value;
+        $token = Tokens::accessToken($this->accessTokens, UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code), Fixtures::now())->value;
         $code->revoke(Fixtures::now());
 
         // Then
@@ -592,7 +587,7 @@ final class UserInfoHandlerTest extends TestCase
     {
         // Given
         $refreshed = $this->refreshed(['openid', 'email'], null);
-        $token = $this->accessTokens->issue($refreshed, Fixtures::now())->value;
+        $token = Tokens::accessToken($this->accessTokens, $refreshed, Fixtures::now())->value;
         $grant = $this->grants->findByGrantId($refreshed->grantId) ?? static::fail('The refresh carries the grant of the code it descends from.');
         $grant->revoke(Fixtures::now());
 
@@ -612,7 +607,8 @@ final class UserInfoHandlerTest extends TestCase
     public function itRefusesATokenWhoseGrantIsGone(): void
     {
         // Given
-        $token = $this->accessTokens->issue(
+        $token = Tokens::accessToken(
+            $this->accessTokens,
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
                 'never-stored',
                 $this->client,
@@ -640,7 +636,7 @@ final class UserInfoHandlerTest extends TestCase
     public function itServesATokenOfTheDeviceGrant(): void
     {
         // Given
-        $token = $this->accessTokens->issue($this->ofADeviceRequest(), Fixtures::now())->value;
+        $token = Tokens::accessToken($this->accessTokens, $this->ofADeviceRequest(), Fixtures::now())->value;
 
         // When
         $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
@@ -659,7 +655,7 @@ final class UserInfoHandlerTest extends TestCase
         // Given
         $record = Tokens::approvedDeviceRecord($this->client, $this->session, Fixtures::now());
         $this->deviceRecords->save($record);
-        $token = $this->accessTokens->issue($this->ofTheRecord($record->grantId, $record->scopes), Fixtures::now())->value;
+        $token = Tokens::accessToken($this->accessTokens, $this->ofTheRecord($record->grantId, $record->scopes), Fixtures::now())->value;
         $record->revoke(Fixtures::now());
 
         // Then
@@ -678,7 +674,7 @@ final class UserInfoHandlerTest extends TestCase
     public function itServesATokenOfTheBackchannelGrant(): void
     {
         // Given
-        $token = $this->accessTokens->issue($this->ofABackchannelRequest(), Fixtures::now())->value;
+        $token = Tokens::accessToken($this->accessTokens, $this->ofABackchannelRequest(), Fixtures::now())->value;
 
         // When
         $response = $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
@@ -697,7 +693,7 @@ final class UserInfoHandlerTest extends TestCase
         // Given
         $record = Tokens::approvedBackchannelRecord($this->client, $this->session, Fixtures::now());
         $this->backchannelRecords->save($record);
-        $token = $this->accessTokens->issue($this->ofTheRecord($record->grantId, $record->scopes), Fixtures::now())->value;
+        $token = Tokens::accessToken($this->accessTokens, $this->ofTheRecord($record->grantId, $record->scopes), Fixtures::now())->value;
         $record->revoke(Fixtures::now());
 
         // Then
@@ -987,10 +983,10 @@ final class UserInfoHandlerTest extends TestCase
             Proofs::thumbprintOf(Proofs::key()),
         );
         if ($shape === 'jwt') {
-            return $this->accessTokens->issue($authorization, Fixtures::now())->value;
+            return Tokens::accessToken($this->accessTokens, $authorization, Fixtures::now())->value;
         }
 
-        return $this->opaque()->issue($authorization, Fixtures::now())->value;
+        return Tokens::accessToken($this->opaque(), $authorization, Fixtures::now())->value;
     }
 
     /**
@@ -1012,10 +1008,10 @@ final class UserInfoHandlerTest extends TestCase
             CertificateConfirmation::ofCertificate($certificate),
         );
         if ($shape === 'jwt') {
-            return $this->accessTokens->issue($authorization, Fixtures::now())->value;
+            return Tokens::accessToken($this->accessTokens, $authorization, Fixtures::now())->value;
         }
 
-        return $this->opaque()->issue($authorization, Fixtures::now())->value;
+        return Tokens::accessToken($this->opaque(), $authorization, Fixtures::now())->value;
     }
 
     private function opaque(): OpaqueAccessTokenIssuer
@@ -1028,7 +1024,7 @@ final class UserInfoHandlerTest extends TestCase
      */
     private function accessToken(array $scopes, ?string $claims = null): string
     {
-        return $this->accessTokens->issue($this->authorization($scopes, $claims), Fixtures::now())->value;
+        return Tokens::accessToken($this->accessTokens, $this->authorization($scopes, $claims), Fixtures::now())->value;
     }
 
     /**

@@ -433,7 +433,8 @@ final class AccessTokenInspectorTest extends TestCase
         $service = Clients::service($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
         $this->clients->save($service);
 
-        return $this->opaque()->issue(
+        return Tokens::accessToken(
+            $this->opaque(),
             new ClientAuthorization(
                 Grants::clientCredentials(),
                 Uuid::v7(),
@@ -481,7 +482,14 @@ final class AccessTokenInspectorTest extends TestCase
         $gateway = Clients::gateway($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET), 'person-jwt-gateway');
         $this->clients->save($gateway);
 
-        return new JwtAccessTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator(), $this->persons)->issue(
+        return Tokens::accessToken(
+            new JwtAccessTokenIssuer(
+                $this->jwts->signer,
+                Subjects::publicKind(),
+                Algorithms::all(),
+                new SymfonyUuidGenerator(),
+                $this->persons,
+            ),
             new SubjectAuthorization(
                 Grants::tokenExchange(),
                 $code->grantId,
@@ -523,10 +531,17 @@ final class AccessTokenInspectorTest extends TestCase
             person: $this->user->subject,
         );
         if ($shape === 'opaque') {
-            return $this->opaque()->issue($authorization, Fixtures::now())->value;
+            return Tokens::accessToken($this->opaque(), $authorization, Fixtures::now())->value;
         }
 
-        return new JwtAccessTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator(), $this->persons)->issue(
+        return Tokens::accessToken(
+            new JwtAccessTokenIssuer(
+                $this->jwts->signer,
+                Subjects::publicKind(),
+                Algorithms::all(),
+                new SymfonyUuidGenerator(),
+                $this->persons,
+            ),
             $authorization,
             Fixtures::now(),
         )->value;
@@ -542,10 +557,7 @@ final class AccessTokenInspectorTest extends TestCase
 
     private function tokenOf(AuthorizationCode $code): string
     {
-        return $this->opaque()->issue(
-            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
-            Fixtures::now(),
-        )->value;
+        return Tokens::accessToken($this->opaque(), UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code), Fixtures::now())->value;
     }
 
     private function opaque(): OpaqueAccessTokenIssuer
@@ -563,13 +575,14 @@ final class AccessTokenInspectorTest extends TestCase
             return $this->tokenOf($code);
         }
 
-        return new JwtAccessTokenIssuer(
-            $this->jwts->signer,
-            Subjects::publicKind(),
-            Algorithms::all(),
-            new SymfonyUuidGenerator(),
-            Subjects::sealedPerson(),
-        )->issue(
+        return Tokens::accessToken(
+            new JwtAccessTokenIssuer(
+                $this->jwts->signer,
+                Subjects::publicKind(),
+                Algorithms::all(),
+                new SymfonyUuidGenerator(),
+                Subjects::sealedPerson(),
+            ),
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             Fixtures::now(),
         )->value;

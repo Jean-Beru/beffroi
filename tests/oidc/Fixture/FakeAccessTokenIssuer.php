@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Fixture;
 
+use Beffroi\Core\Exception\KmsUnavailableException;
 use DateInterval;
 use DateTimeImmutable;
+use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Token\AccessToken;
+use Beffroi\Oidc\Domain\Token\AddressedAccessToken;
 use Beffroi\Oidc\Domain\Token\AuthorizationInterface;
 use Beffroi\Oidc\Domain\Token\UserAuthorizationInterface;
 use Beffroi\Oidc\Port\AccessTokenShapeIssuerInterface;
@@ -25,6 +28,17 @@ final class FakeAccessTokenIssuer implements AccessTokenShapeIssuerInterface
     public private(set) array $issued = [];
 
     /**
+     * @var list<Client>
+     */
+    public private(set) array $addressed = [];
+
+    /**
+     * What addressing a token throws while the KMS does not answer to open the key it is signed with, which a
+     * test sets and takes back; null while it answers.
+     */
+    public ?KmsUnavailableException $kmsOutage = null;
+
+    /**
      * @param non-empty-string $name the shape this issuer writes
      */
     public function __construct(
@@ -38,7 +52,17 @@ final class FakeAccessTokenIssuer implements AccessTokenShapeIssuerInterface
         return $this->name;
     }
 
-    public function issue(AuthorizationInterface $authorization, DateTimeImmutable $now): AccessToken
+    public function address(Client $client): AddressedAccessToken
+    {
+        if ($this->kmsOutage !== null) {
+            throw $this->kmsOutage;
+        }
+        $this->addressed[] = $client;
+
+        return new AddressedAccessToken();
+    }
+
+    public function issue(AuthorizationInterface $authorization, AddressedAccessToken $addressed, DateTimeImmutable $now): AccessToken
     {
         $this->issued[] = $authorization;
 

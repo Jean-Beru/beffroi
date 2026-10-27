@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Token;
 
+use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
 use DateInterval;
@@ -88,6 +89,8 @@ final class AuthorizationCodeGrantTest extends TestCase
 
     private InMemoryAccessTokenRepository $accessTokens;
 
+    private FakeAccessTokenIssuer $accessTokenIssuer;
+
     private FakeIdTokenIssuer $idTokens;
 
     private RecordingEventDispatcher $events;
@@ -125,6 +128,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->codes = new InMemoryAuthorizationCodeRepository();
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
         $this->accessTokens = new InMemoryAccessTokenRepository();
+        $this->accessTokenIssuer = new FakeAccessTokenIssuer();
         $this->idTokens = new FakeIdTokenIssuer();
         $this->events = new RecordingEventDispatcher();
         $this->grant = $this->grant();
@@ -897,6 +901,72 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
+     * Architecture §4.5 (issue #870): the keys of the tenant the tokens are signed with are opened before the
+     * code is consumed, so a KMS that does not answer leaves the code as it was, with nothing issued from it.
+     */
+    #[Test]
+    public function aCodeIsLeftUnspentWhileTheKmsDoesNotAnswer(): void
+    {
+        // Given
+        $code = $this->code('the-code', $this->client, ['openid', 'profile']);
+        $this->accessTokenIssuer->kmsOutage = new KmsUnavailableException('The KMS did not answer.');
+
+        // When
+        try {
+            $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+        } catch (KmsUnavailableException) {
+        }
+
+        // Then
+        static::assertFalse($code->isUsed());
+        static::assertSame(1, $this->codes->saves, 'the fixture only: nothing was consumed');
+        static::assertSame(0, $this->refreshTokens->saves);
+        static::assertSame([], $this->events->events);
+    }
+
+    /**
+     * RFC 6749 §4.1.2 (issue #870): the same request is served once the KMS answers again, the code it
+     * presented being the one it was, and nothing takes it for a replay.
+     */
+    #[Test]
+    public function aCodeLeftUnspentIsExchangedOnceTheKmsAnswers(): void
+    {
+        // Given
+        $this->code('the-code', $this->client, ['openid', 'profile']);
+        $this->accessTokenIssuer->kmsOutage = new KmsUnavailableException('The KMS did not answer.');
+        try {
+            $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+        } catch (KmsUnavailableException) {
+        }
+        $this->accessTokenIssuer->kmsOutage = null;
+
+        // When
+        $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+
+        // Then
+        static::assertSame('id:oidc-demo:alice-subject:n-0S6_WzA2Mj:' . $this->clock->now()->getTimestamp(), $issued->idToken);
+    }
+
+    /**
+     * RFC 6749 §4.1.2: a code presented already is a replay whatever the KMS answers. Nothing is opened for
+     * it, so a KMS that does not answer does not keep the grant from being revoked.
+     */
+    #[Test]
+    public function aReplayedCodeRevokesTheGrantWhateverTheKms(): void
+    {
+        // Given
+        $code = $this->code('the-code', $this->client);
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+        $this->accessTokenIssuer->kmsOutage = new KmsUnavailableException('The KMS did not answer.');
+
+        // When
+        $this->failToGrant($this->client, $this->request());
+
+        // Then
+        static::assertTrue($code->isRevoked());
+    }
+
+    /**
      * The detection is announced, whichever client presents the code the second time.
      */
     #[Test]
@@ -1256,7 +1326,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         bool $refreshTokenWithoutOfflineAccess = true,
         ?ServedGrants $served = null,
     ): AuthorizationCodeGrant {
-        $issuer = new TokenIssuer(new FakeAccessTokenIssuer(), $this->idTokens, $this->refreshTokens, Secrets::drawer(), $this->events);
+        $issuer = new TokenIssuer($this->accessTokenIssuer, $this->idTokens, $this->refreshTokens, Secrets::drawer(), $this->events);
 
         return new AuthorizationCodeGrant(
             $this->codes,
