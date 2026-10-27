@@ -955,6 +955,31 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
+     * RFC 6750 §3.1: an expired token is invalid_token. What a token is bound to is read from the token, so
+     * the scheme it came under (RFC 9449 §7.2) is judged once it holds: a key-bound token presented as a
+     * bearer token after its expiry is refused as expired, with the Bearer challenge of any expired token.
+     */
+    #[Test]
+    #[DataProvider('provideBoundTokens')]
+    public function anExpiredKeyBoundTokenPresentedAsABearerTokenIsRefusedForItsExpiry(string $shape): void
+    {
+        // Given
+        $token = $this->keyBoundToken($shape);
+
+        // When
+        try {
+            $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context(Fixtures::now()->modify('+10 minutes')));
+            static::fail('The token should have been refused.');
+        } catch (InvalidTokenException $exception) {
+            // Then
+            static::assertSame(
+                'Bearer error="invalid_token", error_description="The access token expired."',
+                UserInfoErrorResponse::fromException($exception, Bindings::schemes())->challenge(),
+            );
+        }
+    }
+
+    /**
      * RFC 9449 §7.1: the proof names the token it accompanies, so that one taken from another request
      * of the same client does not open this one.
      */
