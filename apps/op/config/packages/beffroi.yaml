@@ -6,6 +6,9 @@ parameters:
     # The placeholder mark of public/tenant-logo.svg, served from the origin of the application itself, which
     # is what a tenant shows until its deployment names the mark it owns (BEFFROI_TENANT_LOGO_URI).
     app.tenant_logo_uri: '%env(BEFFROI_ISSUER)%/tenant-logo.svg'
+    # The secrets that bind the data keys while BEFFROI_DATA_KEY_SECRETS is not set: the secret of the kernel
+    # alone, as the bundle binds them by default.
+    app.data_key_secrets: ['%kernel.secret%']
 
 beffroi:
     tenant:
@@ -23,32 +26,20 @@ beffroi:
             logo_uri: '%env(default:app.tenant_logo_uri:BEFFROI_TENANT_LOGO_URI)%'
             primary_color: '%env(default::BEFFROI_TENANT_PRIMARY_COLOR)%'
             primary_content_color: '%env(default::BEFFROI_TENANT_PRIMARY_CONTENT_COLOR)%'
-        # What the people of this tenant may change of themselves (issue beffroi-auth/beffroi#452). All of
-        # them, because this is the tenant that creates its people by hand, which is the case the rule
-        # exists for; a tenant whose directory owns the data declares none of this and its people read
-        # their record without changing it. The address and the email address are not claims a person
-        # says here: one is five fields and a form of its own, the other cannot change without a proof of
-        # the new one.
-        self_served_claims:
-            - 'name'
-            - 'given_name'
-            - 'family_name'
-            - 'middle_name'
-            - 'nickname'
-            - 'preferred_username'
-            - 'birthdate'
-            - 'gender'
-            - 'locale'
-            - 'zoneinfo'
-            - 'profile'
-            - 'picture'
-            - 'website'
-            - 'phone_number'
+        # Every list of this file but the clients is a JSON document of the environment, of the shape the list
+        # has in this file, held to the rules of the tree when the service it reaches is built (decision 0030): what
+        # the people of this tenant may change of themselves (issue beffroi-auth/beffroi#452) and its "acr"
+        # vocabulary (decision 0010). .env documents both with what an image takes.
+        self_served_claims: '%env(json:BEFFROI_TENANT_SELF_SERVED_CLAIMS)%'
+        authentication_classes: '%env(json:BEFFROI_TENANT_AUTHENTICATION_CLASSES)%'
     keys:
         # The KMS client of config/packages/key_management.yaml the private keys are sealed with; the DSN
         # of that client, and whether it is one provider or several, are declared there.
         kms: op
         key_id: '%env(BEFFROI_KMS_KEY_ID)%'
+        # The secrets that bind the data keys, the list a rotation of APP_SECRET keeps the old one second in;
+        # the secret of the kernel alone while the variable is not set.
+        data_key_secrets: '%env(default:app.data_key_secrets:json:BEFFROI_DATA_KEY_SECRETS)%'
         storage: '%kernel.project_dir%/var/keys'
         # Read at runtime with the lifetimes of the tokens, so that "castor demo --rotate" can shorten the windows
         # of a rotation for its run without recompiling anything (.env documents the values). The staging delay
@@ -84,6 +75,11 @@ beffroi:
             staging_delay: 604800
             age: 31536000
             cache_duration: 86400
+        # The service providers the identity provider of the tenant serves (spec/saml.md S-5), and the upstream
+        # identity providers its service provider receives assertions of (S-42), the second declared only for a
+        # tenant whose service provider is on.
+        service_providers: '%env(json:BEFFROI_SAML_SERVICE_PROVIDERS)%'
+        identity_providers: '%env(json:BEFFROI_SAML_IDENTITY_PROVIDERS)%'
     webauthn:
         # The FIDO metadata the passkey ceremonies check an attestation against, next to the keys: filled by hand
         # with "beffroi:webauthn:mds-refresh" (the blob of the FIDO Alliance, verified under its root) and
@@ -116,6 +112,11 @@ beffroi:
     client_registration:
         mode: '%env(BEFFROI_REGISTRATION_MODE)%'
         default_scope: '%env(BEFFROI_REGISTRATION_DEFAULT_SCOPE)%'
+        # The authorities whose software statements the tenant accepts (RFC 7591 §2.3), which the mode
+        # "software_statement" reads.
+        statement_issuers: '%env(json:BEFFROI_REGISTRATION_STATEMENT_ISSUERS)%'
+    # The issuers whose assertions the tenant accepts as an authorization (RFC 7523 §2.1).
+    trusted_issuers: '%env(json:BEFFROI_TRUSTED_ISSUERS)%'
     # How long the acts of the journal and the changes of a claim are kept, in days (issues #454 and #482).
     journal:
         retention: '%env(int:BEFFROI_JOURNAL_RETENTION)%'
@@ -148,6 +149,9 @@ beffroi:
         backchannel_authentication_ttl: '%env(int:BEFFROI_BACKCHANNEL_AUTHENTICATION_TTL)%'
     clients: []
 
+# The lists written under "when@dev" replace, in development, the JSON documents the environment carries for them
+# everywhere else: a list a placeholder stands for is replaced whole by the one a later configuration writes.
+#
 # The clients of the development stack, in development only: the three the OpenID conformance suite needs for the Basic OP
 # plan (tests/conformance/README.md: "client" and "client2" in client_secret_basic, the second one being
 # the wrong client of some modules, and the "client_secret_post" one of the single module that authenticates

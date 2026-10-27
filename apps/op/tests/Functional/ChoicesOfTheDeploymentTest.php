@@ -20,6 +20,7 @@ final class ChoicesOfTheDeploymentTest extends BrowserTestCase
         'BEFFROI_TENANT_LOGO_URI' => 'https://assets.example.com/mark.svg',
         'BEFFROI_TENANT_PRIMARY_COLOR' => '#0b5d1e',
         'BEFFROI_TENANT_PRIMARY_CONTENT_COLOR' => '#fafafa',
+        'BEFFROI_TENANT_SELF_SERVED_CLAIMS' => '["nickname","locale"]',
     ];
 
     /**
@@ -74,6 +75,23 @@ final class ChoicesOfTheDeploymentTest extends BrowserTestCase
         // Then
         static::assertSame('https://assets.example.com/mark.svg', $logo->attr('src'));
         static::assertSame('Example Corporation', $logo->attr('alt'));
+    }
+
+    /**
+     * Decision 0030, issue beffroi-auth/beffroi#452: a list of the configuration is a JSON document of the
+     * environment, here the claims a person may change of themselves.
+     */
+    #[Test]
+    public function aPersonChangesOfThemselvesTheClaimsItOpens(): void
+    {
+        // Given
+        $this->signIn(self::user());
+
+        // When
+        $page = $this->page('/account/profile');
+
+        // Then
+        static::assertSame(['nickname', 'locale'], $page->filter('form[data-editable]')->extract(['data-editable']));
     }
 
     #[Test]

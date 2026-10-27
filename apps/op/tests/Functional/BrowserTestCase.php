@@ -126,7 +126,15 @@ abstract class BrowserTestCase extends WebTestCase
      */
     protected function accountHome(): Crawler
     {
-        $page = $this->browser->request('GET', '/account');
+        return $this->page('/account');
+    }
+
+    /**
+     * A page the browser must be served, the content of any other answer said when it is not.
+     */
+    protected function page(string $path): Crawler
+    {
+        $page = $this->browser->request('GET', $path);
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
 
