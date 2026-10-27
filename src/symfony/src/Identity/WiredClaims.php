@@ -6,6 +6,7 @@ namespace Beffroi\Bundle\Identity;
 
 use Beffroi\Core\Domain\Identity\Claim\ClaimInterface;
 use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\ClaimsInterface;
 use function array_keys;
 
 /**
@@ -15,8 +16,11 @@ use function array_keys;
  *
  * What a tenant opens is read against this list and never beside it: a name no wired claim answers is a
  * mistake of the configuration, refused where the configuration is read.
+ *
+ * A console that describes a person reads the same list (issue #846), and holds each claim of the profile it
+ * says to the set of that claim, as the page of the account does.
  */
-final readonly class WiredClaims
+final readonly class WiredClaims implements ClaimsInterface
 {
     /**
      * @var array<string, ClaimInterface> by the name each claim gives itself

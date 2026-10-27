@@ -8,9 +8,11 @@ use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Beffroi\Core\Bridge\Null\NullGeoLocator;
 use Beffroi\Core\Bridge\Null\NullUserAgentParser;
 use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryAuthenticationSessionRepositoryTest extends TestCase
@@ -57,6 +59,40 @@ final class InMemoryAuthenticationSessionRepositoryTest extends TestCase
 
         // When / Then
         static::assertNull($repository->find(Uuid::v7()));
+    }
+
+    /**
+     * Decision 0011 (issue #884): the person a session names, by the subject their account carries, kept beside the
+     * session as a database keeps it, in a column of its own and in the clear.
+     */
+    #[Test]
+    public function itNamesThePersonOfASavedSessionByTheirSubject(): void
+    {
+        // Given
+        $repository = new InMemoryAuthenticationSessionRepository();
+        $session = Fixtures::session(Fixtures::user(username: 'bob', subject: 'bob-subject'));
+        $repository->save($session);
+
+        // When
+        $subject = $repository->of($session->id);
+
+        // Then
+        static::assertSame('bob-subject', $subject->value);
+    }
+
+    #[Test]
+    public function itNamesNobodyForAnUnknownSession(): void
+    {
+        // Given
+        $repository = new InMemoryAuthenticationSessionRepository();
+        $unknown = Uuid::v7();
+
+        // Then
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageIs(sprintf('No session "%s" was saved.', $unknown->toRfc4122()));
+
+        // When
+        $repository->of($unknown);
     }
 
     #[Test]

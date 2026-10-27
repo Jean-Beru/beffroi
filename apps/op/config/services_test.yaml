@@ -27,6 +27,12 @@ services:
     test.beffroi.users:
         alias: Beffroi\Core\Port\UserRepositoryInterface
         public: true
+    test.beffroi.credentials:
+        alias: Beffroi\Core\Port\CredentialRepositoryInterface
+        public: true
+    test.beffroi.password_hasher:
+        alias: Beffroi\Core\Port\PasswordHasherInterface
+        public: true
     test.beffroi.sessions:
         alias: Beffroi\Core\Port\AuthenticationSessionRepositoryInterface
         public: true

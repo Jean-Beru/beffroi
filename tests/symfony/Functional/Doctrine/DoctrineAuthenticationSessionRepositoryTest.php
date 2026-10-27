@@ -6,6 +6,8 @@ namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use function array_map;
 use DateTimeImmutable;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
 use Beffroi\Core\Domain\Session\AuthenticationProofs;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
@@ -14,8 +16,11 @@ use Beffroi\Core\Domain\Session\DeviceType;
 use Beffroi\Core\Domain\Session\GeoLocation;
 use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\SubjectsOfSessionsInterface;
 use PHPUnit\Framework\Attributes\Test;
+use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -186,9 +191,66 @@ final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
         static::assertNull(self::sessions()->find(Uuid::v7()));
     }
 
+    /**
+     * Decision 0011 (issue #884): the person a session names, by the subject their account carries, which stays in
+     * the clear.
+     */
+    #[Test]
+    public function aSessionNamesItsPersonByTheirSubject(): void
+    {
+        // Given
+        $session = self::session(self::user('bob', 'bob-subject'));
+        self::reload();
+
+        // When
+        $subject = self::subjects()->of($session->id);
+
+        // Then
+        static::assertEquals(new Subject('bob-subject'), $subject);
+    }
+
+    /**
+     * Decision 0011 (issue #884): the subject is read as one column of one row, neither the session nor the person
+     * loaded, so nothing either of them seals under a data key of the tenant is opened and the KMS is asked nothing.
+     */
+    #[Test]
+    public function theSubjectIsReadWithoutLoadingTheSessionOrThePerson(): void
+    {
+        // Given
+        $session = self::session(self::user());
+        self::reload();
+
+        // When
+        self::subjects()->of($session->id);
+
+        // Then
+        $loaded = self::entityManager()->getUnitOfWork()->getIdentityMap();
+        static::assertArrayNotHasKey(AuthenticationSession::class, $loaded);
+        static::assertArrayNotHasKey(User::class, $loaded);
+    }
+
+    #[Test]
+    public function anUnknownSessionNamesNobody(): void
+    {
+        // Given
+        $unknown = Uuid::v7();
+
+        // Then
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageIs(sprintf('No session "%s" names a person.', $unknown->toRfc4122()));
+
+        // When
+        self::subjects()->of($unknown);
+    }
+
     private static function sessions(): AuthenticationSessionRepositoryInterface
     {
         return self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class);
+    }
+
+    private static function subjects(): SubjectsOfSessionsInterface
+    {
+        return self::service('test.beffroi.subjects_of_sessions', SubjectsOfSessionsInterface::class);
     }
 
     /**

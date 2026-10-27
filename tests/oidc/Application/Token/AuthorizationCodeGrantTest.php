@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Token;
 
+use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
@@ -80,6 +81,8 @@ final class AuthorizationCodeGrantTest extends TestCase
 
     private AuthenticationSession $session;
 
+    private InMemoryAuthenticationSessionRepository $sessions;
+
     private RequestContext $context;
 
     private MockClock $clock;
@@ -127,6 +130,8 @@ final class AuthorizationCodeGrantTest extends TestCase
         );
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
         $this->session = Fixtures::session($this->alice, $this->clock->now()->modify('-1 hour'));
+        $this->sessions = new InMemoryAuthenticationSessionRepository();
+        $this->sessions->save($this->session);
         $this->context = Fixtures::context($this->clock->now());
         $this->codes = new InMemoryAuthorizationCodeRepository();
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
@@ -1045,6 +1050,57 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
+     * RFC 6749 §4.1.2 (issue #884): a code presented already is refused as a replay whatever the store of its
+     * session answers. The person the replay is announced for is read where the store of sessions keeps it in the
+     * clear, so a session that cannot be opened is not an outage met after the grant was revoked.
+     */
+    #[Test]
+    public function aReplayIsRefusedAsSuchWhileItsSessionCannotBeOpened(): void
+    {
+        // Given
+        $this->presentedOnAnotherWorker($this->code('the-code', $this->client, session: $this->rows->unopenedSession($this->session)));
+        $this->rows->outage = new KmsUnavailableException('The KMS did not answer.');
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
+
+        // When
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+    }
+
+    /**
+     * RFC 6749 §4.1.2 (issue #884): the replay is announced with what it revoked and the person the code was issued
+     * in the name of, whatever the store of its session answers: the journal keeps the act whole, and the next
+     * presentation of the code, finding everything revoked already, is not the only one to tell it.
+     */
+    #[Test]
+    public function aReplayIsAnnouncedWithWhatWasRevokedWhileItsSessionCannotBeOpened(): void
+    {
+        // Given
+        $session = $this->rows->unopenedSession($this->session);
+        $this->presentedOnAnotherWorker($this->code('the-code', $this->client, session: $session));
+        $issued = Tokens::refreshToken(
+            'issued-from-the-code',
+            $this->client,
+            $session,
+            $this->clock->now(),
+            Tokens::family($this->clock->now(), $this->tenant),
+        );
+        $this->refreshTokens->save($issued);
+        $this->rows->outage = new KmsUnavailableException('The KMS did not answer.');
+
+        // When
+        $this->failToGrant($this->client, $this->request());
+
+        // Then
+        $replays = $this->events->of(AuthorizationCodeReplayed::class);
+        static::assertCount(1, $replays);
+        static::assertEquals($this->alice->subject, $replays[0]->subject);
+        static::assertSame([$issued->tokenHash], $replays[0]->revokedTokenHashes);
+    }
+
+    /**
      * The detection is announced, whichever client presents the code the second time.
      */
     #[Test]
@@ -1410,6 +1466,7 @@ final class AuthorizationCodeGrantTest extends TestCase
             $this->codes,
             new RefreshTokenRevocation($this->refreshTokens),
             $this->accessTokens,
+            $this->sessions,
             $issuer,
             new SymfonyUuidGenerator(),
             $this->clock,
@@ -1484,6 +1541,15 @@ final class AuthorizationCodeGrantTest extends TestCase
         ?string $authorizationDetails = null,
     ): RequestParameters {
         return RequestParameters::of($this->parameters($code, $redirectUri, $verifier, $resource, $authorizationDetails));
+    }
+
+    /**
+     * The first presentation of the code, made on a worker other than the one that serves the next: the code was
+     * consumed there, and nothing that worker opened is open here.
+     */
+    private function presentedOnAnotherWorker(AuthorizationCode $code): void
+    {
+        $this->codes->consume($code, $this->clock->now());
     }
 
     private function failToGrant(Client $client, RequestParameters $request): void

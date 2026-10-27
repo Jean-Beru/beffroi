@@ -273,6 +273,16 @@ beffroi:
             redirect_uris: ['https://dpop.test/callback']
             token_endpoint_auth_method: none
             requires_consent: false
+        # A public client that asks to keep its access while the person is away (OIDC Core §11): it has no
+        # credentials and binds nothing, so its refresh token is rotated at every use, rotation being the whole of
+        # what tells it from a copy of itself, and a rotated token presented again revokes its family (RFC 9700
+        # §4.13.2).
+        offline-app:
+            client_name: 'Application that keeps its access offline'
+            redirect_uris: ['https://offline.test/callback']
+            token_endpoint_auth_method: none
+            scope: 'openid offline_access'
+            requires_consent: false
         fapi-app:
             client_name: 'Application that only pushes its requests'
             secret: 'fapi-secret-of-at-least-32-characters-long'
@@ -883,6 +893,9 @@ services:
         public: true
     test.beffroi.sessions:
         alias: Beffroi\Core\Port\AuthenticationSessionRepositoryInterface
+        public: true
+    test.beffroi.subjects_of_sessions:
+        alias: Beffroi\Core\Port\SubjectsOfSessionsInterface
         public: true
     test.beffroi.journal:
         alias: Beffroi\Core\Port\JournalInterface
