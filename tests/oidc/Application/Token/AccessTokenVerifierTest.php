@@ -114,13 +114,14 @@ final class AccessTokenVerifierTest extends TestCase
             ['openid', 'email'],
             claims: ClaimsRequest::fromJson('{"userinfo":{"name":null,"picture":{"essential":true}},"id_token":{"email":null}}'),
         );
-        $minted = new JwtAccessTokenIssuer(
-            $jwts->signer,
-            Subjects::publicKind(),
-            Algorithms::all(),
-            new SymfonyUuidGenerator(),
-            Subjects::sealedPerson(),
-        )->issue(
+        $minted = Tokens::accessToken(
+            new JwtAccessTokenIssuer(
+                $jwts->signer,
+                Subjects::publicKind(),
+                Algorithms::all(),
+                new SymfonyUuidGenerator(),
+                Subjects::sealedPerson(),
+            ),
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             Fixtures::now(),
         );
@@ -315,13 +316,14 @@ final class AccessTokenVerifierTest extends TestCase
             new Scopes([new Scope('invoices.read')]),
             ResourceIndicators::of([Clients::CALENDAR]),
         );
-        $minted = new JwtAccessTokenIssuer(
-            $jwts->signer,
-            Subjects::publicKind(),
-            Algorithms::all(),
-            new SymfonyUuidGenerator(),
-            Subjects::sealedPerson(),
-        )->issue(
+        $minted = Tokens::accessToken(
+            new JwtAccessTokenIssuer(
+                $jwts->signer,
+                Subjects::publicKind(),
+                Algorithms::all(),
+                new SymfonyUuidGenerator(),
+                Subjects::sealedPerson(),
+            ),
             $authorization,
             Fixtures::now(),
         );

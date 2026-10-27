@@ -277,12 +277,13 @@ final class PresentedAccessTokenTypeTest extends TestCase
 
     private function tokenOf(AuthorizationCode $code): string
     {
-        return $this->opaque()->issue(UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code), Fixtures::now())->value;
+        return Tokens::accessToken($this->opaque(), UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code), Fixtures::now())->value;
     }
 
     private function clientTokenOf(Client $client): string
     {
-        return $this->opaque()->issue(
+        return Tokens::accessToken(
+            $this->opaque(),
             new ClientAuthorization(
                 Grants::clientCredentials(),
                 Uuid::v7(),
@@ -304,7 +305,8 @@ final class PresentedAccessTokenTypeTest extends TestCase
         $this->clients->save($runner);
         $person = $this->session->user->subject;
 
-        return $this->opaque()->issue(
+        return Tokens::accessToken(
+            $this->opaque(),
             new SubjectAuthorization(
                 Grants::jwtBearer(),
                 Uuid::v7(),

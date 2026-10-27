@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Token;
 
+use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use DateInterval;
@@ -15,11 +16,11 @@ use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Application\Token\TokenIssuer;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
-use Beffroi\Oidc\Domain\Client\AddressedFormat;
 use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Event\TokensIssued;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
+use Beffroi\Oidc\Domain\Token\AddressedResponse;
 use Beffroi\Oidc\Domain\Token\ClientAuthorization;
 use Beffroi\Oidc\Domain\Token\UserAuthorization;
 use Beffroi\Oidc\Domain\Token\RefreshToken;
@@ -194,7 +195,7 @@ final class TokenIssuerTest extends TestCase
         $authorization = $this->authorizationNarrowedToProfile();
 
         // When
-        $issued = $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
+        $issued = $this->issuer->issue($authorization, null, $this->context, Fixtures::now(), $this->addressed($authorization));
 
         // Then
         static::assertNull($issued->idToken);
@@ -213,10 +214,10 @@ final class TokenIssuerTest extends TestCase
         $this->idTokens->unreadableKeys = new ClientKeysUnavailableException('The keys of the client cannot be read.');
 
         // When
-        $format = $this->issuer->addressIdToken($this->client, new Scopes([new Scope('profile')]));
+        $addressed = $this->issuer->address($this->client, new Scopes([new Scope('profile')]));
 
         // Then
-        static::assertNull($format);
+        static::assertNull($addressed->idToken);
     }
 
     /**
@@ -234,7 +235,63 @@ final class TokenIssuerTest extends TestCase
         $this->expectExceptionMessageIs('The keys of the client cannot be read.');
 
         // When
-        $this->issuer->addressIdToken($this->client, new Scopes([Scope::openid()]));
+        $this->issuer->address($this->client, new Scopes([Scope::openid()]));
+    }
+
+    /**
+     * Architecture §4.5 (issue #870): the key of the tenant the access token is signed with is opened when the
+     * grant addresses the response, before it spends anything, and a KMS that does not answer is said then.
+     */
+    #[Test]
+    public function aKmsThatDoesNotAnswerIsToldWhenTheResponseIsAddressed(): void
+    {
+        // Given
+        $this->accessTokens->kmsOutage = new KmsUnavailableException('The KMS did not answer.');
+
+        // Then
+        $this->expectException(KmsUnavailableException::class);
+        $this->expectExceptionMessageIs('The KMS did not answer.');
+
+        // When
+        $this->issuer->address($this->client, new Scopes([new Scope('profile')]));
+    }
+
+    /**
+     * RFC 6749 §4.4.3: the response to an authorization nobody signed in for is an access token alone, and
+     * it is addressed when it is struck: the key it is signed with is opened then.
+     */
+    #[Test]
+    public function aResponseNobodySignedInForIsAddressedWhenItIsStruck(): void
+    {
+        // Given
+        $authorization = $this->clientAuthorization();
+        $this->accessTokens->kmsOutage = new KmsUnavailableException('The KMS did not answer.');
+
+        // Then
+        $this->expectException(KmsUnavailableException::class);
+        $this->expectExceptionMessageIs('The KMS did not answer.');
+
+        // When
+        $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
+    }
+
+    /**
+     * Architecture §4.5 (issue #870): the response to an authorization somebody signed in for is struck for
+     * what its grant addressed before it spent anything, so one the grant did not address is a fault of that
+     * grant, said before any token leaves.
+     */
+    #[Test]
+    public function aResponseTheGrantDidNotAddressIsAFaultOfTheGrant(): void
+    {
+        // Given
+        $authorization = $this->authorizationNarrowedToProfile();
+
+        // Then
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessageIs('The response to an authorization somebody signed in for was not addressed before the grant spent what the request presented (architecture section 4.5).');
+
+        // When
+        $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
     }
 
     /**
@@ -246,13 +303,14 @@ final class TokenIssuerTest extends TestCase
     {
         // Given
         $authorization = $this->authorizationFromCode();
+        $addressed = $this->issuer->address($authorization->client, new Scopes([new Scope('profile')]));
 
         // Then
         $this->expectException(LogicException::class);
         $this->expectExceptionMessageIs('The ID token of this response was not addressed before the grant spent what the request presented (OIDC Core section 3.1.3.7).');
 
         // When
-        $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
+        $this->issuer->issue($authorization, null, $this->context, Fixtures::now(), $addressed);
     }
 
     #[Test]
@@ -262,7 +320,7 @@ final class TokenIssuerTest extends TestCase
         $authorization = $this->authorizationNarrowedToProfile();
 
         // When
-        $issued = $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
+        $issued = $this->issuer->issue($authorization, null, $this->context, Fixtures::now(), $this->addressed($authorization));
 
         // Then
         static::assertNull($issued->refreshToken);
@@ -413,11 +471,11 @@ final class TokenIssuerTest extends TestCase
     }
 
     /**
-     * What the grant reads before it spends anything: the ID token of the authorization, addressed.
+     * What the grant reads before it spends anything: the response to the authorization, addressed.
      */
-    private function addressed(UserAuthorization $authorization): ?AddressedFormat
+    private function addressed(UserAuthorization $authorization): AddressedResponse
     {
-        return $this->issuer->addressIdToken($authorization->client, $authorization->scopes);
+        return $this->issuer->address($authorization->client, $authorization->scopes);
     }
 
     private function authorizationNarrowedToProfile(): UserAuthorization

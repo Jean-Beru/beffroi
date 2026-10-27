@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Token;
 
+use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
@@ -76,6 +77,8 @@ final class RefreshTokenGrantTest extends TestCase
 
     private InMemoryRefreshTokenRepository $refreshTokens;
 
+    private FakeAccessTokenIssuer $accessTokenIssuer;
+
     private FakeIdTokenIssuer $idTokens;
 
     private RecordingEventDispatcher $events;
@@ -94,9 +97,10 @@ final class RefreshTokenGrantTest extends TestCase
         $this->session = Fixtures::session($this->alice, $this->clock->now()->modify('-1 hour'));
         $this->context = Fixtures::context($this->clock->now());
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
+        $this->accessTokenIssuer = new FakeAccessTokenIssuer();
         $this->idTokens = new FakeIdTokenIssuer();
         $this->events = new RecordingEventDispatcher();
-        $issuer = new TokenIssuer(new FakeAccessTokenIssuer(), $this->idTokens, $this->refreshTokens, Secrets::drawer(), $this->events);
+        $issuer = new TokenIssuer($this->accessTokenIssuer, $this->idTokens, $this->refreshTokens, Secrets::drawer(), $this->events);
         $this->grant = new RefreshTokenGrant(
             $this->refreshTokens,
             new RefreshTokenRevocation($this->refreshTokens),
@@ -332,6 +336,52 @@ final class RefreshTokenGrantTest extends TestCase
         static::assertFalse($token->isRotated());
         static::assertSame([$token], $this->refreshTokens->all());
         static::assertSame([], $this->events->events);
+    }
+
+    /**
+     * Architecture §4.5 (issue #870): the keys of the tenant the tokens are signed with are opened before the
+     * token is rotated, so a KMS that does not answer leaves the token as it was and issues no successor.
+     */
+    #[Test]
+    public function aTokenIsNotRotatedWhileTheKmsDoesNotAnswer(): void
+    {
+        // Given
+        $token = $this->token('the-token', ['openid', 'profile']);
+        $this->accessTokenIssuer->kmsOutage = new KmsUnavailableException('The KMS did not answer.');
+
+        // When
+        try {
+            $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+        } catch (KmsUnavailableException) {
+        }
+
+        // Then
+        static::assertFalse($token->isRotated());
+        static::assertSame([$token], $this->refreshTokens->all());
+        static::assertSame([], $this->events->events);
+    }
+
+    /**
+     * RFC 9700 §4.13.2 (issue #870): presented again once the KMS answers, the token left as it was is
+     * refreshed, and nothing takes it for a reuse that would revoke its family.
+     */
+    #[Test]
+    public function aTokenLeftAsItWasIsRefreshedOnceTheKmsAnswers(): void
+    {
+        // Given
+        $this->token('the-token', ['openid', 'profile']);
+        $this->accessTokenIssuer->kmsOutage = new KmsUnavailableException('The KMS did not answer.');
+        try {
+            $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+        } catch (KmsUnavailableException) {
+        }
+        $this->accessTokenIssuer->kmsOutage = null;
+
+        // When
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+
+        // Then
+        static::assertSame([], $this->events->of(RefreshTokenReuseDetected::class));
     }
 
     #[Test]

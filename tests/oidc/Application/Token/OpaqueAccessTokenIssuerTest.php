@@ -56,7 +56,7 @@ final class OpaqueAccessTokenIssuerTest extends TestCase
         ));
 
         // When
-        $token = $this->issuer->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
 
         // Then
         static::assertEquals(Fixtures::now(), $token->issuedAt);
@@ -85,7 +85,7 @@ final class OpaqueAccessTokenIssuerTest extends TestCase
         );
 
         // When
-        $token = $this->issuer->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
 
         // Then
         $record = $this->tokens->find($token->value) ?? static::fail('The record was kept.');
@@ -105,7 +105,7 @@ final class OpaqueAccessTokenIssuerTest extends TestCase
         ));
 
         // When
-        $token = $issuer->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($issuer, $authorization, Fixtures::now());
 
         // Then
         static::assertEquals(Fixtures::now()->modify('+1 hour'), $token->expiresAt);

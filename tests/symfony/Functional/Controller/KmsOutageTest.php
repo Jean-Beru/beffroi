@@ -202,6 +202,33 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
+     * RFC 6749 §4.1.2 (issue #870): the key that signs is opened before the code is consumed, so the code a 503
+     * answered is a code nobody exchanged. The same request, once the KMS is back, is answered with the tokens
+     * and is never taken for a replay that would revoke the grant.
+     */
+    #[Test]
+    public function theSameCodeIsExchangedOnceTheKmsIsBack(): void
+    {
+        // Given
+        self::signingKey();
+        $this->signIn(self::user('alice'));
+        $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));
+        $code = self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client got no code.');
+        $this->kms->down = true;
+        $this->postCode($code);
+        static::assertSame(Response::HTTP_SERVICE_UNAVAILABLE, $this->browser->getResponse()->getStatusCode());
+        $this->kms->down = false;
+
+        // When
+        $this->postCode($code);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), (string) $response->getContent());
+        static::assertArrayHasKey('id_token', self::json($response));
+    }
+
+    /**
      * Architecture §5.2: the provisioning of an enrolment is sealed in the session before it is shown;
      * without the KMS there is nothing to show, and nothing is kept.
      */

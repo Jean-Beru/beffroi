@@ -11,6 +11,7 @@ use DateInterval;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
 use Beffroi\Core\Domain\Session\AuthenticationProofs;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
@@ -64,7 +65,13 @@ final class JwtAccessTokenIssuerTest extends TestCase
         $this->client = Clients::public($this->session->tenant);
         $this->jwts = new Jwts($this->session->tenant);
         $this->persons = Subjects::sealedPerson();
-        $this->issuer = new JwtAccessTokenIssuer($this->jwts->signer, Subjects::publicKind(), Algorithms::all(), new SymfonyUuidGenerator(), $this->persons);
+        $this->issuer = new JwtAccessTokenIssuer(
+            $this->jwts->signer,
+            Subjects::publicKind(),
+            Algorithms::all(),
+            new SymfonyUuidGenerator(),
+            $this->persons,
+        );
     }
 
     /**
@@ -82,7 +89,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
         ));
 
         // When
-        $token = $this->issuer->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
 
         // Then
         static::assertEquals(Fixtures::now(), $token->issuedAt);
@@ -104,7 +111,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
             $this->session,
             Fixtures::now(),
         ));
-        $token = $this->issuer->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
 
         // When
         ['header' => $header] = $this->jwts->verify($token->value, 'spa', Fixtures::now()->modify('+9 minutes'));
@@ -121,6 +128,60 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
+     * Architecture §4.5 (issue #870): the key of the tenant the token is signed with is opened when the token
+     * is addressed, so a KMS that does not answer is said then, before the grant spends anything.
+     */
+    #[Test]
+    public function aKmsThatDoesNotAnswerIsToldWhenTheTokenIsAddressed(): void
+    {
+        // Given
+        $issuer = new JwtAccessTokenIssuer(
+            $this->jwts->signerBehindAnOutage(),
+            Subjects::publicKind(),
+            Algorithms::all(),
+            new SymfonyUuidGenerator(),
+            $this->persons,
+        );
+
+        // Then
+        $this->expectException(KmsUnavailableException::class);
+        $this->expectExceptionMessageIs('The sealed key could not be opened.');
+
+        // When
+        $issuer->address($this->client);
+    }
+
+    /**
+     * Striking the token asks nothing of the KMS (issue #870): one addressed while the KMS answered is signed
+     * with the key opened then, whatever the KMS answers once the grant has spent what the request presented.
+     */
+    #[Test]
+    public function aTokenIsSignedWithTheKeyOpenedWhenItWasAddressed(): void
+    {
+        // Given
+        $addressed = $this->issuer->address($this->client);
+        $issuer = new JwtAccessTokenIssuer(
+            $this->jwts->signerBehindAnOutage(),
+            Subjects::publicKind(),
+            Algorithms::all(),
+            new SymfonyUuidGenerator(),
+            $this->persons,
+        );
+        $authorization = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+        ));
+
+        // When
+        $token = $issuer->issue($authorization, $addressed, Fixtures::now());
+
+        // Then
+        static::assertSame($this->jwts->key->kid, $this->jwts->verify($token->value, 'spa', Fixtures::now()->modify('+9 minutes'))['header']['kid']);
+    }
+
+    /**
      * RFC 9068 §2.2: "iss", "exp", "aud", "sub", "client_id", "iat", "jti"; §2.2.1: "auth_time", "amr";
      * §2.2.3: "scope" as RFC 8693 §4.2 writes it; "sid" of the session and "grant_id" of the
      * authorization code the token descends from (architecture §4.6).
@@ -131,7 +192,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
         // Given
         $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile', 'email']);
         $authorization = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code);
-        $token = $this->issuer->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
 
         // When
         ['claims' => $claims] = $this->jwts->verify($token->value, 'spa', Fixtures::now()->modify('+9 minutes'));
@@ -169,7 +230,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
             new Scopes([new Scope('invoices.read')]),
             ResourceIndicators::of([Clients::CALENDAR]),
         );
-        $token = $this->issuer->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
 
         // When
         ['claims' => $claims] = $this->jwts->verify($token->value, Clients::CALENDAR, Fixtures::now()->modify('+9 minutes'));
@@ -206,7 +267,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
             $signIn,
             new Actor(new Subject('gateway'), new Actor(new Subject('first-hop'))),
         );
-        $token = $this->issuer->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
 
         // When
         ['claims' => $claims] = $this->jwts->verify($token->value, Clients::CALENDAR, Fixtures::now()->modify('+9 minutes'));
@@ -245,7 +306,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
             ResourceIndicators::of([Clients::CALENDAR]),
             ResourceIndicators::of([Clients::CALENDAR]),
         );
-        $token = $this->issuer->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
 
         // When
         ['claims' => $claims] = $this->jwts->verify($token->value, Clients::CALENDAR, Fixtures::now()->modify('+9 minutes'));
@@ -265,7 +326,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     {
         // Given
         $alice = Fixtures::user($this->session->tenant);
-        $token = $this->issuer->issue($this->exchangedFor($alice->subject), Fixtures::now());
+        $token = Tokens::accessToken($this->issuer, $this->exchangedFor($alice->subject), Fixtures::now());
 
         // When
         ['claims' => $claims] = $this->jwts->verify($token->value, Clients::CALENDAR, Fixtures::now()->modify('+9 minutes'));
@@ -287,7 +348,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     {
         // Given
         $alice = Fixtures::user($this->session->tenant);
-        $token = $this->issuer->issue($this->exchangedFor($alice->subject), Fixtures::now());
+        $token = Tokens::accessToken($this->issuer, $this->exchangedFor($alice->subject), Fixtures::now());
 
         // When
         ['claims' => $claims] = $this->jwts->verify($token->value, Clients::CALENDAR, Fixtures::now()->modify('+9 minutes'));
@@ -310,7 +371,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
             $this->session,
             Fixtures::now(),
         ));
-        $token = $this->issuer->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
 
         // When
         ['claims' => $claims] = $this->jwts->verify($token->value, 'spa', Fixtures::now()->modify('+9 minutes'));
@@ -335,7 +396,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
             new Scopes([new Scope('invoices.read')]),
             ResourceIndicators::of([Clients::CALENDAR]),
         );
-        $token = $this->issuer->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
 
         // When
         ['claims' => $claims] = $this->jwts->verify($token->value, Clients::CALENDAR, Fixtures::now()->modify('+9 minutes'));
@@ -360,7 +421,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
             Fixtures::now(),
             authorizationDetails: $details,
         ));
-        $token = $this->issuer->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
 
         // When
         ['claims' => $claims] = $this->jwts->verify($token->value, $this->client->registration->clientId, Fixtures::now()->modify('+9 minutes'));
@@ -383,7 +444,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
             $this->session,
             Fixtures::now(),
         ));
-        $token = $this->issuer->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
 
         // When
         ['claims' => $claims] = $this->jwts->verify($token->value, $this->client->registration->clientId, Fixtures::now()->modify('+9 minutes'));
@@ -410,7 +471,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
             Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), authorizationDetails: $granted),
             authorizationDetails: $narrowed,
         );
-        $token = $this->issuer->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
 
         // When
         ['claims' => $claims] = $this->jwts->verify($token->value, $this->client->registration->clientId, Fixtures::now()->modify('+9 minutes'));
@@ -439,7 +500,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
             new Scopes([new Scope('invoices.read')]),
             ResourceIndicators::of([Clients::CALENDAR]),
         );
-        $token = $this->issuer->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
 
         // When
         ['claims' => $claims] = $this->jwts->verify($token->value, Clients::CALENDAR, Fixtures::now()->modify('+9 minutes'));
@@ -474,10 +535,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
             Fixtures::now(),
             resources: ResourceIndicators::of($resources),
         );
-        $token = $this->issuer->issue(
-            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
-            Fixtures::now(),
-        );
+        $token = Tokens::accessToken($this->issuer, UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code), Fixtures::now());
 
         // When
         ['claims' => $claims] = $this->jwts->verify($token->value, Clients::CALENDAR, Fixtures::now()->modify('+9 minutes'));
@@ -514,8 +572,8 @@ final class JwtAccessTokenIssuerTest extends TestCase
         ));
 
         // When
-        $first = $this->issuer->issue($authorization, Fixtures::now());
-        $second = $this->issuer->issue($authorization, Fixtures::now());
+        $first = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
+        $second = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
 
         // Then
         static::assertNotSame(
@@ -549,7 +607,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
             $session,
             Fixtures::now(),
         ));
-        $token = $this->issuer->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
 
         // When
         $claims = $this->jwts->verify($token->value, 'spa', Fixtures::now())['claims'];
@@ -571,7 +629,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
             Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), null, ['openid', 'profile']),
             new Scopes([new Scope('profile')]),
         );
-        $token = $this->issuer->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
 
         // When
         $claims = $this->jwts->verify($token->value, 'spa', Fixtures::now())['claims'];
@@ -603,7 +661,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
         );
 
         // When
-        $token = $issuer->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($issuer, $authorization, Fixtures::now());
 
         // Then
         static::assertEquals(Fixtures::now()->modify('+1 minute'), $token->expiresAt);
@@ -623,14 +681,15 @@ final class JwtAccessTokenIssuerTest extends TestCase
             $this->session,
             Fixtures::now(),
         ));
-        $token = new JwtAccessTokenIssuer(
-            $this->jwts->signer,
-            Subjects::publicKind(),
-            Algorithms::all(),
-            new SymfonyUuidGenerator(),
-            Subjects::sealedPerson(),
-            new DateInterval('PT1M'),
-        )->issue(
+        $token = Tokens::accessToken(
+            new JwtAccessTokenIssuer(
+                $this->jwts->signer,
+                Subjects::publicKind(),
+                Algorithms::all(),
+                new SymfonyUuidGenerator(),
+                Subjects::sealedPerson(),
+                new DateInterval('PT1M'),
+            ),
             $authorization,
             Fixtures::now(),
         );
@@ -655,7 +714,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
             $this->session,
             Fixtures::now(),
         ));
-        $token = $this->issuer->issue($authorization, Fixtures::now());
+        $token = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
 
         // Then
         $this->expectException(InvalidClaimException::class);
@@ -674,7 +733,8 @@ final class JwtAccessTokenIssuerTest extends TestCase
     {
         // Given
         $asked = ClaimsRequest::fromJson('{"userinfo":{"email":{"essential":true},"name":null},"id_token":{"picture":null}}');
-        $token = $this->issuer->issue(
+        $token = Tokens::accessToken(
+            $this->issuer,
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
                 'the-code',
                 $this->client,
@@ -714,7 +774,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
         );
 
         // When
-        $claims = $this->jwts->verify($this->issuer->issue($authorization, Fixtures::now())->value, 'spa', Fixtures::now())['claims'];
+        $claims = $this->jwts->verify(Tokens::accessToken($this->issuer, $authorization, Fixtures::now())->value, 'spa', Fixtures::now())['claims'];
 
         // Then
         static::assertSame(
@@ -741,7 +801,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
         ));
 
         // When
-        $claims = $this->jwts->verify($this->issuer->issue($authorization, Fixtures::now())->value, 'spa', Fixtures::now())['claims'];
+        $claims = $this->jwts->verify(Tokens::accessToken($this->issuer, $authorization, Fixtures::now())->value, 'spa', Fixtures::now())['claims'];
 
         // Then
         static::assertArrayNotHasKey('cnf', $claims);
@@ -755,7 +815,8 @@ final class JwtAccessTokenIssuerTest extends TestCase
     {
         // Given
         $idTokenOnly = ClaimsRequest::fromJson('{"id_token":{"picture":null}}');
-        $token = $this->issuer->issue(
+        $token = Tokens::accessToken(
+            $this->issuer,
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
                 'the-code',
                 $this->client,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Token;
 
+use Beffroi\Core\Exception\KmsUnavailableException;
 use DateInterval;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
@@ -70,6 +71,8 @@ final class DeviceCodeGrantTest extends TestCase
 
     private InMemoryRefreshTokenRepository $refreshTokens;
 
+    private FakeAccessTokenIssuer $accessTokenIssuer;
+
     private FakeIdTokenIssuer $idTokens;
 
     private RecordingEventDispatcher $events;
@@ -89,6 +92,7 @@ final class DeviceCodeGrantTest extends TestCase
         $this->context = Fixtures::context($this->clock->now());
         $this->records = new InMemoryDeviceAuthorizationRecordRepository();
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
+        $this->accessTokenIssuer = new FakeAccessTokenIssuer();
         $this->idTokens = new FakeIdTokenIssuer();
         $this->events = new RecordingEventDispatcher();
         $this->grant = $this->grant();
@@ -155,6 +159,29 @@ final class DeviceCodeGrantTest extends TestCase
         try {
             $this->poll();
         } catch (ClientKeysUnavailableException) {
+        }
+
+        // Then
+        static::assertFalse($record->isUsed());
+        static::assertSame([], $this->refreshTokens->all());
+        static::assertSame([], $this->events->events);
+    }
+
+    /**
+     * Architecture §4.5 (issue #870): the keys of the tenant the tokens are signed with are opened before the
+     * device code is spent, so a KMS that does not answer leaves it to the next poll, with nothing issued.
+     */
+    #[Test]
+    public function aDeviceCodeIsLeftUnspentWhileTheKmsDoesNotAnswer(): void
+    {
+        // Given
+        $record = $this->approved();
+        $this->accessTokenIssuer->kmsOutage = new KmsUnavailableException('The KMS did not answer.');
+
+        // When
+        try {
+            $this->poll();
+        } catch (KmsUnavailableException) {
         }
 
         // Then
@@ -567,7 +594,7 @@ final class DeviceCodeGrantTest extends TestCase
     {
         return new DeviceCodeGrant(
             $this->records,
-            new TokenIssuer(new FakeAccessTokenIssuer(), $this->idTokens, $this->refreshTokens, Secrets::drawer(), $this->events),
+            new TokenIssuer($this->accessTokenIssuer, $this->idTokens, $this->refreshTokens, Secrets::drawer(), $this->events),
             new RefreshTokenDue(Grants::served()),
             new SymfonyUuidGenerator(),
             $this->clock,

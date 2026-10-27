@@ -144,13 +144,14 @@ final class JwksHandlerTest extends TestCase
     public function aTokenOfTheTenantVerifiesAgainstTheServedKeys(): void
     {
         // Given
-        $token = new JwtAccessTokenIssuer(
-            $this->jwts->signer,
-            Subjects::publicKind(),
-            Algorithms::all(),
-            new SymfonyUuidGenerator(),
-            Subjects::sealedPerson(),
-        )->issue(
+        $token = Tokens::accessToken(
+            new JwtAccessTokenIssuer(
+                $this->jwts->signer,
+                Subjects::publicKind(),
+                Algorithms::all(),
+                new SymfonyUuidGenerator(),
+                Subjects::sealedPerson(),
+            ),
             UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
                 'the-code',
                 Clients::public($this->jwts->tenant),

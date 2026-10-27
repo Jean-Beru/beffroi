@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Fixture;
 
+use Beffroi\Core\Tests\Fixture\Keys;
 use DateTimeImmutable;
 use Beffroi\Oidc\Domain\Client\AddressedFormat;
 use Beffroi\Oidc\Domain\Client\Client;
@@ -37,7 +38,7 @@ final class FakeIdTokenIssuer implements IdTokenIssuerInterface
             throw $this->unreadableKeys;
         }
 
-        return new AddressedFormat(ResponseFormat::signed());
+        return new AddressedFormat(ResponseFormat::signed(), Keys::openedSigningKey($client->tenant));
     }
 
     public function issue(UserAuthorizationInterface $authorization, AccessToken $accessToken, AddressedFormat $addressed, DateTimeImmutable $now): string

@@ -4,10 +4,16 @@ declare(strict_types=1);
 
 namespace Beffroi\Core\Tests\Fixture;
 
+use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
 use Beffroi\Core\Bridge\Key\OpenedKeys;
+use Beffroi\Core\Bridge\Key\SealedKeyProvider;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Beffroi\Core\Domain\Key\GeneratedKeyPair;
+use Beffroi\Core\Domain\Key\OpenedSigningKeyInterface;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Tenant\Tenant;
 use function sodium_crypto_aead_xchacha20poly1305_ietf_keygen;
 use Symfony\Component\KeyManagement\EnvelopeEncrypter;
 use Symfony\Component\KeyManagement\KeyLoader\InMemoryKeyLoader;
@@ -104,5 +110,27 @@ final class Keys
     public static function opened(): OpenedKeys
     {
         return new OpenedKeys(self::sealer());
+    }
+
+    /**
+     * The active RS256 key of that tenant, on the first pair, opened by the signer of the core: what a double
+     * hands over for a key the KMS opened.
+     */
+    public static function openedSigningKey(Tenant $tenant): OpenedSigningKeyInterface
+    {
+        $key = new TenantKey(
+            self::pair()->kid,
+            $tenant,
+            Algorithms::rs256(),
+            self::pair()->publicJwk,
+            self::sealer()->seal($tenant, self::pair()->privateJwk),
+            Fixtures::now(),
+            Fixtures::now(),
+        );
+        $key->activate(Fixtures::now());
+        $repository = new InMemoryTenantKeyRepository();
+        $repository->save($key);
+
+        return new JwtLibraryJwsSigner(new SealedKeyProvider($repository, self::opened()), Algorithms::all())->open($tenant, Algorithms::rs256());
     }
 }
