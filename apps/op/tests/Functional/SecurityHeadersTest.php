@@ -4,16 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use function base64_encode;
 use Beffroi\Bundle\Http\BrowserPreferences;
-use function hash;
 use function implode;
 use function parse_str;
 use function parse_url;
 use const PHP_URL_QUERY;
-use function rtrim;
 use function sprintf;
-use function strtr;
 use Beffroi\Bundle\Http\FormTarget;
 use Beffroi\Oidc\Domain\Authorization\FormPostResponse;
 use Beffroi\Oidc\Domain\Client\RedirectUri;
@@ -252,16 +248,7 @@ final class SecurityHeadersTest extends BrowserTestCase
     {
         // Given
         $this->signIn(self::user());
-        $this->browser->request('GET', '/authorize', [
-            'client_id' => 'consent-app',
-            'redirect_uri' => 'https://consent.test/callback',
-            'response_type' => 'code',
-            'scope' => 'openid profile',
-            'state' => 'state-of-the-client',
-            'nonce' => 'nonce-of-the-client',
-            'code_challenge' => self::codeChallenge(),
-            'code_challenge_method' => 'S256',
-        ]);
+        $this->authorize();
 
         // When
         $this->browser->request('GET', '/consent', [
@@ -278,16 +265,6 @@ final class SecurityHeadersTest extends BrowserTestCase
                 "form-action 'self' https://consent.test",
             ],
         );
-    }
-
-    /**
-     * RFC 7636 §4.2 over the verifier of the walk above, which nothing ever presents: the authorization
-     * endpoint refuses a request that carries no challenge (decision 0006) and the page under test is
-     * reached before any token is asked for.
-     */
-    private static function codeChallenge(): string
-    {
-        return rtrim(strtr(base64_encode(hash('sha256', 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk', true)), '+/', '-_'), '=');
     }
 
     /**
