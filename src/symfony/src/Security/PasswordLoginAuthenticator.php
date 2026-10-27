@@ -52,7 +52,13 @@ use function trim;
  */
 final readonly class PasswordLoginAuthenticator implements AuthenticatorInterface, InteractiveAuthenticatorInterface, AuthenticationEntryPointInterface
 {
-    public const string CSRF_TOKEN_ID = 'authenticate';
+    /**
+     * The identifier of the token the three logins post, the form of the login page, the passkey it offers and the
+     * code of the code page (PasskeyLoginAuthenticator, TotpLoginAuthenticator). The bundle's own, like that of every
+     * other form of the bundle, so that no list of stateless identifiers an application declares for the forms of
+     * Symfony reaches these pages (issue #891).
+     */
+    public const string CSRF_TOKEN_ID = 'beffroi_login';
 
     public const string CSRF_TOKEN_PARAMETER = '_csrf_token';
 

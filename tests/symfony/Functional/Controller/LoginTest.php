@@ -623,6 +623,29 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
+     * Fetch Standard, "append a request `Origin` header": a browser that sends no "Sec-Fetch-Site" posts the form
+     * of a page served under "Referrer-Policy: no-referrer" with "Origin: null" and no "Referer". The token of the
+     * login is the one its session holds, whatever the application declares stateless for the forms of Symfony
+     * (config_test.yml, issue #891), so the login is not left to a double submit that only a script completes.
+     */
+    #[Test]
+    public function aLoginPostedWithoutOriginOrRefererOpensASession(): void
+    {
+        // Given
+        $alice = self::userWithPassword('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+        $form = $this->loginPage($interaction)->selectButton('Sign in')->form();
+        $form['_username'] = 'alice';
+        $form['_password'] = self::PASSWORD;
+
+        // When
+        $this->postedWithoutOriginOrReferer($form);
+
+        // Then
+        static::assertTrue($this->boundSession()->user->id->equals($alice->id));
+    }
+
+    /**
      * Architecture §3.4: a hash weaker than the policy of the core is replaced on the login that verified
      * it; the password itself did not change.
      */

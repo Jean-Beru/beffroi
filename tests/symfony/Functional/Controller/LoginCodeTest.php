@@ -254,6 +254,28 @@ final class LoginCodeTest extends PasskeyTestCase
     }
 
     /**
+     * Fetch Standard, "append a request `Origin` header": the code page is served under "Referrer-Policy:
+     * no-referrer", so a browser that sends no "Sec-Fetch-Site" posts the code with "Origin: null" and no "Referer".
+     * The token is the one the session holds (config_test.yml, issue #891).
+     */
+    #[Test]
+    public function aCodePostedWithoutOriginOrRefererOpensASession(): void
+    {
+        // Given
+        $alice = $this->userWithTotp('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+        $form = $this->codePage($interaction)->selectButton('Continue')->form();
+        $form['_code'] = $this->codeAt(new DateTimeImmutable());
+
+        // When
+        $this->postedWithoutOriginOrReferer($form);
+
+        // Then
+        static::assertTrue($this->boundSession()->user->id->equals($alice->id));
+    }
+
+    /**
      * Architecture §3.4, §3.5: the core is told of the password, of the code and of the session, once
      * each; the password and the TOTP are dated.
      */
