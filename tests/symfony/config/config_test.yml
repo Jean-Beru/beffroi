@@ -128,15 +128,25 @@ parameters:
     # PlaneTest names BEFFROI_PLANE. Left alone, they are far above what the suite sends.
     env(BEFFROI_TEST_ORIGIN_BUDGET): 100000
     env(BEFFROI_TEST_CLIENT_BUDGET): 100000
-    # Four settings the application reads from the environment (issue #911), read the same way here: what an
-    # environment variable carries is a value at runtime only, so the bounds and the rules of the tree hold it
-    # when a service is built, and a test that plays one out of them names it before it boots a kernel. Left
-    # alone, they are the defaults of the bundle: sixty seconds for a code, thirty days for a refresh token, a
-    # staging delay derived from the max-age, and no nonce asked of a DPoP proof.
+    # Settings the application reads from the environment (issues #911 and #913), read the same way here: what
+    # an environment variable carries is a value at runtime only, so the bounds and the rules of the tree hold
+    # it when a service is built, and a test that plays one out of them names it before it boots a kernel.
+    # Left alone, they are the defaults of the bundle: sixty seconds for a code, ten minutes for an access
+    # token and an ID token, thirty days for a refresh token and ninety for its family, a staging delay
+    # derived from the max-age, no nonce asked of a DPoP proof, five seconds between two polls of either flow,
+    # a minute for the window of either budget, and the subject web push is wired with.
     env(BEFFROI_TEST_AUTHORIZATION_CODE_TTL): 60
+    env(BEFFROI_TEST_ACCESS_TOKEN_TTL): 600
+    env(BEFFROI_TEST_ID_TOKEN_TTL): 600
     env(BEFFROI_TEST_REFRESH_TOKEN_TTL): 2592000
+    env(BEFFROI_TEST_REFRESH_TOKEN_ABSOLUTE_TTL): 7776000
     env(BEFFROI_TEST_STAGING_DELAY): ''
     env(BEFFROI_TEST_DPOP_NONCE_REQUIRED): 'false'
+    env(BEFFROI_TEST_DEVICE_CODE_INTERVAL): 5
+    env(BEFFROI_TEST_BACKCHANNEL_AUTHENTICATION_INTERVAL): 5
+    env(BEFFROI_TEST_ORIGIN_INTERVAL): 60
+    env(BEFFROI_TEST_CLIENT_INTERVAL): 60
+    env(BEFFROI_TEST_WEB_PUSH_SUBJECT): 'mailto:operator@op.test'
     env(BEFFROI_TEST_KMS_DSN): 'sodium://?keys[signing]=PGI3BsLfSoNqJ2bNkhFrG4rqZoHn1dzo7OM52jV5lZw'
     env(BEFFROI_TEST_KMS_KEY_ID): signing
     # A second KMS client, which only the rewrap of the data keys needs: moving them from one client to
@@ -183,8 +193,10 @@ beffroi:
     load:
         origin:
             limit: '%env(int:BEFFROI_TEST_ORIGIN_BUDGET)%'
+            interval: '%env(int:BEFFROI_TEST_ORIGIN_INTERVAL)%'
         client:
             limit: '%env(int:BEFFROI_TEST_CLIENT_BUDGET)%'
+            interval: '%env(int:BEFFROI_TEST_CLIENT_INTERVAL)%'
     keys:
         kms: test
         key_id: '%env(BEFFROI_TEST_KMS_KEY_ID)%'
@@ -193,7 +205,12 @@ beffroi:
         staging_delay: '%env(BEFFROI_TEST_STAGING_DELAY)%'
     tokens:
         authorization_code_ttl: '%env(int:BEFFROI_TEST_AUTHORIZATION_CODE_TTL)%'
+        access_token_ttl: '%env(int:BEFFROI_TEST_ACCESS_TOKEN_TTL)%'
+        id_token_ttl: '%env(int:BEFFROI_TEST_ID_TOKEN_TTL)%'
         refresh_token_ttl: '%env(int:BEFFROI_TEST_REFRESH_TOKEN_TTL)%'
+        refresh_token_absolute_ttl: '%env(int:BEFFROI_TEST_REFRESH_TOKEN_ABSOLUTE_TTL)%'
+        device_code_interval: '%env(int:BEFFROI_TEST_DEVICE_CODE_INTERVAL)%'
+        backchannel_authentication_interval: '%env(int:BEFFROI_TEST_BACKCHANNEL_AUTHENTICATION_INTERVAL)%'
     dpop:
         nonce:
             required: '%env(bool:BEFFROI_TEST_DPOP_NONCE_REQUIRED)%'
@@ -228,7 +245,7 @@ beffroi:
     # Reaching a user through the push service of a browser they signed in with (RFC 8030): naming a
     # subject is what wires it, here as in any deployment (architecture §5.6).
     web_push:
-        subject: 'mailto:operator@op.test'
+        subject: '%env(BEFFROI_TEST_WEB_PUSH_SUBJECT)%'
     # The tenant of the tests is a SAML identity provider (beffroi/saml, spec/saml.md section 6.1): its key is
     # drawn by the key commands under SAML-SIGNING, as every key of the tenant, and its metadata is served at
     # /saml/metadata, WantAuthnRequestsSigned left at its default.
@@ -872,10 +889,36 @@ services:
     test.beffroi.schedule:
         alias: Beffroi\Bundle\Scheduler\BeffroiSchedule
         public: true
-    # What a setting the environment carries reaches (issue #911): the issuers of a code and of a refresh
-    # token, the schedule of the JOSE keys, and the nonce a DPoP proof is asked for.
+    # What a setting the environment carries reaches (issues #911 and #913): the issuers of a code, of an
+    # access token, of an ID token and of a refresh token, what a row an access token still needs is kept
+    # for, the schedule of the JOSE keys, the nonce a DPoP proof is asked for, the handlers of the two flows
+    # that poll, the two budgets, and the sender of web push.
     test.beffroi.authorization_code_issuer:
         alias: Beffroi\Oidc\Application\Authorization\AuthorizationCodeIssuer
+        public: true
+    test.beffroi.jwt_access_token_issuer:
+        alias: Beffroi\Oidc\Application\Token\JwtAccessTokenIssuer
+        public: true
+    test.beffroi.jwt_id_token_issuer:
+        alias: Beffroi\Oidc\Application\Token\JwtIdTokenIssuer
+        public: true
+    test.beffroi.what_a_token_still_needs:
+        alias: Beffroi\Core\Domain\Record\WhatATokenStillNeeds
+        public: true
+    test.beffroi.device_authorization_handler:
+        alias: Beffroi\Oidc\Application\Device\DeviceAuthorizationHandler
+        public: true
+    test.beffroi.backchannel_authentication_handler:
+        alias: Beffroi\Oidc\Application\Ciba\BackchannelAuthenticationHandler
+        public: true
+    test.beffroi.origin_load:
+        alias: beffroi.load.origin
+        public: true
+    test.beffroi.client_load:
+        alias: beffroi.load.client
+        public: true
+    test.beffroi.web_push_sender:
+        alias: Beffroi\Bundle\Push\WebPushSender
         public: true
     test.beffroi.token_issuer:
         alias: Beffroi\Oidc\Application\Token\TokenIssuer

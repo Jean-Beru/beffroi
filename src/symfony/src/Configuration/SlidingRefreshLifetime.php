@@ -26,12 +26,12 @@ final readonly class SlidingRefreshLifetime
     }
 
     /**
-     * @throws InvalidConfigurationException when the sliding lifetime exceeds the absolute one
+     * @throws InvalidConfigurationException when the sliding lifetime exceeds the absolute one, or is less than a second (BoundedLifetime)
      */
     public static function interval(int $sliding, int $absolute): DateInterval
     {
         self::assertWithin($sliding, $absolute);
 
-        return new DateInterval('PT' . $sliding . 'S');
+        return BoundedLifetime::interval($sliding, 'refresh_token_ttl');
     }
 }

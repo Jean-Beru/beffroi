@@ -61,4 +61,45 @@ final class BoundedLifetimeTest extends TestCase
         yield 'a negative number' => [-60];
         yield 'a second past the bound' => [TokensSection::MAX_AUTHORIZATION_CODE_TTL + 1];
     }
+
+    /**
+     * A lifetime the tree bounds below only, the one of an access token for instance, is as long as it is
+     * written.
+     */
+    #[Test]
+    public function aLifetimeWithNoMaximumIsAsLongAsItIsWritten(): void
+    {
+        // When
+        $lifetime = BoundedLifetime::interval(7_776_000, 'access_token_ttl');
+
+        // Then
+        static::assertSame(7_776_000, $lifetime->s);
+    }
+
+    /**
+     * Issue #913: below a second, what such a lifetime dates is expired when it is issued.
+     */
+    #[Test]
+    #[DataProvider('provideNumbersBelowASecond')]
+    public function aLifetimeWithNoMaximumIsRefusedBelowASecond(int $seconds): void
+    {
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIs(\sprintf(
+            'The "beffroi" configuration key "access_token_ttl" is a number of seconds of at least 1, %d given.',
+            $seconds,
+        ));
+
+        // When
+        BoundedLifetime::interval($seconds, 'access_token_ttl');
+    }
+
+    /**
+     * @return iterable<string, array{int}>
+     */
+    public static function provideNumbersBelowASecond(): iterable
+    {
+        yield 'nothing' => [0];
+        yield 'a negative number' => [-1];
+    }
 }

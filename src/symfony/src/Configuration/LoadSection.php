@@ -97,7 +97,13 @@ final readonly class LoadSection extends ConfigurationSection
         $load = $this->own($config);
         foreach ([LoadBudget::ORIGIN, LoadBudget::CLIENT] as $budget) {
             $numbers = self::section($load, $budget);
-            $services->get('beffroi.load.' . $budget)->arg('$limit', self::integer($numbers, 'limit'))->arg('$interval', self::seconds($numbers, 'interval'));
+            // the window is a lifetime held to a second at least, and the limit is held by the budget itself
+            // to one request at least, so that a number an environment variable carries is held as a written one is
+            $services->get('beffroi.load.' . $budget)->arg('$limit', self::integer($numbers, 'limit'))->arg('$interval', self::bounded(
+                $numbers,
+                'interval',
+                named: 'load.' . $budget . '.interval',
+            ));
         }
     }
 }

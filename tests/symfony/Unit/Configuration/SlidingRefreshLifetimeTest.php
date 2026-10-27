@@ -37,6 +37,20 @@ final class SlidingRefreshLifetimeTest extends TestCase
         yield 'as long' => [7_776_000];
     }
 
+    /**
+     * Issue #913: a refresh token renewed for no time is expired when it is issued.
+     */
+    #[Test]
+    public function aSlidingLifetimeOfNoTimeIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIs('The "beffroi" configuration key "refresh_token_ttl" is a number of seconds of at least 1, 0 given.');
+
+        // When
+        SlidingRefreshLifetime::interval(0, 7_776_000);
+    }
+
     #[Test]
     public function aSlidingLifetimeBeyondTheAbsoluteOneIsRefused(): void
     {
