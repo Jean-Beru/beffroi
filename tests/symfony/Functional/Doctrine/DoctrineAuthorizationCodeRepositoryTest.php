@@ -28,6 +28,7 @@ use Beffroi\Oidc\Port\CanRevokeGrantsByConsentInterface;
 use Beffroi\Oidc\Port\LoggedInClientsInterface;
 use Beffroi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
+use ReflectionClass;
 use function sort;
 use Symfony\Component\Uid\Uuid;
 use Beffroi\Oidc\Tests\Fixture\Shapes;
@@ -99,6 +100,27 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         static::assertEquals(self::now()->modify('+2 minutes'), $found->expiresAt);
         static::assertNull($found->usedAt);
         static::assertFalse($found->isUsed());
+    }
+
+    /**
+     * Architecture §4.5 (issue #877): the session of a code is read with the person it names, so what the grant
+     * reads of the session before it consumes the code opens the columns of that person too, and leaves nothing
+     * of either for a read made after.
+     */
+    #[Test]
+    public function theSessionOfACodeIsReadWithThePersonItNames(): void
+    {
+        // Given
+        $code = Secrets::draw();
+        self::codes()->save(self::code($code, self::client(), self::session(self::user()), null));
+        self::reload();
+        $found = self::codes()->findByCodeHash(DrawnSecret::digestOf($code)) ?? static::fail('The code was not stored.');
+
+        // When
+        $person = $found->session->user;
+
+        // Then
+        static::assertFalse(new ReflectionClass($person)->isUninitializedLazyObject($person));
     }
 
     #[Test]

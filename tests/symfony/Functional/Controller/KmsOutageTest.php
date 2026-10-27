@@ -10,6 +10,7 @@ use DateTimeImmutable;
 use Beffroi\Bundle\Http\PendingLoginStore;
 use Beffroi\Bundle\Http\TotpProvisioningStore;
 use Beffroi\Bundle\Key\KmsUnavailableListener;
+use Beffroi\Bundle\Tests\Functional\Key\DataKeyOutage;
 use Beffroi\Bundle\Tests\Functional\Key\KmsOutage;
 use Beffroi\Core\Domain\Credential\TotpCredential;
 use Beffroi\Core\Domain\Credential\TotpSecret;
@@ -32,9 +33,11 @@ use function intdiv;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
 use ParagonIE\ConstantTime\Base32;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function str_replace;
 use Symfony\Component\Clock\Clock;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
@@ -44,7 +47,8 @@ use Symfony\Component\Uid\Uuid;
  * Retry-After wherever it stands on the path of a request, the code page, the token endpoint and the
  * enrolment of a TOTP; nothing is counted against the user, nothing is forgotten, the same request is
  * served once the KMS is back, and the audit sees the outage. The KMS of the kernel is taken down
- * between two requests by KmsOutage; the secrets and the keys were sealed while it was up.
+ * between two requests by KmsOutage, and for the data keys of some families of columns alone by
+ * DataKeyOutage; the secrets, the keys and the columns were sealed while it was up.
  *
  * The issuer the job runner presents the assertions of is declared by the test kernel, its keys the ones of
  * the suite, named before the kernel boots.
@@ -65,11 +69,14 @@ final class KmsOutageTest extends PasskeyTestCase
 
     private KmsOutage $kms;
 
+    private DataKeyOutage $dataKeys;
+
     private TotpSecret $secret;
 
     protected function setUp(): void
     {
         $this->kms = new KmsOutage();
+        $this->dataKeys = new DataKeyOutage();
         $_SERVER['BEFFROI_TEST_TRUSTED_ISSUER_JWKS'] = base64_encode(json_encode(
             ['keys' => ClientAssertions::publishedKeys()->keys],
             JSON_THROW_ON_ERROR,
@@ -86,7 +93,10 @@ final class KmsOutageTest extends PasskeyTestCase
 
     protected function configureContainer(): Closure
     {
-        return $this->kms->takeOver(...);
+        return function (ContainerInterface $container): void {
+            $this->dataKeys->takeOver($container);
+            $this->kms->takeOver($container);
+        };
     }
 
     #[Test]
@@ -370,6 +380,67 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
+     * Decision 0018 (issue #877): a column sealed under a data key the KMS does not open is an outage like a key
+     * the KMS does not open, a 503 with a Retry-After, announced with the words of the KMS, and not an error of
+     * the server. Here the person a code names, on a worker that opened the keys that sign and nothing else.
+     */
+    #[Test]
+    public function aDataKeyTheKmsDoesNotOpenAnswersServiceUnavailableWithARetryAfter(): void
+    {
+        // Given
+        $code = $this->codeOfAlice();
+        $this->dataKeys->families = ['user'];
+        $this->aWorkerThatOpenedNothing();
+
+        // When
+        $this->postCode($code);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_SERVICE_UNAVAILABLE, $response->getStatusCode());
+        static::assertSame((string) KmsUnavailableListener::RETRY_AFTER, $response->headers->get('Retry-After'));
+        static::assertSame(
+            'The data key of a sealed value could not be opened. ' . KmsOutage::WORDS_OF_THE_KMS,
+            self::events(KmsUnavailable::class)[0]->reason ?? null,
+        );
+    }
+
+    /**
+     * RFC 6749 §4.1.2 (issue #877): the session a code descends from, and the person it names with it, are read
+     * before the code is consumed, so a data key of theirs the KMS does not open leaves the code to the same
+     * request once it does, which is answered with the tokens and never taken for a replay.
+     */
+    #[Test]
+    #[DataProvider('provideTheFamiliesACodeReads')]
+    public function theSameCodeIsExchangedOnceTheKmsOpensTheDataKeysItReads(string $family): void
+    {
+        // Given
+        $code = $this->codeOfAlice();
+        $this->dataKeys->families = [$family];
+        $this->aWorkerThatOpenedNothing();
+        $this->postCode($code);
+        static::assertSame(Response::HTTP_SERVICE_UNAVAILABLE, $this->browser->getResponse()->getStatusCode());
+        $this->dataKeys->families = [];
+
+        // When
+        $this->postCode($code);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), (string) $response->getContent());
+        static::assertArrayHasKey('id_token', self::json($response));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideTheFamiliesACodeReads(): iterable
+    {
+        yield 'the session' => ['authentication_session'];
+        yield 'the person' => ['user'];
+    }
+
+    /**
      * Architecture §5.2: the provisioning of an enrolment is sealed in the session before it is shown;
      * without the KMS there is nothing to show, and nothing is kept.
      */
@@ -444,6 +515,27 @@ final class KmsOutageTest extends PasskeyTestCase
             );
 
         return $user;
+    }
+
+    /**
+     * The code oidc-demo is given for alice, signed in and with a key to sign with, while the KMS answers.
+     */
+    private function codeOfAlice(): string
+    {
+        self::signingKey();
+        $this->signIn(self::user('alice'));
+        $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));
+
+        return self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client got no code.');
+    }
+
+    /**
+     * A worker that opened nothing yet, neither a key nor a data key, behind every request from now on: the
+     * kernel of the browser booted again for each one, as a worker that just started.
+     */
+    private function aWorkerThatOpenedNothing(): void
+    {
+        $this->browser->enableReboot();
     }
 
     private function codeAt(DateTimeImmutable $at): string

@@ -16,6 +16,7 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Core\Tests\Fixture\UnopenedRows;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Application\Client\AuthenticatedClient;
 use Beffroi\Oidc\Application\Token\AuthorizationCodeGrant;
@@ -95,6 +96,8 @@ final class AuthorizationCodeGrantTest extends TestCase
 
     private RecordingEventDispatcher $events;
 
+    private UnopenedRows $rows;
+
     private AuthorizationCodeGrant $grant;
 
     protected function setUp(): void
@@ -131,6 +134,7 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->accessTokenIssuer = new FakeAccessTokenIssuer();
         $this->idTokens = new FakeIdTokenIssuer();
         $this->events = new RecordingEventDispatcher();
+        $this->rows = new UnopenedRows();
         $this->grant = $this->grant();
     }
 
@@ -961,6 +965,80 @@ final class AuthorizationCodeGrantTest extends TestCase
 
         // When
         $this->failToGrant($this->client, $this->request());
+
+        // Then
+        static::assertTrue($code->isRevoked());
+    }
+
+    /**
+     * Architecture §4.5 (issue #877): the session the code descends from is read before the code is consumed,
+     * so a store that cannot open it, its columns sealed under a data key the KMS does not open, leaves the
+     * code as it was, with nothing issued from it.
+     */
+    #[Test]
+    public function aCodeIsLeftUnspentWhileItsSessionCannotBeOpened(): void
+    {
+        // Given
+        $code = $this->code('the-code', $this->client, ['openid', 'profile']);
+        $this->rows->unopen($this->session);
+        $this->rows->outage = new KmsUnavailableException('The KMS did not answer.');
+
+        // When
+        try {
+            $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+        } catch (KmsUnavailableException) {
+        }
+
+        // Then
+        static::assertFalse($code->isUsed());
+        static::assertSame(1, $this->codes->saves, 'the fixture only: nothing was consumed');
+        static::assertSame(0, $this->refreshTokens->saves);
+        static::assertSame([], $this->events->events);
+    }
+
+    /**
+     * RFC 6749 §4.1.2 (issue #877): the same request is served once the session can be opened, the code it
+     * presented being the one it was, and nothing takes it for a replay.
+     */
+    #[Test]
+    public function aCodeLeftUnspentIsExchangedOnceItsSessionOpens(): void
+    {
+        // Given
+        $this->code('the-code', $this->client, ['openid', 'profile']);
+        $this->rows->unopen($this->session);
+        $this->rows->outage = new KmsUnavailableException('The KMS did not answer.');
+        try {
+            $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+        } catch (KmsUnavailableException) {
+        }
+        $this->rows->outage = null;
+
+        // When
+        $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+
+        // Then
+        static::assertSame('id:oidc-demo:alice-subject:n-0S6_WzA2Mj:' . $this->clock->now()->getTimestamp(), $issued->idToken);
+    }
+
+    /**
+     * RFC 6749 §4.1.2: a code presented already is a replay whatever the store of its session answers. Nothing
+     * of the session is read before the grant is revoked, so a session that cannot be opened does not keep the
+     * grant from being revoked.
+     */
+    #[Test]
+    public function aReplayedCodeRevokesTheGrantWhateverTheStoreOfItsSession(): void
+    {
+        // Given
+        $code = $this->code('the-code', $this->client);
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+        $this->rows->unopen($this->session);
+        $this->rows->outage = new KmsUnavailableException('The KMS did not answer.');
+
+        // When
+        try {
+            $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+        } catch (InvalidGrantException|KmsUnavailableException) {
+        }
 
         // Then
         static::assertTrue($code->isRevoked());

@@ -13,6 +13,7 @@ use Beffroi\Core\Domain\Session\SessionEnd;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Core\Tests\Fixture\UnopenedRows;
 use Beffroi\Oidc\Application\Client\AuthenticatedClient;
 use Beffroi\Oidc\Application\Request\RequestParameters;
 use Beffroi\Oidc\Application\Token\DeviceCodeGrant;
@@ -77,6 +78,8 @@ final class DeviceCodeGrantTest extends TestCase
 
     private RecordingEventDispatcher $events;
 
+    private UnopenedRows $rows;
+
     private MockClock $clock;
 
     private DeviceCodeGrant $grant;
@@ -95,6 +98,7 @@ final class DeviceCodeGrantTest extends TestCase
         $this->accessTokenIssuer = new FakeAccessTokenIssuer();
         $this->idTokens = new FakeIdTokenIssuer();
         $this->events = new RecordingEventDispatcher();
+        $this->rows = new UnopenedRows();
         $this->grant = $this->grant();
     }
 
@@ -177,6 +181,31 @@ final class DeviceCodeGrantTest extends TestCase
         // Given
         $record = $this->approved();
         $this->accessTokenIssuer->kmsOutage = new KmsUnavailableException('The KMS did not answer.');
+
+        // When
+        try {
+            $this->poll();
+        } catch (KmsUnavailableException) {
+        }
+
+        // Then
+        static::assertFalse($record->isUsed());
+        static::assertSame([], $this->refreshTokens->all());
+        static::assertSame([], $this->events->events);
+    }
+
+    /**
+     * Architecture §4.5 (issue #877): the session the user approved with is read before the device code is
+     * spent, so a store that cannot open it, its columns sealed under a data key the KMS does not open, leaves
+     * the device code to the next poll, with nothing issued.
+     */
+    #[Test]
+    public function aDeviceCodeIsLeftUnspentWhileItsSessionCannotBeOpened(): void
+    {
+        // Given
+        $record = $this->approved();
+        $this->rows->unopen($this->session);
+        $this->rows->outage = new KmsUnavailableException('The KMS did not answer.');
 
         // When
         try {
