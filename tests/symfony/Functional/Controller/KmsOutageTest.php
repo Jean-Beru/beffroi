@@ -29,6 +29,7 @@ use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Totps;
 use Beffroi\Oidc\Domain\Event\AuthorizationCodeReplayed;
 use Beffroi\Oidc\Domain\Event\RefreshTokenReuseDetected;
+use Beffroi\Oidc\Domain\Event\TokenRevoked;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
 use Beffroi\Oidc\Tests\Fixture\TrustedIssuers;
@@ -71,6 +72,12 @@ final class KmsOutageTest extends PasskeyTestCase
     private const string PAIRWISE_SECRET = 'pairwise-secret-of-at-least-32-characters';
 
     private const string OFFLINE_REDIRECT_URI = 'https://offline.test/callback';
+
+    private const string DEMO_SECRET = 'demo-secret-of-at-least-32-characters-long';
+
+    private const string OPAQUE_REDIRECT_URI = 'https://opaque.test/callback';
+
+    private const string OPAQUE_SECRET = 'opaque-secret-of-at-least-32-characters-long';
 
     private KmsOutage $kms;
 
@@ -547,6 +554,102 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
+     * RFC 7009 §2.2 (issue #888): a refresh token given back is answered 200 while the KMS does not open the data
+     * keys its session and its person are sealed under: the person the revocation is announced for is read in the
+     * clear, so neither is opened once the token is revoked, and the client is not told to retry a revocation that
+     * was done.
+     */
+    #[Test]
+    #[DataProvider('provideTheFamiliesOfASession')]
+    public function aRefreshTokenGivenBackIsAnsweredWhileTheKmsDoesNotOpenTheDataKeysOfItsSession(string $family): void
+    {
+        // Given
+        $this->postCode($this->codeOfAlice());
+        $refreshToken = self::string(self::json($this->browser->getResponse())['refresh_token'] ?? null);
+        $this->dataKeys->families = [$family];
+        $this->aWorkerThatOpenedNothing();
+
+        // When
+        $this->postRevocation($refreshToken, 'oidc-demo', self::DEMO_SECRET);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), (string) $response->getContent());
+    }
+
+    /**
+     * RFC 7009 §2.1 (issue #888): the revocation of a refresh token is announced with the person its session names
+     * while the KMS does not open those data keys, so the journal keeps the act: a retry of the client finds the
+     * token revoked already, answered 200 with nothing announced (§2.2), so this request is the only one that can
+     * tell it.
+     */
+    #[Test]
+    #[DataProvider('provideTheFamiliesOfASession')]
+    public function aRefreshTokenGivenBackIsAnnouncedWhileTheKmsDoesNotOpenTheDataKeysOfItsSession(string $family): void
+    {
+        // Given
+        $this->postCode($this->codeOfAlice());
+        $refreshToken = self::string(self::json($this->browser->getResponse())['refresh_token'] ?? null);
+        $this->dataKeys->families = [$family];
+        $this->aWorkerThatOpenedNothing();
+
+        // When
+        $this->postRevocation($refreshToken, 'oidc-demo', self::DEMO_SECRET);
+
+        // Then
+        $revocations = self::events(TokenRevoked::class);
+        static::assertCount(1, $revocations);
+        static::assertSame('alice-subject', $revocations[0]->subject?->value);
+        static::assertSame(DrawnSecret::digestOf($refreshToken), $revocations[0]->tokenHash);
+    }
+
+    /**
+     * RFC 7009 §2.2 (issue #888): an opaque access token given back is answered 200 while the KMS does not open the
+     * data keys of the session it descends from and of the person that session names: the record names its person
+     * by that session, whose subject is read in the clear once the token is removed.
+     */
+    #[Test]
+    #[DataProvider('provideTheFamiliesOfASession')]
+    public function anOpaqueAccessTokenGivenBackIsAnsweredWhileTheKmsDoesNotOpenTheDataKeysOfItsSession(string $family): void
+    {
+        // Given
+        $accessToken = $this->opaqueAccessTokenOfAlice();
+        $this->dataKeys->families = [$family];
+        $this->aWorkerThatOpenedNothing();
+
+        // When
+        $this->postRevocation($accessToken, 'opaque-app', self::OPAQUE_SECRET);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), (string) $response->getContent());
+    }
+
+    /**
+     * RFC 7009 §2.1 (issue #888): the revocation of an opaque access token is announced with the person it was
+     * issued in the name of while the KMS does not open those data keys: a retry of the client finds the token gone,
+     * an unknown token answered 200 with nothing announced (§2.2), so this request is the only one that can tell it.
+     */
+    #[Test]
+    #[DataProvider('provideTheFamiliesOfASession')]
+    public function anOpaqueAccessTokenGivenBackIsAnnouncedWhileTheKmsDoesNotOpenTheDataKeysOfItsSession(string $family): void
+    {
+        // Given
+        $accessToken = $this->opaqueAccessTokenOfAlice();
+        $this->dataKeys->families = [$family];
+        $this->aWorkerThatOpenedNothing();
+
+        // When
+        $this->postRevocation($accessToken, 'opaque-app', self::OPAQUE_SECRET);
+
+        // Then
+        $revocations = self::events(TokenRevoked::class);
+        static::assertCount(1, $revocations);
+        static::assertSame('alice-subject', $revocations[0]->subject?->value);
+        static::assertSame(DrawnSecret::digestOf($accessToken), $revocations[0]->tokenHash);
+    }
+
+    /**
      * Architecture §5.2: the provisioning of an enrolment is sealed in the session before it is shown;
      * without the KMS there is nothing to show, and nothing is kept.
      */
@@ -709,7 +812,7 @@ final class KmsOutageTest extends PasskeyTestCase
                 'code_verifier' => self::CODE_VERIFIER,
             ],
             server: [
-                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:' . self::DEMO_SECRET),
             ],
         );
     }
@@ -745,6 +848,52 @@ final class KmsOutageTest extends PasskeyTestCase
             'refresh_token' => $refreshToken,
             'client_id' => 'offline-app',
         ]);
+    }
+
+    /**
+     * The opaque access token the client of opaque tokens gets for alice, signed in, while the KMS answers: a token
+     * the provider keeps a record of, which is what it can take back (RFC 7009 §2.1).
+     */
+    private function opaqueAccessTokenOfAlice(): string
+    {
+        self::signingKey();
+        $this->signIn(self::user('alice'));
+        $this->browser->request('GET', '/authorize', self::authorizationParameters('opaque-app', [
+            'redirect_uri' => self::OPAQUE_REDIRECT_URI,
+        ]));
+        $code = self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client of opaque tokens got no code.');
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => self::OPAQUE_REDIRECT_URI,
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            server: [
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('opaque-app:' . self::OPAQUE_SECRET),
+            ],
+        );
+
+        return self::string(self::json($this->browser->getResponse())['access_token'] ?? null);
+    }
+
+    /**
+     * RFC 7009 §2.1: a client authenticated by its secret gives a token back.
+     */
+    private function postRevocation(string $token, string $clientId, string $secret): void
+    {
+        $this->browser->request(
+            'POST',
+            '/revoke',
+            [
+                'token' => $token,
+            ],
+            server: [
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode($clientId . ':' . $secret),
+            ],
+        );
     }
 
     /**

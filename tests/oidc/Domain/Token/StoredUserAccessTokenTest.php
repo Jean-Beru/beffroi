@@ -8,7 +8,9 @@ use Beffroi\Oidc\Tests\Fixture\Secrets;
 use DateTimeImmutable;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\UnopenedRows;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 use Beffroi\Oidc\Domain\Authorization\ClaimRequest;
@@ -50,6 +52,23 @@ final class StoredUserAccessTokenTest extends TestCase
 
         // When / Then
         static::assertTrue($token->person()->equals($this->session->user->subject));
+    }
+
+    /**
+     * Issue #888: the person of the row is named by the session it descends from, by the identifier of that
+     * session, which reads nothing of it: a session a store has not opened yet stays unopened, and its person is
+     * read where the store of sessions keeps their subject in the clear.
+     */
+    #[Test]
+    public function itNamesItsPersonByTheSessionItDescendsFromWithoutOpeningIt(): void
+    {
+        // Given
+        $rows = new UnopenedRows();
+        $token = Tokens::storedAccessToken('the-token', $this->client, $rows->unopenedSession($this->session), Fixtures::now());
+        $rows->outage = new KmsUnavailableException('The KMS did not answer.');
+
+        // When / Then
+        static::assertTrue($this->session->id->equals($token->sessionNamingItsPerson()));
     }
 
     /**

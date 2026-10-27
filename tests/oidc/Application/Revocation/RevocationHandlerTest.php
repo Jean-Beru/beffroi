@@ -18,10 +18,12 @@ use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\SessionEnd;
 use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Core\Tests\Fixture\UnopenedRows;
 use Beffroi\Oidc\Application\Client\ClientAuthenticator;
 use Beffroi\Oidc\Application\Grant\RecordedGrants;
 use Beffroi\Oidc\Application\Revocation\RevocationHandler;
@@ -83,6 +85,8 @@ final class RevocationHandlerTest extends TestCase
 
     private RecordingEventDispatcher $events;
 
+    private UnopenedRows $rows;
+
     private RevocationHandler $handler;
 
     protected function setUp(): void
@@ -109,6 +113,7 @@ final class RevocationHandlerTest extends TestCase
         $this->accessTokens = new InMemoryAccessTokenRepository();
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
         $this->events = new RecordingEventDispatcher();
+        $this->rows = new UnopenedRows();
         $this->handler = $this->handler($clients, $hasher, $this->accessTokens);
     }
 
@@ -186,6 +191,72 @@ final class RevocationHandlerTest extends TestCase
         static::assertSame(TokenRevoked::REFRESH_TOKEN, $events[0]->tokenType);
         static::assertSame($current->tokenHash, $events[0]->tokenHash);
         static::assertSame([$ofTheGrant->tokenHash], $events[0]->revokedAccessTokenHashes);
+    }
+
+    /**
+     * RFC 7009 §2.1 (issue #888): the revocation of an opaque access token is announced with the person it was issued
+     * in the name of whatever the store of its session answers. The record names that person by the session it
+     * descends from, whose subject the store of sessions keeps in the clear, so a session that cannot be opened is
+     * not an outage met once the token was removed.
+     */
+    #[Test]
+    public function anAccessTokenIsAnnouncedRevokedWhileItsSessionCannotBeOpened(): void
+    {
+        // Given
+        $token = Secrets::draw();
+        $this->accessTokens->save(Tokens::storedAccessToken($token, $this->client, $this->rows->unopenedSession($this->session), $this->clock->now()));
+        $this->rows->outage = new KmsUnavailableException('The KMS did not answer.');
+
+        // When
+        $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo'),
+            [
+                'token' => $token,
+            ],
+            $this->context,
+        );
+
+        // Then
+        $events = $this->events->of(TokenRevoked::class);
+        static::assertCount(1, $events);
+        static::assertSame(TokenRevoked::ACCESS_TOKEN, $events[0]->tokenType);
+        static::assertTrue($events[0]->subject()?->equals($this->session->user->subject));
+    }
+
+    /**
+     * RFC 7009 §2.1 (issue #888): the revocation of a refresh token is announced with the person its session names
+     * whatever the store of that session answers, the person being read where the store of sessions keeps them in
+     * the clear: a retry finds the token revoked already and is answered with nothing announced (§2.2), so this
+     * request is the only one that can tell it.
+     */
+    #[Test]
+    public function aRefreshTokenIsAnnouncedRevokedWhileItsSessionCannotBeOpened(): void
+    {
+        // Given
+        $this->refreshTokens->save(Tokens::refreshToken(
+            'current',
+            $this->client,
+            $this->rows->unopenedSession($this->session),
+            $this->clock->now()->modify('-1 hour'),
+        ));
+        $this->rows->outage = new KmsUnavailableException('The KMS did not answer.');
+
+        // When
+        $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo'),
+            [
+                'token' => 'current',
+            ],
+            $this->context,
+        );
+
+        // Then
+        $events = $this->events->of(TokenRevoked::class);
+        static::assertCount(1, $events);
+        static::assertSame(TokenRevoked::REFRESH_TOKEN, $events[0]->tokenType);
+        static::assertTrue($events[0]->subject()?->equals($this->session->user->subject));
     }
 
     /**
@@ -512,6 +583,7 @@ final class RevocationHandlerTest extends TestCase
             new AccessTokenInspector($verifier, $this->sessions, new RecordedGrants([$this->grants]), Subjects::personOfAToken($this->users)),
             $accessTokens,
             $this->refreshTokens,
+            $this->sessions,
             $this->events,
         );
     }
