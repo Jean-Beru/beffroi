@@ -33,7 +33,7 @@ use Symfony\Component\Security\Http\Authenticator\Token\PostAuthenticationToken;
  */
 final readonly class PasskeyLoginAuthenticator implements AuthenticatorInterface, InteractiveAuthenticatorInterface
 {
-    public const string CSRF_TOKEN_ID = 'authenticate';
+    public const string CSRF_TOKEN_ID = PasswordLoginAuthenticator::CSRF_TOKEN_ID;
 
     public const string CSRF_TOKEN_PARAMETER = '_csrf_token';
 

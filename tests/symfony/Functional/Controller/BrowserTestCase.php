@@ -59,6 +59,7 @@ use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\DomCrawler\Crawler;
+use Symfony\Component\DomCrawler\Form;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionFactoryInterface;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
@@ -527,6 +528,24 @@ abstract class BrowserTestCase extends DatabaseTestCase
                 static fn (?string $value): bool => $value !== null,
             ),
             $body,
+        );
+    }
+
+    /**
+     * What a browser that sends no "Sec-Fetch-Site" sends when it submits a form of a page served under
+     * "Referrer-Policy: no-referrer", as every page of the interaction plane is (InteractionPages): "Origin: null" and
+     * no "Referer" (Fetch Standard, "append a request `Origin` header"). The browser of this suite sends the page it is
+     * on as the referrer, so it forgets the pages it went through first.
+     */
+    protected function postedWithoutOriginOrReferer(Form $form): void
+    {
+        $this->browser->getHistory()->clear();
+        $this->browser->submit(
+            $form,
+            [],
+            [
+                'HTTP_ORIGIN' => 'null',
+            ],
         );
     }
 

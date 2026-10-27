@@ -462,6 +462,30 @@ final class PasskeyLoginTest extends PasskeyTestCase
         $this->assertRefused($interaction);
     }
 
+    /**
+     * Fetch Standard, "append a request `Origin` header": the assertion is posted as a form of the login page, under
+     * its "Referrer-Policy: no-referrer", so a browser that sends no "Sec-Fetch-Site" posts it with "Origin: null" and
+     * no "Referer". The token is the one the session holds (config_test.yml, issue #891).
+     */
+    #[Test]
+    public function aPasskeyLoginPostedWithoutOriginOrRefererOpensASession(): void
+    {
+        // Given
+        $device = self::device();
+        $alice = self::user('alice');
+        $this->enrol($alice, $device);
+        $this->forgetTheBrowser();
+        $interaction = $this->authorize();
+        $form = $this->loginPage($interaction)->filter('form[data-passkey="login"]')->form();
+        $form['_passkey'] = $device->get($this->requestOptions($interaction));
+
+        // When
+        $this->postedWithoutOriginOrReferer($form);
+
+        // Then
+        static::assertTrue($this->boundSession()->user->id->equals($alice->id));
+    }
+
     #[Test]
     public function theLoginPageOffersThePasskeyNextToTheForm(): void
     {
