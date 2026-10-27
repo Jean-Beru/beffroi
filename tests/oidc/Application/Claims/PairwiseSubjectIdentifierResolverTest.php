@@ -7,14 +7,17 @@ namespace Beffroi\Oidc\Tests\Application\Claims;
 use function base64_encode;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Application\Claims\PairwiseSubjectIdentifierResolver;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryPairwiseSubjectRepository;
 use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Exception\InvalidClientMetadataException;
+use Beffroi\Oidc\Exception\LogicException;
 use Beffroi\Oidc\Tests\Fixture\Clients;
 use Beffroi\Oidc\Tests\Fixture\FixedPairwiseSalt;
+use Beffroi\Oidc\Tests\Fixture\PairwiseSaltBehindAnOutage;
 use Beffroi\Oidc\Tests\Fixture\Subjects;
 use function hash;
 use PHPUnit\Framework\Attributes\Test;
@@ -48,6 +51,67 @@ final class PairwiseSubjectIdentifierResolverTest extends TestCase
         // Then
         $digest = hash('sha256', 'rp.example' . $user->subject->value . self::SALT, true);
         static::assertSame(rtrim(strtr(base64_encode($digest), '+/', '-_'), '='), $subject->value);
+    }
+
+    /**
+     * Architecture §4.5 (issue #880): the salt is unsealed when the client is opened, so a KMS that does not
+     * answer is said then, before whoever opened it has spent anything.
+     */
+    #[Test]
+    public function aKmsThatDoesNotAnswerIsToldWhenTheClientIsOpened(): void
+    {
+        // Given
+        $salts = new PairwiseSaltBehindAnOutage(new FixedPairwiseSalt(self::SALT));
+        $salts->down = true;
+
+        // Then
+        $this->expectException(KmsUnavailableException::class);
+        $this->expectExceptionMessageIs(PairwiseSaltBehindAnOutage::WORDS_OF_THE_KMS);
+
+        // When
+        Subjects::pairwiseKind($salts)->open(Clients::pairwise(Fixtures::tenant()));
+    }
+
+    /**
+     * Assigning asks nothing of the KMS (issue #880): a client opened while the KMS answered is given the
+     * identifier the specification computes, whatever the KMS answers afterwards.
+     */
+    #[Test]
+    public function anIdentifierIsAssignedFromWhatWasOpenedWhateverTheKmsAnswersAfterwards(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $user = Fixtures::user($tenant);
+        $salts = new PairwiseSaltBehindAnOutage(new FixedPairwiseSalt(self::SALT));
+        $opened = Subjects::pairwiseKind($salts)->open(Clients::pairwise($tenant, redirectUri: 'https://rp.example/callback'));
+        $salts->down = true;
+
+        // When
+        $subject = $opened->subjectOf($user);
+
+        // Then
+        $digest = hash('sha256', 'rp.example' . $user->subject->value . self::SALT, true);
+        static::assertSame(rtrim(strtr(base64_encode($digest), '+/', '-_'), '='), $subject->value);
+    }
+
+    /**
+     * The salt opened is the one of the tenant of the client, and a user of another tenant has no identifier
+     * under it: one computed there would name that user to a sector of a tenant that never served them.
+     */
+    #[Test]
+    public function aUserOfAnotherTenantIsGivenNoIdentifierUnderTheSaltOfTheClient(): void
+    {
+        // Given
+        $here = Fixtures::tenant('here', 'https://here.example');
+        $there = Fixtures::tenant('there', 'https://there.example');
+        $opened = self::resolver()->open(Clients::pairwise($here));
+
+        // Then
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessageIs('A user of the tenant "there" has no identifier computed with the salt of the tenant "here".');
+
+        // When
+        $opened->subjectOf(Fixtures::user($there));
     }
 
     /**

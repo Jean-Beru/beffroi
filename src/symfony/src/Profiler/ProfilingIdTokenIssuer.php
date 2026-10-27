@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Profiler;
 
 use DateTimeImmutable;
-use Beffroi\Oidc\Domain\Client\AddressedFormat;
+use Beffroi\Oidc\Domain\Token\AddressedIdToken;
 use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Token\AccessToken;
 use Beffroi\Oidc\Domain\Token\UserAuthorizationInterface;
@@ -34,12 +34,12 @@ final readonly class ProfilingIdTokenIssuer implements IdTokenIssuerInterface
     ) {
     }
 
-    public function address(Client $client): AddressedFormat
+    public function address(Client $client): AddressedIdToken
     {
         return $this->issuer->address($client);
     }
 
-    public function issue(UserAuthorizationInterface $authorization, AccessToken $accessToken, AddressedFormat $addressed, DateTimeImmutable $now): string
+    public function issue(UserAuthorizationInterface $authorization, AccessToken $accessToken, AddressedIdToken $addressed, DateTimeImmutable $now): string
     {
         $idToken = $this->issuer->issue($authorization, $accessToken, $addressed, $now);
         $requested = $authorization->claimsRequest->idToken ?? [];

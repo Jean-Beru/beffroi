@@ -692,6 +692,7 @@ use Beffroi\Oidc\Port\PairwiseSubjectRepositoryInterface;
 use Beffroi\Oidc\Port\PresentedSubjectReaderInterface;
 use Beffroi\Oidc\Port\SectorIdentifierDocumentFetcherInterface;
 use Beffroi\Oidc\Port\SectorIdentifiersInterface;
+use Beffroi\Oidc\Port\SubjectIdentifierOpenerInterface;
 use Beffroi\Oidc\Port\SubjectIdentifierResolverInterface;
 use Beffroi\Oidc\Port\UnsignedRequestObjectsInterface;
 use Jose\Component\Core\AlgorithmManager;
@@ -1726,6 +1727,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PairwiseSubjectIdentifierResolver::class)->tag('beffroi.oidc.subject_type');
     $services->set(AssignedSubjectIdentifiers::class)->args([tagged_iterator('beffroi.oidc.subject_type')]);
     $services->alias(SubjectIdentifierResolverInterface::class, AssignedSubjectIdentifiers::class);
+    $services->alias(SubjectIdentifierOpenerInterface::class, AssignedSubjectIdentifiers::class);
     $services->alias(PresentedSubjectReaderInterface::class, AssignedSubjectIdentifiers::class);
     $services->alias(AssignedSubjectTypesInterface::class, AssignedSubjectIdentifiers::class);
     // What a pairwise identifier is computed with and what it is read back from: a salt drawn once and

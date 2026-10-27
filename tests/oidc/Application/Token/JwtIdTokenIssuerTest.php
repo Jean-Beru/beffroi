@@ -17,6 +17,7 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
 use Beffroi\Core\Domain\Session\AuthenticationProofs;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Domain\Scope\Scopes;
@@ -35,8 +36,10 @@ use Beffroi\Oidc\Domain\Token\UserAuthorization;
 use Beffroi\Oidc\Port\ClaimsProviderInterface;
 use Beffroi\Oidc\Tests\Fixture\ClientEncryption;
 use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\FixedPairwiseSalt;
 use Beffroi\Oidc\Tests\Fixture\Jwts;
 use Beffroi\Oidc\Tests\Fixture\Methods;
+use Beffroi\Oidc\Tests\Fixture\PairwiseSaltBehindAnOutage;
 use Beffroi\Oidc\Tests\Fixture\Tokens;
 use Jose\Component\Checker\InvalidClaimException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -120,6 +123,59 @@ final class JwtIdTokenIssuerTest extends TestCase
         static::assertSame(['pwd'], $claims['amr']);
         static::assertSame('spa', $claims['azp']);
         static::assertSame($this->session->id->toRfc4122(), $claims['sid']);
+    }
+
+    /**
+     * Architecture §4.5 (issue #880): the salt the "sub" of a pairwise client is computed with is unsealed when
+     * the ID token is addressed, so a KMS that does not answer is said then, before the grant spends anything.
+     */
+    #[Test]
+    public function aKmsThatDoesNotAnswerForThePairwiseSaltIsToldWhenTheTokenIsAddressed(): void
+    {
+        // Given
+        $salts = new PairwiseSaltBehindAnOutage();
+        $salts->down = true;
+        $issuer = new JwtIdTokenIssuer($this->jwts->documents, Subjects::bothKinds(salts: $salts), new StandardClaimsProvider(), Algorithms::all());
+
+        // Then
+        $this->expectException(KmsUnavailableException::class);
+        $this->expectExceptionMessageIs(PairwiseSaltBehindAnOutage::WORDS_OF_THE_KMS);
+
+        // When
+        $issuer->address(Clients::pairwise($this->session->tenant));
+    }
+
+    /**
+     * OIDC Core §8.1, struck asking nothing of the KMS (issue #880): the ID token of a pairwise client addressed
+     * while the KMS answered names whoever signed in by the identifier of its sector, whatever the KMS answers once
+     * the grant has spent what the request presented.
+     */
+    #[Test]
+    public function anIdTokenOfAPairwiseClientNamesWhoeverSignedInByWhatWasOpenedWhenItWasAddressed(): void
+    {
+        // Given
+        $salts = new PairwiseSaltBehindAnOutage();
+        $issuer = new JwtIdTokenIssuer($this->jwts->documents, Subjects::bothKinds(salts: $salts), new StandardClaimsProvider(), Algorithms::all());
+        $client = Clients::pairwise($this->session->tenant);
+        $addressed = $issuer->address($client);
+        $salts->down = true;
+        $authorization = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $client,
+            $this->session,
+            Fixtures::now(),
+            ['openid', 'profile'],
+        ));
+
+        // When
+        $idToken = $issuer->issue($authorization, $this->accessToken, $addressed, Fixtures::now());
+
+        // Then
+        ['claims' => $claims] = $this->jwts->verify($idToken, 'pairwise-app', Fixtures::now()->modify('+9 minutes'));
+        static::assertSame(
+            Subjects::pairwiseKind(new FixedPairwiseSalt())->resolve($this->session->user, $client)->value,
+            $claims['sub'] ?? null,
+        );
     }
 
     /**

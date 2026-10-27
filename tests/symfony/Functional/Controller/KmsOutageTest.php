@@ -43,6 +43,10 @@ final class KmsOutageTest extends PasskeyTestCase
 {
     private const string PASSWORD = 'correct horse battery staple';
 
+    private const string PAIRWISE_REDIRECT_URI = 'https://pairwise.test/callback';
+
+    private const string PAIRWISE_SECRET = 'pairwise-secret-of-at-least-32-characters';
+
     private KmsOutage $kms;
 
     private TotpSecret $secret;
@@ -174,6 +178,60 @@ final class KmsOutageTest extends PasskeyTestCase
         // Then
         static::assertSame(['pwd', 'otp', 'mfa'], $this->boundSession()->methodReferences());
         static::assertSame([], self::events(AuthenticationFailed::class));
+    }
+
+    /**
+     * The token endpoint on a worker that has opened its signing key already, which is every worker after its first
+     * signature, for a client that sees its users under an identifier of its sector (OIDC Core §8.1, issue #880): the
+     * salt that identifier is computed with is the one thing the KMS is asked for, and a KMS that does not answer is
+     * a 503 the client comes back from.
+     */
+    #[Test]
+    public function theTokenEndpointAnswersServiceUnavailableOnAPairwiseSaltTheKmsDoesNotOpen(): void
+    {
+        // Given
+        self::signingKey();
+        $this->signIn(self::user('alice'));
+        $this->signInClient('pairwise-app', self::PAIRWISE_REDIRECT_URI, self::PAIRWISE_SECRET);
+        $code = $this->pairwiseCode();
+        $this->kms->down = true;
+
+        // When
+        $this->postPairwiseCode($code);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_SERVICE_UNAVAILABLE, $response->getStatusCode());
+        static::assertSame((string) KmsUnavailableListener::RETRY_AFTER, $response->headers->get('Retry-After'));
+        static::assertSame('The sealed secret could not be opened. ' . KmsOutage::WORDS_OF_THE_KMS, self::events(KmsUnavailable::class)[0]->reason ?? null);
+    }
+
+    /**
+     * RFC 6749 §4.1.2 (issue #880): the salt is unsealed before the code is consumed, so the code a 503 answered is a
+     * code nobody exchanged. The same request, once the KMS is back, is answered with the tokens, which name the
+     * person by the identifier of the sector, and is never taken for a replay that would revoke the grant.
+     */
+    #[Test]
+    public function theSameCodeOfAPairwiseClientIsExchangedOnceTheKmsIsBack(): void
+    {
+        // Given
+        self::signingKey();
+        $this->signIn(self::user('alice'));
+        $this->signInClient('pairwise-app', self::PAIRWISE_REDIRECT_URI, self::PAIRWISE_SECRET);
+        $subject = self::claimsOf(self::string(self::json($this->browser->getResponse())['id_token'] ?? null))['sub'] ?? null;
+        $code = $this->pairwiseCode();
+        $this->kms->down = true;
+        $this->postPairwiseCode($code);
+        static::assertSame(Response::HTTP_SERVICE_UNAVAILABLE, $this->browser->getResponse()->getStatusCode());
+        $this->kms->down = false;
+
+        // When
+        $this->postPairwiseCode($code);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), (string) $response->getContent());
+        static::assertSame($subject, self::claimsOf(self::string(self::json($response)['id_token'] ?? null))['sub'] ?? null);
     }
 
     /**
@@ -327,6 +385,35 @@ final class KmsOutageTest extends PasskeyTestCase
         $form = $crawler->selectButton('Continue')->form();
         $form['_code'] = $code;
         $this->browser->submit($form);
+    }
+
+    /**
+     * A code of the client of a sector for alice, who is signed in.
+     */
+    private function pairwiseCode(): string
+    {
+        $this->browser->request('GET', '/authorize', self::authorizationParameters('pairwise-app', [
+            'redirect_uri' => self::PAIRWISE_REDIRECT_URI,
+        ]));
+
+        return self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client of the sector got no code.');
+    }
+
+    private function postPairwiseCode(string $code): void
+    {
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => self::PAIRWISE_REDIRECT_URI,
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            server: [
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('pairwise-app:' . self::PAIRWISE_SECRET),
+            ],
+        );
     }
 
     private function postCode(string $code): void
