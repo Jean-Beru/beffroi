@@ -439,6 +439,10 @@ final class ClientRegistrationTest extends TestCase
             static fn (): ClientRegistration => new ClientRegistration("de\tmo", new ClientPresentation('Name'), Methods::none(), false, $uris, Shapes::jwt()),
             'visible ASCII',
         ];
+        yield 'client id with a line feed behind it' => [
+            static fn (): ClientRegistration => new ClientRegistration("demo\n", new ClientPresentation('Name'), Methods::none(), false, $uris, Shapes::jwt()),
+            'visible ASCII',
+        ];
         yield 'client id beyond ASCII (RFC 6749 appendix A.1)' => [
             static fn (): ClientRegistration => new ClientRegistration('démo', new ClientPresentation('Name'), Methods::none(), false, $uris, Shapes::jwt()),
             'visible ASCII',

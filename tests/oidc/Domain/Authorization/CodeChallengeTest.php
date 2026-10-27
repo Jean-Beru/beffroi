@@ -64,6 +64,7 @@ final class CodeChallengeTest extends TestCase
         yield 'base64 padding' => [str_repeat('a', 42) . '='];
         yield 'standard base64 alphabet' => [str_repeat('a', 42) . '+'];
         yield 'space' => [str_repeat('a', 42) . ' '];
+        yield 'a line feed behind a challenge that would pass' => [str_repeat('a', 43) . "\n"];
     }
 
     /**

@@ -1014,6 +1014,12 @@ final class ConfigurationClientRepositoryTest extends TestCase
             ] + $base,
             'at least 32 visible ASCII characters',
         ];
+        yield 'secret with a line feed behind it' => [
+            [
+                'secret' => Clients::SECRET . "\n",
+            ] + $base,
+            'at least 32 visible ASCII characters',
+        ];
         yield 'confidential without a secret' => [
             [
                 'redirect_uris' => ['https://rp.example/cb'],

@@ -164,6 +164,7 @@ final class PresentedAccessTokenParserTest extends TestCase
         yield 'token with a double quote' => ['Bearer "abc"', [], 'Authorization header'];
         yield 'padding before the end' => ['Bearer abc=def', [], 'Authorization header'];
         yield 'tab as separator' => ["Bearer\t" . self::JWS, [], 'Authorization header'];
+        yield 'a line feed behind the token' => ['Bearer ' . self::JWS . "\n", [], 'Authorization header'];
         yield 'parameter repeated' => [
             null,
             [
@@ -182,6 +183,13 @@ final class PresentedAccessTokenParserTest extends TestCase
             null,
             [
                 'access_token' => 'abc,def',
+            ],
+            'access_token parameter',
+        ];
+        yield 'a line feed behind the parameter' => [
+            null,
+            [
+                'access_token' => self::JWS . "\n",
             ],
             'access_token parameter',
         ];

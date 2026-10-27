@@ -88,6 +88,7 @@ final class ScopeTest extends TestCase
         yield 'backslash' => ['open\\id'];
         yield 'control character' => ["open\tid"];
         yield 'beyond ASCII' => ['profilé'];
+        yield 'a line feed behind a token that would pass' => ["openid\n"];
     }
 
     /**

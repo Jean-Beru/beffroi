@@ -483,6 +483,7 @@ final class ClientAuthenticatorTest extends TestCase
         yield 'Basic without credentials nor space' => ['Basic'];
         yield 'scheme not at the start' => ['x Basic ' . $credentials];
         yield 'something after the credentials' => ['Basic ' . $credentials . ' extra'];
+        yield 'a line feed behind the credentials' => ['Basic ' . $credentials . "\n"];
     }
 
     #[Test]
