@@ -460,10 +460,11 @@ function provision_dev_subject(string $path): string
  * once they are loaded: the DSN of the KMS and the key it seals under (a sodium key generated in place or
  * written in a file of the op container, a token minted on the Vault of the stack under the policy of the
  * OP and the Transit key of the tenant, the LocalStack of the stack and the alias of the tenant), one
- * secret per client, the password of the development user. An existing value is kept, whoever wrote it:
- * the sealed signing keys depend on the KMS key, and a KMS is not switched by accident. The one exception
- * is a Vault token that no longer works (the dev server forgets everything when it restarts): a new one is
- * minted in its place, and the check of the published key says what became of the key files.
+ * secret per client, the password of the development user, the origin of the host that asks for a client
+ * certificate. An existing value is kept, whoever wrote it: the sealed signing keys depend on the KMS key,
+ * and a KMS is not switched by accident. The one exception is a Vault token that no longer works (the dev
+ * server forgets everything when it restarts): a new one is minted in its place, and the check of the
+ * published key says what became of the key files.
  *
  * @return array<string, string>
  */
@@ -519,6 +520,9 @@ function provision_env_local(?string $kms): array
         ],
     };
     $values['BEFFROI_DEV_USER_PASSWORD'] = static fn (): string => $generate(24);
+    // The host of this stack that asks for a client certificate, which apps/op/.env leaves empty: that file
+    // is what an image is compiled from, and a deployment announces the host it serves or none.
+    $values['BEFFROI_MTLS_ORIGIN'] = static fn (): string => 'https://' . DEV_MTLS_SERVER_NAME;
     foreach (DEV_CLIENT_SECRETS as $name) {
         $values[$name] = static fn (): string => $generate(32);
     }
