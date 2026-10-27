@@ -975,11 +975,24 @@ final class BeffroiBundleExtensionTest extends TestCase
         return $container;
     }
 
+    /**
+     * The lifetime a service is handed, as the specification of a DateInterval: the one the definition carries,
+     * or the one its factory builds from the numbers it is given, which is how a lifetime held to a bound or to
+     * a rule reaches its service (BoundedLifetime, SlidingRefreshLifetime).
+     */
     private static function interval(ContainerBuilder $container, string $service, int|string $argument): string
     {
         $definition = $container->getDefinition($service)->getArgument($argument);
         static::assertInstanceOf(Definition::class, $definition);
         static::assertSame(DateInterval::class, $definition->getClass());
+        $factory = $definition->getFactory();
+        if ($factory !== null) {
+            static::assertIsCallable($factory);
+            $built = $factory(...$definition->getArguments());
+            static::assertInstanceOf(DateInterval::class, $built);
+
+            return $built->format('PT%sS');
+        }
         $spec = $definition->getArgument(0);
         static::assertIsString($spec);
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Configuration;
 
 use Beffroi\Core\Domain\Record\WhatATokenStillNeeds;
+use DateInterval;
 use Beffroi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
 use Beffroi\Oidc\Application\Ciba\BackchannelAuthenticationHandler;
 use Beffroi\Oidc\Application\Device\DeviceAuthorizationHandler;
@@ -18,6 +19,7 @@ use Beffroi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
 use Beffroi\Oidc\Application\Token\TokenIssuer;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
+use function Symfony\Component\DependencyInjection\Loader\Configurator\inline_service;
 
 /**
  * How long what the provider issues stands (architecture §9). The bounds are the ones the specifications make, and a deployment may shorten but never lengthen past them.
@@ -134,14 +136,15 @@ final readonly class TokensSection extends ConfigurationSection
             ->end()
             ->end()
             ->validate()
-            ->ifTrue(
-                static fn (array $tokens): bool => (
-                    is_int($tokens['refresh_token_ttl'])
-                    && is_int($tokens['refresh_token_absolute_ttl'])
-                    && $tokens['refresh_token_ttl'] > $tokens['refresh_token_absolute_ttl']
-                ),
-            )
-            ->thenInvalid('The sliding lifetime of a refresh token (refresh_token_ttl) cannot exceed the absolute lifetime of its family (refresh_token_absolute_ttl).')
+            ->always(static function (array $tokens): array {
+                // an environment placeholder is a number at runtime only, where the issuer of the refresh
+                // tokens is handed the sliding lifetime through the same rule (SlidingRefreshLifetime)
+                if (is_int($tokens['refresh_token_ttl']) && is_int($tokens['refresh_token_absolute_ttl'])) {
+                    SlidingRefreshLifetime::assertWithin($tokens['refresh_token_ttl'], $tokens['refresh_token_absolute_ttl']);
+                }
+
+                return $tokens;
+            })
             ->end()
             ->end();
     }
@@ -149,21 +152,36 @@ final readonly class TokensSection extends ConfigurationSection
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
     {
         $tokens = $this->own($config);
-        $services->get(AuthorizationCodeIssuer::class)->arg('$lifetime', self::seconds($tokens, 'authorization_code_ttl'));
-        $services->get(PushedAuthorizationHandler::class)->arg('$lifetime', self::seconds($tokens, 'request_uri_ttl'));
+        // A lifetime the tree bounds above is handed over through the same bounds, which is what holds a
+        // number an environment variable carries to them (BoundedLifetime).
+        $services->get(AuthorizationCodeIssuer::class)->arg('$lifetime', self::bounded(
+            $tokens,
+            'authorization_code_ttl',
+            self::MAX_AUTHORIZATION_CODE_TTL,
+        ));
+        $services->get(PushedAuthorizationHandler::class)->arg('$lifetime', self::bounded($tokens, 'request_uri_ttl', self::MAX_REQUEST_URI_TTL));
         $services->get(JwtAccessTokenIssuer::class)->arg('$lifetime', self::seconds($tokens, 'access_token_ttl'));
         $services->get(OpaqueAccessTokenIssuer::class)->arg('$lifetime', self::seconds($tokens, 'access_token_ttl'));
         $services->get(JwtIdTokenIssuer::class)->arg('$lifetime', self::seconds($tokens, 'id_token_ttl'));
-        $services->get(TokenIssuer::class)->arg('$refreshTokenLifetime', self::seconds($tokens, 'refresh_token_ttl'));
+        $services->get(TokenIssuer::class)->arg(
+            '$refreshTokenLifetime',
+            inline_service(DateInterval::class)
+                ->factory(SlidingRefreshLifetime::interval(...))
+                ->args([self::integer($tokens, 'refresh_token_ttl'), self::integer($tokens, 'refresh_token_absolute_ttl')]),
+        );
         $services->get(AuthorizationCodeGrant::class)->arg('$refreshTokenFamilyLifetime', self::seconds($tokens, 'refresh_token_absolute_ttl'));
         $services->get(DeviceCodeGrant::class)->arg('$refreshTokenFamilyLifetime', self::seconds($tokens, 'refresh_token_absolute_ttl'));
-        $services->get(DeviceAuthorizationHandler::class)->arg('$lifetime', self::seconds($tokens, 'device_code_ttl'));
+        $services->get(DeviceAuthorizationHandler::class)->arg('$lifetime', self::bounded($tokens, 'device_code_ttl', self::MAX_DEVICE_CODE_TTL));
         $services->get(DeviceAuthorizationHandler::class)->arg('$interval', self::integer($tokens, 'device_code_interval'));
         $services->get(BackchannelAuthenticationGrant::class)->arg('$refreshTokenFamilyLifetime', self::seconds($tokens, 'refresh_token_absolute_ttl'));
-        $services->get(BackchannelAuthenticationHandler::class)->arg('$lifetime', self::seconds($tokens, 'backchannel_authentication_ttl'));
+        $services->get(BackchannelAuthenticationHandler::class)->arg('$lifetime', self::bounded(
+            $tokens,
+            'backchannel_authentication_ttl',
+            self::MAX_BACKCHANNEL_AUTHENTICATION_TTL,
+        ));
         $services->get(BackchannelAuthenticationHandler::class)->arg(
             '$maxRequestedExpiry',
-            self::seconds($tokens, 'backchannel_authentication_max_requested_expiry'),
+            self::bounded($tokens, 'backchannel_authentication_max_requested_expiry', self::MAX_BACKCHANNEL_AUTHENTICATION_TTL),
         );
         $services->get(BackchannelAuthenticationHandler::class)->arg('$interval', self::integer($tokens, 'backchannel_authentication_interval'));
         // What a row an access token still needs is kept for (issue #177) is read from these same two

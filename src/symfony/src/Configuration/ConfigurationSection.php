@@ -120,6 +120,23 @@ abstract readonly class ConfigurationSection implements ConfigurationSectionInte
     }
 
     /**
+     * A DateInterval built by the container from a number of seconds the tree holds to at least one and at
+     * most the maximum named, held to the same bounds when it is built: an environment placeholder is a
+     * number only then (BoundedLifetime).
+     *
+     * @param array<array-key, mixed> $section
+     */
+    protected static function bounded(array $section, string $key, int $maximum): object
+    {
+        $value = $section[$key] ?? null;
+        if (! is_int($value) && ! is_string($value)) {
+            throw new InvalidConfigurationException(sprintf('The "beffroi" configuration key "%s" must be a number of seconds.', $key));
+        }
+
+        return inline_service(DateInterval::class)->factory(BoundedLifetime::interval(...))->args([$value, $key, $maximum]);
+    }
+
+    /**
      * A RetentionWindow built by the container from a number of days: what a store keeps and the moment
      * before which it keeps nothing are one object, so no use case counts days from a number.
      *

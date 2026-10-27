@@ -339,6 +339,26 @@ final class BeffroiBundleConfigurationTest extends TestCase
             ],
             'staging_delay',
         ];
+        yield 'a staging delay that is no number of seconds' => [
+            [
+                'tenant' => self::MINIMAL['tenant'],
+                'keys' => self::MINIMAL['keys']
+                    + [
+                        'staging_delay' => 'soon',
+                    ],
+            ],
+            'staging_delay',
+        ];
+        yield 'a staging delay that is a fraction' => [
+            [
+                'tenant' => self::MINIMAL['tenant'],
+                'keys' => self::MINIMAL['keys']
+                    + [
+                        'staging_delay' => 1.5,
+                    ],
+            ],
+            'staging_delay',
+        ];
         yield 'no secret to bind a stored data key' => [
             [
                 'tenant' => self::MINIMAL['tenant'],
@@ -445,6 +465,27 @@ final class BeffroiBundleConfigurationTest extends TestCase
         // Then
         static::assertIsArray($config['keys']);
         static::assertSame(['%env(BEFFROI_DATA_KEY_SECRET)%'], $config['keys']['data_key_secrets'] ?? null);
+    }
+
+    /**
+     * Issue #911: an empty staging delay is the one an environment variable nobody set carries, which is no
+     * delay configured and leaves it to be derived from the max-age of the JWK Set.
+     */
+    #[Test]
+    public function anEmptyStagingDelayIsAccepted(): void
+    {
+        // When
+        $config = self::process([
+            'tenant' => self::MINIMAL['tenant'],
+            'keys' => self::MINIMAL['keys']
+                + [
+                    'staging_delay' => '',
+                ],
+        ]);
+
+        // Then
+        static::assertIsArray($config['keys']);
+        static::assertSame('', $config['keys']['staging_delay'] ?? null);
     }
 
     /**

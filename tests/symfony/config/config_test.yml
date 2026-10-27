@@ -128,6 +128,15 @@ parameters:
     # PlaneTest names BEFFROI_PLANE. Left alone, they are far above what the suite sends.
     env(BEFFROI_TEST_ORIGIN_BUDGET): 100000
     env(BEFFROI_TEST_CLIENT_BUDGET): 100000
+    # Four settings the application reads from the environment (issue #911), read the same way here: what an
+    # environment variable carries is a value at runtime only, so the bounds and the rules of the tree hold it
+    # when a service is built, and a test that plays one out of them names it before it boots a kernel. Left
+    # alone, they are the defaults of the bundle: sixty seconds for a code, thirty days for a refresh token, a
+    # staging delay derived from the max-age, and no nonce asked of a DPoP proof.
+    env(BEFFROI_TEST_AUTHORIZATION_CODE_TTL): 60
+    env(BEFFROI_TEST_REFRESH_TOKEN_TTL): 2592000
+    env(BEFFROI_TEST_STAGING_DELAY): ''
+    env(BEFFROI_TEST_DPOP_NONCE_REQUIRED): 'false'
     env(BEFFROI_TEST_KMS_DSN): 'sodium://?keys[signing]=PGI3BsLfSoNqJ2bNkhFrG4rqZoHn1dzo7OM52jV5lZw'
     env(BEFFROI_TEST_KMS_KEY_ID): signing
     # A second KMS client, which only the rewrap of the data keys needs: moving them from one client to
@@ -181,6 +190,13 @@ beffroi:
         key_id: '%env(BEFFROI_TEST_KMS_KEY_ID)%'
         storage: '%kernel.cache_dir%/keys'
         jwks_max_age: 120
+        staging_delay: '%env(BEFFROI_TEST_STAGING_DELAY)%'
+    tokens:
+        authorization_code_ttl: '%env(int:BEFFROI_TEST_AUTHORIZATION_CODE_TTL)%'
+        refresh_token_ttl: '%env(int:BEFFROI_TEST_REFRESH_TOKEN_TTL)%'
+    dpop:
+        nonce:
+            required: '%env(bool:BEFFROI_TEST_DPOP_NONCE_REQUIRED)%'
     webauthn:
         metadata_storage: '%kernel.cache_dir%/webauthn'
     # Where a test that wants a provenance to say a place writes the databases of addresses (issue #473);
@@ -855,6 +871,20 @@ services:
         tags: ['messenger.message_handler']
     test.beffroi.schedule:
         alias: Beffroi\Bundle\Scheduler\BeffroiSchedule
+        public: true
+    # What a setting the environment carries reaches (issue #911): the issuers of a code and of a refresh
+    # token, the schedule of the JOSE keys, and the nonce a DPoP proof is asked for.
+    test.beffroi.authorization_code_issuer:
+        alias: Beffroi\Oidc\Application\Authorization\AuthorizationCodeIssuer
+        public: true
+    test.beffroi.token_issuer:
+        alias: Beffroi\Oidc\Application\Token\TokenIssuer
+        public: true
+    test.beffroi.rotation_schedule:
+        alias: beffroi.keys.rotation_schedule
+        public: true
+    test.beffroi.dpop_nonce:
+        alias: Beffroi\Oidc\Port\DpopNonceInterface
         public: true
     test.beffroi.notifications_lane:
         alias: Beffroi\Bundle\Doctor\NotificationsLanePatience

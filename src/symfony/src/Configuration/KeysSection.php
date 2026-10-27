@@ -41,6 +41,7 @@ use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 use function is_array;
+use function is_int;
 use function is_string;
 
 /**
@@ -91,10 +92,21 @@ final readonly class KeysSection extends ConfigurationSection
             ->defaultValue(JwksHandler::DEFAULT_MAX_AGE)
             ->min(0)
             ->end()
-            ->integerNode('staging_delay')
-            ->info('How long a new key is published before it signs, in seconds (architecture §3.3, §9), for every family of keys but the SAML signing key, which has its own ("saml.identity_provider.staging_delay"); unless set, jwks_max_age plus the 60 s refetch cooldown of oidc_login: the max-age is what a relying party with a warm cache needs to see the new key, the cooldown what one served by a shared HTTP cache needs to refetch it.')
+            ->scalarNode('staging_delay')
+            ->info('How long a new key is published before it signs, in seconds (architecture §3.3, §9), for every family of keys but the SAML signing key, which has its own ("saml.identity_provider.staging_delay"); unless set, or set to an empty string, which is what an environment variable nobody set gives, jwks_max_age plus the 60 s refetch cooldown of oidc_login: the max-age is what a relying party with a warm cache needs to see the new key, the cooldown what one served by a shared HTTP cache needs to refetch it.')
             ->defaultNull()
-            ->min(0)
+            ->validate()
+            ->always(static function (mixed $delay): mixed {
+                // refused here as the schedule refuses it when it is built (StagingDelay), which is where a
+                // value of the environment is checked, a placeholder standing for one in this tree
+                if ($delay !== null && ! is_int($delay) && ! is_string($delay)) {
+                    throw new InvalidConfigurationException('The "beffroi" configuration key "staging_delay" is a number of seconds.');
+                }
+                StagingDelay::seconds($delay, 0);
+
+                return $delay;
+            })
+            ->end()
             ->end()
             ->integerNode('age')
             ->info('How long a key works before the planning stages a successor for it, in seconds, counted from its activation (architecture §3.3), for every family of keys but the SAML signing key, which has its own ("saml.identity_provider.age"): ninety days by default, which is inside the one to three years NIST SP 800-57 Part 1 Rev. 5 §5.3.6 gives a private signature key and short enough that the rotation path is walked four times a year rather than first walked during an incident. It has to be longer than the window a retiring key holds the JWK Set open for, which is the longest lifetime of what a key of that use is bound to, or every rotation would leave a key behind; the rotation refuses an age that is not.')
