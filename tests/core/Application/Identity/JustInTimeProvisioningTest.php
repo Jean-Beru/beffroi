@@ -47,6 +47,7 @@ use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use Beffroi\Core\Port\UuidGeneratorInterface;
 use Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord;
+use Beffroi\Core\Tests\Fixture\FixedClaims;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Core\Tests\Fixture\WritesAsTheyCome;
@@ -112,6 +113,7 @@ final class JustInTimeProvisioningTest extends TestCase
             new EnrolmentRefusal(new FederatedDomains(new InMemoryUpstreamProviders())),
             new SymfonyUuidGenerator(),
             $this->clock,
+            new FixedClaims(),
         );
         $this->linker = new IdentityLinker($this->identities, new SymfonyUuidGenerator(), $this->clock);
         $this->memberships = new InMemoryGroupMembershipRepository();

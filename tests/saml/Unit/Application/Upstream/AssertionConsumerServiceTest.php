@@ -30,6 +30,7 @@ use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord;
+use Beffroi\Core\Tests\Fixture\FixedClaims;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Core\Tests\Fixture\WritesAsTheyCome;
@@ -624,6 +625,7 @@ final class AssertionConsumerServiceTest extends TestCase
                     new EnrolmentRefusal(new FederatedDomains(new InMemoryUpstreamProviders())),
                     new SymfonyUuidGenerator(),
                     $this->clock,
+                    new FixedClaims(),
                 ),
                 new IdentityLinker($identities, new SymfonyUuidGenerator(), $this->clock),
                 new RecordingEventDispatcher(),

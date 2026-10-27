@@ -23,6 +23,8 @@ use Beffroi\Core\Application\Credential\EnrolmentRefusal;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
 use Beffroi\Core\Domain\Credential\PasswordRefusal;
 use Beffroi\Core\Domain\Identity\Address;
+use Beffroi\Core\Domain\Identity\Claim\Locale;
+use Beffroi\Core\Domain\Identity\Claim\Zoneinfo;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\Subject;
@@ -32,6 +34,7 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Exception\PasswordRefusedException;
 use Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord;
+use Beffroi\Core\Tests\Fixture\FixedClaims;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -57,6 +60,13 @@ final class UserProvisionerTest extends TestCase
      */
     private const string PROVIDER = 'https://idp.acme.example/saml';
 
+    /**
+     * The languages a person may say they read in this suite, where the bundle reads them out of ICU.
+     */
+    private const array KNOWN_LOCALES = [
+        'en-GB' => 'English (United Kingdom)',
+    ];
+
     private Tenant $tenant;
 
     private InMemoryUserRepository $users;
@@ -71,6 +81,11 @@ final class UserProvisionerTest extends TestCase
 
     private InMemoryUpstreamProviders $upstreamProviders;
 
+    /**
+     * What the deployment under test wires: the two claims whose set is closed.
+     */
+    private FixedClaims $claims;
+
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
@@ -79,6 +94,7 @@ final class UserProvisionerTest extends TestCase
         $this->hasher = new NativePasswordHasher();
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
         $this->upstreamProviders = new InMemoryUpstreamProviders();
+        $this->claims = new FixedClaims([new Zoneinfo(), new Locale(self::KNOWN_LOCALES)]);
         $breaches = BreachedPasswordsOfARecord::holding([self::BREACHED]);
         $this->provisioner = $this->provisionerAsking($breaches);
     }
@@ -248,6 +264,72 @@ final class UserProvisionerTest extends TestCase
 
         // Then
         static::assertNull($user->address);
+    }
+
+    /**
+     * Issue #846: a closed set is the claim's and not a page's (issue #479), so what an operator says is held
+     * to it as what a person says on the page of the account is.
+     */
+    #[Test]
+    #[DataProvider('provideValuesOutsideTheSetOfTheirClaim')]
+    public function aValueOutsideTheSetOfItsClaimIsRefused(Profile $profile, string $value): void
+    {
+        // Given
+        $user = $this->provisioner->create($this->tenant, 'alice');
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs(sprintf('The value "%s" is not one this claim may hold.', $value));
+
+        // When
+        $this->provisioner->setProfile($user, $profile);
+    }
+
+    /**
+     * @return iterable<string, array{Profile, string}>
+     */
+    public static function provideValuesOutsideTheSetOfTheirClaim(): iterable
+    {
+        yield 'a zone the zoneinfo database does not carry' => [new Profile(zoneinfo: 'Europe/Atlantis'), 'Europe/Atlantis'];
+        yield 'a language the deployment does not know' => [new Profile(locale: 'tlh'), 'tlh'];
+    }
+
+    #[Test]
+    public function aValueOutsideTheSetOfItsClaimWritesNothing(): void
+    {
+        // Given
+        $user = $this->provisioner->create($this->tenant, 'alice');
+        $this->provisioner->setProfile($user, new Profile('Alice Liddell', zoneinfo: 'Europe/London'), '+44 1865 000000', true);
+
+        // When
+        try {
+            $this->provisioner->setProfile($user, new Profile(givenName: 'Alice', zoneinfo: 'Europe/Atlantis'));
+        } catch (InvalidArgumentException) {
+        }
+
+        // Then
+        static::assertSame('Alice Liddell', $user->profile->name);
+        static::assertSame('Europe/London', $user->profile->zoneinfo);
+        static::assertSame('+44 1865 000000', $user->phoneNumber);
+    }
+
+    /**
+     * The set is the claim's, so a claim the deployment wires nothing for holds a value to nothing but what
+     * the model refuses.
+     */
+    #[Test]
+    public function aClaimNothingWiresHoldsNoSet(): void
+    {
+        // Given
+        $this->claims = new FixedClaims();
+        $provisioner = $this->provisionerAsking(BreachedPasswordsOfARecord::holding([]));
+        $user = $provisioner->create($this->tenant, 'alice');
+
+        // When
+        $provisioner->setProfile($user, new Profile(zoneinfo: 'Europe/Atlantis'));
+
+        // Then
+        static::assertSame('Europe/Atlantis', $user->profile->zoneinfo);
     }
 
     #[Test]
@@ -643,6 +725,7 @@ final class UserProvisionerTest extends TestCase
             new EnrolmentRefusal(new FederatedDomains($this->upstreamProviders)),
             new SymfonyUuidGenerator(),
             $this->clock,
+            $this->claims,
         );
     }
 }
