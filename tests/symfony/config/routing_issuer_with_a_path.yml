@@ -1,0 +1,6 @@
+# The routes of the bundle under the path of the issuer of config_test_issuer_with_a_path.yml, as an
+# application whose issuer has a path imports them, so that the discovery document is where OIDC Discovery
+# §4.1 has a client look for it.
+beffroi:
+    resource: '@BeffroiBundle/config/routes.php'
+    prefix: /idp
