@@ -67,6 +67,7 @@ final class TenantLookTest extends TestCase
         yield 'a variable' => ['var(--brand)'];
         yield 'a declaration of its own' => ['#1b4b8f; display: none'];
         yield 'empty' => [''];
+        yield 'a line feed behind a colour that would pass' => ["#1b4b8f\n"];
     }
 
     #[Test]

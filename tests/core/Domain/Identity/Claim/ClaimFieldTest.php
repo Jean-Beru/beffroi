@@ -165,18 +165,29 @@ final class ClaimFieldTest extends TestCase
     }
 
     /**
-     * A date input renders a year alone empty, and a save on an empty input would quietly erase what an
-     * import wrote, so what is offered for such a value is a line of text.
+     * A date input renders a value it cannot carry empty, a year alone as much as a whole date with a
+     * line feed behind it, and a save on an empty input would quietly erase what an import wrote, so
+     * what is offered for such a value is a line of text.
      */
     #[Test]
-    public function aValueADateInputCannotCarryIsOfferedAsALineOfText(): void
+    #[DataProvider('provideValuesADateInputCannotCarry')]
+    public function aValueADateInputCannotCarryIsOfferedAsALineOfText(string $value): void
     {
         // When
-        $field = ClaimField::date('\d{4}(-\d{2}-\d{2})?')->forHolding('1815');
+        $field = ClaimField::date('\d{4}(-\d{2}-\d{2})?')->forHolding($value);
 
         // Then
         static::assertSame('text', $field->kind);
         static::assertSame('\d{4}(-\d{2}-\d{2})?', $field->pattern);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideValuesADateInputCannotCarry(): iterable
+    {
+        yield 'a year alone' => ['1815'];
+        yield 'a line feed behind a whole date' => ["1815-12-10\n"];
     }
 
     #[Test]

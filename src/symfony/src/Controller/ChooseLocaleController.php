@@ -104,6 +104,6 @@ final readonly class ChooseLocaleController
     {
         $target = $parameters[self::TARGET_PARAMETER] ?? null;
 
-        return is_string($target) && preg_match('#^/(?![/\\\\])[^\s\\\\]*$#', $target) === 1 ? $target : '/';
+        return is_string($target) && preg_match('#^/(?![/\\\\])[^\s\\\\]*$#D', $target) === 1 ? $target : '/';
     }
 }

@@ -69,6 +69,7 @@ final class GeoLocationTest extends TestCase
     {
         yield 'lowercase country' => ['fr', null, null];
         yield 'three letter country' => ['FRA', null, null];
+        yield 'a line feed behind a country that would pass' => ["FR\n", null, null];
         yield 'latitude alone' => [null, 45.0, null];
         yield 'longitude alone' => [null, null, 4.0];
         yield 'latitude out of range' => [null, 91.0, 0.0];

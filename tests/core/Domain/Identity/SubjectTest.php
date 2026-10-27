@@ -80,5 +80,6 @@ final class SubjectTest extends TestCase
         yield 'longer than 255' => [str_repeat('x', 256)];
         yield 'space' => ['alice smith'];
         yield 'non ASCII' => ['alicé'];
+        yield 'a line feed behind a subject that would pass' => ["alice\n"];
     }
 }

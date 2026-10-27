@@ -57,6 +57,18 @@ final class IssuerTest extends TestCase
         yield 'IPv6 loopback' => ['http://[::1]:8080'];
     }
 
+    /**
+     * A loopback address is the four numbers of 127.0.0.0/8 and nothing behind them. Every caller hands
+     * this method a host parse_url() gave, which writes a control character of a host as an underscore,
+     * so the line feed is refused here for the sake of the method itself.
+     */
+    #[Test]
+    public function aLoopbackAddressWithALineFeedBehindItIsNoLoopbackHost(): void
+    {
+        // When / Then
+        static::assertFalse(Issuer::isLoopbackHost("127.0.0.1\n"));
+    }
+
     #[Test]
     #[DataProvider('provideInvalidIssuers')]
     public function itRejectsWhatClientsWouldRefuseOrCompareDifferently(string $issuer, string $reason): void
