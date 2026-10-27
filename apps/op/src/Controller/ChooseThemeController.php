@@ -48,6 +48,6 @@ final readonly class ChooseThemeController
     {
         $target = $request->request->getString('target');
 
-        return preg_match('#^/(?![/\\\\])[^\s\\\\]*$#', $target) === 1 ? $target : '/';
+        return preg_match('#^/(?![/\\\\])[^\s\\\\]*$#D', $target) === 1 ? $target : '/';
     }
 }

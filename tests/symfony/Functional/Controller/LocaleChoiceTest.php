@@ -108,7 +108,8 @@ final class LocaleChoiceTest extends BrowserTestCase
     }
 
     #[Test]
-    public function aTargetOfAnotherOriginComesBackToTheRoot(): void
+    #[DataProvider('provideTargetsThatAreNotAPathOfThisOrigin')]
+    public function aTargetThatIsNotAPathOfThisOriginComesBackToTheRoot(string $target): void
     {
         // Given
         $token = $this->token();
@@ -118,11 +119,20 @@ final class LocaleChoiceTest extends BrowserTestCase
         $this->browser->request('POST', '/locale', [
             '_token' => $token,
             'locale' => 'fr',
-            'target' => '//elsewhere.test/callback',
+            'target' => $target,
         ]);
 
         // Then
         static::assertSame('/', $this->browser->getResponse()->headers->get('Location'));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideTargetsThatAreNotAPathOfThisOrigin(): iterable
+    {
+        yield 'another origin' => ['//elsewhere.test/callback'];
+        yield 'a line feed behind a path that would pass' => ["/account\n"];
     }
 
     #[Test]

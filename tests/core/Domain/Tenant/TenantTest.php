@@ -40,6 +40,7 @@ final class TenantTest extends TestCase
         yield 'trailing hyphen' => ['acme-'];
         yield 'space' => ['ac me'];
         yield 'too long' => [str_repeat('a', 64)];
+        yield 'a line feed behind a slug that would pass' => ["acme\n"];
     }
 
     #[Test]

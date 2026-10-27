@@ -91,6 +91,7 @@ final class ProfileTest extends TestCase
         yield 'day first' => ['21/05/1990'];
         yield 'trailing characters' => ['1990-05-21T00:00'];
         yield 'leading characters' => ['born 1990'];
+        yield 'a line feed behind a birthdate that would pass' => ["1990-05-21\n"];
     }
 
     /**

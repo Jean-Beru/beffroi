@@ -72,5 +72,6 @@ final class PasswordDigestTest extends TestCase
         yield 'one character long' => [str_repeat('A', 41)];
         yield 'lower case' => ['5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8'];
         yield 'not hexadecimal' => [str_repeat('G', 40)];
+        yield 'a line feed behind a digest that would pass' => [str_repeat('A', 40) . "\n"];
     }
 }
