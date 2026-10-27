@@ -11,8 +11,11 @@ use Beffroi\Oidc\Tests\Fixture\FakeClientLoadBudget;
 use Beffroi\Oidc\Tests\Fixture\Grants;
 use function base64_encode;
 use DateTimeImmutable;
+use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
+use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\SessionEnd;
 use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\Algorithms;
@@ -20,12 +23,16 @@ use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Oidc\Application\Client\ClientAuthenticator;
+use Beffroi\Oidc\Application\Grant\RecordedGrants;
 use Beffroi\Oidc\Application\Revocation\RevocationHandler;
+use Beffroi\Oidc\Application\Token\AccessTokenInspector;
 use Beffroi\Oidc\Tests\Fixture\AccessTokenShapes;
 use Beffroi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationCode;
 use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Event\TokenRevoked;
 use Beffroi\Oidc\Domain\Token\UserAuthorization;
@@ -68,6 +75,12 @@ final class RevocationHandlerTest extends TestCase
 
     private InMemoryRefreshTokenRepository $refreshTokens;
 
+    private InMemoryAuthenticationSessionRepository $sessions;
+
+    private InMemoryAuthorizationCodeRepository $grants;
+
+    private InMemoryUserRepository $users;
+
     private RecordingEventDispatcher $events;
 
     private RevocationHandler $handler;
@@ -77,7 +90,13 @@ final class RevocationHandlerTest extends TestCase
         $this->tenant = Fixtures::tenant();
         $this->clock = new MockClock('2026-09-17T12:00:00+00:00');
         $this->context = Fixtures::context($this->clock->now());
-        $this->session = Fixtures::session(Fixtures::user($this->tenant), $this->clock->now()->modify('-1 hour'));
+        $user = Fixtures::user($this->tenant);
+        $this->session = Fixtures::session($user, $this->clock->now()->modify('-1 hour'));
+        $this->sessions = new InMemoryAuthenticationSessionRepository();
+        $this->sessions->save($this->session);
+        $this->users = new InMemoryUserRepository();
+        $this->users->save($user);
+        $this->grants = new InMemoryAuthorizationCodeRepository();
         $hasher = new FakePasswordHasher();
         $this->client = Clients::confidential($this->tenant, $hasher->hash(Clients::SECRET));
         $this->other = Clients::confidential($this->tenant, $hasher->hash(Clients::SECRET), Methods::clientSecretPost(), 'other');
@@ -237,7 +256,7 @@ final class RevocationHandlerTest extends TestCase
             static fn (): string => 'eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL2lkLm90aGVyLmV4YW1wbGUifQ.c2ln',
         ];
         yield 'an expired JWT of the provider' => [
-            static fn (self $test): string => $test->jwt($test->client, $test->clock->now()->modify('-1 hour')),
+            static fn (self $test): string => $test->jwt($test->code($test->client), $test->clock->now()->modify('-1 hour')),
         ];
     }
 
@@ -324,7 +343,7 @@ final class RevocationHandlerTest extends TestCase
     public function itRefusesToRevokeAJwtOfTheProvider(): void
     {
         // Given
-        $token = $this->jwt($this->client, $this->clock->now());
+        $token = $this->jwt($this->code($this->client), $this->clock->now());
 
         // Then
         $this->expectException(UnsupportedTokenTypeException::class);
@@ -339,6 +358,61 @@ final class RevocationHandlerTest extends TestCase
             ],
             $this->context,
         );
+    }
+
+    /**
+     * RFC 7009 §2.2: a self-contained token the provider no longer honours is an invalid token, answered 200
+     * with nothing said, and not a token the endpoint cannot take back. It descends from a session that ended
+     * or from a grant that was revoked, or it names a person the provider no longer serves, and UserInfo and
+     * the introspection refuse it for the same reasons (AccessTokenInspector, issue #847).
+     *
+     * @param callable(self): string $token
+     */
+    #[Test]
+    #[DataProvider('provideJwtsTheProviderNoLongerHonours')]
+    public function itAnswersAJwtTheProviderNoLongerHonoursAsAnInvalidToken(callable $token): void
+    {
+        // Given
+        $value = $token($this);
+
+        // When
+        $this->handler->handle(
+            $this->tenant,
+            self::basic('oidc-demo'),
+            [
+                'token' => $value,
+            ],
+            $this->context,
+        );
+
+        // Then
+        static::assertSame([], $this->events->of(TokenRevoked::class));
+    }
+
+    /**
+     * @return iterable<string, array{callable(self): string}>
+     */
+    public static function provideJwtsTheProviderNoLongerHonours(): iterable
+    {
+        yield 'of a session that ended' => [static function (self $test): string {
+            $token = $test->jwt($test->code($test->client), $test->clock->now());
+            $test->session->end(SessionEnd::User, $test->clock->now());
+
+            return $token;
+        }];
+        yield 'of a grant that was revoked' => [static function (self $test): string {
+            $code = $test->code($test->client);
+            $token = $test->jwt($code, $test->clock->now());
+            $code->revoke($test->clock->now());
+
+            return $token;
+        }];
+        yield 'of a person no longer served' => [static function (self $test): string {
+            $token = $test->jwt($test->code($test->client), $test->clock->now());
+            $test->session->user->disable($test->clock->now());
+
+            return $token;
+        }];
     }
 
     /**
@@ -417,6 +491,13 @@ final class RevocationHandlerTest extends TestCase
 
     private function handler(InMemoryClientRepository $clients, FakePasswordHasher $hasher, AccessTokenRepositoryInterface $accessTokens): RevocationHandler
     {
+        $verifier = AccessTokenShapes::verifier(
+            new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
+            $clients,
+            $accessTokens,
+            Subjects::publicKind(),
+        );
+
         return new RevocationHandler(
             new ClientAuthenticator(
                 $clients,
@@ -427,12 +508,8 @@ final class RevocationHandlerTest extends TestCase
                 new FakeClientLoadBudget(),
             ),
             new Endpoints(),
-            AccessTokenShapes::verifier(
-                new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
-                $clients,
-                $accessTokens,
-                Subjects::publicKind(),
-            ),
+            $verifier,
+            new AccessTokenInspector($verifier, $this->sessions, new RecordedGrants([$this->grants]), Subjects::personOfAToken($this->users)),
             $accessTokens,
             $this->refreshTokens,
             $this->events,
@@ -447,7 +524,18 @@ final class RevocationHandlerTest extends TestCase
         )->value;
     }
 
-    private function jwt(Client $client, DateTimeImmutable $issuedAt): string
+    /**
+     * A code of the client, kept where a token that descends from it is looked for (RecordedGrants).
+     */
+    private function code(Client $client): AuthorizationCode
+    {
+        $code = Tokens::code('the-code', $client, $this->session, $this->clock->now());
+        $this->grants->save($code);
+
+        return $code;
+    }
+
+    private function jwt(AuthorizationCode $code, DateTimeImmutable $issuedAt): string
     {
         return new JwtAccessTokenIssuer(
             $this->jwts->signer,
@@ -456,7 +544,7 @@ final class RevocationHandlerTest extends TestCase
             new SymfonyUuidGenerator(),
             Subjects::sealedPerson(),
         )->issue(
-            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code('the-code', $client, $this->session, $issuedAt)),
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
             $issuedAt,
         )->value;
     }
