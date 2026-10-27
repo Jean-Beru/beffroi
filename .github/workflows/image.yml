@@ -120,6 +120,12 @@ jobs:
             arch: arm64
             runner: ARM64
     runs-on: [self-hosted, "${{ matrix.runner }}"]
+    # Each platform names its digest as an output of its own, and GitHub combines the outputs of the jobs of a
+    # matrix, an empty value replacing none. No artifact carries them: the storage of artifacts is counted for
+    # the whole organisation and capped, and a digest is a line.
+    outputs:
+      amd64: ${{ steps.digest.outputs.amd64 }}
+      arm64: ${{ steps.digest.outputs.arm64 }}
     permissions:
       contents: read
       packages: write
@@ -151,6 +157,9 @@ jobs:
       - name: "Build"
         id: build
         uses: docker/build-push-action@v7
+        # Nor the build record, which the action uploads as an artifact and nothing here reads.
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
         with:
           context: .
           file: apps/op/Dockerfile
@@ -170,20 +179,12 @@ jobs:
           cache-from: type=gha,scope=op-${{ matrix.arch }}
           cache-to: ${{ needs.prepare.outputs.push == 'true' && format('type=gha,mode=max,scope=op-{0},ignore-error=true', matrix.arch) || '' }}
       - name: "Its digest, for the index"
+        id: digest
         if: needs.prepare.outputs.push == 'true'
         env:
+          ARCH: ${{ matrix.arch }}
           DIGEST: ${{ steps.build.outputs.digest }}
-        run: |
-          mkdir -p "${RUNNER_TEMP}/digests"
-          touch "${RUNNER_TEMP}/digests/${DIGEST#sha256:}"
-      - uses: actions/upload-artifact@v7
-        if: needs.prepare.outputs.push == 'true'
-        with:
-          name: digest-${{ matrix.arch }}
-          path: ${{ runner.temp }}/digests/*
-          if-no-files-found: error
-          retention-days: 1
-          overwrite: true
+        run: echo "${ARCH}=${DIGEST}" >> "${GITHUB_OUTPUT}"
 
   merge:
     name: "The index of both platforms, under its tags"
@@ -193,11 +194,6 @@ jobs:
     permissions:
       packages: write
     steps:
-      - uses: actions/download-artifact@v8
-        with:
-          path: ${{ runner.temp }}/digests
-          pattern: digest-*
-          merge-multiple: true
       - uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -208,8 +204,9 @@ jobs:
         with:
           driver: docker
       - name: "Write the index and tag it"
-        working-directory: ${{ runner.temp }}/digests
         env:
+          AMD64: ${{ needs.build.outputs.amd64 }}
+          ARM64: ${{ needs.build.outputs.arm64 }}
           TAGS: ${{ needs.prepare.outputs.tags }}
           SOURCE: ${{ github.server_url }}/${{ github.repository }}
           REVISION: ${{ github.sha }}
@@ -219,8 +216,11 @@ jobs:
           read -ra names <<< "${TAGS}"
           options=()
           for name in "${names[@]}"; do options+=(--tag "${IMAGE}:${name}"); done
-          images=()
-          for digest in *; do images+=("${IMAGE}@sha256:${digest}"); done
+          if [ -z "${AMD64}" ] || [ -z "${ARM64}" ]; then
+            echo "::error title=A platform named no digest::amd64 is '${AMD64}' and arm64 is '${ARM64}': an index of one platform would be tagged, so nothing is."
+            exit 1
+          fi
+          images=("${IMAGE}@${AMD64}" "${IMAGE}@${ARM64}")
           docker buildx imagetools create "${options[@]}" \
             --annotation "index:org.opencontainers.image.title=beffroi/op" \
             --annotation "index:org.opencontainers.image.description=${DESCRIPTION}" \
