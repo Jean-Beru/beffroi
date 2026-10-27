@@ -60,6 +60,8 @@ final class GrantTypeNameTest extends TestCase
         yield 'a colon with nothing after it' => ['urn:'];
         yield 'a fragment' => ['https://example.com/grants#invented'];
         yield 'a relative reference' => ['/grants/invented'];
+        yield 'a line feed behind a name of the registry' => ["authorization_code\n"];
+        yield 'a line feed behind an absolute URI' => ["urn:ietf:params:oauth:grant-type:device_code\n"];
     }
 
     /**

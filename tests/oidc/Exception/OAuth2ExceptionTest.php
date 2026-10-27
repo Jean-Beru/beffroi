@@ -271,6 +271,7 @@ final class OAuth2ExceptionTest extends TestCase
         yield 'backslash' => ['A back\\slash'];
         yield 'beyond ASCII' => ['Un accent aigu: é'];
         yield 'line break' => ["A line\nbreak"];
+        yield 'a line feed behind a description that would pass' => ["The request is missing a parameter.\n"];
     }
 
     /**
