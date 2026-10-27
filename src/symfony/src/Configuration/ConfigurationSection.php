@@ -120,20 +120,21 @@ abstract readonly class ConfigurationSection implements ConfigurationSectionInte
     }
 
     /**
-     * A DateInterval built by the container from a number of seconds the tree holds to at least one and at
-     * most the maximum named, held to the same bounds when it is built: an environment placeholder is a
-     * number only then (BoundedLifetime).
+     * A DateInterval built by the container from a number of seconds the tree holds to a second at least and,
+     * where it names one, to a maximum, held to the same bounds when it is built: an environment placeholder
+     * is a number only then (BoundedLifetime).
      *
      * @param array<array-key, mixed> $section
+     * @param string|null $named what the refusal calls the node, its key unless the key alone names several
      */
-    protected static function bounded(array $section, string $key, int $maximum): object
+    protected static function bounded(array $section, string $key, ?int $maximum = null, ?string $named = null): object
     {
         $value = $section[$key] ?? null;
         if (! is_int($value) && ! is_string($value)) {
-            throw new InvalidConfigurationException(sprintf('The "beffroi" configuration key "%s" must be a number of seconds.', $key));
+            throw new InvalidConfigurationException(sprintf('The "beffroi" configuration key "%s" must be a number of seconds.', $named ?? $key));
         }
 
-        return inline_service(DateInterval::class)->factory(BoundedLifetime::interval(...))->args([$value, $key, $maximum]);
+        return inline_service(DateInterval::class)->factory(BoundedLifetime::interval(...))->args([$value, $named ?? $key, $maximum]);
     }
 
     /**

@@ -288,6 +288,37 @@ final class DeviceAuthorizationRecordTest extends TestCase
             0,
             'a polling interval of at least one second',
         ];
+        yield 'an interval longer than a client is asked to respect' => [
+            self::digest('the-device-code'),
+            self::digest('BCDFGHJK'),
+            '2026-09-26T09:10:00+00:00',
+            DeviceAuthorizationRecord::MAX_INTERVAL + 1,
+            'a polling interval of at most 30 seconds, a client respecting it (RFC 8628 section 3.5); 31 given',
+        ];
+    }
+
+    /**
+     * RFC 8628 §3.5: a request is made with an interval of a second at least and of the bound at most, both
+     * ends included.
+     */
+    #[Test]
+    #[DataProvider('provideIntervalsARequestIsMadeWith')]
+    public function itIsMadeWithAnIntervalFromOneSecondToItsBound(int $interval): void
+    {
+        // When
+        $record = $this->record($interval);
+
+        // Then
+        static::assertSame($interval, $record->interval);
+    }
+
+    /**
+     * @return iterable<string, array{int}>
+     */
+    public static function provideIntervalsARequestIsMadeWith(): iterable
+    {
+        yield 'a second' => [1];
+        yield 'the bound' => [DeviceAuthorizationRecord::MAX_INTERVAL];
     }
 
     private static function digest(string $value): string
@@ -295,7 +326,7 @@ final class DeviceAuthorizationRecordTest extends TestCase
         return DrawnSecret::digestOf($value);
     }
 
-    private function record(): DeviceAuthorizationRecord
+    private function record(int $interval = DeviceAuthorizationRecord::DEFAULT_INTERVAL): DeviceAuthorizationRecord
     {
         return new DeviceAuthorizationRecord(
             DrawnSecret::digestOf('the-device-code'),
@@ -307,6 +338,7 @@ final class DeviceAuthorizationRecordTest extends TestCase
             Fixtures::context($this->issuedAt),
             $this->issuedAt,
             $this->issuedAt->modify('+600 seconds'),
+            $interval,
         );
     }
 }

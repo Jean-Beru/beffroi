@@ -9,6 +9,7 @@ use Beffroi\Bundle\Load\LoadBudget;
 use Beffroi\Core\Exception\LoadBudgetSpentException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
 
 /**
@@ -107,6 +108,21 @@ final class LoadBudgetTest extends TestCase
             // Then
             static::assertSame('a-client', $spent->client);
         }
+    }
+
+    /**
+     * Issue #913: the tree holds a written limit to one request at least, and a number an environment
+     * variable carries is held to it when the budget is built.
+     */
+    #[Test]
+    public function itIsNotBuiltForNoRequest(): void
+    {
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIs('The "beffroi" configuration key "load.origin.limit" is a number of requests of at least 1, 0 given.');
+
+        // When
+        self::budget(0);
     }
 
     private static function budget(int $limit = self::LIMIT): LoadBudget

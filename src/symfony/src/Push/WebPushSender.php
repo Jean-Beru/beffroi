@@ -12,6 +12,7 @@ use Beffroi\Core\Port\ApplicationServerKeyProviderInterface;
 use function is_string;
 use Psr\Clock\ClockInterface;
 use function sprintf;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Throwable;
 use WebPush\ExtensionManager;
@@ -68,8 +69,11 @@ final readonly class WebPushSender
     /**
      * @param string $subject the "sub" of the signed token, a "mailto:" or "https:" URI a push service can
      *                        reach this deployment at when something is wrong with what it sends
-     *                        (RFC 8292 §2.1)
+     *                        (RFC 8292 §2.1); not empty, which the tree refuses written and which a
+     *                        variable of the environment can only be refused for here
      * @param float $timeout seconds given to a push service before a worker is given back
+     *
+     * @throws InvalidConfigurationException when the subject is empty
      */
     public function __construct(
         private ApplicationServerKeyProviderInterface $keys,
@@ -78,6 +82,9 @@ final readonly class WebPushSender
         public string $subject,
         public float $timeout,
     ) {
+        if ($subject === '') {
+            throw new InvalidConfigurationException('The "beffroi" configuration key "web_push.subject" names the "mailto:" or "https:" URI a push service can reach the operator at (RFC 8292 section 2.1), and it is empty.');
+        }
     }
 
     public function send(PushSubscription $subscription, PushMessage $message): PushDelivery

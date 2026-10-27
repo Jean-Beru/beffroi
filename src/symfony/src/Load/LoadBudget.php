@@ -7,6 +7,8 @@ namespace Beffroi\Bundle\Load;
 use DateInterval;
 use Beffroi\Core\Exception\LoadBudgetSpentException;
 use function max;
+use function sprintf;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\RateLimiter\Storage\StorageInterface;
@@ -36,12 +38,25 @@ final readonly class LoadBudget
 
     private RateLimiterFactoryInterface $limiter;
 
+    /**
+     * @param int $limit the requests taken in a window, one at least: the tree refuses fewer written, and a
+     *                   number an environment variable carries is a number only here
+     *
+     * @throws InvalidConfigurationException when the limit is below one request
+     */
     public function __construct(
         public string $name,
         int $limit,
         DateInterval $interval,
         StorageInterface $storage,
     ) {
+        if ($limit < 1) {
+            throw new InvalidConfigurationException(sprintf(
+                'The "beffroi" configuration key "load.%s.limit" is a number of requests of at least 1, %d given.',
+                $name,
+                $limit,
+            ));
+        }
         $this->limiter = new RateLimiterFactory([
             'id' => 'beffroi_' . $name . '_load',
             'policy' => 'sliding_window',

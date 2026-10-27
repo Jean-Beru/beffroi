@@ -134,8 +134,9 @@ beffroi:
     dpop:
         nonce:
             required: '%env(bool:BEFFROI_DPOP_NONCE_REQUIRED)%'
-    # The lifetimes, in seconds. A deployment may shorten them; the bundle refuses a lifetime past the bound a
-    # specification sets, a number of the environment included, when the service it reaches is built.
+    # The lifetimes, in seconds. A deployment may shorten them; the bundle refuses a lifetime below a second or
+    # past the bound a specification sets, a number of the environment included, when the service it reaches
+    # is built.
     tokens:
         authorization_code_ttl: '%env(int:BEFFROI_AUTHORIZATION_CODE_TTL)%'
         access_token_ttl: '%env(int:BEFFROI_ACCESS_TOKEN_TTL)%'

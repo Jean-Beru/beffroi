@@ -19,6 +19,7 @@ use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Beffroi\Oidc\Exception\LogicException;
 use Beffroi\Oidc\Tests\Fixture\Clients;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -299,6 +300,44 @@ final class BackchannelAuthenticationRecordTest extends TestCase
 
         // When
         $this->record(interval: 0);
+    }
+
+    /**
+     * CIBA Core §11: an interval a client is asked to respect is one it can respect.
+     */
+    #[Test]
+    public function itAnnouncesAnIntervalOfAtMostItsBound(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A backchannel authentication request announces a polling interval of at most 30 seconds, a client respecting it (CIBA Core section 11); 31 given.');
+
+        // When
+        $this->record(interval: BackchannelAuthenticationRecord::MAX_INTERVAL + 1);
+    }
+
+    /**
+     * CIBA Core §7.3, §11: a request is made with an interval of a second at least and of the bound at most,
+     * both ends included.
+     */
+    #[Test]
+    #[DataProvider('provideIntervalsARequestIsMadeWith')]
+    public function itIsMadeWithAnIntervalFromOneSecondToItsBound(int $interval): void
+    {
+        // When
+        $record = $this->record(interval: $interval);
+
+        // Then
+        static::assertSame($interval, $record->interval);
+    }
+
+    /**
+     * @return iterable<string, array{int}>
+     */
+    public static function provideIntervalsARequestIsMadeWith(): iterable
+    {
+        yield 'a second' => [1];
+        yield 'the bound' => [BackchannelAuthenticationRecord::MAX_INTERVAL];
     }
 
     /**

@@ -19,10 +19,12 @@ use Beffroi\Oidc\Application\Device\DeviceAuthorizationHandler;
 use Beffroi\Oidc\Application\Secret\UserCodeDrawer;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryDeviceAuthorizationRecordRepository;
+use Beffroi\Oidc\Domain\Device\DeviceAuthorizationRecord;
 use Beffroi\Oidc\Domain\Device\DeviceAuthorizationResponse;
 use Beffroi\Oidc\Domain\Device\UserCode;
 use Beffroi\Oidc\Domain\Resource\ResourceIndicator;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Beffroi\Oidc\Exception\InvalidClientException;
 use Beffroi\Oidc\Exception\InvalidRequestException;
 use Beffroi\Oidc\Exception\InvalidScopeException;
@@ -305,6 +307,22 @@ final class DeviceAuthorizationHandlerTest extends TestCase
         // Then
         static::assertSame(300, $response->expiresIn);
         static::assertSame(7, $response->interval);
+    }
+
+    /**
+     * RFC 8628 §3.5: the interval the deployment wired is held to the bound of a request when the handler is
+     * built, so that a number an environment variable carries refuses the start of the service rather than
+     * its first request (issue #913).
+     */
+    #[Test]
+    public function itIsNotBuiltWithAnIntervalNoRequestMayBeMadeWith(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A device authorization request announces a polling interval of at most 30 seconds, a client respecting it (RFC 8628 section 3.5); 31 given.');
+
+        // When
+        $this->handler(interval: DeviceAuthorizationRecord::MAX_INTERVAL + 1);
     }
 
     /**

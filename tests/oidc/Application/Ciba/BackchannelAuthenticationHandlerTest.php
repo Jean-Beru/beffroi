@@ -23,8 +23,10 @@ use Beffroi\Oidc\Application\Client\ClientAuthenticator;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryBackchannelAuthenticationRecordRepository;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryRequestObjectReplayGuard;
+use Beffroi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord;
 use Beffroi\Oidc\Domain\Ciba\BackchannelAuthenticationResponse;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Beffroi\Oidc\Exception\InvalidBindingMessageException;
 use Beffroi\Oidc\Exception\InvalidClientException;
 use Beffroi\Oidc\Exception\InvalidRequestException;
@@ -660,6 +662,22 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
         // Then
         static::assertSame(120, $response->expiresIn);
         static::assertSame(7, $response->interval);
+    }
+
+    /**
+     * CIBA Core §11: the interval the deployment wired is held to the bound of a request when the handler is
+     * built, so that a number an environment variable carries refuses the start of the service rather than
+     * its first request (issue #913).
+     */
+    #[Test]
+    public function itIsNotBuiltWithAnIntervalNoRequestMayBeMadeWith(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A backchannel authentication request announces a polling interval of at most 30 seconds, a client respecting it (CIBA Core section 11); 31 given.');
+
+        // When
+        $this->handler(interval: BackchannelAuthenticationRecord::MAX_INTERVAL + 1);
     }
 
     private const string NOTIFICATION_TOKEN = 'a8f2c1d0e9b7a6c5d4e3f2a1b0';
