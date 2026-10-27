@@ -22,8 +22,8 @@ framework:
         cookie_samesite: lax
     # Declared as the recipe of symfony/security-csrf 8.2 writes it into an application that installs the bundle
     # through Flex (symfony/recipes#1554, #1553): three identifiers of the forms of Symfony whose token is checked
-    # against where the request says it comes from, and not against the session. The forms of the bundle post theirs
-    # under identifiers of the bundle, which no such list names, so that their token stays the one their session
+    # against where the request says it comes from, and not against the session. A form of the bundle that carries a
+    # token posts it under an identifier of the bundle, which no such list names, so that it stays the one the session
     # holds: under the "Referrer-Policy: no-referrer" of the interaction pages, a browser that sends no
     # "Sec-Fetch-Site" says nothing of where a form comes from (issue #891).
     csrf_protection:
