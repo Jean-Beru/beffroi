@@ -285,7 +285,7 @@ final class Tokens
      */
     public static function accessToken(AccessTokenIssuerInterface $issuer, AuthorizationInterface $authorization, DateTimeImmutable $now): AccessToken
     {
-        return $issuer->issue($authorization, $issuer->address($authorization->client), $now);
+        return $issuer->issue($authorization, $issuer->addressFor($authorization), $now);
     }
 
     /**

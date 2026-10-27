@@ -44,6 +44,11 @@ final readonly class ProfilingAccessTokenIssuer implements AccessTokenIssuerInte
         return $this->issuer->address($client);
     }
 
+    public function addressFor(AuthorizationInterface $authorization): AddressedAccessToken
+    {
+        return $this->issuer->addressFor($authorization);
+    }
+
     public function issue(AuthorizationInterface $authorization, AddressedAccessToken $addressed, DateTimeImmutable $now): AccessToken
     {
         $token = $this->issuer->issue($authorization, $addressed, $now);

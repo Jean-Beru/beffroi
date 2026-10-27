@@ -90,6 +90,24 @@ final class ServedAccessTokenShapesTest extends TestCase
     }
 
     /**
+     * Issue #876: the token of an authorization that exists before anything is spent is addressed by the issuer
+     * of the shape its client registered, which is the one that knows what that token carries sealed.
+     */
+    #[Test]
+    public function theTokenOfAnAuthorizationIsAddressedByTheIssuerOfItsShape(): void
+    {
+        // Given
+        $authorization = $this->authorization(Shapes::opaque());
+
+        // When
+        $this->shapes->addressFor($authorization);
+
+        // Then
+        static::assertSame([$authorization], $this->opaque->addressedFor);
+        static::assertSame([], $this->jwt->addressedFor);
+    }
+
+    /**
      * Issue #239: a shape is added by a class and a line in the wiring, and the token endpoint mints in
      * it without anything here knowing its name.
      */

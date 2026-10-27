@@ -276,6 +276,25 @@ final class TokenIssuerTest extends TestCase
     }
 
     /**
+     * Issue #876: the response to an authorization nobody signed in for that its grant addressed before it spent
+     * anything is struck for what was read then, so a KMS that stopped answering since keeps nothing from it.
+     */
+    #[Test]
+    public function aResponseItsGrantAddressedIsStruckWithWhatWasReadThen(): void
+    {
+        // Given
+        $authorization = $this->clientAuthorization();
+        $addressed = $this->issuer->addressFor($authorization);
+        $this->accessTokens->kmsOutage = new KmsUnavailableException('The KMS did not answer.');
+
+        // When
+        $this->issuer->issue($authorization, null, $this->context, Fixtures::now(), $addressed);
+
+        // Then
+        static::assertSame([$authorization], $this->accessTokens->issued);
+    }
+
+    /**
      * Architecture §4.5 (issue #870): the response to an authorization somebody signed in for is struck for
      * what its grant addressed before it spent anything, so one the grant did not address is a fault of that
      * grant, said before any token leaves.
