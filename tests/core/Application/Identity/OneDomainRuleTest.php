@@ -27,6 +27,7 @@ use Beffroi\Core\Domain\Identity\UpstreamProvider;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord;
+use Beffroi\Core\Tests\Fixture\FixedClaims;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Core\Tests\Fixture\WritesAsTheyCome;
@@ -101,6 +102,7 @@ final class OneDomainRuleTest extends TestCase
                 new EnrolmentRefusal($this->federated),
                 new SymfonyUuidGenerator(),
                 $clock,
+                new FixedClaims(),
             ),
             new IdentityLinker($identities, new SymfonyUuidGenerator(), $clock),
             new RecordingEventDispatcher(),

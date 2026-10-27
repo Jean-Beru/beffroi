@@ -768,7 +768,34 @@ final class ProvisioningTest extends ConsoleTestCase
                 '--birthdate' => '4 May 1990',
             ],
             Command::INVALID,
-            'must be "YYYY-MM-DD" or "YYYY"',
+            'The birthdate "4 May 1990" must be a day of the calendar',
+        ];
+        yield 'a birthdate that is no day of the calendar' => [
+            [
+                'username' => 'alice',
+                '--name' => 'Alice Liddell',
+                '--birthdate' => '2024-13-45',
+            ],
+            Command::INVALID,
+            'The birthdate "2024-13-45" must be a day of the calendar',
+        ];
+        yield 'a zone the zoneinfo database does not carry' => [
+            [
+                'username' => 'alice',
+                '--name' => 'Alice Liddell',
+                '--zoneinfo' => 'Europe/Atlantis',
+            ],
+            Command::INVALID,
+            'The value "Europe/Atlantis" is not one this claim may hold.',
+        ];
+        yield 'a language ICU has no data for' => [
+            [
+                'username' => 'alice',
+                '--name' => 'Alice Liddell',
+                '--locale' => 'tlh',
+            ],
+            Command::INVALID,
+            'The value "tlh" is not one this claim may hold.',
         ];
         yield 'a verified phone number without a number' => [
             [

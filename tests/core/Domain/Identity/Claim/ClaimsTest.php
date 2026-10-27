@@ -151,7 +151,7 @@ final class ClaimsTest extends TestCase
 
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIsOrContains('must be "YYYY-MM-DD" or "YYYY"');
+        $this->expectExceptionMessageIsOrContains('must be a day of the calendar, "YYYY-MM-DD", or a year alone, "YYYY"');
 
         // When
         new Birthdate()->describe($user, 'the first of May', Fixtures::now());

@@ -10,6 +10,7 @@ use function array_keys;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function sprintf;
 
 final class ProfileTest extends TestCase
 {
@@ -32,6 +33,9 @@ final class ProfileTest extends TestCase
         yield 'full date' => ['1990-05-21'];
         yield 'year only' => ['1990'];
         yield 'unknown year' => ['0000'];
+        yield 'the 29th of February of a leap year' => ['2024-02-29'];
+        yield 'a day whose year is withheld' => ['0000-05-21'];
+        yield 'the 29th of February of a year withheld' => ['0000-02-29'];
     }
 
     /**
@@ -91,7 +95,41 @@ final class ProfileTest extends TestCase
         yield 'day first' => ['21/05/1990'];
         yield 'trailing characters' => ['1990-05-21T00:00'];
         yield 'leading characters' => ['born 1990'];
+        yield 'leading characters before a date' => ['born 1990-05-21'];
         yield 'a line feed behind a birthdate that would pass' => ["1990-05-21\n"];
+        yield 'a line feed behind a year that would pass' => ["1990\n"];
+    }
+
+    /**
+     * OIDC Core §5.1 and issue #846: a date names a day of the calendar, and its shape alone does not make it
+     * one.
+     */
+    #[Test]
+    #[DataProvider('provideDatesThatAreNoDay')]
+    public function itRejectsADateThatIsNoDayOfTheCalendar(string $birthdate): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs(sprintf(
+            'The birthdate "%s" must be a day of the calendar, "YYYY-MM-DD", or a year alone, "YYYY", the year "0000" when it is withheld.',
+            $birthdate,
+        ));
+
+        // When
+        new Profile(birthdate: $birthdate);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideDatesThatAreNoDay(): iterable
+    {
+        yield 'a thirteenth month and a forty-fifth day' => ['2024-13-45'];
+        yield 'a month zero' => ['2024-00-10'];
+        yield 'a day zero' => ['2024-05-00'];
+        yield 'the 31st of a month of thirty days' => ['2024-04-31'];
+        yield 'the 29th of February of a common year' => ['2023-02-29'];
+        yield 'the 30th of February of a year withheld' => ['0000-02-30'];
     }
 
     /**
@@ -173,7 +211,7 @@ final class ProfileTest extends TestCase
             [
                 'birthdate' => '21/05/1990',
             ],
-            'The birthdate "21/05/1990" must be "YYYY-MM-DD" or "YYYY"',
+            'The birthdate "21/05/1990" must be a day of the calendar, "YYYY-MM-DD", or a year alone, "YYYY"',
         ];
     }
 

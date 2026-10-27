@@ -194,6 +194,7 @@ use Beffroi\Bundle\Locale\UserTimeZone;
 use Beffroi\Bundle\Doctrine\Repository\DoctrineJournal;
 use Beffroi\Bundle\Identity\LocaleClaimFactory;
 use Beffroi\Bundle\Identity\WiredClaims;
+use Beffroi\Core\Port\ClaimsInterface;
 use Beffroi\Core\Application\Identity\LanguageRecording;
 use Beffroi\Core\Application\Identity\SelfDescription;
 use Beffroi\Core\Domain\Identity\Claim\Name;
@@ -934,6 +935,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(WebsiteUrl::class)->tag('beffroi.claim');
     $services->set(PhoneNumber::class)->tag('beffroi.claim');
     $services->set(WiredClaims::class)->args([tagged_iterator('beffroi.claim')]);
+    // the profile a console says of a person is held to the claims the page of the account reads (issue #846)
+    $services->alias(ClaimsInterface::class, WiredClaims::class);
     $services->set(SelfDescription::class);
     // what a claim of a person used to say, and what they made it say (issue #482): written in the unit of
     // work that changed the record, because a record changed whose history was not is a hole in the one
