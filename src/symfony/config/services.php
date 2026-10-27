@@ -441,6 +441,7 @@ use Beffroi\Core\Port\SecretSealerInterface;
 use Beffroi\Core\Port\SignatureAlgorithmsInterface;
 use Beffroi\Core\Port\SigningKeyOpenerInterface;
 use Beffroi\Core\Port\SigningKeyProviderInterface;
+use Beffroi\Core\Port\SubjectsOfSessionsInterface;
 use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use Beffroi\Core\Port\TotpAlgorithmInterface;
 use Beffroi\Core\Port\UserAgentParserInterface;
@@ -1191,6 +1192,7 @@ return static function (ContainerConfigurator $container): void {
     ]);
     $services->alias(AuthenticationSessionRepositoryInterface::class, DoctrineAuthenticationSessionRepository::class);
     $services->alias(CanPageActiveSessionsInterface::class, DoctrineAuthenticationSessionRepository::class);
+    $services->alias(SubjectsOfSessionsInterface::class, DoctrineAuthenticationSessionRepository::class);
     $services->set(DoctrineInteractionRepository::class)->tag('beffroi.dead_records');
     $services->alias(InteractionRepositoryInterface::class, DoctrineInteractionRepository::class);
     // the three stores that carry a grant, each one tagged so that the reader of what a token descends

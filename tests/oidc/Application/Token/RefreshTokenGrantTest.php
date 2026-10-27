@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Token;
 
+use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
 use Beffroi\Core\Domain\Identity\User;
@@ -98,6 +99,8 @@ final class RefreshTokenGrantTest extends TestCase
         $this->client = Clients::public($this->tenant);
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
         $this->session = Fixtures::session($this->alice, $this->clock->now()->modify('-1 hour'));
+        $sessions = new InMemoryAuthenticationSessionRepository();
+        $sessions->save($this->session);
         $this->context = Fixtures::context($this->clock->now());
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
         $this->accessTokenIssuer = new FakeAccessTokenIssuer();
@@ -108,6 +111,7 @@ final class RefreshTokenGrantTest extends TestCase
         $this->grant = new RefreshTokenGrant(
             $this->refreshTokens,
             new RefreshTokenRevocation($this->refreshTokens),
+            $sessions,
             $issuer,
             new RequestedAuthorizationDetails(AuthorizationDetailTypes::served()),
             $this->clock,
@@ -695,6 +699,50 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
+     * RFC 9700 §4.13.2 (issue #884): a rotated token presented again is refused as a reuse whatever the store of its
+     * session answers. The person the reuse is announced for is read where the store of sessions keeps it in the
+     * clear, so a session that cannot be opened is not an outage met after the family was revoked.
+     */
+    #[Test]
+    public function aReuseIsRefusedAsSuchWhileItsSessionCannotBeOpened(): void
+    {
+        // Given
+        $this->rotatedOnAnotherWorker('first', $this->rows->unopenedSession($this->session));
+        $this->rows->outage = new KmsUnavailableException('The KMS did not answer.');
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
+
+        // When
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request('first'), $this->context);
+    }
+
+    /**
+     * RFC 9700 §4.13.2 (issue #884): the reuse is announced with the family it revoked and the person the family
+     * descends from, whatever the store of its session answers: a token of a revoked family is refused before any
+     * reuse is looked for, so this presentation is the only one that can tell it.
+     */
+    #[Test]
+    public function aReuseIsAnnouncedWithWhatWasRevokedWhileItsSessionCannotBeOpened(): void
+    {
+        // Given
+        $session = $this->rows->unopenedSession($this->session);
+        $first = $this->rotatedOnAnotherWorker('first', $session);
+        $successor = $this->token('successor', family: $first->family, session: $session);
+        $this->rows->outage = new KmsUnavailableException('The KMS did not answer.');
+
+        // When
+        $this->failToGrant($this->request('first'));
+
+        // Then
+        $detections = $this->events->of(RefreshTokenReuseDetected::class);
+        static::assertCount(1, $detections);
+        static::assertEquals($this->alice->subject, $detections[0]->subject);
+        static::assertSame([$first->tokenHash, $successor->tokenHash], $detections[0]->revokedTokenHashes);
+    }
+
+    /**
      * Architecture §4.6: thirty days sliding; a refresh on the last second issues a successor for thirty
      * more days.
      */
@@ -973,6 +1021,19 @@ final class RefreshTokenGrantTest extends TestCase
             resources: $resources,
             authorizationDetails: $authorizationDetails,
         );
+        $this->refreshTokens->save($token);
+
+        return $token;
+    }
+
+    /**
+     * A refresh token of that session rotated by a refresh made on a worker other than the one that serves the next
+     * request: nothing that worker opened is open here.
+     */
+    private function rotatedOnAnotherWorker(string $value, AuthenticationSession $session): RefreshToken
+    {
+        $token = $this->token($value, session: $session);
+        $token->rotate($this->clock->now());
         $this->refreshTokens->save($token);
 
         return $token;

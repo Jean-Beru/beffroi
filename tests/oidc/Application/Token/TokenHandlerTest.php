@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Token;
 
+use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
 use function base64_encode;
@@ -131,10 +132,13 @@ final class TokenHandlerTest extends TestCase
         $this->backchannelRecords = new InMemoryBackchannelAuthenticationRecordRepository();
         $this->events = new RecordingEventDispatcher();
         $this->issuer = new TokenIssuer(new FakeAccessTokenIssuer(), new FakeIdTokenIssuer(), $this->refreshTokens, Secrets::drawer(), $this->events);
+        $sessions = new InMemoryAuthenticationSessionRepository();
+        $sessions->save($this->session);
         $this->codeGrant = new AuthorizationCodeGrant(
             $this->codes,
             new RefreshTokenRevocation($this->refreshTokens),
             new InMemoryAccessTokenRepository(),
+            $sessions,
             $this->issuer,
             new SymfonyUuidGenerator(),
             $this->clock,
@@ -145,6 +149,7 @@ final class TokenHandlerTest extends TestCase
         $refreshGrant = new RefreshTokenGrant(
             $this->refreshTokens,
             new RefreshTokenRevocation($this->refreshTokens),
+            $sessions,
             $this->issuer,
             new RequestedAuthorizationDetails(AuthorizationDetailTypes::served()),
             $this->clock,

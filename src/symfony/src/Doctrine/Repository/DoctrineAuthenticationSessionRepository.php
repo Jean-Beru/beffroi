@@ -10,15 +10,19 @@ use Beffroi\Core\Domain\Listing\Period;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Beffroi\Bundle\Doctrine\EntityManagers;
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Record\WhatATokenStillNeeds;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Domain\Listing\Listing;
 use Beffroi\Core\Domain\Listing\Pagination;
+use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Beffroi\Core\Port\CanPageActiveSessionsInterface;
 use Beffroi\Core\Port\DeadRecordsInterface;
+use Beffroi\Core\Port\SubjectsOfSessionsInterface;
+use function is_array;
 use function sprintf;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
@@ -32,7 +36,8 @@ use Symfony\Component\Uid\Uuid;
 final readonly class DoctrineAuthenticationSessionRepository extends DoctrineRepository implements
     AuthenticationSessionRepositoryInterface,
     CanPageActiveSessionsInterface,
-    DeadRecordsInterface
+    DeadRecordsInterface,
+    SubjectsOfSessionsInterface
 {
     public function __construct(
         EntityManagers $managers,
@@ -85,6 +90,25 @@ final readonly class DoctrineAuthenticationSessionRepository extends DoctrineRep
         return $this->repository()->findOneBy([
             'id' => $id,
         ]);
+    }
+
+    /**
+     * One column of one row, the subject of the person the session names, which stays in the clear (decision
+     * 0011). A scalar read loads neither the session nor the person, so nothing either of them seals is opened,
+     * where reading the session would open its columns and those of the person it is loaded with.
+     */
+    public function of(Uuid $session): Subject
+    {
+        $row = $this->queryBuilder('s')
+            ->select('u.subject')
+            ->join('s.user', 'u')
+            ->where('s.id = :session')
+            ->setParameter('session', $session, UuidType::NAME)
+            ->getQuery()
+            ->getOneOrNullResult();
+        $subject = is_array($row) ? $row['subject'] ?? null : null;
+
+        return $subject instanceof Subject ? $subject : throw new RuntimeException(sprintf('No session "%s" names a person.', $session->toRfc4122()));
     }
 
     /**

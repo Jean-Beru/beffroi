@@ -27,6 +27,9 @@ use Beffroi\Core\Port\TotpAlgorithmInterface;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Totps;
+use Beffroi\Oidc\Domain\Event\AuthorizationCodeReplayed;
+use Beffroi\Oidc\Domain\Event\RefreshTokenReuseDetected;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
 use Beffroi\Oidc\Tests\Fixture\TrustedIssuers;
 use function intdiv;
@@ -66,6 +69,8 @@ final class KmsOutageTest extends PasskeyTestCase
     private const string PAIRWISE_REDIRECT_URI = 'https://pairwise.test/callback';
 
     private const string PAIRWISE_SECRET = 'pairwise-secret-of-at-least-32-characters';
+
+    private const string OFFLINE_REDIRECT_URI = 'https://offline.test/callback';
 
     private KmsOutage $kms;
 
@@ -411,7 +416,7 @@ final class KmsOutageTest extends PasskeyTestCase
      * request once it does, which is answered with the tokens and never taken for a replay.
      */
     #[Test]
-    #[DataProvider('provideTheFamiliesACodeReads')]
+    #[DataProvider('provideTheFamiliesOfASession')]
     public function theSameCodeIsExchangedOnceTheKmsOpensTheDataKeysItReads(string $family): void
     {
         // Given
@@ -432,12 +437,113 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
+     * The families a session and the person it names are sealed under, each with a data key of its own.
+     *
      * @return iterable<string, array{string}>
      */
-    public static function provideTheFamiliesACodeReads(): iterable
+    public static function provideTheFamiliesOfASession(): iterable
     {
         yield 'the session' => ['authentication_session'];
         yield 'the person' => ['user'];
+    }
+
+    /**
+     * RFC 6749 §4.1.2 (issue #884): a code presented again is refused as a replay, an invalid_grant and not an
+     * outage, while the KMS does not open the data keys its session and its person are sealed under: the person the
+     * replay is announced for is read in the clear, so neither is opened once the grant is revoked.
+     */
+    #[Test]
+    #[DataProvider('provideTheFamiliesOfASession')]
+    public function aReplayedCodeIsRefusedAsSuchWhileTheKmsDoesNotOpenTheDataKeysOfItsSession(string $family): void
+    {
+        // Given
+        $code = $this->codeOfAlice();
+        $this->postCode($code);
+        $this->dataKeys->families = [$family];
+        $this->aWorkerThatOpenedNothing();
+
+        // When
+        $this->postCode($code);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode(), (string) $response->getContent());
+        static::assertSame('invalid_grant', self::json($response)['error'] ?? null);
+    }
+
+    /**
+     * RFC 6749 §4.1.2 (issue #884): the replay is announced with the refresh token it revoked and the person the code
+     * was issued in the name of while the KMS does not open those data keys, so the journal keeps the act whole.
+     */
+    #[Test]
+    #[DataProvider('provideTheFamiliesOfASession')]
+    public function aReplayedCodeIsAnnouncedWithWhatItRevokedWhileTheKmsDoesNotOpenTheDataKeysOfItsSession(string $family): void
+    {
+        // Given
+        $code = $this->codeOfAlice();
+        $this->postCode($code);
+        $refreshToken = self::string(self::json($this->browser->getResponse())['refresh_token'] ?? null);
+        $this->dataKeys->families = [$family];
+        $this->aWorkerThatOpenedNothing();
+
+        // When
+        $this->postCode($code);
+
+        // Then
+        $replays = self::events(AuthorizationCodeReplayed::class);
+        static::assertCount(1, $replays);
+        static::assertSame('alice-subject', $replays[0]->subject->value);
+        static::assertSame([DrawnSecret::digestOf($refreshToken)], $replays[0]->revokedTokenHashes);
+    }
+
+    /**
+     * RFC 9700 §4.13.2 (issue #884): a rotated refresh token presented again is refused as a reuse, an invalid_grant
+     * and not an outage, while the KMS does not open the data keys its session and its person are sealed under.
+     */
+    #[Test]
+    #[DataProvider('provideTheFamiliesOfASession')]
+    public function aReusedRefreshTokenIsRefusedAsSuchWhileTheKmsDoesNotOpenTheDataKeysOfItsSession(string $family): void
+    {
+        // Given
+        $first = $this->refreshTokenOfTheOfflineClient();
+        $this->postRefreshToken($first);
+        $this->dataKeys->families = [$family];
+        $this->aWorkerThatOpenedNothing();
+
+        // When
+        $this->postRefreshToken($first);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode(), (string) $response->getContent());
+        static::assertSame('invalid_grant', self::json($response)['error'] ?? null);
+    }
+
+    /**
+     * RFC 9700 §4.13.2 (issue #884): the reuse is announced with the family it revoked and the person the family
+     * descends from while the KMS does not open those data keys: a token of a revoked family is refused before any
+     * reuse is looked for, so this presentation is the only one that can tell it.
+     */
+    #[Test]
+    #[DataProvider('provideTheFamiliesOfASession')]
+    public function aReusedRefreshTokenIsAnnouncedWithWhatItRevokedWhileTheKmsDoesNotOpenTheDataKeysOfItsSession(string $family): void
+    {
+        // Given
+        $first = $this->refreshTokenOfTheOfflineClient();
+        self::aSecondLater();
+        $this->postRefreshToken($first);
+        $successor = self::string(self::json($this->browser->getResponse())['refresh_token'] ?? null);
+        $this->dataKeys->families = [$family];
+        $this->aWorkerThatOpenedNothing();
+
+        // When
+        $this->postRefreshToken($first);
+
+        // Then
+        $reuses = self::events(RefreshTokenReuseDetected::class);
+        static::assertCount(1, $reuses);
+        static::assertSame('alice-subject', $reuses[0]->subject->value);
+        static::assertSame([DrawnSecret::digestOf($first), DrawnSecret::digestOf($successor)], $reuses[0]->revokedTokenHashes);
     }
 
     /**
@@ -606,6 +712,39 @@ final class KmsOutageTest extends PasskeyTestCase
                 'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
             ],
         );
+    }
+
+    /**
+     * The refresh token the client that keeps its access offline gets for alice, signed in, while the KMS answers:
+     * a public client, whose refresh token is rotated at every use (RFC 9700 §4.13.2).
+     */
+    private function refreshTokenOfTheOfflineClient(): string
+    {
+        self::signingKey();
+        $this->signIn(self::user('alice'));
+        $this->browser->request('GET', '/authorize', self::authorizationParameters('offline-app', [
+            'redirect_uri' => self::OFFLINE_REDIRECT_URI,
+            'scope' => 'openid offline_access',
+        ]));
+        $code = self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client that keeps its access offline got no code.');
+        $this->browser->request('POST', '/token', [
+            'grant_type' => 'authorization_code',
+            'code' => $code,
+            'redirect_uri' => self::OFFLINE_REDIRECT_URI,
+            'client_id' => 'offline-app',
+            'code_verifier' => self::CODE_VERIFIER,
+        ]);
+
+        return self::string(self::json($this->browser->getResponse())['refresh_token'] ?? null);
+    }
+
+    private function postRefreshToken(string $refreshToken): void
+    {
+        $this->browser->request('POST', '/token', [
+            'grant_type' => 'refresh_token',
+            'refresh_token' => $refreshToken,
+            'client_id' => 'offline-app',
+        ]);
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Core\Tests\Fixture;
 
+use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Exception\KmsUnavailableException;
 use Closure;
 use ReflectionClass;
@@ -57,6 +58,16 @@ final class UnopenedRows
         }
 
         return $unopened;
+    }
+
+    /**
+     * The session a record names as a store hands it over with the record, before it read it: its identifier
+     * readable, and what building a record around it reads, its tenant and its proofs, the person it names left for
+     * the store to open with it.
+     */
+    public function unopenedSession(AuthenticationSession $session): AuthenticationSession
+    {
+        return $this->unopened($session, ['id', 'tenant', 'proofs']);
     }
 
     /**
