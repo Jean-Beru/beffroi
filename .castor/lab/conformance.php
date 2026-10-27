@@ -939,7 +939,10 @@ function conformance_open_registration(string $issuer): void
     if (! is_array($document) || ! is_string($document['registration_endpoint'] ?? null)) {
         io()->error([
             sprintf('%s announces no "registration_endpoint", so no client can register itself.', $url),
-            'The runs that register their own clients need the registration policy of the tenant, which apps/op/config/packages/beffroi.yaml writes under "when@dev" (decision 0009).',
+            sprintf(
+                'The runs that register their own clients need the tenant to register whoever asks, BEFFROI_REGISTRATION_MODE="open", which "castor provision" writes into %s (decision 0009).',
+                DEV_ENV_LOCAL,
+            ),
         ]);
         exit(1);
     }

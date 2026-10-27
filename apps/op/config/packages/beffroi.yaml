@@ -1,19 +1,28 @@
-# The configuration of the bundle (docs/11-architecture.md §5.1). Everything that varies by deployment is an
-# environment variable; the local KMS key and the secrets of the clients below are written into .env.local by
-# "castor provision" (development only, nothing secret is committed), production sets its own.
+# The configuration of the bundle (docs/11-architecture.md §5.1). Everything a deployment chooses is an
+# environment variable, which .env documents with the value an image takes when the deployment names none;
+# the local KMS key and the secrets of the clients below are written into .env.local by "castor provision"
+# (development only, nothing secret is committed), production sets its own.
+parameters:
+    # The placeholder mark of public/tenant-logo.svg, served from the origin of the application itself, which
+    # is what a tenant shows until its deployment names the mark it owns (BEFFROI_TENANT_LOGO_URI).
+    app.tenant_logo_uri: '%env(BEFFROI_ISSUER)%/tenant-logo.svg'
+
 beffroi:
     tenant:
         issuer: '%env(BEFFROI_ISSUER)%'
+        # The name the pages and the consent give the tenant, the host of the issuer when the variable is
+        # empty: "default::" makes an empty variable no name at all.
+        name: '%env(default::BEFFROI_TENANT_NAME)%'
         # What this tenant shows of itself on every page (issue beffroi-auth/beffroi#449). The logo is the
-        # placeholder mark of public/tenant-logo.svg, served from the origin of the application itself,
-        # which is why the policy of every page allows it without naming an origin; a deployment points
-        # this at the mark it owns, anywhere over HTTPS. The two colours go together: the accent the
-        # buttons and the links are drawn in, and the colour of what is written on them, which is what
-        # keeps them readable under both themes.
+        # placeholder mark above, served from the origin of the application itself, which is why the policy
+        # of every page allows it without naming an origin, until the deployment points it at the mark it
+        # owns, anywhere over HTTPS. The two colours go together: the accent the buttons and the links are
+        # drawn in, and the colour of what is written on them, which is what keeps them readable under both
+        # themes; an empty variable is no colour.
         look:
-            logo_uri: '%env(BEFFROI_ISSUER)%/tenant-logo.svg'
-            primary_color: '#1f6feb'
-            primary_content_color: '#ffffff'
+            logo_uri: '%env(default:app.tenant_logo_uri:BEFFROI_TENANT_LOGO_URI)%'
+            primary_color: '%env(default::BEFFROI_TENANT_PRIMARY_COLOR)%'
+            primary_content_color: '%env(default::BEFFROI_TENANT_PRIMARY_CONTENT_COLOR)%'
         # What the people of this tenant may change of themselves (issue beffroi-auth/beffroi#452). All of
         # them, because this is the tenant that creates its people by hand, which is the case the rule
         # exists for; a tenant whose directory owns the data declares none of this and its people read
@@ -41,21 +50,25 @@ beffroi:
         kms: op
         key_id: '%env(BEFFROI_KMS_KEY_ID)%'
         storage: '%kernel.project_dir%/var/keys'
-        # Read at runtime with the two lifetimes below, so that "castor demo --rotate" can shorten the windows of a
-        # rotation for its run without recompiling anything (.env documents the values).
+        # Read at runtime with the lifetimes of the tokens, so that "castor demo --rotate" can shorten the windows
+        # of a rotation for its run without recompiling anything (.env documents the values). The staging delay
+        # is the max-age plus the refetch cooldown of oidc_login while its variable is empty, which keeps the two
+        # from drifting apart.
         jwks_max_age: '%env(int:BEFFROI_JWKS_MAX_AGE)%'
+        staging_delay: '%env(BEFFROI_KEY_STAGING_DELAY)%'
+        age: '%env(int:BEFFROI_KEY_AGE)%'
     mutual_tls:
         # The host whose TLS listener asks for a client certificate (issue #157, architecture §5.1),
         # announced in "mtls_endpoint_aliases" (RFC 8705 §5). Empty for a deployment that serves one host.
         origin: '%env(BEFFROI_MTLS_ORIGIN)%'
     # Reaching a user through the push service of a browser they signed in with (RFC 8030, architecture
-    # §5.6). Naming a subject is what wires it, and it is named here and not read from the environment on
-    # purpose: what is wired has to be known when the container is built, as a client is. A deployment
-    # that reaches its users some other way, or not at all, drops this section: the tenant then draws no
-    # application server key, no push leaves it, and the page of the account says so. The subject is a
-    # "mailto:" or "https:" URI at which a push service can reach the operator (RFC 8292 §2.1).
+    # §5.6). Naming a subject is what wires it, so the section is written here, where what is wired is known
+    # when the container is built, and the subject itself is the deployment's: the "mailto:" or "https:" URI
+    # at which a push service can reach its operator (RFC 8292 §2.1). A deployment that reaches its users
+    # some other way, or not at all, drops this section: the tenant then draws no application server key, no
+    # push leaves it, and the page of the account says so.
     web_push:
-        subject: 'mailto:operator@op.localhost'
+        subject: '%env(BEFFROI_WEB_PUSH_SUBJECT)%'
     # The tenant is a SAML identity provider (beffroi/saml, issue beffroi-auth/beffroi#728): its signing key is drawn
     # by "castor provision" under SAML-SIGNING, kept by the KMS and rotated as every key of the tenant, and its
     # metadata is served at /saml/metadata, the certificate of each key in service in it. Every service provider is
@@ -95,12 +108,43 @@ beffroi:
             # and not options. How long a credential goes before it is looked up again is the core's
             # (PasswordCredential::LOOKUP_AGAIN_AFTER).
             endpoint: '%env(BEFFROI_BREACHED_PASSWORDS_ENDPOINT)%'
+    # What a client that registers itself is registered under (RFC 7591, decisions 0009 and 0017), the
+    # deployment's policy for its tenant: an empty mode is no registration endpoint at all, in the document
+    # as on the wire, and that is what an image gets until its deployment names a mode. A client reaches a
+    # deployment this way and no other, an initial access token from "beffroi:client:token:issue" being what
+    # the mode of a real ecosystem asks for: the image declares none.
+    client_registration:
+        mode: '%env(BEFFROI_REGISTRATION_MODE)%'
+        default_scope: '%env(BEFFROI_REGISTRATION_DEFAULT_SCOPE)%'
+    # How long the acts of the journal and the changes of a claim are kept, in days (issues #454 and #482).
+    journal:
+        retention: '%env(int:BEFFROI_JOURNAL_RETENTION)%'
+    history:
+        retention: '%env(int:BEFFROI_HISTORY_RETENTION)%'
+    # The two budgets of decision 0014, which depend on the size of the deployment and are measured on what
+    # its own clients send.
+    load:
+        origin:
+            limit: '%env(int:BEFFROI_LOAD_ORIGIN_LIMIT)%'
+            interval: '%env(int:BEFFROI_LOAD_ORIGIN_INTERVAL)%'
+        client:
+            limit: '%env(int:BEFFROI_LOAD_CLIENT_LIMIT)%'
+            interval: '%env(int:BEFFROI_LOAD_CLIENT_INTERVAL)%'
+    # Whether a DPoP proof carries a nonce this provider issued (RFC 9449 §8), the server's to decide.
+    dpop:
+        nonce:
+            required: '%env(bool:BEFFROI_DPOP_NONCE_REQUIRED)%'
+    # The lifetimes, in seconds. A deployment may shorten them; the bundle refuses a lifetime past the bound a
+    # specification sets, a number of the environment included, when the service it reaches is built.
     tokens:
-        authorization_code_ttl: 60
+        authorization_code_ttl: '%env(int:BEFFROI_AUTHORIZATION_CODE_TTL)%'
         access_token_ttl: '%env(int:BEFFROI_ACCESS_TOKEN_TTL)%'
         id_token_ttl: '%env(int:BEFFROI_ID_TOKEN_TTL)%'
-        refresh_token_ttl: 2592000
-        refresh_token_absolute_ttl: 7776000
+        refresh_token_ttl: '%env(int:BEFFROI_REFRESH_TOKEN_TTL)%'
+        refresh_token_absolute_ttl: '%env(int:BEFFROI_REFRESH_TOKEN_ABSOLUTE_TTL)%'
+        request_uri_ttl: '%env(int:BEFFROI_REQUEST_URI_TTL)%'
+        device_code_ttl: '%env(int:BEFFROI_DEVICE_CODE_TTL)%'
+        backchannel_authentication_ttl: '%env(int:BEFFROI_BACKCHANNEL_AUTHENTICATION_TTL)%'
     clients: []
 
 # The clients of the development stack, in development only: the three the OpenID conformance suite needs for the Basic OP
@@ -129,18 +173,20 @@ when@dev:
         # RFC 7591 §1.3, decisions 0009 and 0017: the tenant of the development stack registers whoever
         # asks, with no credential presented at all, because that is the only thing the "dynamic_client"
         # variant of the conformance suite sends and the Dynamic OP profile cannot be certified without it.
-        # It is written here, under "when@dev", and nowhere else: the same file deployed anywhere else
-        # writes no "client_registration" at all, so that deployment's tenant has no registration endpoint,
-        # in its document as on the wire. There is no key that opens the mode for more than the tenant that
-        # names it, and what would make it acceptable to a tenant with real users, what an anonymous client
-        # may ask for and how the name and the logo of a stranger reach a consent page, is an open question
+        # The mode is read from BEFFROI_REGISTRATION_MODE, as on every deployment, and "open" is the value
+        # "castor provision" writes into .env.local and nowhere else: .env is what an image is compiled from,
+        # and the empty mode it holds is a tenant with no registration endpoint, in its document as on the
+        # wire. There is no key that opens the mode for more than the tenant that names it, and what would
+        # make it acceptable to a tenant with real users, what an anonymous client may ask for and how the
+        # name and the logo of a stranger reach a consent page, is an open question
         # (docs/10-questions-ouvertes.md). The reason this tenant may carry it is that it has no real user:
         # it serves the suite and "alice", whom "castor provision" creates.
         #
         # The exemption is decision 0017, for the same reason and bounded the same way: the 22 modules of
         # the plan that run an authorization send no "code_challenge" and the suite offers no way to add
         # one, so a client it registers would fail in "invalid_request" before any other rule was judged.
-        # It reaches the confidential clients this policy registers and never a public one.
+        # It reaches the confidential clients this policy registers and never a public one, and it is
+        # written here, under "when@dev", and nowhere else.
         #
         # The two durations are what keeps the table from becoming a record of every run this project has
         # ever made: the plan registers a client per module, most of them used once and never again. An
@@ -155,15 +201,14 @@ when@dev:
         # registers itself here is registered for what a client somebody wrote in this file is registered
         # for, and it is held to what the tenant announces like every other registered scope: a scope
         # written here that the tenant does not hand out tokens for refuses every registration rather than
-        # granting one. A client that names its own scopes keeps them.
+        # granting one. A client that names its own scopes keeps them. It is written here over the variable
+        # a deployment names its own by, the set being what this tenant serves the suite with.
         #
-        # The mode is the one env var of this block because a run of the lab needs another one than the
-        # suite does: the plans register with no credential and want "open", and "castor demo --register"
-        # plays the mode a real ecosystem uses, an initial access token the tenant issued, which it asks
-        # for by writing BEFFROI_REGISTRATION_MODE for the length of its run. The default is in apps/op/.env
-        # and is what every run that asks for nothing gets.
+        # A run of the lab may need another mode than the suite does: the plans register with no credential
+        # and want "open", and "castor demo --register" plays the mode a real ecosystem uses, an initial
+        # access token the tenant issued, which it asks for by writing BEFFROI_REGISTRATION_MODE at the end
+        # of .env.local for the length of its run.
         client_registration:
-            mode: '%env(BEFFROI_REGISTRATION_MODE)%'
             exempt_confidential_clients_from_pkce: true
             default_scope: 'openid profile email address phone offline_access'
             keep_a_client_unused_for: 86400

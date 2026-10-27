@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use PHPUnit\Framework\Attributes\Test;
-use Symfony\Component\DomCrawler\Crawler;
-use Symfony\Component\HttpFoundation\Response;
 
 /**
  * The home of the account as this application serves it (architecture §5.2): one card per page of the
@@ -25,7 +23,7 @@ final class AccountHomeTest extends BrowserTestCase
         $this->signIn(self::user());
 
         // When
-        $card = $this->homePage()->filter('li[data-section="beffroi_interaction_account_passkeys"]');
+        $card = $this->accountHome()->filter('li[data-section="beffroi_interaction_account_passkeys"]');
 
         // Then
         static::assertCount(1, $card->filter('div[data-section-head] span[data-section-icon] svg'));
@@ -50,7 +48,7 @@ final class AccountHomeTest extends BrowserTestCase
         $this->signIn(self::user());
 
         // When
-        $page = $this->homePage();
+        $page = $this->accountHome();
 
         // Then
         $cards = $page->filter('ul[data-sections] li[data-section]')->count();
@@ -58,14 +56,5 @@ final class AccountHomeTest extends BrowserTestCase
         static::assertSame($cards, $page->filter('li[data-section] span[data-section-icon] svg')->count());
         static::assertSame($cards, $page->filter('li[data-section] p[data-section-about]')->count());
         static::assertSame($cards, $page->filter('li[data-section] span[data-state]')->count());
-    }
-
-    private function homePage(): Crawler
-    {
-        $page = $this->browser->request('GET', '/account');
-        $response = $this->browser->getResponse();
-        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
-
-        return $page;
     }
 }

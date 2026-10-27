@@ -33,4 +33,24 @@ final class DiscoveryDocumentTest extends BrowserTestCase
         static::assertIsArray($document);
         static::assertArrayNotHasKey('mtls_endpoint_aliases', $document);
     }
+
+    /**
+     * RFC 7591, decision 0009 (issue #911): a deployment that names no registration mode has no registration
+     * endpoint, and the image declares no client either, so a client reaches it once its deployment names a
+     * mode. The open mode of the development stack is written by "castor provision" into .env.local, and no
+     * image announces it.
+     */
+    #[Test]
+    public function itAnnouncesNoRegistrationEndpointForAModeTheDeploymentDidNotName(): void
+    {
+        // When
+        $this->browser->request('GET', '/.well-known/openid-configuration');
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        $document = json_decode(self::string($response->getContent()), true);
+        static::assertIsArray($document);
+        static::assertArrayNotHasKey('registration_endpoint', $document);
+    }
 }
