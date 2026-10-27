@@ -14,10 +14,10 @@ use Throwable;
  * How long the provider goes on trying to hand a notification to the third party it is addressed to
  * (architecture §5.6): a send that did not reach its client comes back a fixed number of times, waiting
  * longer at each one up to a ceiling, and a relying party that is restarting is therefore tried again
- * for longer than a write of our own would be. The application routes its notifications to a transport
- * this policy drives (apps/op/config/packages/messenger.yaml), and the retirement of a signing key reads
- * the same object to know how long a logout token may still be on its way (issue #155): one schedule,
- * two readers, so that the two cannot disagree.
+ * for longer than a write of our own would be. The bundle routes its notifications to a lane this policy
+ * drives (`MessengerContract`), and the retirement of a signing key reads the same object to know how
+ * long a logout token may still be on its way (issue #155): one schedule, two readers, so that the two
+ * cannot disagree.
  *
  * The waits are exact, where Symfony's own strategy scatters them by a tenth: a session announces itself
  * to the handful of clients it signed in and not to a fleet, and what a retirement window covers is a

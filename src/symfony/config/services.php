@@ -163,6 +163,7 @@ use Beffroi\Bundle\Load\RateLimitedClientLoad;
 use Beffroi\Bundle\MessageHandler\TellUserOfPendingApprovalHandler;
 use Beffroi\Bundle\MessageHandler\QueueLogoutTokenHandler;
 use Beffroi\Bundle\Messenger\EventBusDispatcher;
+use Beffroi\Bundle\Messenger\LaneDsn;
 use Beffroi\Bundle\Messenger\LogoutTokenGivenUpListener;
 use Beffroi\Bundle\Messenger\MessengerContract;
 use Beffroi\Bundle\Messenger\NotificationRetryPolicy;
@@ -1056,8 +1057,11 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ClientNotificationSender::class);
     $services->set(LogoutTokenGivenUpListener::class);
     // how long a notification the provider carries to a third party is tried again: the policy the
-    // application gives to the transport of that lane, and the one thing that says so
+    // contract gives to the transport of that lane, and the one thing that says so
     $services->set(NotificationRetryPolicy::class);
+    // where each lane goes (MessengerContract::DSN_ENVIRONMENT_VARIABLE, issue #919): the DSN a deployment
+    // names, the name of the lane in place of "{lane}", read when the transport of the lane is built
+    $services->set(LaneDsn::class);
     // What every transport encodes with (MessengerContract::SERIALIZER, decision 0020): the body sealed to
     // the message key of the tenant, the stamps in headers. Named by its identifier because the
     // configuration of the component names a service, and that identifier is in the contract.

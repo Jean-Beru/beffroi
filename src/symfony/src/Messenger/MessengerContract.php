@@ -28,10 +28,12 @@ use Beffroi\Core\Domain\Event\DomainEventInterface;
  * appears once, and why a message that must be handled in the request implements `SyncMessage` and never
  * `Command`.
  *
- * **The default transport is the database.** A new installation needs no broker to work: every lane is
- * `doctrine://default` unless `BEFFROI_MESSENGER_DSN` names something else, and a deployment that wants
- * one lane on a broker and another in the database declares that transport itself, which is the one part
- * of this block an application still owns.
+ * **The default transport is the database, a queue per lane.** A new installation needs no broker to
+ * work: every lane is a queue of its own in `doctrine://default` unless `BEFFROI_MESSENGER_DSN` names
+ * something else, `{lane}` in that DSN being where the name of each lane goes (`LaneDsn`), so that one
+ * variable moves the four lanes and keeps them four. A deployment that wants one lane on a broker and
+ * another in the database declares that transport itself, which is the one part of this block an
+ * application still owns.
  *
  * **What leaves the process is sealed** (decision 0020): the serializer of the bundle is the default one
  * of every transport, so a body on a broker, and a body in the table of a transport, is a JWE to the
@@ -43,9 +45,10 @@ final readonly class MessengerContract
 {
     /**
      * Where a lane goes unless a deployment says otherwise. The database, because a provider that cannot
-     * be installed without RabbitMQ is a provider nobody tries.
+     * be installed without RabbitMQ is a provider nobody tries, and a queue of it per lane, because four
+     * lanes in one queue are one lane.
      */
-    public const string DEFAULT_DSN = 'doctrine://default';
+    public const string DEFAULT_DSN = 'doctrine://default?queue_name=' . LaneDsn::PLACEHOLDER;
 
     public const string DSN_ENVIRONMENT_VARIABLE = 'BEFFROI_MESSENGER_DSN';
 
@@ -128,7 +131,7 @@ final readonly class MessengerContract
         $transports = ['sync' => 'sync://'];
         foreach (self::LANES as $lane) {
             $transports[$lane] = [
-                'dsn' => '%env(' . self::DSN_ENVIRONMENT_VARIABLE . ')%',
+                'dsn' => LaneDsn::of($lane, self::DSN_ENVIRONMENT_VARIABLE),
                 // what the provider carries to a third party is tried again on the patience the bundle
                 // writes, which also bounds how long a logout token stays on its way and so how long a
                 // signing key is held back from retiring (§3.3, §4.9): two places that must agree are one

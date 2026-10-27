@@ -14,6 +14,7 @@ use Beffroi\Bundle\Message\Event;
 use Beffroi\Bundle\Message\Notification;
 use Beffroi\Bundle\Message\Query;
 use Beffroi\Bundle\Message\SyncMessage;
+use Beffroi\Bundle\Messenger\LaneDsn;
 use Beffroi\Bundle\Messenger\MessengerContract;
 use Beffroi\Core\Domain\Event\DomainEventInterface;
 use Symfony\Component\Messenger\MessengerBundle;
@@ -90,10 +91,10 @@ final class MessengerContractTest extends TestCase
         $transports = self::transports();
 
         // When / Then
-        foreach (MessengerContract::LANES as $lane) {
-            $lane = $transports[$lane] ?? null;
+        foreach (MessengerContract::LANES as $name) {
+            $lane = $transports[$name] ?? null;
             static::assertIsArray($lane);
-            static::assertSame('%env(' . MessengerContract::DSN_ENVIRONMENT_VARIABLE . ')%', $lane['dsn'] ?? null);
+            static::assertSame(LaneDsn::of($name, MessengerContract::DSN_ENVIRONMENT_VARIABLE), $lane['dsn'] ?? null);
         }
         static::assertSame('sync://', $transports['sync'] ?? null);
         static::assertSame(MessengerContract::FAILURE_DSN, $transports[MessengerContract::FAILURE_TRANSPORT] ?? null);
