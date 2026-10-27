@@ -1,8 +1,9 @@
 # beffroi/op
 
 The standalone identity provider: a Symfony skeleton on `beffroi/symfony-bundle`, served by FrankenPHP,
-with PostgreSQL and RabbitMQ behind it. It is the recommended deployment, the form the provider takes for
-whoever runs one rather than installs it inside an application of their own.
+with PostgreSQL behind it, and a broker such as RabbitMQ when a deployment names one (`BEFFROI_MESSENGER_DSN`
+in `.env`). It is the recommended deployment, the form the provider takes for whoever runs one rather than
+installs it inside an application of their own.
 
 It is the `apps/op` directory of the monorepo, [beffroi-auth/beffroi](https://github.com/beffroi-auth/beffroi),
 beside the packages it installs: the identity core, the OAuth 2.0 and OpenID Connect module and the Symfony

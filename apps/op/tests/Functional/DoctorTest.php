@@ -13,10 +13,10 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 /**
  * Issue #196: what the retirement window of a signing key publishes is true of this deployment only
- * because the lane its notifications are routed to is tried again on the policy the bundle publishes, and
- * this application declares that transport itself, with the broker it deploys with
- * (config/packages/messenger.yaml). A line added to that transport is a provider that goes on working and
- * a window that announces a budget nobody follows, which nothing in a browser shows.
+ * because the lane its notifications are routed to is tried again on the policy the bundle publishes. The
+ * lane is the bundle's, on the transport the deployment names (BEFFROI_MESSENGER_DSN, issue #919), and a
+ * lane this application declared again, or a route of the marker elsewhere, would be a provider that goes
+ * on working and a window that announces a budget nobody follows, which nothing in a browser shows.
  *
  * So the doctor is asked of the container this application boots and not of the file it was written from.
  * It reads and writes nothing, so this needs neither the schema nor a row.

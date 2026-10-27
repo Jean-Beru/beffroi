@@ -35,7 +35,10 @@ services:
         import saml-sp.Caddyfile
         import saml-idp.Caddyfile
       DATABASE_URL: postgresql://${POSTGRES_USER:-beffroi}:${POSTGRES_PASSWORD:-beffroi}@database:5432/${POSTGRES_DB:-beffroi}?serverVersion=16&charset=utf8
-      MESSENGER_TRANSPORT_DSN: amqp://${RABBITMQ_USER:-beffroi}:${RABBITMQ_PASSWORD:-beffroi}@rabbitmq:5672/%2f/messages
+      # The broker of the four lanes (apps/op/.env, issue #919): an exchange and a queue of RabbitMQ per lane,
+      # "{lane}" being where the name of each lane goes. An image deployed with nothing named keeps them in the
+      # database; this stack runs on a broker, so the certification plans do.
+      BEFFROI_MESSENGER_DSN: amqp://${RABBITMQ_USER:-beffroi}:${RABBITMQ_PASSWORD:-beffroi}@rabbitmq:5672/%2f/beffroi_{lane}
       # https://xdebug.org/docs/all_settings#mode
       XDEBUG_MODE: ${XDEBUG_MODE:-off}
       # Both documented in apps/op/.env; "castor start --conformance" sets them for a stack that serves the suite.
@@ -167,7 +170,7 @@ services:
       start_period: 90s
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-beffroi}:${POSTGRES_PASSWORD:-beffroi}@database:5432/${POSTGRES_DB:-beffroi}?serverVersion=16&charset=utf8
-      MESSENGER_TRANSPORT_DSN: amqp://${RABBITMQ_USER:-beffroi}:${RABBITMQ_PASSWORD:-beffroi}@rabbitmq:5672/%2f/messages
+      BEFFROI_MESSENGER_DSN: amqp://${RABBITMQ_USER:-beffroi}:${RABBITMQ_PASSWORD:-beffroi}@rabbitmq:5672/%2f/beffroi_{lane}
       XDEBUG_MODE: ${XDEBUG_MODE:-off}
       APP_PROFILER: 0
       CONFORMANCE_ACCESS_TOKEN_FORMAT: ${CONFORMANCE_ACCESS_TOKEN_FORMAT:-jwt}
