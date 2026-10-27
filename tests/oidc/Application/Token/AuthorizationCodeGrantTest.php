@@ -39,6 +39,7 @@ use Beffroi\Oidc\Domain\Event\TokensIssued;
 use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Token\RefreshToken;
+use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
 use Beffroi\Oidc\Exception\InvalidAuthorizationDetailsException;
 use Beffroi\Oidc\Exception\InvalidGrantException;
 use Beffroi\Oidc\Exception\InvalidRequestException;
@@ -825,6 +826,73 @@ final class AuthorizationCodeGrantTest extends TestCase
         // Then
         static::assertTrue($code->isRevoked());
         static::assertEquals($this->clock->now()->modify('-5 seconds'), $code->revokedAt);
+    }
+
+    /**
+     * OIDC Core §3.1.3.7 (issue #836): the key the ID token is encrypted to is read before the code is
+     * consumed, so keys the client cannot serve right now leave the code as it was, with nothing issued
+     * from it.
+     */
+    #[Test]
+    public function aCodeIsLeftUnspentWhileTheKeysOfItsClientCannotBeRead(): void
+    {
+        // Given
+        $code = $this->code('the-code', $this->client, ['openid', 'profile']);
+        $this->idTokens->unreadableKeys = new ClientKeysUnavailableException('The keys of the client cannot be read.');
+
+        // When
+        try {
+            $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+        } catch (ClientKeysUnavailableException) {
+        }
+
+        // Then
+        static::assertFalse($code->isUsed());
+        static::assertSame(1, $this->codes->saves, 'the fixture only: nothing was consumed');
+        static::assertSame(0, $this->refreshTokens->saves);
+        static::assertSame([], $this->events->events);
+    }
+
+    /**
+     * OIDC Core §3.1.3.7 (issue #836): the same request is served once the keys of the client can be read
+     * again, the code it presented being the one it was.
+     */
+    #[Test]
+    public function aCodeLeftUnspentIsExchangedOnceTheKeysOfItsClientCanBeRead(): void
+    {
+        // Given
+        $this->code('the-code', $this->client, ['openid', 'profile']);
+        $this->idTokens->unreadableKeys = new ClientKeysUnavailableException('The keys of the client cannot be read.');
+        try {
+            $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+        } catch (ClientKeysUnavailableException) {
+        }
+        $this->idTokens->unreadableKeys = null;
+
+        // When
+        $issued = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+
+        // Then
+        static::assertSame('id:oidc-demo:alice-subject:n-0S6_WzA2Mj:' . $this->clock->now()->getTimestamp(), $issued->idToken);
+    }
+
+    /**
+     * RFC 6749 §4.1.2: a code presented already is a replay whatever its client publishes. Nothing is read
+     * for it, so keys that cannot be read do not keep the grant from being revoked.
+     */
+    #[Test]
+    public function aReplayedCodeRevokesTheGrantWhateverTheKeysOfItsClient(): void
+    {
+        // Given
+        $code = $this->code('the-code', $this->client);
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+        $this->idTokens->unreadableKeys = new ClientKeysUnavailableException('The keys of the client cannot be read.');
+
+        // When
+        $this->failToGrant($this->client, $this->request());
+
+        // Then
+        static::assertTrue($code->isRevoked());
     }
 
     /**

@@ -80,7 +80,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     public function theHeaderNamesTheActiveKeyAndNoType(): void
     {
         // Given
-        $idToken = $this->issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
+        $idToken = $this->issuer->issue($this->authorizationFromCode(), $this->accessToken, $this->issuer->address($this->client), Fixtures::now());
 
         // When
         ['header' => $header] = $this->jwts->verify($idToken, 'spa', Fixtures::now()->modify('+9 minutes'));
@@ -103,7 +103,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     public function thePayloadCarriesTheClaimsOfOidcCoreInOrder(): void
     {
         // Given
-        $idToken = $this->issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
+        $idToken = $this->issuer->issue($this->authorizationFromCode(), $this->accessToken, $this->issuer->address($this->client), Fixtures::now());
 
         // When
         ['claims' => $claims] = $this->jwts->verify($idToken, 'spa', Fixtures::now()->modify('+9 minutes'));
@@ -138,7 +138,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     {
         // Given
         $this->client = $client($this);
-        $idToken = $this->issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
+        $idToken = $this->issuer->issue($this->authorizationFromCode(), $this->accessToken, $this->issuer->address($this->client), Fixtures::now());
 
         // When
         ['claims' => $claims] = $this->jwts->verify($idToken, 'spa', Fixtures::now()->modify('+9 minutes'));
@@ -168,7 +168,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     public function theAtHashIsTheLeftHalfOfTheSha256OfTheAccessToken(): void
     {
         // Given
-        $idToken = $this->issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
+        $idToken = $this->issuer->issue($this->authorizationFromCode(), $this->accessToken, $this->issuer->address($this->client), Fixtures::now());
 
         // When
         $claims = $this->jwts->verify($idToken, 'spa', Fixtures::now())['claims'];
@@ -204,7 +204,7 @@ final class JwtIdTokenIssuerTest extends TestCase
             null,
         );
         $later = Fixtures::now()->modify('+20 days');
-        $idToken = $this->issuer->issue($authorization, $this->accessToken, $later);
+        $idToken = $this->issuer->issue($authorization, $this->accessToken, $this->issuer->address($authorization->client), $later);
 
         // When
         $claims = $this->jwts->verify($idToken, 'spa', $later)['claims'];
@@ -226,7 +226,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     public function itAddsTheClaimsRequestedForTheIdTokenAndNoOther(): void
     {
         // Given
-        $idToken = $this->issuer->issue($this->authorizationWithRequestedClaims(), $this->accessToken, Fixtures::now());
+        $idToken = $this->issuer->issue($this->authorizationWithRequestedClaims(), $this->accessToken, $this->issuer->address($this->client), Fixtures::now());
 
         // When
         $decoded = $this->jwts->verify($idToken, 'spa', Fixtures::now())['claims'];
@@ -249,7 +249,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     public function theVerificationFlagIsAJsonBooleanOnTheWire(): void
     {
         // Given
-        $idToken = $this->issuer->issue($this->authorizationWithRequestedClaims(), $this->accessToken, Fixtures::now());
+        $idToken = $this->issuer->issue($this->authorizationWithRequestedClaims(), $this->accessToken, $this->issuer->address($this->client), Fixtures::now());
 
         // When
         $decoded = $this->jwts->verify($idToken, 'spa', Fixtures::now())['claims'];
@@ -300,6 +300,7 @@ final class JwtIdTokenIssuerTest extends TestCase
                 claims: $claims,
             )),
             $this->accessToken,
+            $issuer->address($this->client),
             Fixtures::now(),
         );
 
@@ -355,7 +356,11 @@ final class JwtIdTokenIssuerTest extends TestCase
         ));
 
         // When
-        $claims = $this->jwts->verify($issuer->issue($authorization, $this->accessToken, Fixtures::now()), 'spa', Fixtures::now())['claims'];
+        $claims = $this->jwts->verify(
+            $issuer->issue($authorization, $this->accessToken, $issuer->address($authorization->client), Fixtures::now()),
+            'spa',
+            Fixtures::now(),
+        )['claims'];
 
         // Then
         static::assertSame('alice-subject', $claims['sub']);
@@ -378,7 +383,7 @@ final class JwtIdTokenIssuerTest extends TestCase
             Algorithms::all(),
             new DateInterval('PT1H'),
         );
-        $idToken = $issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
+        $idToken = $issuer->issue($this->authorizationFromCode(), $this->accessToken, $issuer->address($this->client), Fixtures::now());
 
         // When
         $claims = $this->jwts->verify($idToken, 'spa', Fixtures::now()->modify('+59 minutes'))['claims'];
@@ -398,7 +403,7 @@ final class JwtIdTokenIssuerTest extends TestCase
             Algorithms::all(),
             new DateInterval('PT1H'),
         );
-        $idToken = $issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
+        $idToken = $issuer->issue($this->authorizationFromCode(), $this->accessToken, $issuer->address($this->client), Fixtures::now());
 
         // Then
         $this->expectException(InvalidClaimException::class);
@@ -415,7 +420,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     public function theTokenServesAsAnIdTokenHint(): void
     {
         // Given
-        $idToken = $this->issuer->issue($this->authorizationFromCode(), $this->accessToken, Fixtures::now());
+        $idToken = $this->issuer->issue($this->authorizationFromCode(), $this->accessToken, $this->issuer->address($this->client), Fixtures::now());
         $verifier = new IdTokenHintVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()));
 
         // When
@@ -438,7 +443,7 @@ final class JwtIdTokenIssuerTest extends TestCase
             Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), null, ['openid', 'profile']),
             new Scopes([new Scope('openid')]),
         );
-        $idToken = $this->issuer->issue($authorization, $this->accessToken, Fixtures::now());
+        $idToken = $this->issuer->issue($authorization, $this->accessToken, $this->issuer->address($authorization->client), Fixtures::now());
 
         // Then
         $this->expectException(InvalidClaimException::class);
@@ -477,7 +482,7 @@ final class JwtIdTokenIssuerTest extends TestCase
         ));
 
         // When
-        $idToken = $this->issuer->issue($authorization, $this->accessToken, Fixtures::now());
+        $idToken = $this->issuer->issue($authorization, $this->accessToken, $this->issuer->address($authorization->client), Fixtures::now());
 
         // Then
         ['header' => $header] = $this->jwts->verify($idToken, 'spa', Fixtures::now()->modify('+9 minutes'));
@@ -520,7 +525,7 @@ final class JwtIdTokenIssuerTest extends TestCase
         ));
 
         // When
-        $idToken = $this->issuer->issue($authorization, $this->accessToken, Fixtures::now());
+        $idToken = $this->issuer->issue($authorization, $this->accessToken, $this->issuer->address($authorization->client), Fixtures::now());
 
         // Then
         ['claims' => $claims] = $this->jwts->verify($idToken, 'spa', Fixtures::now()->modify('+9 minutes'));
@@ -551,7 +556,7 @@ final class JwtIdTokenIssuerTest extends TestCase
         ));
 
         // When
-        $idToken = $this->issuer->issue($authorization, $this->accessToken, Fixtures::now());
+        $idToken = $this->issuer->issue($authorization, $this->accessToken, $this->issuer->address($authorization->client), Fixtures::now());
 
         // Then
         ['header' => $header, 'payload' => $signed] = ClientEncryption::open($idToken);
@@ -582,7 +587,7 @@ final class JwtIdTokenIssuerTest extends TestCase
         ));
 
         // When
-        $idToken = $this->issuer->issue($authorization, $this->accessToken, Fixtures::now());
+        $idToken = $this->issuer->issue($authorization, $this->accessToken, $this->issuer->address($authorization->client), Fixtures::now());
 
         // Then
         static::assertCount(5, explode('.', $idToken));

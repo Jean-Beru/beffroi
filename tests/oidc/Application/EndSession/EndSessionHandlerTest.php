@@ -545,7 +545,7 @@ final class EndSessionHandlerTest extends TestCase
                 $this->session,
                 Fixtures::now(),
             ));
-        $idToken = $issuer->issue($authorization, $accessToken, Fixtures::now());
+        $idToken = $issuer->issue($authorization, $accessToken, $issuer->address($authorization->client), Fixtures::now());
         $this->clock->sleep($secondsLater);
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
