@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Doctrine\PersonalData;
 
 use Doctrine\DBAL\Connection;
+use Beffroi\Core\Bridge\KeyManagement\KeyManagementFailure;
 use Beffroi\Core\Bridge\KeyManagement\KmsKeyId;
+use Beffroi\Core\Exception\KmsUnavailableException;
 use Psr\Container\ContainerInterface;
 use SensitiveParameter;
+use function sprintf;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\DataKeyStore;
 use Symfony\Component\KeyManagement\DataKey;
 use Symfony\Component\KeyManagement\DataKeyHandle;
+use Symfony\Component\KeyManagement\Exception\RuntimeException as KeyManagementRuntimeException;
 use Symfony\Component\KeyManagement\RewrappableDataKeyStoreInterface;
 use Symfony\Component\KeyManagement\StoredDataKey;
 
@@ -25,6 +29,12 @@ use Symfony\Component\KeyManagement\StoredDataKey;
  *
  * The store of a tenant is built at its first use and held, keyed by slug, each one with the master key
  * `KmsKeyId` resolves for that slug, the one its signing keys are already sealed under.
+ *
+ * **A KMS that does not answer is an outage here as for every key of the provider** (`KeyManagementFailure`):
+ * what opens or mints a data key fails with `KmsUnavailableException`, whatever asked for it, a sealed column or
+ * a blind index, and a request is answered with the 503 it is served past once the KMS is back
+ * (`KmsUnavailableListener`). What the component refuses, a row it cannot find or whose binding does not hold,
+ * is thrown as the component threw it, which is what the contract of a store names.
  *
  * **Every store is given the same secrets.** A row is bound to its reference and its scope by an HMAC keyed
  * by its data key and by a secret of the store (`StoredDataKey::bindingFor()`), so a key that whoever
@@ -84,23 +94,43 @@ final class TenantDataKeyStores implements RewrappableDataKeyStoreInterface
     ) {
     }
 
+    /**
+     * @throws KmsUnavailableException when the KMS does not answer to open or mint the key
+     */
     public function current(string $scope): DataKeyHandle
     {
-        return $this->of($scope)->current($scope);
+        try {
+            return $this->of($scope)->current($scope);
+        } catch (KeyManagementRuntimeException $exception) {
+            throw KeyManagementFailure::outageOf($exception, sprintf('The data key of the scope "%s" could not be opened or minted.', $scope)) ?? $exception;
+        }
     }
 
     /**
      * The key of a scope retired and a new one minted, whatever the age of the one that was current: what
      * the console asks for when a tenant has a reason not to wait for the age of its keys.
+     *
+     * @throws KmsUnavailableException when the KMS does not answer to mint the key
      */
     public function rotate(string $scope): DataKeyHandle
     {
-        return $this->of($scope)->rotate($scope);
+        try {
+            return $this->of($scope)->rotate($scope);
+        } catch (KeyManagementRuntimeException $exception) {
+            throw KeyManagementFailure::outageOf($exception, sprintf('No new data key could be minted for the scope "%s".', $scope)) ?? $exception;
+        }
     }
 
+    /**
+     * @throws KmsUnavailableException when the KMS does not answer to open the key
+     */
     public function get(string $reference): DataKeyHandle
     {
-        return $this->reader()->get($reference);
+        try {
+            return $this->reader()->get($reference);
+        } catch (KeyManagementRuntimeException $exception) {
+            throw KeyManagementFailure::outageOf($exception, 'The data key of a sealed value could not be opened.') ?? $exception;
+        }
     }
 
     public function all(?string $client = null): iterable

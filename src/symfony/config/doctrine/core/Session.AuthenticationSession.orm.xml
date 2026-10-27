@@ -13,7 +13,13 @@
         <many-to-one field="tenant" target-entity="Beffroi\Core\Domain\Tenant\Tenant">
             <join-column name="tenant_id" referenced-column-name="id" nullable="false"/>
         </many-to-one>
-        <many-to-one field="user" target-entity="Beffroi\Core\Domain\Identity\User">
+        <!-- Loaded with the session and never behind a proxy (issue #877): a session is read for the person it
+             names, which every token of it carries and every act of it announces. A grant reads the session its
+             record descends from before it spends what the request presented (architecture §4.5), so the
+             columns of the person, sealed under a data key of the tenant (decision 0018), are opened with it, and
+             a KMS that does not answer is met before the spending rather than at the first claim struck after
+             it. -->
+        <many-to-one field="user" target-entity="Beffroi\Core\Domain\Identity\User" fetch="EAGER">
             <join-column name="user_id" referenced-column-name="id" nullable="false" on-delete="CASCADE"/>
         </many-to-one>
         <field name="establishedAt" type="datetime_immutable" column="established_at"/>

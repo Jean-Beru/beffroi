@@ -14,6 +14,7 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Core\Tests\Fixture\UnopenedRows;
 use Beffroi\Oidc\Application\Client\AuthenticatedClient;
 use Beffroi\Oidc\Application\Token\RefreshTokenGrant;
 use Beffroi\Oidc\Application\Token\RefreshTokenRevocation;
@@ -83,6 +84,8 @@ final class RefreshTokenGrantTest extends TestCase
 
     private RecordingEventDispatcher $events;
 
+    private UnopenedRows $rows;
+
     private RefreshTokenGrant $grant;
 
     protected function setUp(): void
@@ -100,6 +103,7 @@ final class RefreshTokenGrantTest extends TestCase
         $this->accessTokenIssuer = new FakeAccessTokenIssuer();
         $this->idTokens = new FakeIdTokenIssuer();
         $this->events = new RecordingEventDispatcher();
+        $this->rows = new UnopenedRows();
         $issuer = new TokenIssuer($this->accessTokenIssuer, $this->idTokens, $this->refreshTokens, Secrets::drawer(), $this->events);
         $this->grant = new RefreshTokenGrant(
             $this->refreshTokens,
@@ -376,6 +380,78 @@ final class RefreshTokenGrantTest extends TestCase
         } catch (KmsUnavailableException) {
         }
         $this->accessTokenIssuer->kmsOutage = null;
+
+        // When
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+
+        // Then
+        static::assertSame([], $this->events->of(RefreshTokenReuseDetected::class));
+    }
+
+    /**
+     * Architecture §4.5 (issue #877): the session the token descends from is read before the token is rotated,
+     * so a store that cannot open it, its columns sealed under a data key the KMS does not open, leaves the
+     * token as it was and issues no successor.
+     */
+    #[Test]
+    public function aTokenIsNotRotatedWhileItsSessionCannotBeOpened(): void
+    {
+        // Given
+        $token = $this->token('the-token', ['openid', 'profile']);
+        $this->rows->unopen($this->session);
+        $this->rows->outage = new KmsUnavailableException('The KMS did not answer.');
+
+        // When
+        try {
+            $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+        } catch (KmsUnavailableException) {
+        }
+
+        // Then
+        static::assertFalse($token->isRotated());
+        static::assertSame([$token], $this->refreshTokens->all());
+        static::assertSame([], $this->events->events);
+    }
+
+    /**
+     * Architecture §4.5 (issue #877): the person the session names is read before the token is rotated, so a
+     * store that cannot open them leaves the token as it was and issues no successor, where read for the
+     * announcement of the rotation they would make the next presentation a reuse.
+     */
+    #[Test]
+    public function aTokenIsNotRotatedWhileItsPersonCannotBeOpened(): void
+    {
+        // Given
+        $token = $this->token('the-token', ['openid', 'profile'], session: $this->sessionOfAnUnopenedPerson());
+        $this->rows->outage = new KmsUnavailableException('The KMS did not answer.');
+
+        // When
+        try {
+            $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+        } catch (KmsUnavailableException) {
+        }
+
+        // Then
+        static::assertFalse($token->isRotated());
+        static::assertSame([$token], $this->refreshTokens->all());
+        static::assertSame([], $this->events->events);
+    }
+
+    /**
+     * RFC 9700 §4.13.2 (issue #877): presented again once the person can be opened, the token left as it was
+     * is refreshed, and nothing takes it for a reuse that would revoke its family.
+     */
+    #[Test]
+    public function aTokenLeftAsItWasIsRefreshedOnceItsPersonOpens(): void
+    {
+        // Given
+        $this->token('the-token', ['openid', 'profile'], session: $this->sessionOfAnUnopenedPerson());
+        $this->rows->outage = new KmsUnavailableException('The KMS did not answer.');
+        try {
+            $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+        } catch (KmsUnavailableException) {
+        }
+        $this->rows->outage = null;
 
         // When
         $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
@@ -900,6 +976,15 @@ final class RefreshTokenGrantTest extends TestCase
         $this->refreshTokens->save($token);
 
         return $token;
+    }
+
+    /**
+     * A session of alice that reads as it should, the person it names left for the store to open: what a session
+     * a store opened holds of a person it did not read along with it.
+     */
+    private function sessionOfAnUnopenedPerson(): AuthenticationSession
+    {
+        return Fixtures::session($this->rows->unopened($this->alice, ['id', 'tenant']), $this->clock->now()->modify('-1 hour'));
     }
 
     /**

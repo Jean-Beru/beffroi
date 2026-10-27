@@ -13,6 +13,7 @@ use Beffroi\Core\Domain\Session\SessionEnd;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Core\Tests\Fixture\UnopenedRows;
 use Beffroi\Oidc\Application\Client\AuthenticatedClient;
 use Beffroi\Oidc\Application\Request\RequestParameters;
 use Beffroi\Oidc\Application\Token\BackchannelAuthenticationGrant;
@@ -75,6 +76,8 @@ final class BackchannelAuthenticationGrantTest extends TestCase
 
     private RecordingEventDispatcher $events;
 
+    private UnopenedRows $rows;
+
     private MockClock $clock;
 
     private BackchannelAuthenticationGrant $grant;
@@ -93,6 +96,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
         $this->accessTokenIssuer = new FakeAccessTokenIssuer();
         $this->idTokens = new FakeIdTokenIssuer();
         $this->events = new RecordingEventDispatcher();
+        $this->rows = new UnopenedRows();
         $this->grant = $this->grant();
     }
 
@@ -193,6 +197,31 @@ final class BackchannelAuthenticationGrantTest extends TestCase
         // Given
         $record = $this->approved();
         $this->accessTokenIssuer->kmsOutage = new KmsUnavailableException('The KMS did not answer.');
+
+        // When
+        try {
+            $this->poll();
+        } catch (KmsUnavailableException) {
+        }
+
+        // Then
+        static::assertFalse($record->isUsed());
+        static::assertSame([], $this->refreshTokens->all());
+        static::assertSame([], $this->events->events);
+    }
+
+    /**
+     * Architecture §4.5 (issue #877): the session the user approved with is read before the identifier is
+     * spent, so a store that cannot open it, its columns sealed under a data key the KMS does not open, leaves
+     * the identifier to the next request, with nothing issued.
+     */
+    #[Test]
+    public function anIdentifierIsLeftUnspentWhileItsSessionCannotBeOpened(): void
+    {
+        // Given
+        $record = $this->approved();
+        $this->rows->unopen($this->session);
+        $this->rows->outage = new KmsUnavailableException('The KMS did not answer.');
 
         // When
         try {
