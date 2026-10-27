@@ -12,11 +12,12 @@ use Beffroi\Bundle\Key\StagingDelay;
 use Beffroi\Bundle\Saml\JoseSamlEncryptionAlgorithms;
 use Beffroi\Bundle\Saml\JoseSamlSigningAlgorithms;
 use Beffroi\Bundle\Saml\RouterServiceProviderEndpoints;
-use Beffroi\Bundle\Saml\SamlEncryption;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Tenant\TenantFactory;
+use Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\Vapid;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
+use function array_map;
 use Beffroi\Oidc\Application\Authorization\AuthorizationCodeIssuer;
 use Beffroi\Saml\Domain\Key\SamlEncryptionAlgorithmInterface;
 use Beffroi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
@@ -785,13 +786,15 @@ final class BeffroiBundleExtensionTest extends TestCase
         ]);
 
         // Then
-        $wired = [];
-        foreach ($container->findTaggedServiceIds(JoseSamlEncryptionAlgorithms::TAG) as $id => $tags) {
-            $definition = $container->getDefinition($id);
-            static::assertSame(SamlEncryption::class, $definition->getClass());
-            $wired[] = $definition->getArgument(0);
-        }
-        static::assertSame(['https://idp.acme.example/saml', 'https://idp.other.example/saml'], $wired);
+        $definition = $container->getDefinition(JoseSamlEncryptionAlgorithms::class);
+        $factory = $definition->getFactory();
+        static::assertIsCallable($factory);
+        $algorithms = $factory($definition->getArgument('$identityProviders'), new RsaKeyBits());
+        static::assertInstanceOf(JoseSamlEncryptionAlgorithms::class, $algorithms);
+        static::assertSame(
+            ['https://idp.acme.example/saml', 'https://idp.other.example/saml'],
+            array_map(static fn (SamlEncryptionAlgorithmInterface $algorithm): string => $algorithm->identityProvider(), $algorithms->all()),
+        );
     }
 
     /**

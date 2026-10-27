@@ -19,7 +19,8 @@ use Beffroi\Saml\Domain\Key\SamlEncryptionAlgorithmInterface;
 final readonly class JoseSamlEncryptionAlgorithms implements JoseAlgorithmRegistryInterface
 {
     /**
-     * The tag the algorithm of the key of an upstream identity provider is wired by.
+     * The tag an extension of a deployment wires the algorithm of the key of an upstream identity provider by, beside
+     * those of the providers the configuration declares (SamlSection::encryptionAlgorithms()).
      */
     public const string TAG = 'beffroi.saml_encryption_algorithm';
 

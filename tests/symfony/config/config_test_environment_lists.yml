@@ -1,0 +1,48 @@
+# A deployment that names the lists of its configuration by environment (decision 0030, issue #912): each one is a
+# JSON variable read with "json:", which replaces whatever config_test.yml writes, a later configuration replacing an
+# earlier list whole. A test names the value before it boots this kernel (ListsFromTheEnvironmentTest), and left alone
+# each variable carries what a deployment that names nothing carries. The tenant is the SAML identity provider of
+# config_test.yml and no service provider, so a list of upstream identity providers is one it refuses; the service
+# providers of "when@test" are not declared here, that block belonging to the environment "test" alone.
+parameters:
+    env(BEFFROI_TEST_TRUSTED_ISSUERS): '{}'
+    env(BEFFROI_TEST_STATEMENT_ISSUERS): '{}'
+    env(BEFFROI_TEST_SELF_SERVED_CLAIMS): '[]'
+    env(BEFFROI_TEST_AUTHENTICATION_CLASSES): '{}'
+    env(BEFFROI_TEST_DATA_KEY_SECRETS): '["a-secret-of-these-tests-that-binds-nothing"]'
+    env(BEFFROI_TEST_SAML_SERVICE_PROVIDERS): '{}'
+    env(BEFFROI_TEST_SAML_IDENTITY_PROVIDERS): '{}'
+
+beffroi:
+    tenant:
+        self_served_claims: '%env(json:BEFFROI_TEST_SELF_SERVED_CLAIMS)%'
+        authentication_classes: '%env(json:BEFFROI_TEST_AUTHENTICATION_CLASSES)%'
+    keys:
+        data_key_secrets: '%env(json:BEFFROI_TEST_DATA_KEY_SECRETS)%'
+    trusted_issuers: '%env(json:BEFFROI_TEST_TRUSTED_ISSUERS)%'
+    client_registration:
+        statement_issuers: '%env(json:BEFFROI_TEST_STATEMENT_ISSUERS)%'
+    saml:
+        service_providers: '%env(json:BEFFROI_TEST_SAML_SERVICE_PROVIDERS)%'
+        identity_providers: '%env(json:BEFFROI_TEST_SAML_IDENTITY_PROVIDERS)%'
+
+services:
+    # Reachable from the tests: what each list reaches, built when a test asks for it.
+    test.beffroi.environment_lists.tenant_factory:
+        alias: Beffroi\Bundle\Tenant\TenantFactory
+        public: true
+    test.beffroi.environment_lists.trusted_issuers:
+        alias: Beffroi\Oidc\Bridge\Configuration\ConfigurationTrustedIssuers
+        public: true
+    test.beffroi.environment_lists.registration_policy:
+        alias: Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy
+        public: true
+    test.beffroi.environment_lists.data_keys:
+        alias: beffroi.data_keys
+        public: true
+    test.beffroi.environment_lists.service_providers:
+        alias: Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders
+        public: true
+    test.beffroi.environment_lists.identity_providers:
+        alias: Beffroi\Saml\Bridge\Configuration\ConfigurationUpstreamIdentityProviders
+        public: true

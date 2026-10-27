@@ -1543,13 +1543,13 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             primary_color?: scalar|Param|null, // The colour the buttons and the links of the pages are drawn in: three or six hexadecimal digits behind a hash, as "#1b4b8f". It needs "primary_content_color", a colour being unusable without the colour of what is written on it. // Default: null
  *             primary_content_color?: scalar|Param|null, // The colour of what is written on "primary_color", the two being declared together or not at all. // Default: null
  *         },
- *         self_served_claims?: list<scalar|Param|null>,
- *         authentication_classes?: array<string, scalar|Param|null>,
+ *         self_served_claims?: Param|string|list<scalar|Param|null>,
+ *         authentication_classes?: Param|string|array<string, scalar|Param|null>,
  *     },
  *     keys?: array{ // Where the keys of the tenants live: sealed by the KMS named here, stored as files until a table takes over (architecture §3.3).
  *         kms?: scalar|Param|null, // Name of the KMS client that seals the private keys, an entry of "key_management.clients", the configuration of KeyManagementBundle (a DSN there, or the members of a composite client); the KMS keeps, it never signs.
  *         key_id?: scalar|Param|null, // The key of that KMS the keys of the tenants are sealed under (backend-specific: the id of a sodium key, a Vault transit key name, an ARN); "{tenant}" stands for the slug of the tenant, one master key each.
- *         data_key_secrets?: list<scalar|Param|null>,
+ *         data_key_secrets?: Param|string|list<scalar|Param|null>,
  *         storage?: scalar|Param|null, // Directory of the sealed keys, one file per key and per tenant, and of the pairwise salt of each tenant, one file beside them (OIDC Core section 8.1). // Default: "%kernel.project_dir%/var/keys"
  *         jwks_max_age?: int|Param, // How long a relying party may cache the JWK Set, in seconds (RFC 7517 §5, architecture §4.8); the staging window of a rotation derives from it, so that the two cannot drift apart (§3.3). // Default: 300
  *         staging_delay?: scalar|Param|null, // How long a new key is published before it signs, in seconds (architecture §3.3, §9), for every family of keys but the SAML signing key, which has its own ("saml.identity_provider.staging_delay"); unless set, or set to an empty string, which is what an environment variable nobody set gives, jwks_max_age plus the 60 s refetch cooldown of oidc_login: the max-age is what a relying party with a warm cache needs to see the new key, the cooldown what one served by a shared HTTP cache needs to refetch it. // Default: null
@@ -1640,7 +1640,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             ttl?: int|Param, // Seconds a nonce is accepted once issued. // Default: 300
  *         },
  *     },
- *     trusted_issuers?: array<string, array{ // Default: []
+ *     trusted_issuers?: Param|string|array<string, array{ // Default: []
  *         jwks?: mixed, // The JWK Set of the issuer, inline (RFC 7517 §5): public keys only, and the only keys an assertion of this issuer is ever verified against, whatever its header names (RFC 8725 §3.10). Either this or "jwks_uri", never both and never neither. // Default: null
  *         jwks_uri?: scalar|Param|null, // Where the JWK Set of the issuer is read back from instead (RFC 7517 §5), which is how an issuer that rotates its keys publishes them: one GET over HTTPS, no redirect followed, read once and kept in a pool the workers share, and read again at most once per cooldown when an assertion names a "kid" the kept set does not hold. Either this or "jwks", never both and never neither. // Default: null
  *         signing_algorithms?: list<scalar|Param|null>,
@@ -1710,7 +1710,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         keep_a_client_never_used_for?: int|Param, // Seconds a client that was never used lives at all (decision 0009). Seven days by default, a working week, so that a registration made on a Friday afternoon is still there the next Friday; a client that was never used holds nothing, so the only question is how long whoever registered it may take to make its first request. The mode that registers strangers makes it the shorter of the two. // Default: 604800
  *         sector_identifier_timeout?: float|Param, // Seconds one read of a sector_identifier_uri is given, connection included (OIDC Registration section 5). It is read once, when a client registers or replaces itself, and the registration waits for it. // Default: 3.0
  *         sector_identifier_max_size?: int|Param, // Bytes a sector_identifier_uri may answer before the read stops; the document is the JSON array of the redirection URIs of the clients of one sector. // Default: 65536
- *         statement_issuers?: array<string, array{ // Default: []
+ *         statement_issuers?: Param|string|array<string, array{ // Default: []
  *             jwks?: mixed, // The JWK Set of the authority, inline (RFC 7517 section 5): public keys only, and the only keys a statement of this authority is ever verified against, whatever its header names (RFC 8725 section 3.10). // Default: null
  *             signing_algorithms?: list<scalar|Param|null>,
  *         }>,
@@ -1731,7 +1731,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             enabled?: bool|Param, // Default: false
  *             entity_id?: string|Param, // The entity ID of the service provider (spec/saml.md S-38): the URL of its metadata when left out, as the identity provider is named by the URL of its own; another URI for a service provider its upstream identity providers already know by a name it keeps, absolute, at most 1024 characters, with no whitespace, control, format or invisible character (M-6). Never the entity ID of the identity provider of the tenant. Refused when the container is compiled, or at its first use when it or the issuer holds an environment variable. // Default: null
  *         },
- *         service_providers?: array<string, array{ // Default: []
+ *         service_providers?: Param|string|array<string, array{ // Default: []
  *             metadata?: scalar|Param|null, // Where the metadata are read from: an https URL, fetched without following a redirect, or the absolute path of a file of the deployment. Nothing else, a plain http URL included. The channel is what vouches for them unless metadata_signers pins who signs them.
  *             metadata_signers?: list<scalar|Param|null>,
  *             attributes?: array<string, array{ // Default: []
@@ -1742,7 +1742,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             encrypt_assertions?: bool|Param, // The assertions of this service provider are encrypted to a key of its metadata, which must then hold one for encryption, or the metadata are refused (spec/saml.md S-7). // Default: false
  *             signs_authn_requests?: bool|Param, // This service provider signs its authentication requests. Turned off for one that cannot, Entra among them, whose unsigned requests are then the only ones accepted (issue #730); a provider that signs is refused while its metadata hold no key for signing (S-11); there is no switch for the tenant or for the deployment. // Default: true
  *         }>,
- *         identity_providers?: array<string, array{ // Default: []
+ *         identity_providers?: Param|string|array<string, array{ // Default: []
  *             metadata?: scalar|Param|null, // Where the metadata are read from: an https URL, fetched without following a redirect, or the absolute path of a file of the deployment. Nothing else, a plain http URL included. The channel is what vouches for them unless metadata_signers pins who signs them.
  *             metadata_signers?: list<scalar|Param|null>,
  *             domains?: list<scalar|Param|null>,

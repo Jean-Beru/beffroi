@@ -778,17 +778,35 @@
                                 "description": "What this tenant shows of itself on every page of its provider besides its name (issue #449). A deployment that declares none of it is served the pages it has always been served."
                             },
                             "self_served_claims": {
-                                "$ref": "#/$defs/types/array_null",
-                                "items": {
-                                    "$ref": "#/$defs/types/scalar"
-                                },
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/types/array_null",
+                                        "items": {
+                                            "$ref": "#/$defs/types/scalar"
+                                        }
+                                    },
+                                    {
+                                        "type": [
+                                            "string"
+                                        ]
+                                    }
+                                ],
                                 "description": "The claims the people of this tenant may change of themselves on the page of their account (issue #452), by the names of OIDC Core §5.1. It is a rule of the tenant and never an option of the deployment: a tenant whose directory owns the data opens none, a tenant that creates its people by hand may open all of them, and one instance serves both. Nothing by default, because opening a claim is a decision somebody takes where closing one would be a decision nobody took. A name no claim of this provider answers refuses the start."
                             },
                             "authentication_classes": {
-                                "$ref": "#/$defs/types/object_null",
-                                "additionalProperties": {
-                                    "$ref": "#/$defs/types/scalar"
-                                },
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/types/object_null",
+                                        "additionalProperties": {
+                                            "$ref": "#/$defs/types/scalar"
+                                        }
+                                    },
+                                    {
+                                        "type": [
+                                            "string"
+                                        ]
+                                    }
+                                ],
                                 "description": "The \"acr\" vocabulary of the tenant (decision 0010): class names, in the order a session is answered in, each on a predicate of the provider, by the name that predicate gives itself. The default policy (\"phrh\", \"phr\", \"2\", \"1\") when nothing is named. The predicates are the ones the deployment is wired with and this tree keeps no list of them beside the wiring: a name none of them carries refuses the start, naming the ones that are wired."
                             }
                         },
@@ -807,11 +825,24 @@
                                 "description": "The key of that KMS the keys of the tenants are sealed under (backend-specific: the id of a sodium key, a Vault transit key name, an ARN); \"{tenant}\" stands for the slug of the tenant, one master key each."
                             },
                             "data_key_secrets": {
-                                "$ref": "#/$defs/types/variable",
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/types/array_null",
+                                        "items": {
+                                            "$ref": "#/$defs/types/scalar"
+                                        },
+                                        "minItems": 1
+                                    },
+                                    {
+                                        "type": [
+                                            "string"
+                                        ]
+                                    }
+                                ],
                                 "default": [
                                     "%kernel.secret%"
                                 ],
-                                "description": "What binds each stored data key to its reference and its scope (StoredDataKey::bindingFor() of symfony/key-management): an HMAC keyed by the data key and by a secret the database does not hold, so that whoever writes the table cannot plant a key they wrapped themselves. The first one binds a new row and every one is accepted when a row is read, so a secret is rotated by writing the new one first, running \"beffroi:data-keys:rewrap\" for every tenant towards the client that already wraps its keys, which binds each row again under the first, then dropping the old one. Unless set, the secret of the kernel (\"kernel.secret\"), which is then rotated the same way: a row whose secret is no longer listed opens nothing, nor does anything sealed under its key."
+                                "description": "What binds each stored data key to its reference and its scope (StoredDataKey::bindingFor() of symfony/key-management): an HMAC keyed by the data key and by a secret the database does not hold, so that whoever writes the table cannot plant a key they wrapped themselves. The first one binds a new row and every one is accepted when a row is read, so a secret is rotated by writing the new one first, running \"beffroi:data-keys:rewrap\" for every tenant towards the client that already wraps its keys, which binds each row again under the first, then dropping the old one. Unless set, the secret of the kernel (\"kernel.secret\"), which is then rotated the same way: a row whose secret is no longer listed opens nothing, nor does anything sealed under its key. An environment variable may carry one secret, which is the list of one, or the list whole, as JSON."
                             },
                             "storage": {
                                 "$ref": "#/$defs/types/scalar",
@@ -1374,49 +1405,58 @@
                         "description": "How a proof of possession is read (RFC 9449 §4.3). What a proof may be signed with is the wiring, the same algorithms the provider signs with, and what the document announces in \"dpop_signing_alg_values_supported\"; nothing here weakens a proof, and a client that sends none is not concerned."
                     },
                     "trusted_issuers": {
-                        "$ref": "#/$defs/types/object_null",
-                        "additionalProperties": {
-                            "$ref": "#/$defs/types/object_null",
-                            "properties": {
-                                "jwks": {
-                                    "$ref": "#/$defs/types/variable",
-                                    "default": null,
-                                    "description": "The JWK Set of the issuer, inline (RFC 7517 §5): public keys only, and the only keys an assertion of this issuer is ever verified against, whatever its header names (RFC 8725 §3.10). Either this or \"jwks_uri\", never both and never neither."
-                                },
-                                "jwks_uri": {
-                                    "$ref": "#/$defs/types/scalar",
-                                    "default": null,
-                                    "description": "Where the JWK Set of the issuer is read back from instead (RFC 7517 §5), which is how an issuer that rotates its keys publishes them: one GET over HTTPS, no redirect followed, read once and kept in a pool the workers share, and read again at most once per cooldown when an assertion names a \"kid\" the kept set does not hold. Either this or \"jwks\", never both and never neither."
-                                },
-                                "signing_algorithms": {
-                                    "$ref": "#/$defs/types/array_null",
-                                    "items": {
-                                        "$ref": "#/$defs/types/scalar"
+                        "anyOf": [
+                            {
+                                "$ref": "#/$defs/types/object_null",
+                                "additionalProperties": {
+                                    "$ref": "#/$defs/types/object_null",
+                                    "properties": {
+                                        "jwks": {
+                                            "$ref": "#/$defs/types/variable",
+                                            "default": null,
+                                            "description": "The JWK Set of the issuer, inline (RFC 7517 §5): public keys only, and the only keys an assertion of this issuer is ever verified against, whatever its header names (RFC 8725 §3.10). Either this or \"jwks_uri\", never both and never neither."
+                                        },
+                                        "jwks_uri": {
+                                            "$ref": "#/$defs/types/scalar",
+                                            "default": null,
+                                            "description": "Where the JWK Set of the issuer is read back from instead (RFC 7517 §5), which is how an issuer that rotates its keys publishes them: one GET over HTTPS, no redirect followed, read once and kept in a pool the workers share, and read again at most once per cooldown when an assertion names a \"kid\" the kept set does not hold. Either this or \"jwks\", never both and never neither."
+                                        },
+                                        "signing_algorithms": {
+                                            "$ref": "#/$defs/types/array_null",
+                                            "items": {
+                                                "$ref": "#/$defs/types/scalar"
+                                            },
+                                            "description": "The JWS algorithms an assertion of this issuer may be signed with (RFC 7515 §4.1.1), among those the provider is wired with; at least one. A name nothing verifies fails at boot."
+                                        },
+                                        "clients": {
+                                            "$ref": "#/$defs/types/array_null",
+                                            "items": {
+                                                "$ref": "#/$defs/types/scalar"
+                                            },
+                                            "description": "The clients that may present an assertion of this issuer at the token endpoint, by client identifier; at least one. An issuer trusted for a gateway is not thereby trusted for every client of the tenant."
+                                        },
+                                        "identity_provider": {
+                                            "$ref": "#/$defs/types/scalar",
+                                            "default": null,
+                                            "description": "The source of the linked identities the subjects of its assertions name (decision 0002): the \"sub\" of an assertion is a user of this tenant only when a linked identity of that source says so, and no user is ever created here."
+                                        },
+                                        "trusted_scopes": {
+                                            "$ref": "#/$defs/types/array_null",
+                                            "items": {
+                                                "$ref": "#/$defs/types/scalar"
+                                            },
+                                            "description": "What this issuer is trusted for: the scopes of a response are a subset of these, of what the client registered and of what the request asked for. \"openid\" among them buys nothing, the grant refusing it: it authenticates nobody."
+                                        }
                                     },
-                                    "description": "The JWS algorithms an assertion of this issuer may be signed with (RFC 7515 §4.1.1), among those the provider is wired with; at least one. A name nothing verifies fails at boot."
-                                },
-                                "clients": {
-                                    "$ref": "#/$defs/types/array_null",
-                                    "items": {
-                                        "$ref": "#/$defs/types/scalar"
-                                    },
-                                    "description": "The clients that may present an assertion of this issuer at the token endpoint, by client identifier; at least one. An issuer trusted for a gateway is not thereby trusted for every client of the tenant."
-                                },
-                                "identity_provider": {
-                                    "$ref": "#/$defs/types/scalar",
-                                    "default": null,
-                                    "description": "The source of the linked identities the subjects of its assertions name (decision 0002): the \"sub\" of an assertion is a user of this tenant only when a linked identity of that source says so, and no user is ever created here."
-                                },
-                                "trusted_scopes": {
-                                    "$ref": "#/$defs/types/array_null",
-                                    "items": {
-                                        "$ref": "#/$defs/types/scalar"
-                                    },
-                                    "description": "What this issuer is trusted for: the scopes of a response are a subset of these, of what the client registered and of what the request asked for. \"openid\" among them buys nothing, the grant refusing it: it authenticates nobody."
+                                    "additionalProperties": false
                                 }
                             },
-                            "additionalProperties": false
-                        },
+                            {
+                                "type": [
+                                    "string"
+                                ]
+                            }
+                        ],
                         "description": "The issuers whose assertions this tenant accepts as an authorization (RFC 7523 §2.1), keyed by the \"iss\" they sign with. Each one is a closed declaration: nothing about it is inferred, and an issuer nobody declared is unknown."
                     },
                     "clients": {
@@ -1751,25 +1791,34 @@
                                 "description": "Bytes a sector_identifier_uri may answer before the read stops; the document is the JSON array of the redirection URIs of the clients of one sector."
                             },
                             "statement_issuers": {
-                                "$ref": "#/$defs/types/object_null",
-                                "additionalProperties": {
-                                    "$ref": "#/$defs/types/object_null",
-                                    "properties": {
-                                        "jwks": {
-                                            "$ref": "#/$defs/types/variable",
-                                            "default": null,
-                                            "description": "The JWK Set of the authority, inline (RFC 7517 section 5): public keys only, and the only keys a statement of this authority is ever verified against, whatever its header names (RFC 8725 section 3.10)."
-                                        },
-                                        "signing_algorithms": {
-                                            "$ref": "#/$defs/types/array_null",
-                                            "items": {
-                                                "$ref": "#/$defs/types/scalar"
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/types/object_null",
+                                        "additionalProperties": {
+                                            "$ref": "#/$defs/types/object_null",
+                                            "properties": {
+                                                "jwks": {
+                                                    "$ref": "#/$defs/types/variable",
+                                                    "default": null,
+                                                    "description": "The JWK Set of the authority, inline (RFC 7517 section 5): public keys only, and the only keys a statement of this authority is ever verified against, whatever its header names (RFC 8725 section 3.10)."
+                                                },
+                                                "signing_algorithms": {
+                                                    "$ref": "#/$defs/types/array_null",
+                                                    "items": {
+                                                        "$ref": "#/$defs/types/scalar"
+                                                    },
+                                                    "description": "The JWS algorithms a statement of this authority may be signed with (RFC 7515 section 4.1.1), among those the provider is wired with; at least one. A name nothing verifies fails at boot."
+                                                }
                                             },
-                                            "description": "The JWS algorithms a statement of this authority may be signed with (RFC 7515 section 4.1.1), among those the provider is wired with; at least one. A name nothing verifies fails at boot."
+                                            "additionalProperties": false
                                         }
                                     },
-                                    "additionalProperties": false
-                                },
+                                    {
+                                        "type": [
+                                            "string"
+                                        ]
+                                    }
+                                ],
                                 "description": "The authorities whose software statements this tenant accepts (RFC 7591 section 2.3), keyed by the \"iss\" they sign with. They are what the \"software_statement\" mode reads, and a tenant that pins none has that mode closed rather than open to whoever signs. Each one is a closed declaration: nothing about it is inferred, and no key a statement carries is ever read."
                             },
                             "statement_max_lifetime": {
@@ -1893,142 +1942,160 @@
                                 "description": "The tenant as a SAML service provider to the identity providers upstream of it (spec/saml.md section 6.9). Disabled, nothing of it is wired: its metadata answer that there are none. Enabled, it signs with the SAML signing key of the identity provider, drawn and rotated by the figures of \"identity_provider\" whichever role is enabled (S-40), and its metadata are served at /saml/sp/metadata."
                             },
                             "service_providers": {
-                                "$ref": "#/$defs/types/object_null",
-                                "additionalProperties": {
-                                    "$ref": "#/$defs/types/object_null",
-                                    "properties": {
-                                        "metadata": {
-                                            "$ref": "#/$defs/types/scalar",
-                                            "description": "Where the metadata are read from: an https URL, fetched without following a redirect, or the absolute path of a file of the deployment. Nothing else, a plain http URL included. The channel is what vouches for them unless metadata_signers pins who signs them."
-                                        },
-                                        "metadata_signers": {
-                                            "$ref": "#/$defs/types/array_null",
-                                            "items": {
-                                                "$ref": "#/$defs/types/scalar"
-                                            },
-                                            "description": "The certificates the metadata are signed by, each the base64 of its DER as an X509Certificate carries it, sixteen at most: the metadata are then verified under them and carry a validUntil (spec/saml.md S-5, S-6). Left empty, they are trusted by the channel they come through."
-                                        },
-                                        "attributes": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/types/object_null",
+                                        "additionalProperties": {
                                             "$ref": "#/$defs/types/object_null",
-                                            "additionalProperties": {
-                                                "$ref": "#/$defs/types/object_null",
-                                                "properties": {
-                                                    "claim": {
-                                                        "$ref": "#/$defs/types/scalar",
-                                                        "description": "The name of the claim, as the provider names it (OIDC Core section 5.1)."
-                                                    },
-                                                    "name_format": {
-                                                        "anyOf": [
-                                                            {
-                                                                "enum": [
-                                                                    "uri",
-                                                                    "basic",
-                                                                    "unspecified"
-                                                                ]
-                                                            },
-                                                            {
-                                                                "$ref": "#/$defs/types/param"
-                                                            }
-                                                        ],
-                                                        "default": "uri",
-                                                        "description": "The name format of the attribute (Core section 8.2): \"uri\", the default the SAML V2.0 interoperability profiles ask for, under which the name is an absolute URI; \"basic\"; or \"unspecified\"."
-                                                    },
-                                                    "friendly_name": {
-                                                        "$ref": "#/$defs/types/scalar",
-                                                        "default": null,
-                                                        "description": "A name a person reads (Core section 2.7.3.1), which nothing compares."
-                                                    }
+                                            "properties": {
+                                                "metadata": {
+                                                    "$ref": "#/$defs/types/scalar",
+                                                    "description": "Where the metadata are read from: an https URL, fetched without following a redirect, or the absolute path of a file of the deployment. Nothing else, a plain http URL included. The channel is what vouches for them unless metadata_signers pins who signs them."
                                                 },
-                                                "additionalProperties": false
+                                                "metadata_signers": {
+                                                    "$ref": "#/$defs/types/array_null",
+                                                    "items": {
+                                                        "$ref": "#/$defs/types/scalar"
+                                                    },
+                                                    "description": "The certificates the metadata are signed by, each the base64 of its DER as an X509Certificate carries it, sixteen at most: the metadata are then verified under them and carry a validUntil (spec/saml.md S-5, S-6). Left empty, they are trusted by the channel they come through."
+                                                },
+                                                "attributes": {
+                                                    "$ref": "#/$defs/types/object_null",
+                                                    "additionalProperties": {
+                                                        "$ref": "#/$defs/types/object_null",
+                                                        "properties": {
+                                                            "claim": {
+                                                                "$ref": "#/$defs/types/scalar",
+                                                                "description": "The name of the claim, as the provider names it (OIDC Core section 5.1)."
+                                                            },
+                                                            "name_format": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "enum": [
+                                                                            "uri",
+                                                                            "basic",
+                                                                            "unspecified"
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "$ref": "#/$defs/types/param"
+                                                                    }
+                                                                ],
+                                                                "default": "uri",
+                                                                "description": "The name format of the attribute (Core section 8.2): \"uri\", the default the SAML V2.0 interoperability profiles ask for, under which the name is an absolute URI; \"basic\"; or \"unspecified\"."
+                                                            },
+                                                            "friendly_name": {
+                                                                "$ref": "#/$defs/types/scalar",
+                                                                "default": null,
+                                                                "description": "A name a person reads (Core section 2.7.3.1), which nothing compares."
+                                                            }
+                                                        },
+                                                        "additionalProperties": false
+                                                    },
+                                                    "description": "The claims of the provider sent to this service provider, keyed by the name of the SAML attribute each one is sent as (Core section 2.7.3.1), 256 at most. A claim may be sent under several names."
+                                                },
+                                                "encrypt_assertions": {
+                                                    "$ref": "#/$defs/types/boolean",
+                                                    "default": false,
+                                                    "description": "The assertions of this service provider are encrypted to a key of its metadata, which must then hold one for encryption, or the metadata are refused (spec/saml.md S-7)."
+                                                },
+                                                "signs_authn_requests": {
+                                                    "$ref": "#/$defs/types/boolean",
+                                                    "default": true,
+                                                    "description": "This service provider signs its authentication requests. Turned off for one that cannot, Entra among them, whose unsigned requests are then the only ones accepted (issue #730); a provider that signs is refused while its metadata hold no key for signing (S-11); there is no switch for the tenant or for the deployment."
+                                                }
                                             },
-                                            "description": "The claims of the provider sent to this service provider, keyed by the name of the SAML attribute each one is sent as (Core section 2.7.3.1), 256 at most. A claim may be sent under several names."
-                                        },
-                                        "encrypt_assertions": {
-                                            "$ref": "#/$defs/types/boolean",
-                                            "default": false,
-                                            "description": "The assertions of this service provider are encrypted to a key of its metadata, which must then hold one for encryption, or the metadata are refused (spec/saml.md S-7)."
-                                        },
-                                        "signs_authn_requests": {
-                                            "$ref": "#/$defs/types/boolean",
-                                            "default": true,
-                                            "description": "This service provider signs its authentication requests. Turned off for one that cannot, Entra among them, whose unsigned requests are then the only ones accepted (issue #730); a provider that signs is refused while its metadata hold no key for signing (S-11); there is no switch for the tenant or for the deployment."
+                                            "additionalProperties": false
                                         }
                                     },
-                                    "additionalProperties": false
-                                },
+                                    {
+                                        "type": [
+                                            "string"
+                                        ]
+                                    }
+                                ],
                                 "description": "The service providers of the tenant, keyed by entity ID, compared exactly with the one of their metadata (spec/saml.md S-5). Their metadata are read by \"beffroi:saml:service-provider:refresh\" and every hour after, refused when expired, older than the document accepted, or without a key for encryption where the declaration asks for encryption (S-6, S-7). Declared only for a tenant that is an identity provider."
                             },
                             "identity_providers": {
-                                "$ref": "#/$defs/types/object_null",
-                                "additionalProperties": {
-                                    "$ref": "#/$defs/types/object_null",
-                                    "properties": {
-                                        "metadata": {
-                                            "$ref": "#/$defs/types/scalar",
-                                            "description": "Where the metadata are read from: an https URL, fetched without following a redirect, or the absolute path of a file of the deployment. Nothing else, a plain http URL included. The channel is what vouches for them unless metadata_signers pins who signs them."
-                                        },
-                                        "metadata_signers": {
-                                            "$ref": "#/$defs/types/array_null",
-                                            "items": {
-                                                "$ref": "#/$defs/types/scalar"
-                                            },
-                                            "description": "The certificates the metadata are signed by, each the base64 of its DER as an X509Certificate carries it, sixteen at most: the metadata are then verified under them and carry a validUntil (spec/saml.md S-42, S-6). Left empty, they are trusted by the channel they come through."
-                                        },
-                                        "domains": {
-                                            "$ref": "#/$defs/types/array_null",
-                                            "items": {
-                                                "$ref": "#/$defs/types/scalar"
-                                            },
-                                            "minItems": 1,
-                                            "description": "The e-mail domains this identity provider answers for, one at least and 256 at most, each a name of the DNS read without regard to case, a name outside ASCII written as its A-label (spec/saml.md S-44). A domain is the whole part of an address after its \"@\" and nothing under it, and answers to one identity provider of the tenant: a domain two of them declare is refused."
-                                        },
-                                        "email_attribute": {
-                                            "$ref": "#/$defs/types/scalar",
-                                            "description": "The name of the attribute of an assertion that carries the e-mail address of a person (spec/saml.md S-45), \"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress\" for Entra."
-                                        },
-                                        "profile": {
-                                            "$ref": "#/$defs/types/object_null",
-                                            "additionalProperties": {
-                                                "$ref": "#/$defs/types/scalar"
-                                            },
-                                            "description": "The attributes of an assertion that fill the profile of a person, keyed by the name of the attribute, each naming the claim of OpenID Connect Core section 5.1 it fills, one attribute per claim (spec/saml.md S-45): a claim a person can describe themselves with in this deployment, refused otherwise when the deployment is built."
-                                        },
-                                        "subject_attribute": {
-                                            "$ref": "#/$defs/types/scalar",
-                                            "default": null,
-                                            "description": "The name of the attribute that names a person when the NameID of an assertion is not persistent (spec/saml.md S-45): a value the identity provider keeps for that person and never one the person changes, \"http://schemas.microsoft.com/identity/claims/objectidentifier\" for Entra rather than an address. Left out, a person is named by a persistent NameID only."
-                                        },
-                                        "require_encrypted_assertions": {
-                                            "$ref": "#/$defs/types/boolean",
-                                            "default": false,
-                                            "description": "An assertion of this identity provider arrives encrypted for the key it is given, or it is refused, whatever signs it (spec/saml.md S-67). The certificate it encrypts for is in the metadata of the service provider given to it alone, at /saml/sp/metadata/ followed by its entity ID in base64url, once its key is drawn with \"beffroi:keys:generate --algorithm=SAML-ENCRYPTION:\" and its entity ID (S-64, S-65)."
-                                        },
-                                        "address_parameter": {
-                                            "$ref": "#/$defs/types/scalar",
-                                            "default": null,
-                                            "description": "The query parameter of the single sign-on service of this identity provider that takes the address a person gave the login page, which it prefills its sign-in with: \"login_hint\" for Entra. One to 64 unreserved characters of RFC 3986, none of the parameters of the binding (SAMLRequest, SAMLResponse, SAMLEncoding, RelayState, SigAlg, Signature) in any case (spec/saml.md S-68). Left out, no address is sent. The address is a hint and nothing more: the person is who the signed assertion names."
-                                        },
-                                        "groups": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/types/object_null",
+                                        "additionalProperties": {
                                             "$ref": "#/$defs/types/object_null",
                                             "properties": {
-                                                "attribute": {
+                                                "metadata": {
                                                     "$ref": "#/$defs/types/scalar",
-                                                    "description": "The name of the attribute that carries the groups."
+                                                    "description": "Where the metadata are read from: an https URL, fetched without following a redirect, or the absolute path of a file of the deployment. Nothing else, a plain http URL included. The channel is what vouches for them unless metadata_signers pins who signs them."
                                                 },
-                                                "map": {
+                                                "metadata_signers": {
+                                                    "$ref": "#/$defs/types/array_null",
+                                                    "items": {
+                                                        "$ref": "#/$defs/types/scalar"
+                                                    },
+                                                    "description": "The certificates the metadata are signed by, each the base64 of its DER as an X509Certificate carries it, sixteen at most: the metadata are then verified under them and carry a validUntil (spec/saml.md S-42, S-6). Left empty, they are trusted by the channel they come through."
+                                                },
+                                                "domains": {
+                                                    "$ref": "#/$defs/types/array_null",
+                                                    "items": {
+                                                        "$ref": "#/$defs/types/scalar"
+                                                    },
+                                                    "minItems": 1,
+                                                    "description": "The e-mail domains this identity provider answers for, one at least and 256 at most, each a name of the DNS read without regard to case, a name outside ASCII written as its A-label (spec/saml.md S-44). A domain is the whole part of an address after its \"@\" and nothing under it, and answers to one identity provider of the tenant: a domain two of them declare is refused."
+                                                },
+                                                "email_attribute": {
+                                                    "$ref": "#/$defs/types/scalar",
+                                                    "description": "The name of the attribute of an assertion that carries the e-mail address of a person (spec/saml.md S-45), \"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress\" for Entra."
+                                                },
+                                                "profile": {
                                                     "$ref": "#/$defs/types/object_null",
                                                     "additionalProperties": {
                                                         "$ref": "#/$defs/types/scalar"
                                                     },
-                                                    "description": "The name of a group of the tenant, keyed by a value of the attribute, compared exactly, 256 values at most; the object IDs of the groups for Entra."
+                                                    "description": "The attributes of an assertion that fill the profile of a person, keyed by the name of the attribute, each naming the claim of OpenID Connect Core section 5.1 it fills, one attribute per claim (spec/saml.md S-45): a claim a person can describe themselves with in this deployment, refused otherwise when the deployment is built."
+                                                },
+                                                "subject_attribute": {
+                                                    "$ref": "#/$defs/types/scalar",
+                                                    "default": null,
+                                                    "description": "The name of the attribute that names a person when the NameID of an assertion is not persistent (spec/saml.md S-45): a value the identity provider keeps for that person and never one the person changes, \"http://schemas.microsoft.com/identity/claims/objectidentifier\" for Entra rather than an address. Left out, a person is named by a persistent NameID only."
+                                                },
+                                                "require_encrypted_assertions": {
+                                                    "$ref": "#/$defs/types/boolean",
+                                                    "default": false,
+                                                    "description": "An assertion of this identity provider arrives encrypted for the key it is given, or it is refused, whatever signs it (spec/saml.md S-67). The certificate it encrypts for is in the metadata of the service provider given to it alone, at /saml/sp/metadata/ followed by its entity ID in base64url, once its key is drawn with \"beffroi:keys:generate --algorithm=SAML-ENCRYPTION:\" and its entity ID (S-64, S-65)."
+                                                },
+                                                "address_parameter": {
+                                                    "$ref": "#/$defs/types/scalar",
+                                                    "default": null,
+                                                    "description": "The query parameter of the single sign-on service of this identity provider that takes the address a person gave the login page, which it prefills its sign-in with: \"login_hint\" for Entra. One to 64 unreserved characters of RFC 3986, none of the parameters of the binding (SAMLRequest, SAMLResponse, SAMLEncoding, RelayState, SigAlg, Signature) in any case (spec/saml.md S-68). Left out, no address is sent. The address is a hint and nothing more: the person is who the signed assertion names."
+                                                },
+                                                "groups": {
+                                                    "$ref": "#/$defs/types/object_null",
+                                                    "properties": {
+                                                        "attribute": {
+                                                            "$ref": "#/$defs/types/scalar",
+                                                            "description": "The name of the attribute that carries the groups."
+                                                        },
+                                                        "map": {
+                                                            "$ref": "#/$defs/types/object_null",
+                                                            "additionalProperties": {
+                                                                "$ref": "#/$defs/types/scalar"
+                                                            },
+                                                            "description": "The name of a group of the tenant, keyed by a value of the attribute, compared exactly, 256 values at most; the object IDs of the groups for Entra."
+                                                        }
+                                                    },
+                                                    "additionalProperties": false,
+                                                    "description": "The attribute of an assertion that carries the groups of a person, and the group of the tenant each of its values stands for (spec/saml.md S-45). A value the map does not name is no group, and no group is created from what an identity provider sends."
                                                 }
                                             },
-                                            "additionalProperties": false,
-                                            "description": "The attribute of an assertion that carries the groups of a person, and the group of the tenant each of its values stands for (spec/saml.md S-45). A value the map does not name is no group, and no group is created from what an identity provider sends."
+                                            "additionalProperties": false
                                         }
                                     },
-                                    "additionalProperties": false
-                                },
+                                    {
+                                        "type": [
+                                            "string"
+                                        ]
+                                    }
+                                ],
                                 "description": "The upstream identity providers of the tenant, keyed by entity ID, compared exactly with the one of their metadata (spec/saml.md S-42): identity providers whose assertions the service provider of the tenant receives. Their metadata are read by \"beffroi:saml:identity-provider:refresh\" and every hour after, refused when expired, older than the document accepted, without an identity provider role, without a key for signing, or with a single sign-on service that is not https (S-6, S-43). Declared only for a tenant that is a service provider."
                             }
                         },

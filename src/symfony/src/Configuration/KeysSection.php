@@ -24,6 +24,8 @@ use Beffroi\Bundle\Key\StagingDelay;
 use Beffroi\Bundle\Profiler\KmsClient;
 use Beffroi\Core\Domain\Key\RotationSchedule;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\DataKeyStore;
+use Psr\Container\ContainerInterface;
+use SensitiveParameter;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\EncryptedTypes;
 use Symfony\Component\KeyManagement\Bridge\DoctrineOrm\SchemaListener\DataKeyStoreSchemaListener;
 use Symfony\Component\KeyManagement\Debug\TraceableDataKeyStore;
@@ -40,7 +42,6 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_lo
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
-use function is_array;
 use function is_int;
 use function is_string;
 
@@ -71,17 +72,7 @@ final readonly class KeysSection extends ConfigurationSection
             ->isRequired()
             ->cannotBeEmpty()
             ->end()
-            ->arrayNode('data_key_secrets')
-            ->info('What binds each stored data key to its reference and its scope (StoredDataKey::bindingFor() of symfony/key-management): an HMAC keyed by the data key and by a secret the database does not hold, so that whoever writes the table cannot plant a key they wrapped themselves. The first one binds a new row and every one is accepted when a row is read, so a secret is rotated by writing the new one first, running "beffroi:data-keys:rewrap" for every tenant towards the client that already wraps its keys, which binds each row again under the first, then dropping the old one. Unless set, the secret of the kernel ("kernel.secret"), which is then rotated the same way: a row whose secret is no longer listed opens nothing, nor does anything sealed under its key.')
-            ->beforeNormalization()
-            ->castToArray()
-            ->end()
-            ->scalarPrototype()
-            ->cannotBeEmpty()
-            ->end()
-            ->requiresAtLeastOneElement()
-            ->defaultValue(['%kernel.secret%'])
-            ->end()
+            ->append(self::dataKeySecrets())
             ->scalarNode('storage')
             ->info('Directory of the sealed keys, one file per key and per tenant, and of the pairwise salt of each tenant, one file beside them (OIDC Core section 8.1).')
             ->defaultValue('%kernel.project_dir%/var/keys')
@@ -147,30 +138,38 @@ final readonly class KeysSection extends ConfigurationSection
         // "kernel.reset": the component tags its own store with it and "forget()" would put the KMS back on
         // the path of every request that touches a column, where a thread is to keep open what it has
         // opened (decision 0018, 12-garde-des-cles.md §1.5).
-        $secrets = self::secrets($keys);
-        $services->set('beffroi.data_keys', TenantDataKeyStores::class)->args([
-            service(Connection::class),
-            tagged_locator('key_management.client', 'key'),
-            self::string($keys, 'kms'),
-            self::string($keys, 'key_id'),
-            $secrets,
-            TenantDataKeyStores::TABLE,
-        ]);
+        // the secrets reach the stores as the configuration or the environment carries them, the factory holding
+        // them to the rules of the tree either way (decision 0030)
+        $secrets = $keys['data_key_secrets'] ?? [];
+        $services
+            ->set('beffroi.data_keys', TenantDataKeyStores::class)
+            ->factory(self::dataKeyStores(...))
+            ->args([
+                service(Connection::class),
+                tagged_locator('key_management.client', 'key'),
+                self::string($keys, 'kms'),
+                self::string($keys, 'key_id'),
+                $secrets,
+                TenantDataKeyStores::TABLE,
+            ]);
         // The index key of a tenant, which is what a search matches a sealed column by: a row of the same
         // table, in a scope of its own, on a store whose maximum age is null. The age past which a key is
         // retired is a setting of a store and not of a scope, and an index key must never be retired nor
         // rotated, every tag already written having been derived under it; keeping it in the store rather
         // than beside the master key of the tenant is what has "key-management:rewrap-data-keys" carry it
         // along when a deployment changes backend (decision 0018).
-        $services->set('beffroi.data_keys.index', TenantDataKeyStores::class)->args([
-            service(Connection::class),
-            tagged_locator('key_management.client', 'key'),
-            self::string($keys, 'kms'),
-            self::string($keys, 'key_id'),
-            $secrets,
-            TenantDataKeyStores::TABLE,
-            null,
-        ]);
+        $services
+            ->set('beffroi.data_keys.index', TenantDataKeyStores::class)
+            ->factory(self::dataKeyStores(...))
+            ->args([
+                service(Connection::class),
+                tagged_locator('key_management.client', 'key'),
+                self::string($keys, 'kms'),
+                self::string($keys, 'key_id'),
+                $secrets,
+                TenantDataKeyStores::TABLE,
+                null,
+            ]);
         // The store opens the index key of a tenant once and every index over it costs that one opening,
         // which is what decision 0018 counts; the table is read for the reference of its first row and for
         // nothing else. Declared by its class so that what looks a user up is autowired with it
@@ -285,19 +284,58 @@ final readonly class KeysSection extends ConfigurationSection
     }
 
     /**
-     * The secrets that bind a stored data key, in the order the deployment wrote them: the first one binds
-     * and every one is accepted.
+     * A store of the data keys of the tenants, which binds its rows with the secrets the configuration or the
+     * environment carries, held to the rules of the tree either way (decision 0030); every other argument is the one
+     * of the store.
      *
-     * @param array<array-key, mixed> $keys
+     * @param mixed $secrets the list of the secrets, or one secret, which is the list of one
+     * @param int<0, max>|null $maxAgeSeconds the age past which a data key is retired, null for one never retired
      *
-     * @return non-empty-list<string> each a secret, or the parameter or environment placeholder that stands
-     *                                for one until runtime
+     * @throws InvalidConfigurationException when the secrets are no list of secrets the tree accepts
      */
-    private static function secrets(array $keys): array
+    public static function dataKeyStores(
+        Connection $connection,
+        ContainerInterface $clients,
+        string $client,
+        string $masterKeyId,
+        #[SensitiveParameter]
+        mixed $secrets,
+        string $table,
+        ?int $maxAgeSeconds = DataKeyStore::DEFAULT_MAX_AGE_SECONDS,
+    ): TenantDataKeyStores {
+        return new TenantDataKeyStores($connection, $clients, $client, $masterKeyId, self::secrets($secrets), $table, $maxAgeSeconds);
+    }
+
+    /**
+     * The secrets as the tree declares them, which the environment may carry whole.
+     */
+    private static function dataKeySecrets(): EnvironmentListDefinition
     {
-        $written = $keys['data_key_secrets'] ?? null;
+        $secrets = new EnvironmentListDefinition('data_key_secrets');
+        $secrets
+            ->wrapsAString()
+            ->info('What binds each stored data key to its reference and its scope (StoredDataKey::bindingFor() of symfony/key-management): an HMAC keyed by the data key and by a secret the database does not hold, so that whoever writes the table cannot plant a key they wrapped themselves. The first one binds a new row and every one is accepted when a row is read, so a secret is rotated by writing the new one first, running "beffroi:data-keys:rewrap" for every tenant towards the client that already wraps its keys, which binds each row again under the first, then dropping the old one. Unless set, the secret of the kernel ("kernel.secret"), which is then rotated the same way: a row whose secret is no longer listed opens nothing, nor does anything sealed under its key. An environment variable may carry one secret, which is the list of one, or the list whole, as JSON.')
+            ->scalarPrototype()
+            ->cannotBeEmpty()
+            ->end()
+            ->requiresAtLeastOneElement()
+            ->defaultValue(['%kernel.secret%']);
+
+        return $secrets;
+    }
+
+    /**
+     * The secrets that bind a stored data key, in the order the deployment wrote them: the first one binds and every
+     * one is accepted. One secret is the list of one, which is what an environment variable carrying one gives.
+     *
+     * @throws InvalidConfigurationException when the secrets are no list of secrets the tree accepts
+     *
+     * @return non-empty-list<string>
+     */
+    private static function secrets(mixed $written): array
+    {
         $secrets = [];
-        foreach (is_array($written) ? $written : [] as $secret) {
+        foreach (self::dataKeySecrets()->normalized($written, 'keys.data_key_secrets') as $secret) {
             if (! is_string($secret)) {
                 throw new InvalidConfigurationException('The "beffroi" configuration key "data_key_secrets" must be a list of strings.');
             }

@@ -1301,9 +1301,10 @@ return static function (ContainerConfigurator $container): void {
     // otherwise.
     $services->set(SamlSigning::class)->args([service(RsaKeyBits::class)]);
     $services->set(JoseSamlSigningAlgorithms::class)->args([tagged_iterator(JoseSamlSigningAlgorithms::TAG)]);
-    // the keys the upstream SAML identity providers encrypt for, one algorithm per provider, tagged by what declares
-    // the provider (beffroi/saml, spec/saml.md S-64)
-    $services->set(JoseSamlEncryptionAlgorithms::class)->args([tagged_iterator(JoseSamlEncryptionAlgorithms::TAG)]);
+    // the keys the upstream SAML identity providers encrypt for (beffroi/saml, spec/saml.md S-64): one algorithm per
+    // provider the configuration or the environment declares, which the SAML section builds from that list, and those
+    // an extension tags (SamlSection::encryptionAlgorithms())
+    $services->set(JoseSamlEncryptionAlgorithms::class)->arg('$tagged', tagged_iterator(JoseSamlEncryptionAlgorithms::TAG));
     $services->set(JwtLibraryMessageBodySealer::class);
     $services->alias(MessageBodySealerInterface::class, JwtLibraryMessageBodySealer::class);
     $services->set(JwtLibraryMessageBodyOpener::class);

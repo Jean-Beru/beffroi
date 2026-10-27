@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Configuration;
 
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Exception\LogicException;
 use Beffroi\Bundle\Client\SectorIdentifierDocumentFetcher;
 use Beffroi\Oidc\Application\Client\Registration\SoftwareStatementVerifier;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
-use function is_array;
+use Beffroi\Core\Port\SignatureAlgorithmsInterface;
+use DateInterval;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use function is_string;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
@@ -81,24 +85,7 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
             ->defaultValue(self::DEFAULT_SECTOR_IDENTIFIER_MAX_SIZE)
             ->min(1)
             ->end()
-            ->arrayNode('statement_issuers')
-            ->info('The authorities whose software statements this tenant accepts (RFC 7591 section 2.3), keyed by the "iss" they sign with. They are what the "software_statement" mode reads, and a tenant that pins none has that mode closed rather than open to whoever signs. Each one is a closed declaration: nothing about it is inferred, and no key a statement carries is ever read.')
-            ->useAttributeAsKey('issuer')
-            ->normalizeKeys(false)
-            ->arrayPrototype()
-            ->children()
-            ->variableNode('jwks')
-            ->info('The JWK Set of the authority, inline (RFC 7517 section 5): public keys only, and the only keys a statement of this authority is ever verified against, whatever its header names (RFC 8725 section 3.10).')
-            ->defaultNull()
-            ->end()
-            ->arrayNode('signing_algorithms')
-            ->info('The JWS algorithms a statement of this authority may be signed with (RFC 7515 section 4.1.1), among those the provider is wired with; at least one. A name nothing verifies fails at boot.')
-            ->scalarPrototype()
-            ->end()
-            ->end()
-            ->end()
-            ->end()
-            ->end()
+            ->append(self::statementIssuers())
             ->integerNode('statement_max_lifetime')
             ->info('Seconds ahead of the request the "exp" of a software statement may be (RFC 7591 section 2.3). A statement is signed for one registration, so it is not a credential for a year; RFC 7591 requires no "exp" at all, and this provider requires one as it does of every signed thing it takes back (decision 0006).')
             ->defaultValue(self::DEFAULT_STATEMENT_MAX_LIFETIME)
@@ -121,6 +108,68 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
             ->end();
     }
 
+    /**
+     * The client registration policy of the tenant at runtime, from the authorities the configuration or the environment
+     * pins, held to the rules of the tree either way (decision 0030); every other argument is the one of the policy.
+     *
+     * @param mixed $statementIssuers the list of the authorities, as the configuration or the environment carries it
+     *
+     * @throws InvalidConfigurationException when the list of the authorities is one the tree refuses
+     * @throws InvalidArgumentException when an authority or the default set of scopes does not hold together
+     * @throws LogicException when authorities are pinned and nothing verifies what they sign with
+     */
+    public static function policy(
+        string $tenantSlug,
+        ?string $mode,
+        bool $exemptsConfidentialClientsFromPkce,
+        DateInterval $keepsAClientUnusedFor,
+        DateInterval $keepsAClientNeverUsedFor,
+        mixed $statementIssuers,
+        ?SignatureAlgorithmsInterface $algorithms = null,
+        ?string $defaultScope = null,
+    ): ConfigurationClientRegistrationPolicy {
+        /** @var array<string, array<string, mixed>> $issuers the tree declares each one the array of its children, keyed by its "iss" */
+        $issuers = self::statementIssuers()->normalized($statementIssuers, 'client_registration.statement_issuers');
+
+        return new ConfigurationClientRegistrationPolicy(
+            $tenantSlug,
+            $mode,
+            $exemptsConfidentialClientsFromPkce,
+            $keepsAClientUnusedFor,
+            $keepsAClientNeverUsedFor,
+            $issuers,
+            $algorithms,
+            $defaultScope,
+        );
+    }
+
+    /**
+     * The authorities as the tree declares them, which the environment may carry whole.
+     */
+    private static function statementIssuers(): EnvironmentListDefinition
+    {
+        $issuers = new EnvironmentListDefinition('statement_issuers');
+        $issuers
+            ->info('The authorities whose software statements this tenant accepts (RFC 7591 section 2.3), keyed by the "iss" they sign with. They are what the "software_statement" mode reads, and a tenant that pins none has that mode closed rather than open to whoever signs. Each one is a closed declaration: nothing about it is inferred, and no key a statement carries is ever read.')
+            ->useAttributeAsKey('issuer')
+            ->normalizeKeys(false)
+            ->arrayPrototype()
+            ->children()
+            ->variableNode('jwks')
+            ->info('The JWK Set of the authority, inline (RFC 7517 section 5): public keys only, and the only keys a statement of this authority is ever verified against, whatever its header names (RFC 8725 section 3.10).')
+            ->defaultNull()
+            ->end()
+            ->arrayNode('signing_algorithms')
+            ->info('The JWS algorithms a statement of this authority may be signed with (RFC 7515 section 4.1.1), among those the provider is wired with; at least one. A name nothing verifies fails at boot.')
+            ->scalarPrototype()
+            ->end()
+            ->end()
+            ->end()
+            ->end();
+
+        return $issuers;
+    }
+
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
     {
         $registration = $this->own($config);
@@ -128,6 +177,7 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
         $defaultScope = $registration['default_scope'] ?? null;
         $services
             ->get(ConfigurationClientRegistrationPolicy::class)
+            ->factory(self::policy(...))
             ->arg('$tenantSlug', self::string(self::section($config, 'tenant'), 'slug'))
             ->arg(
                 '$mode',
@@ -140,7 +190,7 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
                 self::seconds($registration, 'keep_a_client_unused_for'),
             )
             ->arg('$keepsAClientNeverUsedFor', self::seconds($registration, 'keep_a_client_never_used_for'))
-            ->arg('$statementIssuers', is_array($registration['statement_issuers'] ?? null) ? $registration['statement_issuers'] : []);
+            ->arg('$statementIssuers', $registration['statement_issuers'] ?? []);
         $services->get(SoftwareStatementVerifier::class)->arg('$maximumLifetime', self::seconds(
             $registration,
             'statement_max_lifetime',

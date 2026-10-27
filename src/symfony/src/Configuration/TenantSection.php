@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Configuration;
 
+use Beffroi\Bundle\Identity\WiredClaims;
 use Beffroi\Bundle\Tenant\TenantFactory;
+use Beffroi\Core\Port\AuthenticationPredicatesInterface;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use function is_string;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
@@ -58,23 +62,77 @@ final readonly class TenantSection extends ConfigurationSection
             ->end()
             ->end()
             ->end()
-            ->arrayNode('self_served_claims')
+            ->append(self::selfServedClaims())
+            ->append(self::authenticationClasses())
+            ->end()
+            ->end();
+    }
+
+    /**
+     * The factory of the tenant at runtime, from the claims and the classes the configuration or the environment
+     * names, held to the rules of the tree either way (decision 0030); every other argument is the one of the factory.
+     *
+     * @param mixed $authenticationClasses the classes, as the configuration or the environment carries them
+     * @param array<array-key, mixed> $look
+     * @param mixed $selfServedClaims the claims, as the configuration or the environment carries them
+     *
+     * @throws InvalidConfigurationException when a list is one the tree refuses
+     */
+    public static function tenantFactory(
+        string $issuer,
+        string $slug,
+        ?string $name,
+        ClockInterface $clock,
+        AuthenticationPredicatesInterface $predicates,
+        mixed $authenticationClasses = [],
+        array $look = [],
+        mixed $selfServedClaims = [],
+        ?WiredClaims $claims = null,
+    ): TenantFactory {
+        return new TenantFactory(
+            $issuer,
+            $slug,
+            $name,
+            $clock,
+            $predicates,
+            self::authenticationClasses()->normalized($authenticationClasses, 'tenant.authentication_classes'),
+            $look,
+            self::selfServedClaims()->normalized($selfServedClaims, 'tenant.self_served_claims'),
+            $claims,
+        );
+    }
+
+    /**
+     * The claims a person may change of themselves, as the tree declares them, which the environment may carry whole.
+     */
+    private static function selfServedClaims(): EnvironmentListDefinition
+    {
+        $claims = new EnvironmentListDefinition('self_served_claims');
+        $claims
             ->info('The claims the people of this tenant may change of themselves on the page of their account (issue #452), by the names of OIDC Core §5.1. It is a rule of the tenant and never an option of the deployment: a tenant whose directory owns the data opens none, a tenant that creates its people by hand may open all of them, and one instance serves both. Nothing by default, because opening a claim is a decision somebody takes where closing one would be a decision nobody took. A name no claim of this provider answers refuses the start.')
             ->scalarPrototype()
             ->end()
-            ->defaultValue([])
-            ->end()
-            ->arrayNode('authentication_classes')
+            ->defaultValue([]);
+
+        return $claims;
+    }
+
+    /**
+     * The "acr" vocabulary of the tenant, as the tree declares it, which the environment may carry whole.
+     */
+    private static function authenticationClasses(): EnvironmentListDefinition
+    {
+        $classes = new EnvironmentListDefinition('authentication_classes');
+        $classes
             ->info('The "acr" vocabulary of the tenant (decision 0010): class names, in the order a session is answered in, each on a predicate of the provider, by the name that predicate gives itself. The default policy ("phrh", "phr", "2", "1") when nothing is named. The predicates are the ones the deployment is wired with and this tree keeps no list of them beside the wiring: a name none of them carries refuses the start, naming the ones that are wired.')
             ->useAttributeAsKey('name')
             ->normalizeKeys(false)
             ->scalarPrototype()
             ->cannotBeEmpty()
             ->end()
-            ->defaultValue([])
-            ->end()
-            ->end()
-            ->end();
+            ->defaultValue([]);
+
+        return $classes;
     }
 
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
@@ -82,14 +140,15 @@ final readonly class TenantSection extends ConfigurationSection
         $tenant = $this->own($config);
         $services
             ->get(TenantFactory::class)
+            ->factory(self::tenantFactory(...))
             ->arg('$issuer', self::string($tenant, 'issuer'))
             ->arg('$slug', self::string($tenant, 'slug'))
             ->arg(
                 '$name',
                 is_string($tenant['name'] ?? null) ? $tenant['name'] : null,
             )
-            ->arg('$authenticationClasses', self::section($tenant, 'authentication_classes'))
+            ->arg('$authenticationClasses', $tenant['authentication_classes'] ?? [])
             ->arg('$look', self::section($tenant, 'look'))
-            ->arg('$selfServedClaims', self::section($tenant, 'self_served_claims'));
+            ->arg('$selfServedClaims', $tenant['self_served_claims'] ?? []);
     }
 }
