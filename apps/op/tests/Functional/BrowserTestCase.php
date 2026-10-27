@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use function base64_encode;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
+use function hash;
 use function implode;
 use Beffroi\Bundle\Doctrine\TenantProvider;
 use Beffroi\Bundle\Doctrine\TenantSynchronizer;
@@ -19,7 +21,9 @@ use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Beffroi\Core\Port\UserRepositoryInterface;
+use function rtrim;
 use function sprintf;
+use function strtr;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\BrowserKit\Cookie;
@@ -117,6 +121,24 @@ abstract class BrowserTestCase extends WebTestCase
     }
 
     /**
+     * An authorization request of the one client of this suite (config/packages/test/beffroi.yaml), which the
+     * provider answers by sending the browser to the page of the interaction it began.
+     */
+    protected function authorize(): void
+    {
+        $this->browser->request('GET', '/authorize', [
+            'client_id' => 'consent-app',
+            'redirect_uri' => 'https://consent.test/callback',
+            'response_type' => 'code',
+            'scope' => 'openid profile',
+            'state' => 'state-of-the-client',
+            'nonce' => 'nonce-of-the-client',
+            'code_challenge' => self::codeChallenge(),
+            'code_challenge_method' => 'S256',
+        ]);
+    }
+
+    /**
      * The page a form of these pages comes back to (issue beffroi-auth/beffroi#522): every one of them
      * answers with a redirection a browser re-issues as a GET, so what a test reads after submitting is
      * the page that redirection names, and what was refused is on it.
@@ -161,6 +183,16 @@ abstract class BrowserTestCase extends WebTestCase
         static::assertIsString($value);
 
         return $value;
+    }
+
+    /**
+     * RFC 7636 §4.2 over the verifier of the authorization request above, which nothing ever presents: the
+     * authorization endpoint refuses a request that carries no challenge (decision 0006) and the page under
+     * test is reached before any token is asked for.
+     */
+    private static function codeChallenge(): string
+    {
+        return rtrim(strtr(base64_encode(hash('sha256', 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk', true)), '+/', '-_'), '=');
     }
 
     private static function entityManager(): EntityManagerInterface
