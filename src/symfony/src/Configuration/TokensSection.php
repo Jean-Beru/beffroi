@@ -17,6 +17,8 @@ use Beffroi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Beffroi\Oidc\Application\Token\JwtIdTokenIssuer;
 use Beffroi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
 use Beffroi\Oidc\Application\Token\TokenIssuer;
+use Beffroi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord;
+use Beffroi\Oidc\Domain\Device\DeviceAuthorizationRecord;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\inline_service;
@@ -44,10 +46,10 @@ final readonly class TokensSection extends ConfigurationSection
     public const int MAX_DEVICE_CODE_TTL = 1800;
 
     /**
-     * RFC 8628 §3.5: an interval a client is asked to respect is one it can respect; a minute between two
-     * polls would make the flow slower than the code lives.
+     * RFC 8628 §3.5, the bound of a device authorization request (DeviceAuthorizationRecord::MAX_INTERVAL),
+     * which its handler holds the configured interval to when it is built.
      */
-    public const int MAX_DEVICE_CODE_INTERVAL = 30;
+    public const int MAX_DEVICE_CODE_INTERVAL = DeviceAuthorizationRecord::MAX_INTERVAL;
 
     /**
      * CIBA Core §7.1: a request somebody has to be reached about and then answer needs minutes, and an
@@ -56,10 +58,11 @@ final readonly class TokensSection extends ConfigurationSection
     public const int MAX_BACKCHANNEL_AUTHENTICATION_TTL = 3600;
 
     /**
-     * CIBA Core §11: an interval a client is asked to respect is one it can respect, as for the device
-     * grant, and for the same reason.
+     * CIBA Core §11, the bound of a backchannel authentication request
+     * (BackchannelAuthenticationRecord::MAX_INTERVAL), which its handler holds the configured interval to
+     * when it is built.
      */
-    public const int MAX_BACKCHANNEL_AUTHENTICATION_INTERVAL = 30;
+    public const int MAX_BACKCHANNEL_AUTHENTICATION_INTERVAL = BackchannelAuthenticationRecord::MAX_INTERVAL;
 
     public function name(): string
     {
