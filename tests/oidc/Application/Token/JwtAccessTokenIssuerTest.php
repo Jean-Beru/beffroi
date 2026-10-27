@@ -41,7 +41,9 @@ use Beffroi\Oidc\Domain\Token\UserAuthorization;
 use Beffroi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Beffroi\Oidc\Tests\Fixture\Certificates;
 use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\FixedPairwiseSalt;
 use Beffroi\Oidc\Tests\Fixture\Jwts;
+use Beffroi\Oidc\Tests\Fixture\PairwiseSaltBehindAnOutage;
 use Beffroi\Oidc\Tests\Fixture\Tokens;
 use Jose\Component\Checker\InvalidClaimException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -185,6 +187,106 @@ final class JwtAccessTokenIssuerTest extends TestCase
 
         // Then
         static::assertSame($this->jwts->key->kid, $this->jwts->verify($token->value, 'spa', Fixtures::now()->modify('+9 minutes'))['header']['kid']);
+    }
+
+    /**
+     * Architecture §4.5 (issue #880): the salt the "sub" of a pairwise client is computed with is unsealed when
+     * the token is addressed, so a KMS that does not answer is said then, before the grant spends anything.
+     */
+    #[Test]
+    public function aKmsThatDoesNotAnswerForThePairwiseSaltIsToldWhenTheTokenIsAddressed(): void
+    {
+        // Given
+        $salts = new PairwiseSaltBehindAnOutage();
+        $salts->down = true;
+        $issuer = new JwtAccessTokenIssuer(
+            $this->jwts->signer,
+            Subjects::bothKinds(salts: $salts),
+            Algorithms::all(),
+            new SymfonyUuidGenerator(),
+            $this->persons,
+        );
+
+        // Then
+        $this->expectException(KmsUnavailableException::class);
+        $this->expectExceptionMessageIs(PairwiseSaltBehindAnOutage::WORDS_OF_THE_KMS);
+
+        // When
+        $issuer->address(Clients::pairwise($this->session->tenant));
+    }
+
+    /**
+     * Striking the token asks nothing of the KMS (issue #880): the token of a pairwise client addressed while the
+     * KMS answered names whoever signed in by the identifier of its sector, whatever the KMS answers once the
+     * grant has spent what the request presented.
+     */
+    #[Test]
+    public function aTokenOfAPairwiseClientNamesWhoeverSignedInByWhatWasOpenedWhenItWasAddressed(): void
+    {
+        // Given
+        $salts = new PairwiseSaltBehindAnOutage();
+        $issuer = new JwtAccessTokenIssuer(
+            $this->jwts->signer,
+            Subjects::bothKinds(salts: $salts),
+            Algorithms::all(),
+            new SymfonyUuidGenerator(),
+            $this->persons,
+        );
+        $client = Clients::pairwise($this->session->tenant);
+        $addressed = $issuer->address($client);
+        $salts->down = true;
+        $authorization = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $client,
+            $this->session,
+            Fixtures::now(),
+        ));
+
+        // When
+        $token = $issuer->issue($authorization, $addressed, Fixtures::now());
+
+        // Then
+        ['claims' => $claims] = $this->jwts->verify($token->value, 'pairwise-app', Fixtures::now()->modify('+9 minutes'));
+        static::assertSame(
+            Subjects::pairwiseKind(new FixedPairwiseSalt())->resolve($this->session->user, $client)->value,
+            $claims['sub'] ?? null,
+        );
+    }
+
+    /**
+     * RFC 6749 §4.4 (issue #880): a token a client holds for itself names that client, so addressing it opens no
+     * kind of "sub" and the salt of a pairwise client is not asked for: a KMS that does not answer for it costs
+     * that token nothing.
+     */
+    #[Test]
+    public function aTokenAPairwiseClientHoldsForItselfAsksNothingOfThePairwiseSalt(): void
+    {
+        // Given
+        $salts = new PairwiseSaltBehindAnOutage();
+        $salts->down = true;
+        $issuer = new JwtAccessTokenIssuer(
+            $this->jwts->signer,
+            Subjects::bothKinds(salts: $salts),
+            Algorithms::all(),
+            new SymfonyUuidGenerator(),
+            $this->persons,
+        );
+        $authorization = new ClientAuthorization(
+            Grants::clientCredentials(),
+            Uuid::v7(),
+            Clients::pairwiseService($this->session->tenant, new FakePasswordHasher()->hash(Clients::SECRET)),
+            new Scopes([new Scope('invoices.read')]),
+            ResourceIndicators::of([Clients::CALENDAR]),
+        );
+
+        // When
+        $token = Tokens::accessToken($issuer, $authorization, Fixtures::now());
+
+        // Then
+        static::assertSame(
+            'pairwise-batch',
+            $this->jwts->verify($token->value, Clients::CALENDAR, Fixtures::now()->modify('+9 minutes'))['claims']['sub'] ?? null,
+        );
     }
 
     /**

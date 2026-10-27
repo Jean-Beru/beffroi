@@ -66,6 +66,28 @@ final class AssignedSubjectIdentifiersTest extends TestCase
     }
 
     /**
+     * The same answer in two steps (issue #880): the kind the client registered is the one opened for it, and
+     * assigns afterwards what it would have assigned in one step.
+     */
+    #[Test]
+    public function aClientIsOpenedByTheKindItRegistered(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $user = Fixtures::user($tenant);
+        $subjects = Subjects::bothKinds();
+
+        // When
+        $public = $subjects->open(Clients::native($tenant))->subjectOf($user);
+        $pairwise = $subjects->open(Clients::pairwise($tenant))->subjectOf($user);
+
+        // Then
+        static::assertSame($user->subject->value, $public->value);
+        static::assertSame($subjects->resolve($user, Clients::pairwise($tenant))->value, $pairwise->value);
+        static::assertNotSame($user->subject->value, $pairwise->value);
+    }
+
+    /**
      * OIDC Registration §2: a client that registers no kind takes the first wired one, which is what makes
      * "public" what a client gets by writing nothing.
      */
@@ -157,5 +179,22 @@ final class AssignedSubjectIdentifiersTest extends TestCase
 
         // When
         $subjects->resolve(Fixtures::user($tenant), Clients::pairwise($tenant));
+    }
+
+    /**
+     * The same wiring refused in two steps, when the client is opened: before whoever opens it has spent anything.
+     */
+    #[Test]
+    public function itRefusesToOpenAClientWhoseKindIsNoLongerWired(): void
+    {
+        // Given
+        $subjects = Subjects::ofAProvider();
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('No resolver assigns a "pairwise" subject identifier; the wired kinds are public.');
+
+        // When
+        $subjects->open(Clients::pairwise(Fixtures::tenant()));
     }
 }

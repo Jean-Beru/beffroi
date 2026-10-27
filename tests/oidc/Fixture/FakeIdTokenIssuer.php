@@ -6,10 +6,12 @@ namespace Beffroi\Oidc\Tests\Fixture;
 
 use Beffroi\Core\Tests\Fixture\Keys;
 use DateTimeImmutable;
+use Beffroi\Oidc\Application\Claims\OpenedPublicSubjectIdentifier;
 use Beffroi\Oidc\Domain\Client\AddressedFormat;
 use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Client\ResponseFormat;
 use Beffroi\Oidc\Domain\Token\AccessToken;
+use Beffroi\Oidc\Domain\Token\AddressedIdToken;
 use Beffroi\Oidc\Domain\Token\UserAuthorizationInterface;
 use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
 use Beffroi\Oidc\Port\IdTokenIssuerInterface;
@@ -32,16 +34,19 @@ final class FakeIdTokenIssuer implements IdTokenIssuerInterface
      */
     public ?ClientKeysUnavailableException $unreadableKeys = null;
 
-    public function address(Client $client): AddressedFormat
+    public function address(Client $client): AddressedIdToken
     {
         if ($this->unreadableKeys !== null) {
             throw $this->unreadableKeys;
         }
 
-        return new AddressedFormat(ResponseFormat::signed(), Keys::openedSigningKey($client->tenant));
+        return new AddressedIdToken(
+            new AddressedFormat(ResponseFormat::signed(), Keys::openedSigningKey($client->tenant)),
+            new OpenedPublicSubjectIdentifier(),
+        );
     }
 
-    public function issue(UserAuthorizationInterface $authorization, AccessToken $accessToken, AddressedFormat $addressed, DateTimeImmutable $now): string
+    public function issue(UserAuthorizationInterface $authorization, AccessToken $accessToken, AddressedIdToken $addressed, DateTimeImmutable $now): string
     {
         $this->issued[] = [$authorization, $accessToken];
 

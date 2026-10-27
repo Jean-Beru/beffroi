@@ -24,8 +24,9 @@ use Beffroi\Oidc\Domain\Token\JwtPayload;
 use Beffroi\Oidc\Domain\Token\NamesItsSubjectInterface;
 use Beffroi\Oidc\Domain\Token\TokenSignIn;
 use Beffroi\Oidc\Domain\Token\UserAuthorizationInterface;
+use Beffroi\Oidc\Exception\LogicException;
 use Beffroi\Oidc\Port\AccessTokenShapeIssuerInterface;
-use Beffroi\Oidc\Port\SubjectIdentifierResolverInterface;
+use Beffroi\Oidc\Port\SubjectIdentifierOpenerInterface;
 
 /**
  * RFC 9068 (architecture §4.6): "typ" is "at+jwt" (§2.1), the claims are those of §2.2 and §2.2.1, "scope"
@@ -46,8 +47,10 @@ use Beffroi\Oidc\Port\SubjectIdentifierResolverInterface;
  * client, so it is signed with the algorithm the provider signs with by default, never the one the client
  * registered for its ID tokens. A token issued on a request that proved a key carries the "cnf" of
  * RFC 7800 §3.1, which is what binds it to that key (RFC 8705 §3). The key it is signed with is opened when
- * the token is addressed, and the person it carries is sealed then too, which a grant does before it spends
- * what the request presented: the token is struck with what was read then and asks nothing of the KMS.
+ * the token is addressed, and so is the kind of "sub" its client registered when somebody signed in for it, whose
+ * pairwise kind unseals a salt of the tenant (OIDC Core §8.1), and the person it carries is sealed then too, which
+ * a grant does before it spends what the request presented: the token is struck with what was read then and asks
+ * nothing of the KMS.
  */
 final readonly class JwtAccessTokenIssuer implements AccessTokenShapeIssuerInterface
 {
@@ -80,7 +83,7 @@ final readonly class JwtAccessTokenIssuer implements AccessTokenShapeIssuerInter
 
     public function __construct(
         private SigningKeyOpenerInterface $signer,
-        private SubjectIdentifierResolverInterface $subjects,
+        private SubjectIdentifierOpenerInterface $subjects,
         private SignatureAlgorithmsInterface $algorithms,
         private UuidGeneratorInterface $uuids,
         private SealedPerson $persons,
@@ -99,12 +102,13 @@ final readonly class JwtAccessTokenIssuer implements AccessTokenShapeIssuerInter
 
     public function address(Client $client): AddressedAccessToken
     {
-        return new AddressedAccessToken($this->signingKeyOf($client));
+        return new AddressedAccessToken($this->signingKeyOf($client), subjectIdentifier: $this->subjects->open($client));
     }
 
     /**
-     * The person is sealed here, each envelope asking the KMS for a data key of its own, so that striking the
-     * token asks nothing of it (issue #876).
+     * The person is sealed here, each envelope asking the KMS for a data key of its own, and the kind of "sub" of
+     * the client is opened when somebody signed in for the authorization, so that striking the token asks nothing
+     * of the KMS (issues #876 and #880).
      */
     public function addressFor(AuthorizationInterface $authorization): AddressedAccessToken
     {
@@ -113,6 +117,7 @@ final readonly class JwtAccessTokenIssuer implements AccessTokenShapeIssuerInter
         return new AddressedAccessToken(
             $this->signingKeyOf($authorization->client),
             $person === null ? null : $this->persons->claim($authorization->tenant, $person),
+            $authorization instanceof UserAuthorizationInterface ? $this->subjects->open($authorization->client) : null,
         );
     }
 
@@ -124,7 +129,7 @@ final readonly class JwtAccessTokenIssuer implements AccessTokenShapeIssuerInter
             'iss' => (string) $authorization->tenant->issuer,
             'exp' => $expiresAt->getTimestamp(),
             'aud' => $authorization->audience()->claim(),
-            'sub' => $this->subjectOf($authorization)->value,
+            'sub' => self::subjectOf($authorization, $addressed)->value,
             'client_id' => $authorization->client->registration->clientId,
             'iat' => $now->getTimestamp(),
             'jti' => $this->uuids->opaque()->toRfc4122(),
@@ -199,19 +204,21 @@ final readonly class JwtAccessTokenIssuer implements AccessTokenShapeIssuerInter
     }
 
     /**
-     * RFC 9068 §2.2: the pairwise subject of whoever signed in (OIDC Core §8), the client itself when nobody
-     * did (RFC 6749 §4.4), and the subject named by what the client presented when somebody else named it
-     * (RFC 8693 §2.2.1, RFC 7523 §2.1), which is not resolved again here because it was resolved where it was
-     * named.
+     * RFC 9068 §2.2: the "sub" whoever signed in is seen under by the client (OIDC Core §8), assigned by the kind
+     * that was opened when the token was addressed, the client itself when nobody did (RFC 6749 §4.4), and the
+     * subject named by what the client presented when somebody else named it (RFC 8693 §2.2.1, RFC 7523 §2.1),
+     * which is not resolved again here because it was resolved where it was named.
+     *
+     * @throws LogicException when somebody signed in and the token was addressed with no kind of "sub" opened
      */
-    private function subjectOf(AuthorizationInterface $authorization): Subject
+    private static function subjectOf(AuthorizationInterface $authorization, AddressedAccessToken $addressed): Subject
     {
         if ($authorization instanceof NamesItsSubjectInterface) {
             return $authorization->subject;
         }
 
         return $authorization instanceof UserAuthorizationInterface
-            ? $this->subjects->resolve($authorization->user, $authorization->client)
+            ? $addressed->subjectIdentifier()->subjectOf($authorization->user)
             : ClientSubject::of($authorization->client);
     }
 
