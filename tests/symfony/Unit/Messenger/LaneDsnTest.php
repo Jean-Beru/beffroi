@@ -48,17 +48,17 @@ final class LaneDsnTest extends TestCase
     }
 
     /**
-     * A broker takes the lane where the DSN puts it, here the name of an exchange, whose queue is named after
-     * it, and nothing reads the scheme to know so.
+     * A broker takes the lane where the DSN puts it, here the name of a Redis stream, and nothing reads the
+     * scheme to know so.
      */
     #[Test]
     public function theLaneGoesWhereTheDsnOfADeploymentPutsIt(): void
     {
         // When
-        $dsn = self::resolved('async_notifications', 'amqp://beffroi:secret@rabbitmq:5672/%2f/beffroi_{lane}');
+        $dsn = self::resolved('async_notifications', 'redis://beffroi:secret@redis:6379/beffroi_{lane}');
 
         // Then
-        static::assertSame('amqp://beffroi:secret@rabbitmq:5672/%2f/beffroi_async_notifications', $dsn);
+        static::assertSame('redis://beffroi:secret@redis:6379/beffroi_async_notifications', $dsn);
     }
 
     #[Test]
@@ -68,7 +68,7 @@ final class LaneDsnTest extends TestCase
         $this->expectException(RuntimeException::class);
 
         // When
-        self::resolved('async_priority_high', 'amqp://beffroi:secret@rabbitmq:5672/%2f/messages');
+        self::resolved('async_priority_high', 'redis://beffroi:secret@redis:6379/messages');
     }
 
     /**
@@ -82,7 +82,7 @@ final class LaneDsnTest extends TestCase
 
         // When
         try {
-            self::resolved('async_priority_high', 'amqp://beffroi:secret@rabbitmq:5672/%2f/messages');
+            self::resolved('async_priority_high', 'redis://beffroi:secret@redis:6379/messages');
         } catch (RuntimeException $exception) {
             $refusal = $exception->getMessage();
         }

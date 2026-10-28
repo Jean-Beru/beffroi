@@ -230,13 +230,13 @@ final class MessengerContractTest extends TestCase
         // Given
         $builder = new ContainerBuilder();
         $builder->registerExtension(self::messengerExtension());
-        $builder->setParameter('env(' . MessengerContract::DSN_ENVIRONMENT_VARIABLE . ')', 'amqp://rabbit');
+        $builder->setParameter('env(' . MessengerContract::DSN_ENVIRONMENT_VARIABLE . ')', 'redis://redis');
 
         // When
         new BeffroiBundle()->prependExtension(self::configurator($builder), $builder);
 
         // Then
-        static::assertSame('amqp://rabbit', self::rawParameter($builder));
+        static::assertSame('redis://redis', self::rawParameter($builder));
     }
 
     /**

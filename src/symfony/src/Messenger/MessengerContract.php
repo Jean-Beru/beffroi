@@ -45,7 +45,7 @@ final readonly class MessengerContract
 {
     /**
      * Where a lane goes unless a deployment says otherwise. The database, because a provider that cannot
-     * be installed without RabbitMQ is a provider nobody tries, and a queue of it per lane, because four
+     * be installed without a broker is a provider nobody tries, and a queue of it per lane, because four
      * lanes in one queue are one lane.
      */
     public const string DEFAULT_DSN = 'doctrine://default?queue_name=' . LaneDsn::PLACEHOLDER;
