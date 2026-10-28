@@ -6,8 +6,8 @@
 #
 # Where the lanes go is a deployment's choice, named by BEFFROI_MESSENGER_DSN (.env, issue
 # beffroi-auth/beffroi#919): a queue of its own in the database for each lane unless that variable names a
-# broker, "{lane}" in it being where the name of each lane goes. The development stack names its RabbitMQ
-# there (compose.yaml), and an image deployed with nothing named needs no broker.
+# broker, "{lane}" in it being where the name of each lane goes. Neither the development stack (compose.yaml)
+# nor a deployment of the image (compose.prod.yaml) names one: they run no broker (issue #927).
 #
 # The block lives under "messenger" and not under "framework.messenger": the component has its own
 # extension since Symfony 8.2 split FrameworkBundle per component, and a block nested under "framework" is

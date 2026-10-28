@@ -31,13 +31,16 @@ Everything that builds, provisions, judges or demonstrates runs from the root ab
 ```bash
 git clone git@github.com:beffroi-auth/beffroi.git && cd beffroi
 composer install && (cd apps/op && composer install)
-castor start            # https://op.localhost, PostgreSQL, RabbitMQ
+castor start            # https://op.localhost, PostgreSQL
 castor provision        # the tenant, its keys, the first user, the client certificate
 castor app-phpunit      # the suite of this directory, against the PostgreSQL the stack publishes
 ```
 
 `beffroi/*` is resolved by path repositories to `../../src/*`, so this directory installs nothing on its
 own: the application is worked on inside the monorepo, and deployed from a build rather than from a clone.
+A deployment runs the published image, `ghcr.io/beffroi-auth/op`, with `compose.prod.yaml` at the root of the
+monorepo: the provider, its worker and PostgreSQL, the file saying in its header what it needs and the order of
+the first start.
 
 ## Issues and pull requests
 
