@@ -35,10 +35,8 @@ services:
         import saml-sp.Caddyfile
         import saml-idp.Caddyfile
       DATABASE_URL: postgresql://${POSTGRES_USER:-beffroi}:${POSTGRES_PASSWORD:-beffroi}@database:5432/${POSTGRES_DB:-beffroi}?serverVersion=16&charset=utf8
-      # The broker of the four lanes (apps/op/.env, issue #919): an exchange and a queue of RabbitMQ per lane,
-      # "{lane}" being where the name of each lane goes. An image deployed with nothing named keeps them in the
-      # database; this stack runs on a broker, so the certification plans do.
-      BEFFROI_MESSENGER_DSN: amqp://${RABBITMQ_USER:-beffroi}:${RABBITMQ_PASSWORD:-beffroi}@rabbitmq:5672/%2f/beffroi_{lane}
+      # The four lanes are queues of the database, which apps/op/.env names (BEFFROI_MESSENGER_DSN, issue #919),
+      # as in a deployment of the image (compose.prod.yaml): this stack runs no broker (issue #927).
       # https://xdebug.org/docs/all_settings#mode
       XDEBUG_MODE: ${XDEBUG_MODE:-off}
       # Both documented in apps/op/.env; "castor start --conformance" sets them for a stack that serves the suite.
@@ -138,8 +136,6 @@ services:
     depends_on:
       database:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
     tty: true
 
   # The worker of architecture §5.6, one in development: the transports of the buses, the lane of what the
@@ -170,7 +166,6 @@ services:
       start_period: 90s
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-beffroi}:${POSTGRES_PASSWORD:-beffroi}@database:5432/${POSTGRES_DB:-beffroi}?serverVersion=16&charset=utf8
-      BEFFROI_MESSENGER_DSN: amqp://${RABBITMQ_USER:-beffroi}:${RABBITMQ_PASSWORD:-beffroi}@rabbitmq:5672/%2f/beffroi_{lane}
       XDEBUG_MODE: ${XDEBUG_MODE:-off}
       APP_PROFILER: 0
       CONFORMANCE_ACCESS_TOKEN_FORMAT: ${CONFORMANCE_ACCESS_TOKEN_FORMAT:-jwt}
@@ -198,8 +193,6 @@ services:
       op:
         condition: service_healthy
       database:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
 
   # HashiCorp Vault, the KMS of the spike (architecture §3.3): its Transit engine wraps the data key of every
@@ -345,22 +338,6 @@ services:
     volumes:
       - database_data:/var/lib/postgresql/data:rw
 
-  rabbitmq:
-    image: rabbitmq:${RABBITMQ_VERSION:-4}-management-alpine
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-beffroi}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-beffroi}
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-    ports:
-      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-
   # OpenID Foundation conformance suite, prebuilt images from gitlab.com/openid/conformance-suite.
   # Test plan for spike 1: oidcc-basic-certification-test-plan (tests/conformance/).
   conformance-mongodb:
@@ -469,7 +446,6 @@ volumes:
   kms_data:
   geoip_data:
   caddy_data:
-  rabbitmq_data:
   caddy_config:
   database_data:
   conformance_mongo:
