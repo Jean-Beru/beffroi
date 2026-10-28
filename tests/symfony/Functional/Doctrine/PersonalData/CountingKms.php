@@ -51,6 +51,11 @@ final class CountingKms implements DataKeyGeneratorInterface, DecrypterInterface
         return $this->kms->generateDataKey($keyId, $length, $aad);
     }
 
+    public function wrapDataKey(string $keyId, #[SensitiveParameter] string $dataKey, string $aad = ''): Ciphertext
+    {
+        return $this->kms->wrapDataKey($keyId, $dataKey, $aad);
+    }
+
     public function unwrapDataKey(Ciphertext $wrapped, string $aad = ''): DataKey
     {
         ++$this->unwrapped;
