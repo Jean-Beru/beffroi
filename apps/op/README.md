@@ -1,8 +1,8 @@
 # beffroi/op
 
 The standalone identity provider: a Symfony skeleton on `beffroi/symfony-bundle`, served by FrankenPHP,
-with PostgreSQL behind it, and a broker such as RabbitMQ when a deployment names one (`BEFFROI_MESSENGER_DSN`
-in `.env`). It is the recommended deployment, the form the provider takes for whoever runs one rather than
+with PostgreSQL behind it, whose tables are the queues of its lanes as well: it carries the transport of no
+broker. It is the recommended deployment, the form the provider takes for whoever runs one rather than
 installs it inside an application of their own.
 
 It is the `apps/op` directory of the monorepo, [beffroi-auth/beffroi](https://github.com/beffroi-auth/beffroi),
@@ -31,13 +31,16 @@ Everything that builds, provisions, judges or demonstrates runs from the root ab
 ```bash
 git clone git@github.com:beffroi-auth/beffroi.git && cd beffroi
 composer install && (cd apps/op && composer install)
-castor start            # https://op.localhost, PostgreSQL, RabbitMQ
+castor start            # https://op.localhost, PostgreSQL
 castor provision        # the tenant, its keys, the first user, the client certificate
 castor app-phpunit      # the suite of this directory, against the PostgreSQL the stack publishes
 ```
 
 `beffroi/*` is resolved by path repositories to `../../src/*`, so this directory installs nothing on its
 own: the application is worked on inside the monorepo, and deployed from a build rather than from a clone.
+A deployment runs the published image, `ghcr.io/beffroi-auth/op`, with `compose.prod.yaml` at the root of the
+monorepo: the provider, its worker and PostgreSQL, the file saying in its header what it needs and the order of
+the first start.
 
 ## Issues and pull requests
 

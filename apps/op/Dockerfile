@@ -12,7 +12,6 @@ RUN install-php-extensions \
     opcache \
     zip \
     pdo_pgsql \
-    amqp \
     gmp \
     sodium \
     uuid

@@ -1,0 +1,140 @@
+# A deployment of the published image (issue #927): the provider, its worker and PostgreSQL, and nothing else.
+# The file stands alone, so a deployment downloads it without the monorepo; compose.yaml is the development
+# stack, which mounts the sources, runs the judges and the conformance suite, and gives every secret a default.
+#
+#   docker compose -f compose.prod.yaml up -d --wait
+#
+# Its environment is a file ".env" beside it, which Compose reads for every command below, or the environment of
+# the shell that runs them. What it needs there, refused when missing rather than given a value everybody knows:
+#
+#   SERVER_NAME           the host Caddy serves and issues a certificate for, which makes the issuer https://<host>
+#   APP_SECRET            the secret of the kernel, which every data key of personal data is bound to its row under:
+#                         drawn once and kept, replacing it alone leaves the personal data unreadable
+#   POSTGRES_PASSWORD     the password of the database, written into a URL as it stands: URL-safe characters only
+#   BEFFROI_KMS_DSN       the key management service that seals the keys of the tenant, and the master key of it
+#   BEFFROI_KMS_KEY_ID    they are sealed under; without a KMS, the file backend:
+#                           BEFFROI_KMS_DSN="sodium+dir:///app/var/kms?ext=.key"   BEFFROI_KMS_KEY_ID="beffroi-{tenant}"
+#                         with its key drawn once into the volume kms_data, before anything is sealed:
+#                           docker compose -f compose.prod.yaml run --rm --no-deps --entrypoint sh op -c \
+#                             'umask 077 && mkdir -p var/kms && chmod 700 var/kms && head -c 32 /dev/urandom > var/kms/beffroi-default.key'
+#
+# Every other variable the application reads (the lifetimes, the registration mode, the look of the tenant, the
+# SAML peers, SYMFONY_TRUSTED_PROXIES behind a proxy) is added under "environment" below, on both processes:
+# https://doc.beffroi.tech/application/configuration/
+#
+# The first start, in the order of https://doc.beffroi.tech/getting-started/the-standalone-application/ (the
+# tenant has a row before it has a key, and its first key is the one messages are sealed to), the worker last:
+#
+#   docker compose -f compose.prod.yaml up -d --wait op
+#   docker compose -f compose.prod.yaml exec op bin/console beffroi:tenant:synchronize
+#   docker compose -f compose.prod.yaml exec op bin/console beffroi:keys:generate --algorithm=MESSAGE-SEAL
+#   docker compose -f compose.prod.yaml exec op bin/console beffroi:keys:generate
+#   docker compose -f compose.prod.yaml up -d --wait
+#
+# The same page says the rest of it: the keys of SAML and web push, the first person who signs in.
+
+# What the provider and its worker read alike: one value, written once, so that the two processes never serve
+# two different issuers or two different databases.
+x-environment: &environment
+  BEFFROI_ISSUER: ${BEFFROI_ISSUER:-https://${SERVER_NAME:?the host the provider is served on}}
+  DEFAULT_URI: ${BEFFROI_ISSUER:-https://${SERVER_NAME:?the host the provider is served on}}
+  APP_SECRET: ${APP_SECRET:?the secret of the kernel, drawn once and kept}
+  DATABASE_URL: postgresql://${POSTGRES_USER:-beffroi}:${POSTGRES_PASSWORD:?the password of the database}@database:5432/${POSTGRES_DB:-beffroi}?serverVersion=16&charset=utf8
+  BEFFROI_KMS_DSN: ${BEFFROI_KMS_DSN:?the key management service}
+  BEFFROI_KMS_KEY_ID: ${BEFFROI_KMS_KEY_ID:?the master key of the key management service}
+
+services:
+  # The HTTP server, FrankenPHP in worker mode, with the entrypoint and the command of the image: it waits for
+  # the database and plays the migrations every time it starts, then Caddy serves SERVER_NAME and issues its
+  # certificate, which is why 80 and 443 reach it from the outside.
+  op:
+    image: ghcr.io/beffroi-auth/op:${BEFFROI_VERSION:-0.0.x}
+    restart: unless-stopped
+    environment:
+      <<: *environment
+      SERVER_NAME: ${SERVER_NAME:?the host the provider is served on}
+      # The host that asks for a client certificate (RFC 8705 §5), for a deployment whose clients authenticate
+      # with one or bind their tokens to it: a host of its own, and the origin the discovery document announces.
+      # Left out, the provider serves one host and announces no alias.
+      # CADDY_EXTRA_CONFIG: import mtls.Caddyfile
+      # MTLS_SERVER_NAME: mtls.${SERVER_NAME}
+      # BEFFROI_MTLS_ORIGIN: https://mtls.${SERVER_NAME}
+    volumes:
+      # What the processes share (https://doc.beffroi.tech/application/deployment/#what-the-processes-share): the
+      # sealed keys the server signs with and the worker rotates, the key of the file backend, the GeoLite2
+      # databases the console downloads and the worker reads, the FIDO metadata, and the share directory of
+      # Symfony, where the caches of the bundle are (the client assertions and the DPoP proofs already seen among
+      # them, which a restart must not forget). A directory one process writes and another reads is one volume,
+      # mounted on both.
+      - keys_data:/app/var/keys
+      - kms_data:/app/var/kms
+      - geoip_data:/app/var/geoip
+      - webauthn_data:/app/var/webauthn
+      - share_data:/app/var/share
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - target: 80
+        published: ${HTTP_PORT:-80}
+        protocol: tcp
+      - target: 443
+        published: ${HTTPS_PORT:-443}
+        protocol: tcp
+      - target: 443
+        published: ${HTTP3_PORT:-443}
+        protocol: udp
+    depends_on:
+      database:
+        condition: service_healthy
+
+  # The worker: the same image consuming the schedule of the timed steps and the four lanes of the provider,
+  # which are queues of the database (BEFFROI_MESSENGER_DSN in the .env of the image). It starts once the server
+  # has migrated, plays no migration itself, and stops every hour, or at 256 MB, for its restart policy to start
+  # it again.
+  worker:
+    image: ghcr.io/beffroi-auth/op:${BEFFROI_VERSION:-0.0.x}
+    restart: unless-stopped
+    command: ["bin/console", "messenger:consume", "scheduler_beffroi", "async_notifications", "async_priority_high", "async_priority_medium", "async_priority_low", "--time-limit=3600", "--memory-limit=256M"]
+    # The image checks Caddy, which the worker does not run: it is healthy while the consumer is its first process.
+    healthcheck:
+      test: ["CMD-SHELL", "grep -q messenger:consume /proc/1/cmdline"]
+      start_period: 90s
+    environment:
+      <<: *environment
+    volumes:
+      - keys_data:/app/var/keys
+      - kms_data:/app/var/kms
+      - geoip_data:/app/var/geoip
+      - webauthn_data:/app/var/webauthn
+      - share_data:/app/var/share
+    depends_on:
+      op:
+        condition: service_healthy
+      database:
+        condition: service_healthy
+
+  # Reached by the two processes alone, on the network of this file: no port is published.
+  database:
+    image: postgres:${POSTGRES_VERSION:-16}-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-beffroi}
+      POSTGRES_USER: ${POSTGRES_USER:-beffroi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?the password of the database}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-beffroi}", "-U", "${POSTGRES_USER:-beffroi}"]
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - database_data:/var/lib/postgresql/data
+
+volumes:
+  keys_data:
+  kms_data:
+  geoip_data:
+  webauthn_data:
+  share_data:
+  caddy_data:
+  caddy_config:
+  database_data:
