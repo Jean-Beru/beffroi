@@ -104,8 +104,8 @@ final class RegisteredClientsTest extends TestCase
     }
 
     /**
-     * OIDC Discovery §3, issue #278: the scopes of a tenant are what its clients registered, whichever
-     * source holds them, each named once.
+     * OIDC Discovery §3, issue #278: the scopes the clients of a tenant registered are read from every
+     * source that holds them, each named once.
      */
     #[Test]
     public function theScopesOfATenantAreThoseOfEverySource(): void

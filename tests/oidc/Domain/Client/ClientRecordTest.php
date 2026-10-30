@@ -6,6 +6,7 @@ namespace Beffroi\Oidc\Tests\Domain\Client;
 
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Domain\Client\ClientRecord;
+use Beffroi\Oidc\Domain\Client\Metadata\AttestedMembers;
 use Beffroi\Oidc\Domain\Client\SharedClientSecret;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
@@ -241,6 +242,49 @@ final class ClientRecordTest extends TestCase
 
         // When
         $record->replaceWith([], [], null, Fixtures::now()->modify('+1 day'));
+    }
+
+    /**
+     * RFC 7591 §3.1.1: what a statement signed of a client is what a replacement reads in front of what the
+     * client sends (RFC 7592 §2.2), under the name of the statement where a refusal names it.
+     */
+    #[Test]
+    public function whatAStatementSignedIsReadInFrontOfWhatTheClientSends(): void
+    {
+        // Given
+        $attested = [
+            'client_name' => 'Invoice reader, attested',
+        ];
+        $record = new ClientRecord(
+            Uuid::v7(),
+            Fixtures::tenant(),
+            'drawn-identifier',
+            $attested,
+            [],
+            null,
+            self::digest(),
+            Fixtures::now(),
+            attested: $attested,
+        );
+
+        // When
+        $inFront = $record->attestation();
+
+        // Then
+        static::assertEquals([new AttestedMembers($attested)], $inFront);
+    }
+
+    /**
+     * And a client no statement attested has nothing read in front of what it sends.
+     */
+    #[Test]
+    public function aClientNoStatementAttestedHasNothingReadInFrontOfWhatItSends(): void
+    {
+        // Given
+        $record = new ClientRecord(Uuid::v7(), Fixtures::tenant(), 'drawn-identifier', [], [], null, self::digest(), Fixtures::now());
+
+        // When / Then
+        static::assertSame([], $record->attestation());
     }
 
     private static function digest(): string

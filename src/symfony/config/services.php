@@ -651,10 +651,12 @@ use Beffroi\Oidc\Application\Client\Registration\RegistrationHeldToItsSector;
 use Beffroi\Oidc\Application\Client\Registration\RegistrationHeldToTheTenant;
 use Beffroi\Oidc\Application\Scope\OfferedScopes;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationDeclaredScopes;
 use Beffroi\Oidc\Port\ClientRegistrationPolicyInterface;
 use Beffroi\Oidc\Port\ClientInventoryInterface;
 use Beffroi\Oidc\Port\InitialAccessTokenRepositoryInterface;
 use Beffroi\Oidc\Port\IssuedInitialAccessTokensInterface;
+use Beffroi\Oidc\Port\DeclaredScopesInterface;
 use Beffroi\Oidc\Port\OfferedScopesInterface;
 use Beffroi\Oidc\Port\RegisteredScopesInterface;
 use Beffroi\Oidc\Port\RegisteredAccessTokenShapesInterface;
@@ -1580,8 +1582,8 @@ return static function (ContainerConfigurator $container): void {
     // require, read from the clients themselves and nowhere else (issue #98)
     $services->alias(PushedAuthorizationRequirementInterface::class, RegisteredClients::class);
     $services->alias(RegisteredResourcesInterface::class, RegisteredClients::class);
-    // OIDC Discovery §3: the scopes of a tenant beyond those a claims provider serves are what its
-    // clients registered, a scope that stands for no claim having nowhere else to come from (issue #278)
+    // OIDC Discovery §3: what the clients of a tenant registered is one of the two places a scope that
+    // stands for no claim comes from (issue #278), the deployment declaring it being the other (issue #920)
     $services->alias(RegisteredScopesInterface::class, RegisteredClients::class);
     $services->alias(RegisteredAccessTokenShapesInterface::class, RegisteredClients::class);
     $services->alias(UnsignedRequestObjectsInterface::class, RegisteredClients::class);
@@ -1796,6 +1798,11 @@ return static function (ContainerConfigurator $container): void {
     // OIDC Core §5.5: what a request asks for by name, held to the scopes its client registered and to what
     // the person agreed to (architecture §4.3)
     $services->set(ClaimsAskedByName::class);
+    // the scopes of the APIs a deployment protects, which it declares for its tenant before any client
+    // exists: a deployment that declares no client, as the image, has nothing else to make one exist
+    // (issue #920). The list and the slug of the tenant are the "tenant" section's (TenantSection)
+    $services->set(ConfigurationDeclaredScopes::class);
+    $services->alias(DeclaredScopesInterface::class, ConfigurationDeclaredScopes::class);
     // every scope the tenant hands out tokens for, assembled once: what the document announces and what a
     // registration is held to are one set, and not two places that must agree (issues #278, #336)
     $services->set(OfferedScopes::class);

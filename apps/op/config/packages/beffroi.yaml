@@ -33,10 +33,13 @@ beffroi:
             primary_content_color: '%env(default::BEFFROI_TENANT_PRIMARY_CONTENT_COLOR)%'
         # Every list of this file but the clients is a JSON document of the environment, of the shape the list
         # has in this file, held to the rules of the tree when the service it reaches is built (decision 0030): what
-        # the people of this tenant may change of themselves (issue beffroi-auth/beffroi#452) and its "acr"
-        # vocabulary (decision 0010). .env documents both with what an image takes.
+        # the people of this tenant may change of themselves (issue beffroi-auth/beffroi#452), its "acr"
+        # vocabulary (decision 0010) and the scopes of the APIs it protects, which stand for no claim and which a
+        # client that registers itself may then register (issue beffroi-auth/beffroi#920). .env documents the three
+        # with what an image takes.
         self_served_claims: '%env(json:BEFFROI_TENANT_SELF_SERVED_CLAIMS)%'
         authentication_classes: '%env(json:BEFFROI_TENANT_AUTHENTICATION_CLASSES)%'
+        scopes: '%env(json:BEFFROI_TENANT_SCOPES)%'
     keys:
         # The KMS client of config/packages/key_management.yaml the private keys are sealed with; the DSN
         # of that client, and whether it is one provider or several, are declared there.
@@ -703,8 +706,9 @@ when@dev:
                 # signs a user in comes for (issue #556). Its firewall asks for the first two of them and
                 # never for "invoices.write", so a write is refused on a token that was never granted it,
                 # with the "insufficient_scope" challenge of RFC 6750 §3.1 and not at the authorization
-                # endpoint: a scope that stands for no claim exists because a client registered it
-                # (OfferedScopes, issue #278), so all three are announced and held to.
+                # endpoint: a scope that stands for no claim exists here because this client registers it,
+                # the development stack declaring none for its tenant (OfferedScopes, issues #278 and
+                # #920), so all three are announced and held to.
                 scope: 'openid profile email invoices.read invoices.pay invoices.write'
             # The same demonstration registered a second time, for the one thing that tells the two
             # apart: the shape of its access token. "castor demo --resource-server" signs in as this
