@@ -203,6 +203,10 @@ parameters:
     # RFC 7591 §2: what a registration that names no scope is registered with here. Empty is none, which is
     # what a tenant that writes none gets, and a test that wants one names it before it boots a kernel.
     env(BEFFROI_TEST_REGISTRATION_DEFAULT_SCOPE): ''
+    # Issue #920: the scopes of the APIs the tenant protects, which its deployment declares, a JSON list (decision
+    # 0030). None, which is what a deployment that declares none gets, and a test that wants some names them before
+    # it boots a kernel.
+    env(BEFFROI_TEST_TENANT_SCOPES): '[]'
     # RFC 7591 §2.3: the keys the authority below is pinned by, which the test that plays the attested mode
     # replaces with the ones it signs with. The default is a key no test signs anything with: the anchor is
     # declared for every test because YAML cannot declare it only for one, and an anchor nothing verifies
@@ -232,6 +236,7 @@ beffroi:
         # Two of the claims a person may say of themselves (issue #452), so that both ends of the rule are
         # played: what this tenant opens is written, and what it does not is refused on the server.
         self_served_claims: ['nickname', 'zoneinfo', 'locale', 'birthdate']
+        scopes: '%env(json:BEFFROI_TEST_TENANT_SCOPES)%'
     load:
         origin:
             limit: '%env(int:BEFFROI_TEST_ORIGIN_BUDGET)%'

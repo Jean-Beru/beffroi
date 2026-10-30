@@ -11,6 +11,7 @@ use Beffroi\Oidc\Application\Claims\StandardClaimsProvider;
 use Beffroi\Oidc\Application\Client\RegisteredClients;
 use Beffroi\Oidc\Application\Scope\OfferedScopes;
 use Beffroi\Oidc\Application\Token\ServedGrants;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationDeclaredScopes;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Scope\Scopes;
@@ -24,8 +25,9 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Every scope a tenant hands out tokens for (issue #98): "openid", what the wired claims providers
- * serve, what the clients of the tenant registered, and "offline_access" where the wired grants make
- * good on it (OIDC Core §11). It is what the document announces and what a registration is held to.
+ * serve, what the deployment declares for the tenant (issue #920), what the clients of the tenant
+ * registered, and "offline_access" where the wired grants make good on it (OIDC Core §11). It is what
+ * the document announces and what a registration is held to.
  */
 final class OfferedScopesTest extends TestCase
 {
@@ -33,7 +35,7 @@ final class OfferedScopesTest extends TestCase
     public function theyAreOpenidThenWhatTheClaimsProviderServes(): void
     {
         // Given
-        $offered = new OfferedScopes(new StandardClaimsProvider(), Grants::served(), new RegisteredClients([new InMemoryClientRepository()]));
+        $offered = new OfferedScopes(new StandardClaimsProvider(), Grants::served(), new RegisteredClients([new InMemoryClientRepository()]), self::declared());
 
         // When
         $members = self::values($offered, Fixtures::tenant());
@@ -54,6 +56,7 @@ final class OfferedScopesTest extends TestCase
             new StandardClaimsProvider(),
             new ServedGrants([new FakeRefreshTokenIssuingGrant(Grants::authorizationCode())]),
             new RegisteredClients([new InMemoryClientRepository()]),
+            self::declared(),
         );
 
         // When
@@ -74,6 +77,7 @@ final class OfferedScopesTest extends TestCase
             new StandardClaimsProvider(),
             new ServedGrants([new FakeRefreshTokenSpendingGrant(Grants::refreshToken())]),
             new RegisteredClients([new InMemoryClientRepository()]),
+            self::declared(),
         );
 
         // When
@@ -95,6 +99,7 @@ final class OfferedScopesTest extends TestCase
             FakeClaimsProvider::of(['email', 'openid', 'email'], []),
             new ServedGrants([new FakeRefreshTokenIssuingGrant(Grants::authorizationCode())]),
             new RegisteredClients([new InMemoryClientRepository()]),
+            self::declared(),
         );
 
         // When
@@ -116,7 +121,7 @@ final class OfferedScopesTest extends TestCase
         $clients = new InMemoryClientRepository();
         $clients->save(Clients::public($tenant, allowedScopes: self::billing()));
         $clients->save(Clients::public($tenant, 'other-spa', allowedScopes: self::billing()));
-        $offered = new OfferedScopes(new StandardClaimsProvider(), Grants::served(), new RegisteredClients([$clients]));
+        $offered = new OfferedScopes(new StandardClaimsProvider(), Grants::served(), new RegisteredClients([$clients]), self::declared());
 
         // When
         $members = self::values($offered, $tenant);
@@ -138,7 +143,7 @@ final class OfferedScopesTest extends TestCase
         // Given
         $clients = new InMemoryClientRepository();
         $clients->save(Clients::public(Fixtures::tenant(), allowedScopes: self::billing()));
-        $offered = new OfferedScopes(new StandardClaimsProvider(), Grants::served(), new RegisteredClients([$clients]));
+        $offered = new OfferedScopes(new StandardClaimsProvider(), Grants::served(), new RegisteredClients([$clients]), self::declared());
 
         // When
         $members = self::values($offered, Fixtures::tenant('other', 'https://id.other.example'));
@@ -148,10 +153,10 @@ final class OfferedScopesTest extends TestCase
     }
 
     /**
-     * The scope of an API stands for no claim, and a registration is the only thing that says it exists:
-     * it is announced, as a resource a client registered is (RFC 9728 §4), and a typo is announced with
-     * it rather than granted in silence. What a client that registers itself may name is held to what
-     * this document already carries, where such a registration is read.
+     * The scope of an API stands for no claim, and a client that registers it is one of the two things
+     * that say it exists: it is announced, as a resource a client registered is (RFC 9728 §4), and a typo
+     * is announced with it rather than granted in silence. What a client that registers itself may name is
+     * held to what this document already carries, where such a registration is read.
      */
     #[Test]
     public function aScopeNoClaimsProviderServesIsAnnouncedBecauseAClientRegisteredIt(): void
@@ -160,13 +165,64 @@ final class OfferedScopesTest extends TestCase
         $tenant = Fixtures::tenant();
         $clients = new InMemoryClientRepository();
         $clients->save(Clients::public($tenant, allowedScopes: new Scopes([new Scope('billing.read')])));
-        $offered = new OfferedScopes(FakeClaimsProvider::of([], []), Grants::served(), new RegisteredClients([$clients]));
+        $offered = new OfferedScopes(FakeClaimsProvider::of([], []), Grants::served(), new RegisteredClients([$clients]), self::declared());
 
         // When
         $members = self::values($offered, $tenant);
 
         // Then
         static::assertSame(['openid', 'billing.read', 'offline_access'], $members);
+    }
+
+    /**
+     * Issue #920: the other thing that says the scope of an API exists is the deployment, which declares it
+     * for its tenant before any client exists, as a deployment that declares no client has to. It comes after
+     * what the claims providers serve and before what the clients registered.
+     */
+    #[Test]
+    public function theScopesTheDeploymentDeclaresAreOfferedBeforeAnyClientRegistersThem(): void
+    {
+        // Given
+        $offered = new OfferedScopes(
+            new StandardClaimsProvider(),
+            Grants::served(),
+            new RegisteredClients([new InMemoryClientRepository()]),
+            self::declared(['invoices.read', 'invoices.pay']),
+        );
+
+        // When
+        $members = self::values($offered, Fixtures::tenant());
+
+        // Then
+        static::assertSame(
+            ['openid', 'profile', 'email', 'address', 'phone', 'invoices.read', 'invoices.pay', 'offline_access'],
+            $members,
+        );
+    }
+
+    /**
+     * A scope the deployment declares and a client registers is one scope of the tenant, offered once, where
+     * the declaration names it.
+     */
+    #[Test]
+    public function aScopeTheDeploymentDeclaresAndAClientRegistersIsOfferedOnce(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $clients = new InMemoryClientRepository();
+        $clients->save(Clients::public($tenant, allowedScopes: self::billing()));
+        $offered = new OfferedScopes(
+            FakeClaimsProvider::of([], []),
+            Grants::served(),
+            new RegisteredClients([$clients]),
+            self::declared(['billing.write']),
+        );
+
+        // When
+        $members = self::values($offered, $tenant);
+
+        // Then
+        static::assertSame(['openid', 'billing.write', 'billing.read', 'offline_access'], $members);
     }
 
     /**
@@ -185,6 +241,7 @@ final class OfferedScopesTest extends TestCase
             new StandardClaimsProvider(),
             new ServedGrants([new FakeRefreshTokenIssuingGrant(Grants::authorizationCode())]),
             new RegisteredClients([$clients]),
+            self::declared(),
         );
 
         // When
@@ -200,6 +257,16 @@ final class OfferedScopesTest extends TestCase
     private static function values(OfferedScopes $offered, Tenant $tenant): array
     {
         return array_map(static fn (Scope $scope): string => $scope->value, $offered->scopesOfferedIn($tenant));
+    }
+
+    /**
+     * What the deployment declares for the tenant of the fixtures: none, unless a test names some.
+     *
+     * @param list<string> $scopes
+     */
+    private static function declared(array $scopes = []): ConfigurationDeclaredScopes
+    {
+        return new ConfigurationDeclaredScopes(Fixtures::tenant()->slug, $scopes);
     }
 
     /**

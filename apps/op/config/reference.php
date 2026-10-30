@@ -1545,6 +1545,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         },
  *         self_served_claims?: Param|string|list<scalar|Param|null>,
  *         authentication_classes?: Param|string|array<string, scalar|Param|null>,
+ *         scopes?: Param|string|list<string|Param>,
  *     },
  *     keys?: array{ // Where the keys of the tenants live: sealed by the KMS named here, stored as files until a table takes over (architecture §3.3).
  *         kms?: scalar|Param|null, // Name of the KMS client that seals the private keys, an entry of "key_management.clients", the configuration of KeyManagementBundle (a DSN there, or the members of a composite client); the KMS keeps, it never signs.

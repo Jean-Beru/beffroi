@@ -89,10 +89,10 @@ final class DiscoveryControllerTest extends BrowserTestCase
     /**
      * OIDC Discovery §3 "scopes_supported", issue #278: "openid" first, then what the wired claims
      * providers serve, the four of OIDC Core §5.4 and the scope this kernel wires a provider of its own
-     * for, then the scopes the clients of the tenant registered, which is where a scope that stands for
-     * no claim comes from, and "offline_access" last because the wired grants make it good (§11). None of
-     * it is enumerated anywhere: a scope is announced because a class serves it or because a client
-     * registered it.
+     * for, then what the deployment declares for the tenant, none here (issue #920), then the scopes the
+     * clients of the tenant registered, and "offline_access" last because the wired grants make it good
+     * (§11). None of it is enumerated anywhere: a scope is announced because a class serves it, because
+     * the deployment declares it or because a client registered it.
      */
     #[Test]
     public function theMetadataAnnouncesTheScopesTheWiringAndTheClientsOfTheTenantHold(): void

@@ -3,7 +3,9 @@
 # earlier list whole. A test names the value before it boots this kernel (ListsFromTheEnvironmentTest), and left alone
 # each variable carries what a deployment that names nothing carries. The tenant is the SAML identity provider of
 # config_test.yml and no service provider, so a list of upstream identity providers is one it refuses; the service
-# providers of "when@test" are not declared here, that block belonging to the environment "test" alone.
+# providers of "when@test" are not declared here, that block belonging to the environment "test" alone. The scopes of
+# the tenant are read the same way by config_test.yml itself, which a test of the environment "test" names too
+# (DeclaredScopeRegistrationTest).
 parameters:
     env(BEFFROI_TEST_TRUSTED_ISSUERS): '{}'
     env(BEFFROI_TEST_STATEMENT_ISSUERS): '{}'
@@ -33,6 +35,9 @@ services:
         public: true
     test.beffroi.environment_lists.trusted_issuers:
         alias: Beffroi\Oidc\Bridge\Configuration\ConfigurationTrustedIssuers
+        public: true
+    test.beffroi.environment_lists.declared_scopes:
+        alias: Beffroi\Oidc\Bridge\Configuration\ConfigurationDeclaredScopes
         public: true
     test.beffroi.environment_lists.registration_policy:
         alias: Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy

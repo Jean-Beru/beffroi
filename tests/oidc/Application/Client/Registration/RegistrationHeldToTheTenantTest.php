@@ -9,6 +9,7 @@ use Beffroi\Oidc\Application\Claims\StandardClaimsProvider;
 use Beffroi\Oidc\Application\Client\RegisteredClients;
 use Beffroi\Oidc\Application\Client\Registration\RegistrationHeldToTheTenant;
 use Beffroi\Oidc\Application\Scope\OfferedScopes;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationDeclaredScopes;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Beffroi\Oidc\Exception\InvalidClientMetadataException;
 use Beffroi\Oidc\Tests\Fixture\Grants;
@@ -19,7 +20,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * Decision 0009: a client that registers itself gets nothing a declared client does not get. What the
  * wiring does not already say is what the tenant hands out tokens for, which is what its document
- * announces (issue #278).
+ * announces (issues #278 and #920).
  */
 final class RegistrationHeldToTheTenantTest extends TestCase
 {
@@ -41,8 +42,31 @@ final class RegistrationHeldToTheTenantTest extends TestCase
     }
 
     /**
-     * A scope no claims provider serves and no client of the tenant registered does not exist for that
-     * tenant: a client that registers itself cannot write it into the document by asking for it.
+     * Issue #920: the scope of an API the deployment declares for the tenant is one the tenant hands out
+     * tokens for, so a client that registers itself may register it, where no client of the tenant
+     * registered it before.
+     */
+    #[Test]
+    public function aScopeTheDeploymentDeclaresHolds(): void
+    {
+        // Given
+        $metadata = Registrations::registered([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'scope' => 'openid billing.read',
+        ]);
+        $registration = Registrations::reader()->read('drawn-identifier', $metadata, true);
+
+        // When
+        $this->offer(['billing.read'])->assertHolds(Fixtures::tenant(), $registration, $metadata);
+
+        // Then
+        static::assertSame(['openid', 'billing.read'], $registration->allowedScopes->values());
+    }
+
+    /**
+     * A scope no claims provider serves, the deployment does not declare and no client of the tenant
+     * registered does not exist for that tenant: a client that registers itself cannot write it into the
+     * document by asking for it.
      */
     #[Test]
     public function aScopeTheTenantDoesNotHandOutTokensForIsRefused(): void
@@ -87,10 +111,16 @@ final class RegistrationHeldToTheTenantTest extends TestCase
         }
     }
 
-    private function offer(): RegistrationHeldToTheTenant
+    /**
+     * @param list<string> $declared what the deployment declares for the tenant of the fixtures
+     */
+    private function offer(array $declared = []): RegistrationHeldToTheTenant
     {
-        return new RegistrationHeldToTheTenant(
-            new OfferedScopes(new StandardClaimsProvider(), Grants::served(), new RegisteredClients([new InMemoryClientRepository()])),
-        );
+        return new RegistrationHeldToTheTenant(new OfferedScopes(
+            new StandardClaimsProvider(),
+            Grants::served(),
+            new RegisteredClients([new InMemoryClientRepository()]),
+            new ConfigurationDeclaredScopes(Fixtures::tenant()->slug, $declared),
+        ));
     }
 }
