@@ -42,12 +42,12 @@ COPY --link apps/op/frankenphp/conf.d/20-app.dev.ini $PHP_INI_DIR/app.conf.d/
 
 CMD [ "frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile", "--watch" ]
 
-# Production image: the packages and the application are copied so that the path repositories resolve, then
-# the application is installed.
-FROM frankenphp_base AS frankenphp_prod
+# Production image, in two stages: this one installs and builds the application where the extensions are
+# compiled, and the next one is what image.yml publishes and a deployment runs. The packages and the
+# application are copied so that the path repositories resolve, then the application is installed.
+FROM frankenphp_base AS frankenphp_prod_builder
 
 ENV APP_ENV=prod
-ENV FRANKENPHP_CONFIG="import worker.Caddyfile"
 
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
@@ -60,6 +60,9 @@ COPY --link apps/op/frankenphp/conf.d/20-app.prod.ini $PHP_INI_DIR/app.conf.d/
 COPY --link src/ /src/
 COPY --link apps/op/ /app/
 
+# The standalone binary of Tailwind goes once the stylesheet it built is compiled into public/assets. The
+# directories the processes write are made here, the volumes of compose.prod.yaml among them, since a named
+# volume takes the owner of the directory it is first mounted on.
 RUN set -eux; \
     composer install --no-cache --prefer-dist --no-dev --no-autoloader --no-scripts --no-progress; \
     composer dump-autoload --classmap-authoritative --no-dev; \
@@ -67,4 +70,62 @@ RUN set -eux; \
     composer run-script --no-dev post-install-cmd; \
     chmod +x bin/console; sync; \
     bin/console tailwind:build --minify --no-debug; \
-    bin/console asset-map:compile --no-debug;
+    bin/console asset-map:compile --no-debug; \
+    rm -rf var/tailwind/v*; \
+    mkdir -p var/keys var/kms var/geoip var/webauthn var/share var/log
+
+# The shared libraries FrankenPHP, PHP and each extension load, collected for a runtime that installs none.
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends libtree; \
+    mkdir /tmp/libs; \
+    for target in /usr/local/bin/frankenphp /usr/local/bin/php $(find "$(php -r 'echo ini_get("extension_dir");')" -name '*.so'); do \
+        libtree -pv "$target" | grep -oP '(?:── )\K/\S+(?= \[)' | while read -r library; do \
+            cp -n "$library" /tmp/libs/; \
+        done; \
+    done; \
+    rm -rf /var/lib/apt/lists/*
+
+# The production image: Debian slim, of the release the FrankenPHP image is built on, with FrankenPHP, PHP,
+# the extensions and the libraries they load, the packages and the application, and nothing to compile,
+# install or download with (issue #932). Every process runs as www-data, named by its number so that a
+# runtime can tell it is not root: the code is root's and only read, var/ and what Caddy keeps are www-data's,
+# group 0 holding what the owner holds for a runtime that draws the uid itself.
+FROM debian:13-slim AS frankenphp_prod
+
+ENV APP_ENV=prod
+ENV FRANKENPHP_CONFIG="import worker.Caddyfile"
+ENV PHP_INI_SCAN_DIR=":/usr/local/etc/php/app.conf.d"
+ENV XDG_CONFIG_HOME=/config XDG_DATA_HOME=/data GODEBUG=cgocheck=0
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt OPENSSL_CONF=/etc/ssl/openssl.cnf
+
+COPY --link --from=frankenphp_prod_builder /usr/local/bin/frankenphp /usr/local/bin/php /usr/local/bin/docker-php-entrypoint /usr/local/bin/docker-entrypoint /usr/local/bin/
+COPY --link --from=frankenphp_prod_builder /usr/local/lib/php/extensions /usr/local/lib/php/extensions
+COPY --link --from=frankenphp_prod_builder /usr/local/etc/php /usr/local/etc/php
+COPY --link --from=frankenphp_prod_builder /tmp/libs /usr/lib/
+COPY --link --from=frankenphp_prod_builder /etc/frankenphp /etc/frankenphp
+COPY --link --from=frankenphp_prod_builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --link --from=frankenphp_prod_builder /etc/ssl/openssl.cnf /etc/ssl/
+COPY --link --from=frankenphp_prod_builder /src /src
+COPY --link --exclude=var --from=frankenphp_prod_builder /app /app
+# Without --link, which would give www-data the /app this layer creates: it writes in var/ and nowhere above.
+COPY --chown=33:0 --from=frankenphp_prod_builder /app/var /app/var
+
+# The setuid and setgid bits of the system go, and the build fails here rather than at the first start when
+# FrankenPHP or an extension misses a library.
+RUN set -eux; \
+    mkdir -p /data/caddy /config/caddy; \
+    chown -R 33:0 /data /config; \
+    chmod -R g=u /app/var /data /config; \
+    find / -xdev -perm /6000 -type f -exec chmod a-s {} +; \
+    frankenphp version; \
+    test -z "$(php -m 2>&1 >/dev/null)"
+
+USER 33
+WORKDIR /app
+
+ENTRYPOINT ["docker-entrypoint"]
+
+# The image carries no curl: PHP asks the admin endpoint of Caddy.
+HEALTHCHECK --start-period=60s CMD ["php", "-r", "exit(false === @file_get_contents('http://localhost:2019/metrics', context: stream_context_create(['http' => ['timeout' => 5]])) ? 1 : 0);"]
+CMD [ "frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile" ]
