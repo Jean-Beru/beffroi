@@ -92,6 +92,45 @@ final class ServedClaimsTest extends TestCase
     }
 
     /**
+     * OIDC Core §5.4: a scope two providers serve stands for the claims each puts under it, each claim named
+     * once.
+     */
+    #[Test]
+    public function aScopeStandsForTheClaimsEveryWiredProviderPutsUnderIt(): void
+    {
+        // Given
+        $served = new ServedClaims([
+            new StandardClaimsProvider(),
+            FakeClaimsProvider::of(['email', 'billing'], ['billing_id', 'email']),
+        ]);
+
+        // When
+        $claims = $served->claimsOf(self::scopes(['email']));
+
+        // Then
+        static::assertSame(['email', 'email_verified', 'billing_id'], $claims);
+    }
+
+    /**
+     * A scope no wired provider serves stands for no claim, so nothing is asked for under it by name.
+     */
+    #[Test]
+    public function aScopeNoWiredProviderServesStandsForNoClaim(): void
+    {
+        // Given
+        $served = new ServedClaims([
+            new StandardClaimsProvider(),
+            FakeClaimsProvider::of(['billing'], ['billing_id']),
+        ]);
+
+        // When
+        $claims = $served->claimsOf(self::scopes(['openid', 'invoices.read']));
+
+        // Then
+        static::assertSame([], $claims);
+    }
+
+    /**
      * Which of the two values a client would receive is not something a deployment should have to guess,
      * as it is not for a member of the discovery document.
      */

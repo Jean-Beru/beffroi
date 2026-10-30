@@ -468,6 +468,7 @@ use Beffroi\Oidc\Application\Claims\Sector\RegisteredSectorIdentifier;
 use Beffroi\Oidc\Application\Claims\SectorIdentifiers;
 use Beffroi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
 use Beffroi\Oidc\Application\Claims\ServedClaims;
+use Beffroi\Oidc\Application\Claims\ClaimsAskedByName;
 use Beffroi\Oidc\Application\Claims\StandardClaimsProvider;
 use Beffroi\Oidc\Application\Client\AcceptedAssertionAudiences;
 use Beffroi\Oidc\Application\Client\ClientIdentifierDrawer;
@@ -1792,6 +1793,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set(StandardClaimsProvider::class)->tag('beffroi.oidc.claims_provider');
     $services->set(ServedClaims::class)->args([tagged_iterator('beffroi.oidc.claims_provider')]);
     $services->alias(ClaimsProviderInterface::class, ServedClaims::class);
+    // OIDC Core §5.5: what a request asks for by name, held to the scopes its client registered and to what
+    // the person agreed to (architecture §4.3)
+    $services->set(ClaimsAskedByName::class);
     // every scope the tenant hands out tokens for, assembled once: what the document announces and what a
     // registration is held to are one set, and not two places that must agree (issues #278, #336)
     $services->set(OfferedScopes::class);

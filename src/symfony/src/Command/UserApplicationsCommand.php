@@ -7,9 +7,11 @@ namespace Beffroi\Bundle\Command;
 use function array_map;
 use Beffroi\Bundle\Account\ApplicationHolding;
 use Beffroi\Bundle\Account\ApplicationHoldings;
+use Beffroi\Oidc\Domain\Consent\Consent;
 use Beffroi\Oidc\Port\ActiveConsentsInterface;
 use function count;
 use DateTimeImmutable;
+use function implode;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -65,7 +67,7 @@ final readonly class UserApplicationsCommand
                 static fn (ApplicationHolding $holding): array => [
                     $holding->consent->clientId,
                     $holding->consent->client->registration->presentation->name,
-                    (string) $holding->consent->scopes,
+                    self::access($holding->consent),
                     self::date($holding->consent->grantedAt),
                     (string) $holding->renewable,
                     self::date($holding->lastIssued),
@@ -79,6 +81,17 @@ final readonly class UserApplicationsCommand
         $io->text('An access token already issued lives to its own expiry, which taking a consent back does not shorten.');
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * What the person let it obtain, as the page of the account lists it: the scopes, then the claims they
+     * agreed to by name (OIDC Core §5.5).
+     */
+    private static function access(Consent $consent): string
+    {
+        $scopes = (string) $consent->scopes;
+
+        return $consent->claims->isEmpty() ? $scopes : sprintf('%s, by name: %s', $scopes, implode(' ', $consent->claims->all));
     }
 
     /**

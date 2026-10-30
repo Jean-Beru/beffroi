@@ -334,6 +334,11 @@ final class JwtIdTokenIssuerTest extends TestCase
                 return [];
             }
 
+            public function claimsOf(Scopes $scopes): array
+            {
+                return [];
+            }
+
             public function supportedScopes(): array
             {
                 return [];
@@ -390,6 +395,11 @@ final class JwtIdTokenIssuerTest extends TestCase
                     'exp' => 0,
                     'name' => 'Alice',
                 ];
+            }
+
+            public function claimsOf(Scopes $scopes): array
+            {
+                return [];
             }
 
             public function supportedScopes(): array

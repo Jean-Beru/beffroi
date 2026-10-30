@@ -7,6 +7,7 @@ namespace Beffroi\Oidc\Tests\Domain\Authorization;
 use function array_keys;
 use Beffroi\Oidc\Domain\Authorization\ClaimRequest;
 use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
+use Beffroi\Oidc\Domain\Claims\ClaimNames;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -65,6 +66,38 @@ final class ClaimsRequestTest extends TestCase
             ],
             new ClaimsRequest()->names(),
         );
+    }
+
+    /**
+     * OIDC Core §5.5: what a person lets a client learn is the same whether the client is told it in an ID
+     * token or at UserInfo, so the names both members ask for are one set, a name asked for in both once.
+     */
+    #[Test]
+    public function itNamesTheClaimsOfBothMembersEachOnce(): void
+    {
+        // Given
+        $claims = ClaimsRequest::fromJson('{"userinfo": {"email": null, "name": null}, "id_token": {"name": null, "acr": {"essential": true}}}');
+
+        // When / Then
+        static::assertSame(['email', 'name', 'acr'], $claims->claimNames()->all);
+    }
+
+    /**
+     * OIDC Core §5.5.1: narrowed to some names, it asks for those alone in each member, and asks of each
+     * what it asked of it.
+     */
+    #[Test]
+    public function narrowedItAsksForTheNamedClaimsAloneAsTheyWereAsked(): void
+    {
+        // Given
+        $claims = ClaimsRequest::fromJson('{"userinfo": {"email": {"essential": true}, "phone_number": null}, "id_token": {"phone_number": null, "name": {"value": "Alice"}}}');
+
+        // When
+        $narrowed = $claims->narrowedTo(new ClaimNames(['email', 'name']));
+
+        // Then
+        static::assertEquals(['email' => new ClaimRequest(true)], $narrowed->userinfo);
+        static::assertEquals(['name' => new ClaimRequest(false, 'Alice')], $narrowed->idToken);
     }
 
     /**

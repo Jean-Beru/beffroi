@@ -6,6 +6,7 @@ namespace Beffroi\Bundle\Tests\Functional\Command;
 
 use function array_map;
 use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Oidc\Domain\Claims\ClaimNames;
 use Beffroi\Oidc\Domain\Consent\Consent;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Scope\Scopes;
@@ -42,6 +43,23 @@ final class ApplicationsTest extends ConsoleTestCase
         static::assertStringContainsString('oidc-demo', self::flattened($tester));
         static::assertStringContainsString('Demo application', self::flattened($tester));
         static::assertStringContainsString('openid profile', self::flattened($tester));
+    }
+
+    /**
+     * OIDC Core §5.5: what the person agreed to by name is what the application holds beside its scopes, and
+     * the row says it.
+     */
+    #[Test]
+    public function theClaimsAgreedToByNameAreListedBesideTheScopes(): void
+    {
+        // Given
+        self::agree(self::user('alice'), ['openid'], new ClaimNames(['email', 'phone_number']));
+
+        // When
+        $tester = self::list('alice');
+
+        // Then
+        static::assertStringContainsString('openid, by name: email phone_number', self::flattened($tester));
     }
 
     #[Test]
@@ -88,7 +106,7 @@ final class ApplicationsTest extends ConsoleTestCase
     /**
      * @param list<string> $scopes
      */
-    private static function agree(User $user, array $scopes = ['openid']): void
+    private static function agree(User $user, array $scopes = ['openid'], ClaimNames $claims = new ClaimNames()): void
     {
         self::consents()
             ->save(new Consent(
@@ -97,6 +115,8 @@ final class ApplicationsTest extends ConsoleTestCase
                 self::client(),
                 new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
                 self::currentSecond(),
+                null,
+                $claims,
             ));
     }
 

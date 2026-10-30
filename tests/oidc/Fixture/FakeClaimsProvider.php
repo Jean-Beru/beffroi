@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Fixture;
 
+use function array_any;
 use function array_map;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Oidc\Domain\Scope\Scope;
@@ -42,6 +43,14 @@ final readonly class FakeClaimsProvider implements ClaimsProviderInterface
     public function claims(User $user, ?Scopes $scopes, array $requested): array
     {
         return $this->values;
+    }
+
+    /**
+     * Each claim it names stands for each scope it names.
+     */
+    public function claimsOf(Scopes $scopes): array
+    {
+        return array_any($this->scopes, static fn (string $scope): bool => $scopes->has(new Scope($scope))) ? $this->claims : [];
     }
 
     public function supportedScopes(): array

@@ -40,11 +40,14 @@ use Beffroi\Oidc\Application\Consent\ConsentGranting;
 use Beffroi\Oidc\Application\Consent\RequiredConsent;
 use Beffroi\Oidc\Application\Authorization\IdTokenHintVerifier;
 use Beffroi\Oidc\Application\Claims\AssignedSubjectIdentifiers;
+use Beffroi\Oidc\Application\Claims\ClaimsAskedByName;
+use Beffroi\Oidc\Application\Claims\StandardClaimsProvider;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryPushedAuthorizationRecordRepository;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryConsentRepository;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryInteractionRepository;
 use Beffroi\Oidc\Domain\Authorization\AuthorizationRequest;
+use Beffroi\Oidc\Domain\Authorization\ClaimRequest;
 use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
 use Beffroi\Oidc\Domain\Authorization\Prompt;
 use Beffroi\Oidc\Domain\Client\Client;
@@ -182,19 +185,24 @@ final class AuthorizationHandlerTest extends TestCase
         // the issuer, and a test that says what both will be called reads one sequence
         $secrets ??= Secrets::drawer();
         $uuids ??= new SymfonyUuidGenerator();
+        // the claims of OIDC Core §5.1, as the bundle wires them: what a scope stands for is what holds a claim
+        // asked for by name, at the consent and in the code
+        $claims = new ClaimsAskedByName(new StandardClaimsProvider());
         $codes = new AuthorizationCodeIssuer(
             $this->codes,
             $this->pushedRequests,
             $secrets,
             $uuids,
             $this->events,
+            $claims,
             ...$codeLifetime === null ? [] : [$codeLifetime],
         );
 
         return new AuthorizationHandler(
             $this->interactions,
             new ConsentGranting($this->consents, $uuids, $this->events),
-            new RequiredConsent($this->consents),
+            new RequiredConsent($this->consents, $claims),
+            $claims,
             $secrets,
             new AuthenticationRequirement(
                 $logins ?? Logins::passwordAndPasskey(),
@@ -1296,6 +1304,103 @@ final class AuthorizationHandlerTest extends TestCase
         // Then
         static::assertTrue($this->consents->all()[0]->authorizationDetails?->equals($details));
         static::assertTrue($granted->code->authorizationDetails?->equals($details));
+    }
+
+    /**
+     * OIDC Core §3.1.2.4, §5.5: a claim asked for by name that the consent in force answers for neither by
+     * name nor through a scope it holds is not released on that consent: the page asks again.
+     */
+    #[Test]
+    public function itAsksAgainWhenTheConsentInForceDoesNotCoverAClaimAskedForByName(): void
+    {
+        // Given
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
+
+        // When
+        $decision = $this->handler->begin($this->request(claims: '{"userinfo": {"email": null}}'), $this->session(), $this->context);
+
+        // Then
+        $this->consentRequired($decision, ConsentRequirement::NotGranted);
+    }
+
+    /**
+     * OIDC Core §5.4, §5.5: a consent that holds a scope standing for a claim asked for by name answers for
+     * that claim, and no page is shown.
+     */
+    #[Test]
+    public function itAsksNothingWhenTheConsentInForceHoldsTheScopeOfAClaimAskedForByName(): void
+    {
+        // Given
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid(), new Scope('email')]), Fixtures::now()));
+
+        // When
+        $decision = $this->handler->begin($this->request(claims: '{"userinfo": {"email": null}}'), $this->session(), $this->context);
+
+        // Then
+        $this->granted($decision);
+    }
+
+    /**
+     * OIDC Core §3.1.2.4: the page lists by name the claims the request asks for that no scope of it stands
+     * for, the person agreeing to what is released before it is. A claim one of its scopes stands for is
+     * agreed to with that scope, and one no scope the client registered stands for is listed nowhere.
+     */
+    #[Test]
+    public function theConsentPageCarriesTheClaimsAskedForByNameBeyondTheScopesOfTheRequest(): void
+    {
+        // Given
+        $request = $this->request(['openid', 'email'], claims: '{"userinfo": {"email": null, "phone_number": null}, "id_token": {"name": null}}');
+
+        // When
+        $decision = $this->handler->begin($request, $this->session(), $this->context);
+
+        // Then
+        static::assertSame(['name'], $this->consentRequired($decision, ConsentRequirement::NotGranted)->claims->all);
+    }
+
+    /**
+     * Architecture §4.3, OIDC Core §5.5: what the person agreed to by name is recorded on the consent, and
+     * the code the interaction earns carries it.
+     */
+    #[Test]
+    public function grantingTheConsentRecordsTheClaimsAskedForByNameAndTheCodeCarriesThem(): void
+    {
+        // Given
+        $session = $this->session();
+        $consent = $this->consentRequired(
+            $this->handler->begin($this->request(claims: '{"userinfo": {"email": null}}'), $session, $this->context),
+            ConsentRequirement::NotGranted,
+        );
+
+        // When
+        $granted = $this->granted($this->handler->grantConsent($consent->interaction, $session, $this->context));
+
+        // Then
+        static::assertSame(['email'], $this->consents->all()[0]->claims->all);
+        static::assertSame(['email'], $granted->code->claimsRequest?->claimNames()->all);
+    }
+
+    /**
+     * RFC 7591 §2, OIDC Core §5.5.1: the code carries none of the claims asked for by name that no scope the
+     * client registered stands for, so no token that descends from it answers with one, and asking for them
+     * was no error.
+     */
+    #[Test]
+    public function theCodeCarriesNoClaimAskedForByNameBeyondTheScopesTheClientRegistered(): void
+    {
+        // Given
+        $request = Requests::authorization(
+            $this->firstParty,
+            claims: ClaimsRequest::fromJson('{"userinfo": {"name": null, "email": null}, "id_token": {"phone_number": null}}'),
+        );
+
+        // When
+        $decision = $this->handler->begin($request, $this->session(), $this->context);
+
+        // Then
+        $code = $this->granted($decision)->code;
+        static::assertEquals(['name' => new ClaimRequest()], $code->claimsRequest?->userinfo);
+        static::assertSame([], $code->claimsRequest?->idToken);
     }
 
     /**

@@ -13,6 +13,7 @@ use Beffroi\Core\Domain\Event\DomainEventInterface;
 use Beffroi\Core\Domain\Event\LoadBudgetSpent;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
 use Beffroi\Core\Domain\Journal\JournalEntry;
+use Beffroi\Oidc\Domain\Claims\ClaimNames;
 use Beffroi\Oidc\Domain\Event\ConsentGranted;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Scope\Scopes;
@@ -78,6 +79,7 @@ final class EveryActIsWrittenDownTest extends DatabaseTestCase
             $user->subject,
             new Scopes([new Scope('openid')]),
             null,
+            new ClaimNames(),
             null,
             self::context(),
         ));

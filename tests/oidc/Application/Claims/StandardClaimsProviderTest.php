@@ -210,6 +210,48 @@ final class StandardClaimsProviderTest extends TestCase
     }
 
     /**
+     * OIDC Core §5.4: the claims each scope stands for, in the order the scopes are asked for, which is what
+     * a claim asked for by name is held to.
+     */
+    #[Test]
+    public function itSaysTheClaimsEachScopeStandsFor(): void
+    {
+        // When
+        $claims = $this->provider->claimsOf(self::scopes(['phone', 'email']));
+
+        // Then
+        static::assertSame(['phone_number', 'phone_number_verified', 'email', 'email_verified'], $claims);
+    }
+
+    /**
+     * OIDC Core §5.4: "openid" stands for no claim of this provider, and neither does a scope it does not
+     * serve.
+     *
+     * @param list<string> $scopes
+     */
+    #[Test]
+    #[DataProvider('provideScopesWithoutClaims')]
+    public function otherScopesStandForNoClaim(array $scopes): void
+    {
+        // When / Then
+        static::assertSame([], $this->provider->claimsOf(self::scopes($scopes)));
+    }
+
+    /**
+     * Every claim it announces is one a scope it announces stands for: no claim it serves is out of the reach
+     * of a client that registered the scope.
+     */
+    #[Test]
+    public function everyClaimItAnnouncesIsOneItsScopesStandFor(): void
+    {
+        // When
+        $claims = $this->provider->claimsOf(new Scopes($this->provider->supportedScopes()));
+
+        // Then
+        static::assertSame($this->provider->supportedClaims(), $claims);
+    }
+
+    /**
      * Every announced claim is one a full user actually gets, and nothing else.
      */
     #[Test]
@@ -248,9 +290,10 @@ final class StandardClaimsProviderTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5: a claim asked for by name is served without its scope; "essential", "value" and
-     * "values" (§5.5.1) change nothing to what is served; a name the provider does not know gives
-     * nothing. Requested and scope claims come out once each, in the order of §5.1.
+     * OIDC Core §5.5: a claim asked for by name is served without its scope being asked for, the caller
+     * having held what it asks for to the scopes of the client; "essential", "value" and "values" (§5.5.1)
+     * change nothing to what is served; a name the provider does not know gives nothing. Requested and scope
+     * claims come out once each, in the order of §5.1.
      */
     #[Test]
     public function claimsRequestedByNameAreServedWithoutTheirScope(): void

@@ -321,9 +321,17 @@
         <source>profile.email</source>
         <target>Adresse e-mail</target>
       </trans-unit>
+      <trans-unit id="4f812be1b4" resname="profile.email_verified">
+        <source>profile.email_verified</source>
+        <target>Si l'adresse e-mail est vérifiée</target>
+      </trans-unit>
       <trans-unit id="d2921f1caa" resname="profile.phone_number">
         <source>profile.phone_number</source>
         <target>Numéro de téléphone</target>
+      </trans-unit>
+      <trans-unit id="860cda4c62" resname="profile.phone_number_verified">
+        <source>profile.phone_number_verified</source>
+        <target>Si le numéro de téléphone est vérifié</target>
       </trans-unit>
       <trans-unit id="7c02d4292c" resname="profile.name">
         <source>profile.name</source>

@@ -27,7 +27,7 @@ use function substr;
  * column which seals and a column which does not are told apart by the type the mapping gives it and by
  * nothing kept beside it: the model says which of its fields is a personal datum and the walk of the
  * schema reads this class to hold the two together. They cannot be declared through `doctrine.dbal.types`
- * the way the other 33 types of the bundle are: that option names a class DoctrineBundle instantiates with
+ * the way the other 34 types of the bundle are: that option names a class DoctrineBundle instantiates with
  * no argument, and an encrypted type takes an encrypter, which is a service. What the bridge asks for
  * instead is an `EncryptedTypes` service whose `register()` runs while the bundles boot
  * (`BeffroiBundle::boot()`), early enough for the front controller, the console with its schema tool and
@@ -53,7 +53,7 @@ final readonly class EncryptedColumnTypes
 {
     /**
      * The prefix of every name this class derives, which is also what tells an encrypted type of the
-     * bundle from the 33 types that are not (`BeffroiBundle::DBAL_TYPES`).
+     * bundle from the 34 types that are not (`BeffroiBundle::DBAL_TYPES`).
      */
     public const string PREFIX = 'beffroi_encrypted_';
 

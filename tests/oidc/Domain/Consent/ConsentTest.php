@@ -9,6 +9,7 @@ use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
+use Beffroi\Oidc\Domain\Claims\ClaimNames;
 use Beffroi\Oidc\Domain\Consent\Consent;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
@@ -151,7 +152,7 @@ final class ConsentTest extends TestCase
         $later = Fixtures::now()->modify('+1 day');
 
         // When
-        $extended = $this->consent->extendedWith(new Scopes([Scope::openid(), new Scope('email')]), null, Uuid::v7(), $later);
+        $extended = $this->consent->extendedWith(new Scopes([Scope::openid(), new Scope('email')]), null, new ClaimNames(), Uuid::v7(), $later);
 
         // Then
         static::assertSame(['openid', 'profile', 'email'], $extended->scopes->values());
@@ -201,6 +202,7 @@ final class ConsentTest extends TestCase
         $extended = $consent->extendedWith(
             new Scopes([Scope::openid()]),
             new AuthorizationDetails([AuthorizationDetailTypes::detail('acct-4711'), AuthorizationDetailTypes::detail('acct-0815')]),
+            new ClaimNames(),
             Uuid::v7(),
             Fixtures::now()->modify('+1 day'),
         );
@@ -229,7 +231,7 @@ final class ConsentTest extends TestCase
         );
 
         // When
-        $extended = $consent->extendedWith(new Scopes([Scope::openid()]), null, Uuid::v7(), Fixtures::now()->modify('+1 day'));
+        $extended = $consent->extendedWith(new Scopes([Scope::openid()]), null, new ClaimNames(), Uuid::v7(), Fixtures::now()->modify('+1 day'));
 
         // Then
         static::assertTrue($extended->authorizationDetails?->equals(AuthorizationDetailTypes::details('acct-4711')));
@@ -269,6 +271,91 @@ final class ConsentTest extends TestCase
         static::assertFalse($this->consent->coversAuthorizationDetails(AuthorizationDetailTypes::details()));
     }
 
+    /**
+     * OIDC Core §5.5: a consent holds the claims the user agreed to by name, and a consent given for its
+     * scopes alone holds none.
+     */
+    #[Test]
+    public function aConsentHoldsTheClaimsItWasGivenByName(): void
+    {
+        // Given
+        $claims = new ClaimNames(['email', 'phone_number']);
+
+        // When
+        $consent = new Consent(Uuid::v7(), $this->user, $this->client, new Scopes([Scope::openid()]), Fixtures::now(), null, $claims);
+
+        // Then
+        static::assertSame(['email', 'phone_number'], $consent->claims->all);
+        static::assertTrue($this->consent->claims->isEmpty());
+    }
+
+    /**
+     * Architecture §4.3: what a user agreed to is never taken back by a new agreement, the claims agreed to
+     * by name no more than the scopes.
+     */
+    #[Test]
+    public function extendingItGivesANewConsentWithTheClaimsOfBothEachOnce(): void
+    {
+        // Given
+        $consent = new Consent(Uuid::v7(), $this->user, $this->client, new Scopes([Scope::openid()]), Fixtures::now(), null, new ClaimNames(['email']));
+
+        // When
+        $extended = $consent->extendedWith(
+            new Scopes([Scope::openid()]),
+            null,
+            new ClaimNames(['phone_number', 'email']),
+            Uuid::v7(),
+            Fixtures::now()->modify('+1 day'),
+        );
+
+        // Then
+        static::assertSame(['email', 'phone_number'], $extended->claims->all);
+    }
+
+    /**
+     * A request that asks for no claim by name takes nothing back from a consent that holds some.
+     */
+    #[Test]
+    public function extendingItWithNoClaimKeepsTheOnesItHolds(): void
+    {
+        // Given
+        $consent = new Consent(Uuid::v7(), $this->user, $this->client, new Scopes([Scope::openid()]), Fixtures::now(), null, new ClaimNames(['email']));
+
+        // When
+        $extended = $consent->extendedWith(new Scopes([new Scope('profile')]), null, new ClaimNames(), Uuid::v7(), Fixtures::now()->modify('+1 day'));
+
+        // Then
+        static::assertSame(['email'], $extended->claims->all);
+    }
+
+    /**
+     * OIDC Core §3.1.2.4, §5.5: a consent answers for the claims asked for by name that it holds by name,
+     * and for nothing else; nothing asked for by name is answered by every consent.
+     *
+     * @param list<string> $asked
+     */
+    #[Test]
+    #[DataProvider('provideClaimsAskedForByName')]
+    public function aConsentCoversTheClaimsItHoldsByNameAndNoOther(array $asked, bool $covered): void
+    {
+        // Given
+        $consent = new Consent(Uuid::v7(), $this->user, $this->client, new Scopes([Scope::openid()]), Fixtures::now(), null, new ClaimNames(['email']));
+
+        // When / Then
+        static::assertSame($covered, $consent->coversClaims(new ClaimNames($asked)));
+    }
+
+    /**
+     * @return iterable<string, array{list<string>, bool}>
+     */
+    public static function provideClaimsAskedForByName(): iterable
+    {
+        yield 'none' => [[], true];
+        yield 'the one it holds' => [['email'], true];
+        yield 'one it does not hold' => [['phone_number'], false];
+        yield 'the one it holds and another' => [['email', 'phone_number'], false];
+    }
+
     #[Test]
     public function extendingItRevokesItAtThatMoment(): void
     {
@@ -276,7 +363,7 @@ final class ConsentTest extends TestCase
         $later = Fixtures::now()->modify('+1 day');
 
         // When
-        $this->consent->extendedWith(new Scopes([new Scope('email')]), null, Uuid::v7(), $later);
+        $this->consent->extendedWith(new Scopes([new Scope('email')]), null, new ClaimNames(), Uuid::v7(), $later);
 
         // Then
         static::assertFalse($this->consent->isActive());
@@ -287,7 +374,7 @@ final class ConsentTest extends TestCase
     public function extendingItWithNothingNewStillSupersedesIt(): void
     {
         // When
-        $extended = $this->consent->extendedWith(new Scopes([Scope::openid()]), null, Uuid::v7(), Fixtures::now()->modify('+1 day'));
+        $extended = $this->consent->extendedWith(new Scopes([Scope::openid()]), null, new ClaimNames(), Uuid::v7(), Fixtures::now()->modify('+1 day'));
 
         // Then
         static::assertSame(['openid', 'profile'], $extended->scopes->values());

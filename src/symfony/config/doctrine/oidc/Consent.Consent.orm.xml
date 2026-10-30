@@ -22,6 +22,12 @@
                 <option name="jsonb">true</option>
             </options>
         </field>
+        <!-- The claims agreed to by name beyond what the scopes stand for (OIDC Core §5.5): an empty array when none was, which a consent recorded before the column existed says too. -->
+        <field name="claims" type="beffroi_claim_names" column="claims">
+            <options>
+                <option name="default">[]</option>
+            </options>
+        </field>
         <field name="grantedAt" type="datetime_immutable" column="granted_at"/>
         <field name="revokedAt" type="datetime_immutable" column="revoked_at" nullable="true"/>
         <entity-listeners>
