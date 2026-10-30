@@ -8,6 +8,8 @@ use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Application\Client\Registration\KeptRegistration;
 use Beffroi\Oidc\Domain\Client\ClientSecretInterface;
+use Beffroi\Oidc\Domain\Client\Metadata\AttestedMembers;
+use Beffroi\Oidc\Domain\Client\Metadata\ClientMetadataSourceInterface;
 use Beffroi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Domain\Client\HashedClientSecret;
@@ -109,6 +111,52 @@ final class RegistrationUnderThePolicyTest extends TestCase
         // Then
         static::assertIsString($kept->drawnSecret);
         static::assertInstanceOf(SharedClientSecret::class, $kept->secret);
+    }
+
+    /**
+     * RFC 7591 §3.1.1: what an authorisation put in front of the members the client sent is kept apart from
+     * them as well as among them, so that a replacement, read from what the client sends (RFC 7592 §2.2),
+     * reads it in front of them again.
+     */
+    #[Test]
+    public function whatAnAuthorisationPutInFrontOfTheMembersIsKeptApart(): void
+    {
+        // When
+        $kept = $this->read(
+            [
+                'redirect_uris' => [self::REDIRECT_URI],
+                'client_name' => 'What the client typed',
+            ],
+            inFront: [
+                new AttestedMembers([
+                    'client_name' => 'Invoice reader, attested',
+                ]),
+            ],
+        );
+
+        // Then
+        static::assertSame(
+            [
+                'client_name' => 'Invoice reader, attested',
+            ],
+            $kept->attested,
+        );
+    }
+
+    /**
+     * And a registration nothing was put in front of keeps nothing apart, which is every mode that reads no
+     * statement.
+     */
+    #[Test]
+    public function aRegistrationNothingWasPutInFrontOfKeepsNothingApart(): void
+    {
+        // When
+        $kept = $this->read([
+            'redirect_uris' => [self::REDIRECT_URI],
+        ]);
+
+        // Then
+        static::assertNull($kept->attested);
     }
 
     /**
@@ -383,6 +431,7 @@ final class RegistrationUnderThePolicyTest extends TestCase
 
     /**
      * @param array<string, mixed> $members
+     * @param list<ClientMetadataSourceInterface> $inFront what an authorisation put in front of the members
      */
     private function read(
         array $members,
@@ -390,10 +439,11 @@ final class RegistrationUnderThePolicyTest extends TestCase
         ?SectorIdentifierDocumentFetcherInterface $documents = null,
         ?ServedGrantsInterface $grants = null,
         ?ClientRegistrationPolicy $policy = null,
+        array $inFront = [],
     ): KeptRegistration {
         return Registrations::underThePolicy(
             Registrations::reader(grants: $grants, subjects: Subjects::bothKinds()),
             documents: $documents,
-        )->read(Fixtures::tenant(), 'drawn-identifier', [], $members, $policy, $held);
+        )->read(Fixtures::tenant(), 'drawn-identifier', $inFront, $members, $policy, $held);
     }
 }
