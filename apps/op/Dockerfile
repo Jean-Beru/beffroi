@@ -112,13 +112,19 @@ COPY --link --exclude=var --from=frankenphp_prod_builder /app /app
 COPY --chown=33:0 --from=frankenphp_prod_builder /app/var /app/var
 
 # The setuid and setgid bits of the system go, and the build fails here rather than at the first start when
-# FrankenPHP or an extension misses a library.
+# FrankenPHP or an extension misses a library, or when Caddy refuses its configuration in one of the two ways
+# the image serves the site of SERVER_NAME: Caddy terminating TLS, and a proxy in front of it terminating TLS
+# (TLS_TERMINATION, issue #908). The configuration is adapted and not validated: validating provisions it,
+# which draws the key of the internal CA of Caddy into /data, and every deployment of the image would start
+# with the same one.
 RUN set -eux; \
     mkdir -p /data/caddy /config/caddy; \
     chown -R 33:0 /data /config; \
     chmod -R g=u /app/var /data /config; \
     find / -xdev -perm /6000 -type f -exec chmod a-s {} +; \
     frankenphp version; \
+    frankenphp adapt --config /etc/frankenphp/Caddyfile > /dev/null; \
+    TLS_TERMINATION=proxy SERVER_NAME=:80 frankenphp adapt --config /etc/frankenphp/Caddyfile > /dev/null; \
     test -z "$(php -m 2>&1 >/dev/null)"
 
 USER 33

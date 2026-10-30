@@ -67,6 +67,12 @@ services:
       # CADDY_EXTRA_CONFIG: import mtls.Caddyfile
       # MTLS_SERVER_NAME: mtls.${SERVER_NAME}
       # BEFFROI_MTLS_ORIGIN: https://mtls.${SERVER_NAME}
+      # Behind a proxy that terminates TLS (issue #908), the site of SERVER_NAME is served on plain HTTP, as
+      # http://<SERVER_NAME> on port 80, to the proxy, which asks for that host; Symfony reads the scheme and the
+      # address of the client the proxy forwards from where SYMFONY_TRUSTED_PROXIES says it connects
+      # (https://doc.beffroi.tech/application/deployment/#behind-a-proxy).
+      # TLS_TERMINATION: proxy
+      # SYMFONY_TRUSTED_PROXIES: private_ranges
     volumes:
       # What the processes share (https://doc.beffroi.tech/application/deployment/#what-the-processes-share): the
       # sealed keys the server signs with and the worker rotates, the key of the file backend, the GeoLite2
