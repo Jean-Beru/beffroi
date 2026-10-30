@@ -8,7 +8,7 @@ declare(strict_types=1);
  * reads and changes itself at the URI it was handed, and deletes itself (RFC 7591, RFC 7592).
  *
  * It is the only client of the demonstration that is declared nowhere: every other one is a registration in
- * apps/op/config/packages/beffroi.yaml, which is the assumption this walk breaks. What it proves is that a
+ * apps/op/config/packages/dev/beffroi.yaml, which is the assumption this walk breaks. What it proves is that a
  * client nobody named gets exactly what a declared client gets and exactly the same refusals.
  *
  * The task is what runs under castor, which loads no code of the monorepo; this script runs under the

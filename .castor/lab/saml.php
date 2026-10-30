@@ -8,7 +8,7 @@ declare(strict_types=1);
  * served on https://saml-sp.localhost by the "saml-sp" service of compose.yaml behind the Caddy of op, configured with
  * the metadata the stack serves and nothing else (docker/saml-sp/), and registered at the provider the way an
  * operator registers one: its metadata given as a file the development configuration declares
- * (apps/op/config/packages/beffroi.yaml, beffroi.saml.service_providers) and read by "beffroi:saml:service-provider:refresh".
+ * (apps/op/config/packages/dev/beffroi.yaml, beffroi.saml.service_providers) and read by "beffroi:saml:service-provider:refresh".
  *
  * Three things judge what the walk captures, none of them the provider and none of them SimpleSAMLphp's reading of
  * itself: xmlsec1 on every XML signature (the AuthnRequest posted, the Response), the OpenSSL command line and Python's
@@ -21,7 +21,7 @@ declare(strict_types=1);
  *
  * With --encrypted (issue #733, spec/saml.md S-19 to S-21), the walk plays the second service provider of the same
  * SimpleSAMLphp, "beffroi-encrypted": its configuration sets "assertion.encryption", so that it refuses an assertion in
- * clear, and its declaration in apps/op/config/packages/beffroi.yaml sets "encrypt_assertions". The Response captured is
+ * clear, and its declaration in apps/op/config/packages/dev/beffroi.yaml sets "encrypt_assertions". The Response captured is
  * checked to carry its assertion encrypted, under aes256-gcm and rsa-oaep-mgf1p and nothing in CBC; xmlsec1 decrypts it
  * under var/saml-sp/sp.pem, and the assertion it gives back joins the documents saml_sp_verify_responses() verifies, its
  * signature under the metadata of the provider, as the signature of the Response over the ciphertext is.
@@ -67,7 +67,7 @@ const SAML_SP_METADATA_FILE = SAML_SP_DIRECTORY . '/metadata/sp-metadata.xml';
 /**
  * The two service providers of the one SimpleSAMLphp, by the name of their authentication source
  * (docker/saml-sp/config/authsources.php), and the file the metadata of each are written to, which the declaration of
- * each in apps/op/config/packages/beffroi.yaml names: "beffroi" takes its assertion in clear, "beffroi-encrypted"
+ * each in apps/op/config/packages/dev/beffroi.yaml names: "beffroi" takes its assertion in clear, "beffroi-encrypted"
  * demands it encrypted (issue #733).
  */
 const SAML_SP_SOURCES = [
@@ -1122,7 +1122,7 @@ function saml_sp_verify_provider_logout(array $answer): void
  * tenant, configured by hand in its portal, by the maintainer and by nobody else, whose Identifier and Reply URL are the
  * entity ID and the assertion consumer service of the service provider of the tenant. The task checks that the stack
  * serves those two as the portal holds them, has the provider read the Federation Metadata XML of the application
- * (apps/op/config/saml/entra-enterprise-application-idp.xml, which apps/op/config/packages/beffroi.yaml declares),
+ * (apps/op/config/saml/entra-enterprise-application-idp.xml, which apps/op/config/packages/dev/beffroi.yaml declares),
  * creates the group of the tenant its mapping names, and plays the walk up to Entra and no further: an authorization
  * request of oidc-demo, the address of alice typed on the login page, and the AuthnRequest the provider sends the
  * browser to Entra with, which is decoded and checked, and never sent. The sign-in itself is the maintainer's, in a
@@ -1137,7 +1137,7 @@ const SAML_ENTRA_TENANT = '20a6e528-cf9e-4f79-8949-bbd59006eff5';
 
 /**
  * The tenanted issuer of the AuthnRequest Entra sends for a new federation, the trailing slash included, as
- * apps/op/config/packages/beffroi.yaml declares it and apps/op/config/saml/entra-guest-federation-sp.xml names it.
+ * apps/op/config/packages/dev/beffroi.yaml declares it and apps/op/config/saml/entra-guest-federation-sp.xml names it.
  */
 const SAML_ENTRA_ENTITY_ID = 'https://login.microsoftonline.com/' . SAML_ENTRA_TENANT . '/';
 
@@ -1168,7 +1168,7 @@ const SAML_ENTRA_RECEIVED = SAML_ENTRA_DIRECTORY . '/received';
 /**
  * Entra ID as the upstream identity provider of the stack (--upstream): the entity ID of the Federation Metadata XML of
  * the enterprise application, the tenanted issuer of sts.windows.net, the trailing slash included, as
- * apps/op/config/packages/beffroi.yaml declares it, and the single sign-on service those metadata name.
+ * apps/op/config/packages/dev/beffroi.yaml declares it, and the single sign-on service those metadata name.
  */
 const SAML_ENTRA_IDP_ENTITY_ID = 'https://sts.windows.net/' . SAML_ENTRA_TENANT . '/';
 

@@ -1,4 +1,5 @@
-# What this application owes of Messenger, and nothing more: the transports of its tests. The three buses,
+# What this application owes of Messenger, and nothing more: the transports of its tests, which
+# config/packages/test/messenger.yaml declares, so that a deployment reads nothing here. The three buses,
 # their middleware, where each marker is sent and the four lanes are the contract of the provider and the
 # bundle prepends them (Beffroi\Bundle\Messenger\MessengerContract, architecture §5.6, issue
 # beffroi-auth/beffroi#456): a deployment that wired them itself and got "dispatch_after_current_bus" or
@@ -8,15 +9,3 @@
 # beffroi-auth/beffroi#919): a queue of its own in the database for each lane unless that variable names a
 # broker, "{lane}" in it being where the name of each lane goes. This application leaves it on the database:
 # it requires the transport of no broker, and its image carries the extension of none (issue #927).
-#
-# The block lives under "messenger" and not under "framework.messenger": the component has its own
-# extension since Symfony 8.2 split FrameworkBundle per component, and a block nested under "framework" is
-# not overridden by an application through a bundle's prepend.
-when@test:
-    messenger:
-        transports:
-            async_priority_high: 'sync://'
-            async_priority_medium: 'sync://'
-            async_priority_low: 'sync://'
-            async_notifications: 'sync://'
-            failed: 'sync://'

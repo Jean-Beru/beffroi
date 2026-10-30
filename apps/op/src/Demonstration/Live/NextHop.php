@@ -23,7 +23,7 @@ use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 final readonly class NextHop
 {
     /**
-     * The tag the wiring puts on every hop the demonstration takes itself (config/services.yaml).
+     * The tag the wiring puts on every hop the demonstration takes itself (config/packages/demonstration.yaml).
      */
     public const string HOPS = 'app.demonstration.hop';
 
