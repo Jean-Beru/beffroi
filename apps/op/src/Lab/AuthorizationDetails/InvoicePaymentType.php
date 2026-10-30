@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\AuthorizationDetails;
+namespace App\Lab\AuthorizationDetails;
 
 use function array_is_list;
 use function array_values;
@@ -19,9 +19,12 @@ use function sprintf;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
 /**
- * The one type of authorization detail this deployment serves (RFC 9396 §2), which is what "castor demo --rar"
- * asks for. The bundle wires none and cannot: a detail says what a client may do, to what and how much in the
- * words of one domain, so the type belongs to the deployment and not to the provider.
+ * The one type of authorization detail the development stack serves (RFC 9396 §2), the one of the API of the
+ * demonstration, which is what "castor demo --rar" and the forge of oidc-demo ask for. The bundle wires none and
+ * cannot: a detail says what a client may do, to what and how much in the words of one domain, so a type belongs
+ * to a deployment and not to the provider. This one belongs to the lab: wired in development alone
+ * (config/packages/lab.yaml), and left out of the image with the rest of src/Lab/, so that a deployment of the
+ * image announces no type of detail (issue #922).
  *
  * It is what a scope cannot say. "invoices.read" says a kind of thing; a detail of this type names the invoice,
  * what may be done to it and the most that may be moved, and what a user reads before agreeing is those three

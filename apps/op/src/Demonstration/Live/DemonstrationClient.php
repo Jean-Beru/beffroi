@@ -9,7 +9,7 @@ namespace App\Demonstration\Live;
  * authenticates with when it has one, what it asks for, and, for a flow whose user this provider goes
  * looking for, who that user is.
  *
- * These are the clients of the lab, the ones config/packages/beffroi.yaml registers in development, and
+ * These are the clients of the lab, the ones config/packages/dev/beffroi.yaml registers, and
  * the demonstration holds no client of its own: a flow it cannot play as anybody is a flow it says it
  * cannot play.
  */

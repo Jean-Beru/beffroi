@@ -115,7 +115,7 @@ const DEV_CONFORMANCE_DIRECTORY = 'var/conformance';
  * The clients the plans that prove a key run with, two per run: a handful of modules need a second client
  * to present an authorization code, a request URI or a request object that was issued to another one.
  * Each one holds one P-256 key, published to the provider in the environment variable named here
- * (apps/op/config/packages/beffroi.yaml reads it) and held whole by the suite; the ones that carry a
+ * (apps/op/config/packages/dev/beffroi.yaml reads it) and held whole by the suite; the ones that carry a
  * certificate have it issued on that very key, so what the handshake proves and what signs a request
  * object are the same key.
  *
@@ -922,7 +922,7 @@ function provision_server_certificate_configuration(string $certificateFile, str
 
 /**
  * The key material of the four clients of the FAPI 2 plans, in var/conformance/ and published to the
- * provider as the public half of each set (apps/op/config/packages/beffroi.yaml reads the variables of
+ * provider as the public half of each set (apps/op/config/packages/dev/beffroi.yaml reads the variables of
  * DEV_FAPI_CLIENTS). Replayed on every run and idempotent: a set that is there, with its certificate
  * still valid when it carries one, is kept, so that a client the provider knows by its key survives a
  * second "castor provision".

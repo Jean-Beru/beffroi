@@ -39,7 +39,8 @@ services:
       # as in a deployment of the image (compose.prod.yaml): this stack runs no broker (issue #927).
       # https://xdebug.org/docs/all_settings#mode
       XDEBUG_MODE: ${XDEBUG_MODE:-off}
-      # Both documented in apps/op/.env; "castor start --conformance" sets them for a stack that serves the suite.
+      # Both documented where the configuration of development reads them (apps/op/config/packages/web_profiler.yaml,
+      # apps/op/config/packages/dev/beffroi.yaml); "castor start --conformance" sets them for a stack that serves the suite.
       APP_PROFILER: ${APP_PROFILER:-1}
       CONFORMANCE_ACCESS_TOKEN_FORMAT: ${CONFORMANCE_ACCESS_TOKEN_FORMAT:-jwt}
       # The name the suite's nginx answers on, set by "castor start --conformance" and by nothing else:
@@ -56,7 +57,7 @@ services:
       # never on a write under var/, or every compiled template and catalogue would restart them.
       FRANKENPHP_CONFIG: "import worker.Caddyfile"
       FRANKENPHP_WORKER_CONFIG: |-
-        watch /app/src/**/*.php
+        watch /app/src/**/*.{php,xlf}
         watch /app/config/**/*.{php,yaml,yml}
         watch /app/templates/**/*.twig
         watch /app/translations/**/*.xlf
@@ -88,7 +89,7 @@ services:
       - ./apps/op:/app
       - ./src:/src
       - /app/var/
-      # The metadata of the service provider of the SAML judge, the file apps/op/config/packages/beffroi.yaml
+      # The metadata of the service provider of the SAML judge, the file apps/op/config/packages/dev/beffroi.yaml
       # declares ("castor saml-sp" writes it); the directory holds nothing else, the private key of the service
       # provider being beside it, not in it. The worker below reads the same file for its hourly refresh.
       - ./var/saml-sp/metadata:/saml-sp:ro

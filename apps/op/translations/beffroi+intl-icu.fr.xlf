@@ -2,13 +2,9 @@
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
   <file source-language="en" target-language="fr" datatype="plaintext" original="beffroi">
     <header>
-      <note>Ce que ce déploiement ajoute aux chaînes du bundle, et rien que le bundle dise déjà. Un message par type de détail d'autorisation qu'il câble (RFC 9396 §2), nommé d'après ce type, parce que le type est une classe du déploiement et que la phrase lue avant d'y consentir va avec lui ; et les mots de ce que ce déploiement dessine autour des pages du bundle, le thème, les contrôles de la barre, les intertitres sous lesquels les pages du compte sont rangées et la ligne par laquelle chacune se lit. Format de message ICU ; les paramètres d'un détail sont ceux que son type a mis dans le rendu de celui-ci.</note>
+      <note>Ce que cette application ajoute aux chaînes du bundle, et rien que le bundle dise déjà : les mots de ce qu'elle dessine autour des pages du bundle, le thème, les contrôles de la barre, les intertitres sous lesquels les pages du compte sont rangées et la ligne par laquelle chacune se lit. Elle ne câble aucun type de détail d'autorisation et n'en dit donc aucun : le type du laboratoire est dit dans src/Lab/translations/, avec le laboratoire. Format de message ICU.</note>
     </header>
     <body>
-      <trans-unit id="a1f0c3e8d2" resname="authorization_details.invoice_payment">
-        <source>authorization_details.invoice_payment</source>
-        <target>Facture {identifier} : {actions}, pour au plus {amount} {currency}</target>
-      </trans-unit>
       <trans-unit id="controls.close" resname="controls.close">
         <source>controls.close</source>
         <target>Fermer les menus</target>

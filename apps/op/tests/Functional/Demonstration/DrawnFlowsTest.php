@@ -135,7 +135,7 @@ final class DrawnFlowsTest extends DemonstrationTestCase
 
     /**
      * The flows the demonstration drives itself are the ones the lab registered a client for
-     * (config/services.yaml): a flow that opens in a browser navigating away is replayed, and the page
+     * (config/packages/demonstration.yaml): a flow that opens in a browser navigating away is replayed, and the page
      * says which of the two it is.
      */
     #[Test]

@@ -47,7 +47,7 @@ use Symfony\Component\Console\Input\InputOption;
 /**
  * A client per logout channel, in place of the "client" of the configuration: the suite certifies one
  * channel at a time and a module fails on a request to the endpoint of the other one, so the client of a
- * plan registers the URI of its channel and of no other (apps/op/config/packages/beffroi.yaml).
+ * plan registers the URI of its channel and of no other (apps/op/config/packages/dev/beffroi.yaml).
  */
 const CONFORMANCE_FRONT_CHANNEL_CLIENT = [
     'client_id' => 'conformance-front-channel-logout',
@@ -65,7 +65,7 @@ const CONFORMANCE_BACK_CHANNEL_CLIENT = [
  * uses. Two per pair, because a client authenticates with the one method it registered (RFC 6749 §2.3.1)
  * and the two pairs do not authenticate the same way. "castor provision" generates their keys into
  * var/conformance/ and publishes the public half to the provider
- * (apps/op/config/packages/beffroi.yaml).
+ * (apps/op/config/packages/dev/beffroi.yaml).
  */
 const CONFORMANCE_FAPI_PRIVATE_KEY_JWT_CLIENTS = ['conformance-fapi-private-key-jwt', 'conformance-fapi-private-key-jwt-second'];
 
@@ -83,7 +83,7 @@ const CONFORMANCE_FAPI_SIGNING_MTLS_CLIENTS = ['conformance-fapi-signing-mtls', 
 /**
  * The clients of the two FAPI-CIBA runs, read as "client" and "client2" like every other pair. One pair
  * per run and not one for both: a client registers one backchannel token delivery mode (CIBA Core §4),
- * and the two runs are that mode changed (apps/op/config/packages/beffroi.yaml).
+ * and the two runs are that mode changed (apps/op/config/packages/dev/beffroi.yaml).
  */
 const CONFORMANCE_CIBA_POLL_CLIENTS = ['conformance-ciba-poll', 'conformance-ciba-poll-second'];
 
@@ -260,7 +260,7 @@ const CONFORMANCE_TOKEN_ENDPOINT_STATUS = 'FAILURE CheckTokenEndpointHttpStatus2
  * (AnyRegisteredAlgorithm): decision 0012 has an unsigned object registered per client, never fallen
  * into, and by the tenant or by a global setting never at all. The module skips itself where "none" is
  * not announced, and this tenant announces it because one client of it registered it
- * (AnnouncedRequestObjects, and the comment that member carries in apps/op/config/packages/beffroi.yaml):
+ * (AnnouncedRequestObjects, and the comment that member carries in apps/op/config/packages/dev/beffroi.yaml):
  * dropping that registration to buy the skip would cost the module of the Basic and Form Post plans
  * decision 0012 exists for.
  *
@@ -982,7 +982,7 @@ function conformance_server(string $suite): array
  * nothing else. A second factor or a passkey enrolled by hand (a run of "castor demo --passkey", an
  * afternoon on the account pages) stops the scripted browser of the suite on the page that asks for it,
  * and every module of every plan fails on the same line, "unexpected url for task: Verify complete". The
- * client secrets live in apps/op/.env.local and the clients in apps/op/config/packages/beffroi.yaml, so
+ * client secrets live in apps/op/.env.local and the clients in apps/op/config/packages/dev/beffroi.yaml, so
  * nothing of the configuration is lost; the signing keys are generated again, their sealed files in the
  * keys_data volume left behind as orphans.
  *

@@ -48,7 +48,7 @@ final readonly class ProviderSideRecorder implements EventSubscriberInterface
     public const string AGENT = 'beffroi-demonstration';
 
     /**
-     * The tag the wiring puts on every call the demonstration recognises (config/services.yaml).
+     * The tag the wiring puts on every call the demonstration recognises (config/packages/demonstration.yaml).
      */
     public const string ENDPOINTS = 'app.demonstration.endpoint';
 
