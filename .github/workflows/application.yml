@@ -72,7 +72,7 @@ jobs:
       # at its own name and not at the loopback address apps/op/.env names for a desk. A real environment
       # variable wins over .env and over .env.test, which is what lets the same task run in both places
       # (apps/op/.env.test). The suite writes the "_test" database beside the one named here, which its
-      # test environment appends the suffix to (apps/op/config/packages/doctrine.yaml), and
+      # test environment appends the suffix to (apps/op/config/packages/test/doctrine.yaml), and
       # "castor app-phpunit" creates it.
       DATABASE_URL: "postgresql://beffroi:beffroi@database:5432/beffroi?serverVersion=16&charset=utf8"
     # The database the suite of the application needs. The version is the one compose.yaml serves the
@@ -168,7 +168,7 @@ jobs:
         run: |
           php bin/console lint:twig templates
           php bin/console lint:yaml config
-          php bin/console lint:xliff translations
+          php bin/console lint:xliff translations src/Lab/translations
       # The migrations of the bundle, then the suite: both are in the task, so the command here is the
       # command on a desk.
       - name: "The suite of the application, on its own kernel"

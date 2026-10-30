@@ -275,7 +275,7 @@ function app_phpunit(#[AsRawTokens] array $args = []): void
     io()->title('Running the suite of the application');
 
     // The database the suite writes is never the one the stack serves: the test environment of the
-    // application appends "_test" to the name DATABASE_URL carries (apps/op/config/packages/doctrine.yaml),
+    // application appends "_test" to the name DATABASE_URL carries (apps/op/config/packages/test/doctrine.yaml),
     // and a run empties every table of it before every test.
     application_console(['doctrine:database:create', '--if-not-exists']);
     // The schema comes from the migrations of the bundle, the way a deployment gets it, which is also the

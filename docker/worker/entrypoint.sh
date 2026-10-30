@@ -6,7 +6,7 @@
 # #137): curl resolves every name ending in ".localhost" to the loopback address of whoever asks, without
 # reading /etc/hosts, so from in here a client registered on such a name is this container. The address
 # docker wrote for the gateway of the host (extra_hosts of compose.yaml) is read here and given to the
-# HTTP client of the application as its "resolve" option (config/packages/framework.yaml).
+# HTTP client of the application as its "resolve" option (config/packages/dev/framework.yaml).
 #
 # The certificate of the conformance suite, when the suite is up (issue #141): the back-channel logout plan
 # has the OP post a logout token to the URI the suite gives its clients, which names localhost:8443; the

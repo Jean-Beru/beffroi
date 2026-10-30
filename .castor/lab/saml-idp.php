@@ -15,7 +15,7 @@ declare(strict_types=1);
  * readTrusted() and then readSigned() under the certificate drawn here.
  *
  * Then the provider federates it the way an operator federates one: the declaration of apps/op/config/packages/
- * beffroi.yaml (beffroi.saml.identity_providers, under when@dev) names the file its metadata are written to, which
+ * dev/beffroi.yaml (beffroi.saml.identity_providers) names the file its metadata are written to, which
  * "beffroi:saml:identity-provider:refresh" reads, its key to encrypt for is drawn (spec/saml.md S-64) and the group of
  * the tenant its mapping names is created. And the walk signs people in as a browser and a client of OpenID Connect do,
  * one request at a time: the client is oidc-demo, whose code the walk spends itself, the demonstration not being needed

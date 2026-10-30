@@ -2,13 +2,9 @@
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
   <file source-language="en" target-language="en" datatype="plaintext" original="beffroi">
     <header>
-      <note>What this deployment adds to the strings of the bundle, and nothing the bundle already says. One message per type of authorization detail it wires (RFC 9396 §2), named after that type, because the type is a class of the deployment and the sentence a user reads before agreeing to one belongs with it; and the words of what this deployment draws around the pages of the bundle, the theme, the controls of the bar, the headings the pages of the account are arranged under and the line each of them is read by. ICU message format; the parameters of a detail are the ones its type put in the rendering of it.</note>
+      <note>What this application adds to the strings of the bundle, and nothing the bundle already says: the words of what it draws around the pages of the bundle, the theme, the controls of the bar, the headings the pages of the account are arranged under and the line each of them is read by. It wires no type of authorization detail and so says none: the type of the lab is said in src/Lab/translations/, with the lab. ICU message format.</note>
     </header>
     <body>
-      <trans-unit id="a1f0c3e8d2" resname="authorization_details.invoice_payment">
-        <source>authorization_details.invoice_payment</source>
-        <target>Invoice {identifier}: {actions} it, for at most {amount} {currency}</target>
-      </trans-unit>
       <trans-unit id="controls.close" resname="controls.close">
         <source>controls.close</source>
         <target>Close the menus</target>

@@ -55,10 +55,13 @@ COPY --link apps/op/frankenphp/conf.d/20-app.prod.ini $PHP_INI_DIR/app.conf.d/
 
 # Build context is the monorepo root (see compose.yaml), which Dockerfile.dockerignore narrows to the
 # packages and the application without what a working copy holds beside the repository: its .env.local,
-# var/ and vendor/ never reach an image. The packages land in /src so that the path repositories of
-# composer.json (../../src/<package>, relative to /app) resolve unchanged.
+# var/ and vendor/ never reach an image. Nor does what only the development stack, the suite and the lab
+# read (issue #922). The packages land in /src so that the path repositories of composer.json
+# (../../src/<package>, relative to /app) resolve unchanged. The files of FrankenPHP and of PHP are copied
+# where they are read by the stages above, the configuration of the development image among them, which is
+# why the context keeps them and the application leaves its frankenphp/ out of /app.
 COPY --link src/ /src/
-COPY --link apps/op/ /app/
+COPY --link --exclude=frankenphp apps/op/ /app/
 
 # The standalone binary of Tailwind goes once the stylesheet it built is compiled into public/assets. The
 # directories the processes write are made here, the volumes of compose.prod.yaml among them, since a named

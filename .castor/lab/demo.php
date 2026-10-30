@@ -25,7 +25,7 @@ use Symfony\Component\Process\Process;
 /**
  * oidc-demo, the reference client of the core (Symfony's oidc_login): where it is checked out, next to this
  * repository or next to the repository this one is nested in, where its server listens, and the client the
- * application registers for it (apps/op/config/packages/beffroi.yaml).
+ * application registers for it (apps/op/config/packages/dev/beffroi.yaml).
  */
 const DEMO_DIRS = ['../oidc-demo', '../../oidc-demo'];
 
@@ -1124,7 +1124,7 @@ function demo_wait_for_logout(array &$cookies, string $ca, float|int $startedAt,
 }
 
 /**
- * The client the OP issues opaque access tokens to (apps/op/config/packages/beffroi.yaml): the same
+ * The client the OP issues opaque access tokens to (apps/op/config/packages/dev/beffroi.yaml): the same
  * demonstration, registered a second time, so that the two shapes of access token are played one after
  * the other without the OP being reconfigured between them.
  */
@@ -4203,7 +4203,7 @@ const DEMO_CIBA_CLIENTS = [
 
 /**
  * Where the client of the "ping" walk listens, as the worker of the stack reaches it: the port is registered
- * with that client (apps/op/config/packages/beffroi.yaml), so it is fixed rather than drawn.
+ * with that client (apps/op/config/packages/dev/beffroi.yaml), so it is fixed rather than drawn.
  */
 const DEMO_CIBA_NOTIFICATION_PORT = 8004;
 
@@ -4535,8 +4535,8 @@ function demo_assertion_client(array $input): array
 }
 
 /**
- * The client of the rich authorization request walk, the one type of detail this deployment wires
- * (App\AuthorizationDetails\InvoicePaymentType) and a type it does not, which is what the refusal is asked
+ * The client of the rich authorization request walk, the one type of detail the development stack wires
+ * (App\Lab\AuthorizationDetails\InvoicePaymentType) and a type it does not, which is what the refusal is asked
  * for. The detail says what may be done, to what, and how much, which is the whole difference with a scope.
  */
 const DEMO_RAR_CLIENT_ID = 'demo-rar';
@@ -5656,7 +5656,7 @@ const DEMO_REGISTER_SCOPE = 'openid profile email';
  * had never seen registers itself and gets exactly what a declared client gets, and exactly the same
  * refusals.
  *
- * Every other client of this demonstration is a registration in apps/op/config/packages/beffroi.yaml. This
+ * Every other client of this demonstration is a registration in apps/op/config/packages/dev/beffroi.yaml. This
  * walk is the one that declares nothing: the console issues a credential, a program of tests/demo/ spends
  * it, and what it is answered is what it signs a user in with. The pairwise pair is the property of the
  * spike that a unit test proves and a walk shows: the same user, two clients, two subjects, printed side

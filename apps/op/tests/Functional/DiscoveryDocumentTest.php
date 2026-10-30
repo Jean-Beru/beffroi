@@ -10,8 +10,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * What the discovery document of this application announces to a deployment that names nothing the
- * repository does not (issue #843). The suite reads .env and .env.test and never .env.local, so what it boots
- * on is what "composer dump-env prod" compiles into an image, plus the fixtures of .env.test.
+ * repository does not (issues #843 and #922). The suite reads .env and .env.test and never .env.local, so what
+ * it boots on is what "composer dump-env prod" compiles into an image, plus the fixtures of .env.test; and its
+ * kernel wires what production wires, plus the demonstration and the client of config/packages/test/, neither of
+ * which announces anything of its own.
  */
 final class DiscoveryDocumentTest extends BrowserTestCase
 {
@@ -52,5 +54,24 @@ final class DiscoveryDocumentTest extends BrowserTestCase
         $document = json_decode(self::string($response->getContent()), true);
         static::assertIsArray($document);
         static::assertArrayNotHasKey('registration_endpoint', $document);
+    }
+
+    /**
+     * RFC 9396 §10 (issue #922): "authorization_details_types_supported" is how a provider advertises that it serves
+     * rich authorization requests, and with which types. A type is a class of a deployment, and the one of the API of
+     * the demonstration is the lab's, wired in development alone: a deployment that wires none advertises none.
+     */
+    #[Test]
+    public function itAnnouncesNoTypeOfAuthorizationDetailTheDeploymentDidNotWire(): void
+    {
+        // When
+        $this->browser->request('GET', '/.well-known/openid-configuration');
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        $document = json_decode(self::string($response->getContent()), true);
+        static::assertIsArray($document);
+        static::assertArrayNotHasKey('authorization_details_types_supported', $document);
     }
 }
