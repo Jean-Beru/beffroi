@@ -504,8 +504,9 @@ beffroi:
             # signs a user in comes for (issue #556). Its firewall asks for the first two of them and
             # never for "invoices.write", so a write is refused on a token that was never granted it,
             # with the "insufficient_scope" challenge of RFC 6750 §3.1 and not at the authorization
-            # endpoint: a scope that stands for no claim exists because a client registered it
-            # (OfferedScopes, issue #278), so all three are announced and held to.
+            # endpoint: a scope that stands for no claim exists here because this client registers it,
+            # the development stack declaring none for its tenant (OfferedScopes, issues #278 and
+            # #920), so all three are announced and held to.
             scope: 'openid profile email invoices.read invoices.pay invoices.write'
         # The same demonstration registered a second time, for the one thing that tells the two
         # apart: the shape of its access token. "castor demo --resource-server" signs in as this

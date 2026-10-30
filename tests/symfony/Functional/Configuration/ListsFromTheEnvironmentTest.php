@@ -7,8 +7,11 @@ namespace Beffroi\Bundle\Tests\Functional\Configuration;
 use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeyStores;
 use Beffroi\Bundle\Tenant\TenantFactory;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use function array_map;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationDeclaredScopes;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationTrustedIssuers;
+use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
@@ -35,6 +38,7 @@ final class ListsFromTheEnvironmentTest extends KernelTestCase
         'BEFFROI_TEST_DATA_KEY_SECRETS',
         'BEFFROI_TEST_SAML_SERVICE_PROVIDERS',
         'BEFFROI_TEST_SAML_IDENTITY_PROVIDERS',
+        'BEFFROI_TEST_TENANT_SCOPES',
     ];
 
     /**
@@ -165,6 +169,41 @@ final class ListsFromTheEnvironmentTest extends KernelTestCase
 
         // Then
         static::assertSame(['gold', 'silver'], $policy->names());
+    }
+
+    /**
+     * Issue #920: the scopes of the APIs the tenant protects are the ones the deployment declares by environment.
+     */
+    #[Test]
+    public function theScopesOfTheTenantAreTheOnesTheEnvironmentDeclares(): void
+    {
+        // Given
+        self::carry('BEFFROI_TEST_TENANT_SCOPES', ['invoices.read', 'invoices.pay']);
+
+        // When
+        $scopes = self::service('test.beffroi.environment_lists.declared_scopes', ConfigurationDeclaredScopes::class)->scopesDeclaredFor(self::tenant());
+
+        // Then
+        static::assertSame(['invoices.read', 'invoices.pay'], array_map(static fn (Scope $scope): string => $scope->value, $scopes));
+    }
+
+    /**
+     * Decision 0030: what the tree refuses of a written list it refuses of one the environment carries, here a scope
+     * that is no string, when the service the list reaches is built.
+     */
+    #[Test]
+    public function aScopeTheTreeRefusesIsRefusedWhenItsServiceIsBuilt(): void
+    {
+        // Given
+        self::carry('BEFFROI_TEST_TENANT_SCOPES', [['invoices.read']]);
+        self::bootKernel(['environment' => self::ENVIRONMENT]);
+
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIsOrContains('The "beffroi" configuration key "tenant.scopes" carried by the environment is refused:');
+
+        // When
+        static::getContainer()->get('test.beffroi.environment_lists.declared_scopes');
     }
 
     /**

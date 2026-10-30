@@ -4,16 +4,22 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use function array_key_last;
+use function explode;
 use function json_decode;
+use function json_encode;
+use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\HttpFoundation\Response;
+use function trim;
 
 /**
- * Issues #911 and #915: what a deployment of the image chooses, it names by environment, and the image is not
- * rebuilt for it, the roles of its tenant among them. A real environment variable wins over .env, as it does on a
- * deployment, so the variables are named before the kernel boots and given back after.
+ * Issues #911, #915 and #920: what a deployment of the image chooses, it names by environment, and the image is not
+ * rebuilt for it, the roles of its tenant and the scopes of its APIs among them. A real environment variable wins over
+ * .env, as it does on a deployment, so the variables are named before the kernel boots and given back after.
  */
 final class ChoicesOfTheDeploymentTest extends BrowserTestCase
 {
@@ -24,6 +30,7 @@ final class ChoicesOfTheDeploymentTest extends BrowserTestCase
         'BEFFROI_TENANT_PRIMARY_COLOR' => '#0b5d1e',
         'BEFFROI_TENANT_PRIMARY_CONTENT_COLOR' => '#fafafa',
         'BEFFROI_TENANT_SELF_SERVED_CLAIMS' => '["nickname","locale"]',
+        'BEFFROI_TENANT_SCOPES' => '["invoices.read","invoices.pay"]',
         'BEFFROI_SAML_IDENTITY_PROVIDER' => 'false',
         'BEFFROI_INTERACTION_LOGIN_HINT' => 'username',
     ];
@@ -66,6 +73,58 @@ final class ChoicesOfTheDeploymentTest extends BrowserTestCase
         $document = json_decode(self::string($this->browser->getResponse()->getContent()), true);
         static::assertIsArray($document);
         static::assertSame('https://op.test/register', $document['registration_endpoint'] ?? null);
+    }
+
+    /**
+     * OIDC Discovery §3, issue beffroi-auth/beffroi#920: the scopes of the APIs a deployment names are scopes its
+     * tenant hands out tokens for, announced after those of its claims, before any client registers them.
+     */
+    #[Test]
+    public function theTenantAnnouncesTheScopesOfTheApisItNames(): void
+    {
+        // When
+        $this->browser->request('GET', '/.well-known/openid-configuration');
+
+        // Then
+        $document = json_decode(self::string($this->browser->getResponse()->getContent()), true);
+        static::assertIsArray($document);
+        static::assertSame(
+            ['openid', 'profile', 'email', 'address', 'phone', 'invoices.read', 'invoices.pay', 'offline_access'],
+            $document['scopes_supported'] ?? null,
+        );
+    }
+
+    /**
+     * RFC 7591 §3.1, decision 0009, issue beffroi-auth/beffroi#920: a client that registers itself with an initial
+     * access token of the console may register the scopes of the APIs the deployment names, which is how a relying
+     * party of an image that declares no client is given them.
+     */
+    #[Test]
+    public function aClientThatRegistersItselfMayRegisterTheScopesOfTheApisItNames(): void
+    {
+        // Given
+        $token = $this->initialAccessToken();
+
+        // When
+        $this->browser->request(
+            'POST',
+            '/register',
+            server: [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+            ],
+            content: json_encode([
+                'client_name' => 'A relying party of the deployment',
+                'redirect_uris' => ['https://rp.example.com/callback'],
+                'token_endpoint_auth_method' => 'client_secret_basic',
+                'grant_types' => ['authorization_code', 'refresh_token'],
+                'scope' => 'openid profile email offline_access invoices.read invoices.pay',
+            ], JSON_THROW_ON_ERROR),
+        );
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_CREATED, $response->getStatusCode(), self::string($response->getContent()));
     }
 
     #[Test]
@@ -160,5 +219,23 @@ final class ChoicesOfTheDeploymentTest extends BrowserTestCase
 
         // Then
         static::assertSame('alice', $page->filter('input#username')->attr('value'));
+    }
+
+    /**
+     * An initial access token of the tenant (RFC 7591 §1.2), issued by the console as a deployment issues one: the
+     * command prints the value once, on the last line it writes.
+     */
+    private function initialAccessToken(): string
+    {
+        $application = new Application(self::$kernel ?? static::fail('The kernel is not booted.'));
+        $application->setAutoExit(false);
+        $issue = new CommandTester($application->find('beffroi:client:token:issue'));
+        $issue->execute([
+            'name' => 'The team that integrates',
+        ]);
+        $issue->assertCommandIsSuccessful();
+        $lines = explode("\n", trim($issue->getDisplay()));
+
+        return trim($lines[array_key_last($lines)]);
     }
 }

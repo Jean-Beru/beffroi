@@ -27,7 +27,7 @@ use function sprintf;
  * What a client registered of the people responsible for it, and the secret this provider handed it,
  * sealed and read back (decisions 0011 and 0018). The last family of columns this spike seals.
  *
- * **Three columns of one table and no index**: a client is found by `client_id`, unique under its tenant
+ * **Four columns of one table and no index**: a client is found by `client_id`, unique under its tenant
  * and in the clear, and nothing looks a client up by a member of its metadata. That the registration
  * endpoint and the four responses of RFC 7592 are untouched is `ClientConfigurationTest`, and that both
  * methods that use a secret still authenticate from the column is `RegisteredClientFlowTest`; both run
@@ -51,6 +51,8 @@ final class ClientColumnsTest extends DatabaseTestCase
 
     private const string ASSIGNED_SCOPE = SealedRows::VALUES['beffroi_client']['assigned_metadata'];
 
+    private const string ATTESTED_SOFTWARE = SealedRows::VALUES['beffroi_client']['attested_metadata'];
+
     private const string SHARED_SECRET = SealedRows::VALUES['beffroi_client']['secret'];
 
     /**
@@ -58,7 +60,7 @@ final class ClientColumnsTest extends DatabaseTestCase
      *
      * @var list<string>
      */
-    private const array SEALED = ['metadata', 'assigned_metadata', 'secret'];
+    private const array SEALED = ['metadata', 'assigned_metadata', 'attested_metadata', 'secret'];
 
     /**
      * The fixture writes every column the classification declares sealed on this table, and no other: a
@@ -104,6 +106,50 @@ final class ClientColumnsTest extends DatabaseTestCase
         static::assertSame(self::CLIENT_NAME, $found->metadata['client_name'] ?? null);
         static::assertSame([self::CONTACT], $found->metadata['contacts'] ?? null);
         static::assertSame([self::ASSIGNED_SCOPE], $found->assigned['scope'] ?? null);
+    }
+
+    /**
+     * RFC 7591 §3.1.1: what a software statement signed of a client comes back beside what the client
+     * registered, which is where a replacement reads it in front of what the client sends (RFC 7592 §2.2).
+     */
+    #[Test]
+    public function whatAStatementSignedOfAClientComesBackBesideWhatItRegistered(): void
+    {
+        // Given
+        self::record(attested: true);
+        self::reload();
+
+        // When
+        $found = self::clients()->findRecord(self::tenant(), 'the-engine');
+
+        // Then
+        static::assertInstanceOf(ClientRecord::class, $found);
+        static::assertSame(
+            [
+                'software_id' => self::ATTESTED_SOFTWARE,
+            ],
+            $found->attested,
+        );
+    }
+
+    /**
+     * And a client no statement attested holds nothing in that column, which says so without the data key
+     * of its tenant.
+     */
+    #[Test]
+    public function aClientNoStatementAttestedHoldsNothingInThatColumn(): void
+    {
+        // Given
+        self::record();
+        self::reload();
+
+        // When
+        $found = self::clients()->findRecord(self::tenant(), 'the-engine');
+
+        // Then
+        static::assertInstanceOf(ClientRecord::class, $found);
+        static::assertNull($found->attested);
+        static::assertNull(self::rows()[0]['attested_metadata']);
     }
 
     /**
@@ -177,14 +223,14 @@ final class ClientColumnsTest extends DatabaseTestCase
     public function theRowHoldsNoneOfThePlaintexts(string $column): void
     {
         // Given
-        self::record(new SharedClientSecret(self::SHARED_SECRET));
+        self::record(new SharedClientSecret(self::SHARED_SECRET), attested: true);
 
         // When
         $stored = self::rows()[0][$column];
 
         // Then
         static::assertNotNull($stored, sprintf('beffroi_client.%s holds nothing, so there is nothing to search.', $column));
-        foreach ([self::CONTACT, self::CLIENT_NAME, self::ASSIGNED_SCOPE, self::SHARED_SECRET] as $plaintext) {
+        foreach ([self::CONTACT, self::CLIENT_NAME, self::ASSIGNED_SCOPE, self::ATTESTED_SOFTWARE, self::SHARED_SECRET] as $plaintext) {
             static::assertStringNotContainsString(
                 $plaintext,
                 (string) $stored,
@@ -204,7 +250,7 @@ final class ClientColumnsTest extends DatabaseTestCase
     }
 
     /**
-     * The scope of these three columns is the client family and not the user family, which is what makes
+     * The scope of these four columns is the client family and not the user family, which is what makes
      * the promise of decision 0018 true of a client: the key that opens a client's row is not the key that
      * opens a user's, and destroying one reaches one.
      *
@@ -234,9 +280,9 @@ final class ClientColumnsTest extends DatabaseTestCase
         );
     }
 
-    private static function record(?ClientSecretInterface $secret = null): ClientRecord
+    private static function record(?ClientSecretInterface $secret = null, bool $attested = false): ClientRecord
     {
-        return self::fixture()->client($secret);
+        return self::fixture()->client($secret, $attested);
     }
 
     private static function fixture(): SealedRows

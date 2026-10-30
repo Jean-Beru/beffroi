@@ -9,6 +9,7 @@ use Beffroi\Oidc\Application\Claims\StandardClaimsProvider;
 use Beffroi\Oidc\Application\Client\RegisteredClients;
 use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedScopes;
 use Beffroi\Oidc\Application\Scope\OfferedScopes;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationDeclaredScopes;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Beffroi\Oidc\Tests\Fixture\Grants;
 use PHPUnit\Framework\Attributes\Test;
@@ -26,7 +27,12 @@ final class AnnouncedScopesTest extends TestCase
     {
         // Given
         $announced = new AnnouncedScopes(
-            new OfferedScopes(new StandardClaimsProvider(), Grants::served(), new RegisteredClients([new InMemoryClientRepository()])),
+            new OfferedScopes(
+                new StandardClaimsProvider(),
+                Grants::served(),
+                new RegisteredClients([new InMemoryClientRepository()]),
+                new ConfigurationDeclaredScopes(Fixtures::tenant()->slug),
+            ),
         );
 
         // When

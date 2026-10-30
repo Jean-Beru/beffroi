@@ -9,12 +9,14 @@ use Beffroi\Core\Port\KeyEncryptionAlgorithmsInterface;
 use Beffroi\Core\Port\SignatureAlgorithmsInterface;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Application\Claims\StandardClaimsProvider;
 use Beffroi\Oidc\Application\Client\RegisteredClients;
 use Beffroi\Oidc\Application\Client\Registration\RegistrationHeldToItsSector;
 use Beffroi\Oidc\Application\Client\Registration\RegistrationHeldToTheTenant;
 use Beffroi\Oidc\Application\Client\Registration\RegistrationUnderThePolicy;
 use Beffroi\Oidc\Application\Scope\OfferedScopes;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationDeclaredScopes;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Beffroi\Oidc\Port\ClientSourceInterface;
 use Beffroi\Oidc\Port\OfferedScopesInterface;
@@ -91,7 +93,7 @@ final class Registrations
 
     /**
      * Every scope the tenant of the tests hands out tokens for: the four of OIDC Core §5.4 and whatever the
-     * clients given here registered.
+     * clients given here registered, its deployment declaring none.
      */
     public static function offeredScopes(?ClientSourceInterface $clients = null): OfferedScopesInterface
     {
@@ -99,6 +101,7 @@ final class Registrations
             new StandardClaimsProvider(),
             Grants::served(),
             new RegisteredClients([$clients ?? new InMemoryClientRepository()]),
+            new ConfigurationDeclaredScopes(Fixtures::tenant()->slug),
         );
     }
 

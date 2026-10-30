@@ -74,6 +74,8 @@ final class BeffroiBundleConfigurationTest extends TestCase
                 // the tree keeps no list of the predicates of the provider: a tenant that names no class
                 // is handed the default policy of the core (TenantFactory, issue #607)
                 'authentication_classes' => [],
+                // no scope of an API until the deployment names one, beside those its clients register (issue #920)
+                'scopes' => [],
             ],
             $config['tenant'],
         );

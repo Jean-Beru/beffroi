@@ -8,11 +8,11 @@
       was registered in one column and the secret in another. The identifier is unique under its tenant,
       which is what makes the draw that assigns it answerable by the database as well as by the sources.
 
-      Three of its columns are sealed under the data key of their tenant, in the `client` family (decisions
+      Four of its columns are sealed under the data key of their tenant, in the `client` family (decisions
       0011 and 0018): the metadata, which carries the `contacts` of RFC 7591 §2, the electronic addresses
-      of the people responsible for the client; what the registration policy assigned, which travels the
-      same way; and the secret. The key that opens a client's row is therefore not the key that opens a
-      user's, and destroying one reaches one.
+      of the people responsible for the client; what the registration policy assigned and what a software
+      statement signed, which travel the same way; and the secret. The key that opens a client's row is
+      therefore not the key that opens a user's, and destroying one reaches one.
 
       **The secret is the one column of this schema that is neither a personal datum nor safe in the
       clear.** It holds a digest for a method that receives a secret, which would need nothing, or the
@@ -20,7 +20,7 @@
       credential that cannot be hashed is sealed instead, so a dump of the database yields no usable client
       credential either; that is a line of the page for a CISO and not a silence.
 
-      No index on any of the three: a client is found by `client_id`, unique under its tenant and in the
+      No index on any of the four: a client is found by `client_id`, unique under its tenant and in the
       clear, and nothing looks a client up by a member of its metadata. `client_name` is read off the
       hydrated row and never queried.
     -->
@@ -49,6 +49,16 @@
           migration recreating the column empty.
         -->
         <field name="assigned" type="beffroi_encrypted_client_json" column="assigned_metadata"/>
+        <!--
+          What a software statement signed of this client (RFC 7591 §2.3), kept beside what the client sent
+          as what the policy wrote is, and for the same reason: a replacement is read from what the client
+          sends (RFC 7592 §2.2), and what an authority signed is read in front of it again from here, where
+          no replacement writes.
+
+          Null for a client no statement attested: a sealed column holds a ciphertext or nothing, and a null
+          says that without the data key of the tenant, which sealing anything would need.
+        -->
+        <field name="attested" type="beffroi_encrypted_client_json" column="attested_metadata" nullable="true"/>
         <!-- The credential of this one client for its own configuration endpoint (RFC 7592 §2.3), kept as the digest of the value and never as the value. Its default, in the database, is the digest of nothing: a client registered before the column existed was handed no such token, and no value hashes to it. -->
         <field name="registrationAccessTokenDigest" type="string" column="registration_access_token" length="64">
             <options>

@@ -158,6 +158,73 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
     }
 
     /**
+     * RFC 7592 §2.2 reads a replacement from what the client sends, and §3 lets the provider replace what it
+     * asks for: what the statement signed outranks it as it outranked the registration (RFC 7591 §3.1.1),
+     * so the name an authority signed is the one the client keeps, whatever the replacement says of it.
+     *
+     * @param array<string, mixed> $named what the replacement says of the name
+     */
+    #[Test]
+    #[DataProvider('provideWhatAReplacementSaysOfTheName')]
+    public function aReplacementKeepsTheNameTheAuthoritySigned(array $named): void
+    {
+        // Given
+        $this->register();
+        $registered = self::json($this->browser->getResponse());
+
+        // When
+        $this->replace($registered, $named);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertSame('Invoice reader, attested', self::json($response)['client_name'] ?? null);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function provideWhatAReplacementSaysOfTheName(): iterable
+    {
+        yield 'another name' => [[
+            'client_name' => 'what the caller typed',
+        ]];
+
+        yield 'no name at all' => [[]];
+    }
+
+    /**
+     * And the page a user sees after it says the same: replacing its registration is no way for a client to
+     * put a name of its own in front of the one an authority signed.
+     */
+    #[Test]
+    public function theConsentPageShowsTheNameTheAuthoritySignedAfterAReplacement(): void
+    {
+        // Given
+        $this->register();
+        $registered = self::json($this->browser->getResponse());
+        $this->replace($registered, [
+            'client_name' => 'what the caller typed',
+        ]);
+        $this->signIn(self::user('alice'));
+
+        // When
+        $this->browser->request('GET', '/authorize', self::authorizationParameters(self::string($registered['client_id']), [
+            'redirect_uri' => self::REDIRECT_URI,
+            // a client that registers no "scope" is registered with the one every client has
+            'scope' => 'openid',
+        ]));
+        $this->browser->request('GET', '/consent', [
+            'interaction' => self::redirectedInteraction($this->browser->getResponse()),
+        ]);
+
+        // Then
+        $page = self::string($this->browser->getResponse()->getContent());
+        static::assertStringContainsString('Invoice reader, attested', $page);
+        static::assertStringNotContainsString('what the caller typed', $page);
+    }
+
+    /**
      * Decision 0006: every refusal of a statement is the same refusal, under the code RFC 7591 §3.2.2
      * gives it, so whoever presents one learns that it was not accepted and nothing else.
      *
@@ -307,6 +374,30 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
                     (string) self::tenant()->issuer,
                     self::currentSecond(),
                 ),
+            ], JSON_THROW_ON_ERROR),
+        );
+    }
+
+    /**
+     * RFC 7592 §2.2: the replacement a client sends to the URI it was handed, with the token it was handed,
+     * naming itself.
+     *
+     * @param array<string, mixed> $registered what the registration answered
+     * @param array<string, mixed> $members what the client sends beside its identifier and its redirection URI
+     */
+    private function replace(array $registered, array $members): void
+    {
+        $this->browser->request(
+            'PUT',
+            self::string($registered['registration_client_uri']),
+            server: [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_AUTHORIZATION' => 'Bearer ' . self::string($registered['registration_access_token']),
+            ],
+            content: json_encode([
+                'client_id' => $registered['client_id'],
+                'redirect_uris' => [self::REDIRECT_URI],
+                ...$members,
             ], JSON_THROW_ON_ERROR),
         );
     }

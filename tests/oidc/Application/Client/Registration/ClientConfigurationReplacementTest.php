@@ -41,6 +41,8 @@ final class ClientConfigurationReplacementTest extends TestCase
 
     private const string SECRET = 'a-secret-the-provider-handed-it-of-at-least-32-characters';
 
+    private const string SIGNED_NAME = 'Invoice reader, attested';
+
     private Tenant $tenant;
 
     private InMemoryClientStore $clients;
@@ -411,6 +413,52 @@ final class ClientConfigurationReplacementTest extends TestCase
         static::assertSame([], $response->record->assigned);
     }
 
+    /**
+     * RFC 7591 §3.1.1: what a software statement signed outranks what the client sends at a replacement
+     * as it outranked what it sent at the registration, RFC 7592 §3 leaving the provider free to replace
+     * what a replacement asks for. The name an authority signed is the one the client keeps, whatever the
+     * replacement says of it (decision 0009).
+     *
+     * @param array<string, mixed> $named what the replacement says of the name
+     */
+    #[Test]
+    #[DataProvider('provideWhatAReplacementSaysOfTheName')]
+    public function aReplacementKeepsWhatTheStatementSigned(array $named): void
+    {
+        // Given
+        $this->register(
+            [
+                'redirect_uris' => ['https://rp.example/cb'],
+                'client_name' => self::SIGNED_NAME,
+            ],
+            attested: [
+                'client_name' => self::SIGNED_NAME,
+            ],
+        );
+
+        // When
+        $response = $this->replace([
+            'client_id' => self::CLIENT_ID,
+            'redirect_uris' => ['https://rp.example/cb'],
+            ...$named,
+        ]);
+
+        // Then
+        static::assertSame(self::SIGNED_NAME, $response->record->metadata['client_name'] ?? null);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function provideWhatAReplacementSaysOfTheName(): iterable
+    {
+        yield 'another name' => [[
+            'client_name' => 'What the client typed',
+        ]];
+
+        yield 'no name at all' => [[]];
+    }
+
     #[Test]
     public function aRequestThatReadsNoClientReplacesNothing(): void
     {
@@ -436,9 +484,14 @@ final class ClientConfigurationReplacementTest extends TestCase
     /**
      * @param array<string, mixed>|null $metadata
      * @param array<string, mixed> $assigned
+     * @param array<string, mixed>|null $attested what a statement signed of the client, null for a client none attested
      */
-    private function register(?array $metadata = null, ?ClientSecretInterface $secret = null, array $assigned = []): void
-    {
+    private function register(
+        ?array $metadata = null,
+        ?ClientSecretInterface $secret = null,
+        array $assigned = [],
+        ?array $attested = null,
+    ): void {
         $this->clients->save(new ClientRecord(
             Uuid::v7(),
             $this->tenant,
@@ -450,6 +503,7 @@ final class ClientConfigurationReplacementTest extends TestCase
             $secret,
             $this->digest,
             Fixtures::now(),
+            attested: $attested,
         ));
     }
 
