@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Client\Registration;
 
+use DateInterval;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Application\Client\ClientIdentifierDrawer;
 use Beffroi\Oidc\Application\Client\RegisteredClients;
@@ -12,9 +14,14 @@ use Beffroi\Oidc\Application\Client\Registration\ClientRegistrationHandler;
 use Beffroi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
 use Beffroi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
 use Beffroi\Oidc\Application\Client\Registration\RegistrationAuthorizations;
+use Beffroi\Oidc\Application\Client\Registration\SoftwareStatementAuthorization;
+use Beffroi\Oidc\Application\Client\Registration\SoftwareStatementVerifier;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryClientStore;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryInitialAccessTokenRepository;
+use Beffroi\Oidc\Bridge\InMemory\InMemorySoftwareStatementReplayGuard;
+use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
+use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryJwtKeyVerifier;
 use Beffroi\Oidc\Domain\Client\HashedClientSecret;
 use Beffroi\Oidc\Domain\Client\Registration\ClientInformationResponse;
 use Beffroi\Oidc\Domain\Client\Registration\InitialAccessToken;
@@ -27,9 +34,11 @@ use Beffroi\Oidc\Exception\UnauthorizedRegistrationException;
 use Beffroi\Oidc\Exception\UnreadableClientMetadataException;
 use Beffroi\Oidc\Port\ClientRegistrationPolicyInterface;
 use Beffroi\Oidc\Tests\Fixture\Endpoints;
+use Beffroi\Oidc\Tests\Fixture\Policies;
 use Beffroi\Oidc\Tests\Fixture\RegistrationPolicies;
 use Beffroi\Oidc\Tests\Fixture\Registrations;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
+use Beffroi\Oidc\Tests\Fixture\SoftwareStatements;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -286,6 +295,52 @@ final class ClientRegistrationHandlerTest extends TestCase
         ]));
     }
 
+    /**
+     * RFC 7591 §3.1.1: a client registered on a software statement keeps what the statement signed apart from
+     * what it registered as well as among it, which is what a replacement reads in front of what the client
+     * sends (RFC 7592 §2.2).
+     */
+    #[Test]
+    public function aClientRegisteredOnAStatementKeepsWhatItSignedApart(): void
+    {
+        // Given
+        $policies = self::createStub(ClientRegistrationPolicyInterface::class);
+        $policies->method('policyFor')->willReturn(Policies::attested([SoftwareStatements::authority()]));
+
+        // When
+        $response = $this->handle(new RegistrationRequest([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'client_name' => 'What the client typed',
+            'software_statement' => SoftwareStatements::statement((string) $this->tenant->issuer, Fixtures::now()),
+        ]), $policies);
+
+        // Then
+        static::assertSame(
+            [
+                'software_id' => SoftwareStatements::SOFTWARE_ID,
+                'software_version' => '2.1.0',
+                'client_name' => 'Invoice reader, attested',
+            ],
+            $response->record->attested,
+        );
+    }
+
+    /**
+     * And a client registered under a mode that puts nothing in front of what it sent keeps nothing apart.
+     */
+    #[Test]
+    public function aClientRegisteredOnAnInitialAccessTokenKeepsNothingApart(): void
+    {
+        // Given
+        $this->issue();
+
+        // When
+        $response = $this->handle(self::request());
+
+        // Then
+        static::assertNull($response->record->attested);
+    }
+
     private function issue(): InitialAccessToken
     {
         $token = new InitialAccessToken(
@@ -308,7 +363,20 @@ final class ClientRegistrationHandlerTest extends TestCase
 
         return new ClientRegistrationHandler(
             $policies ?? RegistrationPolicies::controlled(),
-            new RegistrationAuthorizations([new InitialAccessTokenAuthorization($this->tokens, $clock), new OpenRegistrationAuthorization()]),
+            new RegistrationAuthorizations([
+                new InitialAccessTokenAuthorization($this->tokens, $clock),
+                new OpenRegistrationAuthorization(),
+                new SoftwareStatementAuthorization(
+                    new SoftwareStatementVerifier(
+                        new JwtLibraryCompactJwtReader(),
+                        new JwtLibraryJwtKeyVerifier(Algorithms::all()->manager()),
+                        new InMemorySoftwareStatementReplayGuard(),
+                        new DateInterval('PT5M'),
+                        new DateInterval('PT30S'),
+                    ),
+                    $clock,
+                ),
+            ]),
             Registrations::underThePolicy(),
             new ClientIdentifierDrawer(Secrets::drawer(), new RegisteredClients([new InMemoryClientRepository()])),
             Secrets::drawer(),

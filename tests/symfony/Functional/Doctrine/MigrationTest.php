@@ -68,6 +68,7 @@ use Beffroi\Bundle\Migrations\Version20261022120000;
 use Beffroi\Bundle\Migrations\Version20261022150000;
 use Beffroi\Bundle\Migrations\Version20261022180000;
 use Beffroi\Bundle\Migrations\Version20261023120000;
+use Beffroi\Bundle\Migrations\Version20261030120000;
 use function implode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -146,6 +147,7 @@ final class MigrationTest extends DatabaseTestCase
         Version20261022150000::class,
         Version20261022180000::class,
         Version20261023120000::class,
+        Version20261030120000::class,
     ];
 
     #[Test]

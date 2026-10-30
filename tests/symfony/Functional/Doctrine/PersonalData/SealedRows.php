@@ -193,6 +193,8 @@ final readonly class SealedRows
         'beffroi_client' => [
             'metadata' => 'The Difference Engine',
             'assigned_metadata' => 'urn:example:scope:assigned-by-the-policy',
+            // the software a statement says the client is (RFC 7591 §2.3)
+            'attested_metadata' => 'babbage-difference-engine',
             'secret' => 'a-shared-secret-this-provider-handed-over',
         ],
     ];
@@ -276,7 +278,7 @@ final readonly class SealedRows
         $this->backchannelRequest($client, $user);
         $this->interaction($client);
         $this->pushedRequest($client);
-        $this->client(new SharedClientSecret(self::VALUES['beffroi_client']['secret']));
+        $this->client(new SharedClientSecret(self::VALUES['beffroi_client']['secret']), attested: true);
         $this->act($user);
         $this->archive($user);
         $this->change($user);
@@ -592,14 +594,21 @@ final readonly class SealedRows
     }
 
     /**
-     * A client of the tenant, with the secret it was given or none.
+     * A client of the tenant, with the secret it was given or none, and attested by a software statement or
+     * not.
      *
-     * None by default, because a sealed column that accepts a null holds a null and not the envelope of an
-     * empty value, and a test says so. {@see all()} gives it one, the dump having to be searched for it.
+     * Neither by default, because a sealed column that accepts a null holds a null and not the envelope of an
+     * empty value, and a test says so. {@see all()} gives it both, the dump having to be searched for them.
+     *
+     * @param bool $attested whether a statement signed what the client is, which the row then keeps among what
+     *                       the client registered and apart from it (RFC 7591 §3.1.1)
      */
-    public function client(?ClientSecretInterface $secret = null): ClientRecord
+    public function client(?ClientSecretInterface $secret = null, bool $attested = false): ClientRecord
     {
         $values = self::VALUES['beffroi_client'];
+        $signed = [
+            'software_id' => $values['attested_metadata'],
+        ];
         $record = new ClientRecord(
             Uuid::v7(),
             $this->tenant,
@@ -609,6 +618,7 @@ final readonly class SealedRows
                 'contacts' => [self::VALUES['beffroi_user']['email']],
                 'redirect_uris' => ['https://engine.example.org/callback'],
                 'token_endpoint_auth_method' => $secret instanceof SharedClientSecret ? 'client_secret_jwt' : 'client_secret_basic',
+                ...($attested ? $signed : []),
             ],
             [
                 'scope' => [$values['assigned_metadata']],
@@ -616,6 +626,7 @@ final readonly class SealedRows
             $secret,
             DrawnSecret::digestOf('the-registration-access-token'),
             $this->now,
+            attested: $attested ? $signed : null,
         );
         $this->service('test.beffroi.client_store', ClientStoreInterface::class)->save($record);
 
