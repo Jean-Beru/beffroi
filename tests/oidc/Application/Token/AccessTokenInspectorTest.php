@@ -392,6 +392,28 @@ final class AccessTokenInspectorTest extends TestCase
     }
 
     /**
+     * Decision 0031: reaching its expiry does not end a session, so a token issued under it in its last
+     * minute is honoured, in both shapes, until its own expiry.
+     */
+    #[Test]
+    #[DataProvider('provideAccessTokenShapes')]
+    public function itHonoursATokenOfASessionPastItsExpiry(string $shape): void
+    {
+        // Given
+        $expiring = Fixtures::session($this->user, Fixtures::now()->modify('-12 hours +1 minute'));
+        $this->sessions->save($expiring);
+        $code = Tokens::code('the-code', $this->client, $expiring, Fixtures::now());
+        $this->grants->save($code);
+        $token = $this->tokenOfShape($shape, $code);
+
+        // When
+        $inspected = $this->inspector->inspect($this->tenant, $token, Fixtures::now()->modify('+2 minutes'));
+
+        // Then
+        static::assertSame($this->user, $inspected->user);
+    }
+
+    /**
      * A session the provider no longer keeps is a session it cannot vouch for, as a grant it no longer
      * keeps is.
      */

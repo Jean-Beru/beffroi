@@ -459,7 +459,7 @@ final class AuthenticationSessionTest extends TestCase
         $session->end(SessionEnd::User, $first);
 
         // When
-        $session->end(SessionEnd::Expiry, new DateTimeImmutable('2026-09-15T12:00:00+00:00'));
+        $session->end(SessionEnd::RelyingParty, new DateTimeImmutable('2026-09-15T12:00:00+00:00'));
 
         // Then
         static::assertSame($first, $session->endedAt);
