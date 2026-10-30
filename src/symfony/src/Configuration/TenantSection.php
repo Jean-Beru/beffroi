@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Configuration;
 
+use function array_values;
 use Beffroi\Bundle\Identity\WiredClaims;
 use Beffroi\Bundle\Tenant\TenantFactory;
 use Beffroi\Core\Port\AuthenticationPredicatesInterface;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationDeclaredScopes;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use function is_string;
@@ -64,6 +67,7 @@ final readonly class TenantSection extends ConfigurationSection
             ->end()
             ->append(self::selfServedClaims())
             ->append(self::authenticationClasses())
+            ->append(self::scopes())
             ->end()
             ->end();
     }
@@ -106,6 +110,38 @@ final readonly class TenantSection extends ConfigurationSection
             self::selfServedClaims()->normalized($selfServedClaims, 'tenant.self_served_claims'),
             $claims,
         );
+    }
+
+    /**
+     * The scopes the tenant hands out tokens for beyond those of its claims at runtime, from the list the configuration
+     * or the environment declares, held to the rules of the tree either way (decision 0030).
+     *
+     * @param mixed $scopes the list, as the configuration or the environment carries it
+     *
+     * @throws InvalidConfigurationException when the list is one the tree refuses
+     * @throws InvalidArgumentException when a scope is no scope token, or is one the tenant does not offer by declaring it
+     */
+    public static function declaredScopes(string $tenantSlug, mixed $scopes): ConfigurationDeclaredScopes
+    {
+        /** @var list<string> $declared the tree declares each one a string */
+        $declared = array_values(self::scopes()->normalized($scopes, 'tenant.scopes'));
+
+        return new ConfigurationDeclaredScopes($tenantSlug, $declared);
+    }
+
+    /**
+     * The scopes of the APIs of the tenant, as the tree declares them, which the environment may carry whole.
+     */
+    private static function scopes(): EnvironmentListDefinition
+    {
+        $scopes = new EnvironmentListDefinition('scopes');
+        $scopes
+            ->info('The scopes this tenant hands out tokens for beyond "openid", the scopes of the claims this provider serves and "offline_access" (issue #920): the scopes of the APIs it protects, which stand for no claim. The tenant offers them, its discovery document announces them in "scopes_supported", and a client that registers itself may register them, a registration being held to what the tenant offers (decision 0009). A scope a declared client registers is offered as well, so a deployment that declares its clients may name none here; one that declares none, as the image, has nothing else to make such a scope exist. "offline_access" is never one of them, the wired grants deciding it (OIDC Core section 11): it is refused, as a value that is no scope token (RFC 6749 section 3.3) is, when the service that reads the list is built. None by default.')
+            ->stringPrototype()
+            ->end()
+            ->defaultValue([]);
+
+        return $scopes;
     }
 
     /**
@@ -156,5 +192,9 @@ final readonly class TenantSection extends ConfigurationSection
             ->arg('$authenticationClasses', $tenant['authentication_classes'] ?? [])
             ->arg('$look', self::section($tenant, 'look'))
             ->arg('$selfServedClaims', $tenant['self_served_claims'] ?? []);
+        $services->get(ConfigurationDeclaredScopes::class)->factory(self::declaredScopes(...))->arg('$tenantSlug', self::string($tenant, 'slug'))->arg(
+            '$scopes',
+            $tenant['scopes'] ?? [],
+        );
     }
 }

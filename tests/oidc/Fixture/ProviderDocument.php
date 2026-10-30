@@ -35,6 +35,7 @@ use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedSignedAuthorizationResp
 use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedUserInfo;
 use Beffroi\Oidc\Application\Discovery\Metadata\ProviderIdentity;
 use Beffroi\Oidc\Application\Token\ServedGrants;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationDeclaredScopes;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\Fixtures;
@@ -98,7 +99,7 @@ final class ProviderDocument
 
         return new DiscoveryHandler([
             new ProviderIdentity($endpoints),
-            new AnnouncedScopes(new OfferedScopes($claims, $grantTypes, $registeredScopes)),
+            new AnnouncedScopes(new OfferedScopes($claims, $grantTypes, $registeredScopes, new ConfigurationDeclaredScopes(Fixtures::tenant()->slug))),
             new AnnouncedResponses($responseModes),
             new AnnouncedGrants($grantTypes),
             new AnnouncedAuthenticationContext($provable, Subjects::ofAProvider()),
