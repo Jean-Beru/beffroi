@@ -45,7 +45,6 @@ final class OtherSessionsTerminationTest extends TestCase
         $this->termination = new OtherSessionsTermination(
             $this->sessions,
             new SessionTerminator($this->sessions, $this->clock, $this->events),
-            $this->clock,
         );
     }
 
@@ -63,6 +62,24 @@ final class OtherSessionsTerminationTest extends TestCase
         static::assertTrue($elsewhere->hasEnded());
         static::assertTrue($again->hasEnded());
         static::assertFalse($this->kept->hasEnded());
+    }
+
+    /**
+     * Decision 0031: reaching its expiry ended nothing, so what was issued under a session past it lives
+     * on, and the session is ended with the others for that to be taken back with theirs.
+     */
+    #[Test]
+    public function aSessionPastItsExpiryIsEndedAsWell(): void
+    {
+        // Given
+        $expired = Fixtures::session($this->alice, $this->clock->now()->modify('-13 hours'));
+        $this->sessions->save($expired);
+
+        // When
+        $this->termination->endEveryOther($this->kept, Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame(SessionEnd::User, $expired->endedBy);
     }
 
     /**

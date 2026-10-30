@@ -35,6 +35,8 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class AccountPasswordTest extends BrowserTestCase
 {
+    use TokensOfASession;
+
     private const string IN_USE = 'correct horse battery staple';
 
     private const string POSED = 'a horse walks into a bar';
@@ -101,6 +103,26 @@ final class AccountPasswordTest extends BrowserTestCase
         // Then
         static::assertTrue(self::reread($elsewhere)->hasEnded());
         static::assertFalse(self::reread($current)->hasEnded());
+    }
+
+    /**
+     * Decision 0031: a session past its expiry signs nobody in, and nothing ended it, so the tokens issued
+     * under it live on; replacing the password ends it with the others, and they are revoked with it.
+     */
+    #[Test]
+    public function replacingThePasswordRevokesTheTokensOfASessionPastItsExpiry(): void
+    {
+        // Given
+        $alice = self::userWithPassword('alice', self::IN_USE);
+        $this->signIn($alice);
+        $expired = self::session($alice, self::currentSecond()->modify('-13 hours'));
+        $tokens = self::tokensIssuedIn($expired);
+
+        // When
+        $this->change(self::IN_USE, self::POSED);
+
+        // Then
+        self::assertTheTokensAreRevoked($tokens);
     }
 
     /**

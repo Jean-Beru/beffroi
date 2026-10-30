@@ -1124,6 +1124,9 @@ services:
     test.beffroi.subjects_of_sessions:
         alias: Beffroi\Core\Port\SubjectsOfSessionsInterface
         public: true
+    test.beffroi.unended_sessions:
+        alias: Beffroi\Core\Port\CanFindUnendedSessionsInterface
+        public: true
     test.beffroi.journal:
         alias: Beffroi\Core\Port\JournalInterface
         public: true
