@@ -159,18 +159,18 @@ final class AuthenticationSessionTest extends TestCase
     }
 
     /**
-     * beffroi/saml S-57, SAML Core §2.7.2: the session ends no later than what an upstream identity provider allows,
-     * which shortens it and never lengthens it.
+     * beffroi/saml S-57, SAML Core §2.7.2: the session expires no later than what an upstream identity provider
+     * allows, which shortens it and never lengthens it.
      */
     #[Test]
     #[DataProvider('provideBounds')]
-    public function theSessionEndsNoLaterThanItsBound(string $bound, string $expiresAt): void
+    public function theSessionExpiresNoLaterThanItsBound(string $bound, string $expiresAt): void
     {
         // Given
         $session = Fixtures::session();
 
         // When
-        $session->endNoLaterThan(Fixtures::now()->modify($bound));
+        $session->expireNoLaterThan(Fixtures::now()->modify($bound));
 
         // Then
         static::assertEquals(Fixtures::now()->modify($expiresAt), $session->expiresAt);
@@ -181,8 +181,8 @@ final class AuthenticationSessionTest extends TestCase
      */
     public static function provideBounds(): iterable
     {
-        yield 'a bound before its end' => ['+2 hours', '+2 hours'];
-        yield 'a bound after its end' => ['+20 hours', '+12 hours'];
+        yield 'a bound before its expiry' => ['+2 hours', '+2 hours'];
+        yield 'a bound after its expiry' => ['+20 hours', '+12 hours'];
     }
 
     #[Test]

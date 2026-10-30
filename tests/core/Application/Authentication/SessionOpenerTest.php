@@ -124,11 +124,11 @@ final class SessionOpenerTest extends TestCase
 
     /**
      * beffroi/saml S-57, SAML Core §2.7.2: a session an upstream identity provider allows until an instant before the
-     * end of its lifetime ends then; one it allows longer ends with its lifetime.
+     * end of its lifetime expires then; one it allows longer expires with its lifetime.
      */
     #[Test]
     #[DataProvider('provideBounds')]
-    public function theSessionEndsNoLaterThanWhatProvedItAllows(string $bound, string $expiresAt): void
+    public function theSessionExpiresNoLaterThanWhatProvedItAllows(string $bound, string $expiresAt): void
     {
         // When
         $session = $this->opener->open(
