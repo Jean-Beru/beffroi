@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Saml;
 
+use function array_map;
 use Beffroi\Bundle\Command\SamlIdentityProviderForgetCommand;
+use Beffroi\Bundle\Command\SamlIdentityProviderListCommand;
 use Beffroi\Bundle\Command\SamlIdentityProviderRefreshCommand;
 use Beffroi\Bundle\Doctrine\TenantProvider;
 use Beffroi\Bundle\Message\RefreshTheSamlMetadata;
+use Beffroi\Bundle\Saml\IdentityProviderSegment;
 use Beffroi\Bundle\MessageHandler\RefreshTheSamlMetadataHandler;
 use Beffroi\Bundle\Tests\Fixture\RecordedMessages;
 use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
@@ -23,6 +26,8 @@ use function dirname;
 use function file_put_contents;
 use function is_dir;
 use function mkdir;
+use const PREG_SET_ORDER;
+use function preg_match_all;
 use PHPUnit\Framework\Attributes\Test;
 use Psr\Log\LogLevel;
 use function sprintf;
@@ -174,6 +179,32 @@ final class UpstreamIdentityProvidersTest extends ConsoleTestCase
         static::assertStringContainsString(
             sprintf('No metadata are accepted for the identity provider "%s": nothing is forgotten.', IdentityProviderDocuments::SIMPLESAMLPHP),
             self::flattened($tester),
+        );
+    }
+
+    /**
+     * S-65, section 5.7: the list command prints each identity provider the configuration declares, in the order of the
+     * declaration, with the URL of the metadata given to it under the issuer, its last segment the entity ID in
+     * base64url.
+     */
+    #[Test]
+    public function theListCommandPrintsEachIdentityProviderWithTheUrlOfItsMetadata(): void
+    {
+        // When
+        $tester = self::console(SamlIdentityProviderListCommand::NAME);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        preg_match_all('/^\s*(https:\/\/\S+)\s+(https:\/\/\S+)\s*$/m', $tester->getDisplay(true), $listed, PREG_SET_ORDER);
+        static::assertSame(
+            [
+                [
+                    IdentityProviderDocuments::SIMPLESAMLPHP,
+                    'https://op.test/saml/sp/metadata/' . IdentityProviderSegment::of(IdentityProviderDocuments::SIMPLESAMLPHP),
+                ],
+                [IdentityProviderDocuments::SIGNED, 'https://op.test/saml/sp/metadata/' . IdentityProviderSegment::of(IdentityProviderDocuments::SIGNED)],
+            ],
+            array_map(static fn (array $row): array => [$row[1], $row[2]], $listed),
         );
     }
 
