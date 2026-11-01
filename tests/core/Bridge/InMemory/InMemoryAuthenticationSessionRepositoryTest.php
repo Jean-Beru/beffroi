@@ -38,6 +38,30 @@ final class InMemoryAuthenticationSessionRepositoryTest extends TestCase
         static::assertSame([$active], $sessions);
     }
 
+    /**
+     * Decision 0031: a session past its expiry has not ended, and stays among those something can end.
+     */
+    #[Test]
+    public function itListsTheUnendedSessionsOfAUserThoseExpiredIncluded(): void
+    {
+        // Given
+        $alice = Fixtures::user();
+        $repository = new InMemoryAuthenticationSessionRepository();
+        $active = Fixtures::session($alice);
+        $ended = Fixtures::session($alice);
+        $ended->end(SessionEnd::User, Fixtures::now());
+        $expired = Fixtures::session($alice, Fixtures::now()->modify('-2 days'));
+        foreach ([$active, $ended, $expired, Fixtures::session(Fixtures::user(username: 'bob', subject: 'bob-subject'))] as $session) {
+            $repository->save($session);
+        }
+
+        // When
+        $sessions = $repository->findUnendedByUser($alice);
+
+        // Then
+        static::assertSame([$active, $expired], $sessions);
+    }
+
     #[Test]
     public function itFindsAnySavedSessionById(): void
     {

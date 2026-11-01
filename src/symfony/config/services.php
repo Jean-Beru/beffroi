@@ -224,6 +224,7 @@ use Beffroi\Oidc\Port\DisclosuresInterface;
 use Beffroi\Oidc\Port\DisclosuresOfAPersonInterface;
 use Beffroi\Core\Application\Record\DeadRecordRemoval;
 use Beffroi\Core\Port\ActsOfAPersonInterface;
+use Beffroi\Core\Port\CanFindUnendedSessionsInterface;
 use Beffroi\Core\Port\CanPageActiveSessionsInterface;
 use Beffroi\Core\Port\CanPageActiveSubscriptionsInterface;
 use Beffroi\Core\Port\CanPageActsOfAPersonInterface;
@@ -1223,6 +1224,7 @@ return static function (ContainerConfigurator $container): void {
         'priority' => -100,
     ]);
     $services->alias(AuthenticationSessionRepositoryInterface::class, DoctrineAuthenticationSessionRepository::class);
+    $services->alias(CanFindUnendedSessionsInterface::class, DoctrineAuthenticationSessionRepository::class);
     $services->alias(CanPageActiveSessionsInterface::class, DoctrineAuthenticationSessionRepository::class);
     $services->alias(SubjectsOfSessionsInterface::class, DoctrineAuthenticationSessionRepository::class);
     $services->set(DoctrineInteractionRepository::class)->tag('beffroi.dead_records');

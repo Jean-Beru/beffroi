@@ -631,11 +631,11 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-57, SAML Core §2.7.2, issue #813: the session the login opens ends at the SessionNotOnOrAfter the provider
+     * S-57, SAML Core §2.7.2, issue #813: the session the login opens expires at the SessionNotOnOrAfter the provider
      * allows, before the lifetime of the tenant.
      */
     #[Test]
-    public function theSessionEndsAtTheSessionNotOnOrAfter(): void
+    public function theSessionExpiresAtTheSessionNotOnOrAfter(): void
     {
         // Given
         self::provisioned();

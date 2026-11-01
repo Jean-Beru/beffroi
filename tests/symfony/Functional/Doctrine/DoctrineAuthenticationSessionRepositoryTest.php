@@ -18,6 +18,7 @@ use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Session\SessionEnd;
 use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\CanFindUnendedSessionsInterface;
 use Beffroi\Core\Port\SubjectsOfSessionsInterface;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
@@ -184,6 +185,33 @@ final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
         static::assertSame([], $active);
     }
 
+    /**
+     * Decision 0031: what ends every session of a person reads those nobody ended, the expired ones included, in
+     * the order they were opened, and never the sessions of somebody else.
+     */
+    #[Test]
+    public function theUnendedSessionsOfAUserAreThoseNobodyEndedTheExpiredOnesIncluded(): void
+    {
+        // Given
+        $alice = self::user();
+        $expired = self::session($alice, self::now()->modify('-13 hours'));
+        $ended = self::session($alice, self::now()->modify('-1 hour'));
+        $ended->end(SessionEnd::User, self::now());
+        self::sessions()->save($ended);
+        $active = self::session($alice, self::now());
+        self::session(self::user('bob', 'bob-subject'));
+        self::reload();
+
+        // When
+        $unended = self::unended()->findUnendedByUser($alice);
+
+        // Then
+        static::assertSame(
+            [$expired->id->toRfc4122(), $active->id->toRfc4122()],
+            array_map(static fn (AuthenticationSession $session): string => $session->id->toRfc4122(), $unended),
+        );
+    }
+
     #[Test]
     public function anUnknownIdentifierFindsNoSession(): void
     {
@@ -251,6 +279,11 @@ final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
     private static function subjects(): SubjectsOfSessionsInterface
     {
         return self::service('test.beffroi.subjects_of_sessions', SubjectsOfSessionsInterface::class);
+    }
+
+    private static function unended(): CanFindUnendedSessionsInterface
+    {
+        return self::service('test.beffroi.unended_sessions', CanFindUnendedSessionsInterface::class);
     }
 
     /**

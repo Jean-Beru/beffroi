@@ -9,6 +9,7 @@ use function array_filter;
 use Beffroi\Core\Domain\Listing\Period;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
+use Doctrine\ORM\QueryBuilder;
 use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
@@ -19,6 +20,7 @@ use Beffroi\Core\Domain\Listing\Listing;
 use Beffroi\Core\Domain\Listing\Pagination;
 use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\CanFindUnendedSessionsInterface;
 use Beffroi\Core\Port\CanPageActiveSessionsInterface;
 use Beffroi\Core\Port\DeadRecordsInterface;
 use Beffroi\Core\Port\SubjectsOfSessionsInterface;
@@ -35,6 +37,7 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class DoctrineAuthenticationSessionRepository extends DoctrineRepository implements
     AuthenticationSessionRepositoryInterface,
+    CanFindUnendedSessionsInterface,
     CanPageActiveSessionsInterface,
     DeadRecordsInterface,
     SubjectsOfSessionsInterface
@@ -131,16 +134,27 @@ final readonly class DoctrineAuthenticationSessionRepository extends DoctrineRep
     public function findActiveByUser(User $user, DateTimeImmutable $now): array
     {
         /** @var list<AuthenticationSession> */
+        return $this->unendedOf($user)->andWhere('s.expiresAt > :now')->setParameter('now', $now, Types::DATETIME_IMMUTABLE)->getQuery()->getResult();
+    }
+
+    public function findUnendedByUser(User $user): array
+    {
+        /** @var list<AuthenticationSession> */
+        return $this->unendedOf($user)->getQuery()->getResult();
+    }
+
+    /**
+     * The sessions of one person that nothing has ended, in the order they were opened: an active session is one of
+     * them that has not expired either.
+     */
+    private function unendedOf(User $user): QueryBuilder
+    {
         return $this->queryBuilder('s')
             ->where('s.user = :user')
             ->andWhere('s.endedAt IS NULL')
-            ->andWhere('s.expiresAt > :now')
             ->orderBy('s.establishedAt', 'ASC')
             ->addOrderBy('s.id', 'ASC')
-            ->setParameter('user', $user->id, UuidType::NAME)
-            ->setParameter('now', $now, Types::DATETIME_IMMUTABLE)
-            ->getQuery()
-            ->getResult();
+            ->setParameter('user', $user->id, UuidType::NAME);
     }
 
     public function save(AuthenticationSession $session): void
