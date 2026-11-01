@@ -35,6 +35,7 @@ use Beffroi\Bundle\Doctrine\Type\ResourceIndicatorsType;
 use Beffroi\Bundle\Doctrine\Type\ScopesType;
 use Beffroi\Bundle\Doctrine\Type\SubjectType;
 use Beffroi\Bundle\Doctrine\Type\SelfServedClaimsType;
+use Beffroi\Bundle\Doctrine\Type\ClaimNamesType;
 use Beffroi\Bundle\Doctrine\Type\UserSourceType;
 use Beffroi\Bundle\Doctrine\Type\TenantLookType;
 use Beffroi\Bundle\Doctrine\Type\LogoutProgressType;
@@ -44,6 +45,7 @@ use Beffroi\Saml\Domain\SingleLogout\LogoutRequester;
 use Symfony\Component\Uid\Uuid;
 use Beffroi\Core\Domain\Tenant\LogoUri;
 use Beffroi\Core\Domain\Tenant\SelfServedClaims;
+use Beffroi\Oidc\Domain\Claims\ClaimNames;
 use Beffroi\Core\Domain\Tenant\TenantLook;
 use Beffroi\Bundle\BeffroiBundle;
 use Beffroi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
@@ -206,6 +208,8 @@ final class TypesTest extends TestCase
             '["nickname","zoneinfo"]',
         ];
         yield 'a tenant that lets a person change nothing' => [SelfServedClaimsType::class, SelfServedClaims::none(), '[]'];
+        yield 'the claims a person agreed to by name' => [ClaimNamesType::class, new ClaimNames(['email', 'phone_number']), '["email","phone_number"]'];
+        yield 'a consent that holds no claim by name' => [ClaimNamesType::class, new ClaimNames(), '[]'];
         yield 'the look of a tenant' => [
             TenantLookType::class,
             new TenantLook(new LogoUri('https://acme.example/logo.svg'), '#1b4b8f', '#ffffff'),
@@ -348,6 +352,7 @@ final class TypesTest extends TestCase
         yield 'a detail alone for authorization details' => [AuthorizationDetailsType::class, AuthorizationDetailTypes::detail()];
         yield 'a string for the progress of a chain' => [LogoutProgressType::class, '{}'];
         yield 'a name for the source of a person' => [UserSourceType::class, 'local'];
+        yield 'a list of strings for claims by name' => [ClaimNamesType::class, ['email']];
     }
 
     /**
@@ -417,6 +422,8 @@ final class TypesTest extends TestCase
         yield 'the progress of a chain that does not say whether it is partial' => [LogoutProgressType::class, '{"sessions":[]}'];
         yield 'the source of a person that names no provider' => [UserSourceType::class, '{"claims":["email"]}'];
         yield 'the source of a person whose claims are not names' => [UserSourceType::class, '{"provider":"workforce","claims":[12]}'];
+        yield 'claims by name that are a JSON object' => [ClaimNamesType::class, '{"email":true}'];
+        yield 'claims by name that are not names' => [ClaimNamesType::class, '["email",12]'];
     }
 
     /**
@@ -509,10 +516,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function theBundleDeclaresThirtyThreeTypes(): void
+    public function theBundleDeclaresThirtyFourTypes(): void
     {
         // When / Then
-        static::assertCount(33, BeffroiBundle::DBAL_TYPES);
+        static::assertCount(34, BeffroiBundle::DBAL_TYPES);
     }
 
     /**

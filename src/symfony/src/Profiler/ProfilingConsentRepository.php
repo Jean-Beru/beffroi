@@ -7,6 +7,7 @@ namespace Beffroi\Bundle\Profiler;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Consent\Consent;
+use function implode;
 use Beffroi\Oidc\Port\ConsentRepositoryInterface;
 use const DATE_ATOM;
 
@@ -45,6 +46,7 @@ final readonly class ProfilingConsentRepository implements ConsentRepositoryInte
             'client_id' => $consent->clientId,
             'state' => $state,
             'scopes consented' => (string) $consent->scopes,
+            'claims consented by name' => implode(' ', $consent->claims->all),
             'granted at' => $consent->grantedAt->format(DATE_ATOM),
         ]);
     }

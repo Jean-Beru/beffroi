@@ -9,6 +9,7 @@ use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Application\Archive\ConsentsChapter;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryConsentRepository;
+use Beffroi\Oidc\Domain\Claims\ClaimNames;
 use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Consent\Consent;
 use Beffroi\Oidc\Domain\Scope\Scope;
@@ -48,11 +49,31 @@ final class ConsentsChapterTest extends TestCase
                     'client_name' => $client->registration->presentation->name,
                     'scopes' => ['openid', 'profile'],
                     'authorization_details' => null,
+                    'claims' => [],
                     'granted_at' => Fixtures::now()->format('c'),
                 ],
             ],
             $lines,
         );
+    }
+
+    /**
+     * OIDC Core §5.5: what the person agreed to by name is part of what they agreed to, and the archive says
+     * it beside the scopes.
+     */
+    #[Test]
+    public function aConsentSaysTheClaimsItWasGivenByName(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $consents = new InMemoryConsentRepository();
+        $consents->save(self::consent($user, self::client($user), ['openid'], claims: new ClaimNames(['email', 'phone_number'])));
+
+        // When
+        $lines = new ConsentsChapter($consents)->of($user);
+
+        // Then
+        static::assertSame([['email', 'phone_number']], array_column($lines, 'claims'));
     }
 
     /**
@@ -108,14 +129,21 @@ final class ConsentsChapterTest extends TestCase
     /**
      * @param list<string> $scopes
      */
-    private static function consent(User $user, Client $client, array $scopes, ?DateTimeImmutable $grantedAt = null): Consent
-    {
+    private static function consent(
+        User $user,
+        Client $client,
+        array $scopes,
+        ?DateTimeImmutable $grantedAt = null,
+        ClaimNames $claims = new ClaimNames(),
+    ): Consent {
         return new Consent(
             Uuid::v7(),
             $user,
             $client,
             new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
             $grantedAt ?? Fixtures::now(),
+            null,
+            $claims,
         );
     }
 }

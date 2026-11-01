@@ -31,6 +31,11 @@ final readonly class InventedClaimsProvider implements ClaimsProviderInterface
         return $due ? [self::CLAIM => sprintf('EMP-%s', $user->username)] : [];
     }
 
+    public function claimsOf(Scopes $scopes): array
+    {
+        return $scopes->has(new Scope(self::SCOPE)) ? [self::CLAIM] : [];
+    }
+
     public function supportedScopes(): array
     {
         return [new Scope(self::SCOPE)];

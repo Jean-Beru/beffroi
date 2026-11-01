@@ -1,6 +1,7 @@
 {# The consent page of an interaction, in the locale the interaction recorded: who is asking, the user,
-   every scope of the request, the standard scopes of OIDC Core §5.4 in words, any other by its value, and
-   what the request asks for beyond them (RFC 9396 §2) said in the words of each type.
+   every scope of the request, the standard scopes of OIDC Core §5.4 in words, any other by its value, the
+   claims the request asks for by name that none of its scopes stands for (OIDC Core §5.5), and what the
+   request asks for beyond them (RFC 9396 §2) said in the words of each type.
 
    Who is asking is what the client registered about itself (OIDC Registration §2, ConsentPage): its name,
    its logo, and the pages a user may read before deciding. The logo is loaded by the browser of the user
@@ -20,6 +21,9 @@
     <p>{{ 'consent.signed_in_as'|trans({username: user.username}) }}</p>
     <p>{{ 'consent.request'|trans({client: page.presentation.name}) }}</p>
     {{ include('@Beffroi/scopes.html.twig', {scopes: scopes}) }}
+    {% if claims is not empty %}
+        {{ include('@Beffroi/claims.html.twig', {claims: claims}) }}
+    {% endif %}
     {% if authorization_details is not null %}
         <p>{{ 'consent.authorization_details'|trans({client: page.presentation.name}) }}</p>
         {{ include('@Beffroi/authorization_details.html.twig', {details: authorization_details}) }}

@@ -14,6 +14,7 @@ use function glob;
 use Beffroi\Core\Domain\Event\DomainEventInterface;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Domain\Claims\ClaimNames;
 use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Client\ClientUri;
 use Beffroi\Oidc\Domain\Consent\Consent;
@@ -140,6 +141,7 @@ final class EventsLeaveTheProcessTest extends TestCase
             $subject,
             $consent->scopes,
             AuthorizationDetailTypes::details(),
+            new ClaimNames(['email']),
             null,
             $context,
         )];

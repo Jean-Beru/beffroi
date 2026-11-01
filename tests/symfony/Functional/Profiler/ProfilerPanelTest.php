@@ -136,6 +136,35 @@ final class ProfilerPanelTest extends BrowserTestCase
     }
 
     /**
+     * OIDC Core §3.1.2.4, §5.5: the consent page is asked for, and the panel says what for, the claims the
+     * request asks for by name beyond its scopes included.
+     */
+    #[Test]
+    public function theDecisionToAskForAConsentSaysTheClaimsAskedForByName(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        $this->browser->enableProfiler();
+
+        // When
+        $this->browser->request('GET', '/authorize', self::authorizationParameters('native-app', [
+            'scope' => 'openid',
+            'claims' => '{"userinfo": {"email": null}}',
+        ]));
+
+        // Then
+        static::assertSame(
+            [
+                'outcome' => 'the user is asked to consent',
+                'why' => 'not_granted',
+                'scopes asked for' => 'openid',
+                'claims asked for by name' => 'email',
+            ],
+            $this->observation('Decision'),
+        );
+    }
+
+    /**
      * The toolbar of a host application carries an entry on the pages of the provider and on no other.
      */
     #[Test]

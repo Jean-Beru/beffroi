@@ -7,6 +7,7 @@ namespace Beffroi\Bundle\Profiler\Decision;
 use Beffroi\Bundle\Profiler\Observation;
 use Beffroi\Oidc\Domain\Interaction\AuthorizationDecision;
 use Beffroi\Oidc\Domain\Interaction\ConsentRequired;
+use function implode;
 
 /**
  * Why the user is asked to consent, and what the client asked for (architecture §4.3).
@@ -24,6 +25,7 @@ final readonly class ConsentRequiredObservation implements DecisionObservationIn
             'outcome' => 'the user is asked to consent',
             'why' => $decision instanceof ConsentRequired ? $decision->requirement->value : $decision->name(),
             'scopes asked for' => $decision instanceof ConsentRequired ? (string) $decision->scopes : '',
+            'claims asked for by name' => $decision instanceof ConsentRequired ? implode(' ', $decision->claims->all) : '',
         ]);
     }
 }

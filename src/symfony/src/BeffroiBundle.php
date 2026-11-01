@@ -26,6 +26,7 @@ use Beffroi\Bundle\Doctrine\Type\UserSourceType;
 use Beffroi\Core\Port\AuthenticationPredicatesInterface;
 use Beffroi\Core\Port\PasswordAlgorithmsInterface;
 use Beffroi\Bundle\Doctrine\Type\AuthenticationSnapshotType;
+use Beffroi\Bundle\Doctrine\Type\ClaimNamesType;
 use Beffroi\Bundle\Doctrine\Type\ClaimsRequestType;
 use Beffroi\Bundle\Doctrine\Type\ClientSecretType;
 use Beffroi\Bundle\Doctrine\Type\CodeChallengeType;
@@ -124,6 +125,7 @@ final class BeffroiBundle extends AbstractBundle
         AuthorizationDetailsType::NAME => AuthorizationDetailsType::class,
         BindingMessageType::NAME => BindingMessageType::class,
         ClaimsRequestType::NAME => ClaimsRequestType::class,
+        ClaimNamesType::NAME => ClaimNamesType::class,
         CodeChallengeType::NAME => CodeChallengeType::class,
         ClientSecretType::NAME => ClientSecretType::class,
         ActorType::NAME => ActorType::class,
