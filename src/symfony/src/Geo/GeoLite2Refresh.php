@@ -6,20 +6,24 @@ namespace Beffroi\Bundle\Geo;
 
 use function bin2hex;
 use DateTimeImmutable;
-use function file_get_contents;
-use function file_put_contents;
+use function fclose;
+use function fopen;
+use function fwrite;
 use function http_build_query;
 use function in_array;
 use function is_file;
+use function is_readable;
 use function random_bytes;
 use function sprintf;
 use function str_contains;
 use function str_starts_with;
+use function strlen;
 use function sys_get_temp_dir;
 use function unlink;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use MaxMind\Db\Reader;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 use Throwable;
 
 /**
@@ -36,6 +40,11 @@ use Throwable;
  * **It asks before it downloads.** The ETag of what is stored goes out as `If-None-Match`, so a week in
  * which MaxMind published nothing costs one request and no bytes (GeoLite2 is published on Tuesdays).
  *
+ * **No archive and no database is held whole in memory** (issue #904): what a source serves is written to
+ * a file as it arrives, the database is unpacked from that file into another, the reader opens that one
+ * and the storage copies it. The city edition is fifty megabytes unpacked, and its archive decompressed
+ * whole goes past the memory PHP gives a worker by default.
+ *
  * **No address of this provider leaves it.** What leaves is a request for a file, carrying the licence key
  * of the deployment and nothing of anybody who signed in; what the lane later asks of that file, it asks
  * locally (`GeoLite2GeoLocator`).
@@ -43,8 +52,8 @@ use Throwable;
 final readonly class GeoLite2Refresh
 {
     /**
-     * Where MaxMind serves its databases (https://dev.maxmind.com/geoip/updating-databases): one archive
-     * per edition, named by a query string, under the licence key of an account.
+     * Where MaxMind is asked for its databases (https://dev.maxmind.com/geoip/updating-databases): one
+     * archive per edition, named by a query string, under the licence key of an account.
      */
     public const string MAXMIND_DOWNLOAD = 'https://download.maxmind.com/app/geoip_download';
 
@@ -81,19 +90,25 @@ final readonly class GeoLite2Refresh
     {
         $named = self::named($source);
         $edition = self::editionOf($source);
+        $downloaded = self::temporary();
+        $database = self::temporary();
         try {
-            $fetched = $this->fetch($source, $edition === null ? null : $this->databases->version($edition));
+            $fetched = $this->fetch($source, $edition === null ? null : $this->databases->version($edition), $downloaded);
             if ($fetched === null) {
                 return GeoLite2Refreshment::unchanged($named);
             }
             [$archive, $version] = $fetched;
-            $database = GeoLite2Archive::database($archive);
+            GeoLite2Archive::unpack($archive, $database);
             [$declared, $builtOn, $nodes] = self::read($database);
             $this->databases->write($declared, $database, $version);
 
             return GeoLite2Refreshment::stored($named, $declared, $builtOn, $nodes);
         } catch (Throwable $exception) {
             return GeoLite2Refreshment::refused($named, $exception->getMessage());
+        } finally {
+            // What was downloaded and what was unpacked are this run's, whatever came of them.
+            @unlink($downloaded);
+            @unlink($database);
         }
     }
 
@@ -106,18 +121,12 @@ final readonly class GeoLite2Refresh
      */
     private static function read(string $database): array
     {
-        $path = sys_get_temp_dir() . '/beffroi-geoip-' . bin2hex(random_bytes(8)) . '.mmdb';
-        if (@file_put_contents($path, $database) === false) {
-            throw new InvalidArgumentException('the database cannot be written where it would be opened');
-        }
         try {
-            $reader = new Reader($path);
+            $reader = new Reader($database);
             $metadata = $reader->metadata();
             $reader->close();
         } catch (Throwable $exception) {
             throw new InvalidArgumentException(sprintf('the database cannot be opened (%s)', $exception->getMessage()), previous: $exception);
-        } finally {
-            @unlink($path);
         }
         if (! in_array($metadata->databaseType, GeoLite2Databases::EDITIONS, true)) {
             throw new InvalidArgumentException(sprintf(
@@ -130,15 +139,16 @@ final readonly class GeoLite2Refresh
     }
 
     /**
-     * The archive as bytes and the version it was served with, or nothing when the source answers that
-     * what is stored is what it serves. No outbound request follows a redirect (decision 0006): the URL
-     * the source names is said instead.
+     * The archive as a file of this host and the version it was served with, or nothing when the source
+     * answers that what is stored is what it serves: a file is read where it is, and what an https source
+     * serves is written to the file given as it arrives. No outbound request follows a redirect (decision
+     * 0006): the URL the source names is said instead.
      *
      * @return array{string, ?string}|null
      *
      * @throws InvalidArgumentException when the source cannot be read
      */
-    private function fetch(string $source, ?string $version): ?array
+    private function fetch(string $source, ?string $version, string $into): ?array
     {
         if (! str_starts_with($source, 'https://')) {
             // A file, and nothing a stream wrapper would go and fetch: what reaches the network reaches
@@ -146,19 +156,11 @@ final readonly class GeoLite2Refresh
             if (! is_file($source)) {
                 throw new InvalidArgumentException('it is neither an https URL nor a file of this host');
             }
-            $archive = @file_get_contents($source);
 
-            return $archive === false ? throw new InvalidArgumentException('the file cannot be read') : [$archive, null];
+            return is_readable($source) ? [$source, null] : throw new InvalidArgumentException('the file cannot be read');
         }
         try {
-            $response = $this->http->request('GET', $source, [
-                'headers' => $version === null
-                    ? []
-                    : [
-                        'If-None-Match' => $version,
-                    ],
-                'max_redirects' => 0,
-            ]);
+            $response = $this->requested($source, $version);
             $status = $response->getStatusCode();
             if ($status === 304) {
                 return null;
@@ -173,13 +175,61 @@ final readonly class GeoLite2Refresh
             if ($status !== 200) {
                 throw new InvalidArgumentException(sprintf('the source answered %d', $status));
             }
+            $this->written($response, $into);
 
-            return [$response->getContent(), $response->getHeaders(false)['etag'][0] ?? null];
+            return [$into, $response->getHeaders(false)['etag'][0] ?? null];
         } catch (InvalidArgumentException $exception) {
             throw $exception;
         } catch (Throwable $exception) {
             throw new InvalidArgumentException(sprintf('the source cannot be reached: %s', $exception->getMessage()), previous: $exception);
         }
+    }
+
+    /**
+     * One GET, the version of what is stored going out with it, and no redirect followed (decision 0006).
+     */
+    private function requested(string $url, ?string $version): ResponseInterface
+    {
+        return $this->http->request('GET', $url, [
+            'headers' => $version === null
+                ? []
+                : [
+                    'If-None-Match' => $version,
+                ],
+            'max_redirects' => 0,
+            'buffer' => false,
+        ]);
+    }
+
+    /**
+     * What the response serves, written to that file as it arrives.
+     *
+     * @throws InvalidArgumentException when the file cannot be written
+     */
+    private function written(ResponseInterface $response, string $into): void
+    {
+        $file = @fopen($into, 'wb');
+        if ($file === false) {
+            throw new InvalidArgumentException('the archive cannot be written where it is downloaded');
+        }
+        try {
+            foreach ($this->http->stream($response) as $chunk) {
+                $content = $chunk->getContent();
+                if (@fwrite($file, $content) !== strlen($content)) {
+                    throw new InvalidArgumentException('the archive cannot be written where it is downloaded');
+                }
+            }
+        } finally {
+            fclose($file);
+        }
+    }
+
+    /**
+     * A file of the temporary directory of this host for one run, named so that two runs never meet.
+     */
+    private static function temporary(): string
+    {
+        return sys_get_temp_dir() . '/beffroi-geoip-' . bin2hex(random_bytes(8));
     }
 
     /**

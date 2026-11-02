@@ -10,6 +10,9 @@ use Beffroi\Bundle\Command\GeoipRefreshCommand;
 use Beffroi\Bundle\Geo\GeoLite2Databases;
 use Beffroi\Bundle\Geo\GeoLite2Refresh;
 use Beffroi\Bundle\Tests\Fixture\MaxMindDatabase;
+use function memory_get_peak_usage;
+use function memory_get_usage;
+use function memory_reset_peak_usage;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function preg_replace;
@@ -25,11 +28,25 @@ use function uniqid;
 
 /**
  * Issue #473: the databases of addresses downloaded, refused unless they are ones this provider reads,
- * and stored where the lane reads them. The weekly step of the schedule runs the same object.
+ * and stored where the lane reads them. The weekly step of the schedule runs the same object. Issue #904:
+ * an edition unpacked and stored by stream.
  */
 final class GeoipRefreshCommandTest extends TestCase
 {
     private const string LICENSE_KEY = 'a-licence-key-of-the-account';
+
+    /**
+     * What the database of a large archive is padded with: more than the city edition MaxMind built on
+     * 2026-10-23, a database of 50,659,116 bytes (issue #904). The archive is as large, its gzip stream
+     * being written without compression.
+     */
+    private const int LARGE_DATABASE_PADDING = 67_108_864;
+
+    /**
+     * What a refresh of that archive may hold in memory at most, a quarter of it: holding the archive, the
+     * tar or the database whole holds more.
+     */
+    private const int MEMORY_HELD_AT_MOST = 16_777_216;
 
     private string $directory;
 
@@ -130,7 +147,11 @@ final class GeoipRefreshCommandTest extends TestCase
     public function aSourceThatAnswersNothingChangedIsNotDownloadedAgain(): void
     {
         // Given
-        $this->databases->write(GeoLite2Databases::CITY, MaxMindDatabase::city(), '"the-version-of-last-week"');
+        $this->databases->write(
+            GeoLite2Databases::CITY,
+            MaxMindDatabase::inFile(MaxMindDatabase::city(), $this->directory),
+            '"the-version-of-last-week"',
+        );
         $sent = [];
         $tester = $this->refresh(new MockHttpClient(static function (string $method, string $url, array $options) use (&$sent): MockResponse {
             $headers = $options['normalized_headers'] ?? [];
@@ -171,6 +192,32 @@ final class GeoipRefreshCommandTest extends TestCase
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         static::assertNotNull($this->databases->path(GeoLite2Databases::ASN));
+    }
+
+    /**
+     * Issue #904: an archive of the size MaxMind publishes is read, unpacked and stored by stream, so what
+     * the refresh holds in memory is a fraction of the archive and of its database, under the limit PHP
+     * gives a worker by default as under any other.
+     */
+    #[Test]
+    public function anArchiveTheSizeOfAnEditionOfMaxMindIsStoredWithoutBeingHeldInMemory(): void
+    {
+        // Given
+        $archive = $this->directory . '/GeoLite2-City.tar.gz';
+        MaxMindDatabase::archivedTo($archive, MaxMindDatabase::city(), self::LARGE_DATABASE_PADDING);
+        $tester = $this->refresh(new MockHttpClient());
+
+        // When
+        memory_reset_peak_usage();
+        $before = memory_get_usage();
+        $tester->execute([
+            '--url' => [$archive],
+        ]);
+        $held = memory_get_peak_usage() - $before;
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertLessThan(self::MEMORY_HELD_AT_MOST, $held);
     }
 
     /**
