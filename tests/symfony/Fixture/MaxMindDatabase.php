@@ -5,8 +5,13 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Tests\Fixture;
 
 use function array_is_list;
+use function bin2hex;
 use function chr;
 use function count;
+use function file_put_contents;
+use function gzclose;
+use function gzopen;
+use function gzwrite;
 use function is_array;
 use function is_float;
 use function is_int;
@@ -15,11 +20,13 @@ use function is_string;
 use function ltrim;
 use function ord;
 use function pack;
+use function random_bytes;
 use function sprintf;
 use function str_pad;
 use function str_repeat;
 use function str_split;
 use function strlen;
+use function strrpos;
 use function substr_replace;
 use const STR_PAD_LEFT;
 use function substr;
@@ -55,6 +62,12 @@ final class MaxMindDatabase
     private const string METADATA_START_MARKER = "\xAB\xCD\xEF" . 'MaxMind.com';
 
     private const int TAR_BLOCK = 512;
+
+    /**
+     * How much of the padding of a large archive is written at a time, so that the fixture holds no more
+     * of it than the code it tests may.
+     */
+    private const int PADDING_CHUNK = 1_048_576;
 
     /**
      * The one node of the tree: on the left the value of "no network of this database", which is the
@@ -145,18 +158,17 @@ final class MaxMindDatabase
     /**
      * What MaxMind serves: a gzipped tar of one directory holding the licence, the copyright notice and
      * the database, which is the shape the refresh takes a database out of. The name of the member is a
-     * parameter so that an archive holding no database at all can be served too.
+     * parameter so that an archive holding no database at all can be served too, and so is the licence
+     * that follows the database, for an archive that goes on long after it.
      */
     public static function archived(
         string $database,
         string $directory = 'GeoLite2-City_20260101',
         string $name = self::CITY_EDITION . '.mmdb',
+        string $licence = 'The terms of the licence of somebody else.',
+        string $copyright = 'Database and Contents Copyright of somebody else.',
     ): string {
-        $tar =
-            self::member($directory . '/COPYRIGHT.txt', 'Database and Contents Copyright of somebody else.')
-            . self::member($directory . '/' . $name, $database)
-            . str_repeat("\0", 1024);
-        $gzipped = gzencode($tar);
+        $gzipped = gzencode(self::tarred($database, $directory, $name, $licence, $copyright));
         if ($gzipped === false) {
             throw new InvalidArgumentException('The archive of this fixture cannot be gzipped.');
         }
@@ -165,17 +177,85 @@ final class MaxMindDatabase
     }
 
     /**
-     * One member of a tar: a header of five hundred and twelve bytes, of which this writes the name, the
-     * mode, the length and the checksum, then the content padded to the next block.
+     * The tar of what MaxMind serves, before it is gzipped: the copyright notice, the database and the
+     * licence, the notice being a parameter so that a member before the database can hold anything.
+     */
+    public static function tarred(
+        string $database,
+        string $directory = 'GeoLite2-City_20260101',
+        string $name = self::CITY_EDITION . '.mmdb',
+        string $licence = 'The terms of the licence of somebody else.',
+        string $copyright = 'Database and Contents Copyright of somebody else.',
+    ): string {
+        return (
+            self::member($directory . '/COPYRIGHT.txt', $copyright)
+            . self::member($directory . '/' . $name, $database)
+            . self::member($directory . '/LICENSE.txt', $licence)
+            . str_repeat("\0", 1024)
+        );
+    }
+
+    /**
+     * What MaxMind serves, written to that file by stream, of a database padded to the size of an edition
+     * MaxMind publishes (issue #904): the city edition is fifty megabytes, which no test holds as a string.
+     * The padding lies at the end of the data section, after the one record, where no pointer of the tree
+     * leads and so where the reader never reads, and the metadata section stays the last bytes of the file.
+     * The gzip stream is written without compression, so that the archive is as large as its database and
+     * holding either whole shows.
+     */
+    public static function archivedTo(string $path, string $database, int $padding): void
+    {
+        $metadata = strrpos($database, self::METADATA_START_MARKER);
+        $archive = gzopen($path, 'wb0');
+        if ($metadata === false || $archive === false) {
+            throw new InvalidArgumentException(sprintf('The archive of this fixture cannot be written to "%s".', $path));
+        }
+        $length = strlen($database) + $padding;
+        gzwrite($archive, self::header('GeoLite2-City_20260101/' . self::CITY_EDITION . '.mmdb', $length));
+        gzwrite($archive, substr($database, 0, $metadata));
+        $zeros = str_repeat("\0", self::PADDING_CHUNK);
+        for ($left = $padding; $left > 0; $left -= self::PADDING_CHUNK) {
+            gzwrite($archive, $left < self::PADDING_CHUNK ? substr($zeros, 0, $left) : $zeros);
+        }
+        gzwrite($archive, substr($database, $metadata));
+        gzwrite($archive, str_repeat("\0", self::paddingOf($length) + 1024));
+        gzclose($archive);
+    }
+
+    /**
+     * That database as a file of the directory given, which is what the store of the bundle takes a
+     * database from: a refresh unpacks an archive into a file and stores that file.
+     */
+    public static function inFile(string $database, string $directory): string
+    {
+        $path = $directory . '/' . bin2hex(random_bytes(8)) . '.mmdb';
+        if (file_put_contents($path, $database) === false) {
+            throw new InvalidArgumentException(sprintf('The database of this fixture cannot be written to "%s".', $path));
+        }
+
+        return $path;
+    }
+
+    /**
+     * One member of a tar: its header, then the content padded to the next block.
      */
     private static function member(string $name, string $content): string
+    {
+        return self::header($name, strlen($content)) . $content . str_repeat("\0", self::paddingOf(strlen($content)));
+    }
+
+    /**
+     * The header of a member of a tar, five hundred and twelve bytes of which this writes the name, the
+     * mode, the length and the checksum.
+     */
+    private static function header(string $name, int $length): string
     {
         $header =
             str_pad($name, 100, "\0")
             . str_pad('0000644', 8, "\0")
             . str_pad('0000000', 8, "\0")
             . str_pad('0000000', 8, "\0")
-            . str_pad(sprintf('%011o', strlen($content)), 12, "\0")
+            . str_pad(sprintf('%011o', $length), 12, "\0")
             . str_pad(sprintf('%011o', 0), 12, "\0")
             . str_repeat(' ', 8)
             . '0'
@@ -187,10 +267,16 @@ final class MaxMindDatabase
         foreach (str_split($header) as $byte) {
             $checksum += ord($byte);
         }
-        $header = substr_replace($header, str_pad(sprintf('%06o', $checksum), 7, "\0") . ' ', 148, 8);
-        $padding = (self::TAR_BLOCK - (strlen($content) % self::TAR_BLOCK)) % self::TAR_BLOCK;
 
-        return $header . $content . str_repeat("\0", $padding);
+        return substr_replace($header, str_pad(sprintf('%06o', $checksum), 7, "\0") . ' ', 148, 8);
+    }
+
+    /**
+     * The bytes that bring a member of that length to the next block.
+     */
+    private static function paddingOf(int $length): int
+    {
+        return (self::TAR_BLOCK - ($length % self::TAR_BLOCK)) % self::TAR_BLOCK;
     }
 
     /**

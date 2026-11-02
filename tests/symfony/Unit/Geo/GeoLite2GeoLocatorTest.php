@@ -162,10 +162,10 @@ final class GeoLite2GeoLocatorTest extends TestCase
     private function holding(?string $city, ?string $asn): void
     {
         if ($city !== null) {
-            $this->databases->write(GeoLite2Databases::CITY, $city);
+            $this->databases->write(GeoLite2Databases::CITY, MaxMindDatabase::inFile($city, $this->directory));
         }
         if ($asn !== null) {
-            $this->databases->write(GeoLite2Databases::ASN, $asn);
+            $this->databases->write(GeoLite2Databases::ASN, MaxMindDatabase::inFile($asn, $this->directory));
         }
     }
 

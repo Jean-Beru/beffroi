@@ -152,8 +152,9 @@ final class AProvenanceSaysFromWhereTest extends DatabaseTestCase
     private static function holdingTheDatabases(): void
     {
         $databases = self::service('test.beffroi.geoip_databases', GeoLite2Databases::class);
-        $databases->write(GeoLite2Databases::CITY, MaxMindDatabase::city());
-        $databases->write(GeoLite2Databases::ASN, MaxMindDatabase::asn());
+        new Filesystem()->mkdir(self::storage());
+        $databases->write(GeoLite2Databases::CITY, MaxMindDatabase::inFile(MaxMindDatabase::city(), self::storage()));
+        $databases->write(GeoLite2Databases::ASN, MaxMindDatabase::inFile(MaxMindDatabase::asn(), self::storage()));
     }
 
     private static function announce(AuthenticationSession $session): void

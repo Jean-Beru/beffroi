@@ -6,6 +6,8 @@ namespace Beffroi\Bundle\Geo;
 
 use function bin2hex;
 use function chmod;
+use Closure;
+use function copy;
 use function file_get_contents;
 use function file_put_contents;
 use function in_array;
@@ -32,8 +34,9 @@ use Beffroi\Core\Exception\RuntimeException;
  * deployment names its licence key. Every flow is served all the same, with a provenance that says an
  * address and no place.
  *
- * Beside each database is the ETag MaxMind served it with, which is what lets the weekly refresh ask
- * whether anything changed instead of downloading sixty megabytes to write the same bytes again.
+ * Beside each database is the ETag its source served it with, for a download of MaxMind the ETag of the
+ * storage it redirects to (decision 0032), which is what lets the weekly refresh ask whether anything
+ * changed instead of downloading sixty megabytes to write the same bytes again.
  */
 final readonly class GeoLite2Databases
 {
@@ -87,16 +90,24 @@ final readonly class GeoLite2Databases
     }
 
     /**
+     * The database of that file stored as the one of its edition, by a copy of the file and never a string
+     * of it: the city edition is fifty megabytes, which a string would hold in the memory of the worker
+     * (issue #904).
+     *
      * @throws InvalidArgumentException on an edition the enrichment does not read
      * @throws RuntimeException when the storage cannot be written
      */
-    public function write(string $edition, string $database, ?string $version = null): void
+    public function write(string $edition, string $file, ?string $version = null): void
     {
         $path = $this->pathOf($edition);
         if (! is_dir($this->directory) && ! @mkdir($this->directory, 0o700, true) && ! is_dir($this->directory)) {
             throw new RuntimeException(sprintf('The storage of the address databases "%s" cannot be created.', $this->directory));
         }
-        $this->put($path, $database, sprintf('The database "%s" cannot be written to "%s".', $edition, $path));
+        $this->put(
+            $path,
+            static fn (string $temporary): bool => @copy($file, $temporary),
+            sprintf('The database "%s" cannot be written to "%s".', $edition, $path),
+        );
         // The version is written after the database and taken away when there is none, so what sits beside
         // a database is the version of that database and never of the one before it.
         if ($version === null) {
@@ -104,18 +115,24 @@ final readonly class GeoLite2Databases
 
             return;
         }
-        $this->put($path . '.etag', $version, sprintf('The version of the database "%s" cannot be written.', $edition));
+        $this->put(
+            $path . '.etag',
+            static fn (string $temporary): bool => @file_put_contents($temporary, $version, LOCK_EX) !== false,
+            sprintf('The version of the database "%s" cannot be written.', $edition),
+        );
     }
 
     /**
      * Through a sibling file renamed into place, which is how every file this provider holds is written.
      *
+     * @param Closure(string): bool $writes what writes the contents to the sibling file it is given
+     *
      * @throws RuntimeException when the file cannot be written
      */
-    private function put(string $path, string $contents, string $refusal): void
+    private function put(string $path, Closure $writes, string $refusal): void
     {
         $temporary = $path . '.' . bin2hex(random_bytes(8)) . '.tmp';
-        if (@file_put_contents($temporary, $contents, LOCK_EX) === false || ! @chmod($temporary, 0o600) || ! @rename($temporary, $path)) {
+        if (! $writes($temporary) || ! @chmod($temporary, 0o600) || ! @rename($temporary, $path)) {
             @unlink($temporary);
             throw new RuntimeException($refusal);
         }

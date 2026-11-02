@@ -4,29 +4,53 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Unit\Geo;
 
+use function chr;
+use function file_get_contents;
+use function file_put_contents;
 use Beffroi\Bundle\Geo\GeoLite2Archive;
 use Beffroi\Bundle\Tests\Fixture\MaxMindDatabase;
 use Beffroi\Core\Exception\InvalidArgumentException;
+use function ord;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function str_repeat;
+use function strlen;
+use Symfony\Component\Filesystem\Filesystem;
+use function sys_get_temp_dir;
+use function uniqid;
 
 /**
- * Issue #473: the database inside what MaxMind serves, taken out of the archive and nothing else with it.
+ * Issue #473: the database inside what MaxMind serves, taken out of the archive and nothing else with it;
+ * issue #904: read from a file and written to another, by stream.
  */
 final class GeoLite2ArchiveTest extends TestCase
 {
+    private string $directory;
+
+    protected function setUp(): void
+    {
+        $this->directory = sys_get_temp_dir() . '/beffroi-bundle-tests/geoip-archive-' . uniqid();
+        new Filesystem()->mkdir($this->directory);
+    }
+
+    protected function tearDown(): void
+    {
+        new Filesystem()->remove($this->directory);
+    }
+
     #[Test]
     public function theDatabaseIsTakenOutOfTheArchiveByteForByte(): void
     {
         // Given
         $database = MaxMindDatabase::city();
+        $archive = $this->file(MaxMindDatabase::archived($database));
 
         // When
-        $taken = GeoLite2Archive::database(MaxMindDatabase::archived($database));
+        GeoLite2Archive::unpack($archive, $this->directory . '/taken.mmdb');
 
         // Then
-        static::assertSame($database, $taken);
+        static::assertSame($database, file_get_contents($this->directory . '/taken.mmdb'));
     }
 
     /**
@@ -38,21 +62,46 @@ final class GeoLite2ArchiveTest extends TestCase
     {
         // Given
         $database = MaxMindDatabase::asn();
+        $file = $this->file($database);
 
-        // When / Then
-        static::assertSame($database, GeoLite2Archive::database($database));
+        // When
+        GeoLite2Archive::unpack($file, $this->directory . '/taken.mmdb');
+
+        // Then
+        static::assertSame($database, file_get_contents($this->directory . '/taken.mmdb'));
+    }
+
+    /**
+     * A member that is not the database is read past by the length its header gives, whatever it holds:
+     * a notice that holds the tar of another database is not where the database is taken from.
+     */
+    #[Test]
+    public function aMemberThatIsNotTheDatabaseIsReadPastWhateverItHolds(): void
+    {
+        // Given
+        $database = MaxMindDatabase::city();
+        $archive = $this->file(MaxMindDatabase::archived($database, copyright: MaxMindDatabase::tarred(MaxMindDatabase::asn())));
+
+        // When
+        GeoLite2Archive::unpack($archive, $this->directory . '/taken.mmdb');
+
+        // Then
+        static::assertSame($database, file_get_contents($this->directory . '/taken.mmdb'));
     }
 
     #[Test]
     #[DataProvider('provideWhatIsNotADatabase')]
     public function whatHoldsNoDatabaseIsRefused(string $archive, string $message): void
     {
+        // Given
+        $file = $this->file($archive);
+
         // Then
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessageIs($message);
 
         // When
-        GeoLite2Archive::database($archive);
+        GeoLite2Archive::unpack($file, $this->directory . '/taken.mmdb');
     }
 
     /**
@@ -69,5 +118,36 @@ final class GeoLite2ArchiveTest extends TestCase
             MaxMindDatabase::archived('the terms of the licence', name: 'LICENSE.txt'),
             'no member of the archive is a ".mmdb" database',
         ];
+        // A gzip header followed by a block of the reserved type (RFC 1951 §3.2.3, BTYPE 11).
+        yield 'an archive whose data is not deflated' => [
+            "\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03" . str_repeat("\xff", 64),
+            'the archive is gzipped and cannot be unpacked',
+        ];
+        yield 'an archive whose check does not hold' => [
+            self::withAnotherCheck(MaxMindDatabase::archived(MaxMindDatabase::city(), licence: str_repeat('The terms of the licence. ', 8_192))),
+            'the archive is gzipped and cannot be unpacked',
+        ];
+    }
+
+    /**
+     * The archive with the CRC32 of its gzip member changed, which is the first of the eight bytes that end
+     * it (RFC 1952 §2.3.1): every byte before it is what a whole archive holds, and only reading the stream
+     * to its end tells the difference. The licence after the database is long enough that the end is not
+     * read along with the database.
+     */
+    private static function withAnotherCheck(string $archive): string
+    {
+        $offset = strlen($archive) - 8;
+        $archive[$offset] = chr(ord($archive[$offset]) ^ 0xFF);
+
+        return $archive;
+    }
+
+    private function file(string $contents): string
+    {
+        $path = $this->directory . '/source';
+        file_put_contents($path, $contents);
+
+        return $path;
     }
 }
