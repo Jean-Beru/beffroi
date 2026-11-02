@@ -199,9 +199,10 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §6.1.3 against webauthn-lib 5.3, which reassigns the flag and announces the change
-     * instead of refusing it (web-auth/webauthn-framework#969): the comparison with the enrolment is the
-     * core's, after the signature, as the sign count is.
+     * WebAuthn Level 3 §6.1.3: the comparison with the enrolment is the core's, after the signature, as the
+     * sign count is, so that the refusal names the passkey; webauthn-lib, which refuses an assertion whose
+     * BE flag is not the one of the record it is handed (CheckBackupEligibilityIsUnchanged), is handed the
+     * record without it.
      */
     #[Test]
     public function anAssertionWhoseBackupEligibilityChangedIsVerifiedForTheCoreToRefuse(): void
