@@ -34,8 +34,9 @@ use Beffroi\Core\Exception\RuntimeException;
  * deployment names its licence key. Every flow is served all the same, with a provenance that says an
  * address and no place.
  *
- * Beside each database is the ETag MaxMind served it with, which is what lets the weekly refresh ask
- * whether anything changed instead of downloading sixty megabytes to write the same bytes again.
+ * Beside each database is the ETag its source served it with, for a download of MaxMind the ETag of the
+ * storage it redirects to (decision 0032), which is what lets the weekly refresh ask whether anything
+ * changed instead of downloading sixty megabytes to write the same bytes again.
  */
 final readonly class GeoLite2Databases
 {

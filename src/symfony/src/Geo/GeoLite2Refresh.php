@@ -13,6 +13,7 @@ use function http_build_query;
 use function in_array;
 use function is_file;
 use function is_readable;
+use function preg_replace;
 use function random_bytes;
 use function sprintf;
 use function str_contains;
@@ -37,8 +38,11 @@ use Throwable;
  * enrichment will open it with: a database that cannot be opened, or that declares an edition the
  * enrichment does not read, is refused and nothing of it is kept.
  *
- * **It asks before it downloads.** The ETag of what is stored goes out as `If-None-Match`, so a week in
- * which MaxMind published nothing costs one request and no bytes (GeoLite2 is published on Tuesdays).
+ * **It asks before it downloads.** The ETag of what is stored goes out as `If-None-Match`, and the storage
+ * MaxMind redirects its downloads to answers it, so a run that finds the version it keeps costs a redirect
+ * and an answer that nothing changed, and no byte of the database. MaxMind publishes the city edition on
+ * Tuesdays and Fridays and the ASN edition every weekday ("Download and update databases",
+ * https://support.maxmind.com/knowledge-base/articles/download-and-update-maxmind-databases).
  *
  * **No archive and no database is held whole in memory** (issue #904): what a source serves is written to
  * a file as it arrives, the database is unpacked from that file into another, the reader opens that one
@@ -56,6 +60,15 @@ final readonly class GeoLite2Refresh
      * archive per edition, named by a query string, under the licence key of an account.
      */
     public const string MAXMIND_DOWNLOAD = 'https://download.maxmind.com/app/geoip_download';
+
+    /**
+     * Where MaxMind keeps the archives it serves, and the one origin an outbound request of this provider
+     * follows a redirect to (decision 0032): MaxMind answers every download with a redirect to a presigned
+     * URL of R2, the storage of Cloudflare, "using HTTPS on the following hostname"
+     * (https://dev.maxmind.com/geoip/updating-databases). The redirect is followed once, from a download of
+     * MaxMind, to a URL that starts with this.
+     */
+    public const string MAXMIND_STORAGE = 'https://mm-prod-geoip-databases.a2649acb697e2c09b632799562c076f2.r2.cloudflarestorage.com/';
 
     public function __construct(
         private HttpClientInterface $http,
@@ -104,7 +117,7 @@ final readonly class GeoLite2Refresh
 
             return GeoLite2Refreshment::stored($named, $declared, $builtOn, $nodes);
         } catch (Throwable $exception) {
-            return GeoLite2Refreshment::refused($named, $exception->getMessage());
+            return GeoLite2Refreshment::refused($named, self::withoutQueries($exception->getMessage()));
         } finally {
             // What was downloaded and what was unpacked are this run's, whatever came of them.
             @unlink($downloaded);
@@ -142,7 +155,7 @@ final readonly class GeoLite2Refresh
      * The archive as a file of this host and the version it was served with, or nothing when the source
      * answers that what is stored is what it serves: a file is read where it is, and what an https source
      * serves is written to the file given as it arrives. No outbound request follows a redirect (decision
-     * 0006): the URL the source names is said instead.
+     * 0006) but one, from a download of MaxMind to its storage, once (decision 0032).
      *
      * @return array{string, ?string}|null
      *
@@ -161,16 +174,18 @@ final readonly class GeoLite2Refresh
         }
         try {
             $response = $this->requested($source, $version);
+            if (self::redirects($response)) {
+                $response = $this->requested(self::followed($source, self::location($response)), $version);
+                if (self::redirects($response)) {
+                    throw new InvalidArgumentException(sprintf(
+                        'the storage of MaxMind redirects again, to %s, and no outbound request follows a second redirect',
+                        self::location($response),
+                    ));
+                }
+            }
             $status = $response->getStatusCode();
             if ($status === 304) {
                 return null;
-            }
-            if ($status >= 300 && $status < 400) {
-                $location = $response->getHeaders(false)['location'][0] ?? '?';
-                throw new InvalidArgumentException(sprintf(
-                    'the source redirects to %s, and no outbound request follows a redirect; name that URL instead',
-                    $location,
-                ));
             }
             if ($status !== 200) {
                 throw new InvalidArgumentException(sprintf('the source answered %d', $status));
@@ -186,7 +201,8 @@ final readonly class GeoLite2Refresh
     }
 
     /**
-     * One GET, the version of what is stored going out with it, and no redirect followed (decision 0006).
+     * One GET, the version of what is stored going out with it, and no redirect followed by the client:
+     * the one this provider follows, it follows itself.
      */
     private function requested(string $url, ?string $version): ResponseInterface
     {
@@ -199,6 +215,31 @@ final readonly class GeoLite2Refresh
             'max_redirects' => 0,
             'buffer' => false,
         ]);
+    }
+
+    /**
+     * Where a redirect of that source leads, when it is the one redirect an outbound request follows
+     * (decision 0032): a download of MaxMind, to its storage, over https.
+     *
+     * @throws InvalidArgumentException on any other redirect, naming where it leads
+     */
+    private static function followed(string $source, string $location): string
+    {
+        if (! str_starts_with($source, self::MAXMIND_DOWNLOAD . '?')) {
+            throw new InvalidArgumentException(sprintf(
+                'the source redirects to %s, and no outbound request follows a redirect; name that URL instead',
+                $location,
+            ));
+        }
+        if (! str_starts_with($location, self::MAXMIND_STORAGE)) {
+            throw new InvalidArgumentException(sprintf(
+                'MaxMind redirects to %s rather than to %s, the one redirect an outbound request follows',
+                $location,
+                self::MAXMIND_STORAGE,
+            ));
+        }
+
+        return $location;
     }
 
     /**
@@ -222,6 +263,29 @@ final readonly class GeoLite2Refresh
         } finally {
             fclose($file);
         }
+    }
+
+    private static function redirects(ResponseInterface $response): bool
+    {
+        $status = $response->getStatusCode();
+
+        return $status >= 300 && $status < 400 && $status !== 304;
+    }
+
+    private static function location(ResponseInterface $response): string
+    {
+        return $response->getHeaders(false)['location'][0] ?? '?';
+    }
+
+    /**
+     * The reason of a refusal with the query of every URL it names withheld, "?..." in its place: the
+     * licence key of a download of MaxMind and the signature of a presigned URL travel there, a refusal is
+     * written to a console and to a log, and the reason a client of HTTP gives names the URL it could not
+     * read whole. What follows a URL, a parenthesis, a comma or a period, stays.
+     */
+    private static function withoutQueries(string $reason): string
+    {
+        return preg_replace('~(https?://[^\s"\'<>?#]*)([?#])[^\s"\'<>]*?(?=[.,;:)\]]*(?:[\s"\'<>]|$))~', '$1$2...', $reason) ?? $reason;
     }
 
     /**

@@ -64,10 +64,13 @@ final readonly class BeffroiSchedule implements ScheduleProviderInterface
     public const string HISTORY_RETENTION_EVERY = '1 day';
 
     /**
-     * What the databases of addresses are worth waiting for (issue #473): MaxMind publishes GeoLite2 once
-     * a week, so a week is the cadence of what is being followed and not a guess. A week in which nothing
-     * was published costs one request and no download, the ETag of what is stored going out with it, and a
-     * deployment that names no licence key downloads nothing at all.
+     * What the databases of addresses are worth waiting for (issue #473): a week. MaxMind publishes the
+     * city edition on Tuesdays and Fridays and the ASN edition every weekday ("Download and update
+     * databases", https://support.maxmind.com/knowledge-base/articles/download-and-update-maxmind-databases),
+     * so a run finds both new and downloads them; a run that finds the versions it keeps costs no
+     * download, MaxMind redirecting to its storage, which answers that what is stored is what it serves,
+     * the ETag of what is stored going out with the request. A deployment that names no licence key
+     * downloads nothing at all.
      */
     public const string ADDRESS_DATABASES_EVERY = '1 week';
 
