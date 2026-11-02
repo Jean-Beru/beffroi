@@ -8,6 +8,11 @@ host_route:
     controller: Beffroi\Bundle\Tests\Functional\Controller\ProbeController
     defaults:
         plane: host
+
+# The host application signing its own users in at the provider it hosts (issue #282).
+host_application:
+    resource: routing_host_application.yml
+
 # The endpoints of the FIDO2 server API, imported as an application imports them in development, under a
 # prefix of its own.
 beffroi_fido_conformance:

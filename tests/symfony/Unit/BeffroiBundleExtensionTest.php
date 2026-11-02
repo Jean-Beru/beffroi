@@ -7,6 +7,7 @@ namespace Beffroi\Bundle\Tests\Unit;
 use DateInterval;
 use Beffroi\Bundle\BeffroiBundle;
 use Beffroi\Bundle\Configuration\SamlSection;
+use Beffroi\Bundle\Configuration\SelfClientSection;
 use Beffroi\Bundle\Configuration\WebPushSection;
 use Beffroi\Bundle\Key\DormantKeyAlgorithms;
 use Beffroi\Bundle\Key\FileTenantKeyRepository;
@@ -204,6 +205,64 @@ final class BeffroiBundleExtensionTest extends TestCase
         $clients = $container->getDefinition(ConfigurationClientRepository::class)->getArgument('$definitions');
         static::assertIsArray($clients);
         static::assertSame(['app'], array_keys($clients));
+    }
+
+    /**
+     * Issue #282: the application that hosts the bundle is a client of a source of its own, a declaration of the
+     * configuration like the clients beside it, built once the router can write the URLs of its routes.
+     */
+    #[Test]
+    public function theClientOfTheApplicationIsASourceOfItsOwn(): void
+    {
+        // When
+        $container = self::load([
+            'self_client' => [
+                'redirect_route' => 'app_oidc_callback',
+                'secret' => '%env(APP_OIDC_SECRET)%',
+            ],
+        ]);
+
+        // Then
+        $source = $container->getDefinition(SelfClientSection::SOURCE);
+        static::assertSame(ConfigurationClientRepository::class, $source->getClass());
+        static::assertArrayHasKey('beffroi.oidc.client_source', $source->getTags());
+        static::assertArrayHasKey('beffroi.oidc.client_inventory', $source->getTags());
+    }
+
+    #[Test]
+    public function anApplicationThatDeclaresNoClientIsNone(): void
+    {
+        // When
+        $container = self::load([]);
+
+        // Then
+        static::assertFalse($container->hasDefinition(SelfClientSection::SOURCE));
+    }
+
+    /**
+     * One identifier is one client of the tenant: the application does not take the identifier of a client the
+     * deployment declares beside it, whose source would answer for it first.
+     */
+    #[Test]
+    public function theApplicationDoesNotTakeTheIdentifierOfADeclaredClient(): void
+    {
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIs('The "beffroi" configuration key "self_client.client_id" names "app", a client "clients" declares as well: one identifier is one client of the tenant.');
+
+        // When
+        self::load([
+            'clients' => [
+                'app' => [
+                    'redirect_uris' => ['https://app.test/cb'],
+                    'token_endpoint_auth_method' => 'none',
+                ],
+            ],
+            'self_client' => [
+                'redirect_route' => 'app_oidc_callback',
+                'secret' => '%env(APP_OIDC_SECRET)%',
+            ],
+        ]);
     }
 
     /**
