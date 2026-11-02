@@ -58,6 +58,27 @@ final class MetadataBlobVerifierTest extends TestCase
         static::assertSame(AuthenticatorStatus::FIDO_CERTIFIED, $blob->content->entries[0]->statusReports[0]->status);
     }
 
+    /**
+     * FIDO Metadata Statement v3.1 §4 does not require userVerificationDetails, its absence meaning that any
+     * method of user verification could be implemented: a statement that leaves it out is read like any
+     * other, and the blob that carries it is not refused whole for it (issue #910).
+     */
+    #[Test]
+    public function aBlobWhoseStatementLeavesOutTheUserVerificationDetailsIsVerifiedAndRead(): void
+    {
+        // Given
+        $token = $this->service->sign(MetadataBlobs::payload([
+            MetadataBlobs::entry(self::AAGUID, omitting: ['userVerificationDetails']),
+        ]));
+
+        // When
+        $blob = $this->verifier->verify($token, $this->service->rootCertificate());
+
+        // Then
+        static::assertCount(1, $blob->content->entries);
+        static::assertSame(self::AAGUID, $blob->content->entries[0]->metadataStatement?->aaguid);
+    }
+
     #[Test]
     public function aBlobSignedUnderAnotherRootIsRefused(): void
     {

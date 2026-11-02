@@ -66,6 +66,25 @@ final class StoredMetadataTest extends TestCase
     }
 
     /**
+     * FIDO Metadata Statement v3.1 §4 does not require userVerificationDetails: a statement that leaves it
+     * out describes its authenticator all the same, and the ceremonies find it by its AAGUID (issue #910).
+     */
+    #[Test]
+    public function aStatementThatLeavesOutTheUserVerificationDetailsIsFoundByItsAaguid(): void
+    {
+        // Given
+        $this->store->write('mds', MetadataBlobs::payload([
+            MetadataBlobs::entry(self::AAGUID, description: 'Passkey provider', omitting: ['userVerificationDetails']),
+        ]));
+
+        // When
+        $statement = $this->metadata->findOneByAAGUID(self::AAGUID);
+
+        // Then
+        static::assertSame('Passkey provider', $statement?->description);
+    }
+
+    /**
      * The other way round: a document that spells an AAGUID in upper case describes the authenticator
      * whose data spell it in lower case, as webauthn-lib reads them.
      */
