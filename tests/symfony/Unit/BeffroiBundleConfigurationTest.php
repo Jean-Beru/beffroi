@@ -491,6 +491,36 @@ final class BeffroiBundleConfigurationTest extends TestCase
     }
 
     /**
+     * Spec/saml.md S-12, S-40, issue #952: the figures of the SAML keys and the cacheDuration of the metadata are set
+     * under nodes of no role, so that a deployment that serves the service provider alone sets them and leaves its
+     * identity provider off.
+     */
+    #[Test]
+    public function theFiguresOfTheSamlKeysTurnNoRoleOn(): void
+    {
+        // When
+        $config = self::process([
+            'tenant' => self::MINIMAL['tenant'],
+            'keys' => self::MINIMAL['keys'],
+            'saml' => [
+                'keys' => [
+                    'staging_delay' => 1_209_600,
+                    'age' => 15_552_000,
+                ],
+                'metadata' => [
+                    'cache_duration' => 3_600,
+                ],
+                'service_provider' => null,
+            ],
+        ]);
+
+        // Then
+        static::assertIsArray($config['saml']);
+        static::assertIsArray($config['saml']['identity_provider']);
+        static::assertFalse($config['saml']['identity_provider']['enabled']);
+    }
+
+    /**
      * A client identifier is a value, not a configuration key to normalize: "oidc-demo" stays "oidc-demo".
      */
     #[Test]
