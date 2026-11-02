@@ -197,7 +197,7 @@
         },
         {
             "name": "beffroi/core",
-            "version": "0.0.x-dev",
+            "version": "dev-main",
             "dist": {
                 "type": "path",
                 "url": "../../src/core",
@@ -247,7 +247,7 @@
         },
         {
             "name": "beffroi/oidc",
-            "version": "0.0.x-dev",
+            "version": "dev-main",
             "dist": {
                 "type": "path",
                 "url": "../../src/oidc",
@@ -290,7 +290,7 @@
         },
         {
             "name": "beffroi/saml",
-            "version": "0.0.x-dev",
+            "version": "dev-main",
             "dist": {
                 "type": "path",
                 "url": "../../src/saml",
@@ -340,7 +340,7 @@
         },
         {
             "name": "beffroi/saml2-bindings",
-            "version": "0.0.x-dev",
+            "version": "dev-main",
             "dist": {
                 "type": "path",
                 "url": "../../src/saml2-bindings",
@@ -390,7 +390,7 @@
         },
         {
             "name": "beffroi/saml2-model",
-            "version": "0.0.x-dev",
+            "version": "dev-main",
             "dist": {
                 "type": "path",
                 "url": "../../src/saml2-model",
@@ -439,7 +439,7 @@
         },
         {
             "name": "beffroi/symfony-bundle",
-            "version": "0.0.x-dev",
+            "version": "dev-main",
             "dist": {
                 "type": "path",
                 "url": "../../src/symfony",
@@ -522,7 +522,7 @@
         },
         {
             "name": "beffroi/xml-security",
-            "version": "0.0.x-dev",
+            "version": "dev-main",
             "dist": {
                 "type": "path",
                 "url": "../../src/xml-security",
@@ -4892,16 +4892,16 @@
         },
         {
             "name": "symfony/flex",
-            "version": "v2.11.0",
+            "version": "v2.12.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/flex.git",
-                "reference": "4a6d98eea3ebc7f68d82810cb682eedca2649e99"
+                "reference": "3d37e8597c2290c095433b4260563986f857a274"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/flex/zipball/4a6d98eea3ebc7f68d82810cb682eedca2649e99",
-                "reference": "4a6d98eea3ebc7f68d82810cb682eedca2649e99",
+                "url": "https://api.github.com/repos/symfony/flex/zipball/3d37e8597c2290c095433b4260563986f857a274",
+                "reference": "3d37e8597c2290c095433b4260563986f857a274",
                 "shasum": ""
             },
             "require": {
@@ -4941,7 +4941,7 @@
             "description": "Composer plugin for Symfony",
             "support": {
                 "issues": "https://github.com/symfony/flex/issues",
-                "source": "https://github.com/symfony/flex/tree/v2.11.0"
+                "source": "https://github.com/symfony/flex/tree/v2.12.0"
             },
             "funding": [
                 {
@@ -4961,7 +4961,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-05-29T17:25:22+00:00"
+            "time": "2026-10-29T17:24:46+00:00"
         },
         {
             "name": "symfony/form",
