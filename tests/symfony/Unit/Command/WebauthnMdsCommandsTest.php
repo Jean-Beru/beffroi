@@ -218,6 +218,28 @@ final class WebauthnMdsCommandsTest extends TestCase
         static::assertSame([], $metadata->findStatusReportsByAAGUID(self::AAGUID));
     }
 
+    /**
+     * FIDO Metadata Statement v3.1 §4 does not require userVerificationDetails: a statement a manufacturer
+     * publishes without it is imported like any other (issue #910).
+     */
+    #[Test]
+    public function aStatementThatLeavesOutTheUserVerificationDetailsIsImported(): void
+    {
+        // Given
+        $statement = MetadataBlobs::entry(self::AAGUID, omitting: ['userVerificationDetails'])['metadataStatement'];
+        file_put_contents($this->directory . '/statement.json', json_encode($statement, JSON_THROW_ON_ERROR));
+        $tester = $this->import();
+
+        // When
+        $tester->execute([
+            'files' => [$this->directory . '/statement.json'],
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame(['statement-' . self::AAGUID], array_keys($this->store->readAll()));
+    }
+
     #[Test]
     public function aFileThatIsNotAStatementIsRefusedAndNothingIsStored(): void
     {

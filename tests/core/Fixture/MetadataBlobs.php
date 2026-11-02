@@ -31,6 +31,8 @@ final class MetadataBlobs
     /**
      * @param list<string> $statuses the status reports, in the order the service issued them
      * @param list<string> $attestationRootCertificates DER in base64
+     * @param list<string> $omitting the members of the statement it leaves out, those FIDO Metadata Statement
+     *                               v3.1 §4 does not require
      *
      * @return array<string, mixed>
      */
@@ -39,6 +41,7 @@ final class MetadataBlobs
         array $statuses = [AuthenticatorStatus::FIDO_CERTIFIED],
         string $description = 'Authenticator of the tests',
         array $attestationRootCertificates = [],
+        array $omitting = [],
     ): array {
         $reports = [];
         foreach ($statuses as $status) {
@@ -47,32 +50,36 @@ final class MetadataBlobs
                 'effectiveDate' => '2026-09-01',
             ];
         }
+        $statement = [
+            'legalHeader' => 'For the tests.',
+            'aaguid' => $aaguid,
+            'description' => $description,
+            'authenticatorVersion' => 1,
+            'protocolFamily' => 'fido2',
+            'schema' => 3,
+            'upv' => [[
+                'major' => 1,
+                'minor' => 0,
+            ]],
+            'authenticationAlgorithms' => ['secp256r1_ecdsa_sha256_raw'],
+            'publicKeyAlgAndEncodings' => ['cose'],
+            'attestationTypes' => ['basic_full', 'basic_surrogate'],
+            'userVerificationDetails' => [[[
+                'userVerificationMethod' => 'presence_internal',
+            ]]],
+            'keyProtection' => ['hardware'],
+            'matcherProtection' => ['on_chip'],
+            'attachmentHint' => ['external'],
+            'tcDisplay' => [],
+            'attestationRootCertificates' => $attestationRootCertificates,
+        ];
+        foreach ($omitting as $member) {
+            unset($statement[$member]);
+        }
 
         return [
             'aaguid' => $aaguid,
-            'metadataStatement' => [
-                'legalHeader' => 'For the tests.',
-                'aaguid' => $aaguid,
-                'description' => $description,
-                'authenticatorVersion' => 1,
-                'protocolFamily' => 'fido2',
-                'schema' => 3,
-                'upv' => [[
-                    'major' => 1,
-                    'minor' => 0,
-                ]],
-                'authenticationAlgorithms' => ['secp256r1_ecdsa_sha256_raw'],
-                'publicKeyAlgAndEncodings' => ['cose'],
-                'attestationTypes' => ['basic_full', 'basic_surrogate'],
-                'userVerificationDetails' => [[[
-                    'userVerificationMethod' => 'presence_internal',
-                ]]],
-                'keyProtection' => ['hardware'],
-                'matcherProtection' => ['on_chip'],
-                'attachmentHint' => ['external'],
-                'tcDisplay' => [],
-                'attestationRootCertificates' => $attestationRootCertificates,
-            ],
+            'metadataStatement' => $statement,
             'statusReports' => $reports,
             'timeOfLastStatusChange' => '2026-09-01',
         ];
