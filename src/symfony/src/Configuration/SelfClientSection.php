@@ -196,7 +196,7 @@ final readonly class SelfClientSection extends ConfigurationSection implements E
     {
         $declaration = new ArrayNodeDefinition('self_client');
         $declaration
-            ->info('The application that hosts the bundle, as a client of the provider it hosts: it names its routes, and the provider registers the URLs the router writes for them under the origin of the issuer. It asks for no consent, the named exception of a first-party application, and takes the defaults of a declared client for everything else. Absent, the application is no client of its provider. What its firewall needs of it is exposed as the parameters "beffroi.self_client.issuer", "beffroi.self_client.client_id" and "beffroi.self_client.secret".')
+            ->info('The application that hosts the bundle, as a client of the provider it hosts: it names its routes, and the provider registers the URLs the router writes for them in the context of the issuer, a route that requires neither a scheme nor a host being its path under the origin of the issuer. It asks for no consent, the named exception of a first-party application, and takes the defaults of a declared client for everything else. Absent, the application is no client of its provider. What its firewall needs of it is exposed as the parameters "beffroi.self_client.issuer", "beffroi.self_client.client_id" and "beffroi.self_client.secret".')
             ->children()
             ->scalarNode('client_id')
             ->info('The identifier the application is known by, which no client of "clients" may carry as well.')

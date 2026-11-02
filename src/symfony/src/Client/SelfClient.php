@@ -24,8 +24,8 @@ use Symfony\Component\Routing\RequestContext;
  * reached at, and the URLs it registers are what the router writes for them in the context of the issuer, its scheme,
  * its host and its port. A route that requires neither a scheme nor a host is its path under the origin of the issuer,
  * the application and the provider being served under the same host, and a route that requires one is written as it
- * requires. Nothing is guessed from the request being served, as nothing is for the endpoints of the provider
- * (RouterEndpointLocator).
+ * requires. The host of the request being served plays no part, as it plays none for the endpoints of the provider
+ * (RouterEndpointLocator); the base of the application is the one the router holds.
  *
  * What it declares is what a deployment would write for it under "clients", so the provider knows it as an ordinary
  * client: its URLs, its secret, and the consent a first-party application is the named exception of. Everything else

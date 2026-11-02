@@ -69,7 +69,7 @@ final class SelfClientTest extends TestCase
 
     /**
      * The request being served came in on another host, or on a port the issuer does not name: the issuer wins, as it
-     * does for the endpoints of the provider (architecture §4.8).
+     * does for the endpoints of the provider (architecture §5.2).
      */
     #[Test]
     public function theHostOfTheRequestPlaysNoPart(): void
