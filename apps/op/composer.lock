@@ -201,7 +201,7 @@
             "dist": {
                 "type": "path",
                 "url": "../../src/core",
-                "reference": "c79b8b5b8128189a30c2c9b16ee6478df066847b"
+                "reference": "5b71d7ffa879efe33de8619bfa3dacf05ed48d4b"
             },
             "require": {
                 "ext-intl": "*",
@@ -212,6 +212,7 @@
                 "psr/log": "^3.0",
                 "spomky-labs/aes-key-wrap": "^7.0",
                 "spomky-labs/otphp": "^11.5",
+                "spomky-labs/pki-framework": "^1.2.1",
                 "symfony/key-management": "8.2.*",
                 "symfony/uid": "8.2.*",
                 "web-auth/webauthn-lib": "^5.3.10",

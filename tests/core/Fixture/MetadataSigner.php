@@ -18,6 +18,7 @@ use function openssl_pkey_new;
 use SpomkyLabs\Pki\CryptoEncoding\PEM;
 use SpomkyLabs\Pki\CryptoTypes\AlgorithmIdentifier\Signature\ECDSAWithSHA256AlgorithmIdentifier;
 use SpomkyLabs\Pki\CryptoTypes\Asymmetric\PrivateKey;
+use SpomkyLabs\Pki\CryptoTypes\Asymmetric\PublicKeyInfo;
 use SpomkyLabs\Pki\X501\ASN1\Name;
 use SpomkyLabs\Pki\X509\Certificate\Certificate;
 use SpomkyLabs\Pki\X509\Certificate\Extension\BasicConstraintsExtension;
@@ -37,6 +38,7 @@ final readonly class MetadataSigner
 {
     private function __construct(
         private Certificate $root,
+        private PrivateKey $rootKey,
         private Certificate $intermediate,
         private Certificate $signer,
         private PrivateKey $signerKey,
@@ -45,7 +47,7 @@ final readonly class MetadataSigner
 
     public static function create(string $name = 'Test Metadata Service'): self
     {
-        $validity = Validity::fromStrings('2026-01-01T00:00:00Z', '2046-01-01T00:00:00Z');
+        $validity = self::validity();
         $rootKey = self::key();
         $rootName = Name::fromString('cn=' . $name . ' Root');
         $root = TBSCertificate::create($rootName, $rootKey->publicKey()->publicKeyInfo(), $rootName, $validity)
@@ -66,7 +68,7 @@ final readonly class MetadataSigner
             ->withAdditionalExtensions(KeyUsageExtension::create(true, KeyUsageExtension::DIGITAL_SIGNATURE))
             ->sign(ECDSAWithSHA256AlgorithmIdentifier::create(), $intermediateKey->privateKeyInfo());
 
-        return new self($root, $intermediate, $signer, $signerKey);
+        return new self($root, $rootKey, $intermediate, $signer, $signerKey);
     }
 
     /**
@@ -105,6 +107,44 @@ final readonly class MetadataSigner
     public function chain(): array
     {
         return [base64_encode($this->signer->toDER()), base64_encode($this->intermediate->toDER())];
+    }
+
+    /**
+     * The root of this service issued by the root of another one, a cross-certificate, the shape of GlobalSign
+     * Root R46 issued by GlobalSign Root CA - R3 at the end of the chain of the FIDO Alliance: the name and the
+     * key of this root, the other root as issuer, DER in base64 as "x5c" carries it.
+     */
+    public function rootIssuedBy(self $other): string
+    {
+        return $other->issue($this->root->tbsCertificate()->subject(), $this->rootKey->publicKey()->publicKeyInfo());
+    }
+
+    /**
+     * The name of the root of this service on another key, issued by the root of another one: what a chain that
+     * only borrows the name of the pinned root ends with.
+     */
+    public function rootNameOnAnotherKeyIssuedBy(self $other): string
+    {
+        return $other->issue($this->root->tbsCertificate()->subject(), self::key()->publicKey()->publicKeyInfo());
+    }
+
+    /**
+     * A certificate authority this root issues, DER in base64.
+     */
+    private function issue(Name $subject, PublicKeyInfo $key): string
+    {
+        $certificate = TBSCertificate::create($subject, $key, $this->root->tbsCertificate()->subject(), self::validity())
+            ->withRandomSerialNumber()
+            ->withIssuerCertificate($this->root)
+            ->withAdditionalExtensions(BasicConstraintsExtension::create(true, true), KeyUsageExtension::create(true, KeyUsageExtension::KEY_CERT_SIGN))
+            ->sign(ECDSAWithSHA256AlgorithmIdentifier::create(), $this->rootKey->privateKeyInfo());
+
+        return base64_encode($certificate->toDER());
+    }
+
+    private static function validity(): Validity
+    {
+        return Validity::fromStrings('2026-01-01T00:00:00Z', '2046-01-01T00:00:00Z');
     }
 
     private static function key(): PrivateKey

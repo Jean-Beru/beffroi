@@ -95,6 +95,67 @@ final class MetadataBlobVerifierTest extends TestCase
     }
 
     /**
+     * RFC 5280 §6.1.1 (d), a trust anchor is a name and a key: a chain that ends with the pinned root issued by
+     * another root, as the chain of the FIDO Alliance ends with GlobalSign Root R46 issued by GlobalSign Root
+     * CA - R3, verifies under the pinned root.
+     */
+    #[Test]
+    public function aChainThatEndsWithThePinnedRootIssuedByAnotherRootIsVerifiedUnderThePinnedRoot(): void
+    {
+        // Given
+        $older = MetadataSigner::create('Older Service');
+        $payload = MetadataBlobs::payload([MetadataBlobs::entry(self::AAGUID)]);
+        $token = $this->service->sign($payload, [...$this->service->chain(), $this->service->rootIssuedBy($older)]);
+
+        // When
+        $blob = $this->verifier->verify($token, $this->service->rootCertificate());
+
+        // Then
+        static::assertSame($payload, $blob->payload);
+    }
+
+    /**
+     * The same chain leads to the root that issued its last certificate, as GlobalSign Root CA - R3 verifies the
+     * chain of the FIDO Alliance.
+     */
+    #[Test]
+    public function aChainThatEndsWithACrossCertificateIsVerifiedUnderTheRootThatIssuedIt(): void
+    {
+        // Given
+        $older = MetadataSigner::create('Older Service');
+        $payload = MetadataBlobs::payload([MetadataBlobs::entry(self::AAGUID)]);
+        $token = $this->service->sign($payload, [...$this->service->chain(), $this->service->rootIssuedBy($older)]);
+
+        // When
+        $blob = $this->verifier->verify($token, $older->rootCertificate());
+
+        // Then
+        static::assertSame($payload, $blob->payload);
+    }
+
+    /**
+     * A certificate that carries the name of the pinned root on another key is not that root: the chain does not
+     * stop at it, and does not lead to the pinned root.
+     */
+    #[Test]
+    public function aChainThatEndsWithTheNameOfThePinnedRootOnAnotherKeyIsRefused(): void
+    {
+        // Given
+        $other = MetadataSigner::create('Another Service');
+        $token = $this->service->sign(MetadataBlobs::payload([MetadataBlobs::entry(self::AAGUID)]), [
+            ...$this->service->chain(),
+            $this->service->rootNameOnAnotherKeyIssuedBy($other),
+        ]);
+
+        // Then
+        $this->expectException(MetadataBlobRefusedException::class);
+        $this->expectExceptionMessageIsOrContains('The certificate chain of the blob does not lead to the pinned root');
+
+        // When
+        $this->verifier->verify($token, $this->service->rootCertificate());
+    }
+
+    /**
      * A chain that leads to the root but is not the signer's: the signature is checked with the key of the
      * certificate named, and does not hold.
      */

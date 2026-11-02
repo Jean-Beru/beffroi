@@ -44,9 +44,9 @@ final readonly class WebauthnMdsRefreshCommand
     public const string FIDO_METADATA_SERVICE = 'https://mds.fidoalliance.org/';
 
     /**
-     * The root the FIDO Alliance signs under, shipped with the bundle.
+     * The root the FIDO Alliance names for its blob (https://fidoalliance.org/metadata/), shipped with the bundle.
      */
-    public const string FIDO_ROOT_CERTIFICATE = __DIR__ . '/../../config/webauthn/globalsign-root-ca-r3.pem';
+    public const string FIDO_ROOT_CERTIFICATE = __DIR__ . '/../../config/webauthn/globalsign-root-r46.pem';
 
     public function __construct(
         private HttpClientInterface $http,
@@ -63,7 +63,7 @@ final readonly class WebauthnMdsRefreshCommand
         #[Option(description: 'The URL of a Metadata BLOB, repeatable; the FIDO Metadata Service unless given.')]
         array $url = [],
         #[Option(
-            description: 'The root certificate the chain of a blob must lead to: a PEM or DER file, or an https URL; the GlobalSign Root CA - R3 the FIDO Alliance signs under unless given.',
+            description: 'The root certificate the chain of a blob must lead to: a PEM or DER file, or an https URL; the GlobalSign Root R46 the FIDO Alliance names unless given.',
         )]
         ?string $root = null,
     ): int {
