@@ -76,6 +76,24 @@ final class PwnedPasswordsTest extends TestCase
         static::assertContains('Add-Padding: true', $this->headersAsked);
     }
 
+    /**
+     * Decision 0006: no outbound request follows a redirect, and the client is told so, a redirect of the
+     * endpoint being then an answer that is not a success (`a redirection nobody followed` below).
+     */
+    #[Test]
+    public function theEndpointIsAskedWithoutFollowingARedirect(): void
+    {
+        // Given
+        $response = self::answer([self::PASSWORD_SUFFIX => 2]);
+        $breaches = $this->breaches($response);
+
+        // When
+        $breaches->timesSeen(PasswordDigest::of(self::PASSWORD));
+
+        // Then
+        static::assertSame(0, $response->getRequestOptions()['max_redirects'] ?? null);
+    }
+
     #[Test]
     public function aSuffixTheBucketCountsIsTheCountOfTheDigest(): void
     {

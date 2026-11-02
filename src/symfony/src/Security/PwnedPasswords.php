@@ -39,7 +39,8 @@ use function trim;
  *
  * **An unknown is not a count of zero** (decision 0006). A timeout, a status that is not a success and a
  * body that does not read as counted suffixes are all the exception of the port, and each caller says what
- * it makes of one.
+ * it makes of one. A redirect is such a status: the endpoint is asked where the deployment names it, and
+ * no outbound request follows a redirect (decision 0006).
  */
 final readonly class PwnedPasswords implements BreachedPasswordsInterface
 {
@@ -89,6 +90,7 @@ final readonly class PwnedPasswords implements BreachedPasswordsInterface
                     'Add-Padding' => 'true',
                     'Accept' => 'text/plain',
                 ],
+                'max_redirects' => 0,
                 ...$this->timeout->options(),
             ]);
             $status = $response->getStatusCode();
