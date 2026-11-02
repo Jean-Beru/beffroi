@@ -35,6 +35,7 @@ use Beffroi\Bundle\Configuration\BackChannelLogoutSection;
 use Beffroi\Bundle\Configuration\ClientAuthenticationSection;
 use Beffroi\Bundle\Configuration\ClientRegistrationSection;
 use Beffroi\Bundle\Configuration\ClientsSection;
+use Beffroi\Bundle\Configuration\ExposesParametersInterface;
 use Beffroi\Bundle\Configuration\InteractionSection;
 use Beffroi\Bundle\Configuration\ConfigurationSectionInterface;
 use Beffroi\Bundle\Configuration\DpopSection;
@@ -49,6 +50,7 @@ use Beffroi\Bundle\Configuration\RequestObjectsSection;
 use Beffroi\Bundle\Configuration\TenantSection;
 use Beffroi\Bundle\Configuration\TokensSection;
 use Beffroi\Bundle\Configuration\SamlSection;
+use Beffroi\Bundle\Configuration\SelfClientSection;
 use Beffroi\Bundle\Configuration\TrustedIssuersSection;
 use Beffroi\Bundle\Configuration\WebauthnSection;
 use Beffroi\Bundle\Configuration\WebPushSection;
@@ -237,10 +239,20 @@ final class BeffroiBundle extends AbstractBundle
      * Doctrine gets the mappings, the types and the migrations of the bundle (architecture §5.3); the
      * security component gets the hasher of its users (§5.4); the rate limiter gets the limiter of the
      * attempts at a code (§3.4), a rule of the core the application does not tune. The firewall is the
-     * application's to declare.
+     * application's to declare, and what it names of this bundle is a container parameter set here, before
+     * any extension is loaded: Flex registers this bundle after SecurityBundle, and a firewall resolves the
+     * parameters it names when its own extension is loaded (issue #282).
      */
     public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
     {
+        $configs = $builder->getExtensionConfig($this->extensionAlias);
+        foreach (self::sections() as $section) {
+            if ($section instanceof ExposesParametersInterface) {
+                foreach ($section->parameters($configs) as $name => $value) {
+                    $builder->setParameter($name, $value);
+                }
+            }
+        }
         $bundleDir = dirname(__DIR__);
         if ($builder->hasExtension('doctrine')) {
             $builder->prependExtensionConfig('doctrine', [
@@ -423,6 +435,7 @@ final class BeffroiBundle extends AbstractBundle
             new DpopSection(),
             new TrustedIssuersSection(),
             new ClientsSection(),
+            new SelfClientSection(),
             new ClientRegistrationSection(),
             new SamlSection(),
         ];

@@ -4,3 +4,7 @@
 beffroi:
     resource: '@BeffroiBundle/config/routes.php'
     prefix: /idp
+
+# The host application, whose routes are under the origin of the issuer and not under its path (issue #282).
+host_application:
+    resource: routing_host_application.yml

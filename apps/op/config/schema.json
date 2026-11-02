@@ -1774,6 +1774,31 @@
                         },
                         "description": "The clients of the tenant, keyed by client identifier. A secret is hashed when the client is loaded and never kept in clear, unless the method it registered has to compute a MAC with it (client_secret_jwt)."
                     },
+                    "self_client": {
+                        "$ref": "#/$defs/types/object_null",
+                        "properties": {
+                            "client_id": {
+                                "$ref": "#/$defs/types/scalar",
+                                "default": "app",
+                                "description": "The identifier the application is known by, which no client of \"clients\" may carry as well."
+                            },
+                            "redirect_route": {
+                                "$ref": "#/$defs/types/scalar",
+                                "description": "The route the provider sends the browser back to with a code, the callback of the firewall of the application (\"_oidc_login_callback_<firewall>\" for \"oidc_login\"): its URL is the one redirect URI the application registers (RFC 6749 §3.1.2)."
+                            },
+                            "post_logout_route": {
+                                "$ref": "#/$defs/types/scalar",
+                                "default": null,
+                                "description": "The route the provider sends the browser back to after a logout the application asked for (RP-Initiated Logout §3); absent, it registers none."
+                            },
+                            "secret": {
+                                "$ref": "#/$defs/types/scalar",
+                                "description": "The secret the application authenticates with at the token endpoint, read from one environment variable and never written in a file: at least 32 visible ASCII characters, generated, never chosen, and never the secret of the kernel."
+                            }
+                        },
+                        "additionalProperties": false,
+                        "description": "The application that hosts the bundle, as a client of the provider it hosts: it names its routes, and the provider registers the URLs the router writes for them under the origin of the issuer. It asks for no consent, the named exception of a first-party application, and takes the defaults of a declared client for everything else. Absent, the application is no client of its provider. What its firewall needs of it is exposed as the parameters \"beffroi.self_client.issuer\", \"beffroi.self_client.client_id\" and \"beffroi.self_client.secret\"."
+                    },
                     "client_registration": {
                         "$ref": "#/$defs/types/object_null",
                         "properties": {

@@ -63,10 +63,29 @@ security:
     providers:
         beffroi:
             id: Beffroi\Bundle\Security\IdentityUserProvider
+        # The users of the host application are the people the provider signed in for it (issue #282), built from
+        # what the provider said of them.
+        application:
+            oidc: ~
     firewalls:
         beffroi_protocol:
             pattern: ^/(\.well-known/(openid-configuration|oauth-authorization-server)|jwks|token|userinfo|introspect|revoke|par|device_authorization|backchannel_authentication|register(/.+)?)$
             security: false
+        # The host application signs its own users in at the provider it hosts (issue #282), as an application that
+        # installs the bundle does with the "oidc_login" of Symfony: what it was declared with under
+        # "beffroi.self_client" is what this firewall names, through the three parameters the bundle exposes, and
+        # nothing of it is written twice. What it asks the provider is answered by this kernel.
+        application:
+            pattern: ^/application/
+            provider: application
+            oidc_login:
+                provider_uri: '%beffroi.self_client.issuer%'
+                client_id: '%beffroi.self_client.client_id%'
+                client_authentication:
+                    client_secret_basic: '%beffroi.self_client.secret%'
+                http_client: beffroi_test.provider_of_this_kernel
+                check_path: /application/oidc/callback
+                start_path: /application/oidc/start
         beffroi_interaction:
             lazy: true
             provider: beffroi
@@ -207,6 +226,9 @@ parameters:
     # 0030). None, which is what a deployment that declares none gets, and a test that wants some names them before
     # it boots a kernel.
     env(BEFFROI_TEST_TENANT_SCOPES): '[]'
+    # Issue #282: the secret the host application of this kernel authenticates with, which the section reads from
+    # the environment and nowhere else; a test that plays another names it before it boots a kernel.
+    env(BEFFROI_TEST_APPLICATION_SECRET): 'the-secret-of-the-host-application-of-this-kernel'
     # RFC 7591 §2.3: the keys the authority below is pinned by, which the test that plays the attested mode
     # replaces with the ones it signs with. The default is a key no test signs anything with: the anchor is
     # declared for every test because YAML cannot declare it only for one, and an anchor nothing verifies
@@ -343,6 +365,12 @@ beffroi:
         # The host whose listener asks for a client certificate (RFC 8705 §5): the same application, the
         # aliases of the discovery document pointing at it.
         origin: 'https://mtls.op.test'
+    # The host application of this kernel, a client of the provider it hosts (issue #282): the callback of its
+    # firewall, which the route loader of Symfony declares, and its page to come back to after a logout.
+    self_client:
+        redirect_route: _oidc_login_callback_application
+        post_logout_route: host_application_user
+        secret: '%env(BEFFROI_TEST_APPLICATION_SECRET)%'
     clients:
         oidc-demo:
             client_name: 'Demo application'
@@ -801,6 +829,14 @@ services:
     Beffroi\Core\Port\BreachedPasswordsInterface:
         alias: Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord
 
+    # Issue #282: the HTTP client of the firewall of the host application. What it asks the provider is handled by
+    # this kernel, the provider it hosts, as a request of its own: nothing of this kernel reaches a host.
+    beffroi_test.provider_of_this_kernel:
+        class: Symfony\Component\HttpClient\MockHttpClient
+        arguments: ['@Beffroi\Bundle\Tests\Functional\Security\RequestsToThisKernel', 'https://op.test']
+    Beffroi\Bundle\Tests\Functional\Security\RequestsToThisKernel:
+        arguments: ['@kernel']
+
     # The KMS client of this kernel, built from the DSN of the environment and named by the client above.
     beffroi_test.kms:
         class: Symfony\Component\KeyManagement\EncrypterInterface
@@ -839,6 +875,9 @@ services:
         public: true
     test.beffroi.client_store:
         alias: Beffroi\Oidc\Port\ClientStoreInterface
+        public: true
+    test.beffroi.self_client:
+        alias: beffroi.self_client
         public: true
     test.beffroi.client_authenticator:
         alias: Beffroi\Oidc\Application\Client\ClientAuthenticator
