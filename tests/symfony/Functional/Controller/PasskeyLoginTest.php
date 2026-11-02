@@ -192,20 +192,21 @@ final class PasskeyLoginTest extends PasskeyTestCase
         $used = self::events(PasskeyUsed::class);
         static::assertCount(1, $used);
         static::assertTrue($used[0]->credential->id->equals($passkey->id));
-        static::assertFalse($used[0]->signCountRegressed);
         static::assertSame('127.0.0.1', $used[0]->context->ipAddress);
         static::assertCount(1, self::events(UserAuthenticated::class));
     }
 
     /**
-     * Architecture §3.2: a sign count that did not grow is told, not refused; a synced passkey keeps it at zero.
+     * Architecture §3.2 and decision 0034: a sign count that did not grow is refused after the signature, with
+     * the passkey and its holder in the trail, and the passkey keeps the count it had.
      */
     #[Test]
-    public function aSignCountThatDidNotGrowIsToldNotRefused(): void
+    public function aSignCountThatDidNotGrowIsRefused(): void
     {
         // Given
         $device = self::device();
-        $this->enrol(self::user('alice'), $device);
+        $alice = self::user('alice');
+        $this->enrol($alice, $device);
         $this->forgetTheBrowser();
         $this->loginWithPasskey($this->authorize(), $device);
         $this->forgetTheBrowser();
@@ -216,10 +217,13 @@ final class PasskeyLoginTest extends PasskeyTestCase
         $this->loginWithPasskey($interaction, $device->withSignCount(0));
 
         // Then
-        static::assertTrue($this->isBoundToASession());
-        $used = self::events(PasskeyUsed::class);
-        static::assertCount(1, $used);
-        static::assertTrue($used[0]->signCountRegressed);
+        $failures = self::events(AuthenticationFailed::class);
+        $this->assertRefused($interaction);
+        static::assertCount(1, $failures);
+        static::assertSame(AuthenticationFailureReason::InvalidCredential, $failures[0]->reason);
+        static::assertTrue($failures[0]->user?->id->equals($alice->id));
+        static::assertSame([], self::events(PasskeyUsed::class));
+        static::assertSame(1, self::passkeyOf($alice, $device)->signCount);
     }
 
     /**

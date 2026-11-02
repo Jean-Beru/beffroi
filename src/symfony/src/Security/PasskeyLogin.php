@@ -64,7 +64,7 @@ final readonly class PasskeyLogin implements AnnouncesItsRefusalInterface, Dates
 
     /**
      * WebAuthn Level 3 §7.2, step 26: the key is dated with its sign count and its backup state, and the
-     * use is announced, a count that did not grow told rather than refused.
+     * use is announced; a count that did not grow was refused before (PasskeyLoginAuthenticator).
      */
     public function recordUse(Passport $passport, SecurityUser $user, DateTimeImmutable $now, RequestContext $context): bool
     {
@@ -73,10 +73,9 @@ final readonly class PasskeyLogin implements AnnouncesItsRefusalInterface, Dates
             return false;
         }
         $credential = $badge->assertion->credential;
-        $signCountRegressed = $credential->signCountRegresses($badge->assertion->authenticatorData);
         $credential->recordUse($badge->assertion->authenticatorData, $now);
         $this->credentials->save($credential);
-        $this->events->dispatch(new PasskeyUsed($credential, $now, $context, $signCountRegressed));
+        $this->events->dispatch(new PasskeyUsed($credential, $now, $context));
 
         return true;
     }

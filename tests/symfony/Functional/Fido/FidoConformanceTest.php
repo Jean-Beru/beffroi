@@ -12,6 +12,7 @@ use Beffroi\Core\Port\CredentialRepositoryInterface;
 use Beffroi\Core\Port\MetadataBlobStoreInterface;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use Beffroi\Core\Tests\Fixture\MetadataBlobs;
+use Beffroi\Core\Tests\Fixture\Rs1SoftwareKey;
 use Beffroi\Core\Tests\Fixture\SoftwareAuthenticator;
 use function is_array;
 use function json_decode;
@@ -65,7 +66,7 @@ final class FidoConformanceTest extends BrowserTestCase
         static::assertSame('John Doe', self::section($options, 'user')['displayName']);
         static::assertIsString($options['challenge']);
         static::assertSame(32, strlen(Base64UrlSafe::decodeNoPadding($options['challenge'])));
-        static::assertSame([-7, -257], self::column($options, 'pubKeyCredParams', 'alg'));
+        static::assertSame([-7, -8, -257, -65535], self::column($options, 'pubKeyCredParams', 'alg'));
         static::assertSame(
             [
                 'requireResidentKey' => true,
@@ -125,6 +126,35 @@ final class FidoConformanceTest extends BrowserTestCase
         $user = self::service('test.beffroi.users', UserRepositoryInterface::class)
             ->findByUsername(self::tenant(), 'johndoe@example.com') ?? static::fail('The user is gone.');
         static::assertCount(1, self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)->findActiveByUser($user, self::now()));
+    }
+
+    /**
+     * Decision 0033: RS1, which only the options of the tools offer, enrols and signs in through the tools, the
+     * ceremonies verifying it as the algorithms of the product.
+     */
+    #[Test]
+    public function aPasskeyOfTheAlgorithmOnlyTheToolsAreOfferedEnrolsAndSignsInThroughTheTools(): void
+    {
+        // Given
+        $device = new SoftwareAuthenticator(self::ORIGIN, credentialKey: new Rs1SoftwareKey());
+        $enrolled = $this->post('/fido/conformance/attestation/result', $device->create($this->creationOptions('rs1@example.com')));
+        static::assertSame('ok', $enrolled['status'], json_encode($enrolled, JSON_THROW_ON_ERROR));
+
+        // When
+        $options = $this->post('/fido/conformance/assertion/options', [
+            'username' => 'rs1@example.com',
+            'userVerification' => 'preferred',
+        ]);
+        $asserted = $this->post('/fido/conformance/assertion/result', $device->get(json_encode($options, JSON_THROW_ON_ERROR)));
+
+        // Then
+        static::assertSame(
+            [
+                'status' => 'ok',
+                'errorMessage' => '',
+            ],
+            $asserted,
+        );
     }
 
     /**

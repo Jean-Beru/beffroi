@@ -13,6 +13,7 @@ use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\PasskeyCeremonyFailedException;
+use Beffroi\Core\Tests\Fixture\Ed25519SoftwareKey;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\SoftwareAuthenticator;
 use ParagonIE\ConstantTime\Base64UrlSafe;
@@ -126,6 +127,25 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     }
 
     /**
+     * Decision 0033: the signature of a passkey of EdDSA over Ed25519 is verified as the others are.
+     */
+    #[Test]
+    public function anAssertionOfAnEd25519PasskeyIsVerified(): void
+    {
+        // Given
+        $device = new SoftwareAuthenticator('https://id.acme.example', credentialKey: new Ed25519SoftwareKey());
+        $passkey = $this->enrol($device);
+        $options = $this->authenticator->requestOptions($this->tenant, []);
+
+        // When
+        $assertion = $this->authenticator->verifyAssertion($this->tenant, $options, $device->get($this->ceremonies->optionsToJson($options)));
+
+        // Then
+        static::assertSame($passkey, $assertion->credential);
+        static::assertSame(1, $assertion->authenticatorData->signCount);
+    }
+
+    /**
      * The allow list of a user who named themself (§7.2, step 5).
      */
     #[Test]
@@ -160,10 +180,11 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     }
 
     /**
-     * The sign count is the core's business (architecture §3.2): the library does not refuse it here.
+     * The sign count is the core's business (architecture §3.2): the library does not refuse it here, and the
+     * core refuses it after the signature (decision 0034).
      */
     #[Test]
-    public function anAssertionWhoseSignCountDidNotGrowIsVerifiedAllTheSame(): void
+    public function anAssertionWhoseSignCountDidNotGrowIsVerifiedForTheCoreToRefuse(): void
     {
         // Given
         $device = new SoftwareAuthenticator('https://id.acme.example');
