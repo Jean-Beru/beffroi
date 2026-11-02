@@ -226,8 +226,10 @@ parameters:
     # 0030). None, which is what a deployment that declares none gets, and a test that wants some names them before
     # it boots a kernel.
     env(BEFFROI_TEST_TENANT_SCOPES): '[]'
-    # Issue #282: the secret the host application of this kernel authenticates with, which the section reads from
-    # the environment and nowhere else; a test that plays another names it before it boots a kernel.
+    # Issue #282: the identifier of the host application of this kernel, the default of the section, and the secret it
+    # authenticates with, which the section reads from the environment and nowhere else; a test that plays another
+    # names it before it boots a kernel.
+    env(BEFFROI_TEST_APPLICATION_CLIENT_ID): app
     env(BEFFROI_TEST_APPLICATION_SECRET): 'the-secret-of-the-host-application-of-this-kernel'
     # RFC 7591 §2.3: the keys the authority below is pinned by, which the test that plays the attested mode
     # replaces with the ones it signs with. The default is a key no test signs anything with: the anchor is
@@ -368,6 +370,7 @@ beffroi:
     # The host application of this kernel, a client of the provider it hosts (issue #282): the callback of its
     # firewall, which the route loader of Symfony declares, and its page to come back to after a logout.
     self_client:
+        client_id: '%env(BEFFROI_TEST_APPLICATION_CLIENT_ID)%'
         redirect_route: _oidc_login_callback_application
         post_logout_route: host_application_user
         secret: '%env(BEFFROI_TEST_APPLICATION_SECRET)%'

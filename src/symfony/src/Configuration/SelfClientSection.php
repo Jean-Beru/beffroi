@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Configuration;
 
-use function array_key_exists;
+use function array_keys;
 use Beffroi\Bundle\Client\SelfClient;
 use Beffroi\Core\Port\PasswordHasherInterface;
 use Beffroi\Oidc\Application\Client\ClientMetadataReader;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
+use function in_array;
 use function is_array;
 use function is_string;
 use function preg_match;
@@ -28,10 +29,10 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * architecture §5.1). A section of its own beside "clients" and never a key inside it: "clients" is keyed by client
  * identifier, so a key there is a client of that name and nothing else.
  *
- * It is a source of clients of its own, holding one declaration, which the core knows as an ordinary client: its URLs
- * are what the router writes for its routes under the origin of the issuer, once a question about the clients of the
- * tenant first reaches the source (SelfClient), its consent is the named exception of a first-party application, and
- * its secret is read from the environment, its token requests arriving over HTTP like those of any other client.
+ * It is a source of clients of its own, holding one declaration, which the provider knows as an ordinary client: its
+ * URLs are what the router writes for its routes in the context of the issuer, once a question about the clients of
+ * the tenant first reaches the source (SelfClient), its consent is the named exception of a first-party application,
+ * and its secret is read from the environment, its token requests arriving over HTTP like those of any other client.
  *
  * What the firewall that signs the users of the application in needs of it, the issuer, the identifier and the
  * secret, is exposed as container parameters, so that security.yaml names them instead of writing them again.
@@ -102,7 +103,7 @@ final readonly class SelfClientSection extends ConfigurationSection implements E
     }
 
     /**
-     * @throws InvalidConfigurationException when a client "clients" declares carries the identifier of the application
+     * @throws InvalidConfigurationException when a client "clients" declares carries the identifier the file writes
      */
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
     {
@@ -111,12 +112,12 @@ final readonly class SelfClientSection extends ConfigurationSection implements E
             return;
         }
         $clientId = self::string($application, 'client_id');
-        if (array_key_exists($clientId, self::section($config, 'clients'))) {
-            throw new InvalidConfigurationException(sprintf(
-                'The "beffroi" configuration key "self_client.client_id" names "%s", a client "clients" declares as well: one identifier is one client of the tenant.',
-                $clientId,
-            ));
+        $declared = [];
+        foreach (array_keys(self::section($config, 'clients')) as $declaredId) {
+            $declared[] = (string) $declaredId;
         }
+        // an identifier written in the file is refused here, one the environment gives when the source is built
+        self::assertItsOwn($clientId, $declared);
         $tenant = self::section($config, 'tenant');
         $postLogoutRoute = $application['post_logout_route'] ?? null;
         $services
@@ -125,6 +126,7 @@ final readonly class SelfClientSection extends ConfigurationSection implements E
             ->args([
                 self::string($tenant, 'slug'),
                 $clientId,
+                $declared,
                 inline_service(SelfClient::class)->args([
                     service(UrlGeneratorInterface::class),
                     self::string($tenant, 'issuer'),
@@ -147,15 +149,21 @@ final readonly class SelfClientSection extends ConfigurationSection implements E
      * The source of the client of the application, built once a question about the clients of the tenant first
      * reaches it, which is when the router can write the URLs of its routes and the environment gives its secret.
      *
-     * @throws InvalidConfigurationException when the router writes no URL for a route the application names
+     * @param list<string> $declared the identifiers of the clients "clients" declares
+     *
+     * @throws InvalidConfigurationException when one of them is the identifier of the application, or when the router
+     *                                       writes no URL for a route the application names
      */
     public static function source(
         string $tenantSlug,
         string $clientId,
+        array $declared,
         SelfClient $application,
         PasswordHasherInterface $hasher,
         ClientMetadataReader $reader,
     ): ConfigurationClientRepository {
+        self::assertItsOwn($clientId, $declared);
+
         return new ConfigurationClientRepository(
             $tenantSlug,
             [
@@ -164,6 +172,24 @@ final readonly class SelfClientSection extends ConfigurationSection implements E
             $hasher,
             $reader,
         );
+    }
+
+    /**
+     * One identifier is one client of the tenant: the source of the declared clients is asked first, so a client of
+     * "clients" under the identifier of the application would answer for it.
+     *
+     * @param list<string> $declared
+     *
+     * @throws InvalidConfigurationException when one of them is the identifier of the application
+     */
+    private static function assertItsOwn(string $clientId, array $declared): void
+    {
+        if (in_array($clientId, $declared, true)) {
+            throw new InvalidConfigurationException(sprintf(
+                'The "beffroi" configuration key "self_client.client_id" names "%s", a client "clients" declares as well: one identifier is one client of the tenant.',
+                $clientId,
+            ));
+        }
     }
 
     private static function declaration(): ArrayNodeDefinition
