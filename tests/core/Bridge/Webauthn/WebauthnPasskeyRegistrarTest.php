@@ -14,6 +14,7 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\PasskeyCeremonyFailedException;
 use Beffroi\Core\Tests\Fixture\Ed25519SoftwareKey;
 use Beffroi\Core\Tests\Fixture\Es256SoftwareKey;
+use Beffroi\Core\Tests\Fixture\Es384SoftwareKey;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\MetadataBlobs;
 use Beffroi\Core\Tests\Fixture\Rs1SoftwareKey;
@@ -52,8 +53,9 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     }
 
     /**
-     * §5.4: the relying party is the tenant, the user entity carries the handle, a passkey is discoverable
-     * (§5.4.6), user verification preferred, no attestation asked for (§5.4.7).
+     * §5.4: the relying party is the tenant, the user entity carries the handle, the algorithms of the provider
+     * from the strongest (decision 0033), a passkey is discoverable (§5.4.6), user verification preferred, no
+     * attestation asked for (§5.4.7).
      */
     #[Test]
     public function theCreationOptionsAreThoseOfAPasskeyOfTheTenant(): void
@@ -71,7 +73,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
         static::assertSame('alice', $options->user->displayName);
         static::assertSame(32, strlen($options->challenge));
         static::assertSame(
-            [-7, -8, -257],
+            [-35, -8, -7, -257],
             array_map(static fn (PublicKeyCredentialParameters $parameters): int => $parameters->alg, $options->pubKeyCredParams),
         );
         static::assertSame('required', $options->authenticatorSelection?->residentKey);
@@ -210,13 +212,14 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
      */
     public static function provideKeysOfTheOfferedAlgorithms(): iterable
     {
-        yield 'ES256' => [new Es256SoftwareKey()];
+        yield 'ES384' => [new Es384SoftwareKey()];
         yield 'EdDSA over Ed25519' => [new Ed25519SoftwareKey()];
+        yield 'ES256' => [new Es256SoftwareKey()];
     }
 
     /**
-     * Decision 0033 and §7.1 (CheckAlgorithm): the ceremonies verify RS1 and the options never offer it, so a
-     * passkey of that algorithm does not enrol through the product.
+     * Decision 0033 and §7.1 (CheckAlgorithm): the product neither offers nor verifies RS1, so a passkey of that
+     * algorithm does not enrol through it.
      */
     #[Test]
     public function aPasskeyOfAnAlgorithmTheOptionsDoNotOfferIsRefused(): void

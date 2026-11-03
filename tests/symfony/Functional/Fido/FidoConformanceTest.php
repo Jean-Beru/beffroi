@@ -28,8 +28,8 @@ use Webauthn\MetadataService\Statement\AuthenticatorStatus;
 /**
  * The endpoints of the FIDO2 server API the FIDO Conformance Tools drive (architecture §7), imported by
  * the test kernel under /fido/conformance as an application imports them in development: the four
- * ceremonies of the tools on the enrolment and the authentication of the core, with what the tools ask
- * for. The tools themselves run by hand against the stack; what they check is played here with the
+ * ceremonies of the tools on an enrolment and an authentication of the core of their own, which run on the
+ * algorithms of the tools (decision 0033), with what the tools ask for. The tools themselves run by hand against the stack; what they check is played here with the
  * software authenticator.
  */
 final class FidoConformanceTest extends BrowserTestCase
@@ -38,7 +38,7 @@ final class FidoConformanceTest extends BrowserTestCase
 
     /**
      * ServerPublicKeyCredentialCreationOptionsRequest: what the tools send, echoed in the options
-     * (WebAuthn Level 3 §5.4), the user created on the way.
+     * (WebAuthn Level 3 §5.4), the algorithms those of the tools (decision 0033), the user created on the way.
      */
     #[Test]
     public function theAttestationOptionsAreDrawnForTheUserTheToolsNameWithWhatTheyAskFor(): void
@@ -66,7 +66,7 @@ final class FidoConformanceTest extends BrowserTestCase
         static::assertSame('John Doe', self::section($options, 'user')['displayName']);
         static::assertIsString($options['challenge']);
         static::assertSame(32, strlen(Base64UrlSafe::decodeNoPadding($options['challenge'])));
-        static::assertSame([-7, -8, -257, -65535], self::column($options, 'pubKeyCredParams', 'alg'));
+        static::assertSame([-35, -8, -7, -257, -65535, -36, -258, -259, -37, -38, -39], self::column($options, 'pubKeyCredParams', 'alg'));
         static::assertSame(
             [
                 'requireResidentKey' => true,
@@ -130,7 +130,7 @@ final class FidoConformanceTest extends BrowserTestCase
 
     /**
      * Decision 0033: RS1, which only the options of the tools offer, enrols and signs in through the tools, the
-     * ceremonies verifying it as the algorithms of the product.
+     * ceremonies of the tools verifying it with its weakness acknowledged.
      */
     #[Test]
     public function aPasskeyOfTheAlgorithmOnlyTheToolsAreOfferedEnrolsAndSignsInThroughTheTools(): void

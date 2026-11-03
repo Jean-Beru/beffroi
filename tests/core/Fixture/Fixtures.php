@@ -8,6 +8,8 @@ use function chr;
 use DateTimeImmutable;
 use Beffroi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
 use Beffroi\Core\Bridge\Random\PlatformRandomness;
+use Beffroi\Core\Bridge\Webauthn\PasskeyAlgorithms;
+use Beffroi\Core\Bridge\Webauthn\ProviderPasskeyAlgorithms;
 use Beffroi\Core\Bridge\Webauthn\StoredMetadata;
 use Beffroi\Core\Bridge\Webauthn\WebauthnCeremonies;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
@@ -179,14 +181,18 @@ final class Fixtures
     }
 
     /**
-     * The ceremonies on the metadata of a store, empty unless one is given; the chains are checked
-     * without a CRL fetched, as the library does when none can be.
+     * The ceremonies on the algorithms of the provider unless others are given, and on the metadata of a
+     * store, empty unless one is given; the chains are checked without a CRL fetched, as the library does
+     * when none can be.
      */
-    public static function ceremonies(?MetadataBlobStoreInterface $metadata = null, ?ClockInterface $clock = null): WebauthnCeremonies
-    {
+    public static function ceremonies(
+        ?MetadataBlobStoreInterface $metadata = null,
+        ?ClockInterface $clock = null,
+        PasskeyAlgorithms $algorithms = new ProviderPasskeyAlgorithms(),
+    ): WebauthnCeremonies {
         $clock ??= new MockClock(self::now());
         $stored = new StoredMetadata($metadata ?? new InMemoryMetadataBlobStore());
 
-        return new WebauthnCeremonies($clock, $stored, $stored, PhpCertificateChainValidator::create(new MockHttpClient(), $clock));
+        return new WebauthnCeremonies($algorithms, $clock, $stored, $stored, PhpCertificateChainValidator::create(new MockHttpClient(), $clock));
     }
 }

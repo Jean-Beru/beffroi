@@ -84,6 +84,7 @@ use Beffroi\Bundle\Doctrine\TenantSynchronizer;
 use Beffroi\Bundle\Dpop\CachedDpopNonce;
 use Beffroi\Bundle\Dpop\CachedDpopProofReplayGuard;
 use Beffroi\Bundle\EndSession\FrontChannelLogoutRenderer;
+use Beffroi\Bundle\Fido\Conformance\ConformanceToolsAlgorithms;
 use Beffroi\Bundle\EndSession\LogoutChannels;
 use Beffroi\Bundle\EndSession\LogoutTokenDeliveryBudget;
 use Beffroi\Bundle\Http\AccountAccess;
@@ -408,6 +409,8 @@ use Beffroi\Core\Domain\Session\PhishingResistantHardware;
 use Beffroi\Core\Domain\Session\SingleFactor;
 use Beffroi\Core\Domain\Session\TwoFactors;
 use Beffroi\Core\Bridge\Webauthn\MetadataBlobVerifier;
+use Beffroi\Core\Bridge\Webauthn\PasskeyAlgorithms;
+use Beffroi\Core\Bridge\Webauthn\ProviderPasskeyAlgorithms;
 use Beffroi\Core\Bridge\Webauthn\StoredMetadata;
 use Beffroi\Core\Bridge\Webauthn\WebauthnCeremonies;
 use Beffroi\Core\Bridge\Webauthn\WebauthnPasskeyAuthenticator;
@@ -1038,8 +1041,25 @@ return static function (ContainerConfigurator $container): void {
 
     // The bundle: the endpoints of the FIDO2 server API for the FIDO Conformance Tools (architecture §7); their
     // routes are a file of their own (config/routes/fido-conformance.php) an application imports in development
-    // only, and a controller no route names is dropped from the container
-    $services->load('Beffroi\\Bundle\\Fido\\Conformance\\', '../src/Fido/Conformance/');
+    // only, and a controller no route names is dropped from the container. They run the ceremonies of the core
+    // on the algorithms of the tools (decision 0033), through ceremonies, a registrar, an authenticator and use
+    // cases of their own, which nothing of the product reaches
+    $services->set('beffroi.fido_conformance.ceremonies', WebauthnCeremonies::class)->arg('$algorithms', service(ConformanceToolsAlgorithms::class));
+    $services->set('beffroi.fido_conformance.registrar', WebauthnPasskeyRegistrar::class)->arg('$ceremonies', service('beffroi.fido_conformance.ceremonies'));
+    $services->set('beffroi.fido_conformance.authenticator', WebauthnPasskeyAuthenticator::class)->arg(
+        '$ceremonies',
+        service('beffroi.fido_conformance.ceremonies'),
+    );
+    $services->set('beffroi.fido_conformance.enrolment', PasskeyEnrolment::class)->arg('$registrar', service('beffroi.fido_conformance.registrar'));
+    $services->set('beffroi.fido_conformance.authentication', PasskeyAuthentication::class)->arg(
+        '$authenticator',
+        service('beffroi.fido_conformance.authenticator'),
+    );
+    $services
+        ->load('Beffroi\\Bundle\\Fido\\Conformance\\', '../src/Fido/Conformance/')
+        ->bind(WebauthnCeremonies::class . ' $ceremonies', service('beffroi.fido_conformance.ceremonies'))
+        ->bind(PasskeyEnrolment::class . ' $enrolment', service('beffroi.fido_conformance.enrolment'))
+        ->bind(PasskeyAuthentication::class . ' $authentication', service('beffroi.fido_conformance.authentication'));
     // The bundle: what answers a backchannel request when the certification suite is the one waiting for
     // the answer (CIBA Core §10.1), on the same terms as the endpoints above and in the same place in a
     // deployment: a file of routes of its own (config/routes/ciba-conformance.php), development only
@@ -1459,6 +1479,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PhpCertificateChainValidator::class)->arg('$client', service(RevocationListClient::class));
     $services->alias(CertificateChainValidator::class, PhpCertificateChainValidator::class);
     $services->set(MetadataBlobVerifier::class);
+    // the algorithms of the provider (decision 0033), which the ceremonies of the product run on
+    $services->set(ProviderPasskeyAlgorithms::class);
+    $services->alias(PasskeyAlgorithms::class, ProviderPasskeyAlgorithms::class);
     $services->set(WebauthnCeremonies::class);
     $services->set(WebauthnPasskeyRegistrar::class);
     $services->alias(PasskeyRegistrarInterface::class, WebauthnPasskeyRegistrar::class);

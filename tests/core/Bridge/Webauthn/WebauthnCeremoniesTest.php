@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Core\Tests\Bridge\Webauthn;
 
 use Beffroi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
+use Beffroi\Core\Bridge\Webauthn\ProviderPasskeyAlgorithms;
 use Beffroi\Core\Bridge\Webauthn\WebauthnCeremonies;
 use Beffroi\Core\Exception\PasskeyCeremonyFailedException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
@@ -154,7 +155,7 @@ final class WebauthnCeremoniesTest extends TestCase
             PublicKeyCredentialRpEntity::create('', 'id.acme.example'),
             PublicKeyCredentialUserEntity::create('alice', random_bytes(64), 'Alice'),
             random_bytes(32),
-            WebauthnCeremonies::parameters(),
+            new ProviderPasskeyAlgorithms()->parameters(),
             AuthenticatorSelectionCriteria::create(),
             PublicKeyCredentialCreationOptions::ATTESTATION_CONVEYANCE_PREFERENCE_DIRECT,
         );
