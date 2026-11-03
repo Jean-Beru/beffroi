@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Tests\Unit\Saml;
 
 use Beffroi\Bundle\Saml\IdentityProviderRoutes;
+use Beffroi\Bundle\Saml\IdentityProviderSegment;
 use Beffroi\Bundle\Saml\RouterIdentityProviderEndpoints;
 use Beffroi\Bundle\Saml\RouterServiceProviderEndpoints;
 use Beffroi\Bundle\Saml\ServiceProviderRoutes;
@@ -137,6 +138,43 @@ final class RouterServiceProviderEndpointsTest extends TestCase
         $endpoints->locate(self::tenant('https://op.example'));
     }
 
+    /**
+     * S-65: the URL of the metadata given to an upstream identity provider, which a command prints where no request
+     * names a host, is under the origin of the issuer, its last segment the entity ID in base64url, whatever host the
+     * context of the router names.
+     */
+    #[Test]
+    public function theMetadataGivenToAnIdentityProviderAreUnderTheOriginOfTheIssuer(): void
+    {
+        // Given
+        $endpoints = self::endpoints('', null, new RequestContext('', 'GET', 'localhost', 'http', 80));
+
+        // When
+        $url = $endpoints->metadataFor(self::tenant('https://op.example:8443'), 'https://idp.example/saml2/?id=1');
+
+        // Then
+        static::assertSame('https://op.example:8443/saml/sp/metadata/aHR0cHM6Ly9pZHAuZXhhbXBsZS9zYW1sMi8_aWQ9MQ', $url);
+    }
+
+    /**
+     * S-65, section 6.9 step 3: the route of the metadata given to an upstream identity provider mounted elsewhere than
+     * the issuer names it would hand that provider a URL where nothing answers; a configuration fault, refused rather
+     * than printed.
+     */
+    #[Test]
+    public function theMetadataGivenToAnIdentityProviderMountedElsewhereThanTheIssuerAreRefused(): void
+    {
+        // Given
+        $endpoints = self::endpoints('/auth');
+
+        // Then
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessageIs('The SAML metadata given to the identity provider "https://idp.example/saml2/?id=1" is served at "https://op.example/auth/saml/sp/metadata/aHR0cHM6Ly9pZHAuZXhhbXBsZS9zYW1sMi8_aWQ9MQ" but the issuer "https://op.example" puts it under "https://op.example/saml/sp/metadata/aHR0cHM6Ly9pZHAuZXhhbXBsZS9zYW1sMi8_aWQ9MQ": mount the routes of the bundle under the path of the issuer.');
+
+        // When
+        $endpoints->metadataFor(self::tenant('https://op.example'), 'https://idp.example/saml2/?id=1');
+    }
+
     private static function endpoints(
         string $prefix,
         ?string $entityId = null,
@@ -145,6 +183,12 @@ final class RouterServiceProviderEndpointsTest extends TestCase
     ): RouterServiceProviderEndpoints {
         $routes = new RouteCollection();
         $routes->add(ServiceProviderRoutes::METADATA, new Route($prefix . ServiceProviderRoutes::METADATA_PATH));
+        $routes->add(
+            ServiceProviderRoutes::METADATA_FOR_IDENTITY_PROVIDER,
+            new Route($prefix . ServiceProviderRoutes::METADATA_FOR_IDENTITY_PROVIDER_PATH, requirements: [
+                'identityProvider' => IdentityProviderSegment::REQUIREMENT,
+            ]),
+        );
         $routes->add(
             ServiceProviderRoutes::ASSERTION_CONSUMER_SERVICE,
             new Route(($acsPrefix ?? $prefix) . ServiceProviderRoutes::ASSERTION_CONSUMER_SERVICE_PATH),

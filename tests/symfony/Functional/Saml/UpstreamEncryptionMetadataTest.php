@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Tests\Functional\Saml;
 
 use function array_map;
+use Beffroi\Bundle\Command\SamlIdentityProviderListCommand;
 use Beffroi\Bundle\Saml\IdentityProviderSegment;
 use Beffroi\Bundle\Saml\SamlSigning;
 use Beffroi\Bundle\Saml\ServiceProviderRoutes;
@@ -27,6 +28,7 @@ use Beffroi\Xml\Core\Serializer;
 use Beffroi\Xml\Enc\PeerKey;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use function preg_quote;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\HttpFoundation\Response;
@@ -124,6 +126,28 @@ final class UpstreamEncryptionMetadataTest extends ConsoleTestCase
 
         // When
         $this->browser->request('GET', self::metadataOf(self::DECLARED_PROVIDER));
+
+        // Then
+        static::assertSame(
+            [CertificateModulus::ofKey($key)],
+            array_map(CertificateModulus::ofCertificate(...), $this->servedDescriptor()->serviceProvider->encryptionCertificates ?? []),
+        );
+    }
+
+    /**
+     * S-65: the URL the list command prints for the provider the configuration declares, the one an operator hands it,
+     * serves the metadata that carry the certificate of its key.
+     */
+    #[Test]
+    public function theUrlTheListCommandPrintsServesTheCertificateOfTheKeyOfTheProvider(): void
+    {
+        // Given
+        self::generate(SamlSigning::NAME);
+        $key = self::generate(SamlEncryptionAlgorithmInterface::NAME_PREFIX . self::DECLARED_PROVIDER);
+        $url = self::displayed(self::console(SamlIdentityProviderListCommand::NAME), preg_quote(self::DECLARED_PROVIDER, '/'));
+
+        // When
+        $this->browser->request('GET', $url);
 
         // Then
         static::assertSame(

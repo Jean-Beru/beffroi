@@ -11,6 +11,7 @@ use Beffroi\Saml\Port\IdentityProviderEndpointsInterface;
 use Beffroi\Saml\Port\ServiceProviderEndpointsInterface;
 use LogicException;
 use function sprintf;
+use function strtr;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
@@ -25,6 +26,9 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * that is never the one of the identity provider of the tenant: ServiceProviderEntityIdPass refuses another when the
  * container is compiled, and this refuses it again at the first use, should the issuer or the entity ID hold an
  * environment variable.
+ *
+ * It writes as well the URL of the metadata given to one upstream identity provider (S-65), the one an operator hands
+ * that provider, which no request asks for when a command prints it: the origin of the issuer is the only one it has.
  */
 final readonly class RouterServiceProviderEndpoints implements ServiceProviderEndpointsInterface
 {
@@ -62,14 +66,40 @@ final readonly class RouterServiceProviderEndpoints implements ServiceProviderEn
     }
 
     /**
-     * The URL the router generates for a route under the origin of the issuer, refused unless it is the one the issuer
-     * makes a reader expect.
+     * The URL of the metadata given to that upstream identity provider (spec/saml.md S-65), its last segment the entity
+     * ID in base64url (IdentityProviderSegment), under the origin of the issuer.
      *
      * @throws LogicException when the routes of the bundle are not mounted under the path of the issuer
      */
-    private function underTheIssuer(Tenant $tenant, string $route, string $path, string $what): string
+    public function metadataFor(Tenant $tenant, string $identityProvider): string
     {
-        $generated = $tenant->issuer->origin() . $this->router->generate($route, [], UrlGeneratorInterface::ABSOLUTE_PATH);
+        $segment = IdentityProviderSegment::of($identityProvider);
+
+        return $this->underTheIssuer(
+            $tenant,
+            ServiceProviderRoutes::METADATA_FOR_IDENTITY_PROVIDER,
+            strtr(ServiceProviderRoutes::METADATA_FOR_IDENTITY_PROVIDER_PATH, [
+                '{identityProvider}' => $segment,
+            ]),
+            sprintf('The SAML metadata given to the identity provider "%s"', $identityProvider),
+            [
+                'identityProvider' => $segment,
+            ],
+        );
+    }
+
+    /**
+     * The URL the router generates for a route under the origin of the issuer, refused unless it is the one the issuer
+     * makes a reader expect.
+     *
+     * @param string                $path       the path the issuer makes a reader expect under it, its parameters written
+     * @param array<string, string> $parameters the parameters of the route
+     *
+     * @throws LogicException when the routes of the bundle are not mounted under the path of the issuer
+     */
+    private function underTheIssuer(Tenant $tenant, string $route, string $path, string $what, array $parameters = []): string
+    {
+        $generated = $tenant->issuer->origin() . $this->router->generate($route, $parameters, UrlGeneratorInterface::ABSOLUTE_PATH);
         $expected = $tenant->issuer->value . $path;
         if ($generated !== $expected) {
             throw new LogicException(sprintf(
