@@ -25,6 +25,8 @@ final class PresentedAccessTokenTest extends TestCase
      * RFC 9449 §7.1: a token is presented the way it was issued. One bound to a key is sent under the
      * "DPoP" scheme, one bound to nothing or to a certificate as a bearer token (RFC 8705 §3, which
      * changes nothing to how a client sends it).
+     *
+     * @param non-empty-string $scheme
      */
     #[Test]
     #[DataProvider('providePresentations')]
@@ -43,7 +45,7 @@ final class PresentedAccessTokenTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{string, string|null, bool}>
+     * @return iterable<string, array{non-empty-string, string|null, bool}>
      */
     public static function providePresentations(): iterable
     {

@@ -522,6 +522,7 @@ use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedAuthorizationDetails;
 use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedProtectedResources;
 use Beffroi\Oidc\Application\Discovery\AnnouncedAlgorithms;
 use Beffroi\Oidc\Application\Discovery\JwksHandler;
+use Beffroi\Oidc\Application\Dpop\DpopChallengeParameters;
 use Beffroi\Oidc\Application\Dpop\DpopProofValidator;
 use Beffroi\Oidc\Application\Dpop\DpopProofVerifier;
 use Beffroi\Oidc\Application\EndSession\BackChannelLogout;
@@ -614,6 +615,7 @@ use Beffroi\Oidc\Port\AuthorizationCodeRepositoryInterface;
 use Beffroi\Oidc\Port\CanRevokeGrantsByConsentInterface;
 use Beffroi\Oidc\Port\RecordedGrantsInterface;
 use Beffroi\Oidc\Port\CertificateReaderInterface;
+use Beffroi\Oidc\Port\ChallengeParametersInterface;
 use Beffroi\Oidc\Port\ClaimsProviderInterface;
 use Beffroi\Oidc\Port\ClientAssertionReplayGuardInterface;
 use Beffroi\Oidc\Port\IssuerAssertionReplayGuardInterface;
@@ -1793,6 +1795,10 @@ return static function (ContainerConfigurator $container): void {
     ]);
     $services->set(DpopProofValidator::class);
     $services->set(DpopProofVerifier::class);
+    // what a challenge under DPoP names a proof may be signed with (RFC 9449 §7.1), read from the
+    // algorithms the verifier above takes and the document announces
+    $services->set(DpopChallengeParameters::class);
+    $services->alias(ChallengeParametersInterface::class, DpopChallengeParameters::class);
 
     // The module: subject and claims. One class per kind of "sub" (OIDC Core §8), tagged, and what is
     // tagged is what a client may register and what the document announces; the first wired kind is the

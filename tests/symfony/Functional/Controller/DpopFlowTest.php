@@ -9,6 +9,8 @@ use Jose\Component\Core\JWK;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\HttpFoundation\Response;
+use function array_map;
+use function implode;
 
 /**
  * RFC 9449 end to end, through HTTP: an authorization request that reserves its code for a key, the code
@@ -125,6 +127,58 @@ final class DpopFlowTest extends BrowserTestCase
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_UNAUTHORIZED, $response->getStatusCode());
         static::assertStringStartsWith('DPoP error="invalid_token"', self::string($response->headers->get('WWW-Authenticate')));
+    }
+
+    /**
+     * RFC 9449 §7.2: a token presented under the DPoP scheme is refused in the challenge of that scheme,
+     * whatever refused it. Expired, it is refused for its expiry under "DPoP", with the algorithms a proof
+     * may be signed with (§7.1).
+     */
+    #[Test]
+    public function anExpiredBoundTokenPresentedUnderDpopIsRefusedUnderTheDpopChallenge(): void
+    {
+        // Given
+        self::signingKey();
+        $this->signIn(self::user('alice'));
+        $accessToken = self::string($this->exchangeTheCode()['access_token']);
+        self::mockTime(Clock::get()->now()->modify('+11 minutes'));
+
+        // When
+        $this->browser->request('GET', '/userinfo', server: [
+            'HTTP_AUTHORIZATION' => 'DPoP ' . $accessToken,
+            'HTTP_DPOP' => $this->proof('GET', self::ISSUER . '/userinfo', $accessToken),
+        ]);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_UNAUTHORIZED, $response->getStatusCode());
+        static::assertSame(
+            'DPoP error="invalid_token", error_description="The access token expired.", algs="RS256 PS256 ES256 EdDSA"',
+            $response->headers->get('WWW-Authenticate'),
+        );
+    }
+
+    /**
+     * RFC 9449 §7.1: the "algs" of a challenge are the algorithms a proof may be signed with, which are
+     * the ones the document announces in "dpop_signing_alg_values_supported" (§5.1), never a list kept
+     * beside them.
+     */
+    #[Test]
+    public function theChallengeNamesTheAlgorithmsTheDocumentAnnouncesForAProof(): void
+    {
+        // Given
+        $this->browser->request('GET', '/.well-known/openid-configuration');
+        $announced = self::json($this->browser->getResponse())['dpop_signing_alg_values_supported'];
+        static::assertIsArray($announced);
+
+        // When
+        $this->browser->request('GET', '/userinfo');
+
+        // Then
+        static::assertSame(
+            'Bearer, DPoP algs="' . implode(' ', array_map(self::string(...), $announced)) . '"',
+            $this->browser->getResponse()->headers->get('WWW-Authenticate'),
+        );
     }
 
     /**
