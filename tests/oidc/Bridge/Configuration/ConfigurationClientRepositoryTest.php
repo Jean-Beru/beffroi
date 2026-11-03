@@ -223,7 +223,8 @@ final class ConfigurationClientRepositoryTest extends TestCase
 
     /**
      * OIDC Core §9: "client_secret_jwt" computes a MAC with the registered secret, so the secret is kept
-     * and not hashed; that is the method's own cost and the reason FAPI 2.0 §5.2.2 takes none.
+     * and not hashed; that is the method's own cost and the reason FAPI 2.0 Security Profile §5.3.2.1
+     * takes none.
      */
     #[Test]
     public function aClientThatSignsWithItsSecretKeepsTheSecretAndNotAHash(): void

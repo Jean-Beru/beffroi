@@ -30,8 +30,8 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * One class per algorithm behind SignatureAlgorithmInterface, and the wired set over them. FAPI 2.0
- * §5.2.2 refuses RS256, so the provider signs with PS256 (RFC 7518 §3.5), ES256 (§3.4) and EdDSA over
- * Ed25519 (RFC 8037 §3.1) beside it; no HMAC (RFC 8725 §3.1), no "none".
+ * Security Profile §5.4.1 does not take RS256, so the provider signs with PS256 (RFC 7518 §3.5), ES256
+ * (§3.4) and EdDSA over Ed25519 (RFC 8037 §3.1) beside it; no HMAC (RFC 8725 §3.1), no "none".
  */
 final class SignatureAlgorithmsTest extends TestCase
 {
@@ -92,8 +92,8 @@ final class SignatureAlgorithmsTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.3.6 reads the hash of "at_hash" and "c_hash" from the "alg"; Ed25519 signs over
-     * SHA-512 (RFC 8032 §5.1).
+     * OIDC Core §3.1.3.6 reads the hash of "at_hash" from the "alg"; Ed25519 signs over SHA-512 (RFC 8032
+     * §5.1).
      */
     #[Test]
     #[DataProvider('provideDigests')]
