@@ -89,10 +89,11 @@ final readonly class ConsentController
             return $this->responder->respond($request, $decision);
         }
 
-        // the page shows the logo of the client and the one of the tenant, so the "img-src" of the policy
-        // the answer carries names where both are served from (ConsentPage, ImageSource), and allowing
-        // ends with the code carried to the client, so its "form-action" names that client (FormTarget)
-        $page = new ConsentPage($interaction->request->client->registration->presentation, $tenant->look);
+        // the page shows the logo of the client, so the "img-src" of the policy the answer carries names
+        // where it is served from (ConsentPage, ImageSource), the layout naming the one of the tenant as on
+        // every page (TenantExtension), and allowing ends with the code carried to the client, so its
+        // "form-action" names that client (FormTarget)
+        $page = new ConsentPage($interaction->request->client->registration->presentation);
         $this->images->mayLoadFrom($request, $page->imageOrigins);
         $this->formTargets->mayEndAt($request, $interaction->request->redirectUri);
 

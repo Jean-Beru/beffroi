@@ -69,6 +69,18 @@ final class LogoUriTest extends TestCase
         yield 'a fragment' => ['https://acme.example/logo.svg#mark', 'must not carry a fragment'];
         yield 'credentials' => ['https://user:secret@acme.example/logo.svg', 'must not carry credentials'];
         yield 'plain HTTP off a loopback host' => ['http://acme.example/logo.svg', 'must use HTTPS'];
+        yield 'a ";" in the host, which would end the directive of a policy' => [
+            'https://acme.example;sandbox/logo.svg',
+            'must name a host of letters, digits, hyphens and dots',
+        ];
+        yield 'a "," in the host, which would start a policy of its own' => [
+            'https://acme.example,cdn.example/logo.svg',
+            'must name a host of letters, digits, hyphens and dots',
+        ];
+        yield 'an underscore in the host, which no name of the DNS carries (RFC 1123 §2.1)' => [
+            'https://cdn_acme.example/logo.svg',
+            'must name a host of letters, digits, hyphens and dots',
+        ];
         yield 'a scheme of its own' => ['data:image/svg+xml;base64,PHN2Zy8+', 'is not an absolute URL'];
     }
 

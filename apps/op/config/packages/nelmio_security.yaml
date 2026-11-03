@@ -21,7 +21,9 @@
 # the policy below and not as a policy of its own, and the bundle completes that directive once this one is
 # written (Beffroi\Bundle\Http\PolicyCompletion): the consent page shows the logo of a host the asking
 # client named and its submission ends at that client, so the "img-src" and the "form-action" written below
-# are the ones that page is served, each with one origin more.
+# are the ones that page is served, each with one origin more. Every page that shows the logo of the tenant
+# is served the "img-src" below with the origin of that logo, which BEFFROI_TENANT_LOGO_URI names and this
+# file never repeats.
 #
 # One layer and no second one: a header set twice does not get overridden, it collides. Two policies
 # intersect, two HSTS headers leave the first and drop the rest, so nothing below is also written in the
@@ -179,10 +181,13 @@ nelmio_security:
             # from here no opener to navigate back.
             #
             # Which bounds what these pages may load, and it is the same bound as the "img-src" below: the
-            # logo of the tenant is served from the issuer itself in this deployment, so nothing here is
-            # cross-origin at all. A deployment that serves it from another host names that origin in the
-            # policy and has that host answer "Cross-Origin-Resource-Policy: cross-origin", or serves the
-            # logo from its own origin as this one does.
+            # logo of the tenant is served from the issuer itself unless BEFFROI_TENANT_LOGO_URI names
+            # another host, and nothing else here is cross-origin. The bundle names the origin of that logo
+            # in the policy of every page that shows it; what no policy can say is the answer of that host,
+            # and a browser under "require-corp" refuses an image of another origin whose answer carries no
+            # "Cross-Origin-Resource-Policy" that lets it in. A deployment that serves the logo from another
+            # host has that host answer "Cross-Origin-Resource-Policy: cross-origin", the value that lets it
+            # in whatever the site, or serves the logo from its own origin.
             '^/.*':
                 coep: require-corp
                 coop: same-origin
@@ -226,10 +231,11 @@ nelmio_security:
             # (Beffroi\Bundle\Http\BundleScript): same origin, no pipeline, no CDN.
             script-src: ['self']
             style-src: ['self']
-            # The logo of the tenant is served from the issuer itself in this deployment
-            # (beffroi.yaml: logo_uri). A deployment that serves it from another host names that origin
-            # here as well; the logo of an asking client needs nothing, the consent page naming its origin
-            # and the bundle completing this directive with it (Beffroi\Bundle\Http\ImageSource).
+            # The logo of the tenant is served from the issuer itself unless BEFFROI_TENANT_LOGO_URI names
+            # another host (beffroi.yaml: logo_uri), and neither it nor the logo of an asking client is
+            # named here: every page that shows the logo of the tenant names its origin, the consent page
+            # names the one of the client, and the bundle completes this directive with them
+            # (Beffroi\Bundle\Http\ImageSource).
             img-src: ['self', 'data:']
             font-src: ['none']
             media-src: ['none']

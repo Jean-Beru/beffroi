@@ -142,6 +142,26 @@ final class ChoicesOfTheDeploymentTest extends BrowserTestCase
     }
 
     /**
+     * CSP Level 3 §6.1, issue beffroi-auth/beffroi#926: the mark it names is served by a host of its own, which the
+     * policy of every page that shows it names beside this provider, here a page of the account.
+     */
+    #[Test]
+    public function aPageMayLoadTheMarkItNamesFromTheHostThatServesIt(): void
+    {
+        // Given
+        $this->signIn(self::user());
+
+        // When
+        $this->accountHome();
+
+        // Then
+        static::assertStringContainsString(
+            "img-src 'self' data: https://assets.example.com;",
+            self::string($this->browser->getResponse()->headers->get('Content-Security-Policy')),
+        );
+    }
+
+    /**
      * Decision 0030, issue beffroi-auth/beffroi#452: a list of the configuration is a JSON document of the
      * environment, here the claims a person may change of themselves.
      */
