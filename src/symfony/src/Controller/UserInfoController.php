@@ -18,6 +18,7 @@ use Beffroi\Oidc\Exception\MissingBearerTokenException;
 use Beffroi\Oidc\Exception\OAuth2Exception;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Beffroi\Oidc\Port\ChallengeParametersInterface;
 use Beffroi\Oidc\Port\ServedTokenSchemesInterface;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
@@ -38,6 +39,7 @@ final readonly class UserInfoController implements ServesAProtectedResourceInter
         private RequestContextFactory $contexts,
         private PresentedClientCertificate $certificates,
         private ServedTokenSchemesInterface $schemes,
+        private ChallengeParametersInterface $challenges,
     ) {
     }
 
@@ -55,7 +57,7 @@ final readonly class UserInfoController implements ServesAProtectedResourceInter
                 DpopProofHeader::ofRequest($request),
             );
         } catch (OAuth2Exception|MissingBearerTokenException $exception) {
-            $error = UserInfoErrorResponse::fromException($exception, $this->schemes->servedTokenSchemes());
+            $error = UserInfoErrorResponse::fromException($exception, $this->schemes->servedTokenSchemes(), $this->challenges->challengeParameters());
             $parameters = $error->parameters();
             if ($parameters === []) {
                 return new Response('', $error->statusCode, $error->headers());

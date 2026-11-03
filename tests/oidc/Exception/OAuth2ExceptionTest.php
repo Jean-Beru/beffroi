@@ -6,6 +6,7 @@ namespace Beffroi\Oidc\Tests\Exception;
 
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Token\TokenResponse;
 use Beffroi\Oidc\Exception\AccessDeniedException;
 use Beffroi\Oidc\Exception\ConsentRequiredException;
 use Beffroi\Oidc\Exception\InsufficientScopeException;
@@ -292,13 +293,50 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
+     * RFC 6750 §1.2: what verifies a token never sees how it was presented, so its refusal names the
+     * scheme of a bearer token until the resource that read the request says otherwise.
+     */
+    #[Test]
+    public function anInvalidTokenIsChallengedUnderTheBearerSchemeByDefault(): void
+    {
+        // When
+        $exception = InvalidTokenException::expired();
+
+        // Then
+        static::assertSame('Bearer', $exception->challengeScheme());
+        static::assertSame([], $exception->challengeHeaders());
+    }
+
+    /**
+     * RFC 9449 §7.2: the resource that read the request names the scheme the token was presented under,
+     * and the refusal stays the same refusal, the one it replaces kept as its cause for the logs.
+     */
+    #[Test]
+    public function anInvalidTokenPresentedUnderASchemeIsTheSameRefusalUnderThatScheme(): void
+    {
+        // Given
+        $refused = InvalidTokenException::expired();
+
+        // When
+        $presented = $refused->presentedUnder('DPoP');
+
+        // Then
+        static::assertSame('DPoP', $presented->challengeScheme());
+        static::assertSame('invalid_token', $presented->error);
+        static::assertSame('The access token expired.', $presented->errorDescription);
+        static::assertSame(401, $presented->statusCode);
+        static::assertFalse($presented->redirectable);
+        static::assertSame($refused, $presented->getPrevious());
+    }
+
+    /**
      * RFC 6750 §3.1: insufficient_scope is a 403 that names the scopes the resource required.
      */
     #[Test]
     public function anInsufficientScopeIsA403NamingTheScopesRequired(): void
     {
         // When
-        $exception = new InsufficientScopeException('The token does not open this resource.', new Scopes([Scope::openid()]));
+        $exception = new InsufficientScopeException('The token does not open this resource.', new Scopes([Scope::openid()]), TokenResponse::BEARER);
 
         // Then
         static::assertSame('insufficient_scope', $exception->error);

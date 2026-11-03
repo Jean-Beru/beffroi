@@ -35,7 +35,7 @@ final class UserInfoControllerTest extends BrowserTestCase
         // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_UNAUTHORIZED, $response->getStatusCode());
-        static::assertSame('Bearer, DPoP', $response->headers->get('WWW-Authenticate'));
+        static::assertSame('Bearer, DPoP algs="RS256 PS256 ES256 EdDSA"', $response->headers->get('WWW-Authenticate'));
         static::assertSame('', $response->getContent());
         static::assertTrue($response->headers->hasCacheControlDirective('no-store'));
     }
@@ -54,7 +54,7 @@ final class UserInfoControllerTest extends BrowserTestCase
         // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_UNAUTHORIZED, $response->getStatusCode());
-        static::assertSame('Bearer, DPoP', $response->headers->get('WWW-Authenticate'));
+        static::assertSame('Bearer, DPoP algs="RS256 PS256 ES256 EdDSA"', $response->headers->get('WWW-Authenticate'));
     }
 
     /**

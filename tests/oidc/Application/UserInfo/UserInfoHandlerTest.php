@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Oidc\Tests\Application\UserInfo;
 
 use Beffroi\Oidc\Tests\Fixture\Secrets;
+use DateTimeImmutable;
 use Beffroi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
@@ -401,7 +402,10 @@ final class UserInfoHandlerTest extends TestCase
             static::fail('The request should have been refused.');
         } catch (MissingBearerTokenException $exception) {
             // Then
-            static::assertSame('Bearer, DPoP', UserInfoErrorResponse::fromException($exception, Bindings::schemes())->challenge());
+            static::assertSame(
+                'Bearer, DPoP algs="RS256 PS256 ES256 EdDSA"',
+                UserInfoErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
+            );
         }
     }
 
@@ -447,7 +451,7 @@ final class UserInfoHandlerTest extends TestCase
             // Then
             static::assertSame(
                 'Bearer error="invalid_token", error_description="The access token expired."',
-                UserInfoErrorResponse::fromException($exception, Bindings::schemes())->challenge(),
+                UserInfoErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
             );
         }
     }
@@ -523,7 +527,7 @@ final class UserInfoHandlerTest extends TestCase
             static::assertSame(403, $exception->statusCode);
             static::assertSame(
                 'Bearer error="insufficient_scope", error_description="The access token was not obtained through an OpenID Connect authentication request.", scope="openid"',
-                UserInfoErrorResponse::fromException($exception, Bindings::schemes())->challenge(),
+                UserInfoErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
             );
         }
     }
@@ -948,8 +952,8 @@ final class UserInfoHandlerTest extends TestCase
             );
             static::assertSame('DPoP', $exception->challengeScheme());
             static::assertSame(
-                'DPoP error="invalid_token", error_description="The access token is bound to a key and was presented as a bearer token (RFC 9449 section 7.1)."',
-                UserInfoErrorResponse::fromException($exception, Bindings::schemes())->challenge(),
+                'DPoP error="invalid_token", error_description="The access token is bound to a key and was presented as a bearer token (RFC 9449 section 7.1).", algs="RS256 PS256 ES256 EdDSA"',
+                UserInfoErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
             );
         }
     }
@@ -957,7 +961,7 @@ final class UserInfoHandlerTest extends TestCase
     /**
      * RFC 6750 §3.1: an expired token is invalid_token. What a token is bound to is read from the token, so
      * the scheme it came under (RFC 9449 §7.2) is judged once it holds: a key-bound token presented as a
-     * bearer token after its expiry is refused as expired, with the Bearer challenge of any expired token.
+     * bearer token after its expiry is refused as expired, under the Bearer scheme it was presented under.
      */
     #[Test]
     #[DataProvider('provideBoundTokens')]
@@ -974,7 +978,91 @@ final class UserInfoHandlerTest extends TestCase
             // Then
             static::assertSame(
                 'Bearer error="invalid_token", error_description="The access token expired."',
-                UserInfoErrorResponse::fromException($exception, Bindings::schemes())->challenge(),
+                UserInfoErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
+            );
+        }
+    }
+
+    /**
+     * RFC 9449 §7.2: a token presented under the DPoP scheme is refused in the challenge of that scheme.
+     * A key-bound token presented under "DPoP" after its expiry, with a proof that verifies, is refused
+     * for its expiry under "DPoP", with the algorithms a proof may be signed with (§7.1).
+     */
+    #[Test]
+    #[DataProvider('provideBoundTokens')]
+    public function anExpiredKeyBoundTokenPresentedUnderDpopIsRefusedForItsExpiryUnderTheDpopChallenge(string $shape): void
+    {
+        // Given
+        $token = $this->keyBoundToken($shape);
+        $later = Fixtures::now()->modify('+10 minutes');
+
+        // When
+        try {
+            $this->handler->handle($this->tenant, 'GET', 'DPoP ' . $token, [], Fixtures::context($later), null, $this->proof($token, null, $later));
+            static::fail('The token should have been refused.');
+        } catch (InvalidTokenException $exception) {
+            // Then
+            static::assertSame(
+                'DPoP error="invalid_token", error_description="The access token expired.", algs="RS256 PS256 ES256 EdDSA"',
+                UserInfoErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
+            );
+        }
+    }
+
+    /**
+     * RFC 9449 §7.2, RFC 8707 §2: a token addressed to a resource is refused here whatever scheme it came
+     * under, and in the challenge of the one it came under.
+     */
+    #[Test]
+    public function aTokenAddressedToAResourcePresentedUnderDpopIsRefusedUnderTheDpopChallenge(): void
+    {
+        // Given
+        $code = Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+            resources: ResourceIndicators::of([Clients::CALENDAR]),
+        );
+        $this->grants->save($code);
+        $token = Tokens::accessToken($this->accessTokens, UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code), Fixtures::now())->value;
+
+        // When
+        try {
+            $this->handler->handle($this->tenant, 'GET', 'DPoP ' . $token, [], Fixtures::context(), null, $this->proof($token));
+            static::fail('The token should have been refused.');
+        } catch (InvalidTokenException $exception) {
+            // Then
+            static::assertSame(
+                'DPoP error="invalid_token", error_description="The access token is addressed to a resource of its own and not to this provider (RFC 8707 section 2).", algs="RS256 PS256 ES256 EdDSA"',
+                UserInfoErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
+            );
+        }
+    }
+
+    /**
+     * RFC 9449 §7.2, OIDC Core §5.3.1: a token without "openid" presented under the DPoP scheme is
+     * insufficient_scope in the challenge of that scheme, still a 403 naming the scope that would have
+     * done (RFC 6750 §3.1).
+     */
+    #[Test]
+    public function aTokenWithoutOpenidPresentedUnderDpopIsRefusedUnderTheDpopChallenge(): void
+    {
+        // Given
+        $refreshed = $this->refreshed(['openid', 'email'], new Scopes([new Scope('email')]));
+        $token = Tokens::accessToken($this->accessTokens, $refreshed, Fixtures::now())->value;
+
+        // When
+        try {
+            $this->handler->handle($this->tenant, 'GET', 'DPoP ' . $token, [], Fixtures::context(), null, $this->proof($token));
+            static::fail('The token should have been refused.');
+        } catch (InsufficientScopeException $exception) {
+            // Then
+            $refusal = UserInfoErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters());
+            static::assertSame(403, $refusal->statusCode);
+            static::assertSame(
+                'DPoP error="insufficient_scope", error_description="The access token was not obtained through an OpenID Connect authentication request.", scope="openid", algs="RS256 PS256 ES256 EdDSA"',
+                $refusal->challenge(),
             );
         }
     }
@@ -1015,11 +1103,12 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * A proof for a GET of the UserInfo endpoint of the tenant, naming the token it accompanies.
+     * A proof for a GET of the UserInfo endpoint of the tenant, naming the token it accompanies, made at
+     * the moment given or at the one of the fixtures.
      */
-    private function proof(string $accessToken, ?JWK $key = null): string
+    private function proof(string $accessToken, ?JWK $key = null, ?DateTimeImmutable $at = null): string
     {
-        return Proofs::proof('GET', Endpoints::of($this->tenant)->userinfo, Fixtures::now(), $accessToken, [], [], $key);
+        return Proofs::proof('GET', Endpoints::of($this->tenant)->userinfo, $at ?? Fixtures::now(), $accessToken, [], [], $key);
     }
 
     /**
