@@ -67,8 +67,10 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\service_c
  * container is compiled (UpstreamIdentityProvidersPass), the claims of the profile by the same warmer, and their
  * metadata read by "beffroi:saml:identity-provider:refresh" and by the same hourly step.
  *
- * The keys of the identity provider are a family of their own (spec/saml.md S-12, issue #738): their staging delay and their age are set here,
- * counted in days by default, and not by "beffroi.keys", whose figures suit a JWK Set refetched within minutes. The
+ * The SAML keys are a family of their own (spec/saml.md S-12, issue #738): their staging delay and their age are set
+ * under "keys", counted in days by default, and not by "beffroi.keys", whose figures suit a JWK Set refetched within
+ * minutes; the cacheDuration of the metadata of both roles under "metadata". Neither is the node of a role, which a
+ * written array turns on, so that a deployment that serves one role sets them without turning the other on. The
  * schedule of the family is built whether a role is on or not, the registry of the SAML keys being wired in both
  * cases, empty in the second; the cacheDuration of the metadata is refused here, when the configuration is read, unless
  * it is shorter than the staging delay, and by the handler of each role when it is built.
@@ -115,8 +117,35 @@ final readonly class SamlSection extends ConfigurationSection
             ->info('SAML 2.0 (beffroi/saml, decision 0013): the roles the tenant of this deployment plays.')
             ->addDefaultsIfNotSet()
             ->children()
+            ->arrayNode('keys')
+            ->info('The family of the SAML keys of the tenant (spec/saml.md S-12): the signing key of both roles (S-40) and the key each upstream identity provider encrypts for (S-64). A node of no role, which turns neither role on. The keys of every other family keep "keys".')
+            ->addDefaultsIfNotSet()
+            ->children()
+            ->integerNode('staging_delay')
+            ->info('How long a new SAML key is published in the metadata before it is used, in seconds (spec/saml.md S-12, section 7): seven days by default, seven times the cacheDuration of the metadata, so that a peer whose refresh fails a few times still fetches the next certificate before it is used, and a calendar week for an administrator of a peer that holds an uploaded certificate (Entra without the metadata URL it may be given, or one Microsoft cannot reach) to put the next one in place; AD FS, in the sample of its documentation, gives its partners five days. The keys of every other family keep "keys.staging_delay".')
+            ->defaultValue(SamlSigningAlgorithmInterface::STAGING_DELAY)
+            ->min(0)
+            ->end()
+            ->integerNode('age')
+            ->info('How long a SAML key works before the planning stages a successor for it, in seconds, counted from its activation (spec/saml.md S-12, section 7): 365 days by default, every rotation being a step for whoever pinned its certificate, and inside the one to three years NIST SP 800-57 Part 1 Rev. 5 §5.3.6 gives a private signature key. The keys of every other family keep "keys.age".')
+            ->defaultValue(SamlSigningAlgorithmInterface::AGE)
+            ->min(1)
+            ->end()
+            ->end()
+            ->end()
+            ->arrayNode('metadata')
+            ->info('The metadata of both roles of the tenant, its identity provider\'s and its service provider\'s (spec/saml.md S-12, S-40). A node of no role, which turns neither role on.')
+            ->addDefaultsIfNotSet()
+            ->children()
+            ->integerNode('cache_duration')
+            ->info('How long a peer may keep the metadata before it fetches them again, in seconds, written as their cacheDuration (SAML Metadata section 2.3.2, spec/saml.md S-12): one day by default, how often SimpleSAMLphp\'s metarefresh and a Shibboleth SP refresh them, and strictly shorter than "saml.keys.staging_delay", which the configuration refuses otherwise.')
+            ->defaultValue(IdentityProviderMetadataHandler::DEFAULT_CACHE_DURATION)
+            ->min(1)
+            ->end()
+            ->end()
+            ->end()
             ->arrayNode('identity_provider')
-            ->info('The tenant as a SAML identity provider (spec/saml.md section 6.1), switched by "enabled", which may be an environment variable, read when the container builds what the role changes. Disabled, it serves nothing: no metadata, and the tenant draws no SAML key unless its service provider is enabled, the key of both roles (S-40, S-41). Enabled, its key is drawn with "beffroi:keys:generate --algorithm=SAML-SIGNING" and rotates as every key of the tenant, by the figures of its own family below.')
+            ->info('The tenant as a SAML identity provider (spec/saml.md section 6.1), switched by "enabled", which may be an environment variable, read when the container builds what the role changes. Disabled, it serves nothing: no metadata, and the tenant draws no SAML key unless its service provider is enabled, the key of both roles (S-40, S-41). Enabled, its key is drawn with "beffroi:keys:generate --algorithm=SAML-SIGNING" and rotates as every key of the tenant, by the figures of "saml.keys".')
             ->canBeEnabled()
             ->children()
             ->append(self::enabled())
@@ -124,41 +153,10 @@ final readonly class SamlSection extends ConfigurationSection
             ->info('What the metadata says in WantAuthnRequestsSigned (SAML Metadata section 2.4.3): true asks every service provider to sign its requests, which is what a broker configured from the metadata does (spec/model.md section 6.9). Turned off, the requests of service providers that cannot sign are accepted where their configuration says so, and the logout of a broker that signs only when asked is lost.')
             ->defaultTrue()
             ->end()
-            ->integerNode('staging_delay')
-            ->info('How long a new SAML signing key is published in the metadata before it signs, in seconds (spec/saml.md S-12, section 7): seven days by default, seven times the cacheDuration of the metadata, so that a service provider whose refresh fails a few times still fetches the next certificate before it is used, and a calendar week for an administrator of a service provider that holds an uploaded certificate (Entra without the metadata URL it may be given, or one Microsoft cannot reach) to put the next one in place; AD FS, in the sample of its documentation, gives its partners five days. The keys of every other family keep "keys.staging_delay".')
-            ->defaultValue(SamlSigningAlgorithmInterface::STAGING_DELAY)
-            ->min(0)
-            ->end()
-            ->integerNode('age')
-            ->info('How long a SAML signing key works before the planning stages a successor for it, in seconds, counted from its activation (spec/saml.md S-12, section 7): 365 days by default, every rotation being a step for whoever pinned its certificate, and inside the one to three years NIST SP 800-57 Part 1 Rev. 5 §5.3.6 gives a private signature key. The keys of every other family keep "keys.age".')
-            ->defaultValue(SamlSigningAlgorithmInterface::AGE)
-            ->min(1)
-            ->end()
-            ->integerNode('cache_duration')
-            ->info('How long a service provider may keep the metadata before it fetches it again, in seconds, written as its cacheDuration (SAML Metadata section 2.3.2, spec/saml.md S-12): one day by default, how often SimpleSAMLphp\'s metarefresh and a Shibboleth SP refresh it, and strictly shorter than "staging_delay", which the configuration refuses otherwise.')
-            ->defaultValue(IdentityProviderMetadataHandler::DEFAULT_CACHE_DURATION)
-            ->min(1)
-            ->end()
-            ->end()
-            ->validate()
-            ->always(static function (array $identityProvider): array {
-                $cacheDuration = $identityProvider['cache_duration'] ?? null;
-                $stagingDelay = $identityProvider['staging_delay'] ?? null;
-                // an environment placeholder is a number at runtime only, where the handler checks it again
-                if (is_int($cacheDuration) && is_int($stagingDelay)) {
-                    try {
-                        PublishedMetadata::assertCacheDuration($cacheDuration, $stagingDelay);
-                    } catch (InvalidArgumentException $refusal) {
-                        throw new InvalidConfigurationException($refusal->getMessage(), 0, $refusal);
-                    }
-                }
-
-                return $identityProvider;
-            })
             ->end()
             ->end()
             ->arrayNode('service_provider')
-            ->info('The tenant as a SAML service provider to the identity providers upstream of it (spec/saml.md section 6.9), switched by "enabled", which may be an environment variable, read when the container builds what the role changes. Disabled, it serves nothing: its metadata answer that there are none. Enabled, it signs with the SAML signing key of the identity provider, drawn and rotated by the figures of "identity_provider" whichever role is enabled (S-40), and its metadata are served at /saml/sp/metadata.')
+            ->info('The tenant as a SAML service provider to the identity providers upstream of it (spec/saml.md section 6.9), switched by "enabled", which may be an environment variable, read when the container builds what the role changes. Disabled, it serves nothing: its metadata answer that there are none. Enabled, it signs with the SAML signing key of the identity provider, drawn and rotated by the figures of "saml.keys" whichever role is enabled (S-40), and its metadata are served at /saml/sp/metadata.')
             ->canBeEnabled()
             ->children()
             ->append(self::enabled())
@@ -180,7 +178,34 @@ final readonly class SamlSection extends ConfigurationSection
             ->ifTrue(self::declaresIdentityProvidersAlone(...))
             ->thenInvalid(self::IDENTITY_PROVIDERS_ALONE)
             ->end()
+            ->validate()
+            ->always(self::cachedShorterThanStaged(...))
+            ->end()
             ->end();
+    }
+
+    /**
+     * The cacheDuration of the metadata strictly shorter than the staging delay of the SAML keys (spec/saml.md S-12),
+     * a figure of the environment left to the handler of each role, which checks it again when it is built.
+     *
+     * @throws InvalidConfigurationException when the cacheDuration is not shorter than the staging delay
+     */
+    private static function cachedShorterThanStaged(mixed $saml): mixed
+    {
+        if (! is_array($saml)) {
+            return $saml;
+        }
+        $cacheDuration = self::section($saml, 'metadata')['cache_duration'] ?? null;
+        $stagingDelay = self::section($saml, 'keys')['staging_delay'] ?? null;
+        if (is_int($cacheDuration) && is_int($stagingDelay)) {
+            try {
+                PublishedMetadata::assertCacheDuration($cacheDuration, $stagingDelay);
+            } catch (InvalidArgumentException $refusal) {
+                throw new InvalidConfigurationException($refusal->getMessage(), 0, $refusal);
+            }
+        }
+
+        return $saml;
     }
 
     /**
@@ -417,6 +442,8 @@ final readonly class SamlSection extends ConfigurationSection
         $tenant = self::section($config, 'tenant');
         $identityProvider = self::section($own, 'identity_provider');
         $serviceProvider = self::section($own, 'service_provider');
+        $keys = self::section($own, 'keys');
+        $metadata = self::section($own, 'metadata');
         // whether each role is on, a flag or the environment placeholder that stands for one until runtime
         $identityProviderEnabled = self::boolean($identityProvider, 'enabled');
         $serviceProviderEnabled = self::boolean($serviceProvider, 'enabled');
@@ -457,12 +484,12 @@ final readonly class SamlSection extends ConfigurationSection
         // the family of the SAML keys exists in every deployment (JoseKeyAlgorithms), so its schedule does too, held to
         // the floors of the tree when it is built
         $services->set('beffroi.saml.rotation_schedule', RotationSchedule::class)->args([
-            self::bounded($identityProvider, 'staging_delay', named: 'saml.identity_provider.staging_delay', minimum: 0),
-            self::bounded($identityProvider, 'age', named: 'saml.identity_provider.age'),
+            self::bounded($keys, 'staging_delay', named: 'saml.keys.staging_delay', minimum: 0),
+            self::bounded($keys, 'age', named: 'saml.keys.age'),
         ]);
         $maxAge = self::integer(self::section($config, 'keys'), 'jwks_max_age');
-        $cacheDuration = self::integer($identityProvider, 'cache_duration');
-        $stagingDelay = self::integer($identityProvider, 'staging_delay');
+        $cacheDuration = self::integer($metadata, 'cache_duration');
+        $stagingDelay = self::integer($keys, 'staging_delay');
         // The handler of each role is wired in every image and built for its consumers while the role is on, none while
         // it is off, which is what a role never declared hands them (S-41, RoleSwitch): the routes of a role are known
         // when the container is compiled, whether it is on only when it runs.

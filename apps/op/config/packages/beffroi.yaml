@@ -82,12 +82,14 @@ beffroi:
     # signs, the key works a year, and the metadata tells a service provider to fetch it again every day; the keys of
     # the JWK Set keep the figures of "keys".
     saml:
+        keys:
+            staging_delay: '%env(int:BEFFROI_SAML_KEY_STAGING_DELAY)%'
+            age: '%env(int:BEFFROI_SAML_KEY_AGE)%'
+        metadata:
+            cache_duration: '%env(int:BEFFROI_SAML_METADATA_CACHE_DURATION)%'
         identity_provider:
             enabled: '%env(bool:BEFFROI_SAML_IDENTITY_PROVIDER)%'
             want_authn_requests_signed: '%env(bool:BEFFROI_SAML_WANT_AUTHN_REQUESTS_SIGNED)%'
-            staging_delay: '%env(int:BEFFROI_SAML_KEY_STAGING_DELAY)%'
-            age: '%env(int:BEFFROI_SAML_KEY_AGE)%'
-            cache_duration: '%env(int:BEFFROI_SAML_METADATA_CACHE_DURATION)%'
         service_provider:
             enabled: '%env(bool:BEFFROI_SAML_SERVICE_PROVIDER)%'
             entity_id: '%env(default::BEFFROI_SAML_SERVICE_PROVIDER_ENTITY_ID)%'
