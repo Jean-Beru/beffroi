@@ -656,8 +656,10 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
     );
     parse_str((string) parse_url($location, \PHP_URL_QUERY), $login);
 
-    // the browser with the software authenticator: a passkey enrolled, the assertion signed and posted
+    // the browser with the software authenticator: a passkey enrolled, the assertion signed and posted, under a
+    // name of this run alone, by which the passkey is found again to be revoked
     io()->text(' <comment>tests/demo/passkey-browser.php</comment>');
+    $passkeyName = DEMO_PASSKEY_NAME_PREFIX . date('Y-m-d H:i:s');
     $browser = run(
         ['php', DEMO_PASSKEY_BROWSER],
         context: context()
@@ -672,7 +674,7 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
                     'cafile' => $ca,
                     'cookies' => $cookies[$host] ?? [],
                     'interaction' => (string) ($login['interaction'] ?? ''),
-                    'name' => DEMO_PASSKEY_NAME_PREFIX . date('Y-m-d H:i:s'),
+                    'name' => $passkeyName,
                     'username' => DEV_USERNAME,
                 ],
                 \JSON_THROW_ON_ERROR,
@@ -756,11 +758,12 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
         sprintf('id_token_hint of the step-up verified (kid %s), back to %s/, the OP asks for a login again', $kid, DEMO_URL),
     ];
 
-    // the passkey of the run is revoked: beffroi:user:show lists it by its name, beffroi:user:revoke-credential takes its identifier
+    // the passkey of the run is revoked: beffroi:user:show lists it by the name this run gave it, and not by the
+    // prefix every run shares, which the passkey of an earlier run, revoked or not, carries as well;
+    // beffroi:user:revoke-credential takes its identifier
     $shown = op_console(['beffroi:user:show', DEV_USERNAME], context()->withQuiet())->getOutput();
-    $name = 'castor demo --passkey';
     demo_expect(
-        preg_match('/^\s*passkey\s+([0-9a-f-]{36})\s+' . preg_quote($name, '/') . '/m', $shown, $found) === 1,
+        preg_match('/^\s*passkey\s+([0-9a-f-]{36})\s+' . preg_quote($passkeyName, '/') . '/m', $shown, $found) === 1,
         'beffroi:user:show lists the passkey of the run',
     );
     op_console(['beffroi:user:revoke-credential', DEV_USERNAME, $found[1]], context()->withQuiet());
@@ -2978,6 +2981,15 @@ const DEMO_ROTATION_COOLDOWN = 60;
 const DEMO_ROTATION_ENV_MARKER = 'castor demo --rotate';
 
 /**
+ * The family of keys the run rotates: the one "beffroi:keys:rotate" reaches when it names none, the first
+ * signature algorithm the provider is wired with, which signs the ID tokens and the access tokens of a client
+ * that registers no algorithm of its own (OIDC Registration §2), oidc-demo among them. The tenant holds a key of
+ * every other family beside it, the encryption key, the key messages are sealed to, VAPID and SAML among them
+ * (issue #164), and the run counts none of them and leaves them where they are.
+ */
+const DEMO_ROTATION_ALGORITHM = 'RS256';
+
+/**
  * The second success criterion of spike 2 (issue #59): oidc-demo, on Symfony's oidc_login without a
  * patch, notices nothing across a rotation. The seven steps of the issue against the running OP and demo,
  * with the windows shortened for the run (DEMO_ROTATION_*): sign in twice; "beffroi:keys:rotate", a second
@@ -2998,13 +3010,14 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
     $utc = new DateTimeZone('UTC');
     $at = static fn (DateTimeImmutable $date): string => $date->setTimezone($utc)->format('H:i:s');
 
-    $tenant = demo_keys();
+    $tenant = array_filter(demo_keys(), static fn (array $key): bool => $key['algorithm'] === DEMO_ROTATION_ALGORITHM);
     $active = array_keys(array_filter($tenant, static fn (array $key): bool => $key['status'] === 'active'));
     $staged = array_keys(array_filter($tenant, static fn (array $key): bool => $key['status'] === 'staged'));
     demo_expect(
         count($active) === 1 && $staged === [],
         sprintf(
-            'the tenant has one active key and none staged before the run (got %d active, %d staged: "castor console beffroi:keys:list" says which)',
+            'the tenant has one active %s key and none staged before the run (got %d active, %d staged: "castor console beffroi:keys:list" says which)',
+            DEMO_ROTATION_ALGORITHM,
             count($active),
             count($staged),
         ),
@@ -3048,6 +3061,10 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
     $kid2 = demo_rotate([]);
     $keys = demo_keys();
     $activationDue = $keys[$kid2]['activates_at'] ?? null;
+    demo_expect(
+        ($keys[$kid2]['algorithm'] ?? null) === DEMO_ROTATION_ALGORITHM,
+        sprintf('the key "%s" is of the family the run counted, %s (got %s)', $kid2, DEMO_ROTATION_ALGORITHM, $keys[$kid2]['algorithm'] ?? 'none'),
+    );
     demo_expect(($keys[$kid2]['status'] ?? null) === 'staged' && $activationDue !== null, sprintf('the key "%s" is staged with an activation date', $kid2));
     $published = demo_jwks($issuer, $ca);
     demo_expect(
@@ -3337,19 +3354,21 @@ function demo_jwks(string $issuer, string $ca): array
 }
 
 /**
- * The keys of the tenant with their status and the two dates the run waits for, read from beffroi:keys:list.
+ * The keys of the tenant with their family, their status and the two dates the run waits for, read from
+ * beffroi:keys:list, which says of each key its algorithm, then its use, then its status.
  *
- * @return array<string, array{status: string, activates_at: ?DateTimeImmutable, retirement_due_at: ?DateTimeImmutable}>
+ * @return array<string, array{algorithm: string, status: string, activates_at: ?DateTimeImmutable, retirement_due_at: ?DateTimeImmutable}>
  */
 function demo_keys(): array
 {
     $output = (string) preg_replace('/\s+/', ' ', op_console(['beffroi:keys:list', '--all', '--no-ansi'], context()->withQuiet())->getOutput());
     $keys = [];
-    preg_match_all('/Key identifier (\S+) Algorithm \S+ Status (\S+)(.*?)(?=Key identifier|$)/', $output, $matches, \PREG_SET_ORDER);
+    preg_match_all('/Key identifier (\S+) Algorithm (\S+) Use \S+ Status (\S+)(.*?)(?=Key identifier|$)/', $output, $matches, \PREG_SET_ORDER);
     foreach ($matches as $match) {
-        $date = static fn (string $label) => preg_match('/' . $label . ' (\S+)/', $match[3], $found) === 1 ? new DateTimeImmutable($found[1]) : null;
+        $date = static fn (string $label) => preg_match('/' . $label . ' (\S+)/', $match[4], $found) === 1 ? new DateTimeImmutable($found[1]) : null;
         $keys[$match[1]] = [
-            'status' => $match[2],
+            'algorithm' => $match[2],
+            'status' => $match[3],
             'activates_at' => $date('Activates at'),
             'retirement_due_at' => $date('Retirement due at'),
         ];
@@ -5117,7 +5136,7 @@ function demo_push_check(string $issuer, string $password, string $ca, array $se
 
         [, , $page] = demo_request($cookies, $ca, 'GET', $issuer . '/account/notifications');
         demo_expect(
-            str_contains($page, 'data-subscriptions="none"'),
+            str_contains($page, 'data-subscriptions="0"'),
             'and the browser the push service says is gone is out of the page of the account (RFC 8030 §7.3)',
         );
         $verified[] = ['Taken out', 'the row revoked on a 410, not tried for ever'];
@@ -5460,7 +5479,9 @@ function demo_push_subscribe(array &$cookies, string $issuer, string $password, 
         'auth' => (string) ($browser['auth'] ?? ''),
         'label' => DEMO_PUSH_LABEL,
     ]);
-    demo_expect($status === 302 && $location === $page, sprintf('the subscription is recorded (got %d %s)', $status, $location));
+    // the form answers with a redirection to the page whether the subscription was recorded or refused, what was
+    // refused crossing it in the session (issue #481): the page it comes back to is what says which
+    demo_expect($status === 303 && $location === $page, sprintf('the form sends the browser back to the page of the browsers (got %d %s)', $status, $location));
     [, , $rendered] = demo_request($cookies, $ca, 'GET', $page);
     demo_expect(
         str_contains($rendered, 'data-subscriptions="1"') && str_contains($rendered, DEMO_PUSH_LABEL),
@@ -5486,11 +5507,11 @@ function demo_push_subscribe(array &$cookies, string $issuer, string $password, 
 function demo_push_alone(array &$cookies, string $ca, string $issuer, string $page, string $rendered): string
 {
     foreach (demo_push_rows($rendered, DEMO_PUSH_LABEL) as $row) {
-        if (preg_match('#<form method="post" action="([^"]*revoke)">(.*?)</form>#s', $row, $form) !== 1) {
+        if (preg_match('#<form method="post" action="([^"]*revoke)"[^>]*>(.*?)</form>#s', $row, $form) !== 1) {
             continue;
         }
         [$status] = demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($form[1]), demo_form_fields($form[2]));
-        demo_expect($status === 302, sprintf('a browser of an earlier run of this walk is taken out (got %d)', $status));
+        demo_expect($status === 303, sprintf('a browser of an earlier run of this walk is taken out (got %d)', $status));
     }
     [, , $rendered] = demo_request($cookies, $ca, 'GET', $page);
     $others = demo_push_rows($rendered, null);
@@ -5504,7 +5525,7 @@ function demo_push_alone(array &$cookies, string $ca, string $issuer, string $pa
         ));
         exit(1);
     }
-    demo_expect(str_contains($rendered, 'data-subscriptions="none"'), 'and this walk starts on a provider that reaches nobody');
+    demo_expect(str_contains($rendered, 'data-subscriptions="0"'), 'and this walk starts on a provider that reaches nobody');
 
     return $rendered;
 }
@@ -5517,7 +5538,7 @@ function demo_push_alone(array &$cookies, string $ca, string $issuer, string $pa
  */
 function demo_push_rows(string $page, ?string $label): array
 {
-    if (preg_match_all('#<tr data-subscription="[^"]+">(.*?)</tr>#s', $page, $rows) === 0) {
+    if (preg_match_all('#<tr data-subscription="[^"]+"[^>]*>(.*?)</tr>#s', $page, $rows) === 0) {
         return [];
     }
     $matching = [];
