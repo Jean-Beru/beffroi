@@ -50,6 +50,7 @@ final class FidoCertificationTest extends TestCase
             [AuthenticatorStatus::FIDO_CERTIFIED_L3, 'FIDO_CERTIFIED_L9'],
             FidoCertification::Level3,
         ];
+        yield 'retired by its vendor after it' => [[AuthenticatorStatus::FIDO_CERTIFIED_L2, 'RETIRED'], FidoCertification::Retired];
         yield 'revoked after it' => [[AuthenticatorStatus::FIDO_CERTIFIED_L3plus, AuthenticatorStatus::REVOKED], FidoCertification::Revoked];
         yield 'not certified' => [[AuthenticatorStatus::NOT_FIDO_CERTIFIED], FidoCertification::NotCertified];
         yield 'a self-assessment submitted' => [[AuthenticatorStatus::SELF_ASSERTION_SUBMITTED], FidoCertification::SelfAssertionSubmitted];

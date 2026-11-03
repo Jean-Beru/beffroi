@@ -501,6 +501,10 @@
         <source>passkeys.certification.FIDO_CERTIFIED_L3plus</source>
         <target>Certifié FIDO, niveau 3+</target>
       </trans-unit>
+      <trans-unit id="a2c38be2c2" resname="passkeys.certification.RETIRED">
+        <source>passkeys.certification.RETIRED</source>
+        <target>Retiré par son fabricant</target>
+      </trans-unit>
       <trans-unit id="dfff2ff3c7" resname="passkeys.certification.REVOKED">
         <source>passkeys.certification.REVOKED</source>
         <target>Révoqué par la FIDO Alliance</target>
@@ -515,7 +519,7 @@
       </trans-unit>
       <trans-unit id="4150fe9928" resname="passkeys.backup.not_backed_up">
         <source>passkeys.backup.not_backed_up</source>
-        <target>Passkey synchronisée, pas encore sauvegardée</target>
+        <target>Passkey synchronisée, pas sauvegardée actuellement</target>
       </trans-unit>
       <trans-unit id="e0e39cd225" resname="passkeys.reached_through">
         <source>passkeys.reached_through</source>
