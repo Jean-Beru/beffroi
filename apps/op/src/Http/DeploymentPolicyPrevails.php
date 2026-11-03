@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http;
 
-use Beffroi\Bundle\Http\InteractionPages;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 
@@ -12,7 +11,7 @@ use Symfony\Component\HttpKernel\Event\ResponseEvent;
  * The Content-Security-Policy of this deployment, on the pages of the interaction plane too
  * (config/packages/nelmio_security.yaml).
  *
- * The bundle gives every page of that plane a policy of its own, "frame-ancestors 'none'", which is the
+ * The provider gives every page of that plane a policy of its own, "frame-ancestors 'none'", which is the
  * refusal to be framed RFC 9700 §4.15 asks for and what a deployment that configures nothing still gets.
  * It is a floor and not a ceiling: the two pages that carry a step of the protocol say so by writing a
  * whole policy of their own (the hash of the script of a form post response, the frames of a front channel
@@ -20,7 +19,7 @@ use Symfony\Component\HttpKernel\Event\ResponseEvent;
  *
  * Nothing merges two policies, and nothing can: two Content-Security-Policy headers on one answer are both
  * enforced and what applies is their intersection, and a policy a page never asked for is what the page
- * would then break on. So one of the two is sent, and on a page where the floor is all the bundle had to
+ * would then break on. So one of the two is sent, and on a page where the floor is all the provider had to
  * say, the one this deployment configured is the one that says more: it names "frame-ancestors 'none'"
  * as well, and the script sources, the base URI, the form targets and the plugin sources besides.
  *
@@ -31,7 +30,7 @@ use Symfony\Component\HttpKernel\Event\ResponseEvent;
  * and another value is left alone.
  *
  * What a page of the plane has to say about its own request is not a policy of its own: it is a directive
- * of this one, completed after it is written (Beffroi\Bundle\Http\PolicyCompletion). The consent page
+ * of this one, completed after it is written (App\Http\PolicyCompletion). The consent page
  * shows the logo of a host a client named and ends at that client, and it is served the policy of this
  * deployment with that host in its "img-src" and that client in its "form-action".
  *
@@ -51,7 +50,7 @@ final readonly class DeploymentPolicyPrevails
 
     public function __invoke(ResponseEvent $event): void
     {
-        if (!$event->isMainRequest()) {
+        if (! $event->isMainRequest()) {
             return;
         }
 

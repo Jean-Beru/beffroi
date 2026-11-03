@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
 use Closure;
 use function copy;
@@ -10,10 +10,10 @@ use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\Persistence\ManagerRegistry;
-use Beffroi\Bundle\Doctrine\TenantProvider;
-use Beffroi\Bundle\Doctrine\EntityManagers;
-use Beffroi\Bundle\Doctrine\TenantSynchronizer;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
+use App\Doctrine\TenantProvider;
+use App\Doctrine\EntityManagers;
+use App\Doctrine\TenantSynchronizer;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\SealedRows;
 use Beffroi\Core\Application\Tenant\TenantHardening;
 use Beffroi\Core\Domain\Session\AuthenticationPredicateInterface;
 use Beffroi\Core\Domain\Identity\Subject;
@@ -86,7 +86,7 @@ abstract class DatabaseTestCase extends WebTestCase
     private static array $templates = [];
 
     /**
-     * Where the bundle writes the sealed keys of the tenant of the suite, which config_test.yml points at
+     * Where the provider writes the sealed keys of the tenant of the suite, which config_test.yml points at
      * "%kernel.cache_dir%/keys". Read from the container and not restated, so that the directory is the one
      * the kernel of this process was given, token of a parallel worker included.
      */
@@ -96,7 +96,7 @@ abstract class DatabaseTestCase extends WebTestCase
     }
 
     /**
-     * Where the bundle keeps the FIDO metadata and, in its "community" directory, the list of the community
+     * Where the provider keeps the FIDO metadata and, in its "community" directory, the list of the community
      * (issue #983), which config_test.yml points at "%kernel.cache_dir%/webauthn", read from the container as
      * keyStorage() is.
      */

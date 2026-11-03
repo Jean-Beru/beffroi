@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Saml;
+namespace App\Tests\Symfony\Functional\Saml;
 
-use Beffroi\Bundle\Key\StagingDelay;
-use Beffroi\Bundle\Message\AdvanceKeyLifecycle;
-use Beffroi\Bundle\Saml\IdentityProviderSegment;
-use Beffroi\Bundle\Saml\SamlSigning;
-use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
+use App\Key\StagingDelay;
+use App\Message\AdvanceKeyLifecycle;
+use App\Saml\IdentityProviderSegment;
+use App\Saml\SamlSigning;
+use App\Tests\Symfony\Functional\Command\ConsoleTestCase;
 use Beffroi\Core\Domain\Key\KeyStatus;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Port\TenantKeyRepositoryInterface;

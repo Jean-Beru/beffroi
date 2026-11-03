@@ -22,8 +22,8 @@ use Symfony\Component\Clock\MockClock;
 
 /**
  * spec/saml.md section 6.11, S-48, S-50, S-68: a sign-on at an upstream identity provider started for a provider the
- * tenant declares, the request written from that provider, the service provider of the tenant, whether the bundle
- * forces a login, the instant of the clock and the address the bundle hands for a provider that reads one, under a
+ * tenant declares, the request written from that provider, the service provider of the tenant, whether the provider
+ * forces a login, the instant of the clock and the address the provider hands for a provider that reads one, under a
  * reference drawn for it.
  */
 final class UpstreamSignOnTest extends TestCase
@@ -96,7 +96,7 @@ final class UpstreamSignOnTest extends TestCase
 
     /**
      * Section 6.11 step 3: the request is written from the provider, the endpoints of the service provider of the
-     * tenant, whether the bundle forces a login (S-49) and the instant of the clock.
+     * tenant, whether the provider forces a login (S-49) and the instant of the clock.
      */
     #[Test]
     #[DataProvider('provideForceAuthn')]
@@ -123,7 +123,7 @@ final class UpstreamSignOnTest extends TestCase
     }
 
     /**
-     * S-68, section 6.11 step 3: the request to a provider that reads the address carries the address the bundle
+     * S-68, section 6.11 step 3: the request to a provider that reads the address carries the address the provider
      * handed, in the parameter its declaration names, its domain written as its A-label.
      */
     #[Test]
@@ -139,7 +139,7 @@ final class UpstreamSignOnTest extends TestCase
 
     /**
      * S-68: a provider whose declaration names no parameter of the address is sent none, nor is a request for which
-     * the bundle handed none.
+     * the provider handed none.
      */
     #[Test]
     #[DataProvider('provideSignOnsWithoutAHint')]

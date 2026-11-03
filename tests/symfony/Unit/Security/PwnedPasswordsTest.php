@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Security;
+namespace App\Tests\Symfony\Unit\Security;
 
-use Beffroi\Bundle\Security\PwnedPasswords;
+use App\Security\PwnedPasswords;
 use Beffroi\Core\Domain\Credential\PasswordDigest;
 use Beffroi\Core\Exception\BreachLookupFailedException;
 use function implode;

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Locale;
+namespace App\Tests\Symfony\Unit\Locale;
 
-use Beffroi\Bundle\Locale\UserTimeZone;
+use App\Locale\UserTimeZone;
 use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Tests\Fixture\Fixtures;

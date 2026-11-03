@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\MessageHandler;
+namespace App\Tests\Symfony\Functional\MessageHandler;
 
-use Beffroi\Bundle\Geo\GeoLite2Databases;
-use Beffroi\Bundle\Tests\Fixture\MaxMindDatabase;
-use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
+use App\Geo\GeoLite2Databases;
+use App\Tests\Symfony\Fixture\MaxMindDatabase;
+use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\RawRows;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\SealedRows;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
 use Beffroi\Core\Domain\Journal\JournalEntry;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
@@ -136,7 +136,7 @@ final class AProvenanceSaysFromWhereTest extends DatabaseTestCase
     }
 
     /**
-     * Where the bundle reads the databases of addresses, read from the container rather than restated, so
+     * Where the provider reads the databases of addresses, read from the container rather than restated, so
      * that it is the directory the kernel of this process was given, token of a parallel worker included.
      */
     private static function storage(): string

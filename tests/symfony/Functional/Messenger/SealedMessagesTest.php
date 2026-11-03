@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Messenger;
+namespace App\Tests\Symfony\Functional\Messenger;
 
-use Beffroi\Bundle\Message\AdvanceKeyLifecycle;
-use Beffroi\Bundle\Message\CheckThePasswordAgainstTheBreaches;
-use Beffroi\Bundle\Messenger\MessengerContract;
-use Beffroi\Bundle\Messenger\SealedBodySerializer;
-use Beffroi\Bundle\Messenger\TenantStamp;
-use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
+use App\Message\AdvanceKeyLifecycle;
+use App\Message\CheckThePasswordAgainstTheBreaches;
+use App\Messenger\MessengerContract;
+use App\Messenger\SealedBodySerializer;
+use App\Messenger\TenantStamp;
+use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\SealedRows;
 use Beffroi\Core\Application\Key\KeyStaging;
 use Beffroi\Core\Application\Key\KeyTakeOver;
 use Beffroi\Core\Domain\Credential\PasswordDigest;
@@ -29,7 +29,7 @@ use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Decision 0020, wired: what every transport of this provider encodes with is the serializer of the bundle,
+ * Decision 0020, wired: what every transport of this provider encodes with is the serializer of the provider,
  * and what it writes is sealed to the key the tenant keeps for it. The unit test of the serializer says
  * what it does with a message; this says that this is what a deployment gets, with the tenant of the
  * kernel, its KMS and its key store.
@@ -67,11 +67,11 @@ final class SealedMessagesTest extends DatabaseTestCase
     }
 
     /**
-     * The contract names the serializer of the bundle, so what the component hands every transport is that
+     * The contract names the serializer of the provider, so what the component hands every transport is that
      * one: a deployment that declares a transport of its own gets it without asking.
      */
     #[Test]
-    public function everyTransportEncodesWithTheSerializerOfTheBundle(): void
+    public function everyTransportEncodesWithTheSerializerOfTheProvider(): void
     {
         // When / Then
         static::assertInstanceOf(SealedBodySerializer::class, $this->serializer);

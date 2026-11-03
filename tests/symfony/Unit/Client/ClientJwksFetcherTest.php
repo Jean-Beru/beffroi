@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Client;
+namespace App\Tests\Symfony\Unit\Client;
 
-use Beffroi\Bundle\Http\ByteLimit;
-use Beffroi\Bundle\Http\Timeout;
-use Beffroi\Bundle\Client\ClientJwksFetcher;
+use App\Http\ByteLimit;
+use App\Http\Timeout;
+use App\Client\ClientJwksFetcher;
 use Beffroi\Oidc\Domain\Client\ClientUri;
 use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
 use function json_encode;

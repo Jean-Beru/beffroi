@@ -8,7 +8,7 @@ use Beffroi\Core\Domain\Key\KeyUse;
 use Beffroi\Saml\Domain\Key\SamlEncryptionAlgorithmInterface;
 
 /**
- * The algorithm of the key an upstream identity provider encrypts for, under test (spec/saml.md S-64): the bundle
+ * The algorithm of the key an upstream identity provider encrypts for, under test (spec/saml.md S-64): the provider
  * wires one per provider under the same name, which draws its pairs with the generator of the core; here the pairs are
  * drawn once per process (SamlKeys).
  */

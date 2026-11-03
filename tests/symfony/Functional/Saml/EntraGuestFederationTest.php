@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Saml;
+namespace App\Tests\Symfony\Functional\Saml;
 
-use Beffroi\Bundle\Saml\SamlSigning;
-use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
+use App\Saml\SamlSigning;
+use App\Tests\Symfony\Functional\Command\ConsoleTestCase;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\UserRepositoryInterface;

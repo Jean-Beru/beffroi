@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Doctrine\Type;
+namespace App\Tests\Symfony\Unit\Doctrine\Type;
 
 use DateTimeImmutable;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
@@ -14,34 +14,34 @@ use Beffroi\Core\Bridge\Password\Algorithm\Pbkdf2Sha512;
 use Beffroi\Core\Bridge\Password\Algorithm\Bcrypt;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2i;
 use Beffroi\Core\Bridge\Password\WiredPasswordAlgorithms;
-use Beffroi\Bundle\Doctrine\Type\PasswordAlgorithmType;
-use Beffroi\Bundle\Doctrine\Type\ActorType;
-use Beffroi\Bundle\Doctrine\Type\AddressType;
-use Beffroi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
-use Beffroi\Bundle\Doctrine\Type\AuthenticationPredicateType;
-use Beffroi\Bundle\Doctrine\Type\AuthenticationProofsType;
-use Beffroi\Bundle\Doctrine\Type\AuthenticationSnapshotType;
-use Beffroi\Bundle\Doctrine\Type\BackupCodesType;
-use Beffroi\Bundle\Doctrine\Type\ClaimsRequestType;
-use Beffroi\Bundle\Doctrine\Type\ClientSecretType;
-use Beffroi\Bundle\Doctrine\Type\CodeChallengeType;
-use Beffroi\Bundle\Doctrine\Type\ConfirmationType;
-use Beffroi\Bundle\Doctrine\Type\DeviceType;
-use Beffroi\Bundle\Doctrine\Type\EmailAddressType;
-use Beffroi\Bundle\Doctrine\Type\GeoLocationType;
-use Beffroi\Bundle\Doctrine\Type\IssuerType;
-use Beffroi\Bundle\Doctrine\Type\PasskeyUserHandleType;
-use Beffroi\Bundle\Doctrine\Type\PasswordHashType;
-use Beffroi\Bundle\Doctrine\Type\RedirectUriType;
-use Beffroi\Bundle\Doctrine\Type\AuthorizationDetailsType;
-use Beffroi\Bundle\Doctrine\Type\ResourceIndicatorsType;
-use Beffroi\Bundle\Doctrine\Type\ScopesType;
-use Beffroi\Bundle\Doctrine\Type\SubjectType;
-use Beffroi\Bundle\Doctrine\Type\SelfServedClaimsType;
-use Beffroi\Bundle\Doctrine\Type\ClaimNamesType;
-use Beffroi\Bundle\Doctrine\Type\UserSourceType;
-use Beffroi\Bundle\Doctrine\Type\TenantLookType;
-use Beffroi\Bundle\Doctrine\Type\LogoutProgressType;
+use App\Doctrine\Type\PasswordAlgorithmType;
+use App\Doctrine\Type\ActorType;
+use App\Doctrine\Type\AddressType;
+use App\Doctrine\Type\AuthenticationContextPolicyType;
+use App\Doctrine\Type\AuthenticationPredicateType;
+use App\Doctrine\Type\AuthenticationProofsType;
+use App\Doctrine\Type\AuthenticationSnapshotType;
+use App\Doctrine\Type\BackupCodesType;
+use App\Doctrine\Type\ClaimsRequestType;
+use App\Doctrine\Type\ClientSecretType;
+use App\Doctrine\Type\CodeChallengeType;
+use App\Doctrine\Type\ConfirmationType;
+use App\Doctrine\Type\DeviceType;
+use App\Doctrine\Type\EmailAddressType;
+use App\Doctrine\Type\GeoLocationType;
+use App\Doctrine\Type\IssuerType;
+use App\Doctrine\Type\PasskeyUserHandleType;
+use App\Doctrine\Type\PasswordHashType;
+use App\Doctrine\Type\RedirectUriType;
+use App\Doctrine\Type\AuthorizationDetailsType;
+use App\Doctrine\Type\ResourceIndicatorsType;
+use App\Doctrine\Type\ScopesType;
+use App\Doctrine\Type\SubjectType;
+use App\Doctrine\Type\SelfServedClaimsType;
+use App\Doctrine\Type\ClaimNamesType;
+use App\Doctrine\Type\UserSourceType;
+use App\Doctrine\Type\TenantLookType;
+use App\Doctrine\Type\LogoutProgressType;
 use Beffroi\Saml\Domain\SingleLogout\LogoutHop;
 use Beffroi\Saml\Domain\SingleLogout\LogoutProgress;
 use Beffroi\Saml\Domain\SingleLogout\LogoutRequester;
@@ -50,7 +50,7 @@ use Beffroi\Core\Domain\Tenant\LogoUri;
 use Beffroi\Core\Domain\Tenant\SelfServedClaims;
 use Beffroi\Oidc\Domain\Claims\ClaimNames;
 use Beffroi\Core\Domain\Tenant\TenantLook;
-use Beffroi\Bundle\BeffroiBundle;
+use App\DependencyInjection\BeffroiExtension;
 use Beffroi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Beffroi\Core\Tests\Fixture\Predicates;
 use Beffroi\Oidc\Tests\Fixture\ChallengeMethods;
@@ -103,7 +103,7 @@ use function str_repeat;
 final class TypesTest extends TestCase
 {
     /**
-     * The types that read a wiring back are told what the deployment is wired with, as the bundle tells
+     * The types that read a wiring back are told what the deployment is wired with, as the provider tells
      * them when it boots; without a kernel here, the test is the deployment.
      */
     public static function setUpBeforeClass(): void
@@ -495,7 +495,7 @@ final class TypesTest extends TestCase
     }
 
     /**
-     * The bundle declares every type to Doctrine under the name the mappings use.
+     * The provider declares every type to Doctrine under the name the mappings use.
      *
      * @param class-string<Type> $class
      */
@@ -513,16 +513,16 @@ final class TypesTest extends TestCase
      */
     public static function provideDeclaredTypes(): iterable
     {
-        foreach (BeffroiBundle::DBAL_TYPES as $name => $class) {
+        foreach (BeffroiExtension::DBAL_TYPES as $name => $class) {
             yield $name => [$name, $class];
         }
     }
 
     #[Test]
-    public function theBundleDeclaresThirtyFourTypes(): void
+    public function theProviderDeclaresThirtyFourTypes(): void
     {
         // When / Then
-        static::assertCount(34, BeffroiBundle::DBAL_TYPES);
+        static::assertCount(34, BeffroiExtension::DBAL_TYPES);
     }
 
     /**

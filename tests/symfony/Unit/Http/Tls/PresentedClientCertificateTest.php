@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Http\Tls;
+namespace App\Tests\Symfony\Unit\Http\Tls;
 
-use Beffroi\Bundle\Http\Tls\EdgeClientCertificateResolver;
-use Beffroi\Bundle\Http\Tls\PresentedClientCertificate;
+use App\Http\Tls\EdgeClientCertificateResolver;
+use App\Http\Tls\PresentedClientCertificate;
 use Beffroi\Oidc\Exception\InvalidRequestException;
 use Beffroi\Oidc\Tests\Fixture\Certificates;
 use PHPUnit\Framework\Attributes\Test;

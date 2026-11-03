@@ -4,5 +4,5 @@
 # runs at "https://op.localhost/ciba/conformance/approval".
 when@dev:
     beffroi_ciba_conformance:
-        resource: '@BeffroiBundle/config/routes/ciba-conformance.php'
+        resource: '../beffroi/routes/ciba-conformance.php'
         prefix: /ciba/conformance

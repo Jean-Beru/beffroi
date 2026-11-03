@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Messenger;
+namespace App\Tests\Symfony\Unit\Messenger;
 
-use Beffroi\Bundle\Messenger\EventBusDispatcher;
+use App\Messenger\EventBusDispatcher;
 use Beffroi\Core\Domain\Event\AuthenticationSessionEnded;
 use Beffroi\Core\Domain\Session\SessionEnd;
 use Beffroi\Core\Tests\Fixture\Fixtures;

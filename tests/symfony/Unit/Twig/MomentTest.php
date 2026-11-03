@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Twig;
+namespace App\Tests\Symfony\Unit\Twig;
 
-use Beffroi\Bundle\Locale\UserTimeZone;
-use Beffroi\Bundle\Twig\MomentExtension;
+use App\Locale\UserTimeZone;
+use App\Twig\MomentExtension;
 use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Tests\Fixture\Fixtures;

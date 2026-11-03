@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Http;
+namespace App\Tests\Symfony\Unit\Http;
 
 use Beffroi\Oidc\Tests\Fixture\Secrets;
 use DateTimeImmutable;
-use Beffroi\Bundle\Http\BrowserSession;
-use Beffroi\Bundle\Http\BrowserPreferences;
-use Beffroi\Bundle\Locale\LocalePreference;
-use Beffroi\Bundle\Locale\UserLocale;
-use Beffroi\Bundle\Tests\Fixture\AmbientTenant;
+use App\Http\BrowserSession;
+use App\Http\BrowserPreferences;
+use App\Locale\LocalePreference;
+use App\Locale\UserLocale;
+use App\Tests\Symfony\Fixture\AmbientTenant;
 use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryInteractionRepository;
 use Symfony\Component\Clock\MockClock;
-use Beffroi\Bundle\Http\InteractionLocale;
-use Beffroi\Bundle\Locale\ServedLocales;
+use App\Http\InteractionLocale;
+use App\Locale\ServedLocales;
 use Beffroi\Core\Domain\Tenant\Issuer;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Oidc\Domain\Scope\Scopes;
@@ -168,7 +168,7 @@ final class InteractionLocaleTest extends TestCase
     /**
      * The listener chooses for the pages of the interaction plane before the controller runs, through
      * the "_locale" attribute the LocaleListener of the kernel reads; the protocol plane and the routes
-     * of a host application are not touched.
+     * of the application outside the two planes are not touched.
      */
     #[Test]
     public function theListenerChoosesForThePagesOfTheInteractionPlane(): void
@@ -205,7 +205,7 @@ final class InteractionLocaleTest extends TestCase
     public static function provideRequestsOutsideTheInteractionPlane(): iterable
     {
         yield 'the protocol plane' => ['beffroi_protocol_token', HttpKernelInterface::MAIN_REQUEST];
-        yield 'a route of the host application' => ['host_route', HttpKernelInterface::MAIN_REQUEST];
+        yield 'a route of the application' => ['host_route', HttpKernelInterface::MAIN_REQUEST];
         yield 'no route' => [null, HttpKernelInterface::MAIN_REQUEST];
         yield 'a sub request of the interaction plane' => ['beffroi_interaction_login', HttpKernelInterface::SUB_REQUEST];
     }

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Client;
+namespace App\Tests\Symfony\Unit\Client;
 
 use DateInterval;
-use Beffroi\Bundle\Client\ClientJwksCache;
+use App\Client\ClientJwksCache;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Domain\Client\CachedClientJwks;
 use Beffroi\Oidc\Domain\Client\ClientUri;

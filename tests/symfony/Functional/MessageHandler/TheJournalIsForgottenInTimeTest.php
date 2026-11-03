@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\MessageHandler;
+namespace App\Tests\Symfony\Functional\MessageHandler;
 
-use Beffroi\Bundle\Configuration\JournalSection;
-use Beffroi\Bundle\Message\ForgetTheActsPastTheirRetention;
-use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
+use App\Configuration\JournalSection;
+use App\Message\ForgetTheActsPastTheirRetention;
+use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
 use Beffroi\Core\Domain\Journal\JournalEntry;
 use Beffroi\Core\Port\JournalInterface;

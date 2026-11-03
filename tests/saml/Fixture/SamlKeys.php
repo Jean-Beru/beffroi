@@ -177,7 +177,7 @@ final class SamlKeys
     }
 
     /**
-     * What signs for the tenants whose keys the repository holds, as the bundle wires it: their active SAML key opened
+     * What signs for the tenants whose keys the repository holds, as the provider wires it: their active SAML key opened
      * by the KMS of the suite, and its certificate, the one the metadata publish (S-37).
      */
     public static function signing(TenantKeyRepositoryInterface $keys): TenantSigning

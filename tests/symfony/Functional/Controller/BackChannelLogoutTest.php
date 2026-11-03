@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use function array_map;
-use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
+use App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Oidc\Domain\EndSession\LogoutToken;
 use Beffroi\Oidc\Domain\Event\LogoutTokenIssued;

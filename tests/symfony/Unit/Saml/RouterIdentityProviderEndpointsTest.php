@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Saml;
+namespace App\Tests\Symfony\Unit\Saml;
 
-use Beffroi\Bundle\Saml\IdentityProviderRoutes;
-use Beffroi\Bundle\Saml\RouterIdentityProviderEndpoints;
+use App\Saml\IdentityProviderRoutes;
+use App\Saml\RouterIdentityProviderEndpoints;
 use Beffroi\Core\Domain\Tenant\Issuer;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use DateTimeImmutable;
@@ -20,7 +20,7 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * beffroi/saml, spec/saml.md S-4 and section 6.1 step 3: the endpoints of the SAML identity provider of a tenant are
- * the routes of the bundle under the origin of its issuer, never under the request that asked for them.
+ * the routes of the provider under the origin of its issuer, never under the request that asked for them.
  */
 final class RouterIdentityProviderEndpointsTest extends TestCase
 {
@@ -56,7 +56,7 @@ final class RouterIdentityProviderEndpointsTest extends TestCase
 
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessageIs('The SAML metadata is served at "https://op.example/auth/saml/metadata" but the issuer "https://op.example" puts the identity provider under "https://op.example/saml/metadata": mount the routes of the bundle under the path of the issuer.');
+        $this->expectExceptionMessageIs('The SAML metadata is served at "https://op.example/auth/saml/metadata" but the issuer "https://op.example" puts the identity provider under "https://op.example/saml/metadata": mount the routes of the provider under the path of the issuer.');
 
         // When
         $endpoints->locate(self::tenant('https://op.example'));

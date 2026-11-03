@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Client;
+namespace App\Tests\Symfony\Unit\Client;
 
 use DateTimeImmutable;
-use Beffroi\Bundle\Cache\SeenOnce;
-use Beffroi\Bundle\Client\ClientAssertionReplayGuard;
+use App\Cache\SeenOnce;
+use App\Client\ClientAssertionReplayGuard;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\Test;

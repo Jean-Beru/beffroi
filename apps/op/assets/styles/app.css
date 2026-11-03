@@ -1,11 +1,11 @@
 /*
- * The look of the pages of the bundle (architecture §5.2, §6): Tailwind and DaisyUI, built by the Tailwind
+ * The look of the pages of the provider (architecture §5.2, §6): Tailwind and DaisyUI, built by the Tailwind
  * standalone binary (symfonycasts/tailwind-bundle) and served by the asset mapper as styles/app.css.
  *
- * The bundle ships bare structure and the codes of its pages in data-* attributes, never a class. The
- * application styles that structure from here, so that its layout override (templates/bundles/BeffroiBundle/
- * layout.html.twig) and the two skeletons it picks from (templates/layout/) are the only files it adds and
- * the pages of the bundle stay untouched.
+ * The pages carry bare structure and their codes in data-* attributes, never a class. This stylesheet
+ * styles that structure, so that the layout of the pages (templates/beffroi/layout.html.twig) and the two
+ * skeletons it picks from (templates/layout/) are the only templates that know the look, and the pages stay
+ * untouched.
  *
  * Three sections. The skeletons come first: the column of pages and the bar of a page of the account, and
  * the panel of a page of an interaction, each named by an identifier the skeleton carries so that no rule
@@ -24,6 +24,7 @@
 @import "tailwindcss";
 
 @source "../../templates";
+
 
 @plugin "../vendor/daisyui/daisyui.index.js" {
     themes: light --default, dark --prefersdark;
@@ -235,13 +236,13 @@
         @apply alert alert-info alert-soft mt-4;
     }
 
-    /* The way out of a refusal (the error page of the bundle): the one thing there is to do on a page where
+    /* The way out of a refusal (the error page of the provider): the one thing there is to do on a page where
        the request stopped, so it is read as the action it is and not as a line of small print under it. */
     main a[data-sign-in] {
         @apply btn btn-primary mt-6;
     }
 
-    /* A form the script of the bundle keeps hidden until it has a browser for it stays hidden. */
+    /* A form the script of the provider keeps hidden until it has a browser for it stays hidden. */
     main form:not([hidden]) {
         @apply mt-6 flex flex-col gap-4;
     }
@@ -1007,7 +1008,7 @@
         @apply kbd select-all font-mono text-base tracking-widest;
     }
 
-    /* The key is clickable once the script of the bundle has found a browser that can write a clipboard
+    /* The key is clickable once the script of the provider has found a browser that can write a clipboard
        (copy.js), and says so from then on and never before: a value that does nothing when it is clicked
        is a value that says nothing about being clicked. */
     main[data-page="account"] code[data-two-factor="key"][data-copy-click] {

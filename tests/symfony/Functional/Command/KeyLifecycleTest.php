@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Command;
+namespace App\Tests\Symfony\Functional\Command;
 
 use function array_filter;
 use function array_map;
 use function array_values;
 use DateTimeImmutable;
 use DateTimeInterface;
-use Beffroi\Bundle\Message\AdvanceKeyLifecycle;
-use Beffroi\Bundle\Message\RemoveUnusedClients;
+use App\Message\AdvanceKeyLifecycle;
+use App\Message\RemoveUnusedClients;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Beffroi\Core\Domain\Event\TenantKeyRetired;
 use Beffroi\Core\Domain\Event\TenantKeyRotated;
@@ -40,7 +40,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
  * The operator's side of a rotation without an outage (architecture §3.3, §5.5): one command starts it,
- * time does the rest, through the recurring message of the bundle; every step can be done by hand.
+ * time does the rest, through the recurring message of the provider; every step can be done by hand.
  * The staging delay of this kernel derives from its JWK Set max-age of two minutes: three minutes.
  */
 final class KeyLifecycleTest extends ConsoleTestCase
@@ -749,11 +749,11 @@ final class KeyLifecycleTest extends ConsoleTestCase
     }
 
     /**
-     * Architecture §5.6: the message recurs every minute on the schedule of the bundle, whose transport the
+     * Architecture §5.6: the message recurs every minute on the schedule of the provider, whose transport the
      * worker consumes next to the buses.
      */
     #[Test]
-    public function theScheduleOfTheBundleCarriesTheStepEveryMinute(): void
+    public function theScheduleOfTheProviderCarriesTheStepEveryMinute(): void
     {
         // When
         $tester = self::console('debug:scheduler');

@@ -15,7 +15,7 @@ use Beffroi\Oidc\Port\ClientRepositoryInterface;
 use Beffroi\Oidc\Port\SubjectIdentifierResolverInterface;
 
 /**
- * The two shapes this provider writes an access token in, wired as the bundle wires them. A test names
+ * The two shapes this provider writes an access token in, wired as the provider wires them. A test names
  * only what its shape needs and takes the other as a deployment has it.
  */
 final class AccessTokenShapes

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Client;
+namespace App\Tests\Symfony\Unit\Client;
 
-use Beffroi\Bundle\Client\SelfClient;
+use App\Client\SelfClient;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -15,7 +15,7 @@ use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
 
 /**
- * Issue #282: the application that hosts the bundle names its routes, and what it registers is what the router writes
+ * Issue #282: the application names its routes, and what it registers is what the router writes
  * for them in the context of the issuer: the path of a route under the origin of the issuer, the application and the
  * provider being served under the same host, and a route that requires a scheme or a host written as it requires.
  */
@@ -51,7 +51,7 @@ final class SelfClientTest extends TestCase
     }
 
     /**
-     * An issuer with a path mounts the routes of the bundle under it (OIDC Discovery §4.1), not the routes of the
+     * An issuer with a path mounts the routes of the provider under it (OIDC Discovery §4.1), not the routes of the
      * application: the URL of a route of the application is its path under the origin, never under the issuer.
      */
     #[Test]

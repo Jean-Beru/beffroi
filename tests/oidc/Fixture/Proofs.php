@@ -117,7 +117,7 @@ final class Proofs
     }
 
     /**
-     * The verifier as the bundle wires it: the reader of every JWT a client signs, the algorithms of the
+     * The verifier as the provider wires it: the reader of every JWT a client signs, the algorithms of the
      * provider, the proofs already seen in the memory of the test, and no nonce unless the test wires one.
      */
     public static function verifier(?DpopNonceInterface $nonces = null, int $maximumAge = 60, int $leeway = 5): DpopProofVerifier

@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Doctrine\Bundle\DoctrineBundle\DoctrineBundle;
-use Beffroi\Bundle\BeffroiBundle;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Bundle\SecurityBundle\SecurityBundle;
 use Symfony\Bundle\TwigBundle\TwigBundle;
@@ -22,11 +21,8 @@ return [
     SecurityBundle::class => [
         'all' => true,
     ],
-    BeffroiBundle::class => [
-        'all' => true,
-    ],
-    // the panel of the bundle is rendered by the layout of this one; the profiler follows kernel.debug,
-    // so the bundle is inert in every test but the one that asks for a kernel in debug
+    // the panel of the provider is rendered by the layout of this one; the profiler follows kernel.debug,
+    // so the provider is inert in every test but the one that asks for a kernel in debug
     WebProfilerBundle::class => [
         'all' => true,
     ],

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
 use function array_diff;
 use function array_keys;
 use function array_values;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Type;
-use Beffroi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
+use App\Doctrine\PersonalData\EncryptedColumnTypes;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -18,7 +18,7 @@ use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\EncryptedType;
 
 /**
  * The plumbing every sealed column of the spike needs (decisions 0011 and 0018): the encrypted types of
- * the bundle are declared in one place, registered while the bundles boot, and each one decorates the type
+ * the provider are declared in one place, registered while the bundles boot, and each one decorates the type
  * its column would otherwise have carried.
  *
  * What gives them their encrypter is the deployment, because that choice is what decides where the data
@@ -39,7 +39,7 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
      * because a type seals one type: the count of keys is the count of families and not of types.
      */
     #[Test]
-    public function theBundleDeclaresOneTypePerFamilyAndPerTypeThatFamilySeals(): void
+    public function theProviderDeclaresOneTypePerFamilyAndPerTypeThatFamilySeals(): void
     {
         // When / Then
         static::assertCount(16, EncryptedColumnTypes::FAMILIES);
@@ -47,13 +47,13 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
     }
 
     /**
-     * Every type the bundle declares is the type of a field of the mappings. A type is registered at every
+     * Every type the provider declares is the type of a field of the mappings. A type is registered at every
      * boot, and one that no field names is registered for no column, a declaration left behind by a column
      * that moved, which the count above goes on counting. The names are read from the declaration and the
      * types from the metadata of the mappings, so neither can be the only one to know.
      */
     #[Test]
-    public function everyTypeTheBundleDeclaresIsNamedByAMapping(): void
+    public function everyTypeTheProviderDeclaresIsNamedByAMapping(): void
     {
         // Given
         $named = [];
@@ -83,7 +83,7 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
 
         // When / Then
         foreach (EncryptedColumnTypes::names() as $name) {
-            static::assertTrue($registry->has($name), $name . ' is declared by the bundle and not registered.');
+            static::assertTrue($registry->has($name), $name . ' is declared by the provider and not registered.');
             static::assertInstanceOf(EncryptedType::class, $registry->get($name));
         }
     }
@@ -185,7 +185,7 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
     public static function provideNames(): iterable
     {
         yield 'a type of the platform' => ['user', 'string', 'beffroi_encrypted_user_string'];
-        yield 'a type of the bundle, whose prefix is dropped' => ['user', 'beffroi_address', 'beffroi_encrypted_user_address'];
+        yield 'a type of the provider, whose prefix is dropped' => ['user', 'beffroi_address', 'beffroi_encrypted_user_address'];
         yield 'a family whose name is a sentence' => [
             'backchannel_authentication_request',
             'beffroi_request_context',

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Doctrine\PersonalData;
+namespace App\Tests\Symfony\Unit\Doctrine\PersonalData;
 
-use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeyStores;
-use Beffroi\Bundle\Doctrine\PersonalData\TenantScopedDataKeyStore;
+use App\Doctrine\PersonalData\TenantDataKeyStores;
+use App\Doctrine\PersonalData\TenantScopedDataKeyStore;
 use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Closure;

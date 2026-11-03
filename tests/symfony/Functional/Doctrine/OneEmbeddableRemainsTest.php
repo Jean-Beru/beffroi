@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
 use function array_diff;
 use function array_keys;
@@ -26,7 +26,7 @@ use function str_starts_with;
 
 /**
  * Decision 0027 and the SOLID rule of `AGENTS.md`: a value object a column holds whole writes its own
- * document, and **no mapping of the bundle holds a Doctrine embeddable** but one. That one is the
+ * document, and **no mapping of the provider holds a Doctrine embeddable** but one. That one is the
  * authorization request an interaction parks (architecture §5.3), and what keeps it is not a preference.
  *
  * **Its first field is a `Client`**, which the mapping carries no entity for: a registration is read back
@@ -51,13 +51,13 @@ final class OneEmbeddableRemainsTest extends DatabaseTestCase
     private const int FIELDS = 17;
 
     /**
-     * How many types of the bundle a single column holding this object whole would have to absorb, which
+     * How many types of the provider a single column holding this object whole would have to absorb, which
      * is the count of distinct types over those seventeen fields: the two hints share one.
      */
     private const int TYPES = 8;
 
     /**
-     * How many of those eight are handed a registry when the bundle boots, Doctrine building a type from a
+     * How many of those eight are handed a registry when the provider boots, Doctrine building a type from a
      * class name with nothing to give it: the PKCE methods a stored challenge names its own with, and the
      * detail types an `authorization_details` is read back as. A type that needs the wiring takes it
      * through the `resolveWith()` of its capability (`NeedsCodeChallengeMethodsInterface`,
@@ -66,19 +66,19 @@ final class OneEmbeddableRemainsTest extends DatabaseTestCase
     private const int TYPES_THAT_READ_A_REGISTRY = 2;
 
     /**
-     * The classes of the packages, which are the mappings of the bundle: what a host application embeds in
-     * its own entities is not the bundle's to refuse (decision 0002).
+     * The classes of the packages, which are the mappings of the provider: what the application embeds in
+     * entities of its own is not the provider's to refuse (decision 0002).
      */
     private const string PACKAGES = 'Beffroi\\';
 
     /**
-     * The prefix of a type of the bundle, a field carrying a type of Doctrine being a field a single
+     * The prefix of a type of the provider, a field carrying a type of Doctrine being a field a single
      * column would absorb nothing of.
      */
     private const string TYPE_PREFIX = 'beffroi_';
 
     #[Test]
-    public function theMappingsOfTheBundleEmbedOneObject(): void
+    public function theMappingsOfTheProviderEmbedOneObject(): void
     {
         // When / Then
         static::assertSame([AuthorizationRequest::class], array_keys(self::embeddedObjects()));
@@ -149,14 +149,14 @@ final class OneEmbeddableRemainsTest extends DatabaseTestCase
     }
 
     /**
-     * What a ninth type would have to absorb: eight types of the bundle over those seventeen fields, each
+     * What a ninth type would have to absorb: eight types of the provider over those seventeen fields, each
      * one the type of a value object that writes its own document (decision 0027).
      */
     #[Test]
-    public function aSingleColumnWouldHaveToAbsorbEightTypesOfTheBundle(): void
+    public function aSingleColumnWouldHaveToAbsorbEightTypesOfTheProvider(): void
     {
         // When / Then
-        static::assertCount(self::TYPES, self::typesOfTheBundle());
+        static::assertCount(self::TYPES, self::typesOfTheProvider());
     }
 
     /**
@@ -169,7 +169,7 @@ final class OneEmbeddableRemainsTest extends DatabaseTestCase
     {
         // Given
         $handed = [];
-        foreach (self::typesOfTheBundle() as $name) {
+        foreach (self::typesOfTheProvider() as $name) {
             if (method_exists(Type::getType($name), 'resolveWith')) {
                 $handed[] = $name;
             }
@@ -180,7 +180,7 @@ final class OneEmbeddableRemainsTest extends DatabaseTestCase
     }
 
     /**
-     * The objects the mappings of the bundle embed, by the entities that embed each one: an embeddable is
+     * The objects the mappings of the provider embed, by the entities that embed each one: an embeddable is
      * read from the entities, which is where its columns land, and the metadata of an embeddable itself is
      * skipped so that an object nested in one is named after the entity that carries it.
      *
@@ -222,11 +222,11 @@ final class OneEmbeddableRemainsTest extends DatabaseTestCase
     }
 
     /**
-     * The distinct types of the bundle over the fields of the request.
+     * The distinct types of the provider over the fields of the request.
      *
      * @return list<string>
      */
-    private static function typesOfTheBundle(): array
+    private static function typesOfTheProvider(): array
     {
         $types = [];
         foreach (self::entityManager()->getClassMetadata(Interaction::class)->fieldMappings as $mapping) {

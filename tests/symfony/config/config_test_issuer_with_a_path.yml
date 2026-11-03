@@ -1,4 +1,4 @@
-# A deployment whose issuer has a path, the routes of the bundle mounted under it (routing_issuer_with_a_path.yml):
+# A deployment whose issuer has a path, the routes of the provider mounted under it (routing_issuer_with_a_path.yml):
 # what the provider hands a person to open is under that path once (issue #841).
 framework:
     router:

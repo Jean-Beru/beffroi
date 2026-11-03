@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\MessageHandler;
+namespace App\Tests\Symfony\Functional\MessageHandler;
 
 use Beffroi\Core\Domain\Event\DomainEventInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;

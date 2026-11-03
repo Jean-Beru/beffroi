@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use function array_map;
 use function array_values;
-use Beffroi\Bundle\Http\AskedPage;
+use App\Http\AskedPage;
 use Beffroi\Core\Domain\Event\AuthenticationFailed;
 use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
 use Beffroi\Core\Domain\Event\DomainEventInterface;
@@ -37,7 +37,7 @@ final class AccountActsTest extends BrowserTestCase
      * The acceptance of the issue: a second factor accepted, a session that ended, a credential enrolled
      * or revoked, a password changed and a set of backup codes renewed were in the table and on no page.
      * Each is named in the language of the browser (architecture §5.7), and an act one of the catalogues
-     * of the bundle does not name fails the kernel of this suite (StrictTranslator), so a page that
+     * of the provider does not name fails the kernel of this suite (StrictTranslator), so a page that
      * renders is a page where every one of them is named in that language.
      */
     #[Test]

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Http;
+namespace App\Tests\Symfony\Unit\Http;
 
-use Beffroi\Bundle\Http\FapiInteractionId;
-use Beffroi\Bundle\Http\ServesAProtectedResourceInterface;
+use App\Http\FapiInteractionId;
+use App\Http\ServesAProtectedResourceInterface;
 use Beffroi\Core\Bridge\Uid\FixedUuidGenerator;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
 use Beffroi\Core\Application\Identity\IdentityAlreadyLinkedException;
 use function array_keys;
@@ -11,9 +11,9 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Schema\Index\IndexedColumn;
 use Doctrine\DBAL\Schema\Index\IndexType;
 use Doctrine\ORM\Tools\SchemaTool;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\RawRows;
 use Beffroi\Core\Domain\PersonalData\Sealed;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\ClassifiedModel;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\ClassifiedModel;
 use Beffroi\Core\Domain\Identity\LinkedIdentity;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;

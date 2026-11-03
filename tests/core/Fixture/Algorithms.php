@@ -28,7 +28,7 @@ use Beffroi\Core\Bridge\JwtLibrary\JoseMessageSealingAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
 
 /**
- * The algorithms of the suite, wired as the bundle wires them, RS256 first and the two a client encrypts
+ * The algorithms of the suite, wired as the provider wires them, RS256 first and the two a client encrypts
  * to beside them. RSA keys are 2048 bits here: generation is what makes a test slow, and 2048 is what
  * RFC 7518 §3.3 asks for.
  */

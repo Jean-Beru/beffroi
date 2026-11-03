@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Configuration;
+namespace App\Tests\Symfony\Functional\Configuration;
 
-use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeyStores;
-use Beffroi\Bundle\Tenant\TenantFactory;
+use App\Doctrine\PersonalData\TenantDataKeyStores;
+use App\Tenant\TenantFactory;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use function array_map;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;

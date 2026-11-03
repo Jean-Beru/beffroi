@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use DateTimeImmutable;
-use Beffroi\Bundle\Http\AuthorizationResponder;
+use App\Http\AuthorizationResponder;
 use Beffroi\Oidc\Port\InteractionRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;

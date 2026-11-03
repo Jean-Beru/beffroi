@@ -31,7 +31,7 @@ beffroi:
 services:
     # Reachable from the tests: what each list reaches, built when a test asks for it.
     test.beffroi.environment_lists.tenant_factory:
-        alias: Beffroi\Bundle\Tenant\TenantFactory
+        alias: App\Tenant\TenantFactory
         public: true
     test.beffroi.environment_lists.trusted_issuers:
         alias: Beffroi\Oidc\Bridge\Configuration\ConfigurationTrustedIssuers

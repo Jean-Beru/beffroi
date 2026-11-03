@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Key;
+namespace App\Tests\Symfony\Unit\Key;
 
 use function base64_decode;
 use function file_get_contents;
 use function file_put_contents;
-use Beffroi\Bundle\Key\FilePairwiseSalt;
+use App\Key\FilePairwiseSalt;
 use Beffroi\Core\Bridge\Random\PlatformRandomness;
 use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Tests\Fixture\Fixtures;

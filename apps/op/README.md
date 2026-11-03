@@ -1,24 +1,24 @@
 # beffroi/op
 
-The standalone identity provider: a Symfony skeleton on `beffroi/symfony-bundle`, served by FrankenPHP,
-with PostgreSQL behind it, whose tables are the queues of its lanes as well: it carries the transport of no
-broker. It is the recommended deployment, the form the provider takes for whoever runs one rather than
-installs it inside an application of their own.
+The identity provider: a Symfony application served by FrankenPHP, with PostgreSQL behind it, whose tables are
+the queues of its lanes as well: it carries the transport of no broker. It is the one form the provider is
+deployed in; nothing installs it inside another application.
 
 It is the `apps/op` directory of the monorepo, [beffroi-auth/beffroi](https://github.com/beffroi-auth/beffroi),
-beside the packages it installs: the identity core, the OAuth 2.0 and OpenID Connect module and the Symfony
-bundle. `beffroi-auth/op` is a mirror of that directory, read only, pushed by git split. The design and the
+beside the packages it installs: the identity core, the OAuth 2.0 and OpenID Connect module and the SAML
+2.0 module. `beffroi-auth/op` is a mirror of that directory, read only, pushed by git split. The design and the
 decisions are in [beffroi-auth/design](https://github.com/beffroi-auth/design), and the reference relying
 party in [beffroi-auth/oidc-demo](https://github.com/beffroi-auth/oidc-demo).
 
 ## What is here, and what is not
 
-Here: what a deployment decides. The layout the pages of the bundle take and the stylesheet that gives
-them their look (Tailwind and DaisyUI), the firewall, the Messenger contract and its transports, the
-migrations, the FrankenPHP and Caddy configuration with the host that asks for a client certificate, and the
-page of what the provider holds of a person, which this application owns and serves in place of the bundle's.
-Its suite is here too, in `tests/`: it boots this kernel, on the database and the KMS that kernel needs, and
-reads the page that belongs to it. And what the development stack reads of this directory and no deployment
+Here: the provider as a Symfony application on the packages. The `beffroi:` tree its kernel registers
+(`src/DependencyInjection/`) and the wiring it loads (`config/beffroi/`); the controllers, the security, the
+persistence and the migrations; the pages (`templates/beffroi/`), the layout they take and the stylesheet
+that gives them their look (Tailwind and DaisyUI); the firewall, the Messenger contract and its transports,
+and the FrankenPHP and Caddy configuration with the host that asks for a client certificate. Its suite is
+here too, in `tests/`: it boots this kernel, on the database and the KMS that kernel needs. The suite of the
+integration, at the root of the monorepo (`tests/symfony`), boots the same wiring in a kernel of its own. And what the development stack reads of this directory and no deployment
 serves: the configuration of development, the demonstration of the flows (`src/Demonstration/`) and what the
 tasks of the lab ask of the application (`src/Lab/`), the one type of authorization detail the stack wires
 among it. The image carries none of that, nor the suite.

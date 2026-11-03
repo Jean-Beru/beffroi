@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Oidc\Domain\Client\Registration\InitialAccessToken;

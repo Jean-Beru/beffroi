@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use function array_column;
 use function array_keys;
 use Closure;
-use Beffroi\Bundle\Http\LogoutTokenSender;
-use Beffroi\Bundle\Message\SendLogoutToken;
-use Beffroi\Bundle\MessageHandler\SendLogoutTokenHandler;
-use Beffroi\Bundle\Messenger\NotificationNotDeliveredException;
-use Beffroi\Bundle\Messenger\NotificationRetryPolicy;
-use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
-use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Beffroi\Bundle\Tests\Functional\Messenger\LogoutEndpoints;
+use App\Http\LogoutTokenSender;
+use App\Message\SendLogoutToken;
+use App\MessageHandler\SendLogoutTokenHandler;
+use App\Messenger\NotificationNotDeliveredException;
+use App\Messenger\NotificationRetryPolicy;
+use App\Tests\Symfony\Functional\Command\ConsoleTestCase;
+use App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler;
+use App\Tests\Symfony\Functional\Messenger\LogoutEndpoints;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Oidc\Domain\Event\LogoutTokenGivenUp;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Messenger;
+namespace App\Tests\Symfony\Unit\Messenger;
 
 use Beffroi\Core\Tests\Domain\Event\EventsLeaveTheProcessTest;
 use function array_keys;
@@ -11,15 +11,15 @@ use function array_unique;
 use function array_values;
 use function base64_decode;
 use function base64_encode;
-use Beffroi\Bundle\Message\AdvanceKeyLifecycle;
-use Beffroi\Bundle\Message\SendLogoutToken;
-use Beffroi\Bundle\Messenger\SealedBodySerializer;
-use Beffroi\Bundle\Messenger\TenantStamp;
-use Beffroi\Bundle\Tests\Fixture\AmbientTenant;
-use Beffroi\Bundle\Tests\Fixture\AskWhatIsKnown;
-use Beffroi\Bundle\Tests\Fixture\EnrichTheProvenance;
-use Beffroi\Bundle\Tests\Fixture\SomethingHappened;
-use Beffroi\Bundle\Tests\Fixture\WriteBeforeAnswering;
+use App\Message\AdvanceKeyLifecycle;
+use App\Message\SendLogoutToken;
+use App\Messenger\SealedBodySerializer;
+use App\Messenger\TenantStamp;
+use App\Tests\Symfony\Fixture\AmbientTenant;
+use App\Tests\Symfony\Fixture\AskWhatIsKnown;
+use App\Tests\Symfony\Fixture\EnrichTheProvenance;
+use App\Tests\Symfony\Fixture\SomethingHappened;
+use App\Tests\Symfony\Fixture\WriteBeforeAnswering;
 use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryMessageBodyOpener;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryMessageBodySealer;
@@ -101,7 +101,7 @@ final class SealedBodySerializerTest extends TestCase
     {
         yield 'a command' => [new AdvanceKeyLifecycle()];
         yield 'a command of its own' => [new EnrichTheProvenance(Uuid::v7())];
-        yield 'an event of the bundle' => [new SomethingHappened('a page was rendered')];
+        yield 'an event of the provider' => [new SomethingHappened('a page was rendered')];
         yield 'a notification' => [new SendLogoutToken(
             Fixtures::tenant(),
             'oidc-demo',

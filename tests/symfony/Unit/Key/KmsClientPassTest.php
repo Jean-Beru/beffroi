@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Key;
+namespace App\Tests\Symfony\Unit\Key;
 
-use Beffroi\Bundle\Key\KmsClientPass;
+use App\Key\KmsClientPass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -12,7 +12,7 @@ use Symfony\Component\DependencyInjection\Exception\LogicException;
 use Symfony\Component\KeyManagement\EncrypterInterface;
 
 /**
- * Issue #208: the bundle seals with a KMS client KeyManagementBundle registers, and the pass is what turns
+ * Issue #208: the provider seals with a KMS client KeyManagementBundle registers, and the pass is what turns
  * a name nothing answers to into a failure an operator can read.
  */
 final class KmsClientPassTest extends TestCase
@@ -68,11 +68,11 @@ final class KmsClientPassTest extends TestCase
     }
 
     /**
-     * A container the bundle was not loaded into has no alias to check, and the pass has nothing to say
+     * A container the provider was not loaded into has no alias to check, and the pass has nothing to say
      * about it.
      */
     #[Test]
-    public function aContainerWithoutTheBundleIsLeftAlone(): void
+    public function aContainerWithoutTheProviderIsLeftAlone(): void
     {
         // Given
         $container = new ContainerBuilder();

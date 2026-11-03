@@ -218,7 +218,7 @@ final class RequestedAuthenticationContextTest extends TestCase
 
     /**
      * A request of a client of that tenant that asks for the two factors, judged against what the logins of
-     * the bundle prove for it: what the floor of the tenant leaves of them (issue #327).
+     * the provider prove for it: what the floor of the tenant leaves of them (issue #327).
      */
     private function contextOf(Tenant $tenant): RequestedAuthenticationContext
     {

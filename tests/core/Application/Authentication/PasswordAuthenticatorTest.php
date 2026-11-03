@@ -747,7 +747,7 @@ final class PasswordAuthenticatorTest extends TestCase
 
     /**
      * The password was the right one, whoever tried before did not have it: the count is emptied whether
-     * the login is held or not, as on the firewall of the bundle.
+     * the login is held or not, as on the firewall of the provider.
      */
     #[Test]
     public function aHeldLoginEmptiesTheCountOfTheUser(): void

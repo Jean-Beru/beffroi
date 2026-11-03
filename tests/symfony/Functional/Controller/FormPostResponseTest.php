@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use Beffroi\Oidc\Domain\Authorization\FormPostResponse;
 use PHPUnit\Framework\Attributes\Test;

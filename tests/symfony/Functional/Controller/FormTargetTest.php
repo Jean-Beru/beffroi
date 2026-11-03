@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
-use Beffroi\Bundle\Http\InteractionPages;
+use App\Http\InteractionPages;
 use Beffroi\Core\Domain\Credential\TotpCredential;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
@@ -86,7 +86,7 @@ final class FormTargetTest extends PasskeyTestCase
             static::assertInstanceOf(EventDispatcherInterface::class, $dispatcher);
             // where the policy of an application is written: after the controller that answered, before
             // the directive of a page is completed with what it may answer (FormTarget), and on the pages
-            // the bundle computes no policy for, as App\Http\DeploymentPolicyPrevails leaves them
+            // the provider computes no policy for, as App\Http\DeploymentPolicyPrevails leaves them
             $dispatcher->addListener(
                 KernelEvents::RESPONSE,
                 static function (ResponseEvent $event): void {

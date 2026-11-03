@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Key;
+namespace App\Tests\Symfony\Functional\Key;
 
-use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeyStores;
-use Beffroi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\CountingKms;
+use App\Doctrine\PersonalData\TenantDataKeyStores;
+use App\Doctrine\PersonalData\TenantScopedEncrypter;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\CountingKms;
 use Doctrine\DBAL\Connection;
 use function in_array;
 use function is_resource;

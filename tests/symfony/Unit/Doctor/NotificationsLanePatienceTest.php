@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Doctor;
+namespace App\Tests\Symfony\Unit\Doctor;
 
-use Beffroi\Bundle\Doctor\Finding;
-use Beffroi\Bundle\Doctor\NotificationsLanePatience;
-use Beffroi\Bundle\Message\Notification;
+use App\Doctor\Finding;
+use App\Doctor\NotificationsLanePatience;
+use App\Message\Notification;
 use function sprintf;
-use Beffroi\Bundle\Messenger\NotificationRetryPolicy;
+use App\Messenger\NotificationRetryPolicy;
 use Beffroi\Oidc\Port\LogoutTokenDeliveryInterface;
 use DateInterval;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -22,7 +22,7 @@ use Symfony\Component\Messenger\Transport\Sender\SenderInterface;
 use Symfony\Component\Messenger\Transport\Sender\SendersLocator;
 
 /**
- * Issue #196: what the check makes of a container that is not the one the bundle wires. The two
+ * Issue #196: what the check makes of a container that is not the one the provider wires. The two
  * containers of a deployment are judged by building them (tests/symfony/Functional/Doctor/DoctorTest);
  * what is here is each shape the two locators of the component can hand it, which a container reaches
  * one at a time, and the way a line says a length of time.

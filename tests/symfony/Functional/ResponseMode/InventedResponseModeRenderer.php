@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\ResponseMode;
+namespace App\Tests\Symfony\Functional\ResponseMode;
 
-use Beffroi\Bundle\Http\ResponseMode\AuthorizationResponseRendererInterface;
+use App\Http\ResponseMode\AuthorizationResponseRendererInterface;
 use Beffroi\Oidc\Domain\Authorization\AuthorizationAnswer;
 use function http_build_query;
 use Symfony\Component\HttpFoundation\Response;
@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
  * kernel as a deployment would wire one. It names itself, and that name is what a request may ask for, what
  * the discovery document announces and what the endpoint answers in; no class of `src` names it anywhere.
  *
- * What it delivers is deliberately unlike the modes the bundle wires, a plain document carrying the
+ * What it delivers is deliberately unlike the modes the provider wires, a plain document carrying the
  * parameters, so that a test can tell it answered and not one of them.
  */
 final readonly class InventedResponseModeRenderer implements AuthorizationResponseRendererInterface

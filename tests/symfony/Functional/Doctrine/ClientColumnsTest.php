@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
 use Doctrine\DBAL\Connection;
-use Beffroi\Bundle\Doctrine\PersonalData\BlindIndexedColumns;
-use Beffroi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
+use App\Doctrine\PersonalData\BlindIndexedColumns;
+use App\Doctrine\PersonalData\TenantScopedEncrypter;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\RawRows;
 use Beffroi\Core\Domain\PersonalData\Sealed;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\ClassifiedModel;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\ClassifiedModel;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\SealedRows;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Domain\Credential\PasswordHash;
 use Beffroi\Oidc\Domain\Client\ClientRecord;

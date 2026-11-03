@@ -6,7 +6,7 @@ name: OpenID Conformance
 # own, asked for by hand and run once a week, and no merge waits on them.
 #
 # It is the lean CI rule of this repository: what does not have to be paid on every event is not. A pull
-# request has the bundle suite, which is what judges a change before it lands; "castor conformance" on the
+# request has the provider suite, which is what judges a change before it lands; "castor conformance" on the
 # development stack is what judges a change that touches the protocol before the merge, and "AGENTS.md"
 # asks for that run by hand when a spike is closed. The week is what catches what neither of them looked
 # at.

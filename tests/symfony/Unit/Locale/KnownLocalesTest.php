@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Locale;
+namespace App\Tests\Symfony\Unit\Locale;
 
-use Beffroi\Bundle\Locale\KnownLocales;
+use App\Locale\KnownLocales;
 use function array_keys;
 use function array_slice;
 use function count;

@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Saml;
+namespace App\Tests\Symfony\Functional\Saml;
 
-use Beffroi\Bundle\Http\BrowserSession;
-use Beffroi\Bundle\Http\LoginTarget;
-use Beffroi\Bundle\Saml\SamlSigning;
-use Beffroi\Bundle\Saml\ServiceProviderRoutes;
-use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
+use App\Http\BrowserSession;
+use App\Http\LoginTarget;
+use App\Saml\SamlSigning;
+use App\Saml\ServiceProviderRoutes;
+use App\Tests\Symfony\Functional\Command\ConsoleTestCase;
 use Beffroi\Core\Domain\Event\AuthenticationFailed;
 use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
 use Beffroi\Core\Domain\Event\UserAuthenticated;

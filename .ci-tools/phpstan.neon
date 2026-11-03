@@ -12,11 +12,17 @@ parameters:
 		- %currentWorkingDirectory%/vendor
 	paths:
 		- %currentWorkingDirectory%/src
+		- %currentWorkingDirectory%/apps/op/src
+		- %currentWorkingDirectory%/apps/op/config/beffroi
+		- %currentWorkingDirectory%/apps/op/migrations
 		- %currentWorkingDirectory%/tests
 	# The SAML packages are analysed apart, each by its own configuration (.ci-tools/phpstan-xml-security.neon,
 	# .ci-tools/phpstan-saml2-model.neon, .ci-tools/phpstan-saml2-bindings.neon and .ci-tools/phpstan-saml.neon), with
 	# no baseline and with the bans of their section 8.
 	excludePaths:
+		# The demonstration and the lab of the application are no part of the product (apps/op/config/services.yaml).
+		- %currentWorkingDirectory%/apps/op/src/Demonstration
+		- %currentWorkingDirectory%/apps/op/src/Lab
 		- %currentWorkingDirectory%/tests/symfony/config
 		- %currentWorkingDirectory%/src/xml-security
 		- %currentWorkingDirectory%/src/saml2-model
@@ -50,7 +56,7 @@ parameters:
 			path: %currentWorkingDirectory%/tests/symfony/Functional/Doctrine/SchemaTest.php
 		-
 			identifier: method.internalClass
-			path: %currentWorkingDirectory%/tests/symfony/Functional/Doctrine/PersonalData/BundleSchema.php
+			path: %currentWorkingDirectory%/tests/symfony/Functional/Doctrine/PersonalData/ProviderSchema.php
 
 includes:
 	- %currentWorkingDirectory%/.ci-tools/phpstan-baseline.neon

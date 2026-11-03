@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Command;
+namespace App\Tests\Symfony\Unit\Command;
 
 use function array_keys;
 use function file_put_contents;
-use Beffroi\Bundle\Command\WebauthnMdsImportCommand;
-use Beffroi\Bundle\Command\WebauthnMdsRefreshCommand;
-use Beffroi\Bundle\Webauthn\DocumentDownload;
+use App\Command\WebauthnMdsImportCommand;
+use App\Command\WebauthnMdsRefreshCommand;
+use App\Webauthn\DocumentDownload;
 use Beffroi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
 use Beffroi\Core\Bridge\Webauthn\MetadataBlobVerifier;
 use Beffroi\Core\Bridge\Webauthn\StoredMetadata;
@@ -49,7 +49,7 @@ final class WebauthnMdsCommandsTest extends TestCase
     {
         $this->service = MetadataSigner::create();
         $this->store = new InMemoryMetadataBlobStore();
-        $this->directory = sys_get_temp_dir() . '/beffroi-bundle-tests/mds-' . uniqid();
+        $this->directory = sys_get_temp_dir() . '/beffroi-integration-tests/mds-' . uniqid();
         new Filesystem()->mkdir($this->directory);
     }
 

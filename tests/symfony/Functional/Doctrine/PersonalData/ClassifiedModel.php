@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData;
+namespace App\Tests\Symfony\Functional\Doctrine\PersonalData;
 
 use function array_key_exists;
 use function array_keys;
-use Beffroi\Bundle\Doctrine\PersonalData\DataKeyColumns;
-use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeyStores;
+use App\Doctrine\PersonalData\DataKeyColumns;
+use App\Doctrine\PersonalData\TenantDataKeyStores;
 use Beffroi\Core\Domain\PersonalData\ClassifiedFieldsInterface;
 use Beffroi\Core\Domain\PersonalData\FieldClassificationInterface;
 use function count;
@@ -19,8 +19,8 @@ use function sprintf;
 
 /**
  * What the model declares of itself, read column by column: every entity answers for every field it
- * stores (`ClassifiedFieldsInterface`), the mappings of the bundle say which column holds which field,
- * and the one table no class of the model holds a field of is classified by the bundle that puts it in
+ * stores (`ClassifiedFieldsInterface`), the mappings of the provider say which column holds which field,
+ * and the one table no class of the model holds a field of is classified by the provider that puts it in
  * the schema (`DataKeyColumns`).
  *
  * **An entity is asked for all of its fields**, the ones its parent's mapping declares included, which is

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Key;
+namespace App\Tests\Symfony\Unit\Key;
 
 use DateTimeImmutable;
 use function decoct;
@@ -10,10 +10,10 @@ use function file_get_contents;
 use function file_put_contents;
 use function fileperms;
 use function glob;
-use Beffroi\Bundle\Key\DormantKeyAlgorithms;
-use Beffroi\Bundle\Key\FileTenantKeyRepository;
-use Beffroi\Bundle\Saml\JoseSamlEncryptionAlgorithms;
-use Beffroi\Bundle\Saml\SamlEncryption;
+use App\Key\DormantKeyAlgorithms;
+use App\Key\FileTenantKeyRepository;
+use App\Saml\JoseSamlEncryptionAlgorithms;
+use App\Saml\SamlEncryption;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseKeyFamily;
 use Beffroi\Core\Domain\Key\RotationSchedule;

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Key;
+namespace App\Tests\Symfony\Functional\Key;
 
 use function array_map;
 use function base64_decode;
 use DateInterval;
 use function explode;
-use Beffroi\Bundle\Key\FileTenantKeyRepository;
-use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
+use App\Key\FileTenantKeyRepository;
+use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
 use Beffroi\Core\Application\Key\KeyRetirement;
 use Beffroi\Core\Application\Key\KeyStaging;
 use Beffroi\Core\Domain\Key\RotationSchedule;

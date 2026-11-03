@@ -1,4 +1,4 @@
-# The configuration of the bundle in development, which config/packages/beffroi.yaml leaves to this file
+# The configuration of the provider in development, which config/packages/beffroi.yaml leaves to this file
 # (issue #922): Symfony reads config/packages/dev/ in that environment alone, and the image leaves the
 # directory out, so that no deployment of it carries a client, a policy or a judge of the development stack
 # (decision 0030). Its lists replace the JSON documents the environment carries for them everywhere else: a

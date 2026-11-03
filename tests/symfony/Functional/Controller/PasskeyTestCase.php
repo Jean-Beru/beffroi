@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use DateTimeImmutable;
-use Beffroi\Bundle\Http\BrowserSession;
+use App\Http\BrowserSession;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
@@ -21,7 +21,7 @@ use function unserialize;
 
 /**
  * A browser with a software authenticator (architecture §7): the two ceremonies driven over HTTP the way
- * the script of the bundle drives them, the options fetched, the authenticator's answer posted as the form.
+ * the script of the provider drives them, the options fetched, the authenticator's answer posted as the form.
  * The origin of the authenticator is the issuer of the test kernel, whatever host the browser names.
  */
 abstract class PasskeyTestCase extends BrowserTestCase

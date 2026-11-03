@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Http;
+namespace App\Tests\Symfony\Unit\Http;
 
-use Beffroi\Bundle\Http\OfferedLogins;
-use Beffroi\Bundle\Security\OfferedLoginInterface;
-use Beffroi\Bundle\Security\PasskeyLogin;
-use Beffroi\Bundle\Security\PasswordLogin;
+use App\Http\OfferedLogins;
+use App\Security\OfferedLoginInterface;
+use App\Security\PasskeyLogin;
+use App\Security\PasswordLogin;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Beffroi\Core\Domain\Session\PhishingResistantHardware;
 use Beffroi\Core\Tests\Fixture\Fixtures;

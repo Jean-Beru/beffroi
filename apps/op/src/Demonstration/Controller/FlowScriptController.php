@@ -14,7 +14,7 @@ use Symfony\Component\Routing\Attribute\Route;
 /**
  * The script that walks a trace on the page (issue #462): it moves the marker, reveals one hop at a
  * time, and asks for the next one. Served from here rather than from the asset pipeline, as the
- * scripts of the bundle are: the demonstration is not built with the application's stylesheet and owes
+ * scripts of the provider are: the demonstration is not built with the application's stylesheet and owes
  * it nothing.
  */
 #[AsController]

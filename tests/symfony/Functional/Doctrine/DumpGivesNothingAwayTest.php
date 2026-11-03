@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
 use function array_filter;
 use function array_keys;
@@ -10,10 +10,10 @@ use function array_values;
 use function bin2hex;
 use Doctrine\DBAL\Connection;
 use function file_put_contents;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\ClassifiedModel;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\ClassifiedModel;
 use Beffroi\Core\Domain\PersonalData\Sealed;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SearchedDump;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\SealedRows;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\SearchedDump;
 use function implode;
 use function is_numeric;
 use function is_string;

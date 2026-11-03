@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Security;
+namespace App\Tests\Symfony\Functional\Security;
 
 use DateTimeImmutable;
-use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
+use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
 use Beffroi\Core\Application\Authentication\AuthenticationFailedException;
 use Beffroi\Core\Application\Totp\TotpAuthentication;
 use Beffroi\Core\Application\Totp\TotpEnrolment;
@@ -28,7 +28,7 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * Architecture §3.4, decision 0006: the attempts at a code are counted by the rate limiter of Symfony
- * the bundle declares, five in a sliding window of a minute, the sixth refused whatever the code; the
+ * the provider declares, five in a sliding window of a minute, the sixth refused whatever the code; the
  * TOTP enrolled and verified through the services of the kernel, the secret sealed by its KMS.
  */
 final class TotpAttemptsTest extends DatabaseTestCase

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Token;
+namespace App\Tests\Symfony\Functional\Token;
 
 use DateTimeImmutable;
 use Beffroi\Oidc\Application\Token\OpaqueAccessTokenIssuer;

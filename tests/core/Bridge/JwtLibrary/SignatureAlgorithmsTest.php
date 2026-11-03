@@ -277,7 +277,7 @@ final class SignatureAlgorithmsTest extends TestCase
     }
 
     /**
-     * Open by addition: an algorithm the core, the module and the bundle have never heard of is generated,
+     * Open by addition: an algorithm the core, the module and the provider have never heard of is generated,
      * signed with and published because it was wired, and for no other reason.
      */
     #[Test]

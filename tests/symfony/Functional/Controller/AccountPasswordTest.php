@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use DateInterval;
-use Beffroi\Bundle\Http\RecentLogin;
+use App\Http\RecentLogin;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
 use Beffroi\Core\Domain\Credential\PlainPassword;
 use Beffroi\Core\Domain\Event\PasswordChanged;
@@ -416,11 +416,11 @@ final class AccountPasswordTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §5.2: a script of the bundle, served by the bundle, cacheable, and nothing is loaded
+     * Architecture §5.2: a script of the provider, served by the provider, cacheable, and nothing is loaded
      * from anywhere else.
      */
     #[Test]
-    public function theScriptOfTheMeterIsServedByTheBundle(): void
+    public function theScriptOfTheMeterIsServedByTheProvider(): void
     {
         // Given
         $this->signIn(self::userWithPassword('alice', self::IN_USE));

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Configuration;
+namespace App\Tests\Symfony\Unit\Configuration;
 
 use ArrayIterator;
-use Beffroi\Bundle\Configuration\RoleSwitch;
-use Beffroi\Bundle\Configuration\SwitchedServices;
+use App\Configuration\RoleSwitch;
+use App\Configuration\SwitchedServices;
 use Generator;
 use function iterator_to_array;
 use IteratorAggregate;

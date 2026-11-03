@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Http;
+namespace App\Tests\Symfony\Unit\Http;
 
-use Beffroi\Bundle\Http\InteractionPages;
-use Beffroi\Bundle\Http\LoginAddresses;
-use Beffroi\Bundle\Http\LoginTarget;
+use App\Http\InteractionPages;
+use App\Http\LoginAddresses;
+use App\Http\LoginTarget;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Domain\Interaction\Interaction;
 use Beffroi\Oidc\Tests\Fixture\Clients;

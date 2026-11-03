@@ -77,7 +77,7 @@ services:
       # What the processes share (https://doc.beffroi.tech/application/deployment/#what-the-processes-share): the
       # sealed keys the server signs with and the worker rotates, the key of the file backend, the GeoLite2
       # databases the console downloads and the worker reads, the FIDO metadata, and the share directory of
-      # Symfony, where the caches of the bundle are (the client assertions and the DPoP proofs already seen among
+      # Symfony, where the caches of the provider are (the client assertions and the DPoP proofs already seen among
       # them, which a restart must not forget). A directory one process writes and another reads is one volume,
       # mounted on both.
       - keys_data:/app/var/keys

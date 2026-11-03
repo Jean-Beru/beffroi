@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Webauthn;
+namespace App\Tests\Symfony\Unit\Webauthn;
 
 use function file_get_contents;
-use Beffroi\Bundle\Webauthn\FileAuthenticatorListStore;
-use Beffroi\Bundle\Webauthn\FileMetadataBlobStore;
+use App\Webauthn\FileAuthenticatorListStore;
+use App\Webauthn\FileMetadataBlobStore;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -26,7 +26,7 @@ final class FileMetadataBlobStoreTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->directory = sys_get_temp_dir() . '/beffroi-bundle-tests/webauthn-' . uniqid();
+        $this->directory = sys_get_temp_dir() . '/beffroi-integration-tests/webauthn-' . uniqid();
         $this->store = new FileMetadataBlobStore($this->directory);
     }
 

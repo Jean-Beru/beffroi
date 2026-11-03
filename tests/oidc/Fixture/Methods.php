@@ -39,7 +39,7 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * The client authentication methods, wired as the bundle wires them. A method that verifies a secret
+ * The client authentication methods, wired as the provider wires them. A method that verifies a secret
  * gets the fake hasher of the core unless the test brings its own; a method that verifies an assertion
  * gets the real bridge, because what it verifies is a real signature.
  */
@@ -145,7 +145,7 @@ final class Methods
     }
 
     /**
-     * The seven methods in the order the bundle wires them, sharing one decoy as the container shares it.
+     * The seven methods in the order the provider wires them, sharing one decoy as the container shares it.
      */
     public static function all(
         ?PasswordHasherInterface $hasher = null,

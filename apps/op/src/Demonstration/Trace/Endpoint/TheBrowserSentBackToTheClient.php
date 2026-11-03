@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Demonstration\Trace\Endpoint;
 
 use App\Demonstration\Trace\RecordedEndpointInterface;
-use Beffroi\Bundle\Http\AuthorizationResponder;
+use App\Http\AuthorizationResponder;
 use Beffroi\Oidc\Application\Flow\TheUserIsSentToTheClient;
 use Beffroi\Oidc\Domain\Client\GrantTypeName;
 use Beffroi\Oidc\Domain\Discovery\ProviderEndpoints;

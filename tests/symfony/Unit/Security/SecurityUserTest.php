@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Security;
+namespace App\Tests\Symfony\Unit\Security;
 
-use Beffroi\Bundle\Security\CorePasswordHasher;
-use Beffroi\Bundle\Security\SecurityUser;
+use App\Security\CorePasswordHasher;
+use App\Security\SecurityUser;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
 use Beffroi\Core\Domain\Credential\PasswordHash;
@@ -22,7 +22,7 @@ use function unserialize;
 
 /**
  * Architecture §5.4, decision 0002: the adapter the security component sees, over a user of the core
- * and never over the User of a host application.
+ * and never over the User of another application.
  */
 final class SecurityUserTest extends TestCase
 {
@@ -142,7 +142,7 @@ final class SecurityUserTest extends TestCase
         $this->expectExceptionMessageIs('The serialised user is not one this class wrote.');
 
         // When
-        unserialize('O:36:"Beffroi\Bundle\Security\SecurityUser":1:{s:2:"id";s:3:"foo";}');
+        unserialize('O:25:"App\Security\SecurityUser":1:{s:2:"id";s:3:"foo";}');
     }
 
     /**
@@ -178,7 +178,7 @@ final class SecurityUserTest extends TestCase
     }
 
     /**
-     * Another user never compares equal, nor does a user of a host application.
+     * Another user never compares equal, nor does a user of another application.
      */
     #[Test]
     #[DataProvider('provideOtherUsers')]
@@ -197,7 +197,7 @@ final class SecurityUserTest extends TestCase
     public static function provideOtherUsers(): iterable
     {
         yield 'another user of the core' => [new SecurityUser(Fixtures::user(username: 'bob', subject: 'bob-subject'), null)];
-        yield 'a user of a host application' => [new InMemoryUser('alice', null)];
+        yield 'a user of another application' => [new InMemoryUser('alice', null)];
     }
 
     private static function hash(): PasswordHash

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
-use Beffroi\Bundle\Http\Tls\EdgeClientCertificateResolver;
+use App\Http\Tls\EdgeClientCertificateResolver;
 use Beffroi\Oidc\Domain\Client\Certificate\ClientCertificate;
 use Beffroi\Oidc\Tests\Fixture\Certificates;
 use PHPUnit\Framework\Attributes\DataProvider;

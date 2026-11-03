@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Messenger;
+namespace App\Tests\Symfony\Functional\Messenger;
 
-use Beffroi\Bundle\Message\SendLogoutToken;
-use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
+use App\Message\SendLogoutToken;
+use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
 use Beffroi\Core\Domain\Identity\Subject;
 use Closure;
 use const E_DEPRECATED;

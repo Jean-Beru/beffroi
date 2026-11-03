@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Saml;
+namespace App\Tests\Symfony\Functional\Saml;
 
-use Beffroi\Bundle\Saml\SamlSigning;
-use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
+use App\Saml\SamlSigning;
+use App\Tests\Symfony\Functional\Command\ConsoleTestCase;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\UserRepositoryInterface;
@@ -47,7 +47,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * beffroi/saml, spec/saml.md S-19 to S-21, the acceptance of issue #733 in the bundle: the SimpleSAMLphp service
+ * beffroi/saml, spec/saml.md S-19 to S-21, the acceptance of issue #733 in the provider: the SimpleSAMLphp service
  * provider of the configuration of the test, declared with encrypt_assertions, its metadata of 30 September 2026
  * accepted and its requests signed with the key of the installation they come from, is answered with an assertion that
  * only that key decrypts, signed by the tenant and addressed to it.

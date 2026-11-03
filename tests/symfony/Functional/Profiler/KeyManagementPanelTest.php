@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Profiler;
+namespace App\Tests\Symfony\Functional\Profiler;
 
-use Beffroi\Bundle\Tests\Functional\Controller\BrowserTestCase;
+use App\Tests\Symfony\Functional\Controller\BrowserTestCase;
 use function sort;
 use function sprintf;
 use PHPUnit\Framework\Attributes\Test;
@@ -16,9 +16,9 @@ use Symfony\Component\KeyManagement\DataCollector\KeyManagementDataCollector;
  * The panel of `symfony/key-management` on a request that opened a sealed column (issue #427).
  *
  * The component traces what it builds itself and nothing else: the clients it is given, its own envelope
- * encrypter and its own store. This bundle uses none of those three, composing a scope of its own over a
+ * encrypter and its own store. This provider uses none of those three, composing a scope of its own over a
  * router of stores (decision 0018), so a page that sealed or opened a column reported "Nothing was
- * encrypted or decrypted" whatever it had done. The decorators are posed by the bundle in debug.
+ * encrypted or decrypted" whatever it had done. The decorators are posed by the provider in debug.
  *
  * **What the panel must keep reporting as zero is the KMS.** A data key is unwrapped once per key and per
  * thread, so a request served by a thread that already holds it asks the KMS nothing, which is what

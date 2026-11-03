@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Flow;
+namespace App\Tests\Symfony\Functional\Flow;
 
 use function array_map;
-use Beffroi\Bundle\Tests\Functional\Controller\BrowserTestCase;
+use App\Tests\Symfony\Functional\Controller\BrowserTestCase;
 use Beffroi\Oidc\Domain\Flow\FlowPicture;
 use Beffroi\Oidc\Domain\Flow\TokenEndpointHops;
 use Beffroi\Oidc\Port\FlowPicturesInterface;

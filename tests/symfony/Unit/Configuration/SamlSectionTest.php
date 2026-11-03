@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Configuration;
+namespace App\Tests\Symfony\Unit\Configuration;
 
-use Beffroi\Bundle\Configuration\SamlSection;
+use App\Configuration\SamlSection;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits;
 use Beffroi\Saml\Port\ProfileClaimsInterface;
 use Beffroi\Saml\Port\ServedClaimsInterface;

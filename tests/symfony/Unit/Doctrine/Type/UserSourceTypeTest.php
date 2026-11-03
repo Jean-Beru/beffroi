@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Doctrine\Type;
+namespace App\Tests\Symfony\Unit\Doctrine\Type;
 
-use Beffroi\Bundle\Doctrine\Type\UserSourceType;
+use App\Doctrine\Type\UserSourceType;
 use Beffroi\Core\Domain\Identity\UserSource;
 use Doctrine\DBAL\Platforms\SQLitePlatform;
 use PHPUnit\Framework\Attributes\Test;

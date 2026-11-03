@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Twig;
+namespace App\Tests\Symfony\Unit\Twig;
 
-use Beffroi\Bundle\Twig\PlaceExtension;
+use App\Twig\PlaceExtension;
 use Beffroi\Core\Domain\Session\GeoLocation;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;

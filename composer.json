@@ -1,7 +1,7 @@
 {
     "name": "beffroi/framework",
-    "description": "An identity provider for the Symfony ecosystem: identity core, OAuth 2.0 / OpenID Connect module, SAML 2.0 module, XML security, the SAML 2.0 model and its bindings, Symfony bundle.",
-    "type": "symfony-bundle",
+    "description": "An identity provider for the Symfony ecosystem: identity core, OAuth 2.0 / OpenID Connect module, SAML 2.0 module, XML security, the SAML 2.0 model and its bindings, and the application built on them.",
+    "type": "library",
     "license": "MIT",
     "homepage": "https://github.com/beffroi-auth/beffroi",
     "keywords": [
@@ -9,8 +9,7 @@
         "openid-connect",
         "identity-provider",
         "authorization-server",
-        "symfony",
-        "symfony-bundle"
+        "symfony"
     ],
     "authors": [
         {
@@ -46,6 +45,7 @@
         "symfony/doctrine-dbal-key-management": "8.2.*",
         "symfony/doctrine-messenger": "8.2.*",
         "symfony/doctrine-orm-key-management": "8.2.*",
+        "symfony/form": "8.2.*",
         "symfony/framework-bundle": "8.2.*",
         "symfony/http-client": "8.2.*",
         "symfony/http-foundation": "8.2.*",
@@ -79,12 +79,12 @@
         "symfony/yaml": "8.2.*"
     },
     "replace": {
+        "symfony/polyfill-intl-icu": "*",
         "beffroi/core": "self.version",
         "beffroi/oidc": "self.version",
         "beffroi/saml": "self.version",
         "beffroi/saml2-bindings": "self.version",
         "beffroi/saml2-model": "self.version",
-        "beffroi/symfony-bundle": "self.version",
         "beffroi/xml-security": "self.version"
     },
     "minimum-stability": "dev",
@@ -94,7 +94,7 @@
             "Beffroi\\Core\\": "src/core/src/",
             "Beffroi\\Oidc\\": "src/oidc/src/",
             "Beffroi\\Saml\\": "src/saml/src/",
-            "Beffroi\\Bundle\\": "src/symfony/src/",
+            "App\\": "apps/op/src/",
             "Beffroi\\Xml\\": "src/xml-security/src/",
             "Beffroi\\Saml2\\Model\\": "src/saml2-model/src/",
             "Beffroi\\Saml2\\Bindings\\": "src/saml2-bindings/src/"
@@ -105,8 +105,8 @@
             "Beffroi\\Core\\Tests\\": "tests/core/",
             "Beffroi\\Oidc\\Tests\\": "tests/oidc/",
             "Beffroi\\Saml\\Tests\\": "tests/saml/",
-            "Beffroi\\Bundle\\Tests\\": "tests/symfony/",
-            "Beffroi\\Bundle\\Migrations\\": "src/symfony/migrations/",
+            "App\\Tests\\Symfony\\": "tests/symfony/",
+            "DoctrineMigrations\\": "apps/op/migrations/",
             "Beffroi\\Xml\\Tests\\": "tests/xml-security/",
             "Beffroi\\Saml2\\Model\\Tests\\": "tests/saml2-model/",
             "Beffroi\\Saml2\\Bindings\\Tests\\": "tests/saml2-bindings/"

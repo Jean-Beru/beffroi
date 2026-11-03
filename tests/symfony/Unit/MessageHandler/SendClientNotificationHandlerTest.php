@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\MessageHandler;
+namespace App\Tests\Symfony\Unit\MessageHandler;
 
-use Beffroi\Bundle\Http\Timeout;
-use Beffroi\Bundle\Http\ClientNotificationSender;
-use Beffroi\Bundle\Message\SendClientNotification;
-use Beffroi\Bundle\MessageHandler\SendClientNotificationHandler;
-use Beffroi\Bundle\Messenger\NotificationNotDeliveredException;
+use App\Http\Timeout;
+use App\Http\ClientNotificationSender;
+use App\Message\SendClientNotification;
+use App\MessageHandler\SendClientNotificationHandler;
+use App\Messenger\NotificationNotDeliveredException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

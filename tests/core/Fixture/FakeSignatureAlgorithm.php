@@ -11,7 +11,7 @@ use Jose\Component\KeyManagement\JWKFactory;
 use Jose\Component\Signature\Algorithm\SignatureAlgorithm as JoseAlgorithm;
 
 /**
- * An algorithm no line of the core, the module or the bundle knows about: what a deployment adds when a
+ * An algorithm no line of the core, the module or the provider knows about: what a deployment adds when a
  * profile asks for one more. It signs over P-256 like ES256, under a name of its own.
  */
 final readonly class FakeSignatureAlgorithm implements JoseSignatureAlgorithmInterface

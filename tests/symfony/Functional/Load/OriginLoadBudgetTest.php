@@ -2,15 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Load;
+namespace App\Tests\Symfony\Functional\Load;
 
-use Beffroi\Bundle\Load\LoadBudget;
-use Beffroi\Bundle\Load\LoadRefusal;
-use Beffroi\Bundle\Plane\Plane;
-use Beffroi\Bundle\Tests\Functional\Controller\BrowserTestCase;
-use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
+use App\Load\LoadBudget;
+use App\Load\LoadRefusal;
+use App\Plane\Plane;
+use App\Tests\Symfony\Functional\Controller\BrowserTestCase;
+use App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler;
 use Beffroi\Core\Domain\Event\LoadBudgetSpent;
 use PHPUnit\Framework\Attributes\Test;
+use function preg_match;
 use function sprintf;
 use function str_replace;
 use Symfony\Component\HttpFoundation\Response;
@@ -77,7 +78,7 @@ final class OriginLoadBudgetTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0014: the routes of the host application are not the bundle's, and nothing of what they
+     * Decision 0014: the routes of the application are not the provider's, and nothing of what they
      * cost is this provider's to bound.
      */
     #[Test]
@@ -256,7 +257,13 @@ final class OriginLoadBudgetTest extends BrowserTestCase
     {
         $path = $route->getPath();
         foreach ($route->compile()->getPathVariables() as $variable) {
-            $path = str_replace(sprintf('{%s}', self::string($variable)), Uuid::v7()->toRfc4122(), $path);
+            $requirement = $route->getRequirement(self::string($variable)) ?? '[^/]++';
+            $value = Uuid::v7()->toRfc4122();
+            if (preg_match('#^(?:' . $requirement . ')$#', $value) !== 1) {
+                // a name, which is what a variable that takes no identifier takes (the claim of the profile page)
+                $value = 'name';
+            }
+            $path = str_replace(sprintf('{%s}', self::string($variable)), $value, $path);
         }
 
         return $path;

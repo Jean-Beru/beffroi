@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use function base64_encode;
-use Beffroi\Bundle\Message\SendClientNotification;
-use Beffroi\Bundle\Message\TellUserOfPendingApproval;
+use App\Message\SendClientNotification;
+use App\Message\TellUserOfPendingApproval;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\Envelope;

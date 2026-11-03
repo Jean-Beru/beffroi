@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Saml;
+namespace App\Tests\Symfony\Unit\Saml;
 
-use Beffroi\Bundle\Saml\UpstreamSignOnReferences;
+use App\Saml\UpstreamSignOnReferences;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Domain\Interaction\Interaction;
 use Beffroi\Oidc\Tests\Fixture\Clients;

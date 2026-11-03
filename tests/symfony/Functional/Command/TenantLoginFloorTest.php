@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Command;
+namespace App\Tests\Symfony\Functional\Command;
 
-use Beffroi\Bundle\Command\TenantLoginFloorCommand;
+use App\Command\TenantLoginFloorCommand;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
 use Beffroi\Core\Domain\Event\CredentialForgotten;
 use Beffroi\Core\Domain\Session\PhishingResistant;

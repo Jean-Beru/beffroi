@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData;
+namespace App\Tests\Symfony\Functional\Doctrine\PersonalData;
 
 use function array_key_exists;
 use function array_keys;
@@ -50,7 +50,7 @@ final readonly class ClassifiedSchema
 
                     continue;
                 }
-                $finding = $line->finding(new StoredField($name, BundleSchema::familyOf($table), $sealedUnder));
+                $finding = $line->finding(new StoredField($name, ProviderSchema::familyOf($table), $sealedUnder));
                 if ($finding !== null) {
                     $findings[] = $finding;
                 }

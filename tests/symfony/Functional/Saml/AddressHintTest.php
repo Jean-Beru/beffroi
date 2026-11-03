@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Saml;
+namespace App\Tests\Symfony\Functional\Saml;
 
 use function array_map;
-use Beffroi\Bundle\Http\LoginAddresses;
-use Beffroi\Bundle\Saml\SamlSigning;
-use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
+use App\Http\LoginAddresses;
+use App\Saml\SamlSigning;
+use App\Tests\Symfony\Functional\Command\ConsoleTestCase;
 use Beffroi\Saml\Domain\Upstream\AcceptedUpstreamMetadata;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Tests\Fixture\IdentityProviderDocuments;

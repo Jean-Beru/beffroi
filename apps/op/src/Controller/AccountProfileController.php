@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Form\ClaimForms;
-use Beffroi\Bundle\Controller\AccountProfileController as BundleProfilePage;
-use Beffroi\Bundle\Http\AccountAccess;
-use Beffroi\Bundle\Http\InteractionPages;
-use Beffroi\Bundle\Http\WhatWasRefused;
-use Beffroi\Bundle\Http\Account\RecordedInformation;
-use Beffroi\Bundle\Identity\WiredClaims;
+use App\Http\AccountAccess;
+use App\Http\Account\ReachedOnTheSessionAloneInterface;
+use App\Http\InteractionPages;
+use App\Http\WhatWasRefused;
+use App\Http\Account\RecordedInformation;
+use App\Identity\WiredClaims;
 use function count;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
@@ -23,11 +23,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  * What this provider holds of the signed-in person, and what they may correct of it, edited in place
  * (issue beffroi-auth/op#17).
  *
- * **This page is the application's and not the bundle's**, which is why it answers the route name of the
- * bundle rather than adding one of its own: a deployment that installs the bundle is served bare HTML with
- * a form token, and this one, which is the reference deployment, shows what the same thing looks like
- * written with symfony/form. The rule of what a person may change is not here either way: it is read by
- * the use case of the core (SelfDescription), on the server, for every caller.
+ * **Written with symfony/form**, one form per claim. The rule of what a person may change is not here: it
+ * is read by the use case of the core (SelfDescription), on the server, for every caller.
  *
  * One form per claim, because what this page does is let somebody correct one thing where they read it,
  * and a single form would make them save thirteen others to do it. Which form was submitted is the claim
@@ -38,16 +35,16 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  * not a behaviour (assets/styles/app.css).
  *
  * What they have changed of their record is a page of its own (issue beffroi-auth/beffroi#482), served by
- * the bundle: this page offers the way to it and reads none of it.
+ * the provider: this page offers the way to it and reads none of it.
  */
 #[AsController]
-final readonly class AccountProfileController
+final readonly class AccountProfileController implements ReachedOnTheSessionAloneInterface
 {
     /**
-     * The route name of the page of the bundle, which this page answers in its place, so that every link
+     * The route name of the page of the provider, which this page answers in its place, so that every link
      * naming it lands here (config/routes/profile.yaml).
      */
-    public const string ROUTE = BundleProfilePage::ROUTE;
+    public const string ROUTE = 'beffroi_interaction_account_profile';
 
     public function __construct(
         private AccountAccess $account,
@@ -76,7 +73,7 @@ final readonly class AccountProfileController
             if ($refusal?->field === $open->name()) {
                 // the message goes back under the line it is about, which is what this page has a form
                 // component for; what crossed is the code, and the sentence is a word of the catalogue of
-                // the bundle and never the sentence of an exception, which is written for whoever reads logs
+                // the provider and never the sentence of an exception, which is written for whoever reads logs
                 $form->get('value')->addError(new FormError($this->translator->trans('profile.' . $refusal->code, [], 'beffroi')));
             }
             $forms[$open->name()] = $form->createView();

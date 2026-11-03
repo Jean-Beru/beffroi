@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
 use Beffroi\Core\Application\Identity\UserAlreadyExistsException;
 use function array_keys;
@@ -11,11 +11,11 @@ use Beffroi\Core\Domain\Identity\Address;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\CountingKms;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\ClassifiedModel;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\CountingKms;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\RawRows;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\ClassifiedModel;
 use Beffroi\Core\Domain\PersonalData\Sealed;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\SealedRows;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;

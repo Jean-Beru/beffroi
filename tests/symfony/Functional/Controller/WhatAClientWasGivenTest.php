@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use function array_column;
 use function base64_encode;
-use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
+use App\Tests\Symfony\Functional\Command\ConsoleTestCase;
 use Beffroi\Oidc\Domain\Event\TokensIssued;
 use const JSON_THROW_ON_ERROR;
 use function json_decode;

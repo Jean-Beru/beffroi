@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
-use Beffroi\Bundle\Message\RemoveUnusedClients;
+use App\Message\RemoveUnusedClients;
 use Beffroi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
 use Beffroi\Oidc\Domain\Client\ClientRecord;
 use Beffroi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;

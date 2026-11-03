@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use Beffroi\Bundle\Http\BrowserPreferences;
+use App\Http\BrowserPreferences;
 use function array_map;
 use function array_values;
 use PHPUnit\Framework\Attributes\Test;
@@ -14,8 +14,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Issue #573, architecture §5.7 and §6: the preferences of a browser travel on one cookie with a slot per
- * preference, the bundle owning the cookie and this application declaring the slot of the theme
- * (App\Theme\ThemePreference). What one slot holds is judged by the suite of the bundle; what is here is
+ * preference, the provider owning the cookie and this application declaring the slot of the theme
+ * (App\Theme\ThemePreference). What one slot holds is judged by the suite of the provider; what is here is
  * what only this kernel can answer, two slots being declared on it and one on that one: that each form
  * writes its own and leaves the other as it was.
  */
@@ -89,7 +89,7 @@ final class BrowserPreferencesTest extends BrowserTestCase
     }
 
     /**
-     * The language asked for through the form the bundle serves, drawn by this application: a token of its
+     * The language asked for through the form the provider serves, drawn by this application: a token of its
      * own and the page to come back to, which is how a visitor asks.
      */
     private function chooseTheLanguage(string $locale): void

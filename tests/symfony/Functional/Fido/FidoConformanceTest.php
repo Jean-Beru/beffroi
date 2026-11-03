@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Fido;
+namespace App\Tests\Symfony\Functional\Fido;
 
-use Beffroi\Bundle\Fido\Conformance\AttestationResultController;
-use Beffroi\Bundle\Tests\Functional\Controller\BrowserTestCase;
+use App\Fido\Conformance\AttestationResultController;
+use App\Tests\Symfony\Functional\Controller\BrowserTestCase;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Beffroi\Core\Port\CredentialRepositoryInterface;

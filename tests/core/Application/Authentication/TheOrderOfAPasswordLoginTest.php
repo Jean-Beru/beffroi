@@ -40,7 +40,7 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * Issue #130: the order of a login by password, played by the use case of the core. The firewall of the
- * bundle asks the same of itself (TheOrderOfAPasswordLoginTest of the functional suite), and the two read
+ * provider asks the same of itself (TheOrderOfAPasswordLoginTest of the functional suite), and the two read
  * the same named steps (TheOrderOfAPasswordLogin), so a step this path gains and the other does not is a
  * case the other answers differently.
  *

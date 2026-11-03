@@ -61,7 +61,7 @@ final class UserProvisionerTest extends TestCase
     private const string PROVIDER = 'https://idp.acme.example/saml';
 
     /**
-     * The languages a person may say they read in this suite, where the bundle reads them out of ICU.
+     * The languages a person may say they read in this suite, where the provider reads them out of ICU.
      */
     private const array KNOWN_LOCALES = [
         'en-GB' => 'English (United Kingdom)',

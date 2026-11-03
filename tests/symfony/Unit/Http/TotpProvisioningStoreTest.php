@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Http;
+namespace App\Tests\Symfony\Unit\Http;
 
 use DateTimeImmutable;
-use Beffroi\Bundle\Http\TotpProvisioningSealer;
-use Beffroi\Bundle\Http\TotpProvisioningStore;
+use App\Http\TotpProvisioningSealer;
+use App\Http\TotpProvisioningStore;
 use Beffroi\Core\Domain\Credential\TotpProvisioning;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Exception\KmsUnavailableException;

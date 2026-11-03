@@ -47,8 +47,8 @@ A change made on a maintained branch reaches the newer ones by a merge, each bra
 | `.gitsplit.yml` | The TARGET's targets, since a newer branch may split more packages |
 | `.ci-tools/phpstan-baseline.neon` | Neither side by hand: the TARGET's version, then `castor phpstan-baseline` once the merge compiles |
 | `apps/op/config/reference.php`, `apps/op/config/schema.json` | Generated again by `castor config-reference-fix` |
-| A migration of `src/symfony/migrations/` | Both sides kept, each migration in its own class |
-| A catalogue of `src/symfony/translations/` | The units of both sides |
+| A migration of `apps/op/migrations/` | Both sides kept, each migration in its own class |
+| A catalogue of `apps/op/translations/` | The units of both sides |
 | A specification of `src/*/spec/` | The rules of both sides, and the code following them: the specification is the law of its package |
 | Anything else | By meaning, both changes kept; when the two cannot both hold, ask the user |
 

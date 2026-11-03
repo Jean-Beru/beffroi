@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use function base64_decode;
 use Beffroi\Core\Domain\Identity\PushSubscription;
@@ -222,7 +222,7 @@ final class PushSubscriptionTest extends BrowserTestCase
     }
 
     /**
-     * The service worker is served at the root of the pages of the bundle, so that its scope covers the
+     * The service worker is served at the root of the pages of the provider, so that its scope covers the
      * page it opens (Service Workers §3.1.1).
      */
     #[Test]
@@ -306,7 +306,7 @@ final class PushSubscriptionTest extends BrowserTestCase
 
     /**
      * Push API §8: the page carries the digest of the endpoint of every browser it lists, which is what
-     * the script of the bundle recognises the browser reading the page by. The endpoint itself is on no
+     * the script of the provider recognises the browser reading the page by. The endpoint itself is on no
      * page: a digest is what this provider compares too (PushSubscription::digestOf).
      */
     #[Test]

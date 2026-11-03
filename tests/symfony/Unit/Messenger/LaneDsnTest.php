@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Messenger;
+namespace App\Tests\Symfony\Unit\Messenger;
 
-use Beffroi\Bundle\Messenger\LaneDsn;
-use Beffroi\Bundle\Messenger\MessengerContract;
+use App\Messenger\LaneDsn;
+use App\Messenger\MessengerContract;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

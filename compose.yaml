@@ -140,7 +140,7 @@ services:
     tty: true
 
   # The worker of architecture §5.6, one in development: the transports of the buses, the lane of what the
-  # provider tells a third party (§4.9, the logout tokens) and the schedule of the bundle
+  # provider tells a third party (§4.9, the logout tokens) and the schedule of the provider
   # ("scheduler_beffroi": the timed steps of the key lifecycle, §3.3). That lane is named first after the
   # schedule because a relying party learns of a logout while the certification suite waits for it, and
   # messenger:consume takes the transports in the order it is given them. One process consumes the

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Profiler;
+namespace App\Tests\Symfony\Functional\Profiler;
 
 use function array_keys;
 use function array_map;
 use function base64_encode;
-use Beffroi\Bundle\Profiler\OpCollector;
-use Beffroi\Bundle\Profiler\OpProfile;
-use Beffroi\Bundle\Tests\Functional\Controller\BrowserTestCase;
+use App\Profiler\OpCollector;
+use App\Profiler\OpProfile;
+use App\Tests\Symfony\Functional\Controller\BrowserTestCase;
 use function implode;
 use const PHP_URL_QUERY;
 use function parse_str;
@@ -21,7 +21,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Profiler\Profile;
 
 /**
- * The panel of the provider (issue #152): what the collector of the bundle says of a request that
+ * The panel of the provider (issue #152): what the collector of the provider says of a request that
  * reached an endpoint, what it says of one that did not, and what it never says. The kernel behind the
  * browser is in debug, which is the one condition the panel is wired under.
  */
@@ -165,7 +165,7 @@ final class ProfilerPanelTest extends BrowserTestCase
     }
 
     /**
-     * The toolbar of a host application carries an entry on the pages of the provider and on no other.
+     * The toolbar of the application carries an entry on the pages of the provider and on no other.
      */
     #[Test]
     public function aRequestThatReachedNoEndpointOfTheProviderIsNotCollected(): void
@@ -202,7 +202,7 @@ final class ProfilerPanelTest extends BrowserTestCase
     }
 
     /**
-     * The panel renders in the profiler of the application that installs the bundle, under its layout.
+     * The panel renders in the profiler of the application, under its layout.
      */
     #[Test]
     public function thePanelRendersInTheProfiler(): void

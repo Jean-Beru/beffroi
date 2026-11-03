@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Ciba;
+namespace App\Tests\Symfony\Functional\Ciba;
 
 use function base64_encode;
-use Beffroi\Bundle\Ciba\Conformance\AutomatedApprovalController;
-use Beffroi\Bundle\Tests\Functional\Controller\BrowserTestCase;
+use App\Ciba\Conformance\AutomatedApprovalController;
+use App\Tests\Symfony\Functional\Controller\BrowserTestCase;
 use function http_build_query;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;

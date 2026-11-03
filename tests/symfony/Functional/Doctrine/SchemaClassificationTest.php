@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
 use function array_keys;
-use Beffroi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\BundleSchema;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\ClassifiedModel;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\ClassifiedSchema;
+use App\Doctrine\PersonalData\EncryptedColumnTypes;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\ProviderSchema;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\ClassifiedModel;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\ClassifiedSchema;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\PersonalData\BlindIndex;
 use Beffroi\Core\Domain\PersonalData\NoPersonalDatum;
@@ -37,7 +37,7 @@ final class SchemaClassificationTest extends DatabaseTestCase
     /**
      * How many tables and columns the schema holds, written out so that a table added whole, or a column
      * added to one, is a figure to change here and a line to add on the class that holds the field. All
-     * but one are described by a mapping of the bundle; the last is the table of the data key store, which
+     * but one are described by a mapping of the provider; the last is the table of the data key store, which
      * the listener of the ORM bridge puts in the schema the ORM assembles (decisions 0011 and 0018).
      */
     private const int TABLES = 35;
@@ -48,7 +48,7 @@ final class SchemaClassificationTest extends DatabaseTestCase
     public function everyColumnOfEveryTableIsClassified(): void
     {
         // Given
-        $schema = BundleSchema::columns(self::entityManager(), EncryptedColumnTypes::familyByType());
+        $schema = ProviderSchema::columns(self::entityManager(), EncryptedColumnTypes::familyByType());
 
         // When / Then
         static::assertSame([], new ClassifiedSchema(self::model())->findings($schema));
@@ -66,7 +66,7 @@ final class SchemaClassificationTest extends DatabaseTestCase
     }
 
     /**
-     * The one table of the schema no class of the model holds a field of, classified by the bundle that
+     * The one table of the schema no class of the model holds a field of, classified by the provider that
      * puts it there: it is in the walk like any other, and the figures above count it.
      */
     #[Test]
@@ -174,7 +174,7 @@ final class SchemaClassificationTest extends DatabaseTestCase
 
     /**
      * A field seals under its own table, the family being the name of the table without the prefix of the
-     * bundle: a field sealed under another family is a value written into the scope of a table that is not
+     * provider: a field sealed under another family is a value written into the scope of a table that is not
      * its own, which no destruction of its tenant's keys for that table would reach.
      */
     #[Test]
@@ -293,7 +293,7 @@ final class SchemaClassificationTest extends DatabaseTestCase
     }
 
     /**
-     * And the same for the table the bundle classifies by the column, which has no field to be named by:
+     * And the same for the table the provider classifies by the column, which has no field to be named by:
      * a line of it the table does not carry is refused as any other.
      */
     #[Test]
@@ -371,13 +371,13 @@ final class SchemaClassificationTest extends DatabaseTestCase
     }
 
     /**
-     * Every family the bundle declares seals at least one column of the schema. A family is a scope, and a
+     * Every family the provider declares seals at least one column of the schema. A family is a scope, and a
      * scope is a data key per tenant: one that no column seals under is a key minted for nothing, or a
      * declaration left behind by a column that moved. The count is read from the declaration of the types
      * and the families from what the model declares, so neither can be the only one to know.
      */
     #[Test]
-    public function everyFamilyTheBundleDeclaresSealsAColumn(): void
+    public function everyFamilyTheProviderDeclaresSealsAColumn(): void
     {
         // Given
         $sealing = [];

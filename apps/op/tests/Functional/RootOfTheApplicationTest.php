@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * The root of this application (config/routes/home.yaml, architecture §5.2): the issuer is the origin alone,
- * the bundle never takes the root of the application that installs it, and what "/" answers here is the home
+ * the provider never takes the root of the application, and what "/" answers here is the home
  * of the account.
  */
 final class RootOfTheApplicationTest extends BrowserTestCase

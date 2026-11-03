@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Type;
-use Beffroi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
-use Beffroi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\CountingKms;
+use App\Doctrine\PersonalData\EncryptedColumnTypes;
+use App\Doctrine\PersonalData\TenantScopedEncrypter;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\CountingKms;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DependencyInjection\ServicesResetter;
@@ -16,7 +16,7 @@ use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\DataKeyStore;
 
 /**
  * Decisions 0011 and 0018, wired: a data key per tenant and per family of columns, wrapped by the master
- * key of that tenant, held in a table of this bundle, and a KMS asked once per key and per process rather
+ * key of that tenant, held in a table of this provider, and a KMS asked once per key and per process rather
  * than once per value.
  *
  * What is played here is the whole chain the deployment has, and not a piece of it: a registered encrypted
@@ -28,7 +28,7 @@ use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\DataKeyStore;
 final class DataKeyStoreTest extends DatabaseTestCase
 {
     /**
-     * A table of this test alone: no mapping of the bundle names an encrypted type yet, and what a sealed
+     * A table of this test alone: no mapping of the provider names an encrypted type yet, and what a sealed
      * column holds is what the assertions below read.
      */
     private const string TABLE = 'test_sealed_column';
@@ -106,7 +106,7 @@ final class DataKeyStoreTest extends DatabaseTestCase
     }
 
     /**
-     * Decision 0018: the stores of this bundle do not carry "kernel.reset". The component tags its own
+     * Decision 0018: the stores of this provider do not carry "kernel.reset". The component tags its own
      * store with it, and "forget()" releases every retained plaintext between two units of work, which
      * under FrankenPHP in worker mode would put the KMS back on the path of every request that touches a
      * column. A thread keeps open what it has opened, as it already keeps an open signing key, so the

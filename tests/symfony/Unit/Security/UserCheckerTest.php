@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Security;
+namespace App\Tests\Symfony\Unit\Security;
 
-use Beffroi\Bundle\Security\SecurityUser;
-use Beffroi\Bundle\Security\UserChecker;
+use App\Security\SecurityUser;
+use App\Security\UserChecker;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

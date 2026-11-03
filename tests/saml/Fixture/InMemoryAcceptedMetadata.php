@@ -12,7 +12,7 @@ use Beffroi\Saml\Port\CanForgetAcceptedMetadataInterface;
 /**
  * The accepted documents in the memory of the test, counting what was written, so that a test can say nothing was,
  * and forgetting one when told. A test may have another process register a service provider between the reading and
- * the write of a refresh, as the unique index of the bundle sees two of them at the same minute.
+ * the write of a refresh, as the unique index of the provider sees two of them at the same minute.
  */
 final class InMemoryAcceptedMetadata implements AcceptedMetadataRepositoryInterface, CanForgetAcceptedMetadataInterface
 {

@@ -10,7 +10,7 @@ use Beffroi\Oidc\Domain\Client\AssertionMethodInterface;
 use Beffroi\Oidc\Domain\Client\Client;
 
 /**
- * A client authentication method nothing of the core, of the module or of the bundle knows about, wired
+ * A client authentication method nothing of the core, of the module or of the provider knows about, wired
  * like any other. What it proves is a parameter it reads; what the provider announces is what it says.
  * Never leaves the test suite.
  */

@@ -1,0 +1,10 @@
+{# The way back to the home of the account (architecture §5.2), said the same way on every page that has
+   one: a page of the account belongs to no client and to no interaction, so the home is the only place it
+   returns to. The page where a user answers what was asked of them somewhere else (§4.14) has one too,
+   whether they reached it from the home or from a notification: a user who has answered, or who had nothing
+   to answer, is not left on a page with no way out. The home itself hangs from nothing and includes this
+   not. This is the bare
+   version the suite of the integration renders; the application serves its own (apps/op/templates/beffroi/account/back.html.twig),
+   which reads what the kernel of this suite does not boot. #}
+{% trans_default_domain 'beffroi' %}
+<nav><a href="{{ path('beffroi_interaction_account') }}" data-back>{{ 'account.back'|trans }}</a></nav>

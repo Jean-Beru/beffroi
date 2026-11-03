@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Fixture;
+namespace App\Tests\Symfony\Fixture;
 
-use Beffroi\Bundle\Message\SyncMessage;
+use App\Message\SyncMessage;
 
 /**
  * Stands in for a `SyncMessage`, a write the protocol needs the result of before answering, which the

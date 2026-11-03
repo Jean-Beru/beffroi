@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Command;
+namespace App\Tests\Symfony\Functional\Command;
 
-use Beffroi\Bundle\Tests\Functional\Controller\BrowserTestCase;
+use App\Tests\Symfony\Functional\Controller\BrowserTestCase;
 use function preg_match;
 use function preg_replace;
 use function sprintf;
@@ -12,12 +12,12 @@ use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
- * The commands of the bundle run on the kernel of the test, what "bin/console" does (architecture §7).
+ * The commands of the provider run on the kernel of the test, what "bin/console" does (architecture §7).
  */
 abstract class ConsoleTestCase extends BrowserTestCase
 {
     /**
-     * Runs a command on the kernel of the test, one of the bundle or one a deployment runs beside them (the
+     * Runs a command on the kernel of the test, one of the provider or one a deployment runs beside them (the
      * worker of a lane); the inputs are the lines of the terminal, or of the standard input.
      *
      * @param array<string, string|bool|list<string>|null> $input an option a command takes more than once is handed a list and an option written without its value is null, as the console hands them

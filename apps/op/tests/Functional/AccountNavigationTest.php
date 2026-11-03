@@ -9,19 +9,19 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The skeleton every page of the account is served in, which is this application's and not the bundle's
+ * The skeleton every page of the account is served in, which is this application's and not the provider's
  * (templates/layout/account.html.twig): the column of the pages of the account, the trail at the head of a
  * page, and the bar that carries who the browser is signed in as and the way out.
  *
- * What each page says is judged by the suite of the bundle. What is here is what only this kernel can
- * answer: that the pages the bundle wires are all reachable from every one of them, and said once.
+ * What each page says is judged by the suite of the provider. What is here is what only this kernel can
+ * answer: that the pages the provider wires are all reachable from every one of them, and said once.
  */
 final class AccountNavigationTest extends BrowserTestCase
 {
     /**
      * The one rule of the arrangement (App\Account\AccountNavigation): the pages are the sections that are
      * wired, under the headings this application reads them under, and a page no heading names is in the
-     * column all the same, last. A section added to the bundle is red here until it is arranged, and never
+     * column all the same, last. A section added to the provider is red here until it is arranged, and never
      * a page nobody can reach.
      */
     #[Test]
@@ -83,7 +83,7 @@ final class AccountNavigationTest extends BrowserTestCase
 
     /**
      * The way back is the trail at the head of the page and not a link of its own: a page of this plane
-     * hangs from the home of the account, which is where the link the pages of the bundle include goes.
+     * hangs from the home of the account, which is where the link the pages of the provider include goes.
      */
     #[Test]
     public function theHeadOfAPageSaysWhereTheReaderIs(): void
@@ -143,7 +143,7 @@ final class AccountNavigationTest extends BrowserTestCase
     }
 
     /**
-     * The action a page offers is beside its title, wherever the page of the bundle writes it: setting up an
+     * The action a page offers is beside its title, wherever the page of the provider writes it: setting up an
      * authenticator app is what the page of the second factor offers, and it is read there and not under
      * the two paragraphs that say the account holds none.
      */
@@ -161,7 +161,7 @@ final class AccountNavigationTest extends BrowserTestCase
     }
 
     /**
-     * A refusal is not a page of this plane, whatever route it was asked on: the page the bundle serves
+     * A refusal is not a page of this plane, whatever route it was asked on: the page the provider serves
      * when the request stops there (templates/error.html.twig) says one thing and carries nothing else, so
      * it is served in the skeleton of an interaction. A browser that holds no session would otherwise read
      * what it has to do inside the column, the trail and the bar of an account it is not signed in to.

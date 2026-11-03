@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Command;
+namespace App\Tests\Symfony\Functional\Command;
 
 use Doctrine\DBAL\Connection;
-use Beffroi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
-use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeyStores;
-use Beffroi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
-use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeyDestruction;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\ClassifiedModel;
+use App\Doctrine\PersonalData\EncryptedColumnTypes;
+use App\Doctrine\PersonalData\TenantDataKeyStores;
+use App\Doctrine\PersonalData\TenantScopedEncrypter;
+use App\Doctrine\PersonalData\TenantDataKeyDestruction;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\RawRows;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\ClassifiedModel;
 use Beffroi\Core\Domain\PersonalData\Sealed;
-use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
+use App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler;
 use Beffroi\Core\Domain\Event\TenantDataKeysDestroyed;
 use Beffroi\Core\Domain\Event\TenantDataKeysRewrapped;
 use Beffroi\Core\Domain\Identity\Address;

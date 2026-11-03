@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Webauthn;
+namespace App\Tests\Symfony\Unit\Webauthn;
 
-use Beffroi\Bundle\Webauthn\RevocationListClient;
+use App\Webauthn\RevocationListClient;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

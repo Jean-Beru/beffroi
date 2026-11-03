@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Twig;
+namespace App\Tests\Symfony\Unit\Twig;
 
-use Beffroi\Bundle\Http\TenantPresentation;
+use App\Http\TenantPresentation;
 use Beffroi\Core\Domain\Tenant\Issuer;
 use Beffroi\Core\Domain\Tenant\LogoUri;
 use Beffroi\Core\Domain\Tenant\Tenant;
@@ -19,12 +19,12 @@ use Twig\Loader\FilesystemLoader;
 use Twig\TwigFunction;
 
 /**
- * Issue #449, architecture §5.2: the logo of the organisation the visitor came for, which the bundle
+ * Issue #449, architecture §5.2: the logo of the organisation the visitor came for, which the provider
  * ships as a header with the name of that organisation as the text that stands in for the image.
  *
  * The fragment is rendered on an environment of its own, because what it reads is a function
  * ("beffroi_tenant()", TenantExtension) and what a deployment declares is one look: giving it the look to
- * render is giving it that function. It needs nothing else of the bundle, neither a catalogue nor a
+ * render is giving it that function. It needs nothing else of the provider, neither a catalogue nor a
  * router, which is what makes that possible.
  */
 final class TenantBrandTest extends TestCase
@@ -74,7 +74,7 @@ final class TenantBrandTest extends TestCase
     }
 
     /**
-     * A colour is a look, and the look of these pages is the application's: the bundle hands the value to
+     * A colour is a look, and the look of these pages is the application's: the provider hands the value to
      * the template and writes no style of its own.
      */
     #[Test]
@@ -111,7 +111,7 @@ final class TenantBrandTest extends TestCase
     private static function render(?TenantPresentation $presentation): Crawler
     {
         $loader = new FilesystemLoader();
-        $loader->addPath(__DIR__ . '/../../../../src/symfony/templates', 'Beffroi');
+        $loader->addPath(__DIR__ . '/../../../../apps/op/templates/beffroi', 'Beffroi');
         $twig = new Environment($loader);
         $twig->addFunction(new TwigFunction('beffroi_tenant', static fn (): ?TenantPresentation => $presentation));
 

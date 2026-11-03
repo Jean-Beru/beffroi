@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Http\Tls;
+namespace App\Tests\Symfony\Unit\Http\Tls;
 
-use Beffroi\Bundle\Http\Tls\EdgeClientCertificateResolver;
-use Beffroi\Bundle\Http\Tls\ForgedClientCertificateException;
+use App\Http\Tls\EdgeClientCertificateResolver;
+use App\Http\Tls\ForgedClientCertificateException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

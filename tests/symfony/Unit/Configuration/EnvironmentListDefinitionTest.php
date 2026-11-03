@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Configuration;
+namespace App\Tests\Symfony\Unit\Configuration;
 
-use Beffroi\Bundle\Configuration\EnvironmentListDefinition;
-use Beffroi\Bundle\Configuration\EnvironmentListNode;
+use App\Configuration\EnvironmentListDefinition;
+use App\Configuration\EnvironmentListNode;
 use function is_string;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;

@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Messenger;
+namespace App\Tests\Symfony\Unit\Messenger;
 
 use function array_count_values;
 use function array_keys;
 use function array_unique;
 use function array_values;
-use Beffroi\Bundle\BeffroiBundle;
-use Beffroi\Bundle\Message\Command;
-use Beffroi\Bundle\Message\Event;
-use Beffroi\Bundle\Message\Notification;
-use Beffroi\Bundle\Message\Query;
-use Beffroi\Bundle\Message\SyncMessage;
-use Beffroi\Bundle\Messenger\LaneDsn;
-use Beffroi\Bundle\Messenger\MessengerContract;
+use App\DependencyInjection\BeffroiExtension;
+use App\Message\Command;
+use App\Message\Event;
+use App\Message\Notification;
+use App\Message\Query;
+use App\Message\SyncMessage;
+use App\Messenger\LaneDsn;
+use App\Messenger\MessengerContract;
 use Beffroi\Core\Domain\Event\DomainEventInterface;
 use Symfony\Component\Messenger\MessengerBundle;
 use function count;
@@ -30,12 +30,12 @@ use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 
 /**
  * Issue #456: the buses, their middleware and where each marker is sent are the contract of this provider,
- * so the bundle says them and an application is left with its transports.
+ * so the provider says them and an application is left with its transports.
  */
 final class MessengerContractTest extends TestCase
 {
     /**
-     * Every marker of the bundle is routed, and the events of the core are routed by the interface they
+     * Every marker of the provider is routed, and the events of the core are routed by the interface they
      * all implement: a message whose marker is missing here leaves through no transport at all.
      */
     #[Test]
@@ -188,7 +188,7 @@ final class MessengerContractTest extends TestCase
     }
 
     /**
-     * It needs symfony/validator, which this bundle does not require, and the messages of this provider
+     * It needs symfony/validator, which this provider does not require, and the messages of this provider
      * carry no constraint for it to check.
      */
     #[Test]
@@ -199,18 +199,18 @@ final class MessengerContractTest extends TestCase
     }
 
     /**
-     * The bundle prepends the block, and defaults the one environment variable it reads, so that an
+     * The provider prepends the block, and defaults the one environment variable it reads, so that an
      * installation that says nothing at all gets the database.
      */
     #[Test]
-    public function theBundlePrependsTheContractAndDefaultsTheDsnToTheDatabase(): void
+    public function theProviderPrependsTheContractAndDefaultsTheDsnToTheDatabase(): void
     {
         // Given
         $builder = new ContainerBuilder();
         $builder->registerExtension(self::messengerExtension());
 
         // When
-        new BeffroiBundle()->prependExtension(self::configurator($builder), $builder);
+        new BeffroiExtension()->prependExtension(self::configurator($builder), $builder);
 
         // Then
         static::assertSame(
@@ -221,7 +221,7 @@ final class MessengerContractTest extends TestCase
     }
 
     /**
-     * A deployment that named the lane itself keeps it: the bundle defaults the variable and never
+     * A deployment that named the lane itself keeps it: the provider defaults the variable and never
      * overwrites it.
      */
     #[Test]
@@ -233,7 +233,7 @@ final class MessengerContractTest extends TestCase
         $builder->setParameter('env(' . MessengerContract::DSN_ENVIRONMENT_VARIABLE . ')', 'redis://redis');
 
         // When
-        new BeffroiBundle()->prependExtension(self::configurator($builder), $builder);
+        new BeffroiExtension()->prependExtension(self::configurator($builder), $builder);
 
         // Then
         static::assertSame('redis://redis', self::rawParameter($builder));
@@ -250,7 +250,7 @@ final class MessengerContractTest extends TestCase
         $builder = new ContainerBuilder();
 
         // When
-        new BeffroiBundle()->prependExtension(self::configurator($builder), $builder);
+        new BeffroiExtension()->prependExtension(self::configurator($builder), $builder);
 
         // Then
         static::assertFalse($builder->hasParameter('env(' . MessengerContract::DSN_ENVIRONMENT_VARIABLE . ')'));
@@ -281,7 +281,7 @@ final class MessengerContractTest extends TestCase
     }
 
     /**
-     * The extension of the component itself, because what the bundle looks for is whether the component is
+     * The extension of the component itself, because what the provider looks for is whether the component is
      * installed, and that is what having its extension means.
      */
     private static function messengerExtension(): ExtensionInterface

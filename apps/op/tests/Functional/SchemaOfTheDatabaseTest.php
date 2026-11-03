@@ -12,7 +12,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\ApplicationTester;
 
 /**
- * Issue #976: "doctrine:schema:validate" on the database the migrations of the bundle built, on PostgreSQL,
+ * Issue #976: "doctrine:schema:validate" on the database the migrations of the provider built, on PostgreSQL,
  * which is what an operator runs and what "doctrine:migrations:diff" compares the same way. DBAL 4 reads a
  * JSONB column back as the "json" type carrying the "jsonb" platform option, which it deprecates
  * (doctrine/dbal#6939), and declares it through that option to compare it; the connection of this application

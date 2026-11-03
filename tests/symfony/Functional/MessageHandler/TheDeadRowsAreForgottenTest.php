@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\MessageHandler;
+namespace App\Tests\Symfony\Functional\MessageHandler;
 
-use Beffroi\Bundle\Doctrine\Repository\DoctrineRefreshTokenRepository;
-use Beffroi\Bundle\Message\ForgetTheRecordsThatAreDead;
-use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
+use App\Doctrine\Repository\DoctrineRefreshTokenRepository;
+use App\Message\ForgetTheRecordsThatAreDead;
+use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
 use Symfony\Component\Uid\Uuid;
 use Beffroi\Core\Port\EnrolmentTicketRepositoryInterface;
 use Beffroi\Core\Domain\Enrolment\EnrolmentTicket;

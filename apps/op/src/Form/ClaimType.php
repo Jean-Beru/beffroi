@@ -11,6 +11,7 @@ use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormView;
 use Symfony\Component\OptionsResolver\OptionsResolver;
+use LogicException;
 
 /**
  * One claim of a person, edited on its own (issue beffroi-auth/op#17): one field, one button, one line of
@@ -24,6 +25,8 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
  * offered as depends on what is already held: a birthdate held as a year alone is a line of text and not a
  * calendar, a calendar rendering it empty and a save on an empty field erasing it
  * (beffroi-auth/beffroi#479).
+ *
+ * @extends AbstractType<mixed>
  */
 final class ClaimType extends AbstractType
 {
@@ -31,6 +34,10 @@ final class ClaimType extends AbstractType
     {
         $claim = $options['claim'];
         $field = $options['field'];
+        if (! $claim instanceof ClaimInterface || ! $field instanceof ClaimField) {
+            // configureOptions() holds both to their types, so the resolver refuses anything else first
+            throw new LogicException('A claim form is built for a claim and the field it is offered as.');
+        }
         $builder->add('value', ClaimFieldTypes::of($field), ClaimFieldTypes::optionsOf($field, $claim->name()));
     }
 
@@ -49,6 +56,7 @@ final class ClaimType extends AbstractType
         $resolver->setRequired(['claim', 'field']);
         $resolver->setAllowedTypes('claim', ClaimInterface::class);
         $resolver->setAllowedTypes('field', ClaimField::class);
+
         // nothing else is set: the token id is the one of config/packages/csrf.yaml, which is the stateless
         // protection the form component is installed with here
     }

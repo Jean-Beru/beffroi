@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Saml;
+namespace App\Tests\Symfony\Unit\Saml;
 
-use Beffroi\Bundle\EndSession\FrontChannelLogoutRenderer;
-use Beffroi\Bundle\Http\FormTarget;
-use Beffroi\Bundle\Http\InteractionPages;
-use Beffroi\Bundle\Saml\IdentityProviderRoutes;
-use Beffroi\Bundle\Saml\LogoutChainCookie;
-use Beffroi\Bundle\Saml\LogoutChainPages;
-use Beffroi\Bundle\Saml\SamlPostPage;
+use App\EndSession\FrontChannelLogoutRenderer;
+use App\Http\FormTarget;
+use App\Http\InteractionPages;
+use App\Saml\IdentityProviderRoutes;
+use App\Saml\LogoutChainCookie;
+use App\Saml\LogoutChainPages;
+use App\Saml\SamlPostPage;
 use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Tenant\Tenant;

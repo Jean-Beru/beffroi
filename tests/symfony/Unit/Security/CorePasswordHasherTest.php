@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Security;
+namespace App\Tests\Symfony\Unit\Security;
 
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2i;
 use Beffroi\Core\Bridge\Password\WiredPasswordAlgorithms;
-use Beffroi\Bundle\Security\CorePasswordHasher;
+use App\Security\CorePasswordHasher;
 use Beffroi\Core\Bridge\Password\NativePasswordHasher;
 use Beffroi\Core\Bridge\Password\PasswordHasherRegistry;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;

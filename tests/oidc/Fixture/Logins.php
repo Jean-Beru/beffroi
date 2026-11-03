@@ -12,9 +12,9 @@ use LogicException;
 
 /**
  * What the logins of an integration can prove: a password only, as spike 1 had, or a password and a
- * passkey, as the bundle wires since spike 3.
+ * passkey, as the provider wires since spike 3.
  *
- * One list per login and not one list of methods, as the bundle reads them (PassportProofs): the floor of
+ * One list per login and not one list of methods, as the provider reads them (PassportProofs): the floor of
  * the tenant admits a login or closes it (issue #327), and a passkey that proves "user" and "mfa" beside
  * its key is not half admitted.
  */

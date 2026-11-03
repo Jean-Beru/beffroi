@@ -5,7 +5,7 @@
 # them.
 #
 # Imported for the test environment alone (MicroKernelTrait reads "config/services_{env}.yaml"), the same
-# way the test kernel of the bundle names the ports its own suite reads (tests/symfony/config/config_test.yml).
+# way the kernel of the suite of the integration names the ports its own suite reads (tests/symfony/config/config_test.yml).
 #
 # One service is replaced, and it is the one thing this suite cannot have: the client the demonstration
 # calls this provider with (issue #462). A functional test sends its requests into the kernel and opens
@@ -19,10 +19,10 @@ services:
         autoconfigure: true
 
     test.beffroi.tenant_provider:
-        alias: Beffroi\Bundle\Doctrine\TenantProvider
+        alias: App\Doctrine\TenantProvider
         public: true
     test.beffroi.tenant_synchronizer:
-        alias: Beffroi\Bundle\Doctrine\TenantSynchronizer
+        alias: App\Doctrine\TenantSynchronizer
         public: true
     test.beffroi.users:
         alias: Beffroi\Core\Port\UserRepositoryInterface
@@ -37,7 +37,7 @@ services:
         alias: Beffroi\Core\Port\AuthenticationSessionRepositoryInterface
         public: true
     test.beffroi.browser_session:
-        alias: Beffroi\Bundle\Http\BrowserSession
+        alias: App\Http\BrowserSession
         public: true
     # The client the demonstration takes a hop with, which a test hands the answers of
     # (MockHttpClient::setResponseFactory()).

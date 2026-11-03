@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Account;
+namespace App\Tests\Symfony\Unit\Account;
 
-use Beffroi\Bundle\Account\ApplicationHolding;
+use App\Account\ApplicationHolding;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Domain\Consent\Consent;

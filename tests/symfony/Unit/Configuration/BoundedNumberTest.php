@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Configuration;
+namespace App\Tests\Symfony\Unit\Configuration;
 
-use Beffroi\Bundle\Configuration\BoundedNumber;
-use Beffroi\Bundle\Configuration\TokensSection;
+use App\Configuration\BoundedNumber;
+use App\Configuration\TokensSection;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

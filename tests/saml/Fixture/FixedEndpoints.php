@@ -9,7 +9,7 @@ use Beffroi\Saml\Domain\Metadata\IdentityProviderEndpoints;
 use Beffroi\Saml\Port\IdentityProviderEndpointsInterface;
 
 /**
- * The endpoints of the identity provider of a tenant under its issuer, as the bundle locates them from its routes.
+ * The endpoints of the identity provider of a tenant under its issuer, as the provider locates them from its routes.
  */
 final readonly class FixedEndpoints implements IdentityProviderEndpointsInterface
 {

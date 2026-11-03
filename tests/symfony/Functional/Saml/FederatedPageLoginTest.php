@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Saml;
+namespace App\Tests\Symfony\Functional\Saml;
 
-use Beffroi\Bundle\Saml\SamlSigning;
-use Beffroi\Bundle\Saml\UpstreamSignOns;
-use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
+use App\Saml\SamlSigning;
+use App\Saml\UpstreamSignOns;
+use App\Tests\Symfony\Functional\Command\ConsoleTestCase;
 use Beffroi\Saml\Domain\Upstream\AcceptedUpstreamMetadata;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Tests\Fixture\IdentityProviderDocuments;

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Fido\Conformance;
+namespace App\Tests\Symfony\Unit\Fido\Conformance;
 
 use function array_map;
-use Beffroi\Bundle\Fido\Conformance\ConformanceToolsAlgorithms;
+use App\Fido\Conformance\ConformanceToolsAlgorithms;
 use Beffroi\Core\Bridge\Webauthn\ProviderPasskeyAlgorithms;
 use function iterator_to_array;
 use PHPUnit\Framework\Attributes\Test;

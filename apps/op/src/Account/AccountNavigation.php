@@ -6,24 +6,24 @@ namespace App\Account;
 
 use function array_map;
 use function array_values;
-use Beffroi\Bundle\Controller\AccountArchiveController;
-use Beffroi\Bundle\Controller\AccountConsentsController;
-use Beffroi\Bundle\Controller\AccountNotificationsController;
-use Beffroi\Bundle\Controller\AccountPasskeysController;
-use Beffroi\Bundle\Controller\AccountPasswordController;
-use Beffroi\Bundle\Controller\AccountProfileController;
-use Beffroi\Bundle\Controller\AccountSessionsController;
-use Beffroi\Bundle\Controller\AccountActsController;
-use Beffroi\Bundle\Controller\AccountTwoFactorController;
-use Beffroi\Bundle\Controller\PendingApprovalsController;
-use Beffroi\Bundle\Http\Account\AccountSections;
+use App\Controller\AccountArchiveController;
+use App\Controller\AccountConsentsController;
+use App\Controller\AccountNotificationsController;
+use App\Controller\AccountPasskeysController;
+use App\Controller\AccountPasswordController;
+use App\Controller\AccountProfileController;
+use App\Controller\AccountSessionsController;
+use App\Controller\AccountActsController;
+use App\Controller\AccountTwoFactorController;
+use App\Controller\PendingApprovalsController;
+use App\Http\Account\AccountSections;
 use Beffroi\Core\Domain\Identity\User;
 use function in_array;
 use function is_int;
 
 /**
  * How the navigation of this application arranges the pages of the account (architecture §5.2): the pages
- * the bundle has wired, under the heading a reader looks for each of them under. Ten links in a row is a
+ * the provider has wired, under the heading a reader looks for each of them under. Ten links in a row is a
  * list nobody reads to the end; what somebody came for is "my data", "how I sign in", "what has happened".
  *
  * The pages are not named here, only arranged: what exists is read from AccountSections, the one object
@@ -38,7 +38,7 @@ final readonly class AccountNavigation
      *
      * A page is read under one heading or under none: what is waiting for an answer is above every heading,
      * because it is the one page that asks something of whoever opened the account rather than telling them
-     * something. A page no heading names is last, under none and with no icon, so that a section the bundle
+     * something. A page no heading names is last, under none and with no icon, so that a section the provider
      * or this application wires is never a page the navigation drops.
      *
      * An icon is the name of a file of templates/layout/icon/, where one file draws one icon: a name no file
@@ -162,7 +162,7 @@ final readonly class AccountNavigation
      */
     private function countOf(string $route, ?User $user): ?int
     {
-        if ($user === null || !in_array($route, self::COUNTED, true)) {
+        if ($user === null || ! in_array($route, self::COUNTED, true)) {
             return null;
         }
         $count = $this->sections->stateOf($route, $user)?->parameters['count'] ?? null;

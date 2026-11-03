@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Http\Account;
+namespace App\Tests\Symfony\Unit\Http\Account;
 
-use Beffroi\Bundle\Http\Account\BreachedPasswordDemand;
-use Beffroi\Bundle\Http\InteractionPages;
-use Beffroi\Bundle\Http\LoginTarget;
+use App\Http\Account\BreachedPasswordDemand;
+use App\Http\InteractionPages;
+use App\Http\LoginTarget;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use DateTimeImmutable;

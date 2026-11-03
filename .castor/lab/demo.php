@@ -2974,7 +2974,7 @@ const DEMO_ROTATION_TOKEN_TTL = 60;
 
 /**
  * OidcSignatureVerifier::ROTATION_COOLDOWN of Symfony's oidc_login (StagingDelay::ROTATION_COOLDOWN in
- * the bundle): a JWK Set copy younger than this is not refetched on an unknown "kid".
+ * the provider): a JWK Set copy younger than this is not refetched on an unknown "kid".
  */
 const DEMO_ROTATION_COOLDOWN = 60;
 

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Saml;
+namespace App\Tests\Symfony\Functional\Saml;
 
 use function preg_replace;
 use function array_map;
-use Beffroi\Bundle\Http\InteractionPages;
-use Beffroi\Bundle\Tests\Functional\Controller\PasskeyTestCase;
+use App\Http\InteractionPages;
+use App\Tests\Symfony\Functional\Controller\PasskeyTestCase;
 use Beffroi\Core\Domain\Credential\TotpCredential;
 use Beffroi\Core\Domain\Credential\TotpSecret;
 use Beffroi\Core\Domain\Event\AuthenticationFailed;

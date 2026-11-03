@@ -10,7 +10,7 @@ use Beffroi\Saml\Port\ReplayStoreInterface;
 use DateTimeImmutable;
 
 /**
- * The store of spec/saml.md S-23 in the memory of one process, for the tests only: a message is keyed as the bundle
+ * The store of spec/saml.md S-23 in the memory of one process, for the tests only: a message is keyed as the provider
  * keys it, and never forgotten, the tests reading when it expires instead.
  */
 final class InMemoryReplayStore implements ReplayStoreInterface

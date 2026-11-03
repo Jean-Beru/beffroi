@@ -29,18 +29,25 @@ final readonly class ClaimForms
     ) {
     }
 
+    /**
+     * @return FormInterface<mixed>
+     */
     public function of(ClaimInterface $claim, User $user): FormInterface
     {
         $held = $claim->of($user);
 
-        return $this->forms->create(ClaimType::class, [
-            'value' => $held,
-        ], [
-            'claim' => $claim,
-            'field' => $claim->field()->forHolding($held),
-            'action' => $this->router->generate(AccountProfileDescriptionController::ROUTE, [
-                'claim' => $claim->name(),
-            ]),
-        ]);
+        return $this->forms->create(
+            ClaimType::class,
+            [
+                'value' => $held,
+            ],
+            [
+                'claim' => $claim,
+                'field' => $claim->field()->forHolding($held),
+                'action' => $this->router->generate(AccountProfileDescriptionController::ROUTE, [
+                    'claim' => $claim->name(),
+                ]),
+            ],
+        );
     }
 }

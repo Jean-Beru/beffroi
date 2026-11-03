@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Http\Account;
+namespace App\Tests\Symfony\Unit\Http\Account;
 
-use Beffroi\Bundle\Http\Account\PasskeysSection;
+use App\Http\Account\PasskeysSection;
 use Beffroi\Core\Application\Credential\ActiveCredentials;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Beffroi\Core\Domain\Credential\Credential;

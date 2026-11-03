@@ -6,7 +6,7 @@
 # Its logo is served by a host of its own, and that is the whole point of it. The page shows an image of a
 # stranger, so the "img-src" of the policy this application writes is completed with that host, and its
 # submission ends at the client, so the "form-action" is completed with the origin of the redirect URI
-# (Beffroi\Bundle\Http\ImageSource, FormTarget). Consent is required of it, which is the default and what
+# (App\Http\ImageSource, FormTarget). Consent is required of it, which is the default and what
 # makes the page appear at all; no token is ever asked for it, which is why it holds no secret.
 beffroi:
     clients:

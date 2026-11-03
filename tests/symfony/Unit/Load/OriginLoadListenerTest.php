@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Load;
+namespace App\Tests\Symfony\Unit\Load;
 
 use DateInterval;
-use Beffroi\Bundle\Load\LoadBudget;
-use Beffroi\Bundle\Load\OriginLoadListener;
+use App\Load\LoadBudget;
+use App\Load\OriginLoadListener;
 use Beffroi\Core\Exception\LoadBudgetSpentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -33,16 +33,16 @@ final class OriginLoadListenerTest extends TestCase
     /**
      * @return iterable<string, array{?string}>
      */
-    public static function provideRoutesThatAreNotTheBundleS(): iterable
+    public static function provideRoutesThatAreNotTheProviderS(): iterable
     {
-        yield 'a route of the host application' => ['app_home'];
+        yield 'a route of the application' => ['app_home'];
         yield 'the profiler, in development' => ['_profiler'];
         yield 'an endpoint of the FIDO conformance tools, in development' => ['beffroi_fido_conformance_attestation_options'];
         yield 'no route at all' => [null];
     }
 
     #[Test]
-    #[DataProvider('provideRoutesThatAreNotTheBundleS')]
+    #[DataProvider('provideRoutesThatAreNotTheProviderS')]
     public function aRouteThatIsNotOfTheTwoPlanesIsNotCounted(?string $route): void
     {
         // Given
