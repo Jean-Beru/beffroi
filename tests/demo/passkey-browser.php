@@ -48,6 +48,10 @@ final class PasskeyBrowser
 
     /**
      * §7.1 through the account page: the token of the form, the creation options, the attestation posted.
+     *
+     * The form answers with a redirection to the page whether the ceremony was completed or refused, what was
+     * refused crossing it in the session (issue #481), so the page it comes back to is what says which: no
+     * refusal on it, and the name of the passkey in the form that renames it, which only an active one has.
      */
     public function enrol(SoftwareAuthenticator $device, string $name): void
     {
@@ -56,14 +60,19 @@ final class PasskeyBrowser
         $token = self::capture('/data-passkey="enrol".*?name="_token" value="([^"]+)"/s', $page, 'the account page carries the enrolment form');
         [$status, , $options] = $this->request('POST', '/account/passkeys/options');
         self::expect($status === 200, sprintf('the creation options are given (got %d)', $status));
-        [$status, $location, $page] = $this->request('POST', '/account/passkeys', [
+        [$status, $location] = $this->request('POST', '/account/passkeys', [
             '_token' => $token,
             'name' => $name,
             '_passkey' => $device->create($options),
         ]);
         self::expect(
-            $status === 302 && str_ends_with($location, '/account/passkeys'),
-            sprintf('the passkey is enrolled (got %d %s)', $status, $status === 302 ? $location : self::reason($page)),
+            $status === 303 && str_ends_with($location, '/account/passkeys'),
+            sprintf('the form sends the browser back to the page of the passkeys (got %d %s)', $status, $location),
+        );
+        [$status, , $page] = $this->request('GET', '/account/passkeys');
+        self::expect(
+            $status === 200 && ! str_contains($page, 'data-error=') && str_contains($page, sprintf('value="%s"', htmlspecialchars($name))),
+            sprintf('the passkey is enrolled (got %d %s)', $status, self::reason($page)),
         );
     }
 
