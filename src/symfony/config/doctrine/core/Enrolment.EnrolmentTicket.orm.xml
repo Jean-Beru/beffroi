@@ -17,11 +17,7 @@
         <many-to-one field="user" target-entity="Beffroi\Core\Domain\Identity\User">
             <join-column name="user_id" referenced-column-name="id" nullable="false" on-delete="CASCADE"/>
         </many-to-one>
-        <field name="secret" type="beffroi_password_hash" column="secret">
-            <options>
-                <option name="jsonb">true</option>
-            </options>
-        </field>
+        <field name="secret" type="beffroi_password_hash" column="secret"/>
         <field name="createdAt" type="datetime_immutable" column="created_at"/>
         <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
         <field name="spentAt" type="datetime_immutable" column="spent_at" nullable="true"/>

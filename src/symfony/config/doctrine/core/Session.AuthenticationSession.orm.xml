@@ -23,11 +23,7 @@
             <join-column name="user_id" referenced-column-name="id" nullable="false" on-delete="CASCADE"/>
         </many-to-one>
         <field name="establishedAt" type="datetime_immutable" column="established_at"/>
-        <field name="proofs" type="beffroi_authentication_proofs" column="proofs">
-            <options>
-                <option name="jsonb">true</option>
-            </options>
-        </field>
+        <field name="proofs" type="beffroi_authentication_proofs" column="proofs"/>
         <!--
           The provenance of a request, one column and one JSON document, sealed under the data key of its
           tenant (decisions 0011 and 0018). It was five columns of an embeddable, which could not seal: an

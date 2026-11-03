@@ -12,9 +12,9 @@ use Beffroi\Oidc\Domain\Authorization\AuthenticationSnapshot;
  * when somebody answers it keeps it as a document, because it is absent until then and an embeddable cannot
  * be null.
  *
- * @extends JsonObjectType<AuthenticationSnapshot>
+ * @extends JsonbObjectType<AuthenticationSnapshot>
  */
-final class AuthenticationSnapshotType extends JsonObjectType
+final class AuthenticationSnapshotType extends JsonbObjectType
 {
     public const string NAME = 'beffroi_authentication_snapshot';
 

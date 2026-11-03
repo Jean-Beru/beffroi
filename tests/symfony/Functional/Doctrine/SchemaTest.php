@@ -5,18 +5,24 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use function array_map;
+use Doctrine\DBAL\Platforms\AbstractPlatform;
+use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
+use Doctrine\DBAL\Platforms\SQLitePlatform;
 use Doctrine\DBAL\Schema\Name\OptionallyQualifiedName;
 use Doctrine\DBAL\Schema\Table;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\ORM\Tools\SchemaValidator;
+use Beffroi\Bundle\Tests\Fixture\DoctrineDeprecations;
 use Beffroi\Bundle\Tests\Functional\Doctrine\Host\User as HostUser;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sort;
 use function str_starts_with;
 
 /**
- * The mappings of the bundle describe a schema Doctrine validates, creates on SQLite and finds in sync
- * afterwards (architecture §5.3, §7), next to the tables of a host application (decision 0002).
+ * The mappings of the bundle describe a schema Doctrine validates, writes without a deprecation, creates on
+ * SQLite and finds in sync afterwards (architecture §5.3, §7), next to the tables of a host application
+ * (decision 0002).
  */
 final class SchemaTest extends DatabaseTestCase
 {
@@ -82,6 +88,41 @@ final class SchemaTest extends DatabaseTestCase
 
         // When / Then
         static::assertSame([], $validator->getUpdateSchemaList());
+    }
+
+    /**
+     * Issue #969: the schema the mappings describe is written without a deprecation of Doctrine, on the
+     * database of the application as on the one of this suite. A document stored as JSONB is of a type that
+     * declares it, as DBAL's own `JsonbType` does, and no mapping asks the platform for it by the "jsonb"
+     * option, which doctrine/dbal deprecates since 4.3.0 (doctrine/dbal#6939): every process of this suite
+     * that creates its database would otherwise raise it once per such column.
+     */
+    #[Test]
+    #[DataProvider('providePlatforms')]
+    public function theSchemaIsWrittenWithoutADeprecationOfDoctrine(AbstractPlatform $platform): void
+    {
+        // Given
+        $entityManager = self::entityManager();
+        $metadata = $entityManager->getMetadataFactory()->getAllMetadata();
+
+        // When
+        $deprecations = DoctrineDeprecations::raisedWhile(
+            static fn (): array => new SchemaTool($entityManager)
+                ->getSchemaFromMetadata($metadata)
+                ->toSql($platform),
+        );
+
+        // Then
+        static::assertSame([], $deprecations);
+    }
+
+    /**
+     * @return iterable<string, array{AbstractPlatform}>
+     */
+    public static function providePlatforms(): iterable
+    {
+        yield 'PostgreSQL, the database of the application' => [new PostgreSQLPlatform()];
+        yield 'SQLite, the database of this suite' => [new SQLitePlatform()];
     }
 
     /**

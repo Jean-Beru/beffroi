@@ -18,9 +18,9 @@ use LogicException;
  * can be injected here; what reads the document takes the wiring as an argument, and this hands it the one
  * the bundle gave it when it booted.
  *
- * @extends JsonObjectType<PasswordHash>
+ * @extends JsonbObjectType<PasswordHash>
  */
-final class PasswordHashType extends JsonObjectType implements NeedsPasswordAlgorithmsInterface
+final class PasswordHashType extends JsonbObjectType implements NeedsPasswordAlgorithmsInterface
 {
     public const string NAME = 'beffroi_password_hash';
 

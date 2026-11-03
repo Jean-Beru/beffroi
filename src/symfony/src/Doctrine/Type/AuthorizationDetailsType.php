@@ -27,6 +27,9 @@ use LogicException;
  *
  * A row naming a type the deployment no longer serves fails to convert rather than loading as something
  * else: a detail nobody can describe is a detail nobody can honour.
+ *
+ * The column is JSONB on PostgreSQL, which the type declares as DBAL's own `JsonbType` does, so the mappings
+ * ask the platform for nothing (doctrine/dbal#6939).
  */
 final class AuthorizationDetailsType extends Type implements NeedsAuthorizationDetailTypesInterface
 {
@@ -41,7 +44,7 @@ final class AuthorizationDetailsType extends Type implements NeedsAuthorizationD
 
     public function getSQLDeclaration(array $column, AbstractPlatform $platform): string
     {
-        return $platform->getJsonTypeDeclarationSQL($column);
+        return $platform->getJsonbTypeDeclarationSQL($column);
     }
 
     public function convertToDatabaseValue(mixed $value, AbstractPlatform $platform): ?string
