@@ -784,7 +784,8 @@ return static function (ContainerConfigurator $container): void {
     // what a page of this plane adds to the policy its answer carries, the deployment writing the rest
     // (PolicyCompletion): the origin of the client the page is answering, named in "form-action", without
     // which a browser refuses the redirection that takes the code there (FormTarget), and the origins of
-    // the images the consent page shows, named in "img-src" (ImageSource)
+    // the images a page shows, the logo of the client on the consent page and the one of the tenant on
+    // every page that reads it, named in "img-src" (ImageSource)
     $services->set(FormTarget::class);
     $services->set(ImageSource::class);
     // which page of a table a request asks for, and the page of the rows a selection finds: the one word
@@ -969,7 +970,8 @@ return static function (ContainerConfigurator $container): void {
     // where a provenance came from, on the two pages that show one (issue #473)
     $services->set(PlaceExtension::class);
     $services->set(DeviceExtension::class);
-    // what the pages read of the organisation the visitor came for (issue #449)
+    // what the pages read of the organisation the visitor came for (issue #449), and the origin of its
+    // logo named for the page that reads it (issue #926)
     $services->set(TenantExtension::class);
     $services->set(InteractionLocale::class)->args([
         // the port and not the provider: what it asks is the tenant of this unit of work, and a unit of

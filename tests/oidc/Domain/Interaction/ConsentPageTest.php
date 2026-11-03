@@ -6,8 +6,6 @@ namespace Beffroi\Oidc\Tests\Domain\Interaction;
 
 use function array_keys;
 use function array_map;
-use Beffroi\Core\Domain\Tenant\LogoUri;
-use Beffroi\Core\Domain\Tenant\TenantLook;
 use Beffroi\Oidc\Domain\Client\ClientPresentation;
 use Beffroi\Oidc\Domain\Client\ClientUri;
 use Beffroi\Oidc\Domain\Interaction\ConsentPage;
@@ -135,53 +133,6 @@ final class ConsentPageTest extends TestCase
         yield 'a host of its own' => ['https://cdn.rp.example/logo.png', 'https://cdn.rp.example'];
 
         yield 'a loopback host (RFC 8252 §7.3)' => ['http://127.0.0.1:8080/logo.png', 'http://127.0.0.1:8080'];
-    }
-
-    /**
-     * Issue #449: the page carries the logo of the tenant as every page of the plane does, so it names
-     * where that one is served from as well as the client's.
-     */
-    #[Test]
-    public function itNamesTheOriginOfTheLogoOfTheTenantToo(): void
-    {
-        // Given
-        $look = new TenantLook(new LogoUri('https://cdn.acme.example/logo.svg'));
-
-        // When
-        $page = new ConsentPage(self::presentation(), $look);
-
-        // Then
-        static::assertSame(['https://rp.example', 'https://cdn.acme.example'], $page->imageOrigins);
-    }
-
-    /**
-     * A source expression repeated is the same source: a tenant that serves its logo from where the
-     * client serves its own is named once.
-     */
-    #[Test]
-    public function itNamesAnOriginTheTwoLogosShareOnce(): void
-    {
-        // Given
-        $look = new TenantLook(new LogoUri('https://rp.example/tenant.svg'));
-
-        // When
-        $page = new ConsentPage(self::presentation(), $look);
-
-        // Then
-        static::assertSame(['https://rp.example'], $page->imageOrigins);
-    }
-
-    #[Test]
-    public function itNamesTheTenantAloneForAClientThatRegisteredNoLogo(): void
-    {
-        // Given
-        $look = new TenantLook(new LogoUri('https://cdn.acme.example/logo.svg'));
-
-        // When
-        $page = new ConsentPage(new ClientPresentation('An application'), $look);
-
-        // Then
-        static::assertSame(['https://cdn.acme.example'], $page->imageOrigins);
     }
 
     private static function presentation(): ClientPresentation

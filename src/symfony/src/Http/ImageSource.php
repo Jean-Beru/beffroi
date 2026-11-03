@@ -10,19 +10,20 @@ use Symfony\Component\HttpKernel\Event\ResponseEvent;
 
 /**
  * Where a page of the interaction plane may load an image from (CSP Level 3 §6.1): the host a client
- * named for its logo, and the one a tenant named for its own, which the consent page shows together
- * (ConsentPage).
+ * named for its logo, which the consent page shows (ConsentPage), and the one a tenant named for its own,
+ * which every page that reads the tenant may show (Twig\TenantExtension, issue #926).
  *
  * A deployment names its own origin and cannot name those: the logo of a client is served by a host that
- * client registered, and a client may register itself (RFC 7591). So the page names the origins of the
- * images it may load and the "img-src" of the policy the answer carries is completed with them, whichever
- * policy that is (PolicyCompletion). What the page loads stays bounded by that: the origin of each of
- * those two images and no other, so nothing a client registers makes a page of this provider load
- * anything else.
+ * client registered, and a client may register itself (RFC 7591); the logo of a tenant is a value of the
+ * configuration of the bundle, an environment variable of the image, which a policy written in a file of
+ * the application would have to repeat by hand. So the page names the origins of the images it may load
+ * and the "img-src" of the policy the answer carries is completed with them, whichever policy that is
+ * (PolicyCompletion). What the page loads stays bounded by that: the origin of each of those images and
+ * no other, so nothing a client registers makes a page of this provider load anything else.
  *
  * A policy that names "default-src" and no "img-src" refuses an image at the fallback, so the directive
  * is written out of that one: a deployment whose "default-src 'none'" never mentioned an image still
- * serves the two the page shows, and still nothing more.
+ * serves the ones the page shows, and still nothing more.
  */
 final readonly class ImageSource
 {
