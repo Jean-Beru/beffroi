@@ -1308,7 +1308,8 @@ return static function (ContainerConfigurator $container): void {
     // the default, the one an access token, a signed introspection response and a client that registered
     // none are signed with. A new algorithm is a class and a line here, and the discovery document, the
     // key commands and the signer follow on their own. RS256 is mandatory (OIDC Core §15.1) and FAPI 2.0
-    // §5.2.2 refuses it: a deployment that follows that profile drops this line and keeps the others.
+    // Security Profile §5.4.1 does not take it: a deployment that follows that profile drops this line and
+    // keeps the others.
     $services->set(RsaKeyBits::class);
     $services
         ->set(Rs256::class)
@@ -1698,9 +1699,9 @@ return static function (ContainerConfigurator $container): void {
     // how a client authenticates at the endpoints that authenticate one (RFC 6749 §2.3, OIDC Core §9):
     // one class per method, tagged, and what is tagged is what a client may register, what the endpoints
     // take and what the discovery document announces, never an enumeration kept beside them (issue #98).
-    // The first tagged one is what a client that names none registers. FAPI 2.0 §5.2.2 takes
-    // private_key_jwt and mTLS alone: a deployment that follows the profile drops the three lines that
-    // prove a shared secret, and the provider stops taking them and stops announcing them.
+    // The first tagged one is what a client that names none registers. FAPI 2.0 Security Profile
+    // §5.3.2.1 takes private_key_jwt and mTLS alone: a deployment that follows the profile drops the three
+    // lines that prove a shared secret, and the provider stops taking them and stops announcing them.
     $services->set(ClientSecretBasic::class)->tag('beffroi.client_authentication_method');
     $services->set(ClientSecretPost::class)->tag('beffroi.client_authentication_method');
     $services->set(PrivateKeyJwt::class)->tag('beffroi.client_authentication_method');
