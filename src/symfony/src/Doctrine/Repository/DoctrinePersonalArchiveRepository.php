@@ -11,6 +11,7 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\PersonalArchiveRepositoryInterface;
 use function count;
 use DateTimeImmutable;
+use SortDirection;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
@@ -47,8 +48,8 @@ final readonly class DoctrinePersonalArchiveRepository extends DoctrineRepositor
         /** @var PersonalArchive|null $archive */
         $archive = $this->queryBuilder('a')
             ->where('a.user = :user')
-            ->orderBy('a.askedAt', 'DESC')
-            ->addOrderBy('a.id', 'DESC')
+            ->orderBy('a.askedAt', SortDirection::Descending)
+            ->addOrderBy('a.id', SortDirection::Descending)
             ->setMaxResults(1)
             ->setParameter('user', $user->id, UuidType::NAME)
             ->getQuery()
@@ -73,7 +74,7 @@ final readonly class DoctrinePersonalArchiveRepository extends DoctrineRepositor
         $expired = $this->queryBuilder('a')
             ->where('a.tenant = :tenant')
             ->andWhere('a.expiresAt <= :moment')
-            ->orderBy('a.expiresAt', 'ASC')
+            ->orderBy('a.expiresAt', SortDirection::Ascending)
             ->setMaxResults(self::FORGOTTEN_AT_ONCE)
             ->setParameter('tenant', $tenant->id, UuidType::NAME)
             ->setParameter('moment', $moment)

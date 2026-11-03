@@ -8,6 +8,7 @@ use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Saml\Domain\SingleLogout\SessionParticipation;
 use Beffroi\Saml\Port\SessionParticipationRepositoryInterface;
 use Doctrine\DBAL\Types\Types;
+use SortDirection;
 use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
@@ -65,8 +66,8 @@ final readonly class DoctrineSessionParticipationRepository extends DoctrineRepo
         return $this->queryBuilder('participation')
             ->where('IDENTITY(participation.session) = :session')
             ->setParameter('session', $sessionId, 'uuid')
-            ->orderBy('participation.signedInAt', 'ASC')
-            ->addOrderBy('participation.id', 'ASC')
+            ->orderBy('participation.signedInAt', SortDirection::Ascending)
+            ->addOrderBy('participation.id', SortDirection::Ascending)
             ->getQuery()
             ->getResult();
     }

@@ -113,6 +113,11 @@ deptrac:
     - name: 'Doctrine'
       collectors:
         - { type: classLike, value: '^Doctrine\\' }
+    - name: 'SortDirection'
+      collectors:
+        # \SortDirection, the enum of PHP 8.6 that symfony/polyfill-php86 declares on an older PHP, a requirement of
+        # doctrine/orm: the direction the bundle hands the query builder of the ORM, which deprecates a string there (issue #907)
+        - { type: classLike, value: '^SortDirection$' }
     - name: 'Twig'
       collectors:
         - { type: classLike, value: '^Twig\\' }
@@ -349,6 +354,7 @@ deptrac:
       - 'QrCode'
       - 'Serializer'
       - 'Doctrine'
+      - 'SortDirection'
       - 'Twig'
     XmlCore: ['XmlCoreInternal']
     XmlCoreInternal: ['XmlCore']

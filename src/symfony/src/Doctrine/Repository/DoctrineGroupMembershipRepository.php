@@ -11,6 +11,7 @@ use Beffroi\Core\Domain\Group\GroupMembership;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\GroupMembershipRepositoryInterface;
 use Beffroi\Core\Port\GroupsOfAPersonInterface;
+use SortDirection;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 
 /**
@@ -34,7 +35,7 @@ final readonly class DoctrineGroupMembershipRepository extends DoctrineRepositor
         $memberships = $this->queryBuilder('m')
             ->join('m.group', 'g')
             ->where('m.user = :user')
-            ->orderBy('g.name', 'ASC')
+            ->orderBy('g.name', SortDirection::Ascending)
             ->setParameter('user', $user->id, UuidType::NAME)
             ->getQuery()
             ->getResult();

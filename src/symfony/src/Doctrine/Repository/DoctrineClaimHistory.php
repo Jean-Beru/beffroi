@@ -18,6 +18,7 @@ use Beffroi\Core\Port\ChangesOfAPersonInterface;
 use Beffroi\Core\Port\ClaimHistoryInterface;
 use function count;
 use DateTimeImmutable;
+use SortDirection;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
@@ -57,7 +58,7 @@ final readonly class DoctrineClaimHistory extends DoctrineRepository implements
         $past = $this->queryBuilder('c')
             ->where('c.tenant = :tenant')
             ->andWhere('c.changedAt < :moment')
-            ->orderBy('c.changedAt', 'ASC')
+            ->orderBy('c.changedAt', SortDirection::Ascending)
             ->setMaxResults(self::FORGOTTEN_AT_ONCE)
             ->setParameter('tenant', $tenant->id, UuidType::NAME)
             ->setParameter('moment', $moment)
@@ -94,7 +95,7 @@ final readonly class DoctrineClaimHistory extends DoctrineRepository implements
         /** @var list<ClaimChange> $last */
         $last = $this->queryBuilder('c')
             ->where('c.user = :user')
-            ->orderBy('c.id', 'DESC')
+            ->orderBy('c.id', SortDirection::Descending)
             ->setMaxResults($howMany)
             ->setParameter('user', $user->id, UuidType::NAME)
             ->getQuery()
@@ -110,7 +111,7 @@ final readonly class DoctrineClaimHistory extends DoctrineRepository implements
         }
         $query = $this->queryBuilder('c')
             ->where('c.user = :user')
-            ->orderBy('c.id', 'ASC')
+            ->orderBy('c.id', SortDirection::Ascending)
             ->setMaxResults($howMany)
             ->setParameter('user', $user->id, UuidType::NAME);
         if ($after !== null) {

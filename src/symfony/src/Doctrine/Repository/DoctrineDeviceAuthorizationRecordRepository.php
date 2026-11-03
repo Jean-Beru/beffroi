@@ -17,6 +17,7 @@ use Beffroi\Oidc\Domain\Device\DeviceAuthorizationRecord;
 use Beffroi\Oidc\Port\CanRevokeGrantsByConsentInterface;
 use Beffroi\Oidc\Port\DeviceAuthorizationRecordRepositoryInterface;
 use Beffroi\Oidc\Port\RecordedGrantsInterface;
+use SortDirection;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 use function array_filter;
@@ -107,8 +108,8 @@ final readonly class DoctrineDeviceAuthorizationRecordRepository extends Doctrin
             ->where('s.user = :user')
             ->andWhere('r.clientId = :clientId')
             ->andWhere('r.revokedAt IS NULL')
-            ->orderBy('r.issuedAt', 'ASC')
-            ->addOrderBy('r.deviceCodeHash', 'ASC')
+            ->orderBy('r.issuedAt', SortDirection::Ascending)
+            ->addOrderBy('r.deviceCodeHash', SortDirection::Ascending)
             ->setParameter('user', $consent->user->id, UuidType::NAME)
             ->setParameter('clientId', $consent->clientId)
             ->getQuery()

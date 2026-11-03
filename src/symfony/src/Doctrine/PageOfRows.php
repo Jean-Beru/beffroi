@@ -8,6 +8,7 @@ use Beffroi\Core\Domain\Listing\Listing;
 use Beffroi\Core\Domain\Listing\Pagination;
 use Beffroi\Core\Exception\RuntimeException;
 use Doctrine\ORM\QueryBuilder;
+use SortDirection;
 use function sprintf;
 
 /**
@@ -41,7 +42,7 @@ final readonly class PageOfRows
         QueryBuilder $selection,
         string $orderBy,
         Pagination $pagination,
-        string $direction = 'DESC',
+        SortDirection $direction = SortDirection::Descending,
     ): Listing {
         $alias = $selection->getRootAliases()[0] ?? throw new RuntimeException(sprintf(
             'A selection of %s to be read in pages names no alias.',
