@@ -709,6 +709,8 @@ use Beffroi\Oidc\Port\UnsignedRequestObjectsInterface;
 use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Signature\Algorithm\HS256;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Bridge\Doctrine\Messenger\DoctrineDbalCloseConnectionMiddleware;
+use Symfony\Bridge\Doctrine\Messenger\DoctrineDbalPingConnectionMiddleware;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\RateLimiter\Storage\CacheStorage;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\inline_service;
@@ -1101,6 +1103,10 @@ return static function (ContainerConfigurator $container): void {
         service(MessageBodySealerInterface::class),
         service(MessageBodyOpenerInterface::class),
     ]);
+    // the two connection middleware of the command bus (MessengerContract::PING_CONNECTION, issue #925),
+    // which name no connection and so act on every connection of the registry
+    $services->set(MessengerContract::PING_CONNECTION, DoctrineDbalPingConnectionMiddleware::class)->args([service('doctrine')]);
+    $services->set(MessengerContract::CLOSE_CONNECTION, DoctrineDbalCloseConnectionMiddleware::class)->args([service('doctrine')]);
 
     // The bundle: security (architecture §5.4); the application names these in its firewall
     $services->set(IdentityUserProvider::class);

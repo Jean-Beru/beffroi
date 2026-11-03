@@ -69,6 +69,23 @@ final readonly class MessengerContract
     public const string SERIALIZER = 'beffroi.messenger.serializer';
 
     /**
+     * The two connection middleware of the command bus, on the classes of the DBAL bridge of Symfony: before
+     * a message a worker consumed, the first pings the connections the worker holds and reconnects one the
+     * database closed while it waited; once the message is handled, the second closes them. They are
+     * services of this bundle and not the `doctrine_ping_connection` and `doctrine_close_connection` of
+     * DoctrineBundle, because the class behind a name of DoctrineBundle is DoctrineBundle's to choose, and
+     * up to its 3.3.4 it chooses the classes symfony/doctrine-bridge 8.2 deprecates, a deprecation every
+     * process that builds the bus logs (issue #925).
+     *
+     * Neither resets a manager that a failed flush closed. The worker does: `messenger:consume` resets the
+     * services after every message unless `--no-reset` says otherwise, and the registry of DoctrineBundle,
+     * one of them, resets a closed manager.
+     */
+    public const string PING_CONNECTION = 'beffroi.messenger.ping_connection';
+
+    public const string CLOSE_CONNECTION = 'beffroi.messenger.close_connection';
+
+    /**
      * The lanes, by priority and then by what they carry, each named by what asks for it: the three of our
      * own writes, and the one of what the provider carries to somebody it does not own.
      *
@@ -97,8 +114,8 @@ final readonly class MessengerContract
      */
     public const array COMMAND_MIDDLEWARE = [
         'router_context',
-        'doctrine_ping_connection',
-        'doctrine_close_connection',
+        self::PING_CONNECTION,
+        self::CLOSE_CONNECTION,
         'doctrine_transaction',
     ];
 
