@@ -6,6 +6,7 @@ namespace Beffroi\Bundle\Tests\Functional\Doctrine;
 
 use function array_diff;
 use function array_keys;
+use function array_values;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Type;
 use Beffroi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
@@ -28,13 +29,13 @@ use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\EncryptedType;
 final class EncryptedColumnTypesTest extends DatabaseTestCase
 {
     /**
-     * A table of this test alone: no mapping of the bundle names an encrypted type yet, and the bytes a
-     * column holds are what the second test below reads.
+     * A table of this test alone, which no mapping describes: the bytes its column holds are what
+     * theBytesTheColumnHoldsAreNotThePlaintext() reads, with no entity in the way.
      */
     private const string TABLE = 'test_sealed_column';
 
     /**
-     * Sixteen families of columns, one data key per tenant each (decision 0018), and twenty-eight types
+     * Sixteen families of columns, one data key per tenant each (decision 0018), and twenty-seven types
      * because a type seals one type: the count of keys is the count of families and not of types.
      */
     #[Test]
@@ -42,7 +43,31 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
     {
         // When / Then
         static::assertCount(16, EncryptedColumnTypes::FAMILIES);
-        static::assertCount(28, EncryptedColumnTypes::declarations());
+        static::assertCount(27, EncryptedColumnTypes::declarations());
+    }
+
+    /**
+     * Every type the bundle declares is the type of a field of the mappings. A type is registered at every
+     * boot, and one that no field names is registered for no column, a declaration left behind by a column
+     * that moved, which the count above goes on counting. The names are read from the declaration and the
+     * types from the metadata of the mappings, so neither can be the only one to know.
+     */
+    #[Test]
+    public function everyTypeTheBundleDeclaresIsNamedByAMapping(): void
+    {
+        // Given
+        $named = [];
+        foreach (self::entityManager()->getMetadataFactory()->getAllMetadata() as $metadata) {
+            foreach ($metadata->fieldMappings as $mapping) {
+                $named[$mapping->type] = true;
+            }
+        }
+
+        // When
+        $unnamed = array_values(array_diff(EncryptedColumnTypes::names(), array_keys($named)));
+
+        // Then
+        static::assertSame([], $unnamed, 'A type is declared that no mapping names.');
     }
 
     /**

@@ -65,13 +65,13 @@ final readonly class EncryptedColumnTypes
      * (decision 0018).
      *
      * A family holds several types because a type seals one type: every column of `beffroi_user` shares one
-     * data key, and the six types below are six ways into it. What the count of keys per tenant is, is
+     * data key, and the five types below are five ways into it. What the count of keys per tenant is, is
      * therefore the count of families and not the count of types.
      *
      * @var array<string, list<string>>
      */
     public const array FAMILIES = [
-        'user' => ['string', 'text', 'beffroi_email_address', 'beffroi_address', 'beffroi_profile', 'beffroi_user_source'],
+        'user' => ['string', 'beffroi_email_address', 'beffroi_address', 'beffroi_profile', 'beffroi_user_source'],
         'linked_identity' => ['string', 'json'],
         'passkey_credential' => ['string'],
         'push_subscription' => ['string', 'text'],
