@@ -196,7 +196,7 @@ final class BeffroiBundle extends AbstractBundle
      *
      * A connection is asked for first, and this is the ordering nobody can see from the call: an encrypted
      * type resolves the type it decorates by name, in the global registry, at the moment it is registered,
-     * and seven of them decorate a type of DBAL_TYPES above, which DoctrineBundle only puts in that
+     * and fourteen of them decorate a type of DBAL_TYPES above, which DoctrineBundle only puts in that
      * registry when a connection is first created (ConnectionFactory::initializeTypes). Asking opens
      * nothing, a DBAL connection reaching the database on its first query and not before.
      */
