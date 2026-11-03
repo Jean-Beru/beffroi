@@ -243,6 +243,7 @@ use Beffroi\Bundle\Twig\DeviceExtension;
 use Beffroi\Bundle\Twig\PlaceExtension;
 use Beffroi\Bundle\Twig\TenantExtension;
 use Beffroi\Bundle\Webauthn\FileMetadataBlobStore;
+use Beffroi\Bundle\Webauthn\RevocationListClient;
 use Beffroi\Core\Application\Authentication\DecoyHash;
 use Beffroi\Core\Application\Authentication\AuthenticationRefusal;
 use Beffroi\Core\Application\Authentication\LoginCompletion;
@@ -1453,7 +1454,9 @@ return static function (ContainerConfigurator $container): void {
     $services->set(StoredMetadata::class);
     $services->alias(MetadataStatementRepository::class, StoredMetadata::class);
     $services->alias(StatusReportRepository::class, StoredMetadata::class);
-    $services->set(PhpCertificateChainValidator::class);
+    // its revocation lists follow no redirect but the one of the test service of the FIDO Alliance (decision 0035)
+    $services->set(RevocationListClient::class);
+    $services->set(PhpCertificateChainValidator::class)->arg('$client', service(RevocationListClient::class));
     $services->alias(CertificateChainValidator::class, PhpCertificateChainValidator::class);
     $services->set(MetadataBlobVerifier::class);
     $services->set(WebauthnCeremonies::class);

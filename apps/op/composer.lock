@@ -201,7 +201,7 @@
             "dist": {
                 "type": "path",
                 "url": "../../src/core",
-                "reference": "c79b8b5b8128189a30c2c9b16ee6478df066847b"
+                "reference": "5fb491842d7d515320a778948eb12a4a89e8b1ea"
             },
             "require": {
                 "ext-intl": "*",
@@ -212,9 +212,10 @@
                 "psr/log": "^3.0",
                 "spomky-labs/aes-key-wrap": "^7.0",
                 "spomky-labs/otphp": "^11.5",
+                "spomky-labs/pki-framework": "^1.2.1",
                 "symfony/key-management": "8.2.*",
                 "symfony/uid": "8.2.*",
-                "web-auth/webauthn-lib": "^5.3.10",
+                "web-auth/webauthn-lib": "^5.3.12",
                 "web-token/jwt-library": "^4.2"
             },
             "type": "library",
@@ -9480,16 +9481,16 @@
         },
         {
             "name": "web-auth/webauthn-lib",
-            "version": "5.3.10",
+            "version": "5.3.12",
             "source": {
                 "type": "git",
                 "url": "https://github.com/web-auth/webauthn-lib.git",
-                "reference": "894f6be8c8a47354a4dfd134a5979246e26d8639"
+                "reference": "c7aeeb1d35e39b7d32ab5146cce4b668f271a68e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/web-auth/webauthn-lib/zipball/894f6be8c8a47354a4dfd134a5979246e26d8639",
-                "reference": "894f6be8c8a47354a4dfd134a5979246e26d8639",
+                "url": "https://api.github.com/repos/web-auth/webauthn-lib/zipball/c7aeeb1d35e39b7d32ab5146cce4b668f271a68e",
+                "reference": "c7aeeb1d35e39b7d32ab5146cce4b668f271a68e",
                 "shasum": ""
             },
             "require": {
@@ -9550,7 +9551,7 @@
                 "webauthn"
             ],
             "support": {
-                "source": "https://github.com/web-auth/webauthn-lib/tree/5.3.10"
+                "source": "https://github.com/web-auth/webauthn-lib/tree/5.3.12"
             },
             "funding": [
                 {
@@ -9562,7 +9563,8 @@
                     "type": "patreon"
                 }
             ],
-            "time": "2026-10-31T12:44:21+00:00"
+            "time": "2026-11-03T09:21:08+00:00",
+            "published-time": "2026-11-03T09:27:24+00:00"
         },
         {
             "name": "web-token/jwt-library",
@@ -10116,5 +10118,5 @@
         "ext-iconv": "*"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.11.0"
 }

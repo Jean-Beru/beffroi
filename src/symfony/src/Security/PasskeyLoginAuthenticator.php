@@ -72,7 +72,7 @@ final readonly class PasskeyLoginAuthenticator implements AuthenticatorInterface
         if (! $credential->tenant->equals($tenant)) {
             throw new PasskeyLoginException(AuthenticationFailureReason::InvalidCredential, $method);
         }
-        if ($credential->backupEligibilityChanged($verified->authenticatorData)) {
+        if ($credential->backupEligibilityChanged($verified->authenticatorData) || $credential->signCountRegresses($verified->authenticatorData)) {
             throw new PasskeyLoginException(AuthenticationFailureReason::InvalidCredential, $method, $credential->user);
         }
         if ($credential->isRevoked()) {

@@ -181,26 +181,52 @@ final class PasskeyAuthenticationTest extends TestCase
         $used = $this->events->of(PasskeyUsed::class)[0];
         static::assertSame($this->passkey, $used->credential);
         static::assertSame($context, $used->context);
-        static::assertFalse($used->signCountRegressed);
         static::assertSame($session, $this->events->of(UserAuthenticated::class)[0]->session);
     }
 
     /**
-     * WebAuthn Level 3 §6.1.1: a count that did not grow is told, never refused, a synced passkey keeps it at zero.
+     * WebAuthn Level 3 §6.1.1 and decision 0034: a count that did not grow is a cloned authenticator or a replay,
+     * refused after the signature with the passkey and its holder in the trail, and the passkey keeps its count.
      */
     #[Test]
-    public function aSignCountThatDidNotGrowIsToldNotRefused(): void
+    public function aSignCountThatDidNotGrowIsRefusedWithItsUser(): void
     {
         // Given
         $this->passkey->recordUse(Fixtures::authenticatorData(signCount: 5), Fixtures::now());
         $this->ceremony->verifies($this->passkey, Fixtures::authenticatorData(signCount: 5));
 
         // When
+        try {
+            $this->authentication->authenticate($this->tenant, $this->options, '{}', Fixtures::context($this->clock->now()));
+            static::fail('Authentication should have failed.');
+        } catch (AuthenticationFailedException $exception) {
+            // Then
+            static::assertSame(AuthenticationFailureReason::InvalidCredential, $exception->reason);
+            $failed = $this->events->of(AuthenticationFailed::class)[0];
+            static::assertSame($this->alice, $failed->user);
+            static::assertSame([], $this->events->of(PasskeyUsed::class));
+            static::assertSame(5, $this->passkey->signCount);
+        }
+    }
+
+    /**
+     * WebAuthn Level 3 §7.2 compares the counts only when one of them is not zero: a synced passkey keeps both at
+     * zero, and signs in.
+     */
+    #[Test]
+    public function aPasskeyThatKeepsItsCountAtZeroSignsIn(): void
+    {
+        // Given
+        $synced = Fixtures::passkey($this->alice, 'The phone', 'alice-phone', backupEligible: true, backedUp: true);
+        $this->credentials->save($synced);
+        $this->ceremony->verifies($synced, Fixtures::authenticatorData(signCount: 0, backupEligible: true, backedUp: true));
+
+        // When
         $session = $this->authentication->authenticate($this->tenant, $this->options, '{}', Fixtures::context($this->clock->now()));
 
         // Then
         static::assertSame($this->alice, $session->user);
-        static::assertTrue($this->events->of(PasskeyUsed::class)[0]->signCountRegressed);
+        static::assertCount(1, $this->events->of(PasskeyUsed::class));
     }
 
     #[Test]

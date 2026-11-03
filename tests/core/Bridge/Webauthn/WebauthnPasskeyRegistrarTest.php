@@ -12,9 +12,13 @@ use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\PasskeyCeremonyFailedException;
+use Beffroi\Core\Tests\Fixture\Ed25519SoftwareKey;
+use Beffroi\Core\Tests\Fixture\Es256SoftwareKey;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\MetadataBlobs;
+use Beffroi\Core\Tests\Fixture\Rs1SoftwareKey;
 use Beffroi\Core\Tests\Fixture\SoftwareAuthenticator;
+use Beffroi\Core\Tests\Fixture\SoftwareCredentialKey;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -66,7 +70,10 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
         static::assertSame('alice', $options->user->name);
         static::assertSame('alice', $options->user->displayName);
         static::assertSame(32, strlen($options->challenge));
-        static::assertSame([-7, -257], array_map(static fn (PublicKeyCredentialParameters $parameters): int => $parameters->alg, $options->pubKeyCredParams));
+        static::assertSame(
+            [-7, -8, -257],
+            array_map(static fn (PublicKeyCredentialParameters $parameters): int => $parameters->alg, $options->pubKeyCredParams),
+        );
         static::assertSame('required', $options->authenticatorSelection?->residentKey);
         static::assertSame('preferred', $options->authenticatorSelection->userVerification);
         static::assertNull($options->authenticatorSelection->authenticatorAttachment);
@@ -176,6 +183,54 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
         // Then
         static::assertSame('self', $record->attestationType);
         static::assertSame($authenticator->credentialId, $record->publicKeyCredentialId);
+    }
+
+    /**
+     * Decision 0033: a passkey of an algorithm the options offer enrols, its packed self attestation (§8.2)
+     * verified with that algorithm.
+     */
+    #[Test]
+    #[DataProvider('provideKeysOfTheOfferedAlgorithms')]
+    public function aPasskeyOfAnAlgorithmTheOptionsOfferIsEnrolled(SoftwareCredentialKey $key): void
+    {
+        // Given
+        $authenticator = new SoftwareAuthenticator('https://id.acme.example', attestation: 'packed', credentialKey: $key);
+        $options = $this->creationOptions();
+
+        // When
+        $record = $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)));
+
+        // Then
+        static::assertSame('self', $record->attestationType);
+        static::assertSame($authenticator->cosePublicKey(), $record->credentialPublicKey);
+    }
+
+    /**
+     * @return iterable<string, array{SoftwareCredentialKey}>
+     */
+    public static function provideKeysOfTheOfferedAlgorithms(): iterable
+    {
+        yield 'ES256' => [new Es256SoftwareKey()];
+        yield 'EdDSA over Ed25519' => [new Ed25519SoftwareKey()];
+    }
+
+    /**
+     * Decision 0033 and §7.1 (CheckAlgorithm): the ceremonies verify RS1 and the options never offer it, so a
+     * passkey of that algorithm does not enrol through the product.
+     */
+    #[Test]
+    public function aPasskeyOfAnAlgorithmTheOptionsDoNotOfferIsRefused(): void
+    {
+        // Given
+        $authenticator = new SoftwareAuthenticator('https://id.acme.example', credentialKey: new Rs1SoftwareKey());
+        $options = $this->creationOptions();
+
+        // Then
+        $this->expectException(PasskeyCeremonyFailedException::class);
+        $this->expectExceptionMessageIsOrContains('The attestation was refused');
+
+        // When
+        $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)));
     }
 
     /**

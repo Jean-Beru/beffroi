@@ -126,7 +126,7 @@ final class EventsLeaveTheProcessTest extends TestCase
             $context,
         )];
         yield 'a credential renamed' => [new CredentialRenamed($passkey, 'The key it was', $now, $context)];
-        yield 'a passkey used' => [new PasskeyUsed($passkey, $now, $context, false)];
+        yield 'a passkey used' => [new PasskeyUsed($passkey, $now, $context)];
         yield 'a password used' => [new PasswordUsed($password, $now, $context)];
         yield 'a password rehashed' => [new PasswordRehashed($password, $now, $context)];
         yield 'a password changed by the person who holds it' => [new PasswordChanged($password, $now, $context)];

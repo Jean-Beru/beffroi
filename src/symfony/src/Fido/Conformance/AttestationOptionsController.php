@@ -17,13 +17,15 @@ use Webauthn\AuthenticationExtensions\AuthenticationExtensions;
 use Webauthn\AuthenticatorSelectionCriteria;
 use Webauthn\Exception\InvalidDataException;
 use Webauthn\PublicKeyCredentialCreationOptions;
+use Webauthn\PublicKeyCredentialParameters;
 
 /**
  * "/attestation/options" of the FIDO2 server API (FIDO Conformance Tools,
  * ServerPublicKeyCredentialCreationOptionsRequest): the options the enrolment of the core draws for the
  * user the tools name, created on their first ceremony, with what the tools ask for and the product
  * never does (WebAuthn Level 3 §5.4: the attestation conveyance, the authenticator selection, the
- * extensions), kept by their challenge for the attestation that comes back.
+ * extensions, and RS1 among the algorithms, decision 0033), kept by their challenge for the attestation
+ * that comes back.
  */
 #[AsController]
 final readonly class AttestationOptionsController
@@ -56,7 +58,8 @@ final readonly class AttestationOptionsController
 
     /**
      * The options of the product (the relying party, the user entity with its handle, the challenge, the
-     * algorithms, the passkeys excluded) with what the tools ask for.
+     * algorithms, the passkeys excluded) with what the tools ask for: RS1 after the algorithms of the product,
+     * which the ceremonies verify and the product never offers (WebauthnCeremonies::RS1).
      *
      * @throws ServerRequestException
      * @throws InvalidArgumentException
@@ -78,7 +81,7 @@ final readonly class AttestationOptionsController
             $product->rp,
             $product->user,
             $product->challenge,
-            $product->pubKeyCredParams,
+            [...$product->pubKeyCredParams, PublicKeyCredentialParameters::createPk(WebauthnCeremonies::RS1)],
             AuthenticatorSelectionCriteria::create(
                 $selection?->optionalString('authenticatorAttachment'),
                 $selection?->optionalString('userVerification') ?? AuthenticatorSelectionCriteria::USER_VERIFICATION_REQUIREMENT_PREFERRED,

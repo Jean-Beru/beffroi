@@ -80,7 +80,7 @@ deptrac:
         - { type: classLike, value: '^Cose\\' }
     - name: 'Pki'
       collectors:
-        # spomky-labs/pki-framework, the X.509 brick (docs/09-briques.md): the Bridge of the protocol reads a client certificate with it, nothing else parses ASN.1
+        # spomky-labs/pki-framework, the X.509 brick (docs/09-briques.md): the Bridge of the protocol reads a client certificate with it, the Bridge of the core the chain of a Metadata BLOB, nothing else parses ASN.1
         - { type: classLike, value: '^SpomkyLabs\\Pki\\' }
     - name: 'Otphp'
       collectors:
@@ -232,6 +232,8 @@ deptrac:
       - 'Uid'
       - 'Jose'
       - 'Webauthn'
+      # the chain of a Metadata BLOB, stopped at the certificate that carries the name and the key of the pinned root (issue #955)
+      - 'Pki'
       - 'Otphp'
       - 'Serializer'
     OidcDomain:
