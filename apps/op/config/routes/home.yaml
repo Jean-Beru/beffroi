@@ -8,7 +8,6 @@
 # process that serves the protocol alone answers 404 here, as it does on every page meant for a browser.
 beffroi_interaction_home:
     path: /
-    controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController::redirectAction
+    redirect_to_route: beffroi_interaction_account
     defaults:
-        route: beffroi_interaction_account
         permanent: false
