@@ -154,7 +154,7 @@ final class PasskeyAuthenticatorsTest extends PasskeyTestCase
     {
         yield 'a single-device credential' => [false, false, 'single_device', 'Device-bound passkey'];
         yield 'a multi-device credential backed up' => [true, true, 'backed_up', 'Synced passkey, backed up'];
-        yield 'a multi-device credential not backed up' => [true, false, 'not_backed_up', 'Synced passkey, not backed up yet'];
+        yield 'a multi-device credential not backed up' => [true, false, 'not_backed_up', 'Synced passkey, not currently backed up'];
     }
 
     /**
