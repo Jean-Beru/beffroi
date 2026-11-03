@@ -18,6 +18,7 @@ use Beffroi\Core\Port\CanPageActsOfAPersonInterface;
 use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Port\JournalInterface;
 use function count;
+use SortDirection;
 use Symfony\Component\Uid\Uuid;
 use function sprintf;
 use DateTimeImmutable;
@@ -76,7 +77,7 @@ final readonly class DoctrineJournal extends DoctrineRepository implements Journ
         $past = $this->queryBuilder('a')
             ->where('a.tenant = :tenant')
             ->andWhere('a.occurredAt < :moment')
-            ->orderBy('a.occurredAt', 'ASC')
+            ->orderBy('a.occurredAt', SortDirection::Ascending)
             ->setMaxResults(self::FORGOTTEN_AT_ONCE)
             ->setParameter('tenant', $tenant->id, UuidType::NAME)
             ->setParameter('moment', $moment)
@@ -133,7 +134,7 @@ final readonly class DoctrineJournal extends DoctrineRepository implements Journ
             ->where('a.tenant = :tenant')
             ->andWhere('a.subject = :subject')
             ->andWhere('a.act IN (:acts)')
-            ->orderBy('a.id', 'DESC')
+            ->orderBy('a.id', SortDirection::Descending)
             ->setMaxResults($howMany)
             ->setParameter('tenant', $user->tenant->id, UuidType::NAME)
             ->setParameter('subject', $user->subject->value)
@@ -156,7 +157,7 @@ final readonly class DoctrineJournal extends DoctrineRepository implements Journ
         $query = $this->queryBuilder('a')
             ->where('a.tenant = :tenant')
             ->andWhere('a.subject = :subject')
-            ->orderBy('a.id', 'ASC')
+            ->orderBy('a.id', SortDirection::Ascending)
             ->setMaxResults($howMany)
             ->setParameter('tenant', $user->tenant->id, UuidType::NAME)
             ->setParameter('subject', $user->subject->value);

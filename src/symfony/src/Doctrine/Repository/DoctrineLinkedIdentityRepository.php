@@ -14,6 +14,7 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\LinkedIdentitiesOfAPersonInterface;
 use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use SortDirection;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 
 /**
@@ -63,7 +64,7 @@ final readonly class DoctrineLinkedIdentityRepository extends DoctrineRepository
         /** @var list<LinkedIdentity> $identities */
         $identities = $this->queryBuilder('i')
             ->where('i.user = :user')
-            ->orderBy('i.linkedAt', 'DESC')
+            ->orderBy('i.linkedAt', SortDirection::Descending)
             ->setParameter('user', $user->id, UuidType::NAME)
             ->getQuery()
             ->getResult();

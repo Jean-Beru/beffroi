@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Doctrine\Repository;
 
 use Doctrine\DBAL\Types\Types;
+use SortDirection;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Core\Domain\Tenant\Tenant;
@@ -123,8 +124,8 @@ final readonly class DoctrineClientRepository extends DoctrineRepository impleme
             ->setParameter('tenant', $tenant->id, UuidType::NAME)
             ->setParameter('usedSince', $retention->usedSince, Types::DATETIME_IMMUTABLE)
             ->setParameter('registeredSince', $retention->registeredSince, Types::DATETIME_IMMUTABLE)
-            ->addOrderBy('c.lastUsedAt', 'ASC')
-            ->addOrderBy('c.issuedAt', 'ASC')
+            ->addOrderBy('c.lastUsedAt', SortDirection::Ascending)
+            ->addOrderBy('c.issuedAt', SortDirection::Ascending)
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();

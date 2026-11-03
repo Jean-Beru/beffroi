@@ -22,6 +22,7 @@ use Beffroi\Oidc\Port\CanRevokeGrantsByConsentInterface;
 use Beffroi\Oidc\Port\LoggedInClientsInterface;
 use Beffroi\Oidc\Port\RecordedGrantsInterface;
 use function is_string;
+use SortDirection;
 use function sprintf;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
@@ -149,8 +150,8 @@ final readonly class DoctrineAuthorizationCodeRepository extends DoctrineReposit
             ->join('c.session', 's')
             ->where('s.user = :user')
             ->andWhere('c.clientId = :clientId')
-            ->orderBy('c.issuedAt', 'ASC')
-            ->addOrderBy('c.codeHash', 'ASC')
+            ->orderBy('c.issuedAt', SortDirection::Ascending)
+            ->addOrderBy('c.codeHash', SortDirection::Ascending)
             ->setParameter('user', $consent->user->id, UuidType::NAME)
             ->setParameter('clientId', $consent->clientId)
             ->getQuery()

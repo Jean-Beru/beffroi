@@ -20,6 +20,7 @@ use Beffroi\Oidc\Domain\Consent\Consent;
 use Beffroi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface;
 use Beffroi\Oidc\Port\CanRevokeGrantsByConsentInterface;
 use Beffroi\Oidc\Port\RecordedGrantsInterface;
+use SortDirection;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use function is_string;
@@ -92,7 +93,7 @@ final readonly class DoctrineBackchannelAuthenticationRecordRepository extends D
             ->andWhere('r.usedAt IS NULL')
             ->setParameter('user', $user->id, UuidType::NAME)
             ->setParameter('now', $now, Types::DATETIME_IMMUTABLE)
-            ->orderBy('r.issuedAt', 'ASC')
+            ->orderBy('r.issuedAt', SortDirection::Ascending)
             ->getQuery()
             ->getResult();
 
@@ -122,8 +123,8 @@ final readonly class DoctrineBackchannelAuthenticationRecordRepository extends D
             ->where('r.user = :user')
             ->andWhere('r.clientId = :clientId')
             ->andWhere('r.revokedAt IS NULL')
-            ->orderBy('r.issuedAt', 'ASC')
-            ->addOrderBy('r.authRequestIdHash', 'ASC')
+            ->orderBy('r.issuedAt', SortDirection::Ascending)
+            ->addOrderBy('r.authRequestIdHash', SortDirection::Ascending)
             ->setParameter('user', $consent->user->id, UuidType::NAME)
             ->setParameter('clientId', $consent->clientId)
             ->getQuery()

@@ -18,6 +18,7 @@ use Beffroi\Oidc\Domain\Token\RefreshToken;
 use Beffroi\Oidc\Domain\Token\RefreshTokenFamily;
 use Beffroi\Oidc\Port\RefreshTokenRepositoryInterface;
 use Beffroi\Oidc\Port\RefreshTokensOfAConsentInterface;
+use SortDirection;
 use function sprintf;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
@@ -130,8 +131,8 @@ final readonly class DoctrineRefreshTokenRepository extends DoctrineRepository i
             ->join('token.family', 'family')
             ->where('family.grantingRecordHash = :hash')
             ->setParameter('hash', $codeHash)
-            ->orderBy('token.issuedAt', 'ASC')
-            ->addOrderBy('token.tokenHash', 'ASC')
+            ->orderBy('token.issuedAt', SortDirection::Ascending)
+            ->addOrderBy('token.tokenHash', SortDirection::Ascending)
             ->getQuery()
             ->getResult();
 
@@ -155,8 +156,8 @@ final readonly class DoctrineRefreshTokenRepository extends DoctrineRepository i
             ->join('t.session', 's')
             ->where('s.user = :user')
             ->andWhere('t.clientId = :clientId')
-            ->orderBy('t.issuedAt', 'ASC')
-            ->addOrderBy('t.tokenHash', 'ASC')
+            ->orderBy('t.issuedAt', SortDirection::Ascending)
+            ->addOrderBy('t.tokenHash', SortDirection::Ascending)
             ->setParameter('user', $consent->user->id, UuidType::NAME)
             ->setParameter('clientId', $consent->clientId)
             ->getQuery()

@@ -7,6 +7,7 @@ namespace Beffroi\Bundle\Command;
 use Beffroi\Bundle\Doctrine\EntityManagers;
 use Beffroi\Core\Domain\Identity\User;
 use function count;
+use SortDirection;
 use function sprintf;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -64,7 +65,7 @@ final readonly class UserReindexCommand
                 ->select('u')
                 ->from(User::class, 'u')
                 ->where('u.tenant = :tenant')
-                ->orderBy('u.id', 'ASC')
+                ->orderBy('u.id', SortDirection::Ascending)
                 ->setParameter('tenant', $tenant->id, UuidType::NAME)
                 ->setFirstResult($walked)
                 ->setMaxResults(self::PAGE)

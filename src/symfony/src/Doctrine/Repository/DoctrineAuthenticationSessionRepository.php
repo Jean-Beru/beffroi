@@ -25,6 +25,7 @@ use Beffroi\Core\Port\CanPageActiveSessionsInterface;
 use Beffroi\Core\Port\DeadRecordsInterface;
 use Beffroi\Core\Port\SubjectsOfSessionsInterface;
 use function is_array;
+use SortDirection;
 use function sprintf;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
@@ -152,8 +153,8 @@ final readonly class DoctrineAuthenticationSessionRepository extends DoctrineRep
         return $this->queryBuilder('s')
             ->where('s.user = :user')
             ->andWhere('s.endedAt IS NULL')
-            ->orderBy('s.establishedAt', 'ASC')
-            ->addOrderBy('s.id', 'ASC')
+            ->orderBy('s.establishedAt', SortDirection::Ascending)
+            ->addOrderBy('s.id', SortDirection::Ascending)
             ->setParameter('user', $user->id, UuidType::NAME);
     }
 

@@ -13,6 +13,7 @@ use Beffroi\Oidc\Port\DisclosuresInterface;
 use Beffroi\Oidc\Port\DisclosuresOfAPersonInterface;
 use function count;
 use DateTimeImmutable;
+use SortDirection;
 use function sprintf;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
@@ -48,7 +49,7 @@ final readonly class DoctrineDisclosures extends DoctrineRepository implements D
         $past = $this->queryBuilder('d')
             ->where('d.tenant = :tenant')
             ->andWhere('d.handedOverAt < :moment')
-            ->orderBy('d.handedOverAt', 'ASC')
+            ->orderBy('d.handedOverAt', SortDirection::Ascending)
             ->setMaxResults(self::FORGOTTEN_AT_ONCE)
             ->setParameter('tenant', $tenant->id, UuidType::NAME)
             ->setParameter('moment', $moment)
@@ -74,7 +75,7 @@ final readonly class DoctrineDisclosures extends DoctrineRepository implements D
         $query = $this->queryBuilder('d')
             ->where('d.tenant = :tenant')
             ->andWhere('d.subject = :subject')
-            ->orderBy('d.id', 'ASC')
+            ->orderBy('d.id', SortDirection::Ascending)
             ->setMaxResults($howMany)
             ->setParameter('tenant', $user->tenant->id, UuidType::NAME)
             ->setParameter('subject', $user->subject->value);

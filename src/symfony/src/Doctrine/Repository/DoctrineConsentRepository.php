@@ -17,6 +17,7 @@ use Beffroi\Oidc\Port\ActiveConsentsInterface;
 use Beffroi\Oidc\Port\CanPageActiveConsentsInterface;
 use Beffroi\Oidc\Port\ConsentRepositoryInterface;
 use function array_values;
+use SortDirection;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 
 /**
@@ -41,8 +42,8 @@ final readonly class DoctrineConsentRepository extends DoctrineRepository implem
             ->where('c.user = :user')
             ->andWhere('c.clientId = :clientId')
             ->andWhere('c.revokedAt IS NULL')
-            ->orderBy('c.grantedAt', 'DESC')
-            ->addOrderBy('c.id', 'DESC')
+            ->orderBy('c.grantedAt', SortDirection::Descending)
+            ->addOrderBy('c.id', SortDirection::Descending)
             ->setParameter('user', $user->id, UuidType::NAME)
             ->setParameter('clientId', $client->registration->clientId)
             ->setMaxResults(1)
@@ -82,8 +83,8 @@ final readonly class DoctrineConsentRepository extends DoctrineRepository implem
         $consents = $this->queryBuilder('c')
             ->where('c.user = :user')
             ->andWhere('c.revokedAt IS NULL')
-            ->orderBy('c.grantedAt', 'DESC')
-            ->addOrderBy('c.id', 'DESC')
+            ->orderBy('c.grantedAt', SortDirection::Descending)
+            ->addOrderBy('c.id', SortDirection::Descending)
             ->setParameter('user', $user->id, UuidType::NAME)
             ->getQuery()
             ->getResult();
