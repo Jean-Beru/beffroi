@@ -15,6 +15,7 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\PasskeyCeremonyFailedException;
 use Beffroi\Core\Tests\Fixture\Ed25519SoftwareKey;
 use Beffroi\Core\Tests\Fixture\Es256SoftwareKey;
+use Beffroi\Core\Tests\Fixture\Es384PasskeyAlgorithms;
 use Beffroi\Core\Tests\Fixture\Es384SoftwareKey;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\SoftwareAuthenticator;
@@ -154,9 +155,28 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
      */
     public static function provideKeysOfTheOfferedAlgorithms(): iterable
     {
-        yield 'ES384' => [new Es384SoftwareKey()];
         yield 'EdDSA over Ed25519' => [new Ed25519SoftwareKey()];
         yield 'ES256' => [new Es256SoftwareKey()];
+    }
+
+    /**
+     * Decision 0033: a passkey of ES384, which the provider neither offers nor verifies, does not sign in, the
+     * refusal being the one of any assertion that does not hold.
+     */
+    #[Test]
+    public function anAssertionOfAPasskeyOfEs384IsRefused(): void
+    {
+        // Given
+        $device = new SoftwareAuthenticator('https://id.acme.example', credentialKey: new Es384SoftwareKey());
+        $this->enrol($device, Fixtures::ceremonies(algorithms: new Es384PasskeyAlgorithms()));
+        $options = $this->authenticator->requestOptions($this->tenant, []);
+
+        // Then
+        $this->expectException(PasskeyCeremonyFailedException::class);
+        $this->expectExceptionMessageIsOrContains('The assertion was refused');
+
+        // When
+        $this->authenticator->verifyAssertion($this->tenant, $options, $device->get($this->ceremonies->optionsToJson($options)));
     }
 
     /**
@@ -436,11 +456,12 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     /**
      * A passkey of the device, enrolled through the registrar and saved in the repository.
      */
-    private function enrol(SoftwareAuthenticator $device): PasskeyCredential
+    private function enrol(SoftwareAuthenticator $device, ?WebauthnCeremonies $ceremonies = null): PasskeyCredential
     {
-        $registrar = new WebauthnPasskeyRegistrar($this->ceremonies);
+        $ceremonies ??= $this->ceremonies;
+        $registrar = new WebauthnPasskeyRegistrar($ceremonies);
         $options = $registrar->creationOptions($this->alice, Fixtures::userHandle(), []);
-        $record = $registrar->verifyAttestation($this->tenant, $options, $device->create($this->ceremonies->optionsToJson($options)));
+        $record = $registrar->verifyAttestation($this->tenant, $options, $device->create($ceremonies->optionsToJson($options)));
         $passkey = PasskeyCredential::fromRecord(Uuid::v7(), $this->alice, 'Test key', $record, Fixtures::now());
         $this->credentials->save($passkey);
 

@@ -66,7 +66,7 @@ final class FidoConformanceTest extends BrowserTestCase
         static::assertSame('John Doe', self::section($options, 'user')['displayName']);
         static::assertIsString($options['challenge']);
         static::assertSame(32, strlen(Base64UrlSafe::decodeNoPadding($options['challenge'])));
-        static::assertSame([-35, -8, -7, -257, -65535, -36, -258, -259, -37, -38, -39], self::column($options, 'pubKeyCredParams', 'alg'));
+        static::assertSame([-8, -7, -257, -35, -65535, -36, -258, -259, -37, -38, -39], self::column($options, 'pubKeyCredParams', 'alg'));
         static::assertSame(
             [
                 'requireResidentKey' => true,
