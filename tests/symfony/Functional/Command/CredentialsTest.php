@@ -85,7 +85,7 @@ final class CredentialsTest extends ConsoleTestCase
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         $display = self::string(preg_replace('/ +/', ' ', $tester->getDisplay(true)));
-        static::assertStringContainsString('passkey ' . $passkey->id->toRfc4122() . ' YubiKey 5 YubiKey 5 Series (fido-metadata-service) 2026-09-15', $display);
+        static::assertStringContainsString('passkey ' . $passkey->id->toRfc4122() . ' YubiKey 5 YubiKey 5 Series (fido-metadata) 2026-09-15', $display);
     }
 
     #[Test]
