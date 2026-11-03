@@ -119,7 +119,7 @@
         }
     },
     "name": "beffroi/op",
-    "description": "Beffroi: the identity provider application, its Symfony integration under symfony/.",
+    "description": "Beffroi: the identity provider application.",
     "repositories": [{
         "name": "beffroi-oidc",
         "type": "path",

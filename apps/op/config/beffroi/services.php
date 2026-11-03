@@ -1057,8 +1057,8 @@ return static function (ContainerConfigurator $container): void {
         ->tag('beffroi.doctor_check');
 
     // The provider: the endpoints of the FIDO2 server API for the FIDO Conformance Tools (architecture §7); their
-    // routes are a file of their own (config/routes/fido-conformance.php) an application imports in development
-    // only, and a controller no route names is dropped from the container. They run the ceremonies of the core
+    // routes are a file of their own (config/beffroi/routes/fido-conformance.php) the application imports in
+    // development only, and a controller no route names is dropped from the container. They run the ceremonies of the core
     // on the algorithms of the tools (decision 0033), through ceremonies, a registrar, an authenticator and use
     // cases of their own, which nothing of the product reaches
     $services->set('beffroi.fido_conformance.ceremonies', WebauthnCeremonies::class)->arg('$algorithms', service(ConformanceToolsAlgorithms::class));
@@ -1079,7 +1079,7 @@ return static function (ContainerConfigurator $container): void {
         ->bind(PasskeyAuthentication::class . ' $authentication', service('beffroi.fido_conformance.authentication'));
     // The provider: what answers a backchannel request when the certification suite is the one waiting for
     // the answer (CIBA Core §10.1), on the same terms as the endpoints above and in the same place in a
-    // deployment: a file of routes of its own (config/routes/ciba-conformance.php), development only
+    // deployment: a file of routes of its own (config/beffroi/routes/ciba-conformance.php), development only
     $services->load('App\\Ciba\\Conformance\\', '../../src/Ciba/Conformance/');
 
     // The provider: the handlers of its own messages and what time does on its own (architecture §5.6)

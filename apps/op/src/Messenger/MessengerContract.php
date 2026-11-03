@@ -99,10 +99,8 @@ final readonly class MessengerContract
      * restores the request context so that a URL built in a worker is the absolute URL of this issuer,
      * and the two connection middleware are what lets a worker run for days.
      *
-     * `validation` is not here, although the application carried it: it needs `symfony/validator`, which
-     * this provider does not require and an installation may not have, and the messages of this provider
-     * are final classes without logic that carry no constraint for it to check. An application that
-     * validates its own messages adds it to this bus itself.
+     * `validation` is not here: the messages of this provider are final classes without logic that carry no
+     * constraint for it to check.
      *
      * **What is here is what the defaults do not carry.** `default_middleware` stays enabled, so Messenger
      * puts `add_bus_name_stamp_middleware`, `dispatch_after_current_bus` and

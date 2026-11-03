@@ -18,10 +18,8 @@ use function sprintf;
  * The form type a claim of the provider is edited with (issue beffroi-auth/op#17): the one place the kinds
  * a claim may be are mapped onto the types of symfony/form.
  *
- * The provider says what a claim is and never what a form is: its own pages are bare HTML with a form token,
- * which is what lets this application dress them by one layout override (architecture §5.2). So the
- * mapping lives here, in the deployment that chose the component, and a kind the provider adds is a line
- * here and nothing else.
+ * The core says what a claim is and never what a form is, so the mapping lives here, beside the one page
+ * written with the component, and a kind the core adds is a line here and nothing else.
  *
  * A closed set short enough to read is a choice of its values; a set of several hundred is typed into with
  * the whole set suggested, which is a line of text and a `<datalist>` the page renders beside it, there

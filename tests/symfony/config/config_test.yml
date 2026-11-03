@@ -61,9 +61,9 @@ messenger:
 # The pages of the provider, and nothing else: a missing variable is a defect of a template.
 twig:
     strict_variables: true
-    # The pages of the provider are the application's (apps/op/templates/beffroi), but for the five the
+    # The pages of the provider are the application's (apps/op/templates/beffroi), but for four the
     # application dresses in its own skeletons, which read what this kernel does not boot (the theme, the
-    # navigation of the account, the asset map): this suite renders them bare, from templates/ beside it.
+    # navigation of the account, the asset map): this suite renders those bare, from templates/ beside it.
     paths:
         '%kernel.project_dir%/templates': Beffroi
         '%kernel.project_dir%/../../apps/op/templates/beffroi': Beffroi
