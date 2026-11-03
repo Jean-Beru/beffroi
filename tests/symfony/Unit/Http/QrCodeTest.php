@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Http;
+namespace App\Tests\Symfony\Unit\Http;
 
-use Beffroi\Bundle\Http\QrCode;
+use App\Http\QrCode;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function str_starts_with;

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Saml;
+namespace App\Tests\Symfony\Functional\Saml;
 
 use function array_map;
-use Beffroi\Bundle\Command\SamlIdentityProviderListCommand;
-use Beffroi\Bundle\Saml\IdentityProviderSegment;
-use Beffroi\Bundle\Saml\SamlSigning;
-use Beffroi\Bundle\Saml\ServiceProviderRoutes;
-use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
+use App\Command\SamlIdentityProviderListCommand;
+use App\Saml\IdentityProviderSegment;
+use App\Saml\SamlSigning;
+use App\Saml\ServiceProviderRoutes;
+use App\Tests\Symfony\Functional\Command\ConsoleTestCase;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use Beffroi\Saml\Bridge\Model\UpstreamDecryptionKeys;
@@ -38,7 +38,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * beffroi/saml, spec/saml.md S-64 to S-66, section 6.12: in a deployment whose tenant is a SAML service provider
  * (config_test_service_provider.yml), two upstream identity providers wired, each given its key by the key commands:
  * the metadata at the URL of the entity ID carry no key for encryption, those given to each provider the certificate
- * of its own key and never the other's, and the key the bundle wires opens what was encrypted for that certificate.
+ * of its own key and never the other's, and the key the provider wires opens what was encrypted for that certificate.
  */
 final class UpstreamEncryptionMetadataTest extends ConsoleTestCase
 {
@@ -228,7 +228,7 @@ final class UpstreamEncryptionMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-66: the key the bundle wires for a provider opens an assertion encrypted for the certificate its metadata
+     * S-66: the key the provider wires for a provider opens an assertion encrypted for the certificate its metadata
      * serve, through the KMS of this kernel.
      */
     #[Test]

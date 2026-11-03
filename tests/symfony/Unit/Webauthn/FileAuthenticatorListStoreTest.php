@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Webauthn;
+namespace App\Tests\Symfony\Unit\Webauthn;
 
 use function file_get_contents;
-use Beffroi\Bundle\Webauthn\FileAuthenticatorListStore;
+use App\Webauthn\FileAuthenticatorListStore;
 use function fileperms;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -26,7 +26,7 @@ final class FileAuthenticatorListStoreTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->storage = sys_get_temp_dir() . '/beffroi-bundle-tests/webauthn-' . uniqid();
+        $this->storage = sys_get_temp_dir() . '/beffroi-integration-tests/webauthn-' . uniqid();
         $this->directory = $this->storage . '/community';
         $this->store = new FileAuthenticatorListStore($this->directory);
     }

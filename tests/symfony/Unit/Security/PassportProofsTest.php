@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Security;
+namespace App\Tests\Symfony\Unit\Security;
 
 use function array_map;
-use Beffroi\Bundle\Security\PasskeyCredentials;
-use Beffroi\Bundle\Security\PasskeyLogin;
-use Beffroi\Bundle\Security\PassportProofs;
-use Beffroi\Bundle\Security\PasswordLogin;
+use App\Security\PasskeyCredentials;
+use App\Security\PasskeyLogin;
+use App\Security\PassportProofs;
+use App\Security\PasswordLogin;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Beffroi\Bundle\Security\ProvingLoginInterface;
-use Beffroi\Bundle\Security\TotpCredentials;
-use Beffroi\Bundle\Security\TotpLogin;
-use Beffroi\Bundle\Security\VerifiedPassword;
+use App\Security\ProvingLoginInterface;
+use App\Security\TotpCredentials;
+use App\Security\TotpLogin;
+use App\Security\VerifiedPassword;
 use Beffroi\Core\Domain\Credential\TotpCredential;
 use Beffroi\Core\Domain\Credential\VerifiedPasskeyAssertion;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
@@ -100,7 +100,7 @@ final class PassportProofsTest extends TestCase
 
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessageIsOrContains('the passport carries the badge of no login of the bundle');
+        $this->expectExceptionMessageIsOrContains('the passport carries the badge of no login of the provider');
 
         // When
         $this->proofs->methods($passport);

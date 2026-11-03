@@ -15,7 +15,7 @@ use const PHP_INT_MAX;
 /**
  * Counts the attempts of each user and refuses past the number allowed, without a clock: a window that
  * never slides, enough to see that a use case asks before it verifies and forgets when it should. One
- * fixture for the two ports, as the bundle has one class for the two limiters.
+ * fixture for the two ports, as the provider has one class for the two limiters.
  */
 final class FakeAttemptLimiter implements CodeAttemptLimiterInterface, PasswordAttemptLimiterInterface
 {

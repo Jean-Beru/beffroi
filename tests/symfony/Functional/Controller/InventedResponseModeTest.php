@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
-use Beffroi\Bundle\Tests\Functional\ResponseMode\InventedResponseModeRenderer;
+use App\Tests\Symfony\Functional\ResponseMode\InventedResponseModeRenderer;
 use PHPUnit\Framework\Attributes\Test;
 use function parse_str;
 use Symfony\Component\HttpFoundation\Response;

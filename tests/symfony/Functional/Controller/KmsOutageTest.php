@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use function base64_encode;
 use Closure;
 use DateTimeImmutable;
-use Beffroi\Bundle\Http\PendingLoginStore;
-use Beffroi\Bundle\Http\TotpProvisioningStore;
-use Beffroi\Bundle\Key\KmsUnavailableListener;
-use Beffroi\Bundle\Tests\Functional\Key\DataKeyOutage;
-use Beffroi\Bundle\Tests\Functional\Key\KmsOutage;
+use App\Http\PendingLoginStore;
+use App\Http\TotpProvisioningStore;
+use App\Key\KmsUnavailableListener;
+use App\Tests\Symfony\Functional\Key\DataKeyOutage;
+use App\Tests\Symfony\Functional\Key\KmsOutage;
 use Beffroi\Core\Domain\Credential\TotpCredential;
 use Beffroi\Core\Domain\Credential\TotpSecret;
 use Beffroi\Core\Domain\Event\AuthenticationFailed;

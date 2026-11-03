@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Tenant;
+namespace App\Tests\Symfony\Unit\Tenant;
 
-use Beffroi\Bundle\Identity\WiredClaims;
-use Beffroi\Bundle\Tenant\TenantFactory;
+use App\Identity\WiredClaims;
+use App\Tenant\TenantFactory;
 use Beffroi\Core\Domain\Identity\Claim\Nickname;
 use Beffroi\Core\Domain\Identity\Claim\PictureUrl;
 use Beffroi\Core\Domain\Identity\Claim\ProfileUrl;
@@ -271,7 +271,7 @@ final class TenantFactoryTest extends TestCase
     }
 
     /**
-     * Four of the claims the bundle wires, three of them the ones whose class is named after the field it
+     * Four of the claims the provider wires, three of them the ones whose class is named after the field it
      * reads and not after the claim it is.
      */
     private static function claims(): WiredClaims

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Saml;
+namespace App\Tests\Symfony\Unit\Saml;
 
-use Beffroi\Bundle\BeffroiBundle;
-use Beffroi\Bundle\Saml\RouterServiceProviderEndpoints;
-use Beffroi\Bundle\Saml\ServiceProviderEntityIdPass;
+use App\DependencyInjection\BeffroiExtension;
+use App\Saml\RouterServiceProviderEndpoints;
+use App\Saml\ServiceProviderEntityIdPass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -200,16 +200,16 @@ final class ServiceProviderEntityIdPassTest extends TestCase
     }
 
     /**
-     * The pass is one of the bundle's, run by every kernel that builds its container.
+     * The pass is one of the provider's, run by every kernel that builds its container.
      */
     #[Test]
-    public function theBundleRunsThePass(): void
+    public function theProviderRunsThePass(): void
     {
         // Given
         $container = new ContainerBuilder();
 
         // When
-        new BeffroiBundle()->build($container);
+        BeffroiExtension::addCompilerPasses($container);
 
         // Then
         static::assertCount(1, \array_filter(
@@ -219,15 +219,14 @@ final class ServiceProviderEntityIdPassTest extends TestCase
     }
 
     /**
-     * A container the extension of the bundle loaded with this SAML configuration, the tenant under the issuer given.
+     * A container the extension of the provider loaded with this SAML configuration, the tenant under the issuer given.
      *
      * @param array<string, mixed> $saml
      */
     private static function container(array $saml, ?ContainerBuilder $container = null, string $issuer = self::ISSUER): ContainerBuilder
     {
         $container ??= new ContainerBuilder();
-        $extension = new BeffroiBundle()->getContainerExtension();
-        static::assertNotNull($extension);
+        $extension = new BeffroiExtension();
         $extension->load([
             [
                 'tenant' => [

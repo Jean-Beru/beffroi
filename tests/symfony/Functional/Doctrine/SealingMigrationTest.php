@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 use Doctrine\Migrations\Exception\AbortMigration;
-use Beffroi\Bundle\Migrations\Version20261001180000;
-use Beffroi\Bundle\Migrations\Version20261002120000;
-use Beffroi\Bundle\Tests\Fixture\RecordedMessages;
+use DoctrineMigrations\Version20261001180000;
+use DoctrineMigrations\Version20261002120000;
+use App\Tests\Symfony\Fixture\RecordedMessages;
 use Beffroi\Core\Domain\Identity\LinkedIdentity;
 use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;

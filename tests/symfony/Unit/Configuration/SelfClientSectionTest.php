@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Configuration;
+namespace App\Tests\Symfony\Unit\Configuration;
 
-use Beffroi\Bundle\BeffroiBundle;
-use Beffroi\Bundle\Configuration\SelfClientSection;
+use App\DependencyInjection\BeffroiExtension;
+use App\Configuration\SelfClientSection;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -18,7 +18,7 @@ use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 /**
  * Issue #282: the application signs its users in with the values it declared itself with, which its firewall names as
  * container parameters rather than writing them a second time; they are read from what was written under "beffroi"
- * before any extension is loaded, SecurityBundle coming before this bundle in an application.
+ * before any extension is loaded, SecurityBundle coming before this provider in an application.
  */
 final class SelfClientSectionTest extends TestCase
 {
@@ -137,20 +137,20 @@ final class SelfClientSectionTest extends TestCase
     }
 
     /**
-     * The bundle sets them before any extension is loaded, which is when the firewall of an application resolves what
+     * The provider sets them before any extension is loaded, which is when the firewall of an application resolves what
      * it names.
      */
     #[Test]
-    public function theBundleExposesThemBeforeAnyExtensionIsLoaded(): void
+    public function theProviderExposesThemBeforeAnyExtensionIsLoaded(): void
     {
         // Given
         $builder = new ContainerBuilder();
-        $builder->registerExtension(new BeffroiBundle()->getContainerExtension() ?? static::fail('The bundle has no extension.'));
+        $builder->registerExtension(new BeffroiExtension());
         $builder->loadFromExtension('beffroi', self::declared());
         $instanceof = [];
 
         // When
-        new BeffroiBundle()->prependExtension(
+        new BeffroiExtension()->prependExtension(
             new ContainerConfigurator($builder, new PhpFileLoader($builder, new FileLocator()), $instanceof, '', ''),
             $builder,
         );

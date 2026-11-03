@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Load;
+namespace App\Tests\Symfony\Unit\Load;
 
 use DateInterval;
-use Beffroi\Bundle\Load\LoadBudget;
-use Beffroi\Bundle\Load\RateLimitedClientLoad;
+use App\Load\LoadBudget;
+use App\Load\RateLimitedClientLoad;
 use Beffroi\Core\Exception\LoadBudgetSpentException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;

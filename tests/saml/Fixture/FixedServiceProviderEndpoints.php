@@ -9,7 +9,7 @@ use Beffroi\Saml\Domain\Metadata\ServiceProviderEndpoints;
 use Beffroi\Saml\Port\ServiceProviderEndpointsInterface;
 
 /**
- * The endpoints of the service provider of a tenant under its issuer, as the bundle locates them from its routes, its
+ * The endpoints of the service provider of a tenant under its issuer, as the provider locates them from its routes, its
  * entity ID the URL of its metadata unless one is named (spec/saml.md S-38).
  */
 final readonly class FixedServiceProviderEndpoints implements ServiceProviderEndpointsInterface

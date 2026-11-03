@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Http;
+namespace App\Tests\Symfony\Unit\Http;
 
-use Beffroi\Bundle\Http\BrowserPreferences;
-use Beffroi\Bundle\Locale\LocalePreference;
-use Beffroi\Bundle\Locale\ServedLocales;
-use Beffroi\Bundle\Tests\Fixture\APreference;
+use App\Http\BrowserPreferences;
+use App\Locale\LocalePreference;
+use App\Locale\ServedLocales;
+use App\Tests\Symfony\Fixture\APreference;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;

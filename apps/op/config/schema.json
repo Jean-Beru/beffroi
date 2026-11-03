@@ -1227,7 +1227,7 @@
                             "retry_multiplier": 3,
                             "retry_max_delay": 60
                         },
-                        "description": "How a logout token reaches a client that registered a backchannel_logout_uri (Back-Channel Logout 1.0 §2.5), and for how long. These values are what the transport of the notifications does with a send that failed, the application giving that transport the policy of the bundle, and what a signing key is held back for while a logout token it signed may still be on its way (issue #155)."
+                        "description": "How a logout token reaches a client that registered a backchannel_logout_uri (Back-Channel Logout 1.0 §2.5), and for how long. These values are what the transport of the notifications does with a send that failed, the application giving that transport the policy of the provider, and what a signing key is held back for while a logout token it signed may still be on its way (issue #155)."
                     },
                     "backchannel_authentication": {
                         "$ref": "#/$defs/types/object_null",
@@ -1711,7 +1711,7 @@
                                     "items": {
                                         "$ref": "#/$defs/types/scalar"
                                     },
-                                    "description": "The types of authorization detail this client may ask for (RFC 9396 §2 \"authorization_details\"), among the ones the provider is wired with; a type it did not register, and a type nothing serves, are both refused with invalid_authorization_details. A closed list, no wildcard: a client that registers none asks for none. A type is a class the deployment tags, which validates its own members and says what a page shows of them: the bundle wires none, no type of detail being universal."
+                                    "description": "The types of authorization detail this client may ask for (RFC 9396 §2 \"authorization_details\"), among the ones the provider is wired with; a type it did not register, and a type nothing serves, are both refused with invalid_authorization_details. A closed list, no wildcard: a client that registers none asks for none. A type is a class the deployment tags, which validates its own members and says what a page shows of them: the provider wires none, no type of detail being universal."
                                 },
                                 "token_exchange": {
                                     "$ref": "#/$defs/types/object_null",
@@ -1797,7 +1797,7 @@
                             }
                         },
                         "additionalProperties": false,
-                        "description": "The application that hosts the bundle, as a client of the provider it hosts: it names its routes, and the provider registers the URLs the router writes for them in the context of the issuer, a route that requires neither a scheme nor a host being its path under the origin of the issuer. It asks for no consent, the named exception of a first-party application, and takes the defaults of a declared client for everything else. Absent, the application is no client of its provider. What its firewall needs of it is exposed as the parameters \"beffroi.self_client.issuer\", \"beffroi.self_client.client_id\" and \"beffroi.self_client.secret\"."
+                        "description": "The application, as a client of the provider it serves: it names its routes, and the provider registers the URLs the router writes for them in the context of the issuer, a route that requires neither a scheme nor a host being its path under the origin of the issuer. It asks for no consent, the named exception of a first-party application, and takes the defaults of a declared client for everything else. Absent, the application is no client of its provider. What its firewall needs of it is exposed as the parameters \"beffroi.self_client.issuer\", \"beffroi.self_client.client_id\" and \"beffroi.self_client.secret\"."
                     },
                     "client_registration": {
                         "$ref": "#/$defs/types/object_null",

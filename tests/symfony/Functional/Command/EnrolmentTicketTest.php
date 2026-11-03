@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Command;
+namespace App\Tests\Symfony\Functional\Command;
 
-use Beffroi\Bundle\Command\UserEnrolmentTicketCommand;
+use App\Command\UserEnrolmentTicketCommand;
 use Beffroi\Core\Domain\Event\EnrolmentTicketIssued;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use function preg_match;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Saml;
+namespace App\Tests\Symfony\Unit\Saml;
 
 use function array_map;
 use function array_unique;
@@ -24,7 +24,7 @@ use function unserialize;
 /**
  * Architecture §5.6, spec/saml.md S-26: the events of beffroi/saml are handled asynchronously, so every one of them is
  * written to a queue and read back. Here and not in the suite of the package, whose code never calls unserialize()
- * (spec/saml.md section 8): the queue is the bundle's.
+ * (spec/saml.md section 8): the queue is the provider's.
  *
  * Each case is built the way the use case that raises it builds it.
  */

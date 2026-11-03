@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
-use Beffroi\Bundle\Doctrine\TenantNotSynchronizedException;
-use Beffroi\Bundle\Doctrine\TenantProvider;
-use Beffroi\Bundle\Doctrine\TenantSynchronizer;
-use Beffroi\Bundle\Tenant\TenantFactory;
+use App\Doctrine\TenantNotSynchronizedException;
+use App\Doctrine\TenantProvider;
+use App\Doctrine\TenantSynchronizer;
+use App\Tenant\TenantFactory;
 use Beffroi\Core\Tests\Fixture\Predicates;
 use Beffroi\Core\Domain\Session\AuthenticationContextPolicy;
 use Beffroi\Core\Domain\Session\TwoFactors;

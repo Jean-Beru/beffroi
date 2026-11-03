@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Saml;
+namespace App\Tests\Symfony\Unit\Saml;
 
-use Beffroi\Bundle\Saml\MetadataFetcher;
+use App\Saml\MetadataFetcher;
 use Beffroi\Saml\Domain\Metadata\MetadataLocation;
 use Beffroi\Saml\Exception\MetadataRefusedException;
 use Beffroi\Saml\Port\MetadataFetcherInterface;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Messenger;
+namespace App\Tests\Symfony\Functional\Messenger;
 
 use function array_shift;
 use Closure;

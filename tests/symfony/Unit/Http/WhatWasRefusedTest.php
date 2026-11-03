@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Http;
+namespace App\Tests\Symfony\Unit\Http;
 
-use Beffroi\Bundle\Http\WhatWasRefused;
+use App\Http\WhatWasRefused;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;

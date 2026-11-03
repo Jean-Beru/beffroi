@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
-use Beffroi\Bundle\Http\CrossSitePost;
+use App\Http\CrossSitePost;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use function http_build_query;

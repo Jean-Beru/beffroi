@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Configuration;
+namespace App\Tests\Symfony\Functional\Configuration;
 
 use Beffroi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
@@ -10,7 +10,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
 /**
- * Issue #282: the secret of the host application is read from the environment, and its identifier may be, so they are
+ * Issue #282: the secret of the application is read from the environment, and its identifier may be, so they are
  * values only once the container runs. The source of its client holds the secret to what any secret of a declared
  * client is held to and to being its own, and the identifier to being nobody else's, when it is built; the kernel of
  * these tests reads both as an application does (config_test.yml), so each test names its value before it boots one.

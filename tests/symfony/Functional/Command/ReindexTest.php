@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Command;
+namespace App\Tests\Symfony\Functional\Command;
 
-use Beffroi\Bundle\Command\UserReindexCommand;
+use App\Command\UserReindexCommand;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;

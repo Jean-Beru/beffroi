@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Http;
+namespace App\Tests\Symfony\Unit\Http;
 
 use Beffroi\Oidc\Tests\Fixture\Secrets;
-use Beffroi\Bundle\Http\BrowserSession;
-use Beffroi\Bundle\Http\LoginAddresses;
+use App\Http\BrowserSession;
+use App\Http\LoginAddresses;
 use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\SessionEnd;

@@ -2,24 +2,24 @@
 #
 # Two things share the work, and which one writes a header is the rule here:
 #
-#   * the bundle writes what belongs to a page it builds. The pages of the interaction plane carry
+#   * the provider writes what belongs to a page it builds. The pages of the interaction plane carry
 #     "X-Frame-Options: DENY", "Referrer-Policy: no-referrer" and "Cache-Control: no-store"
-#     (Beffroi\Bundle\Http\InteractionPages), and the two pages whose Content-Security-Policy is part of
+#     (App\Http\InteractionPages), and the two pages whose Content-Security-Policy is part of
 #     the protocol carry their own: the form post response names the hash of the one script that submits it
 #     and the origin the form posts to, and the front channel logout page names the frames it opens.
 #     Nothing here overwrites a header a response already carries, so those policies stand as they are
 #     written;
-#   * this file writes what belongs to the deployment: the policy of every page the bundle computes none
+#   * this file writes what belongs to the deployment: the policy of every page the provider computes none
 #     for, the headers no page of any plane sends on its own, and HSTS.
 #
 # Which leaves one meeting point, and App\Http\DeploymentPolicyPrevails is where it is settled. Every page
-# of the interaction plane carries the floor the bundle gives it, "frame-ancestors 'none'", and a floor is
+# of the interaction plane carries the floor the provider gives it, "frame-ancestors 'none'", and a floor is
 # what the policy below says as its first line and then eight more. So that one value gives way to it, and
 # a page carrying a whole policy it computed for itself, which is another value, does not.
 #
 # A page of that plane with something to say about the request it is answering says it as a directive of
-# the policy below and not as a policy of its own, and the bundle completes that directive once this one is
-# written (Beffroi\Bundle\Http\PolicyCompletion): the consent page shows the logo of a host the asking
+# the policy below and not as a policy of its own, and the provider completes that directive once this one is
+# written (App\Http\PolicyCompletion): the consent page shows the logo of a host the asking
 # client named and its submission ends at that client, so the "img-src" and the "form-action" written below
 # are the ones that page is served, each with one origin more. Every page that shows the logo of the tenant
 # is served the "img-src" below with the origin of that logo, which BEFFROI_TENANT_LOGO_URI names and this
@@ -36,7 +36,7 @@
 nelmio_security:
     # RFC 9700 §4.15: nothing frames a page of this provider, whatever plane answers. The interaction pages
     # already say it for themselves, which is what a deployment that installs nothing else still gets; this
-    # covers the rest, the protocol endpoints and the scripts of the bundle among them.
+    # covers the rest, the protocol endpoints and the scripts of the provider among them.
     clickjacking:
         paths:
             '^/.*': DENY
@@ -49,7 +49,7 @@ nelmio_security:
     # "no-referrer" alone, and not the pair the recipe proposes. An authorization request carries the
     # client, the state, the scope and sometimes a request URI in the query string, and a provider has
     # nothing to gain from any of it travelling to a third party: it is the value the interaction pages of
-    # the bundle already set, and a second value here would quietly widen them.
+    # the provider already set, and a second value here would quietly widen them.
     referrer_policy:
         enabled: true
         policies:
@@ -110,7 +110,7 @@ nelmio_security:
             screen_wake_lock: []
             window_management: []
 
-            # The language models of the browser: every string of these pages is translated by the bundle.
+            # The language models of the browser: every string of these pages is translated by the provider.
             language_detector: []
             summarizer: []
             translator: []
@@ -173,7 +173,7 @@ nelmio_security:
             '^/(authorize|login|consent|logout|device|initiate-login)':
                 corp: same-origin
 
-            # Everything else a browser reads: the account, the home, the scripts of the bundle, the
+            # Everything else a browser reads: the account, the home, the scripts of the provider, the
             # stylesheet. Nobody opens these in a popup to carry a step of the protocol, so the browsing
             # context is cut loose and the three headers hold together: the document owns its browsing
             # context group, nothing cross-origin is in its process that did not ask to be, and what the
@@ -182,7 +182,7 @@ nelmio_security:
             #
             # Which bounds what these pages may load, and it is the same bound as the "img-src" below: the
             # logo of the tenant is served from the issuer itself unless BEFFROI_TENANT_LOGO_URI names
-            # another host, and nothing else here is cross-origin. The bundle names the origin of that logo
+            # another host, and nothing else here is cross-origin. The provider names the origin of that logo
             # in the policy of every page that shows it; what no policy can say is the answer of that host,
             # and a browser under "require-corp" refuses an image of another origin whose answer carries no
             # "Cross-Origin-Resource-Policy" that lets it in. A deployment that serves the logo from another
@@ -227,29 +227,29 @@ nelmio_security:
             # the policy that names the URIs it opens.
             frame-src: ['none']
             object-src: ['none']
-            # The scripts of the bundle are served by the bundle, under the path of its own pages
-            # (Beffroi\Bundle\Http\BundleScript): same origin, no pipeline, no CDN.
+            # The scripts of the provider are served by the provider, under the path of its own pages
+            # (App\Http\ProviderScript): same origin, no pipeline, no CDN.
             script-src: ['self']
             style-src: ['self']
             # The logo of the tenant is served from the issuer itself unless BEFFROI_TENANT_LOGO_URI names
             # another host (beffroi.yaml: logo_uri), and neither it nor the logo of an asking client is
             # named here: every page that shows the logo of the tenant names its origin, the consent page
-            # names the one of the client, and the bundle completes this directive with them
-            # (Beffroi\Bundle\Http\ImageSource). "data:" is the images the stylesheet draws the arrows of a
+            # names the one of the client, and the provider completes this directive with them
+            # (App\Http\ImageSource). "data:" is the images the stylesheet draws the arrows of a
             # pager with, and the logos of the authenticators the page of the passkeys writes (issue #983).
             img-src: ['self', 'data:']
             font-src: ['none']
             media-src: ['none']
             manifest-src: ['none']
-            # What the scripts of the bundle fetch: the options of a passkey, the registration of a push
+            # What the scripts of the provider fetch: the options of a passkey, the registration of a push
             # subscription, both on this origin.
             connect-src: ['self']
             # The service worker that receives a push for a browser of a user (Push API §5).
             worker-src: ['self']
             # Every form of these pages comes back to the page it was sent from, and a browser checks this
             # directive over the whole redirect chain of a submission: a page whose submission ends with
-            # the code carried to a client names that client and the bundle completes this directive with
-            # it (Beffroi\Bundle\Http\FormTarget). The one form that posts elsewhere outright is the form
+            # the code carried to a client names that client and the provider completes this directive with
+            # it (App\Http\FormTarget). The one form that posts elsewhere outright is the form
             # post response, which carries the policy naming the redirect URI it posts to.
             form-action: ['self']
             upgrade-insecure-requests: true

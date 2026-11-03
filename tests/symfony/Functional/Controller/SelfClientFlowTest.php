@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use function base64_encode;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Issue #282: the application that hosts the bundle is a client of the provider it hosts, declared by the names of its
+ * Issue #282: the application is a client of the provider it serves, declared by the names of its
  * routes ("beffroi.self_client" in config_test.yml). The provider answers it as the first-party application it is, and
- * it signs its own users in through the "oidc_login" of Symfony, whose firewall names the three parameters the bundle
+ * it signs its own users in through the "oidc_login" of Symfony, whose firewall names the three parameters the provider
  * exposes and nothing else of the provider.
  */
 final class SelfClientFlowTest extends BrowserTestCase
@@ -91,8 +91,8 @@ final class SelfClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * The whole of the issue: the application signs a person in at the provider it hosts through the "oidc_login" of
-     * Symfony, configured by nothing but the parameters the bundle exposes, and knows them by the subject the provider
+     * The whole of the issue: the application signs a person in at the provider it serves through the "oidc_login" of
+     * Symfony, configured by nothing but the parameters the provider exposes, and knows them by the subject the provider
      * gave it (OIDC Core §2), every request its firewall sends the provider being answered by the provider itself.
      */
     #[Test]

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Plane;
+namespace App\Tests\Symfony\Unit\Plane;
 
-use Beffroi\Bundle\Plane\Plane;
-use Beffroi\Bundle\Plane\PlaneRequestListener;
+use App\Plane\Plane;
+use App\Plane\PlaneRequestListener;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -17,8 +17,8 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
- * Architecture §5.2: a plane serves its own routes, "all" serves everything, and a route that is not the
- * bundle's belongs to the host application.
+ * Architecture §5.2: a plane serves its own routes, "all" serves everything, and a route of neither plane is
+ * the application's own.
  */
 final class PlaneTest extends TestCase
 {
@@ -54,7 +54,7 @@ final class PlaneTest extends TestCase
     {
         yield 'the login is of the interaction plane' => ['beffroi_interaction_login', Plane::Interaction];
         yield 'the token endpoint is of the protocol plane' => ['beffroi_protocol_token', Plane::Protocol];
-        yield 'a route of the host application is of neither' => ['app_home', null];
+        yield 'a route of the application is of neither' => ['app_home', null];
         yield 'an endpoint of the FIDO conformance tools is of neither' => ['beffroi_fido_conformance_attestation_options', null];
         yield 'the automated approval of the conformance suite is of neither' => ['beffroi_ciba_conformance_approval', null];
         yield 'a prefix alone is of neither' => ['beffroi_interaction', null];
@@ -63,7 +63,7 @@ final class PlaneTest extends TestCase
 
     /**
      * Architecture §5.2: what answers by plane reads the name of the route and holds no list, so a route
-     * the bundle gains is covered by being routed (decision 0014).
+     * the provider gains is covered by being routed (decision 0014).
      */
     #[Test]
     #[DataProvider('provideRoutesAndTheirPlane')]

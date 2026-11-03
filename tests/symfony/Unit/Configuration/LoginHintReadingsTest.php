@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Configuration;
+namespace App\Tests\Symfony\Unit\Configuration;
 
 use function array_map;
-use Beffroi\Bundle\Configuration\LoginHintReadings;
+use App\Configuration\LoginHintReadings;
 use Beffroi\Oidc\Application\Hint\UserHintInterface;
 use function iterator_to_array;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -35,10 +35,10 @@ final class LoginHintReadingsTest extends TestCase
     }
 
     /**
-     * The readings a deployment tagged come first, then the one of the bundle the configuration names.
+     * The readings a deployment tagged come first, then the one of the provider the configuration names.
      */
     #[Test]
-    #[DataProvider('provideReadingsOfTheBundle')]
+    #[DataProvider('provideReadingsOfTheProvider')]
     public function theReadingTheConfigurationNamesFollowsThoseTheDeploymentTagged(string $name): void
     {
         // When
@@ -51,14 +51,14 @@ final class LoginHintReadingsTest extends TestCase
     /**
      * @return iterable<string, array{string}>
      */
-    public static function provideReadingsOfTheBundle(): iterable
+    public static function provideReadingsOfTheProvider(): iterable
     {
         yield 'the subject' => ['sub'];
         yield 'the username' => ['username'];
     }
 
     /**
-     * A deployment that tags a reading of its own names none of the bundle, so that the parameter is read one way.
+     * A deployment that tags a reading of its own names none of the provider, so that the parameter is read one way.
      */
     #[Test]
     public function aDeploymentThatNamesNoneIsReadByWhatItTagged(): void

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Configuration;
+namespace App\Tests\Symfony\Unit\Configuration;
 
-use Beffroi\Bundle\Configuration\SlidingRefreshLifetime;
+use App\Configuration\SlidingRefreshLifetime;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Key;
+namespace App\Tests\Symfony\Functional\Key;
 
-use Beffroi\Bundle\Key\KmsUnavailableListener;
-use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
+use App\Key\KmsUnavailableListener;
+use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
+use App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler;
 use Beffroi\Core\Domain\Event\KmsUnavailable;
 use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Exception\RuntimeException;
@@ -20,7 +20,7 @@ use Symfony\Component\KeyManagement\Exception\RuntimeException as KeyManagementR
 use Throwable;
 
 /**
- * Issue #128, architecture §3.3 and §5.4: what the listener of the bundle makes of an exception on its way
+ * Issue #128, architecture §3.3 and §5.4: what the listener of the provider makes of an exception on its way
  * out of a request, on the real ExceptionEvent of the kernel; the requests themselves are KmsOutageTest.
  */
 final class KmsUnavailableListenerTest extends DatabaseTestCase

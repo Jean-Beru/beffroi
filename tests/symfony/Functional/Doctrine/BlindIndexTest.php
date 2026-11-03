@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
 use Doctrine\DBAL\Connection;
-use Beffroi\Bundle\Doctrine\PersonalData\BlindIndexedColumns;
-use Beffroi\Bundle\Doctrine\PersonalData\TenantBlindIndexes;
-use Beffroi\Bundle\Doctrine\PersonalData\TenantDataKeyStores;
-use Beffroi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\CountingKms;
-use Beffroi\Bundle\Tests\Fixture\AmbientTenant;
+use App\Doctrine\PersonalData\BlindIndexedColumns;
+use App\Doctrine\PersonalData\TenantBlindIndexes;
+use App\Doctrine\PersonalData\TenantDataKeyStores;
+use App\Doctrine\PersonalData\TenantScopedEncrypter;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\CountingKms;
+use App\Tests\Symfony\Fixture\AmbientTenant;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Tests\Fixture\Fixtures;

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Geo;
+namespace App\Tests\Symfony\Unit\Geo;
 
-use Beffroi\Bundle\Geo\GeoLite2Databases;
-use Beffroi\Bundle\Geo\GeoLite2GeoLocator;
-use Beffroi\Bundle\Tests\Fixture\MaxMindDatabase;
+use App\Geo\GeoLite2Databases;
+use App\Geo\GeoLite2GeoLocator;
+use App\Tests\Symfony\Fixture\MaxMindDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -27,7 +27,7 @@ final class GeoLite2GeoLocatorTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->directory = sys_get_temp_dir() . '/beffroi-bundle-tests/geoip-' . uniqid();
+        $this->directory = sys_get_temp_dir() . '/beffroi-integration-tests/geoip-' . uniqid();
         new Filesystem()->mkdir($this->directory);
         $this->databases = new GeoLite2Databases($this->directory);
     }

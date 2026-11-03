@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Saml;
+namespace App\Tests\Symfony\Unit\Saml;
 
-use Beffroi\Bundle\Saml\IdentityProviderRoutes;
-use Beffroi\Bundle\Saml\IdentityProviderSegment;
-use Beffroi\Bundle\Saml\RouterIdentityProviderEndpoints;
-use Beffroi\Bundle\Saml\RouterServiceProviderEndpoints;
-use Beffroi\Bundle\Saml\ServiceProviderRoutes;
+use App\Saml\IdentityProviderRoutes;
+use App\Saml\IdentityProviderSegment;
+use App\Saml\RouterIdentityProviderEndpoints;
+use App\Saml\RouterServiceProviderEndpoints;
+use App\Saml\ServiceProviderRoutes;
 use Beffroi\Core\Domain\Tenant\Issuer;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidArgumentException;
@@ -24,7 +24,7 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * beffroi/saml, spec/saml.md S-38, S-39 and section 6.9 step 3: the endpoints of the SAML service provider of a tenant
- * are the routes of the bundle under the origin of its issuer, never under the request that asked for them, and its
+ * are the routes of the provider under the origin of its issuer, never under the request that asked for them, and its
  * entity ID is its own.
  */
 final class RouterServiceProviderEndpointsTest extends TestCase
@@ -114,7 +114,7 @@ final class RouterServiceProviderEndpointsTest extends TestCase
 
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessageIs('The SAML metadata of the service provider is served at "https://op.example/auth/saml/sp/metadata" but the issuer "https://op.example" puts it under "https://op.example/saml/sp/metadata": mount the routes of the bundle under the path of the issuer.');
+        $this->expectExceptionMessageIs('The SAML metadata of the service provider is served at "https://op.example/auth/saml/sp/metadata" but the issuer "https://op.example" puts it under "https://op.example/saml/sp/metadata": mount the routes of the provider under the path of the issuer.');
 
         // When
         $endpoints->locate(self::tenant('https://op.example'));
@@ -132,7 +132,7 @@ final class RouterServiceProviderEndpointsTest extends TestCase
 
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessageIs('The assertion consumer service of the service provider is served at "https://op.example/elsewhere/saml/sp/acs" but the issuer "https://op.example" puts it under "https://op.example/saml/sp/acs": mount the routes of the bundle under the path of the issuer.');
+        $this->expectExceptionMessageIs('The assertion consumer service of the service provider is served at "https://op.example/elsewhere/saml/sp/acs" but the issuer "https://op.example" puts it under "https://op.example/saml/sp/acs": mount the routes of the provider under the path of the issuer.');
 
         // When
         $endpoints->locate(self::tenant('https://op.example'));
@@ -169,7 +169,7 @@ final class RouterServiceProviderEndpointsTest extends TestCase
 
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessageIs('The SAML metadata given to the identity provider "https://idp.example/saml2/?id=1" is served at "https://op.example/auth/saml/sp/metadata/aHR0cHM6Ly9pZHAuZXhhbXBsZS9zYW1sMi8_aWQ9MQ" but the issuer "https://op.example" puts it under "https://op.example/saml/sp/metadata/aHR0cHM6Ly9pZHAuZXhhbXBsZS9zYW1sMi8_aWQ9MQ": mount the routes of the bundle under the path of the issuer.');
+        $this->expectExceptionMessageIs('The SAML metadata given to the identity provider "https://idp.example/saml2/?id=1" is served at "https://op.example/auth/saml/sp/metadata/aHR0cHM6Ly9pZHAuZXhhbXBsZS9zYW1sMi8_aWQ9MQ" but the issuer "https://op.example" puts it under "https://op.example/saml/sp/metadata/aHR0cHM6Ly9pZHAuZXhhbXBsZS9zYW1sMi8_aWQ9MQ": mount the routes of the provider under the path of the issuer.');
 
         // When
         $endpoints->metadataFor(self::tenant('https://op.example'), 'https://idp.example/saml2/?id=1');

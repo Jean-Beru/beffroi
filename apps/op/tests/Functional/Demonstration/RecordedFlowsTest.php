@@ -103,7 +103,7 @@ final class RecordedFlowsTest extends DemonstrationTestCase
 
     /**
      * Nothing of a page that is not an endpoint of this provider reaches the trace: the demonstration
-     * draws the flows of the provider and not the pages of the application that installs it.
+     * draws the flows of the provider and not the pages of the application.
      */
     #[Test]
     public function aPageOfTheApplicationIsRecordedNowhere(): void

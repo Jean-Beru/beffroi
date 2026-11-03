@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Push;
+namespace App\Tests\Symfony\Unit\Push;
 
-use Beffroi\Bundle\Http\Timeout;
-use Beffroi\Bundle\Ciba\WebPushApprovalChannel;
-use Beffroi\Bundle\Locale\ServedLocales;
-use Beffroi\Bundle\Locale\UserLocale;
-use Beffroi\Bundle\Messenger\NotificationNotDeliveredException;
-use Beffroi\Bundle\Push\WebPushSender;
+use App\Http\Timeout;
+use App\Ciba\WebPushApprovalChannel;
+use App\Locale\ServedLocales;
+use App\Locale\UserLocale;
+use App\Messenger\NotificationNotDeliveredException;
+use App\Push\WebPushSender;
 use Beffroi\Core\Application\Push\PushSubscriptionRevocation;
 use Beffroi\Core\Bridge\InMemory\InMemoryPushSubscriptionRepository;
 use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;

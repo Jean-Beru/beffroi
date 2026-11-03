@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Push;
+namespace App\Tests\Symfony\Unit\Push;
 
-use Beffroi\Bundle\Http\Timeout;
-use Beffroi\Bundle\Push\WebPushSender;
+use App\Http\Timeout;
+use App\Push\WebPushSender;
 use Beffroi\Core\Port\ApplicationServerKeyProviderInterface;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

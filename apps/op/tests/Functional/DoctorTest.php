@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use Beffroi\Bundle\Command\DoctorCommand;
+use App\Command\DoctorCommand;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -13,8 +13,8 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 /**
  * Issue #196: what the retirement window of a signing key publishes is true of this deployment only
- * because the lane its notifications are routed to is tried again on the policy the bundle publishes. The
- * lane is the bundle's, on the transport the deployment names (BEFFROI_MESSENGER_DSN, issue #919), and a
+ * because the lane its notifications are routed to is tried again on the policy the provider publishes. The
+ * lane is the provider's, on the transport the deployment names (BEFFROI_MESSENGER_DSN, issue #919), and a
  * lane this application declared again, or a route of the marker elsewhere, would be a provider that goes
  * on working and a window that announces a budget nobody follows, which nothing in a browser shows.
  *

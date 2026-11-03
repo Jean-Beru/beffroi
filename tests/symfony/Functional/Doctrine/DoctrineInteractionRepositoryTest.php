@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
 use Beffroi\Oidc\Tests\Fixture\ServedModes;
 use Beffroi\Oidc\Tests\Fixture\Secrets;

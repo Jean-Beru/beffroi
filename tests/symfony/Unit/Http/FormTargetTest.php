@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Http;
+namespace App\Tests\Symfony\Unit\Http;
 
-use Beffroi\Bundle\Http\FormTarget;
+use App\Http\FormTarget;
 use Beffroi\Oidc\Domain\Client\RedirectUri;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;

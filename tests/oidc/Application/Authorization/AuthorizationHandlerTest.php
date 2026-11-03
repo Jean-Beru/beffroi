@@ -170,7 +170,7 @@ final class AuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * The endpoint as the bundle wires it (issue #251): what the authentication still needs, whether a consent
+     * The endpoint as the provider wires it (issue #251): what the authentication still needs, whether a consent
      * is still needed, the issuer of the code, and the handler that orchestrates the three.
      */
     private function handlerWith(
@@ -185,7 +185,7 @@ final class AuthorizationHandlerTest extends TestCase
         // the issuer, and a test that says what both will be called reads one sequence
         $secrets ??= Secrets::drawer();
         $uuids ??= new SymfonyUuidGenerator();
-        // the claims of OIDC Core §5.1, as the bundle wires them: what a scope stands for is what holds a claim
+        // the claims of OIDC Core §5.1, as the provider wires them: what a scope stands for is what holds a claim
         // asked for by name, at the consent and in the code
         $claims = new ClaimsAskedByName(new StandardClaimsProvider());
         $codes = new AuthorizationCodeIssuer(

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use function base64_encode;
 use Closure;
 use function hash;
-use Beffroi\Bundle\Tests\Functional\Messenger\LogoutEndpoints;
+use App\Tests\Symfony\Functional\Messenger\LogoutEndpoints;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Port\PasswordHasherInterface;
 use Beffroi\Oidc\Domain\Client\ClientRecord;
@@ -216,7 +216,7 @@ final class FrontChannelLogoutTest extends BrowserTestCase
 
     /**
      * Back-Channel Logout 1.0 §3 and Front-Channel Logout 1.0 §3: the document announces the two ways
-     * the bundle wires, and says that each of them carries the session.
+     * the provider wires, and says that each of them carries the session.
      */
     #[Test]
     public function theDiscoveryDocumentAnnouncesBothChannels(): void

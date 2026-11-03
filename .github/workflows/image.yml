@@ -52,7 +52,7 @@ permissions:
 
 env:
   IMAGE: ghcr.io/beffroi-auth/op
-  DESCRIPTION: "Beffroi: the standalone identity provider application (Symfony skeleton plus the bundle)."
+  DESCRIPTION: "Beffroi: the standalone identity provider application (Symfony skeleton plus the provider)."
 
 jobs:
   prepare:

@@ -1,6 +1,6 @@
 framework:
     secret: 'test'
-    # The panel of the bundle is wired by kernel.debug, and the profiler that shows it follows it here:
+    # The panel of the provider is wired by kernel.debug, and the profiler that shows it follows it here:
     # every test runs on a kernel that is not in debug, the one test of the panel asks for one that is.
     profiler:
         enabled: '%kernel.debug%'
@@ -20,24 +20,31 @@ framework:
         storage_factory_id: session.storage.factory.mock_file
         cookie_secure: auto
         cookie_samesite: lax
-    # Declared as the recipe of symfony/security-csrf 8.2 writes it into an application that installs the bundle
+    # Declared as the recipe of symfony/security-csrf 8.2 writes it into the application
     # through Flex (symfony/recipes#1554, #1553): three identifiers of the forms of Symfony whose token is checked
-    # against where the request says it comes from, and not against the session. A form of the bundle that carries a
-    # token posts it under an identifier of the bundle, which no such list names, so that it stays the one the session
+    # against where the request says it comes from, and not against the session. A form of the provider that carries a
+    # token posts it under an identifier of the provider, which no such list names, so that it stays the one the session
     # holds: under the "Referrer-Policy: no-referrer" of the interaction pages, a browser that sends no
     # "Sec-Fetch-Site" says nothing of where a form comes from (issue #891).
     csrf_protection:
         enabled: true
         stateless_token_ids: [authenticate, logout, switch_user]
-    # The two locales the bundle ships (architecture §5.7); the pages choose between them, never the URL.
+    # The profile page writes a person through a form (Symfony Form), as the application serves it.
+    form:
+        enabled: true
+    # The strings of the pages, which the application keeps in its own catalogue.
+    translator:
+        paths:
+            - '%kernel.project_dir%/../../apps/op/translations'
+    # The two locales the provider ships (architecture §5.7); the pages choose between them, never the URL.
     default_locale: en
     enabled_locales: ['en', 'fr']
-    # The scheduled messages of the bundle go through the routing of Messenger like every other message
+    # The scheduled messages of the provider go through the routing of Messenger like every other message
     # (architecture §5.6); synchronous here like the rest.
     scheduler:
         use_messenger_routing: true
 
-# The three buses, their middleware and where each marker is sent are prepended by the bundle
+# The three buses, their middleware and where each marker is sent are prepended by the provider
 # (architecture §5.6, issue #456). What this kernel says is what a test kernel owes: every lane of its
 # own writes played in the request, so that a test reads what a handler did without a worker.
 messenger:
@@ -51,19 +58,25 @@ messenger:
         async_priority_low: 'sync://'
         failed: 'in-memory://'
 
-# The pages of the bundle, and nothing else: a missing variable is a defect of a template.
+# The pages of the provider, and nothing else: a missing variable is a defect of a template.
 twig:
     strict_variables: true
+    # The pages of the provider are the application's (apps/op/templates/beffroi), but for four the
+    # application dresses in its own skeletons, which read what this kernel does not boot (the theme, the
+    # navigation of the account, the asset map): this suite renders those bare, from templates/ beside it.
+    paths:
+        '%kernel.project_dir%/templates': Beffroi
+        '%kernel.project_dir%/../../apps/op/templates/beffroi': Beffroi
 
 # The firewall of the interaction pages as an application declares it (architecture §5.4): the provider,
-# the checker and the handlers of the bundle, the form login on the login route, the CSRF token the page
+# the checker and the handlers of the provider, the form login on the login route, the CSRF token the page
 # renders. The protocol plane sits outside of any firewall: no cookie is read there, no session started.
-# The hasher of the users of the bundle is prepended by the bundle.
+# The hasher of the users of the provider is prepended by the provider.
 security:
     providers:
         beffroi:
-            id: Beffroi\Bundle\Security\IdentityUserProvider
-        # The users of the host application are the people the provider signed in for it (issue #282), built from
+            id: App\Security\IdentityUserProvider
+        # The users of the application are the people the provider signed in for it (issue #282), built from
         # what the provider said of them.
         application:
             oidc: ~
@@ -71,9 +84,9 @@ security:
         beffroi_protocol:
             pattern: ^/(\.well-known/(openid-configuration|oauth-authorization-server)|jwks|token|userinfo|introspect|revoke|par|device_authorization|backchannel_authentication|register(/.+)?)$
             security: false
-        # The host application signs its own users in at the provider it hosts (issue #282), as an application that
-        # installs the bundle does with the "oidc_login" of Symfony: what it was declared with under
-        # "beffroi.self_client" is what this firewall names, through the three parameters the bundle exposes, and
+        # The application signs its own users in at the provider it serves (issue #282), with the "oidc_login"
+        # of Symfony: what it was declared with under
+        # "beffroi.self_client" is what this firewall names, through the three parameters the provider exposes, and
         # nothing of it is written twice. What it asks the provider is answered by this kernel.
         application:
             pattern: ^/application/
@@ -89,24 +102,24 @@ security:
         beffroi_interaction:
             lazy: true
             provider: beffroi
-            user_checker: Beffroi\Bundle\Security\UserChecker
-            # The four logins of the bundle, each an authenticator of its own: the form of the login
+            user_checker: App\Security\UserChecker
+            # The four logins of the provider, each an authenticator of its own: the form of the login
             # page, the assertion that page posts, the code posted by the code page, and the response an
             # upstream identity provider posts to the assertion consumer service (beffroi/saml S-52),
             # with one LoginSuccessListener for the four (architecture §5.4). Each hands what it reads to a use
             # case of the core, where the order of a login is written once and nothing of it is written
             # a second time here (issue #130), which is why the form login of Symfony is not wired: it
             # would verify a hash the core has verified. The entry point is the login page.
-            entry_point: Beffroi\Bundle\Security\PasswordLoginAuthenticator
+            entry_point: App\Security\PasswordLoginAuthenticator
             custom_authenticators:
-                - Beffroi\Bundle\Security\PasswordLoginAuthenticator
-                - Beffroi\Bundle\Security\PasskeyLoginAuthenticator
-                - Beffroi\Bundle\Security\TotpLoginAuthenticator
-                - Beffroi\Bundle\Security\UpstreamAssertionAuthenticator
+                - App\Security\PasswordLoginAuthenticator
+                - App\Security\PasskeyLoginAuthenticator
+                - App\Security\TotpLoginAuthenticator
+                - App\Security\UpstreamAssertionAuthenticator
 
 # SQLite in a file of the cache directory (architecture §7): a kernel reboot between two requests keeps the
-# rows, a fresh schema is created by the tests that need one. The mappings and the types of the bundle are
-# prepended by the bundle itself; the host application of this kernel maps an entity of its own, "User" of
+# rows, a fresh schema is created by the tests that need one. The mappings and the types of the provider are
+# prepended by the provider itself; the application of this kernel maps an entity of its own, "User" of
 # all names, to show the two schemas side by side (decision 0002).
 doctrine:
     dbal:
@@ -118,7 +131,7 @@ doctrine:
                 type: attribute
                 is_bundle: false
                 dir: '%kernel.project_dir%/Functional/Doctrine/Host'
-                prefix: 'Beffroi\Bundle\Tests\Functional\Doctrine\Host'
+                prefix: 'App\Tests\Symfony\Functional\Doctrine\Host'
                 alias: Host
 
 # A full configuration (architecture §5.1): one tenant, a KMS, files for the sealed keys, a JWK Set cached
@@ -150,7 +163,7 @@ parameters:
     # Settings the application reads from the environment (issues #911 and #913), read the same way here: what
     # an environment variable carries is a value at runtime only, so the bounds and the rules of the tree hold
     # it when a service is built, and a test that plays one out of them names it before it boots a kernel.
-    # Left alone, they are the defaults of the bundle: sixty seconds for a code, ten minutes for an access
+    # Left alone, they are the defaults of the provider: sixty seconds for a code, ten minutes for an access
     # token and an ID token, thirty days for a refresh token and ninety for its family, a staging delay
     # derived from the max-age, no nonce asked of a DPoP proof, five seconds between two polls of either flow,
     # a minute for the window of either budget, and the subject web push is wired with.
@@ -166,7 +179,7 @@ parameters:
     env(BEFFROI_TEST_ORIGIN_INTERVAL): 60
     env(BEFFROI_TEST_CLIENT_INTERVAL): 60
     env(BEFFROI_TEST_WEB_PUSH_SUBJECT): 'mailto:operator@op.test'
-    # The figures of issue #915, read the same way and left at the defaults of the bundle: the slug of the tenant, the
+    # The figures of issue #915, read the same way and left at the defaults of the provider: the slug of the tenant, the
     # family of the SAML keys, the window of a DPoP proof and of its nonce, the longest a backchannel request may ask
     # for, the delivery of a logout token and its retries, what one call to a client, to a push service and to the list
     # of compromised passwords is given, the window of a client assertion and what a read of a published set costs,
@@ -226,7 +239,7 @@ parameters:
     # 0030). None, which is what a deployment that declares none gets, and a test that wants some names them before
     # it boots a kernel.
     env(BEFFROI_TEST_TENANT_SCOPES): '[]'
-    # Issue #282: the identifier of the host application of this kernel, the default of the section, and the secret it
+    # Issue #282: the identifier of the application of this kernel, the default of the section, and the secret it
     # authenticates with, which the section reads from the environment and nowhere else; a test that plays another
     # names it before it boots a kernel.
     env(BEFFROI_TEST_APPLICATION_CLIENT_ID): app
@@ -242,7 +255,7 @@ parameters:
     # tenant that accepts no assertion.
     env(BEFFROI_TEST_TRUSTED_ISSUER_JWKS): 'eyJrZXlzIjpbeyJraWQiOiJ1bnVzZWQtYnktYW55LXRlc3QiLCJ1c2UiOiJzaWciLCJhbGciOiJFUzI1NiIsImt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoibnZmeUxHQ2g0QnhheXFwNHJwUWlnSlJoQ0lhb2ZvQlpLZGRua2pJaWhpVSIsInkiOiJaY01YMVFsT3NnY3dzMWFZNnlURlBkVTl3Q3A2WndndEtRRWFqUzVpV1prIn1dfQ=='
 
-# The KMS clients of an application, where every application declares them: the bundle seals with the one
+# The KMS clients of an application, where every application declares them: the provider seals with the one
 # "beffroi.keys.kms" names and builds none itself. One client here, whose DSN the environment gives, so that
 # the suite runs against sodium, a key file, a Vault or an AWS KMS without a line of it changing. The DSN
 # reaches it through a service of this kernel and not through the "dsn" of the client, which refuses an
@@ -369,7 +382,7 @@ beffroi:
         # The host whose listener asks for a client certificate (RFC 8705 §5): the same application, the
         # aliases of the discovery document pointing at it.
         origin: 'https://mtls.op.test'
-    # The host application of this kernel, a client of the provider it hosts (issue #282): the callback of its
+    # The application of this kernel, a client of the provider it serves (issue #282): the callback of its
     # firewall, which the route loader of Symfony declares, and its page to come back to after a logout.
     self_client:
         client_id: '%env(BEFFROI_TEST_APPLICATION_CLIENT_ID)%'
@@ -392,7 +405,7 @@ beffroi:
         # The one declared client with a logo, and it is served from a host of its own: the consent page
         # names the origin of that image in the "img-src" of the policy its answer carries, and the origin
         # of the redirect URI in the "form-action", so the two are read apart from each other
-        # (Beffroi\Bundle\Http\ImageSource, FormTarget). Consent is required of it, which is the default
+        # (App\Http\ImageSource, FormTarget). Consent is required of it, which is the default
         # and what makes the page appear at all.
         consent-app:
             client_name: 'Application that asks for consent'
@@ -798,12 +811,12 @@ services:
         class: Symfony\Component\RateLimiter\Storage\InMemoryStorage
 
     # RFC 9396 §2 (issue #225): one class per type of authorization detail, tagged, which is the whole of
-    # what a deployment adds to serve one. The bundle wires none, no type of detail being universal, so
+    # what a deployment adds to serve one. The provider wires none, no type of detail being universal, so
     # this kernel is the deployment that wires one; the type of the test fixtures is that class.
     Beffroi\Oidc\Tests\Fixture\InventedAuthorizationDetailType:
         tags: ['beffroi.oidc.authorization_detail_type']
 
-    # OIDC Core §5.1 (issue #278): a claims provider is a class and a line here, and the bundle wires the
+    # OIDC Core §5.1 (issue #278): a claims provider is a class and a line here, and the provider wires the
     # standard claims as one of them. This kernel is the deployment that adds a second, serving a scope of
     # its own that the document announces beside the four of §5.4. Behind the standard one, so that the
     # document reads the scopes of §5.4 first, as a deployment that adds a claim of its own would want.
@@ -834,12 +847,12 @@ services:
     Beffroi\Core\Port\BreachedPasswordsInterface:
         alias: Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord
 
-    # Issue #282: the HTTP client of the firewall of the host application. What it asks the provider is handled by
-    # this kernel, the provider it hosts, as a request of its own: nothing of this kernel reaches a host.
+    # Issue #282: the HTTP client of the firewall of the application. What it asks the provider is handled by
+    # this kernel, the provider it serves, as a request of its own: nothing of this kernel reaches a host.
     beffroi_test.provider_of_this_kernel:
         class: Symfony\Component\HttpClient\MockHttpClient
-        arguments: ['@Beffroi\Bundle\Tests\Functional\Security\RequestsToThisKernel', 'https://op.test']
-    Beffroi\Bundle\Tests\Functional\Security\RequestsToThisKernel:
+        arguments: ['@App\Tests\Symfony\Functional\Security\RequestsToThisKernel', 'https://op.test']
+    App\Tests\Symfony\Functional\Security\RequestsToThisKernel:
         arguments: ['@kernel']
 
     # The KMS client of this kernel, built from the DSN of the environment and named by the client above.
@@ -854,7 +867,7 @@ services:
         factory: ['@key_management.factory', 'fromString']
         arguments: ['%env(BEFFROI_TEST_KMS_DSN_SECOND)%']
 
-    # The Vault and AWS bridges are development dependencies of the monorepo (the bundle stays
+    # The Vault and AWS bridges are development dependencies of the monorepo (the provider stays
     # backend-agnostic, the application requires the bridges it deploys with), and KeyManagementBundle
     # registers a factory only for a bridge the root package requires outside of "require-dev"
     # (ContainerBuilder::willBeAvailable()): this kernel registers them itself, for the runs where
@@ -864,13 +877,13 @@ services:
     Symfony\Component\KeyManagement\Bridge\AwsKms\AwsKmsFactory:
         tags: ['key_management.factory']
 
-    # Reachable from the tests: the use cases and ports the bundle wires in full today. A private service
+    # Reachable from the tests: the use cases and ports the provider wires in full today. A private service
     # nothing references is removed from the container, which is what these aliases prevent.
     test.beffroi.tenant_provider:
-        alias: Beffroi\Bundle\Doctrine\TenantProvider
+        alias: App\Doctrine\TenantProvider
         public: true
     test.beffroi.geoip_databases:
-        alias: Beffroi\Bundle\Geo\GeoLite2Databases
+        alias: App\Geo\GeoLite2Databases
         public: true
     test.beffroi.breached_passwords:
         alias: Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord
@@ -903,7 +916,7 @@ services:
         alias: Beffroi\Core\Port\PasswordHasherInterface
         public: true
     test.beffroi.core_password_hasher:
-        alias: Beffroi\Bundle\Security\CorePasswordHasher
+        alias: App\Security\CorePasswordHasher
         public: true
     test.beffroi.password_hasher_factory:
         alias: security.password_hasher_factory
@@ -931,7 +944,7 @@ services:
         alias: beffroi.data_keys.index
         public: true
     test.beffroi.blind_indexes:
-        alias: Beffroi\Bundle\Doctrine\PersonalData\TenantBlindIndexes
+        alias: App\Doctrine\PersonalData\TenantBlindIndexes
         public: true
     test.beffroi.key_sealer:
         alias: Beffroi\Core\Port\KeySealerInterface
@@ -943,7 +956,7 @@ services:
         alias: Beffroi\Core\Port\CodeAttemptLimiterInterface
         public: true
     test.beffroi.kms_unavailable_listener:
-        alias: Beffroi\Bundle\Key\KmsUnavailableListener
+        alias: App\Key\KmsUnavailableListener
         public: true
     test.beffroi.totp_enrolment:
         alias: Beffroi\Core\Application\Totp\TotpEnrolment
@@ -969,7 +982,7 @@ services:
         alias: Beffroi\Core\Bridge\Key\OpenedKeys
         public: true
     # what every transport encodes with, read through the alias of the component and not through the
-    # service of the bundle: what is asserted is the wiring and not the class (decision 0020)
+    # service of the provider: what is asserted is the wiring and not the class (decision 0020)
     test.beffroi.messenger_serializer:
         alias: messenger.default_serializer
         public: true
@@ -1007,7 +1020,7 @@ services:
         alias: Beffroi\Oidc\Application\EndSession\EndSessionRequestParser
         public: true
     test.beffroi.event_bus_dispatcher:
-        alias: Beffroi\Bundle\Messenger\EventBusDispatcher
+        alias: App\Messenger\EventBusDispatcher
         public: true
     test.beffroi.command_bus:
         alias: command.bus
@@ -1015,11 +1028,11 @@ services:
     # The write path the asynchronous enrichment of a provenance will take: a handler of the bus, with no
     # request anywhere. The enrichment does not exist; what this proves is that a sealed column written
     # from there reaches the scope of its tenant (decision 0018, beffroi#404).
-    Beffroi\Bundle\Tests\Fixture\EnrichTheProvenanceHandler:
+    App\Tests\Symfony\Fixture\EnrichTheProvenanceHandler:
         autowire: true
         tags: ['messenger.message_handler']
     test.beffroi.schedule:
-        alias: Beffroi\Bundle\Scheduler\BeffroiSchedule
+        alias: App\Scheduler\BeffroiSchedule
         public: true
     # What a setting the environment carries reaches (issues #911 and #913): the issuers of a code, of an
     # access token, of an ID token and of a refresh token, what a row an access token still needs is kept
@@ -1050,7 +1063,7 @@ services:
         alias: beffroi.load.client
         public: true
     test.beffroi.web_push_sender:
-        alias: Beffroi\Bundle\Push\WebPushSender
+        alias: App\Push\WebPushSender
         public: true
     test.beffroi.token_issuer:
         alias: Beffroi\Oidc\Application\Token\TokenIssuer
@@ -1064,7 +1077,7 @@ services:
     # What the figures of issue #915 reach, built when a test asks for one, which is where a figure of the environment
     # is first a number.
     test.beffroi.tenant_factory:
-        alias: Beffroi\Bundle\Tenant\TenantFactory
+        alias: App\Tenant\TenantFactory
         public: true
     test.beffroi.saml_rotation_schedule:
         alias: beffroi.saml.rotation_schedule
@@ -1076,19 +1089,19 @@ services:
         alias: Beffroi\Oidc\Application\Dpop\DpopProofValidator
         public: true
     test.beffroi.cached_dpop_nonce:
-        alias: Beffroi\Bundle\Dpop\CachedDpopNonce
+        alias: App\Dpop\CachedDpopNonce
         public: true
     test.beffroi.logout_token_sender:
-        alias: Beffroi\Bundle\Http\LogoutTokenSender
+        alias: App\Http\LogoutTokenSender
         public: true
     test.beffroi.notification_retry_policy:
-        alias: Beffroi\Bundle\Messenger\NotificationRetryPolicy
+        alias: App\Messenger\NotificationRetryPolicy
         public: true
     test.beffroi.client_notification_sender:
-        alias: Beffroi\Bundle\Http\ClientNotificationSender
+        alias: App\Http\ClientNotificationSender
         public: true
     test.beffroi.pwned_passwords:
-        alias: Beffroi\Bundle\Security\PwnedPasswords
+        alias: App\Security\PwnedPasswords
         public: true
     test.beffroi.client_assertion_validator:
         alias: Beffroi\Oidc\Application\Client\ClientAssertionValidator
@@ -1103,13 +1116,13 @@ services:
         alias: beffroi.oidc.client_keys.cache
         public: true
     test.beffroi.client_jwks_fetcher:
-        alias: Beffroi\Bundle\Client\ClientJwksFetcher
+        alias: App\Client\ClientJwksFetcher
         public: true
     test.beffroi.request_object_validator:
         alias: Beffroi\Oidc\Application\Authorization\RequestObjectValidator
         public: true
     test.beffroi.request_object_fetcher:
-        alias: Beffroi\Bundle\Client\RequestObjectFetcher
+        alias: App\Client\RequestObjectFetcher
         public: true
     test.beffroi.registration_policy:
         alias: Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy
@@ -1118,7 +1131,7 @@ services:
         alias: Beffroi\Oidc\Application\Client\Registration\SoftwareStatementVerifier
         public: true
     test.beffroi.sector_identifier_fetcher:
-        alias: Beffroi\Bundle\Client\SectorIdentifierDocumentFetcher
+        alias: App\Client\SectorIdentifierDocumentFetcher
         public: true
     test.beffroi.login_hints:
         alias: Beffroi\Oidc\Application\Hint\LoginHints
@@ -1127,10 +1140,10 @@ services:
         alias: Beffroi\Oidc\Application\Ciba\UserHints
         public: true
     test.beffroi.notifications_lane:
-        alias: Beffroi\Bundle\Doctor\NotificationsLanePatience
+        alias: App\Doctor\NotificationsLanePatience
         public: true
     test.beffroi.tenant_synchronizer:
-        alias: Beffroi\Bundle\Doctrine\TenantSynchronizer
+        alias: App\Doctrine\TenantSynchronizer
         public: true
     test.beffroi.users:
         alias: Beffroi\Core\Port\UserRepositoryInterface
@@ -1184,7 +1197,7 @@ services:
         alias: Beffroi\Core\Port\PersonalArchiveRepositoryInterface
         public: true
     test.beffroi.claims:
-        alias: Beffroi\Bundle\Identity\WiredClaims
+        alias: App\Identity\WiredClaims
         public: true
     test.beffroi.claim_history:
         alias: Beffroi\Core\Port\ClaimHistoryInterface
@@ -1245,7 +1258,7 @@ services:
         alias: messenger.transport.async_notifications
         public: true
     test.beffroi.logout_token_delivery:
-        alias: Beffroi\Bundle\MessageHandler\SendLogoutTokenHandler
+        alias: App\MessageHandler\SendLogoutTokenHandler
         public: true
     test.beffroi.refresh_tokens:
         alias: Beffroi\Oidc\Port\RefreshTokenRepositoryInterface
@@ -1254,7 +1267,7 @@ services:
     # drop (issue #177), so DeadRecordsInterface is nobody's alias, and what a run with room for one row
     # leaves is a property of this one
     test.beffroi.dead_refresh_tokens:
-        alias: Beffroi\Bundle\Doctrine\Repository\DoctrineRefreshTokenRepository
+        alias: App\Doctrine\Repository\DoctrineRefreshTokenRepository
         public: true
     test.beffroi.access_tokens_store:
         alias: Beffroi\Oidc\Port\AccessTokenRepositoryInterface
@@ -1278,51 +1291,51 @@ services:
         alias: Beffroi\Oidc\Port\CanRevokeAccessTokensByConsentInterface
         public: true
     test.beffroi.browser_session:
-        alias: Beffroi\Bundle\Http\BrowserSession
+        alias: App\Http\BrowserSession
         public: true
     test.beffroi.endpoints:
         alias: Beffroi\Oidc\Port\EndpointLocatorInterface
         public: true
-    Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler:
+    App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler:
         autoconfigure: true
         public: true
 
     # A third shape of access token, wired as a deployment wires one: an issuer that names it, a verifier
     # that answers to the same name, and no line of src edited for the token endpoint to mint it and for
-    # the UserInfo endpoint to read it back (issue #239). Behind the two the bundle wires, because the
+    # the UserInfo endpoint to read it back (issue #239). Behind the two the provider wires, because the
     # first wired shape is what a client that registers none takes, and the clients of this kernel that
-    # register none expect the "at+jwt" the bundle writes first.
-    Beffroi\Bundle\Tests\Functional\Token\InventedAccessTokenIssuer:
+    # register none expect the "at+jwt" the provider writes first.
+    App\Tests\Symfony\Functional\Token\InventedAccessTokenIssuer:
         arguments: ['@Beffroi\Oidc\Application\Token\OpaqueAccessTokenIssuer']
         tags:
             - { name: beffroi.oidc.access_token_issuer, priority: -10 }
-    Beffroi\Bundle\Tests\Functional\Token\InventedAccessTokenVerifier:
+    App\Tests\Symfony\Functional\Token\InventedAccessTokenVerifier:
         arguments: ['@Beffroi\Oidc\Application\Token\OpaqueAccessTokenVerifier']
         tags:
             - { name: beffroi.oidc.access_token_verifier, priority: -10 }
 
     # A fifth way of answering the authorization endpoint, wired as a deployment wires one: it names itself,
     # and that name is what a request may ask for, what the document announces and what the endpoint answers
-    # in, with no line of src edited (issue #240). Behind the four the bundle wires, because the first wired
+    # in, with no line of src edited (issue #240). Behind the four the provider wires, because the first wired
     # mode is what a request the provider cannot answer as it asked falls back to, and every other test of
     # this kernel expects that fallback to be the "query" of RFC 6749 §4.1.2.
-    Beffroi\Bundle\Tests\Functional\ResponseMode\InventedResponseModeRenderer:
+    App\Tests\Symfony\Functional\ResponseMode\InventedResponseModeRenderer:
         tags:
             - { name: beffroi.response_mode, priority: -10 }
 
     # A missing translation fails the request rather than showing its key or its English (architecture §5.7).
-    Beffroi\Bundle\Tests\Functional\Translation\StrictTranslator:
+    App\Tests\Symfony\Functional\Translation\StrictTranslator:
         decorates: translator
         arguments: ['@.inner']
 
     # The argon2id hashes of the suite at the smallest cost the algorithm accepts, ahead of the native hasher
     # of the core, which keeps its production cost and the hashes of the other algorithms: 400 ms a hash
     # otherwise, paid once per user, ten times per TOTP and once per client authentication after a reboot.
-    Beffroi\Bundle\Tests\Functional\Security\CheapArgon2idHasher:
+    App\Tests\Symfony\Functional\Security\CheapArgon2idHasher:
         tags:
             - { name: beffroi.password_hasher, priority: 10 }
 
-    # The RSA keys of the suite at the 2048 bits RFC 7518 §3.3 requires rather than the 3072 the bundle
+    # The RSA keys of the suite at the 2048 bits RFC 7518 §3.3 requires rather than the 3072 the provider
     # generates: a key pair in 60 ms instead of 300, at every signingKey() and every rotation.
     Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits:
         arguments:
@@ -1332,7 +1345,7 @@ services:
     # asked, read in the log of the KMS when it is measured against a running stack ("castor login-cost").
     # Where there is no KMS on a network, the client the configuration names is decorated with one that
     # counts: one unwrap per data key and per process, and none per value.
-    Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\CountingKms:
+    App\Tests\Symfony\Functional\Doctrine\PersonalData\CountingKms:
         decorates: beffroi_test.kms
         arguments: ['@.inner']
         public: true

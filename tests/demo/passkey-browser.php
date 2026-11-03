@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * The passkey side of "castor demo --passkey" (castor.php, demo_passkey_check): a browser holding a
  * software authenticator, the SoftwareAuthenticator of the functional tests, driven over HTTP against
- * the running OP the way the script of the bundle drives the two ceremonies. The task is what runs
+ * the running OP the way the script of the provider drives the two ceremonies. The task is what runs
  * under castor, which loads no code of the monorepo; this script runs under the autoloader of the
  * monorepo, in one process, so that the key pair generated at the enrolment signs the assertion.
  *

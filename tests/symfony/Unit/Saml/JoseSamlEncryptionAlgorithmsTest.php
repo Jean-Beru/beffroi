@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Saml;
+namespace App\Tests\Symfony\Unit\Saml;
 
-use Beffroi\Bundle\Saml\JoseSamlEncryptionAlgorithms;
-use Beffroi\Bundle\Saml\SamlEncryption;
+use App\Saml\JoseSamlEncryptionAlgorithms;
+use App\Saml\SamlEncryption;
 use Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

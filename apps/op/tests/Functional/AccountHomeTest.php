@@ -10,9 +10,9 @@ use PHPUnit\Framework\Attributes\Test;
  * The home of the account as this application serves it (architecture §5.2): one card per page of the
  * account, which says the page it opens, what that page is for, and what the account holds there.
  *
- * What the pages themselves say is judged by the suite of the bundle, whose own home is a list. What is
+ * What the pages themselves say is judged by the suite of the provider, whose own home is a list. What is
  * here is what only this kernel can answer: that the arrangement of this application (App\Account\
- * AccountNavigation) names every page the bundle wires, and that a card carries the three things it says.
+ * AccountNavigation) names every page the provider wires, and that a card carries the three things it says.
  */
 final class AccountHomeTest extends BrowserTestCase
 {
@@ -38,7 +38,7 @@ final class AccountHomeTest extends BrowserTestCase
 
     /**
      * The one rule of the arrangement on this page, the counterpart of the column of pages: a page the
-     * bundle wires and this application does not name would be a card with a hole in it, so a section
+     * provider wires and this application does not name would be a card with a hole in it, so a section
      * added upstream is red here until it is arranged.
      */
     #[Test]

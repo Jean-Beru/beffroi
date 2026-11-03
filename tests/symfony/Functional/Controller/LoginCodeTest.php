@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use function array_map;
 use function base64_encode;
 use DateTimeImmutable;
-use Beffroi\Bundle\Http\PendingLoginStore;
+use App\Http\PendingLoginStore;
 use Beffroi\Core\Domain\Credential\Credential;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
 use Beffroi\Core\Domain\Credential\TotpCredential;

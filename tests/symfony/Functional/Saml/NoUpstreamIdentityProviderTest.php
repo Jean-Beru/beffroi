@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Saml;
+namespace App\Tests\Symfony\Functional\Saml;
 
-use Beffroi\Bundle\Command\SamlIdentityProviderListCommand;
-use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
+use App\Command\SamlIdentityProviderListCommand;
+use App\Tests\Symfony\Functional\Command\ConsoleTestCase;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Console\Command\Command;
 

@@ -10,7 +10,7 @@ use Beffroi\Oidc\Port\ServedResponseModesInterface;
 
 /**
  * The response modes a test wires exactly, under the names the ways of answering give themselves, including
- * a wiring the bundle would never produce, such as the same mode twice or a mode nothing else knows.
+ * a wiring the provider would never produce, such as the same mode twice or a mode nothing else knows.
  */
 final readonly class WiredModes implements ServedResponseModesInterface
 {

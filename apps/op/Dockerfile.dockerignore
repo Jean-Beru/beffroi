@@ -88,4 +88,6 @@ apps/op/config/packages/lab.yaml
 apps/op/config/routes/mtls.yaml
 apps/op/config/routes/fido_conformance.yaml
 apps/op/config/routes/ciba_conformance.yaml
+apps/op/config/beffroi/routes/fido-conformance.php
+apps/op/config/beffroi/routes/ciba-conformance.php
 apps/op/config/saml/

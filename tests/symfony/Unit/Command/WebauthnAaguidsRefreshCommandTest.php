@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Command;
+namespace App\Tests\Symfony\Unit\Command;
 
-use Beffroi\Bundle\Command\WebauthnAaguidsRefreshCommand;
-use Beffroi\Bundle\Webauthn\DocumentDownload;
+use App\Command\WebauthnAaguidsRefreshCommand;
+use App\Webauthn\DocumentDownload;
 use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticatorListStore;
 use Beffroi\Core\Tests\Fixture\AuthenticatorLists;
 use PHPUnit\Framework\Attributes\Test;

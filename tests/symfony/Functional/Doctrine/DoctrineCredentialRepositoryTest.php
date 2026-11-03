@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
 use DateTimeImmutable;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
-use Beffroi\Bundle\Doctrine\Type\BytesType;
+use App\Doctrine\Type\BytesType;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Bridge\Password\Algorithm\Bcrypt;

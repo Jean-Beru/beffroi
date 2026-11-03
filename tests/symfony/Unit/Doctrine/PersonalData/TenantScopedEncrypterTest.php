@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Doctrine\PersonalData;
+namespace App\Tests\Symfony\Unit\Doctrine\PersonalData;
 
-use Beffroi\Bundle\Doctrine\PersonalData\TenantScopedEncrypter;
-use Beffroi\Bundle\Tests\Fixture\AmbientTenant;
+use App\Doctrine\PersonalData\TenantScopedEncrypter;
+use App\Tests\Symfony\Fixture\AmbientTenant;
 use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;

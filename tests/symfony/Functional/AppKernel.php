@@ -2,21 +2,24 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional;
+namespace App\Tests\Symfony\Functional;
 
 use function dirname;
 use function sprintf;
+use App\DependencyInjection\BeffroiKernelTrait;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Component\Config\Loader\LoaderInterface;
 use Symfony\Component\HttpKernel\Kernel;
 use function sys_get_temp_dir;
 
 /**
- * Bundles are listed in tests/symfony/config/bundles.php, read by the kernel from the project directory.
+ * Bundles are listed in tests/symfony/config/bundles.php, read by the kernel from the project directory; the
+ * provider is registered by BeffroiKernelTrait, as the kernel of the application registers it.
  */
 final class AppKernel extends Kernel
 {
     use MicroKernelTrait;
+    use BeffroiKernelTrait;
 
     /**
      * The configuration of the suite, and the one file an environment of its own adds to it: a rule that
@@ -62,6 +65,6 @@ final class AppKernel extends Kernel
     {
         $token = getenv('TEST_TOKEN');
 
-        return sys_get_temp_dir() . '/beffroi-bundle-tests' . ($token === false || $token === '' ? '' : '-' . $token);
+        return sys_get_temp_dir() . '/beffroi-integration-tests' . ($token === false || $token === '' ? '' : '-' . $token);
     }
 }

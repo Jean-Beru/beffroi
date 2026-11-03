@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Command;
+namespace App\Tests\Symfony\Functional\Command;
 
-use Beffroi\Bundle\Command\ClientDeleteCommand;
-use Beffroi\Bundle\Command\ClientListCommand;
-use Beffroi\Bundle\Command\ClientShowCommand;
-use Beffroi\Bundle\Doctrine\Repository\DoctrineClientRepository;
+use App\Command\ClientDeleteCommand;
+use App\Command\ClientListCommand;
+use App\Command\ClientShowCommand;
+use App\Doctrine\Repository\DoctrineClientRepository;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRepository;
 use Beffroi\Oidc\Domain\Client\Registration\InitialAccessToken;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;

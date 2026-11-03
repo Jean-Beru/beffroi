@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctor;
+namespace App\Tests\Symfony\Functional\Doctor;
 
-use Beffroi\Bundle\Command\DoctorCommand;
-use Beffroi\Bundle\Doctor\Finding;
-use Beffroi\Bundle\Doctor\NotificationsLanePatience;
+use App\Command\DoctorCommand;
+use App\Doctor\Finding;
+use App\Doctor\NotificationsLanePatience;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -17,11 +17,11 @@ use Symfony\Component\HttpKernel\KernelInterface;
 /**
  * Issue #196: the retirement window of a signing key covers how long a logout token may still be on its
  * way, and that number is true of a deployment only because the lane the notifications are routed to is
- * driven by the policy of the bundle. Nothing else sees it: the bundle cannot refuse an application's
+ * driven by the policy of the provider. Nothing else sees it: the provider cannot refuse an application's
  * transport, and in a test environment every lane is synchronous, so no functional test of an application
  * covers the wiring. A line of YAML re-opens what #155 closed.
  *
- * So it is judged on containers and not on files: this kernel as the bundle wires it, where the contract
+ * So it is judged on containers and not on files: this kernel as the provider wires it, where the contract
  * of Messenger is prepended with the policy on that lane, and the same kernel in an environment that
  * routes the notifications somewhere of its own (config_test_own_notifications_lane.yml).
  *
@@ -41,7 +41,7 @@ final class DoctorTest extends KernelTestCase
     }
 
     #[Test]
-    public function theDoctorPassesOnTheLaneTheBundleWires(): void
+    public function theDoctorPassesOnTheLaneTheProviderWires(): void
     {
         // When
         $doctor = self::doctor('test');
@@ -65,7 +65,7 @@ final class DoctorTest extends KernelTestCase
         static::assertSame(
             [
                 true,
-                'A logout token is retried on "async_notifications" for 3 minutes 20 seconds and stops being verifiable after 3 minutes 55 seconds, both read from the schedule this provider publishes (Beffroi\Bundle\Messenger\NotificationRetryPolicy): a client that is restarting is reached, and nothing arrives after the "exp" of the token has passed or after the key that signed it has left the JWK Set.',
+                'A logout token is retried on "async_notifications" for 3 minutes 20 seconds and stops being verifiable after 3 minutes 55 seconds, both read from the schedule this provider publishes (App\Messenger\NotificationRetryPolicy): a client that is restarting is reached, and nothing arrives after the "exp" of the token has passed or after the key that signed it has left the JWK Set.',
             ],
             [$finding->green, $finding->lines[0] ?? null],
         );
@@ -95,7 +95,7 @@ final class DoctorTest extends KernelTestCase
         static::assertSame(
             [
                 false,
-                'This deployment retries a logout token on the transport "own_notifications" for 10 minutes. One stops being verifiable after 3 minutes 55 seconds, which is how far ahead its "exp" is set and how long the key that signed it stays in the JWK Set, both read from the schedule this provider publishes (Beffroi\Bundle\Messenger\NotificationRetryPolicy); that transport is retried by Symfony\Component\Messenger\Retry\MultiplierRetryStrategy instead.',
+                'This deployment retries a logout token on the transport "own_notifications" for 10 minutes. One stops being verifiable after 3 minutes 55 seconds, which is how far ahead its "exp" is set and how long the key that signed it stays in the JWK Set, both read from the schedule this provider publishes (App\Messenger\NotificationRetryPolicy); that transport is retried by Symfony\Component\Messenger\Retry\MultiplierRetryStrategy instead.',
             ],
             [$finding->green, $finding->lines[0] ?? null],
         );

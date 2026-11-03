@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use Beffroi\Oidc\Tests\Fixture\Secrets;
 use function array_filter;
@@ -12,9 +12,9 @@ use Closure;
 use DateTimeImmutable;
 use function explode;
 use function hash;
-use Beffroi\Bundle\Http\BrowserSession;
-use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
+use App\Http\BrowserSession;
+use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
+use App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler;
 use Beffroi\Core\Application\Key\KeyRetirement;
 use Beffroi\Core\Application\Key\KeyStaging;
 use Beffroi\Core\Application\Key\KeyTakeOver;
@@ -457,7 +457,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
 
     /**
      * The HTTP session the browser holds, read from the storage of the kernel: what the firewall and the
-     * bundle wrote in it.
+     * provider wrote in it.
      */
     protected function readHttpSession(): SessionInterface
     {

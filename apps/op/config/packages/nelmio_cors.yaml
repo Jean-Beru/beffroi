@@ -14,7 +14,7 @@
 # interaction plane, and none of them is below.
 #
 # "*" is written twice per endpoint, and both lines are needed for one answer. "allow_origin" is what the
-# origin of a request is compared against, and the bundle then answers with that origin rather than with a
+# origin of a request is compared against, and the provider then answers with that origin rather than with a
 # star; "forced_allow_origin_value" is what makes the answer the star itself. That is what a provider wants:
 # the answer of these endpoints then does not depend on who asked, so no cache in front of it has to be
 # told to vary on the origin, and no cache that was not told hands the answer of one client to another.

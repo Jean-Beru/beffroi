@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use Beffroi\Bundle\Http\BrowserPreferences;
+use App\Http\BrowserPreferences;
 use function implode;
 use function parse_str;
 use function parse_url;
 use const PHP_URL_QUERY;
 use function sprintf;
-use Beffroi\Bundle\Http\FormTarget;
+use App\Http\FormTarget;
 use Beffroi\Oidc\Domain\Authorization\FormPostResponse;
 use Beffroi\Oidc\Domain\Client\RedirectUri;
 use Nelmio\SecurityBundle\Test\SecurityHeadersAssertionsTrait;
@@ -67,7 +67,7 @@ final class SecurityHeadersTest extends BrowserTestCase
     {
         yield 'the discovery document of the protocol plane' => ['/.well-known/openid-configuration'];
         yield 'a page of the interaction plane' => ['/login'];
-        yield 'a script the bundle serves' => ['/passkey.js'];
+        yield 'a script the provider serves' => ['/passkey.js'];
     }
 
     /**
@@ -175,7 +175,7 @@ final class SecurityHeadersTest extends BrowserTestCase
      * deployment loads. Neither "unsafe-inline" nor "unsafe-eval" is one of them, the level 1 fallback that
      * would add the first being off.
      *
-     * On a page of the interaction plane as well, which is the one place two policies meet: the bundle
+     * On a page of the interaction plane as well, which is the one place two policies meet: the provider
      * gives every one of them the floor a deployment that configures nothing still needs, and that floor
      * gives way to this one (App\Http\DeploymentPolicyPrevails).
      */
@@ -226,12 +226,12 @@ final class SecurityHeadersTest extends BrowserTestCase
     /**
      * CSP Level 3 §6.1, §6.3.2: a page of the interaction plane that may send the browser to a client
      * names the origin of that client among the form targets of the policy this deployment writes
-     * (Beffroi\Bundle\Http\FormTarget), a browser checking the directive over the whole redirect chain of
+     * (App\Http\FormTarget), a browser checking the directive over the whole redirect chain of
      * a submission and the last hop of that chain being the answer carried to the client.
      *
      * What is read here is the order of the two, which is what the page depends on: the policy of this
      * deployment is written on the answer, and the page that may answer a client completes the directive
-     * it wrote. The pages themselves are walked by the suite of the bundle, on a kernel of their own.
+     * it wrote. The pages themselves are walked by the suite of the provider, on a kernel of their own.
      */
     #[Test]
     public function itNamesTheClientAPageMayAnswerAmongTheFormTargetsOfThePolicyItWrites(): void

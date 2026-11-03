@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Command;
+namespace App\Tests\Symfony\Functional\Command;
 
 use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;

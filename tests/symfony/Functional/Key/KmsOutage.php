@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Key;
+namespace App\Tests\Symfony\Functional\Key;
 
 use LogicException;
 use SensitiveParameter;

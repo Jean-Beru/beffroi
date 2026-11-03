@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Saml;
+namespace App\Tests\Symfony\Unit\Saml;
 
-use Beffroi\Bundle\Http\StepUpOffer;
-use Beffroi\Bundle\Saml\UpstreamLoginRequirement;
+use App\Http\StepUpOffer;
+use App\Saml\UpstreamLoginRequirement;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Beffroi\Core\Domain\Identity\User;

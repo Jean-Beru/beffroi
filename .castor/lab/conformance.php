@@ -117,8 +117,8 @@ const CONFORMANCE_CIBA_ACR_VALUE = '1';
 
 /**
  * Where the suite posts the answer of the user when there is nobody to give one (its
- * "automated_ciba_approval_url"): the endpoint of the bundle an application imports in development only
- * (src/symfony/config/routes/ciba-conformance.php), which signs the user in with their password and
+ * "automated_ciba_approval_url"): the endpoint of the provider an application imports in development only
+ * (apps/op/config/beffroi/routes/ciba-conformance.php), which signs the user in with their password and
  * answers the request the suite names. "{auth_req_id}" and "{action}" are what the suite substitutes,
  * itself, in the URL it was given; everything else is filled here.
  *
@@ -241,7 +241,7 @@ const CONFORMANCE_TOKEN_ENDPOINT_STATUS = 'FAILURE CheckTokenEndpointHttpStatus2
  * the request is read: an object that is refused is an object that was not read, so the answer is a page
  * and never a redirection (RequestObjectResolver::resolve()), the browser of the suite waits for a
  * callback that never comes, and the provider's own answer is in no artefact of a run. What each one is
- * answered is read in a functional test of the bundle and nowhere else
+ * answered is read in a functional test of the provider and nowhere else
  * (RegisteredClientRequestObjectTest).
  *
  * "oidcc-request-uri-signed-rs256" signs the parameters of the authorization request plus "aud" and "iss"
@@ -978,7 +978,7 @@ function conformance_server(string $suite): array
 
 /**
  * Puts the OP back in the state the plans were written against: the tables dropped, the migrations of the
- * bundle replayed and "castor provision" run again, which leaves the development user with a password and
+ * provider replayed and "castor provision" run again, which leaves the development user with a password and
  * nothing else. A second factor or a passkey enrolled by hand (a run of "castor demo --passkey", an
  * afternoon on the account pages) stops the scripted browser of the suite on the page that asks for it,
  * and every module of every plan fails on the same line, "unexpected url for task: Verify complete". The

@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Saml;
+namespace App\Tests\Symfony\Functional\Saml;
 
-use Beffroi\Bundle\Command\SamlServiceProviderForgetCommand;
-use Beffroi\Bundle\Command\SamlServiceProviderRefreshCommand;
-use Beffroi\Bundle\Doctrine\TenantProvider;
-use Beffroi\Bundle\Message\RefreshTheSamlMetadata;
-use Beffroi\Bundle\MessageHandler\RefreshTheSamlMetadataHandler;
-use Beffroi\Bundle\Tests\Fixture\RecordedMessages;
-use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
+use App\Command\SamlServiceProviderForgetCommand;
+use App\Command\SamlServiceProviderRefreshCommand;
+use App\Doctrine\TenantProvider;
+use App\Message\RefreshTheSamlMetadata;
+use App\MessageHandler\RefreshTheSamlMetadataHandler;
+use App\Tests\Symfony\Fixture\RecordedMessages;
+use App\Tests\Symfony\Functional\Command\ConsoleTestCase;
 use Beffroi\Saml\Application\Metadata\MetadataRefresh;
 use Beffroi\Saml\Domain\Metadata\PeerInterface;
 use Beffroi\Saml\Domain\Metadata\AcceptedMetadata;

@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Saml;
+namespace App\Tests\Symfony\Functional\Saml;
 
 use function array_map;
-use Beffroi\Bundle\Command\SamlIdentityProviderForgetCommand;
-use Beffroi\Bundle\Command\SamlIdentityProviderListCommand;
-use Beffroi\Bundle\Command\SamlIdentityProviderRefreshCommand;
-use Beffroi\Bundle\Doctrine\TenantProvider;
-use Beffroi\Bundle\Message\RefreshTheSamlMetadata;
-use Beffroi\Bundle\Saml\IdentityProviderSegment;
-use Beffroi\Bundle\MessageHandler\RefreshTheSamlMetadataHandler;
-use Beffroi\Bundle\Tests\Fixture\RecordedMessages;
-use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
+use App\Command\SamlIdentityProviderForgetCommand;
+use App\Command\SamlIdentityProviderListCommand;
+use App\Command\SamlIdentityProviderRefreshCommand;
+use App\Doctrine\TenantProvider;
+use App\Message\RefreshTheSamlMetadata;
+use App\Saml\IdentityProviderSegment;
+use App\MessageHandler\RefreshTheSamlMetadataHandler;
+use App\Tests\Symfony\Fixture\RecordedMessages;
+use App\Tests\Symfony\Functional\Command\ConsoleTestCase;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Saml\Application\Metadata\MetadataRefresh;
 use Beffroi\Saml\Domain\Metadata\PeerInterface;

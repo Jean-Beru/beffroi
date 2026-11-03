@@ -8,7 +8,7 @@ use Beffroi\Oidc\Domain\EndSession\LogoutChannel;
 use Beffroi\Oidc\Port\ServedLogoutChannelsInterface;
 
 /**
- * The ways of telling a client that a session ended an integration wired: both, as the bundle wires
+ * The ways of telling a client that a session ended an integration wired: both, as the provider wires
  * since spike 4, one of them, or neither, as a deployment that tells nobody.
  */
 final readonly class ServedChannels implements ServedLogoutChannelsInterface

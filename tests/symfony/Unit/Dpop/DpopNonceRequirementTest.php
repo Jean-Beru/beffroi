@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Dpop;
+namespace App\Tests\Symfony\Unit\Dpop;
 
-use Beffroi\Bundle\Dpop\DpopNonceRequirement;
+use App\Dpop\DpopNonceRequirement;
 use Beffroi\Oidc\Bridge\Null\NoDpopNonce;
 use Beffroi\Oidc\Port\DpopNonceInterface;
 use Beffroi\Oidc\Tests\Fixture\FakeDpopNonce;

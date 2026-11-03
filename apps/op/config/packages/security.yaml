@@ -1,14 +1,14 @@
-# The firewall of the interaction pages (architecture §5.4): the users of the bundle, never a User of this
-# application (decision 0002); the three logins of the bundle, each an authenticator of its own, each
+# The firewall of the interaction pages (architecture §5.4): the users of the provider, never a User of this
+# application (decision 0002); the three logins of the provider, each an authenticator of its own, each
 # verifying what it reads through a use case of the core and sending the browser back to the page of its
-# interaction. The hasher of the users of the bundle is declared by the bundle.
+# interaction. The hasher of the users of the provider is declared by the provider.
 #
 # The protocol plane (discovery, JWKS, token, UserInfo) sits outside of any firewall: nothing there reads
 # a cookie or starts a session, a bearer token is checked by the endpoint itself.
 security:
     providers:
         beffroi:
-            id: Beffroi\Bundle\Security\IdentityUserProvider
+            id: App\Security\IdentityUserProvider
 
     firewalls:
         dev:
@@ -21,20 +21,20 @@ security:
         beffroi_interaction:
             lazy: true
             provider: beffroi
-            user_checker: Beffroi\Bundle\Security\UserChecker
-            # The four logins of the bundle, each an authenticator of its own: the form of the login
+            user_checker: App\Security\UserChecker
+            # The four logins of the provider, each an authenticator of its own: the form of the login
             # page, the assertion that page posts, the code posted by the code page, and the response an
             # upstream identity provider posts to the assertion consumer service (beffroi/saml S-52),
             # with one LoginSuccessListener for the four (architecture §5.4). Each hands what it reads to a use
             # case of the core, where the order of a login is written once and nothing of it is written
             # a second time here (issue #130), which is why the form login of Symfony is not wired: it
             # would verify a hash the core has verified. The entry point is the login page.
-            entry_point: Beffroi\Bundle\Security\PasswordLoginAuthenticator
+            entry_point: App\Security\PasswordLoginAuthenticator
             custom_authenticators:
-                - Beffroi\Bundle\Security\PasswordLoginAuthenticator
-                - Beffroi\Bundle\Security\PasskeyLoginAuthenticator
-                - Beffroi\Bundle\Security\TotpLoginAuthenticator
-                - Beffroi\Bundle\Security\UpstreamAssertionAuthenticator
+                - App\Security\PasswordLoginAuthenticator
+                - App\Security\PasskeyLoginAuthenticator
+                - App\Security\TotpLoginAuthenticator
+                - App\Security\UpstreamAssertionAuthenticator
 
     # The pages decide for themselves whether a session is needed (the login page shows its form, the
     # consent page sends a browser without a session back to the login): no rule here.

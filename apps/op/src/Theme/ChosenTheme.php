@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Theme;
 
-use Beffroi\Bundle\Http\BrowserPreferences;
+use App\Http\BrowserPreferences;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -35,7 +35,7 @@ final readonly class ChosenTheme
 
     /**
      * The cookie that carries this choice and leaves the language of this browser as it was: the form of
-     * the theme posts one thing, and the bundle writes the whole cookie from the request.
+     * the theme posts one thing, and the provider writes the whole cookie from the request.
      */
     public function cookie(Request $request, Theme $theme): Cookie
     {

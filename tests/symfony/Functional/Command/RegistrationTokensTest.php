@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Command;
+namespace App\Tests\Symfony\Functional\Command;
 
-use Beffroi\Bundle\Command\ClientTokenIssueCommand;
-use Beffroi\Bundle\Command\ClientTokenListCommand;
-use Beffroi\Bundle\Command\ClientTokenRevokeCommand;
+use App\Command\ClientTokenIssueCommand;
+use App\Command\ClientTokenListCommand;
+use App\Command\ClientTokenRevokeCommand;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use Beffroi\Oidc\Port\IssuedInitialAccessTokensInterface;
 use function json_encode;

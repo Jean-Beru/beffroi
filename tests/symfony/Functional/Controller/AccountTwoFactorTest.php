@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use DateTimeImmutable;
-use Beffroi\Bundle\Http\TotpProvisioningStore;
+use App\Http\TotpProvisioningStore;
 use Beffroi\Core\Domain\Credential\TotpCredential;
 use Beffroi\Core\Domain\Credential\TotpSecret;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
@@ -66,7 +66,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
     }
 
     /**
-     * The enrolment page: the QR code drawn by the bundle as an SVG embedded in the page, the key for a
+     * The enrolment page: the QR code drawn by the provider as an SVG embedded in the page, the key for a
      * manual entry, the form of the first code; nothing in the rows yet.
      */
     #[Test]
@@ -531,11 +531,11 @@ final class AccountTwoFactorTest extends PasskeyTestCase
     }
 
     /**
-     * The script is served by the bundle itself, under the path of its pages, so an application that
+     * The script is served by the provider itself, under the path of its pages, so an application that
      * allows its own origin and nothing else has nothing to change.
      */
     #[Test]
-    public function theScriptThatCopiesIsServedByTheBundle(): void
+    public function theScriptThatCopiesIsServedByTheProvider(): void
     {
         // When
         $this->browser->request('GET', '/copy.js');

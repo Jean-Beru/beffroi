@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData;
+namespace App\Tests\Symfony\Functional\Doctrine\PersonalData;
 
 use Doctrine\DBAL\Connection;
 use function get_debug_type;

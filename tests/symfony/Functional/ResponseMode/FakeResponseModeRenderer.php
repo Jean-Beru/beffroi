@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\ResponseMode;
+namespace App\Tests\Symfony\Functional\ResponseMode;
 
-use Beffroi\Bundle\Http\ResponseMode\AuthorizationResponseRendererInterface;
+use App\Http\ResponseMode\AuthorizationResponseRendererInterface;
 use Beffroi\Oidc\Domain\Authorization\AuthorizationAnswer;
 use Symfony\Component\HttpFoundation\Response;
 

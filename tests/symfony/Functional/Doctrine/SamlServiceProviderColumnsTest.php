@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\RawRows;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\SealedRows;
 use Beffroi\Saml\Domain\Metadata\AcceptedMetadata;
 use Beffroi\Saml\Domain\ServiceProvider\AcceptedServiceProviderMetadata;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;

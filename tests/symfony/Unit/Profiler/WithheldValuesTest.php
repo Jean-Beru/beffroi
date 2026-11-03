@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Profiler;
+namespace App\Tests\Symfony\Unit\Profiler;
 
-use Beffroi\Bundle\Profiler\WithheldValues;
+use App\Profiler\WithheldValues;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

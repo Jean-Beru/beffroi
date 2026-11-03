@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Security;
+namespace App\Tests\Symfony\Unit\Security;
 
-use Beffroi\Bundle\Http\Account\BreachedPasswordDemand;
-use Beffroi\Bundle\Http\InteractionPages;
-use Beffroi\Bundle\Http\LoginTarget;
-use Beffroi\Bundle\Security\InteractionLoginHandler;
-use Beffroi\Bundle\Security\SecurityUser;
+use App\Http\Account\BreachedPasswordDemand;
+use App\Http\InteractionPages;
+use App\Http\LoginTarget;
+use App\Security\InteractionLoginHandler;
+use App\Security\SecurityUser;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;

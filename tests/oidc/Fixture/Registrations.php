@@ -73,7 +73,7 @@ final class Registrations
     }
 
     /**
-     * The one thing that reads a registration the provider is about to write, wired as the bundle wires
+     * The one thing that reads a registration the provider is about to write, wired as the provider wires
      * it: the reader, what the tenant offers, what the sector of a client has to say of it, and what draws
      * and keeps a secret.
      */

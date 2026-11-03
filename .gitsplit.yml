@@ -18,8 +18,6 @@ splits:
     target: "https://${GH_TOKEN}@github.com/beffroi-auth/core.git"
   - prefix: "src/oidc"
     target: "https://${GH_TOKEN}@github.com/beffroi-auth/oidc.git"
-  - prefix: "src/symfony"
-    target: "https://${GH_TOKEN}@github.com/beffroi-auth/symfony-bundle.git"
   - prefix: "src/xml-security"
     target: "https://${GH_TOKEN}@github.com/beffroi-auth/xml-security.git"
   - prefix: "src/saml2-model"

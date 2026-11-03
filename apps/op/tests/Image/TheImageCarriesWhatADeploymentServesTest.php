@@ -114,7 +114,7 @@ final class TheImageCarriesWhatADeploymentServesTest extends TestCase
 
     /**
      * What is compared is the YAML configuration: a variable production reads in PHP alone (APP_SHARE_DIR of the
-     * kernel, BEFFROI_PLANE of the bundle) is read by no file here, and a file of another environment that read it
+     * kernel, BEFFROI_PLANE of the provider) is read by no file here, and a file of another environment that read it
      * would have it yielded; a variable the castor tasks or the suite read outside it (BEFFROI_DEV_USER_PASSWORD,
      * KERNEL_CLASS) is not yielded.
      *

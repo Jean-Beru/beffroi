@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
@@ -22,7 +22,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * The page of the passkeys of the signed-in user (architecture §5.2): the list, the enrolment through the
- * ceremony of the core, the revocation, the script of the bundle. The authenticator of the browser is a
+ * ceremony of the core, the revocation, the script of the provider. The authenticator of the browser is a
  * software one.
  */
 final class AccountPasskeysTest extends PasskeyTestCase
@@ -592,10 +592,10 @@ final class AccountPasskeysTest extends PasskeyTestCase
     }
 
     /**
-     * Architecture §5.2: the one script of the bundle, served by the bundle, cacheable.
+     * Architecture §5.2: the one script of the provider, served by the provider, cacheable.
      */
     #[Test]
-    public function theScriptIsServedByTheBundle(): void
+    public function theScriptIsServedByTheProvider(): void
     {
         // When
         $this->browser->request('GET', '/passkey.js');

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Controller;
+namespace App\Tests\Symfony\Unit\Controller;
 
-use Beffroi\Bundle\Controller\PasskeyLoginController;
-use Beffroi\Bundle\Http\InteractionPages;
+use App\Controller\PasskeyLoginController;
+use App\Http\InteractionPages;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

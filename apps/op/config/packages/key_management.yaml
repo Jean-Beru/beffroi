@@ -1,4 +1,4 @@
-# The KMS clients of the deployment. The bundle seals with the one "beffroi.keys.kms" names and builds none
+# The KMS clients of the deployment. The provider seals with the one "beffroi.keys.kms" names and builds none
 # itself, so what that client is, one provider or several, is decided here and nowhere else: a DSN, or the
 # members of a composite client that wraps under each of them and reads back through the first to answer.
 #
@@ -10,7 +10,7 @@
 #
 # A second client is declared beside the first because a provider migration is a run with both configured at
 # once: each data key row says which client wrapped it, and "beffroi:data-keys:rewrap --from=op --to=second"
-# moves them over without reading a single sealed value. The bundle seals with "op" and never with this one,
+# moves them over without reading a single sealed value. The provider seals with "op" and never with this one,
 # so a deployment that moves nothing leaves BEFFROI_KMS_DSN_SECOND empty and the service is never built. On the
 # development stack "castor provision --kms sodium" writes it, which is what "castor rewrap-live" needs.
 key_management:

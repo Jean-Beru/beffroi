@@ -20,7 +20,7 @@ use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
 /**
  * The one type of authorization detail the development stack serves (RFC 9396 §2), the one of the API of the
- * demonstration, which is what "castor demo --rar" and the forge of oidc-demo ask for. The bundle wires none and
+ * demonstration, which is what "castor demo --rar" and the forge of oidc-demo ask for. The provider wires none and
  * cannot: a detail says what a client may do, to what and how much in the words of one domain, so a type belongs
  * to a deployment and not to the provider. This one belongs to the lab: wired in development alone
  * (config/packages/lab.yaml), and left out of the image with the rest of src/Lab/, so that a deployment of the

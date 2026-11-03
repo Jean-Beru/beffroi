@@ -13,7 +13,7 @@ use const JSON_THROW_ON_ERROR;
 
 /**
  * The authorization details the tests speak of (RFC 9396 §2), and the wirings they read them from. The
- * bundle wires no type, no type of detail being universal, so every test that reads one wires the invented
+ * provider wires no type, no type of detail being universal, so every test that reads one wires the invented
  * type of InventedAuthorizationDetailType, which is exactly what a deployment does.
  */
 final readonly class AuthorizationDetailTypes
@@ -37,7 +37,7 @@ final readonly class AuthorizationDetailTypes
     }
 
     /**
-     * A provider wired with no type at all, which is what the bundle ships.
+     * A provider wired with no type at all, which is what the provider ships.
      */
     public static function none(): ServedAuthorizationDetailTypes
     {

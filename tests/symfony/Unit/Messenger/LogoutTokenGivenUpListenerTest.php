@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Messenger;
+namespace App\Tests\Symfony\Unit\Messenger;
 
-use Beffroi\Bundle\Message\AdvanceKeyLifecycle;
-use Beffroi\Bundle\Message\SendLogoutToken;
-use Beffroi\Bundle\Messenger\LogoutTokenGivenUpListener;
+use App\Message\AdvanceKeyLifecycle;
+use App\Message\SendLogoutToken;
+use App\Messenger\LogoutTokenGivenUpListener;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Oidc\Domain\Event\LogoutTokenGivenUp;

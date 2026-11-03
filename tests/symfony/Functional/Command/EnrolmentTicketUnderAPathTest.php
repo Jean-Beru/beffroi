@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Command;
+namespace App\Tests\Symfony\Functional\Command;
 
-use Beffroi\Bundle\Command\UserEnrolmentTicketCommand;
+use App\Command\UserEnrolmentTicketCommand;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Issue #841: the link of an enrolment ticket on a deployment whose issuer has a path, the routes of the bundle
+ * Issue #841: the link of an enrolment ticket on a deployment whose issuer has a path, the routes of the provider
  * mounted under it as RouterEndpointLocator requires (config_test_issuer_with_a_path.yml). The path the router
  * generates for a route already carries that prefix, so the link is the origin of the issuer followed by it,
  * never the issuer followed by it.

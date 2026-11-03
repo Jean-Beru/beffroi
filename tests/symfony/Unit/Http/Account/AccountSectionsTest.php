@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Http\Account;
+namespace App\Tests\Symfony\Unit\Http\Account;
 
 use function array_map;
-use Beffroi\Bundle\Http\Account\AccountSectionInterface;
-use Beffroi\Bundle\Http\Account\AccountSections;
-use Beffroi\Bundle\Http\Account\AccountSectionState;
+use App\Http\Account\AccountSectionInterface;
+use App\Http\Account\AccountSections;
+use App\Http\Account\AccountSectionState;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use LogicException;

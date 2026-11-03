@@ -9,9 +9,9 @@ use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use function hash;
 use function implode;
-use Beffroi\Bundle\Doctrine\TenantProvider;
-use Beffroi\Bundle\Doctrine\TenantSynchronizer;
-use Beffroi\Bundle\Http\BrowserSession;
+use App\Doctrine\TenantProvider;
+use App\Doctrine\TenantSynchronizer;
+use App\Http\BrowserSession;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
@@ -36,10 +36,10 @@ use function time;
 /**
  * A browser on the kernel of this application (issue beffroi-auth/beffroi#521), which is the kernel a
  * deployment boots: its own configuration, its own routes, its own templates, PostgreSQL and the KMS that
- * seals the personal columns. What is judged here is what this application adds to the bundle; every rule
+ * seals the personal columns. What is judged here is what this application adds to the provider; every rule
  * of the provider is judged by the three suites of the monorepo, on a kernel of their own.
  *
- * The schema is not created here. The migrations of the bundle write it, once, before the suite runs
+ * The schema is not created here. The migrations of the provider write it, once, before the suite runs
  * ("castor app-phpunit"), as they write it on a deployment; what every test gets is a database emptied of
  * its rows and the tenant of the configuration synchronised again, so that a test starts where an
  * application starts after its first provisioning.
@@ -57,7 +57,7 @@ abstract class BrowserTestCase extends WebTestCase
         $this->browser = static::createClient([], ['HTTPS' => 'on']);
         // One kernel for the whole test, where a KernelBrowser reboots one per request by default: a
         // service then keeps what it holds from one request to the next, which is what the provider does
-        // in production (the same reason as the suite of the bundle, issue beffroi-auth/beffroi#510).
+        // in production (the same reason as the suite of the provider, issue beffroi-auth/beffroi#510).
         $this->browser->disableReboot();
         self::emptyTheDatabase();
     }

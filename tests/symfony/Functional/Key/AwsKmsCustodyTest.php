@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Key;
+namespace App\Tests\Symfony\Functional\Key;
 
 use AsyncAws\Core\Configuration;
 use AsyncAws\Core\Exception\Http\ClientException;
@@ -10,7 +10,7 @@ use AsyncAws\Kms\Input\DecryptRequest;
 use AsyncAws\Kms\KmsClient;
 use function base64_encode;
 use function getenv;
-use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
+use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
 use Beffroi\Core\Application\Key\KeyTakeOver;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Port\TenantKeyRepositoryInterface;

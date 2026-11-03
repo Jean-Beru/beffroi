@@ -37,15 +37,15 @@ concurrency:
 # apps/op/config/reference.php and apps/op/config/schema.json are written by the kernel when it compiles
 # its container, from the configuration trees of the bundles it has installed, and both are committed: an
 # editor reads them to complete a "beffroi.*" key, a reader of the repository reads them to know what the
-# bundle takes. Nothing else writes them, so the check boots the application and fails when either file
+# provider takes. Nothing else writes them, so the check boots the application and fails when either file
 # comes back different, naming it and printing the diff ("castor config-reference", .castor/stack/qa.php).
-# The three linters then read the container that step compiled: a template of the bundle this application
+# The three linters then read the container that step compiled: a template of the provider this application
 # overrides, a configuration file of its own, a catalogue it adds to.
 #
 # Then the suite of the application (issue #521), which is why this job carries a PostgreSQL service. The
 # kernel of apps/op is the one a deployment boots, and the page this application owns writes a person: a
 # sealed column needs the KMS of apps/op/.env.test, and every column needs a database that answers, so a
-# functional test here cannot be an in-memory one. The migrations of the bundle write the schema before the
+# functional test here cannot be an in-memory one. The migrations of the provider write the schema before the
 # first test, as they write it on a deployment, which also makes this the one run of the repository that
 # plays them against PostgreSQL without being asked by hand. The suite judges what only this kernel can
 # answer, its own configuration, its own routes and its own templates; the rules of the provider are judged
@@ -169,7 +169,7 @@ jobs:
           php bin/console lint:twig templates
           php bin/console lint:yaml config
           php bin/console lint:xliff translations src/Lab/translations
-      # The migrations of the bundle, then the suite: both are in the task, so the command here is the
+      # The migrations of the provider, then the suite: both are in the task, so the command here is the
       # command on a desk.
       - name: "The suite of the application, on its own kernel"
         run: castor app-phpunit

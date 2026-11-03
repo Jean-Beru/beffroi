@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Saml;
+namespace App\Tests\Symfony\Functional\Saml;
 
-use Beffroi\Bundle\Key\KmsUnavailableListener;
-use Beffroi\Bundle\Saml\SamlSigning;
-use Beffroi\Bundle\Tests\Functional\Command\ConsoleTestCase;
-use Beffroi\Bundle\Tests\Functional\Controller\TokensOfASession;
-use Beffroi\Bundle\Tests\Functional\Key\KmsOutage;
-use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
+use App\Key\KmsUnavailableListener;
+use App\Saml\SamlSigning;
+use App\Tests\Symfony\Functional\Command\ConsoleTestCase;
+use App\Tests\Symfony\Functional\Controller\TokensOfASession;
+use App\Tests\Symfony\Functional\Key\KmsOutage;
+use App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\SessionEnd;

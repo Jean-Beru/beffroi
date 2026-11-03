@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
-use Beffroi\Bundle\Http\Account\AsksForARecentProofInterface;
-use Beffroi\Bundle\Http\Account\ReachedOnTheSessionAloneInterface;
-use Beffroi\Bundle\Http\AccountAccess;
-use Beffroi\Bundle\Http\LoginTarget;
-use Beffroi\Bundle\Http\RecentLogin;
+use App\Http\Account\AsksForARecentProofInterface;
+use App\Http\Account\ReachedOnTheSessionAloneInterface;
+use App\Http\AccountAccess;
+use App\Http\LoginTarget;
+use App\Http\RecentLogin;
 use Beffroi\Core\Domain\Event\CredentialRevoked;
 use Beffroi\Core\Domain\Session\SessionEnd;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;

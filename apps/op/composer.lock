@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "cc94601352c6e429aef5f639b2a2bcf2",
+    "content-hash": "7c91fd7e708a5172516a4f61c2406246",
     "packages": [
         {
             "name": "async-aws/core",
@@ -197,7 +197,7 @@
         },
         {
             "name": "beffroi/core",
-            "version": "dev-main",
+            "version": "0.0.x-dev",
             "dist": {
                 "type": "path",
                 "url": "../../src/core",
@@ -248,7 +248,7 @@
         },
         {
             "name": "beffroi/oidc",
-            "version": "dev-main",
+            "version": "0.0.x-dev",
             "dist": {
                 "type": "path",
                 "url": "../../src/oidc",
@@ -291,7 +291,7 @@
         },
         {
             "name": "beffroi/saml",
-            "version": "dev-main",
+            "version": "0.0.x-dev",
             "dist": {
                 "type": "path",
                 "url": "../../src/saml",
@@ -341,7 +341,7 @@
         },
         {
             "name": "beffroi/saml2-bindings",
-            "version": "dev-main",
+            "version": "0.0.x-dev",
             "dist": {
                 "type": "path",
                 "url": "../../src/saml2-bindings",
@@ -391,7 +391,7 @@
         },
         {
             "name": "beffroi/saml2-model",
-            "version": "dev-main",
+            "version": "0.0.x-dev",
             "dist": {
                 "type": "path",
                 "url": "../../src/saml2-model",
@@ -439,91 +439,8 @@
             }
         },
         {
-            "name": "beffroi/symfony-bundle",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "../../src/symfony",
-                "reference": "92387dd5f4a46ce11fab1dc2b706178fd0e308dc"
-            },
-            "require": {
-                "bacon/bacon-qr-code": "^3.0",
-                "beffroi/core": "self.version",
-                "beffroi/oidc": "self.version",
-                "beffroi/saml": "self.version",
-                "doctrine/dbal": "^4.4",
-                "doctrine/doctrine-bundle": "^3.3",
-                "doctrine/migrations": "^3.9",
-                "doctrine/orm": "^3.7",
-                "ext-intl": "*",
-                "ext-zip": "*",
-                "maxmind-db/reader": "^1.14",
-                "php": ">=8.4",
-                "psr/event-dispatcher": "^1.0",
-                "spomky-labs/web-push-lib": "^3.2",
-                "symfony/clock": "8.2.*",
-                "symfony/config": "8.2.*",
-                "symfony/console": "^8.1",
-                "symfony/dependency-injection": "8.2.*",
-                "symfony/doctrine-bridge": "8.2.*",
-                "symfony/doctrine-dbal-key-management": "8.2.*",
-                "symfony/doctrine-messenger": "8.2.*",
-                "symfony/doctrine-orm-key-management": "8.2.*",
-                "symfony/event-dispatcher": "8.2.*",
-                "symfony/framework-bundle": "8.2.*",
-                "symfony/http-client": "8.2.*",
-                "symfony/http-foundation": "8.2.*",
-                "symfony/http-kernel": "8.2.*",
-                "symfony/key-management": "8.2.*",
-                "symfony/messenger": "8.2.*",
-                "symfony/password-hasher": "^8.1",
-                "symfony/rate-limiter": "8.2.*",
-                "symfony/routing": "8.2.*",
-                "symfony/scheduler": "8.2.*",
-                "symfony/security-bundle": "8.2.*",
-                "symfony/security-core": "8.2.*",
-                "symfony/security-csrf": "8.2.*",
-                "symfony/security-http": "8.2.*",
-                "symfony/translation": "8.2.*",
-                "symfony/twig-bridge": "8.2.*",
-                "symfony/twig-bundle": "8.2.*",
-                "symfony/uid": "8.2.*",
-                "twig/twig": "^3.21"
-            },
-            "type": "symfony-bundle",
-            "extra": {
-                "thanks": {
-                    "name": "beffroi/framework"
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Beffroi\\Bundle\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "All contributors"
-                }
-            ],
-            "description": "Symfony integration of the IdP: configuration, controllers, security, persistence, login and consent pages.",
-            "keywords": [
-                "identity-provider",
-                "oauth2",
-                "openid-connect",
-                "symfony",
-                "symfony-bundle"
-            ],
-            "transport-options": {
-                "relative": true
-            }
-        },
-        {
             "name": "beffroi/xml-security",
-            "version": "dev-main",
+            "version": "0.0.x-dev",
             "dist": {
                 "type": "path",
                 "url": "../../src/xml-security",
@@ -9563,8 +9480,7 @@
                     "type": "patreon"
                 }
             ],
-            "time": "2026-11-03T09:21:08+00:00",
-            "published-time": "2026-11-03T09:27:24+00:00"
+            "time": "2026-11-03T09:21:08+00:00"
         },
         {
             "name": "web-token/jwt-library",
@@ -10108,15 +10024,19 @@
     "aliases": [],
     "minimum-stability": "dev",
     "stability-flags": {
-        "beffroi/symfony-bundle": 20
+        "beffroi/core": 20,
+        "beffroi/oidc": 20,
+        "beffroi/saml": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
         "php": ">=8.4",
         "ext-ctype": "*",
-        "ext-iconv": "*"
+        "ext-iconv": "*",
+        "ext-intl": "*",
+        "ext-zip": "*"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.11.0"
+    "plugin-api-version": "2.9.0"
 }

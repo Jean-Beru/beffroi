@@ -25,7 +25,7 @@ parameters:
 			path: ../tests/symfony/Functional/Controller/EncryptedForTheClientTest.php
 
 		-
-			rawMessage: 'Method Beffroi\Bundle\Tests\Functional\Controller\EncryptedForTheClientTest::open() should return array{header: array<string, mixed>, payload: string} but returns array{header: array, payload: string}.'
+			rawMessage: 'Method App\Tests\Symfony\Functional\Controller\EncryptedForTheClientTest::open() should return array{header: array<string, mixed>, payload: string} but returns array{header: array, payload: string}.'
 			identifier: return.type
 			count: 1
 			path: ../tests/symfony/Functional/Controller/EncryptedForTheClientTest.php

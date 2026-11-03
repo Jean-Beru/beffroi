@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Fixture;
+namespace App\Tests\Symfony\Fixture;
 
 use function array_is_list;
 use function bin2hex;
@@ -33,7 +33,7 @@ use function substr;
 use Beffroi\Core\Exception\InvalidArgumentException;
 
 /**
- * A database of addresses in the MaxMind DB format, written here so that what the bundle reads in a test
+ * A database of addresses in the MaxMind DB format, written here so that what the provider reads in a test
  * is a file of the format and not a double of the reader (MaxMind DB File Format v2). Nothing of this
  * provider writes one: the editions are published by MaxMind, and this exists so that reading one is
  * tested at all.
@@ -104,7 +104,7 @@ final class MaxMindDatabase
 
     /**
      * The city edition of the tests: what GeoLite2-City says of an address, in the shape the edition
-     * documents, which is what the bundle reads the country, the subdivision, the city and the
+     * documents, which is what the provider reads the country, the subdivision, the city and the
      * coordinates out of.
      */
     public static function city(): string
@@ -223,7 +223,7 @@ final class MaxMindDatabase
     }
 
     /**
-     * That database as a file of the directory given, which is what the store of the bundle takes a
+     * That database as a file of the directory given, which is what the store of the provider takes a
      * database from: a refresh unpacks an archive into a file and stores that file.
      */
     public static function inFile(string $database, string $directory): string

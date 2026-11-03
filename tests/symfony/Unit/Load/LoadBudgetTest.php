@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Load;
+namespace App\Tests\Symfony\Unit\Load;
 
 use DateInterval;
-use Beffroi\Bundle\Load\LoadBudget;
+use App\Load\LoadBudget;
 use Beffroi\Core\Exception\LoadBudgetSpentException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

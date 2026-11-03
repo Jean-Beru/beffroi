@@ -275,7 +275,7 @@ jobs:
     # (Functional/Key: the envelope names the key file of the tenant, the file is the process's alone,
     # a sealed key is opened and signs), of the shared secrets of the TOTP (Functional/Security), and the
     # dump of the database, which holds what the data keys of this backend sealed (issue #409), only the
-    # DSN and the key id changing. Nothing else of the bundle suite proves anything more of the backend,
+    # DSN and the key id changing. Nothing else of the provider suite proves anything more of the backend,
     # so nothing else runs here again: the whole suite against this backend was five minutes behind
     # "Tests" for the same proof. The file is
     # written the way "castor provision --kms file" writes it: 32 bytes, mode 0600, in a directory 0700

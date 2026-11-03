@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Form\ClaimForms;
-use Beffroi\Bundle\Controller\AccountProfileDescriptionController as BundleProfileForm;
-use Beffroi\Bundle\Http\AccountAccess;
-use Beffroi\Bundle\Http\InteractionPages;
-use Beffroi\Bundle\Http\ProfilePage;
-use Beffroi\Bundle\Http\RequestContextFactory;
-use Beffroi\Bundle\Http\WhatWasRefused;
-use Beffroi\Bundle\Identity\WiredClaims;
+use App\Http\AccountAccess;
+use App\Http\Account\ReachedOnTheSessionAloneInterface;
+use App\Http\InteractionPages;
+use App\Http\ProfilePage;
+use App\Http\RequestContextFactory;
+use App\Http\WhatWasRefused;
+use App\Identity\WiredClaims;
 use Beffroi\Core\Application\Identity\SelfDescription;
 use Beffroi\Core\Domain\Identity\Claim\ClaimInterface;
 use Beffroi\Core\Domain\Identity\User;
@@ -41,13 +41,13 @@ use Symfony\Component\Security\Csrf\CsrfToken;
  * name it has none for is answered with nothing at all.
  */
 #[AsController]
-final readonly class AccountProfileDescriptionController
+final readonly class AccountProfileDescriptionController implements ReachedOnTheSessionAloneInterface
 {
     /**
-     * The route name of the form of the bundle, which this answers in its place, so that every link naming
+     * The route name of the form of the provider, which this answers in its place, so that every link naming
      * it lands here (config/routes/profile.yaml).
      */
-    public const string ROUTE = BundleProfileForm::ROUTE;
+    public const string ROUTE = 'beffroi_interaction_account_profile_describe';
 
     public function __construct(
         private AccountAccess $account,
@@ -60,9 +60,14 @@ final readonly class AccountProfileDescriptionController
     ) {
     }
 
-    #[Route('/account/profile/{claim}', name: self::ROUTE, methods: ['POST'], requirements: [
-        'claim' => '[a-z_]+',
-    ])]
+    #[Route(
+        '/account/profile/{claim}',
+        name: self::ROUTE,
+        methods: ['POST'],
+        requirements: [
+            'claim' => '[a-z_]+',
+        ],
+    )]
     public function __invoke(Request $request, string $claim): Response
     {
         $session = $this->account->granted($request);
@@ -103,6 +108,8 @@ final readonly class AccountProfileDescriptionController
      *
      * Never the value that was refused: a refusal crosses a redirection in the session of the browser, and
      * a session is a disk (issue beffroi-auth/beffroi#481).
+     *
+     * @param FormInterface<mixed> $form
      */
     private function describe(Request $request, FormInterface $form, ClaimInterface $claim, User $user): ?string
     {
@@ -128,6 +135,8 @@ final readonly class AccountProfileDescriptionController
      * The component checks the token itself (config/packages/csrf.yaml) and says so on the form rather
      * than under the field, with the token it refused as the cause of the error; that is what this reads,
      * so a value the field refused is never taken for a token that did not hold.
+     *
+     * @param FormInterface<mixed> $form
      */
     private static function theTokenDidNotHold(FormInterface $form): bool
     {

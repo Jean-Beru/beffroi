@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\MessageHandler;
+namespace App\Tests\Symfony\Functional\MessageHandler;
 
-use Beffroi\Bundle\Message\ForgetTheExpiredArchives;
-use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
+use App\Message\ForgetTheExpiredArchives;
+use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
 use Beffroi\Core\Domain\Archive\PersonalArchive;
 use Beffroi\Core\Port\PersonalArchiveRepositoryInterface;
 use DateTimeImmutable;

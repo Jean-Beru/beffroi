@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
 use function array_map;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
@@ -12,16 +12,16 @@ use Doctrine\DBAL\Schema\Name\OptionallyQualifiedName;
 use Doctrine\DBAL\Schema\Table;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\ORM\Tools\SchemaValidator;
-use Beffroi\Bundle\Tests\Fixture\DoctrineDeprecations;
-use Beffroi\Bundle\Tests\Functional\Doctrine\Host\User as HostUser;
+use App\Tests\Symfony\Fixture\DoctrineDeprecations;
+use App\Tests\Symfony\Functional\Doctrine\Host\User as HostUser;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sort;
 use function str_starts_with;
 
 /**
- * The mappings of the bundle describe a schema Doctrine validates, writes without a deprecation, creates on
- * SQLite and finds in sync afterwards (architecture §5.3, §7), next to the tables of a host application
+ * The mappings of the provider describe a schema Doctrine validates, writes without a deprecation, creates on
+ * SQLite and finds in sync afterwards (architecture §5.3, §7), next to the tables of the application
  * (decision 0002).
  */
 final class SchemaTest extends DatabaseTestCase
@@ -61,7 +61,7 @@ final class SchemaTest extends DatabaseTestCase
         'beffroi_saml_remembered_message',
         'beffroi_saml_session_participant',
         'beffroi_saml_logout_chain',
-        // The one table of this schema no mapping of the bundle describes: the store of the data keys puts
+        // The one table of this schema no mapping of the provider describes: the store of the data keys puts
         // it there, through the schema listener of the ORM bridge, so that "doctrine:schema:update" does
         // not offer to drop what it did not put there (decisions 0011 and 0018).
         'beffroi_data_key',
@@ -126,13 +126,13 @@ final class SchemaTest extends DatabaseTestCase
     }
 
     /**
-     * Architecture §5.3: the tables of the bundle, every one prefixed "beffroi_", and no other.
+     * Architecture §5.3: the tables of the provider, every one prefixed "beffroi_", and no other.
      */
     #[Test]
-    public function theBundleDeclaresItsThirtyPrefixedTables(): void
+    public function theProviderDeclaresItsThirtyPrefixedTables(): void
     {
         // When
-        $tables = array_keys(self::tablesOfTheBundle());
+        $tables = array_keys(self::tablesOfTheProvider());
 
         // Then
         $expected = self::TABLES;
@@ -149,7 +149,7 @@ final class SchemaTest extends DatabaseTestCase
      *
      * Two tables name it otherwise, and both are named here rather than letting the rule bend. The tenant
      * is its own row. And the store of the data keys carries the tenant in its scope, as the slug the
-     * encrypter of the bundle prefixes the family of columns with (decision 0018): the five columns of
+     * encrypter of the provider prefixes the family of columns with (decision 0018): the five columns of
      * that table are the five the store of the bridge names, a table carrying anything else being a table
      * the application would have to declare itself, and the scope is the only channel there is between an
      * encrypted type and the store.
@@ -158,7 +158,7 @@ final class SchemaTest extends DatabaseTestCase
     public function everyTableButTheTenantOneAndTheDataKeysCarriesTheTenant(): void
     {
         // When
-        $tables = self::tablesOfTheBundle();
+        $tables = self::tablesOfTheProvider();
 
         // Then
         unset($tables['beffroi_tenant'], $tables['beffroi_data_key']);
@@ -178,7 +178,7 @@ final class SchemaTest extends DatabaseTestCase
     public function theScopeOfTheDataKeyStoreIsWhatCarriesTheTenantThere(): void
     {
         // When
-        $table = self::tablesOfTheBundle()['beffroi_data_key'] ?? null;
+        $table = self::tablesOfTheProvider()['beffroi_data_key'] ?? null;
 
         // Then
         static::assertNotNull($table);
@@ -187,11 +187,11 @@ final class SchemaTest extends DatabaseTestCase
     }
 
     /**
-     * Decision 0002: the host application keeps its own "User", in a table of its own, and the bundle
+     * Decision 0002: the application keeps its own "User", in a table of its own, and the provider
      * never hooks onto it. The two schemas install together.
      */
     #[Test]
-    public function theHostApplicationKeepsItsOwnUserNextToTheBundle(): void
+    public function theHostApplicationKeepsItsOwnUserNextToTheProvider(): void
     {
         // Given
         $host = new HostUser('host@example.com');
@@ -211,11 +211,11 @@ final class SchemaTest extends DatabaseTestCase
     }
 
     /**
-     * The tables the mappings of the bundle describe, by name, the one of the host application left out.
+     * The tables the mappings of the provider describe, by name, the one of the application left out.
      *
      * @return array<string, Table>
      */
-    private static function tablesOfTheBundle(): array
+    private static function tablesOfTheProvider(): array
     {
         $entityManager = self::entityManager();
         $schema = new SchemaTool($entityManager)->getSchemaFromMetadata($entityManager->getMetadataFactory()->getAllMetadata());

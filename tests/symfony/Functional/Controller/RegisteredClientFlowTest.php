@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
-use Beffroi\Bundle\Doctrine\EntityManagers;
-use Beffroi\Bundle\Doctrine\Repository\DoctrineClientRepository;
-use Beffroi\Bundle\Tests\Fixture\RecordedMessages;
+use App\Doctrine\EntityManagers;
+use App\Doctrine\Repository\DoctrineClientRepository;
+use App\Tests\Symfony\Fixture\RecordedMessages;
 use Beffroi\Core\Port\PasswordHasherInterface;
 use Beffroi\Oidc\Application\Client\ClientMetadataReader;
 use Beffroi\Oidc\Domain\Client\Client;

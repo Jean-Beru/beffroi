@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Saml;
+namespace App\Tests\Symfony\Functional\Saml;
 
 use function intdiv;
 use Symfony\Component\Uid\Uuid;
@@ -12,8 +12,8 @@ use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Port\SecretSealerInterface;
 use Beffroi\Core\Domain\Event\BackupCodesRenewed;
 use Beffroi\Core\Domain\Credential\TotpCredential;
-use Beffroi\Bundle\Http\TotpProvisioningStore;
-use Beffroi\Bundle\Tests\Functional\Controller\PasskeyTestCase;
+use App\Http\TotpProvisioningStore;
+use App\Tests\Symfony\Functional\Controller\PasskeyTestCase;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
 use Beffroi\Core\Domain\Identity\EmailAddress;

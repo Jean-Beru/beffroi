@@ -520,7 +520,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-32, section 6.6 step 2: the failure of a step resumed by its reference goes up, for the bundle to answer.
+     * S-32, section 6.6 step 2: the failure of a step resumed by its reference goes up, for the provider to answer.
      */
     #[Test]
     public function theFailureOfAStepResumedByItsReferenceGoesUp(): void

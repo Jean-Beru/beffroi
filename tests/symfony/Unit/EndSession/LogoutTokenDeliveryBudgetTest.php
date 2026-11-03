@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\EndSession;
+namespace App\Tests\Symfony\Unit\EndSession;
 
-use Beffroi\Bundle\Http\Timeout;
-use Beffroi\Bundle\Configuration\BackChannelLogoutSection;
+use App\Http\Timeout;
+use App\Configuration\BackChannelLogoutSection;
 use DateInterval;
-use Beffroi\Bundle\EndSession\LogoutTokenDeliveryBudget;
-use Beffroi\Bundle\Http\LogoutTokenSender;
-use Beffroi\Bundle\Messenger\NotificationRetryPolicy;
+use App\EndSession\LogoutTokenDeliveryBudget;
+use App\Http\LogoutTokenSender;
+use App\Messenger\NotificationRetryPolicy;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -22,7 +22,7 @@ final class LogoutTokenDeliveryBudgetTest extends TestCase
 {
     /**
      * The waits of the schedule, and the seconds each of the seven sends is given before it is a failure:
-     * 200 plus 35 with the values the bundle defaults to.
+     * 200 plus 35 with the values the provider defaults to.
      */
     #[Test]
     public function aLogoutTokenLivesTheWaitsOfItsLaneAndTheTimeoutOfEverySend(): void

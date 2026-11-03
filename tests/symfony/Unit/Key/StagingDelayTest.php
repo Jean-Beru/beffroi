@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Key;
+namespace App\Tests\Symfony\Unit\Key;
 
 use DateTimeImmutable;
-use Beffroi\Bundle\Key\StagingDelay;
+use App\Key\StagingDelay;
 use Beffroi\Oidc\Application\Discovery\JwksHandler;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;

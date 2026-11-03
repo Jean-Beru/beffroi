@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use function base64_encode;
-use Beffroi\Bundle\Message\RemoveUnusedClients;
+use App\Message\RemoveUnusedClients;
 use Beffroi\Oidc\Domain\Client\ClientRecord;
 use Beffroi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
 use Beffroi\Oidc\Domain\Client\Registration\InitialAccessToken;

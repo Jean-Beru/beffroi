@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Configuration;
+namespace App\Tests\Symfony\Functional\Configuration;
 
-use Beffroi\Bundle\Configuration\TokensSection;
-use Beffroi\Bundle\Dpop\CachedDpopNonce;
-use Beffroi\Bundle\Http\LogoutTokenSender;
+use App\Configuration\TokensSection;
+use App\Dpop\CachedDpopNonce;
+use App\Http\LogoutTokenSender;
 use Beffroi\Core\Domain\Key\RotationSchedule;
 use Beffroi\Core\Exception\InvalidArgumentException as CoreInvalidArgumentException;
 use Beffroi\Oidc\Bridge\Null\NoDpopNonce;

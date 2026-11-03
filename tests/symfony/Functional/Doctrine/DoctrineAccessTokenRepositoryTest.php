@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
 use DateTimeImmutable;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
@@ -88,7 +88,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
 
     /**
      * RFC 7800 §3.1: what a token is bound to is stored as the members of a "cnf" and read back by the
-     * kinds the provider is wired with, which the bundle hands to the type when it boots.
+     * kinds the provider is wired with, which the provider hands to the type when it boots.
      *
      * @param non-empty-string $thumbprint
      */

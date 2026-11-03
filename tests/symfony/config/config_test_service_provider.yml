@@ -47,11 +47,11 @@ services:
     # what the metadata given to each provider (S-65) and the key that opens what it encrypted (S-66) are played
     # against, apart from the provider of the judge.
     beffroi_test.saml_encryption.a:
-        class: Beffroi\Bundle\Saml\SamlEncryption
+        class: App\Saml\SamlEncryption
         arguments: ['https://idp-a.example/metadata', '@Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits']
         tags: ['beffroi.saml_encryption_algorithm']
     beffroi_test.saml_encryption.b:
-        class: Beffroi\Bundle\Saml\SamlEncryption
+        class: App\Saml\SamlEncryption
         arguments: ['https://idp-b.example/metadata', '@Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits']
         tags: ['beffroi.saml_encryption_algorithm']
 

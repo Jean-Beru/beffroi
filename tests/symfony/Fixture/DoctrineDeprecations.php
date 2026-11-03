@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Fixture;
+namespace App\Tests\Symfony\Fixture;
 
 use Closure;
 use Doctrine\Deprecations\Deprecation;

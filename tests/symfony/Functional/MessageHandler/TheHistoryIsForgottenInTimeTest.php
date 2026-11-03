@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\MessageHandler;
+namespace App\Tests\Symfony\Functional\MessageHandler;
 
-use Beffroi\Bundle\Configuration\HistorySection;
-use Beffroi\Bundle\Message\ForgetTheChangesPastTheirRetention;
-use Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
+use App\Configuration\HistorySection;
+use App\Message\ForgetTheChangesPastTheirRetention;
+use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
 use Beffroi\Core\Domain\Identity\ClaimChange;
 use Beffroi\Core\Port\ClaimHistoryInterface;
 use Doctrine\DBAL\Connection;

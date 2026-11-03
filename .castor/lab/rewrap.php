@@ -192,7 +192,7 @@ function rewrap_live(
     }
 
     io()->success(sprintf(
-        'The data keys of the tenant moved from "%s" to "%s" in %.2f s while the provider served %d login(s), not one of which failed, and the %d sealed value(s) of beffroi_user hold the bytes they held. A scope minted from now on is wrapped by the client the bundle seals with, which this walk does not change; the keys stay on "%s", which is where the next run of it starts.',
+        'The data keys of the tenant moved from "%s" to "%s" in %.2f s while the provider served %d login(s), not one of which failed, and the %d sealed value(s) of beffroi_user hold the bytes they held. A scope minted from now on is wrapped by the client the provider seals with, which this walk does not change; the keys stay on "%s", which is where the next run of it starts.',
         $from,
         $to,
         $moveEnded - $moveStarted,

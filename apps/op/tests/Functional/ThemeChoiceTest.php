@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Issue #447, architecture §6: the form of the theme comes back to the page it was sent from when that is
  * a path of this origin, and to the root of the application otherwise, a choice of colour sending a browser
- * nowhere else (App\Controller\ChooseThemeController).
+ * nowhere else (App\Theme\ChooseThemeController).
  */
 final class ThemeChoiceTest extends BrowserTestCase
 {

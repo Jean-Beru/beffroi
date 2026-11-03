@@ -3,9 +3,9 @@
 # deployment, as the endpoints the conformance tools drive: they hold what a lab exchanged with itself,
 # tokens and all, and they are not pages of the product.
 #
-# The directory is imported whole, as the bundle imports the endpoints of a conformance tool: these are
+# The directory is imported whole, as the provider imports the endpoints of a conformance tool: these are
 # the pages of one thing and they are routed together or not at all. The names carry no plane, as a
-# route of a host application never does (Plane::ofRoute): they belong to none and are refused by none.
+# route of the application outside the two planes never does (Plane::ofRoute): they belong to none and are refused by none.
 when@dev: &demonstration
     app_demonstration:
         resource: ../../src/Demonstration/Controller/

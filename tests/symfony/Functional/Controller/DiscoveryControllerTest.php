@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
-use Beffroi\Bundle\Identity\WiredClaims;
+use App\Identity\WiredClaims;
 use Beffroi\Oidc\Port\EndpointLocatorInterface;
-use Beffroi\Bundle\Tests\Functional\ResponseMode\InventedResponseModeRenderer;
+use App\Tests\Symfony\Functional\ResponseMode\InventedResponseModeRenderer;
 use Beffroi\Oidc\Tests\Fixture\InventedClaimsProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
@@ -189,7 +189,7 @@ final class DiscoveryControllerTest extends BrowserTestCase
     /**
      * OIDC Discovery §3 "response_modes_supported", issue #98: the ways of answering wired into the
      * authorization endpoint, in the order they are wired, plus the "jwt" a signed one makes meaningful
-     * (JARM §2.1). Four come from the bundle, the default one, the posted form (Form Post Response Mode §2)
+     * (JARM §2.1). Four come from the provider, the default one, the posted form (Form Post Response Mode §2)
      * and the two deliveries of a signed document; the fifth is the one this kernel wires itself, which is
      * what issue #240 is about: the document announces what is wired and nothing kept beside it. The
      * response types stay "code" alone, in every mode (decision 0006).
@@ -273,7 +273,7 @@ final class DiscoveryControllerTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §5.2: the endpoint locator the bundle binds is the one of the router.
+     * Architecture §5.2: the endpoint locator the provider binds is the one of the router.
      */
     #[Test]
     public function theRouterLocatesTheEndpoints(): void

@@ -1,9 +1,12 @@
 # Layers of docs/11-architecture.md §2: four layers in each pure-PHP package of the identity provider.
 # The identity core never depends on a protocol; protocols never depend on each other;
-# nothing below the bundle knows Symfony's HTTP, DI or Doctrine.
+# nothing below the application knows Symfony's HTTP, DI or Doctrine.
 deptrac:
   paths:
     - '../src'
+    - '../apps/op/src'
+    - '../apps/op/config/beffroi'
+    - '../apps/op/migrations'
   layers:
     - name: 'CoreDomain'
       collectors:
@@ -46,9 +49,11 @@ deptrac:
     - name: 'SamlBridge'
       collectors:
         - { type: directory, value: '../src/saml/src/Bridge/.*' }
-    - name: 'Bundle'
+    - name: 'App'
       collectors:
-        - { type: directory, value: '../src/symfony/.*' }
+        - { type: directory, value: '../apps/op/src/.*' }
+        - { type: directory, value: '../apps/op/config/beffroi/.*' }
+        - { type: directory, value: '../apps/op/migrations/.*' }
     # psr/clock is a layer of its own, apart from the other PSR interfaces, because saml2-model may read the time
     # through it and may not speak HTTP through Psr\Http; every layer that may use the one may use the other.
     - name: 'Psr'
@@ -60,7 +65,7 @@ deptrac:
     - name: 'KeyManagement'
       collectors:
         - { type: classLike, value: '^Symfony\\Component\\KeyManagement\\(?!Bridge\\Doctrine)' }
-    # The two Doctrine bridges of the component are a layer of their own, and only the bundle may see it:
+    # The two Doctrine bridges of the component are a layer of their own, and only the provider may see it:
     # they carry a DBAL type, a DBAL table and an ORM listener, which is exactly what the core and the
     # module are forbidden. Everything else of the component stays in the layer above, which the core's
     # Bridge reads to seal a key and a secret.
@@ -89,18 +94,18 @@ deptrac:
         - { type: classLike, value: '^ParagonIE\\ConstantTime\\' }
     - name: 'WebPush'
       collectors:
-        # spomky-labs/web-push-lib, the Web Push brick (docs/09-briques.md): the bundle encrypts a
+        # spomky-labs/web-push-lib, the Web Push brick (docs/09-briques.md): the provider encrypts a
         # notification to a browser and signs the request with it, nothing else speaks RFC 8291
         - { type: classLike, value: '^WebPush\\' }
     - name: 'MaxMindDb'
       collectors:
-        # maxmind-db/reader, the brick that reads a GeoLite2 database (docs/09-briques.md): the bundle
+        # maxmind-db/reader, the brick that reads a GeoLite2 database (docs/09-briques.md): the provider
         # reads the place of an address with it, and the reader alone, so that nothing of this provider
         # holds a client that would send an address to MaxMind (issue #473, decision 0006)
         - { type: classLike, value: '^MaxMind\\' }
     - name: 'QrCode'
       collectors:
-        # bacon/bacon-qr-code, what draws the QR code of a TOTP enrolment as an SVG in the bundle (architecture §5.2): the pages embed it, nothing else reads it
+        # bacon/bacon-qr-code, what draws the QR code of a TOTP enrolment as an SVG in the provider (architecture §5.2): the pages embed it, nothing else reads it
         - { type: classLike, value: '^BaconQrCode\\' }
     - name: 'Serializer'
       collectors:
@@ -116,7 +121,7 @@ deptrac:
     - name: 'SortDirection'
       collectors:
         # \SortDirection, the enum of PHP 8.6 that symfony/polyfill-php86 declares on an older PHP, a requirement of
-        # doctrine/orm: the direction the bundle hands the query builder of the ORM, which deprecates a string there (issue #907)
+        # doctrine/orm: the direction the provider hands the query builder of the ORM, which deprecates a string there (issue #907)
         - { type: classLike, value: '^SortDirection$' }
     - name: 'Twig'
       collectors:
@@ -325,7 +330,7 @@ deptrac:
       - 'XmlCore'
       - 'XmlDsig'
       - 'XmlEnc'
-    Bundle:
+    App:
       - 'CoreDomain'
       - 'CorePort'
       - 'CoreApplication'
@@ -334,7 +339,7 @@ deptrac:
       - 'OidcPort'
       - 'OidcApplication'
       - 'OidcBridge'
-      # beffroi/saml, which the bundle wires and serves the routes of (spec/saml.md section 2): its four layers, never
+      # beffroi/saml, which the provider wires and serves the routes of (spec/saml.md section 2): its four layers, never
       # the SAML stack under them, which is the Bridge's
       - 'SamlDomain'
       - 'SamlPort'

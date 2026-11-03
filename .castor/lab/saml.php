@@ -87,14 +87,14 @@ const SAML_SP_CAPTURED = SAML_SP_DIRECTORY . '/captured';
 
 /**
  * The parameter the page that posts a form from another site again adds to the query of its action (S-28), the MARKER
- * of Beffroi\Bundle\Http\CrossSitePost, which the tasks do not load: the action of that page carries it, and a
+ * of App\Http\CrossSitePost, which the tasks do not load: the action of that page carries it, and a
  * profiled post that carries it is the one the provider read.
  */
 const SAML_POSTED_AGAIN = '_beffroi_posted_again';
 
 /**
  * The cookie that binds a chain of logout to the browser that began it (spec/saml.md S-32), the NAME of
- * Beffroi\Bundle\Saml\LogoutChainCookie, which the tasks do not load: it says "SameSite=None", and goes with the
+ * App\Saml\LogoutChainCookie, which the tasks do not load: it says "SameSite=None", and goes with the
  * answer a service provider posts from its site.
  */
 const SAML_LOGOUT_CHAIN_COOKIE = '__Host-beffroi_saml_logout';

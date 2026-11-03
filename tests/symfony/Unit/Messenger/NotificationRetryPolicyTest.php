@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Messenger;
+namespace App\Tests\Symfony\Unit\Messenger;
 
-use Beffroi\Bundle\Configuration\BackChannelLogoutSection;
+use App\Configuration\BackChannelLogoutSection;
 use function array_map;
-use Beffroi\Bundle\Message\AdvanceKeyLifecycle;
-use Beffroi\Bundle\Messenger\NotificationRetryPolicy;
+use App\Message\AdvanceKeyLifecycle;
+use App\Messenger\NotificationRetryPolicy;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

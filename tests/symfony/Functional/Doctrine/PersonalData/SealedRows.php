@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData;
+namespace App\Tests\Symfony\Functional\Doctrine\PersonalData;
 
 use DateTimeImmutable;
 use function array_values;
@@ -216,7 +216,7 @@ final readonly class SealedRows
     /**
      * The provenance every session, device request and backchannel request of the suite is written from.
      *
-     * Public because {@see \Beffroi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase::context()} builds
+     * Public because {@see \App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase::context()} builds
      * the context of the whole suite from these two, so that a row written by any test carries a value the
      * search of the dump knows about by construction and not by coincidence.
      */

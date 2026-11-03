@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Saml;
+namespace App\Tests\Symfony\Unit\Saml;
 
-use Beffroi\Bundle\BeffroiBundle;
-use Beffroi\Bundle\Saml\MappedClaimsWarmer;
-use Beffroi\Bundle\Saml\ServiceProvidersPass;
+use App\DependencyInjection\BeffroiExtension;
+use App\Saml\MappedClaimsWarmer;
+use App\Saml\ServiceProvidersPass;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -207,7 +207,7 @@ final class ServiceProvidersPassTest extends TestCase
     }
 
     /**
-     * A container without the service, which a kernel without this bundle's services builds, has nothing to check.
+     * A container without the service, which a kernel without this provider's services builds, has nothing to check.
      */
     #[Test]
     public function aContainerWithoutTheServiceProvidersHasNothingToCheck(): void
@@ -223,16 +223,16 @@ final class ServiceProvidersPassTest extends TestCase
     }
 
     /**
-     * The pass is one of the bundle's, run by every kernel that builds its container.
+     * The pass is one of the provider's, run by every kernel that builds its container.
      */
     #[Test]
-    public function theBundleRunsThePass(): void
+    public function theProviderRunsThePass(): void
     {
         // Given
         $container = new ContainerBuilder();
 
         // When
-        new BeffroiBundle()->build($container);
+        BeffroiExtension::addCompilerPasses($container);
 
         // Then
         $passes = \array_filter(
@@ -250,8 +250,7 @@ final class ServiceProvidersPassTest extends TestCase
     private static function container(array $serviceProviders, ?ContainerBuilder $container = null): ContainerBuilder
     {
         $container ??= new ContainerBuilder();
-        $extension = new BeffroiBundle()->getContainerExtension();
-        static::assertNotNull($extension);
+        $extension = new BeffroiExtension();
         $extension->load([
             [
                 'tenant' => [

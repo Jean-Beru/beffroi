@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Locale;
+namespace App\Tests\Symfony\Unit\Locale;
 
-use Beffroi\Bundle\Locale\LocalePreference;
-use Beffroi\Bundle\Locale\ServedLocales;
+use App\Locale\LocalePreference;
+use App\Locale\ServedLocales;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

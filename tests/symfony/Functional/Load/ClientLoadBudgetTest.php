@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Load;
+namespace App\Tests\Symfony\Functional\Load;
 
 use function base64_encode;
-use Beffroi\Bundle\Load\LoadBudget;
-use Beffroi\Bundle\Load\LoadRefusal;
-use Beffroi\Bundle\Tests\Functional\Controller\BrowserTestCase;
-use Beffroi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
+use App\Load\LoadBudget;
+use App\Load\LoadRefusal;
+use App\Tests\Symfony\Functional\Controller\BrowserTestCase;
+use App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler;
 use Beffroi\Core\Domain\Event\LoadBudgetSpent;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;

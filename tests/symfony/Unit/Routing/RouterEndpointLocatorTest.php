@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Routing;
+namespace App\Tests\Symfony\Unit\Routing;
 
 use DateTimeImmutable;
-use Beffroi\Bundle\Routing\RouterEndpointLocator;
+use App\Routing\RouterEndpointLocator;
 use Beffroi\Core\Domain\Tenant\Issuer;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
@@ -20,7 +20,7 @@ use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §4.8 and §5.2: the endpoints are the routes of the bundle under the origin of the
+ * Architecture §4.8 and §5.2: the endpoints are the routes of the provider under the origin of the
  * issuer; the host of the request plays no part; the discovery document must sit where OIDC Discovery
  * §4.1 makes clients look for it.
  */

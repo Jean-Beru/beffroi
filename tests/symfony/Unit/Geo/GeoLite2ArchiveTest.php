@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Geo;
+namespace App\Tests\Symfony\Unit\Geo;
 
 use function chr;
 use function file_get_contents;
 use function file_put_contents;
-use Beffroi\Bundle\Geo\GeoLite2Archive;
-use Beffroi\Bundle\Tests\Fixture\MaxMindDatabase;
+use App\Geo\GeoLite2Archive;
+use App\Tests\Symfony\Fixture\MaxMindDatabase;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use function ord;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -30,7 +30,7 @@ final class GeoLite2ArchiveTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->directory = sys_get_temp_dir() . '/beffroi-bundle-tests/geoip-archive-' . uniqid();
+        $this->directory = sys_get_temp_dir() . '/beffroi-integration-tests/geoip-archive-' . uniqid();
         new Filesystem()->mkdir($this->directory);
     }
 

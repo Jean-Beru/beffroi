@@ -12,7 +12,7 @@ use Beffroi\Oidc\Domain\Token\CertificateConfirmationKind;
 use Beffroi\Oidc\Domain\Token\KeyConfirmationKind;
 
 /**
- * The two ways this provider binds a token, wired as the bundle wires them: the certificate of the
+ * The two ways this provider binds a token, wired as the provider wires them: the certificate of the
  * handshake and the key of a proof. A test that reads a "cnf" back, or that asks what schemes a
  * resource serves and what their challenges say of them, takes them as a deployment has them.
  */

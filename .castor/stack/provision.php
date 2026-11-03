@@ -1301,7 +1301,7 @@ function provision_env_local_set(string $path, string $name, string $value): boo
 
 /**
  * RFC 8705 §3.1: the SHA-256 thumbprint of the DER encoding of a certificate, base64url without padding,
- * computed here from its PEM the way Beffroi\Bundle\Http\Tls\ClientCertificate computes it from what the
+ * computed here from its PEM the way App\Http\Tls\ClientCertificate computes it from what the
  * edge hands over. Two computations of the same thing, on two sides of the stack, is what "castor mtls"
  * compares.
  */

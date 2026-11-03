@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
-use Beffroi\Bundle\Archive\ZipArchiveContainer;
+use App\Archive\ZipArchiveContainer;
 use Beffroi\Core\Domain\Archive\ArchivePassword;
 use Beffroi\Core\Domain\Archive\PersonalArchive;
 use Beffroi\Core\Domain\Event\DomainEventInterface;
@@ -88,7 +88,7 @@ final class AccountArchiveTest extends BrowserTestCase
     /**
      * Architecture §5.7: every word a person reads comes from the catalogue of their language, a word the
      * catalogue lacks failing this kernel. So a chapter wired without a label of its own is red here, in
-     * both languages the bundle ships, and never a key shown to a person.
+     * both languages the provider ships, and never a key shown to a person.
      */
     #[Test]
     public function thePageSpeaksTheLanguageOfTheBrowser(): void

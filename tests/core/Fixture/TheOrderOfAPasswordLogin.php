@@ -10,7 +10,7 @@ use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
  * The order a login by password is played in, named once (issue #130).
  *
  * This provider has two paths into a password: the use case of the core (PasswordAuthenticator) and the
- * firewall of the bundle, whose authenticator hands the request to the same verification. Both play the
+ * firewall of the provider, whose authenticator hands the request to the same verification. Both play the
  * steps below, in this order, and a test of each asks them of its own path: a step added to one path and
  * not to the other is a case here that one of the two answers differently.
  *

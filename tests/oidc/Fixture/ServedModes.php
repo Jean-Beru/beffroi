@@ -8,7 +8,7 @@ use Beffroi\Oidc\Port\ServedResponseModesInterface;
 
 /**
  * The response modes an integration wired: the default alone, as spike 1 had, the default and the posted
- * form, as the bundle wired from spike 4, or the four the bundle wires since issue #163, the two deliveries
+ * form, as the provider wired from spike 4, or the four the provider wires since issue #163, the two deliveries
  * of a signed document beside them. The names are the ones the ways of answering give themselves.
  */
 final readonly class ServedModes

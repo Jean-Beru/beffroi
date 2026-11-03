@@ -267,7 +267,7 @@ function phpunit(
  * mount of the repository.
  */
 #[AsTask(
-    description: 'Run the suite of the standalone application: its own kernel, on the PostgreSQL that DATABASE_URL names and the KMS of apps/op/.env.test, the schema written by the migrations of the bundle before the first test. It needs a PostgreSQL reachable from the machine, which "castor start" publishes on the loopback address',
+    description: 'Run the suite of the standalone application: its own kernel, on the PostgreSQL that DATABASE_URL names and the KMS of apps/op/.env.test, the schema written by the migrations of the provider before the first test. It needs a PostgreSQL reachable from the machine, which "castor start" publishes on the loopback address',
     ignoreValidationErrors: true,
 )]
 function app_phpunit(#[AsRawTokens] array $args = []): void
@@ -278,7 +278,7 @@ function app_phpunit(#[AsRawTokens] array $args = []): void
     // application appends "_test" to the name DATABASE_URL carries (apps/op/config/packages/test/doctrine.yaml),
     // and a run empties every table of it before every test.
     application_console(['doctrine:database:create', '--if-not-exists']);
-    // The schema comes from the migrations of the bundle, the way a deployment gets it, which is also the
+    // The schema comes from the migrations of the provider, the way a deployment gets it, which is also the
     // one place of this repository where they are played against PostgreSQL by a run nobody started by
     // hand. The suite creates nothing and drops nothing: it empties the rows.
     application_console(['doctrine:migrations:migrate', '--no-interaction', '--all-or-nothing']);
@@ -601,7 +601,7 @@ function deptrac(): void
  * language server validates the YAML against. The kernel writes them when it compiles its container in debug
  * (FrameworkBundle, PhpConfigReferenceDumpPass and JsonSchemaConfigDumpPass), from the configuration trees of
  * the bundles the application has installed, and nothing else writes them: a node added, renamed or re-worded
- * in "BeffroiBundle::configure()" leaves them behind until someone boots the application. A member that exists
+ * in "BeffroiExtension::configure()" leaves them behind until someone boots the application. A member that exists
  * and is not in the reference is a member nobody discovers; a member the reference still carries and the
  * container refuses is worse, since the file says otherwise.
  */

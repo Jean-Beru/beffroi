@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
-use Beffroi\Bundle\Http\ImageSource;
-use Beffroi\Bundle\Http\InteractionPages;
+use App\Http\ImageSource;
+use App\Http\InteractionPages;
 use Closure;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -22,7 +22,7 @@ use Twig\Environment;
 /**
  * Issue #926, CSP Level 3 §6.1: the logo of the tenant is on every page of the plane (_brand.html.twig), and a
  * deployment may serve it from another host than its issuer. So every page that shows it names the origin it is
- * served from in the "img-src" of the policy its deployment writes, the bundle completing that directive once the
+ * served from in the "img-src" of the policy its deployment writes, the provider completing that directive once the
  * policy is written (ImageSource), and no deployment names that origin by hand.
  *
  * The tenant of this environment serves its logo from a host of its own (config_test_tenant_logo.yml). The kernel of
@@ -63,7 +63,7 @@ final class TenantLogoOriginTest extends BrowserTestCase
             $dispatcher = $container->get('event_dispatcher');
             static::assertInstanceOf(EventDispatcherInterface::class, $dispatcher);
             // where the policy of an application is written: after the controller that answered, before the
-            // directive of a page is completed, and on the pages the bundle computes no policy for, as
+            // directive of a page is completed, and on the pages the provider computes no policy for, as
             // App\Http\DeploymentPolicyPrevails leaves them
             $dispatcher->addListener(
                 KernelEvents::RESPONSE,

@@ -26,6 +26,9 @@ $builder->withComposerBased(phpunit: true, symfony: true);
 $builder->withPhpVersion(PhpVersion::PHP_84);
 $builder->withPaths([
     __DIR__ . '/../src',
+    __DIR__ . '/../apps/op/src',
+    __DIR__ . '/../apps/op/config/beffroi',
+    __DIR__ . '/../apps/op/migrations',
     __DIR__ . '/../tests',
     __DIR__ . '/../castor.php',
     __DIR__ . '/../.castor',
@@ -33,6 +36,9 @@ $builder->withPaths([
 ]);
 $builder->withSkip([
     PreferPHPUnitThisCallRector::class,
+    // The demonstration and the lab of the application are no part of the product (apps/op/config/services.yaml).
+    __DIR__ . '/../apps/op/src/Demonstration/*',
+    __DIR__ . '/../apps/op/src/Lab/*',
     // The fixtures of the SAML packages are data, and their interoperability projects (tests/xml-security/Dsig/
     // Fixture/real, tests/saml2-model/Interop, tests/saml2-bindings/Interop, tests/saml/Interop) are throwaway
     // Composer projects or scripts run in their own containers against libraries that are not dependencies here.

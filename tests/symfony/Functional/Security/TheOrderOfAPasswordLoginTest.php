@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Security;
+namespace App\Tests\Symfony\Functional\Security;
 
-use Beffroi\Bundle\Tests\Functional\Controller\BrowserTestCase;
+use App\Tests\Symfony\Functional\Controller\BrowserTestCase;
 use Beffroi\Core\Domain\Event\AuthenticationFailed;
 use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
 use Beffroi\Core\Domain\Event\PasswordUsed;

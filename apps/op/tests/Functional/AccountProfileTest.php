@@ -13,10 +13,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * The page of what this provider holds of the signed-in person, which is this application's and not the
- * bundle's (issue beffroi-auth/op#17), judged on the kernel this application deploys: the claims its own
+ * provider's (issue beffroi-auth/op#17), judged on the kernel this application deploys: the claims its own
  * tenant opens, the form component it alone installs, and the stylesheet that makes the editing in place.
  *
- * What the bundle's own page does is judged by the suite of the bundle. What is here is what only this
+ * What the provider's own page does is judged by the suite of the provider. What is here is what only this
  * kernel can answer.
  */
 final class AccountProfileTest extends BrowserTestCase
@@ -75,7 +75,7 @@ final class AccountProfileTest extends BrowserTestCase
 
     /**
      * Issue beffroi-auth/op#17: the message goes under the line it is about, which is the whole reason this
-     * application installs a form component where the page of the bundle says one sentence for the page.
+     * application installs a form component where the page of the provider says one sentence for the page.
      * The refusal here is the claim's own, a name the zoneinfo database does not carry, and it is made on
      * the server: the page offers the set as suggestions, so its form can be sent with anything.
      */

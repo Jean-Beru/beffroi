@@ -22,7 +22,7 @@ final class CsrfProtectionTest extends BrowserTestCase
     private const string PASSWORD = 'correct horse battery staple';
 
     /**
-     * The login page is served under "Referrer-Policy: no-referrer" (Beffroi\Bundle\Http\InteractionPages), so
+     * The login page is served under "Referrer-Policy: no-referrer" (App\Http\InteractionPages), so
      * a browser that sends no "Sec-Fetch-Site" posts its form with "Origin: null" and no "Referer" (Fetch
      * Standard, "append a request `Origin` header"). The token the session holds is accepted all the same,
      * where a stateless one would be left to a double submit that only a script completes.

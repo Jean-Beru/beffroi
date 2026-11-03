@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Lab\Controller;
 
-use Beffroi\Bundle\Http\Tls\ClientCertificateResolverInterface;
-use Beffroi\Bundle\Http\Tls\ForgedClientCertificateException;
+use App\Http\Tls\ClientCertificateResolverInterface;
+use App\Http\Tls\ForgedClientCertificateException;
 use function strlen;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;

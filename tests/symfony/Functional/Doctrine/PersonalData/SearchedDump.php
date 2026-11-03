@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData;
+namespace App\Tests\Symfony\Functional\Doctrine\PersonalData;
 
 use Doctrine\DBAL\Connection;
 use function array_keys;
@@ -122,7 +122,7 @@ final readonly class SearchedDump
     /**
      * The column a value sits in, read from the rows rather than from the page it was found in.
      *
-     * Every column of every table is walked and not only the ones the bundle maps: a value that reached a
+     * Every column of every table is walked and not only the ones the provider maps: a value that reached a
      * table of the application, of the bus or of the migrations is as much of a leak. {@see RawRows} is
      * deliberately not reused, because it refuses what it cannot read as text, which is what makes it right
      * for a sealed column and wrong for a walk that meets counters and dates.

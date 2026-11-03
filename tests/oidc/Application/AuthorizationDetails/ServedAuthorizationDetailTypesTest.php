@@ -39,7 +39,7 @@ final class ServedAuthorizationDetailTypesTest extends TestCase
     }
 
     /**
-     * A deployment wired with none serves none, which is what the bundle ships: no type of detail is
+     * A deployment wired with none serves none, which is what the provider ships: no type of detail is
      * universal.
      */
     #[Test]

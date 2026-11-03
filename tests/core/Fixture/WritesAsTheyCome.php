@@ -10,7 +10,7 @@ use Closure;
 /**
  * The writes run as they come and are counted, one unit per call: what the adapters in memory can offer,
  * which hold no transaction to roll back. That the writes of a unit are kept all or none is the store's
- * promise, proved against Doctrine by the suite of the bundle (DoctrineAtomicWritesTest).
+ * promise, proved against Doctrine by the suite of the provider (DoctrineAtomicWritesTest).
  */
 final class WritesAsTheyCome implements AtomicWritesInterface
 {

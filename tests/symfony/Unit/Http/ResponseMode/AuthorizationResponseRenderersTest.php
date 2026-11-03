@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Http\ResponseMode;
+namespace App\Tests\Symfony\Unit\Http\ResponseMode;
 
-use Beffroi\Bundle\Http\ResponseMode\AuthorizationResponseRenderers;
-use Beffroi\Bundle\Tests\Functional\ResponseMode\FakeAliasedRenderer;
-use Beffroi\Bundle\Tests\Functional\ResponseMode\FakeResponseModeRenderer;
-use Beffroi\Bundle\Tests\Functional\ResponseMode\FakeSigningRenderer;
+use App\Http\ResponseMode\AuthorizationResponseRenderers;
+use App\Tests\Symfony\Functional\ResponseMode\FakeAliasedRenderer;
+use App\Tests\Symfony\Functional\ResponseMode\FakeResponseModeRenderer;
+use App\Tests\Symfony\Functional\ResponseMode\FakeSigningRenderer;
 use Beffroi\Oidc\Domain\Authorization\ResponseModeNames;
 use LogicException;
 use PHPUnit\Framework\Attributes\Test;

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Doctrine\PersonalData;
+namespace App\Tests\Symfony\Unit\Doctrine\PersonalData;
 
 use function array_unique;
 use function array_values;
-use Beffroi\Bundle\Doctrine\PersonalData\BlindIndexedColumns;
-use Beffroi\Bundle\Doctrine\PersonalData\EncryptedColumnTypes;
+use App\Doctrine\PersonalData\BlindIndexedColumns;
+use App\Doctrine\PersonalData\EncryptedColumnTypes;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;

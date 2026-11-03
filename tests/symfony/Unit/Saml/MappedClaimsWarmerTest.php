@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Saml;
+namespace App\Tests\Symfony\Unit\Saml;
 
-use Beffroi\Bundle\Saml\MappedClaimsWarmer;
+use App\Saml\MappedClaimsWarmer;
 use Beffroi\Saml\Port\ProfileClaimsInterface;
 use Beffroi\Saml\Port\ServedClaimsInterface;
 use PHPUnit\Framework\Attributes\Test;

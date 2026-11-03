@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Saml;
+namespace App\Tests\Symfony\Unit\Saml;
 
 use function array_filter;
 use function array_keys;
-use Beffroi\Bundle\BeffroiBundle;
-use Beffroi\Bundle\Saml\MappedClaimsWarmer;
-use Beffroi\Bundle\Saml\UpstreamIdentityProvidersPass;
+use App\DependencyInjection\BeffroiExtension;
+use App\Saml\MappedClaimsWarmer;
+use App\Saml\UpstreamIdentityProvidersPass;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationUpstreamIdentityProviders;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -265,7 +265,7 @@ final class UpstreamIdentityProvidersPassTest extends TestCase
     }
 
     /**
-     * A container without the service, which a kernel without this bundle's services builds, has nothing to check.
+     * A container without the service, which a kernel without this provider's services builds, has nothing to check.
      */
     #[Test]
     public function aContainerWithoutTheIdentityProvidersHasNothingToCheck(): void
@@ -281,16 +281,16 @@ final class UpstreamIdentityProvidersPassTest extends TestCase
     }
 
     /**
-     * The pass is one of the bundle's, run by every kernel that builds its container.
+     * The pass is one of the provider's, run by every kernel that builds its container.
      */
     #[Test]
-    public function theBundleRunsThePass(): void
+    public function theProviderRunsThePass(): void
     {
         // Given
         $container = new ContainerBuilder();
 
         // When
-        new BeffroiBundle()->build($container);
+        BeffroiExtension::addCompilerPasses($container);
 
         // Then
         $passes = array_filter(
@@ -324,8 +324,7 @@ final class UpstreamIdentityProvidersPassTest extends TestCase
     private static function container(array $identityProviders, ?ContainerBuilder $container = null, ?array $serviceProvider = null): ContainerBuilder
     {
         $container ??= new ContainerBuilder();
-        $extension = new BeffroiBundle()->getContainerExtension();
-        static::assertNotNull($extension);
+        $extension = new BeffroiExtension();
         $extension->load([
             [
                 'tenant' => [

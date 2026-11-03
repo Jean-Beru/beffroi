@@ -11,16 +11,15 @@ use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Form\Extension\Core\Type\TelType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Extension\Core\Type\UrlType;
+use Symfony\Component\Form\FormTypeInterface;
 use function sprintf;
 
 /**
  * The form type a claim of the provider is edited with (issue beffroi-auth/op#17): the one place the kinds
  * a claim may be are mapped onto the types of symfony/form.
  *
- * The bundle says what a claim is and never what a form is: its own pages are bare HTML with a form token,
- * which is what lets this application dress them by one layout override (architecture §5.2). So the
- * mapping lives here, in the deployment that chose the component, and a kind the bundle adds is a line
- * here and nothing else.
+ * The core says what a claim is and never what a form is, so the mapping lives here, beside the one page
+ * written with the component, and a kind the core adds is a line here and nothing else.
  *
  * A closed set short enough to read is a choice of its values; a set of several hundred is typed into with
  * the whole set suggested, which is a line of text and a `<datalist>` the page renders beside it, there
@@ -31,7 +30,7 @@ use function sprintf;
 final readonly class ClaimFieldTypes
 {
     /**
-     * @return class-string
+     * @return class-string<FormTypeInterface<mixed>>
      */
     public static function of(ClaimField $field): string
     {
@@ -64,7 +63,8 @@ final readonly class ClaimFieldTypes
             'translation_domain' => 'beffroi',
         ];
         if ($field->isPicked()) {
-            return $options + [
+            return $options
+            + [
                 'attr' => [
                     'autocomplete' => 'off',
                     'list' => self::suggestions($claim),
@@ -72,7 +72,8 @@ final readonly class ClaimFieldTypes
             ];
         }
         if ($field->choices !== []) {
-            return $options + [
+            return $options
+            + [
                 // a flat list with the label read beside it, and not the labels as keys: two values may
                 // read the same and would be one choice if the label were the key
                 'choices' => array_keys($field->choices),
@@ -88,7 +89,8 @@ final readonly class ClaimFieldTypes
             $attributes['pattern'] = $field->pattern;
         }
         if ($field->kind === 'date') {
-            return $options + [
+            return $options
+            + [
                 'widget' => 'single_text',
                 'input' => 'string',
                 'input_format' => 'Y-m-d',
@@ -97,9 +99,10 @@ final readonly class ClaimFieldTypes
             ];
         }
 
-        return $options + [
+        return $options
+        + [
             'attr' => $attributes,
-            // the example is a key of the catalogue of the bundle, as every word of these pages is
+            // the example is a key of the catalogue of the provider, as every word of these pages is
             'help' => $field->example,
             'help_translation_parameters' => [],
         ];

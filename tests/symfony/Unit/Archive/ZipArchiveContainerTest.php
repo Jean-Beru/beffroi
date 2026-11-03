@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Archive;
+namespace App\Tests\Symfony\Unit\Archive;
 
-use Beffroi\Bundle\Archive\ZipArchiveContainer;
+use App\Archive\ZipArchiveContainer;
 use Beffroi\Core\Domain\Archive\ArchivePassword;
 use function file_put_contents;
 use PHPUnit\Framework\Attributes\Test;

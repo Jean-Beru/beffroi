@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
 use function array_filter;
 use function basename;
@@ -17,59 +17,59 @@ use Doctrine\Migrations\AbstractMigration;
 use Doctrine\Migrations\Exception\AbortMigration;
 use Doctrine\Migrations\Query\Query;
 use Doctrine\ORM\Tools\SchemaTool;
-use Beffroi\Bundle\Migrations\Version20260915171732;
-use Beffroi\Bundle\Migrations\Version20260917180000;
-use Beffroi\Bundle\Migrations\Version20260919150000;
-use Beffroi\Bundle\Migrations\Version20260920120000;
-use Beffroi\Bundle\Migrations\Version20260920180000;
-use Beffroi\Bundle\Migrations\Version20260922120000;
-use Beffroi\Bundle\Migrations\Version20260922180000;
-use Beffroi\Bundle\Migrations\Version20260923090000;
-use Beffroi\Bundle\Migrations\Version20260923170000;
-use Beffroi\Bundle\Migrations\Version20260923190000;
-use Beffroi\Bundle\Migrations\Version20260925120000;
-use Beffroi\Bundle\Migrations\Version20260925180000;
-use Beffroi\Bundle\Migrations\Version20260926090000;
-use Beffroi\Bundle\Migrations\Version20260926210000;
-use Beffroi\Bundle\Migrations\Version20260926220000;
-use Beffroi\Bundle\Migrations\Version20260927090000;
-use Beffroi\Bundle\Migrations\Version20260927100000;
-use Beffroi\Bundle\Migrations\Version20260927140000;
-use Beffroi\Bundle\Migrations\Version20260927180000;
-use Beffroi\Bundle\Migrations\Version20260928120000;
-use Beffroi\Bundle\Migrations\Version20260929120000;
-use Beffroi\Bundle\Migrations\Version20260929180000;
-use Beffroi\Bundle\Migrations\Version20260930120000;
-use Beffroi\Bundle\Migrations\Version20260930180000;
-use Beffroi\Bundle\Migrations\Version20261001120000;
-use Beffroi\Bundle\Migrations\Version20261001180000;
-use Beffroi\Bundle\Migrations\Version20261002120000;
-use Beffroi\Bundle\Migrations\Version20261002180000;
-use Beffroi\Bundle\Migrations\Version20261003120000;
-use Beffroi\Bundle\Migrations\Version20261003180000;
-use Beffroi\Bundle\Migrations\Version20261004120000;
-use Beffroi\Bundle\Migrations\Version20261005120000;
-use Beffroi\Bundle\Migrations\Version20261006120000;
-use Beffroi\Bundle\Migrations\Version20261007120000;
-use Beffroi\Bundle\Migrations\Version20261008120000;
-use Beffroi\Bundle\Migrations\Version20261009120000;
-use Beffroi\Bundle\Migrations\Version20261009130000;
-use Beffroi\Bundle\Migrations\Version20261010120000;
-use Beffroi\Bundle\Migrations\Version20261010180000;
-use Beffroi\Bundle\Migrations\Version20261011120000;
-use Beffroi\Bundle\Migrations\Version20261011150000;
-use Beffroi\Bundle\Migrations\Version20261011160000;
-use Beffroi\Bundle\Migrations\Version20261011170000;
-use Beffroi\Bundle\Migrations\Version20261015120000;
-use Beffroi\Bundle\Migrations\Version20261015173400;
-use Beffroi\Bundle\Migrations\Version20261015200000;
-use Beffroi\Bundle\Migrations\Version20261020153500;
-use Beffroi\Bundle\Migrations\Version20261022120000;
-use Beffroi\Bundle\Migrations\Version20261022150000;
-use Beffroi\Bundle\Migrations\Version20261022180000;
-use Beffroi\Bundle\Migrations\Version20261023120000;
-use Beffroi\Bundle\Migrations\Version20261030120000;
-use Beffroi\Bundle\Migrations\Version20261030150000;
+use DoctrineMigrations\Version20260915171732;
+use DoctrineMigrations\Version20260917180000;
+use DoctrineMigrations\Version20260919150000;
+use DoctrineMigrations\Version20260920120000;
+use DoctrineMigrations\Version20260920180000;
+use DoctrineMigrations\Version20260922120000;
+use DoctrineMigrations\Version20260922180000;
+use DoctrineMigrations\Version20260923090000;
+use DoctrineMigrations\Version20260923170000;
+use DoctrineMigrations\Version20260923190000;
+use DoctrineMigrations\Version20260925120000;
+use DoctrineMigrations\Version20260925180000;
+use DoctrineMigrations\Version20260926090000;
+use DoctrineMigrations\Version20260926210000;
+use DoctrineMigrations\Version20260926220000;
+use DoctrineMigrations\Version20260927090000;
+use DoctrineMigrations\Version20260927100000;
+use DoctrineMigrations\Version20260927140000;
+use DoctrineMigrations\Version20260927180000;
+use DoctrineMigrations\Version20260928120000;
+use DoctrineMigrations\Version20260929120000;
+use DoctrineMigrations\Version20260929180000;
+use DoctrineMigrations\Version20260930120000;
+use DoctrineMigrations\Version20260930180000;
+use DoctrineMigrations\Version20261001120000;
+use DoctrineMigrations\Version20261001180000;
+use DoctrineMigrations\Version20261002120000;
+use DoctrineMigrations\Version20261002180000;
+use DoctrineMigrations\Version20261003120000;
+use DoctrineMigrations\Version20261003180000;
+use DoctrineMigrations\Version20261004120000;
+use DoctrineMigrations\Version20261005120000;
+use DoctrineMigrations\Version20261006120000;
+use DoctrineMigrations\Version20261007120000;
+use DoctrineMigrations\Version20261008120000;
+use DoctrineMigrations\Version20261009120000;
+use DoctrineMigrations\Version20261009130000;
+use DoctrineMigrations\Version20261010120000;
+use DoctrineMigrations\Version20261010180000;
+use DoctrineMigrations\Version20261011120000;
+use DoctrineMigrations\Version20261011150000;
+use DoctrineMigrations\Version20261011160000;
+use DoctrineMigrations\Version20261011170000;
+use DoctrineMigrations\Version20261015120000;
+use DoctrineMigrations\Version20261015173400;
+use DoctrineMigrations\Version20261015200000;
+use DoctrineMigrations\Version20261020153500;
+use DoctrineMigrations\Version20261022120000;
+use DoctrineMigrations\Version20261022150000;
+use DoctrineMigrations\Version20261022180000;
+use DoctrineMigrations\Version20261023120000;
+use DoctrineMigrations\Version20261030120000;
+use DoctrineMigrations\Version20261030150000;
 use function implode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -85,7 +85,7 @@ use function substr;
 use function trim;
 
 /**
- * Architecture §5.3: the migrations the bundle ships create on PostgreSQL exactly what the mappings
+ * Architecture §5.3: the migrations the provider ships create on PostgreSQL exactly what the mappings
  * describe, no more, no less. The platform is built from a declared server version, so that no
  * PostgreSQL is needed to check it; the application ran them against a real one.
  */
@@ -183,16 +183,16 @@ final class MigrationTest extends DatabaseTestCase
 
     /**
      * The directory of the migrations holds version files and nothing else, because it is in the `autoload`
-     * of no package: the bundle declares it to Doctrine Migrations, which loads the version files it finds
+     * of no package: the provider declares it to Doctrine Migrations, which loads the version files it finds
      * there, and only the `autoload-dev` of the monorepo maps the namespace. So a class placed there
      * resolves in this suite and not in a deployment, which is what this refuses. Anything several
-     * migrations share lives under `src/`, where `Beffroi\Bundle\` autoloads it.
+     * migrations share lives under `src/`, where `App\` autoloads it.
      */
     #[Test]
     public function theDirectoryOfTheMigrationsHoldsVersionFilesAndNothingElse(): void
     {
         // Given
-        $directory = \dirname(__DIR__, 4) . '/src/symfony/migrations';
+        $directory = \dirname(__DIR__, 4) . '/apps/op/migrations';
 
         // When
         $files = glob($directory . '/*.php');
@@ -210,7 +210,7 @@ final class MigrationTest extends DatabaseTestCase
     }
 
     #[Test]
-    public function theMigrationsCreateTheThirtyFiveTablesOfTheBundle(): void
+    public function theMigrationsCreateTheThirtyFiveTablesOfTheProvider(): void
     {
         // Given
         $connection = DriverManager::getConnection([

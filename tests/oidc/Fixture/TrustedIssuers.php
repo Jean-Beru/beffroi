@@ -71,7 +71,7 @@ final readonly class TrustedIssuers
     }
 
     /**
-     * What reads an assertion presented as an authorization, wired as the bundle wires it (RFC 7523 §3): the
+     * What reads an assertion presented as an authorization, wired as the provider wires it (RFC 7523 §3): the
      * reader and the verifier every JWT a third party signs goes through, the keys of the issuers read by the
      * one class that reads a published set and kept in a pool of their own, and a replay guard of their own.
      *

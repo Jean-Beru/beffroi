@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Http\Account;
+namespace App\Tests\Symfony\Unit\Http\Account;
 
-use Beffroi\Bundle\Http\Account\TwoFactorSection;
+use App\Http\Account\TwoFactorSection;
 use Beffroi\Core\Application\Credential\ActiveCredentials;
 use Beffroi\Core\Application\Totp\ActiveTotp;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;

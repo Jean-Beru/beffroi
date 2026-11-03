@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Command;
+namespace App\Tests\Symfony\Unit\Command;
 
 use function file_get_contents;
 use function file_put_contents;
-use Beffroi\Bundle\Command\GeoipRefreshCommand;
-use Beffroi\Bundle\Geo\GeoLite2Databases;
-use Beffroi\Bundle\Geo\GeoLite2Refresh;
-use Beffroi\Bundle\Tests\Fixture\MaxMindDatabase;
+use App\Command\GeoipRefreshCommand;
+use App\Geo\GeoLite2Databases;
+use App\Geo\GeoLite2Refresh;
+use App\Tests\Symfony\Fixture\MaxMindDatabase;
 use Closure;
 use function memory_get_peak_usage;
 use function memory_get_usage;
@@ -66,7 +66,7 @@ final class GeoipRefreshCommandTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->directory = sys_get_temp_dir() . '/beffroi-bundle-tests/geoip-' . uniqid();
+        $this->directory = sys_get_temp_dir() . '/beffroi-integration-tests/geoip-' . uniqid();
         new Filesystem()->mkdir($this->directory);
         $this->databases = new GeoLite2Databases($this->directory);
     }

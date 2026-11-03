@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Demonstration\Trace;
 
 use App\Demonstration\ProviderEndpointsOfTheTenant;
-use Beffroi\Bundle\Plane\Plane;
+use App\Plane\Plane;
 use Beffroi\Oidc\Domain\Flow\FlowPicture;
 use Beffroi\Oidc\Port\FlowPicturesInterface;
 use Beffroi\Oidc\Port\ServedGrantsInterface;

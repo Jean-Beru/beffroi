@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use DateTimeImmutable;
-use Beffroi\Bundle\Http\BrowserSession;
+use App\Http\BrowserSession;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Bridge\Password\Algorithm\Bcrypt;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
@@ -30,7 +30,7 @@ use Symfony\Component\Uid\Uuid;
 use function unserialize;
 
 /**
- * Architecture §5.4, the acceptance criterion of the security of the bundle: a user created outside of
+ * Architecture §5.4, the acceptance criterion of the security of the provider: a user created outside of
  * the browser signs in on the form of the login page, the firewall opens the session of the core and
  * binds the browser to it, and an interaction begun in another HTTP session cannot be resumed, before
  * or after a login. The firewall is the one of tests/symfony/config/config_test.yml, declared as an

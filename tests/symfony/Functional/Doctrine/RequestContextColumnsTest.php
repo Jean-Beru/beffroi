@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
 use Doctrine\DBAL\Connection;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\RawRows;
-use Beffroi\Bundle\Tests\Fixture\EnrichTheProvenance;
-use Beffroi\Bundle\Tests\Fixture\EnrichTheProvenanceHandler;
-use Beffroi\Bundle\Tests\Functional\Doctrine\PersonalData\SealedRows;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\RawRows;
+use App\Tests\Symfony\Fixture\EnrichTheProvenance;
+use App\Tests\Symfony\Fixture\EnrichTheProvenanceHandler;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\SealedRows;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
@@ -24,7 +24,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
  * It was an embeddable of five columns mapped four times, and an embeddable cannot seal: it fixes the type
  * of each of its fields once for the whole model, so the same field could not carry the type of each of
  * the three tables, and the family a sealed type belongs to is its table. One column and one JSON document
- * now, which is what this bundle already does with every value object a column holds whole.
+ * now, which is what this provider already does with every value object a column holds whole.
  *
  * **What this spike had to get right here** is the write path: the enrichment of a provenance is meant to
  * be asynchronous, so a column of it is written from a handler of the bus and not from a request, and a

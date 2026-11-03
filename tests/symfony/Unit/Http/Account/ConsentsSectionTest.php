@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Unit\Http\Account;
+namespace App\Tests\Symfony\Unit\Http\Account;
 
-use Beffroi\Bundle\Http\Account\ConsentsSection;
+use App\Http\Account\ConsentsSection;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;

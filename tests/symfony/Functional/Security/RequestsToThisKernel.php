@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Bundle\Tests\Functional\Security;
+namespace App\Tests\Symfony\Functional\Security;
 
 use function explode;
 use function in_array;
@@ -19,9 +19,9 @@ use Symfony\Component\HttpKernel\KernelInterface;
 use function trim;
 
 /**
- * What the firewall of the host application asks the provider is answered by the kernel that serves the provider
+ * What the firewall of the application asks the provider is answered by the kernel that serves the provider
  * (issue #282): each request it sends is handled as a request of its own while the request of the browser waits, so
- * that the application signs in at the provider it hosts with nothing between the two but HTTP. Nothing of this
+ * that the application signs in at the provider it serves with nothing between the two but HTTP. Nothing of this
  * kernel reaches a host.
  */
 final readonly class RequestsToThisKernel
