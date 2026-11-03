@@ -153,6 +153,24 @@ final class SecurityHeadersTest extends BrowserTestCase
     }
 
     /**
+     * The logos of the authenticators the page of the passkeys names are images of data: URLs (issue #983),
+     * which the policy of that page admits, so that showing one fetches nothing.
+     */
+    #[Test]
+    public function itAdmitsOnThePageOfThePasskeysTheImagesOfDataUrls(): void
+    {
+        // Given
+        $this->signIn(self::user());
+
+        // When
+        $this->browser->request('GET', '/account/passkeys');
+
+        // Then
+        static::assertResponseIsSuccessful();
+        static::assertCspHeader(requiredDirectives: ['img-src'], contains: ["img-src 'self' data:"]);
+    }
+
+    /**
      * CSP Level 3 §6.1: everything is refused and then one directive per kind of thing a page of this
      * deployment loads. Neither "unsafe-inline" nor "unsafe-eval" is one of them, the level 1 fallback that
      * would add the first being off.

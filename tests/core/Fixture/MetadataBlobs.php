@@ -33,6 +33,7 @@ final class MetadataBlobs
      * @param list<string> $attestationRootCertificates DER in base64
      * @param list<string> $omitting the members of the statement it leaves out, those FIDO Metadata Statement
      *                               v3.1 §4 does not require
+     * @param string|null $icon the icon of the statement (§4), a data: URL, or none
      *
      * @return array<string, mixed>
      */
@@ -42,6 +43,7 @@ final class MetadataBlobs
         string $description = 'Authenticator of the tests',
         array $attestationRootCertificates = [],
         array $omitting = [],
+        ?string $icon = null,
     ): array {
         $reports = [];
         foreach ($statuses as $status) {
@@ -73,6 +75,9 @@ final class MetadataBlobs
             'tcDisplay' => [],
             'attestationRootCertificates' => $attestationRootCertificates,
         ];
+        if ($icon !== null) {
+            $statement['icon'] = $icon;
+        }
         foreach ($omitting as $member) {
             unset($statement[$member]);
         }

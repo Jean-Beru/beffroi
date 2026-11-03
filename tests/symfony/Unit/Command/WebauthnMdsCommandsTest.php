@@ -8,6 +8,7 @@ use function array_keys;
 use function file_put_contents;
 use Beffroi\Bundle\Command\WebauthnMdsImportCommand;
 use Beffroi\Bundle\Command\WebauthnMdsRefreshCommand;
+use Beffroi\Bundle\Webauthn\DocumentDownload;
 use Beffroi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
 use Beffroi\Core\Bridge\Webauthn\MetadataBlobVerifier;
 use Beffroi\Core\Bridge\Webauthn\StoredMetadata;
@@ -262,7 +263,9 @@ final class WebauthnMdsCommandsTest extends TestCase
     {
         $verifier = new MetadataBlobVerifier(PhpCertificateChainValidator::create(new MockHttpClient(), new MockClock(Fixtures::now())));
 
-        return new CommandTester(new Command('beffroi:webauthn:mds-refresh')->setCode(new WebauthnMdsRefreshCommand($http, $verifier, $this->store)));
+        return new CommandTester(new Command('beffroi:webauthn:mds-refresh')->setCode(
+            new WebauthnMdsRefreshCommand($http, new DocumentDownload($http), $verifier, $this->store),
+        ));
     }
 
     private function import(): CommandTester

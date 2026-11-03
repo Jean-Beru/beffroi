@@ -7,6 +7,7 @@ namespace Beffroi\Core\Tests\Domain\Credential;
 use function array_filter;
 use function array_map;
 use DateTimeImmutable;
+use Beffroi\Core\Domain\Credential\AuthenticatorTransport;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
@@ -85,6 +86,24 @@ final class PasskeyCredentialTest extends TestCase
         // When / Then
         static::assertSame("\x01\x02raw-id", $passkey->externalId);
         static::assertSame($passkey->externalId, $passkey->credentialId);
+    }
+
+    /**
+     * WebAuthn Level 3 §5.8.4: how the passkey is reached is what its authenticator declared, in the order it
+     * declared it, of the transports the specification defines; another value stays in the record (§5.2.1).
+     */
+    #[Test]
+    public function itIsReachedThroughTheTransportsTheSpecificationDefines(): void
+    {
+        // Given
+        $passkey = Fixtures::passkey(transports: ['hybrid', 'cable', 'internal', 'usb']);
+
+        // When
+        $reachedThrough = $passkey->reachedThrough;
+
+        // Then
+        static::assertSame([AuthenticatorTransport::Hybrid, AuthenticatorTransport::Internal, AuthenticatorTransport::Usb], $reachedThrough);
+        static::assertSame(['hybrid', 'cable', 'internal', 'usb'], $passkey->transports);
     }
 
     /**

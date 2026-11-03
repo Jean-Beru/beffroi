@@ -453,6 +453,98 @@
         <source>passkeys.error.refused</source>
         <target>Ce fournisseur a refusé la passkey. Réessayez avec une autre.</target>
       </trans-unit>
+      <trans-unit id="750c174f43" resname="passkeys.held_by">
+        <source>passkeys.held_by</source>
+        <target>Conservée par</target>
+      </trans-unit>
+      <trans-unit id="02820b7d95" resname="passkeys.authenticator.unknown">
+        <source>passkeys.authenticator.unknown</source>
+        <target>Authentificateur inconnu</target>
+      </trans-unit>
+      <trans-unit id="dbb47ea9ff" resname="passkeys.authenticator.declared">
+        <source>passkeys.authenticator.declared</source>
+        <target>Un authentificateur est nommé d’après ce qu’il a déclaré à l’ajout de la passkey : rien ne le vérifie.</target>
+      </trans-unit>
+      <trans-unit id="fd60213150" resname="passkeys.certification.NOT_FIDO_CERTIFIED">
+        <source>passkeys.certification.NOT_FIDO_CERTIFIED</source>
+        <target>Non certifié FIDO</target>
+      </trans-unit>
+      <trans-unit id="f08c853044" resname="passkeys.certification.SELF_ASSERTION_SUBMITTED">
+        <source>passkeys.certification.SELF_ASSERTION_SUBMITTED</source>
+        <target>Auto-évaluation soumise à la FIDO Alliance</target>
+      </trans-unit>
+      <trans-unit id="a08bf87175" resname="passkeys.certification.FIDO_CERTIFIED">
+        <source>passkeys.certification.FIDO_CERTIFIED</source>
+        <target>Certifié FIDO</target>
+      </trans-unit>
+      <trans-unit id="195df5ec7e" resname="passkeys.certification.FIDO_CERTIFIED_L1">
+        <source>passkeys.certification.FIDO_CERTIFIED_L1</source>
+        <target>Certifié FIDO, niveau 1</target>
+      </trans-unit>
+      <trans-unit id="5202b427e6" resname="passkeys.certification.FIDO_CERTIFIED_L1plus">
+        <source>passkeys.certification.FIDO_CERTIFIED_L1plus</source>
+        <target>Certifié FIDO, niveau 1+</target>
+      </trans-unit>
+      <trans-unit id="73447fff7e" resname="passkeys.certification.FIDO_CERTIFIED_L2">
+        <source>passkeys.certification.FIDO_CERTIFIED_L2</source>
+        <target>Certifié FIDO, niveau 2</target>
+      </trans-unit>
+      <trans-unit id="c04f76a90b" resname="passkeys.certification.FIDO_CERTIFIED_L2plus">
+        <source>passkeys.certification.FIDO_CERTIFIED_L2plus</source>
+        <target>Certifié FIDO, niveau 2+</target>
+      </trans-unit>
+      <trans-unit id="05ff868652" resname="passkeys.certification.FIDO_CERTIFIED_L3">
+        <source>passkeys.certification.FIDO_CERTIFIED_L3</source>
+        <target>Certifié FIDO, niveau 3</target>
+      </trans-unit>
+      <trans-unit id="305ec3efe0" resname="passkeys.certification.FIDO_CERTIFIED_L3plus">
+        <source>passkeys.certification.FIDO_CERTIFIED_L3plus</source>
+        <target>Certifié FIDO, niveau 3+</target>
+      </trans-unit>
+      <trans-unit id="dfff2ff3c7" resname="passkeys.certification.REVOKED">
+        <source>passkeys.certification.REVOKED</source>
+        <target>Révoqué par la FIDO Alliance</target>
+      </trans-unit>
+      <trans-unit id="9f5464da31" resname="passkeys.backup.single_device">
+        <source>passkeys.backup.single_device</source>
+        <target>Passkey liée à son appareil</target>
+      </trans-unit>
+      <trans-unit id="8fdac8b403" resname="passkeys.backup.backed_up">
+        <source>passkeys.backup.backed_up</source>
+        <target>Passkey synchronisée, sauvegardée</target>
+      </trans-unit>
+      <trans-unit id="4150fe9928" resname="passkeys.backup.not_backed_up">
+        <source>passkeys.backup.not_backed_up</source>
+        <target>Passkey synchronisée, pas encore sauvegardée</target>
+      </trans-unit>
+      <trans-unit id="e0e39cd225" resname="passkeys.reached_through">
+        <source>passkeys.reached_through</source>
+        <target>Atteinte par {ways}</target>
+      </trans-unit>
+      <trans-unit id="bacb48e58b" resname="passkeys.transport.internal">
+        <source>passkeys.transport.internal</source>
+        <target>son appareil</target>
+      </trans-unit>
+      <trans-unit id="29728954a8" resname="passkeys.transport.hybrid">
+        <source>passkeys.transport.hybrid</source>
+        <target>un téléphone à proximité</target>
+      </trans-unit>
+      <trans-unit id="a6b962c0d4" resname="passkeys.transport.usb">
+        <source>passkeys.transport.usb</source>
+        <target>une clé de sécurité en USB</target>
+      </trans-unit>
+      <trans-unit id="0ec9969fae" resname="passkeys.transport.nfc">
+        <source>passkeys.transport.nfc</source>
+        <target>une clé de sécurité en NFC</target>
+      </trans-unit>
+      <trans-unit id="6b5407b258" resname="passkeys.transport.ble">
+        <source>passkeys.transport.ble</source>
+        <target>une clé de sécurité en Bluetooth</target>
+      </trans-unit>
+      <trans-unit id="d93f9670bc" resname="passkeys.transport.smart-card">
+        <source>passkeys.transport.smart-card</source>
+        <target>une carte à puce</target>
+      </trans-unit>
       <trans-unit id="5b10da251c" resname="code.title">
         <source>code.title</source>
         <target>Saisissez votre code</target>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Bundle\Tests\Unit\Webauthn;
 
 use function file_get_contents;
+use Beffroi\Bundle\Webauthn\FileAuthenticatorListStore;
 use Beffroi\Bundle\Webauthn\FileMetadataBlobStore;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -88,6 +89,29 @@ final class FileMetadataBlobStoreTest extends TestCase
     {
         // When / Then
         static::assertSame([], $this->store->readAll());
+    }
+
+    /**
+     * The list of the community lives in the "community" directory of the storage (WebauthnSection), and the
+     * ceremonies read no document of it.
+     */
+    #[Test]
+    public function aDocumentOfADirectoryInsideTheStorageIsNotRead(): void
+    {
+        // Given
+        $this->store->write('mds-a', '{"no": 1}');
+        new FileAuthenticatorListStore($this->directory . '/community')->write('{"list": 1}');
+
+        // When
+        $documents = $this->store->readAll();
+
+        // Then
+        static::assertSame(
+            [
+                'mds-a' => '{"no": 1}',
+            ],
+            $documents,
+        );
     }
 
     /**

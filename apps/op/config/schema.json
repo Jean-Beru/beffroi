@@ -892,14 +892,14 @@
                             "metadata_storage": {
                                 "$ref": "#/$defs/types/scalar",
                                 "default": "%kernel.project_dir%/var/webauthn",
-                                "description": "Directory of the FIDO metadata the ceremonies check an attestation against: the documents \"beffroi:webauthn:mds-refresh\" verified and \"beffroi:webauthn:mds-import\" stored, next to the keys; empty until one of them ran, which the enrolment of the provider does not need."
+                                "description": "Directory of the FIDO metadata the ceremonies check an attestation against: the documents \"beffroi:webauthn:mds-refresh\" verified and \"beffroi:webauthn:mds-import\" stored, next to the keys; empty until one of them ran, which the enrolment of the provider does not need. Its \"community\" directory holds the list of passkey providers \"beffroi:webauthn:aaguids-refresh\" stored, which the pages name the authenticator of a passkey from when the metadata do not."
                             }
                         },
                         "additionalProperties": false,
                         "default": {
                             "metadata_storage": "%kernel.project_dir%/var/webauthn"
                         },
-                        "description": "What the passkey ceremonies read besides the tenant (architecture §3.4)."
+                        "description": "What the passkey ceremonies and the pages that name the authenticator of a passkey read besides the tenant (architecture §3.4)."
                     },
                     "mutual_tls": {
                         "$ref": "#/$defs/types/object_null",

@@ -7,7 +7,9 @@ namespace Beffroi\Bundle\Command;
 use function array_filter;
 use function array_map;
 use DateTimeImmutable;
+use Beffroi\Core\Application\Credential\AuthenticatorModels;
 use Beffroi\Core\Domain\Credential\Credential;
+use Beffroi\Core\Domain\Credential\ModelDeclaringCredentialInterface;
 use Beffroi\Core\Domain\Credential\RevocableCredentialInterface;
 use Beffroi\Core\Domain\Group\GroupMembership;
 use Beffroi\Core\Domain\Identity\User;
@@ -23,13 +25,13 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
  * A user as the provider knows them (architecture §5.5): the identity with the source that created it, the
- * standard claims that are set, the credentials with their kind, identifier, name and dates, and the groups
- * with the source of each membership (decision 0002). Reads, writes nothing: describing a user is
- * beffroi:user:profile, and that one clears what it is not told.
+ * standard claims that are set, the credentials with their kind, identifier, name, authenticator and dates,
+ * and the groups with the source of each membership (decision 0002). Reads, writes nothing: describing a user
+ * is beffroi:user:profile, and that one clears what it is not told.
  */
 #[AsCommand(
     name: 'beffroi:user:show',
-    description: 'Show a user: the identity with the source that created it, the standard claims that are set, the credentials with their kind, identifier, name and dates, and the groups with the source of each membership.',
+    description: 'Show a user: the identity with the source that created it, the standard claims that are set, the credentials with their kind, identifier, name, authenticator and dates, and the groups with the source of each membership.',
 )]
 final readonly class UserShowCommand
 {
@@ -38,6 +40,7 @@ final readonly class UserShowCommand
         private NamedUser $namedUsers,
         private CredentialRepositoryInterface $credentials,
         private GroupsOfAPersonInterface $groups,
+        private AuthenticatorModels $models,
     ) {
     }
 
@@ -63,11 +66,12 @@ final readonly class UserShowCommand
             $io->text('The user has no credential.');
         } else {
             $io->table(
-                ['Kind', 'Id', 'Name', 'Created', 'Last used', 'Revoked'],
-                array_map(static fn (Credential $credential): array => [
+                ['Kind', 'Id', 'Name', 'Authenticator', 'Created', 'Last used', 'Revoked'],
+                array_map(fn (Credential $credential): array => [
                     $credential->kind(),
                     $credential->id->toRfc4122(),
                     $credential->label() ?? '',
+                    $credential instanceof ModelDeclaringCredentialInterface ? $this->authenticator($credential) : '',
                     self::date($credential->createdAt),
                     self::date($credential->lastUsedAt),
                     $credential instanceof RevocableCredentialInterface ? self::date($credential->revokedAt) : '',
@@ -91,6 +95,19 @@ final readonly class UserShowCommand
         }
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * The make and model the authenticator of a credential declared, with the source that names them (issue
+     * #983), or the AAGUID no source names.
+     */
+    private function authenticator(ModelDeclaringCredentialInterface $credential): string
+    {
+        $model = $this->models->of($credential);
+
+        return $model === null
+            ? sprintf('unknown (AAGUID %s)', $credential->aaguid->toRfc4122())
+            : sprintf('%s (%s)', $model->name, $model->source);
     }
 
     /**

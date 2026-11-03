@@ -7,6 +7,8 @@ namespace Beffroi\Bundle\Command;
 use function count;
 use function file_get_contents;
 use function hash;
+use Beffroi\Bundle\Webauthn\DocumentDownload;
+use Beffroi\Bundle\Webauthn\DownloadRefusedException;
 use Beffroi\Core\Bridge\Webauthn\MetadataBlobVerifier;
 use Beffroi\Core\Exception\MetadataBlobRefusedException;
 use Beffroi\Core\Port\MetadataBlobStoreInterface;
@@ -50,6 +52,7 @@ final readonly class WebauthnMdsRefreshCommand
 
     public function __construct(
         private HttpClientInterface $http,
+        private DocumentDownload $download,
         private MetadataBlobVerifier $verifier,
         private MetadataBlobStoreInterface $store,
     ) {
@@ -80,8 +83,8 @@ final readonly class WebauthnMdsRefreshCommand
                 continue;
             }
             try {
-                $blob = $this->verifier->verify($this->download($source), $rootCertificate);
-            } catch (MetadataBlobRefusedException $exception) {
+                $blob = $this->verifier->verify($this->download->of($source), $rootCertificate);
+            } catch (DownloadRefusedException|MetadataBlobRefusedException $exception) {
                 ++$refused;
                 $io->error(sprintf('The blob of %s is refused, nothing of it is kept: %s', $source, $exception->getMessage()));
                 continue;
@@ -99,35 +102,6 @@ final readonly class WebauthnMdsRefreshCommand
         }
 
         return $refused === 0 ? Command::SUCCESS : Command::FAILURE;
-    }
-
-    /**
-     * @throws MetadataBlobRefusedException when the service does not answer with a document
-     */
-    private function download(string $url): string
-    {
-        try {
-            $response = $this->http->request('GET', $url, [
-                'max_redirects' => 0,
-            ]);
-            $status = $response->getStatusCode();
-            if ($status >= 300 && $status < 400) {
-                $location = $response->getHeaders(false)['location'][0] ?? '?';
-                throw new MetadataBlobRefusedException(sprintf(
-                    'the service redirects to %s, and no outbound request follows a redirect; name that URL instead',
-                    $location,
-                ));
-            }
-            if ($status !== 200) {
-                throw new MetadataBlobRefusedException(sprintf('the service answered %d', $status));
-            }
-
-            return $response->getContent();
-        } catch (MetadataBlobRefusedException $exception) {
-            throw $exception;
-        } catch (Throwable $exception) {
-            throw new MetadataBlobRefusedException(sprintf('the service cannot be reached: %s', $exception->getMessage()), previous: $exception);
-        }
     }
 
     /**

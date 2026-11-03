@@ -694,6 +694,53 @@
         @apply visible;
     }
 
+    /*
+     * What holds a passkey (issue beffroi-auth/beffroi#983): the logo and the name of the model on one line,
+     * its certification as a state of it, then what the flags of the passkey say and how it is reached, in
+     * smaller words under them. An authenticator no source names says so, dimmer than a name, as a place
+     * nothing could find does. A logo with a variant for each theme is written twice, and the page shows the
+     * one of its theme: the dark one when the document says "dark", or when it names no theme and the browser
+     * prefers a dark scheme, which is when DaisyUI draws the dark theme; the light one otherwise.
+     */
+    main[data-page="account"] td[data-authenticator] img[data-logo] {
+        @apply me-2 inline-block size-5 object-contain align-middle;
+    }
+
+    main[data-page="account"] td[data-authenticator] img[data-logo="dark"],
+    [data-theme="dark"] main[data-page="account"] td[data-authenticator] img[data-logo="light"] {
+        @apply hidden;
+    }
+
+    [data-theme="dark"] main[data-page="account"] td[data-authenticator] img[data-logo="dark"] {
+        @apply inline-block;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root:not([data-theme]) main[data-page="account"] td[data-authenticator] img[data-logo="light"] {
+            @apply hidden;
+        }
+
+        :root:not([data-theme]) main[data-page="account"] td[data-authenticator] img[data-logo="dark"] {
+            @apply inline-block;
+        }
+    }
+
+    main[data-page="account"] td[data-authenticator] span[data-model] {
+        @apply align-middle font-medium;
+    }
+
+    main[data-page="account"] td[data-authenticator="unknown"] span[data-model] {
+        @apply font-normal opacity-60;
+    }
+
+    main[data-page="account"] td[data-authenticator] span[data-certification] {
+        @apply badge badge-sm badge-soft ms-2 align-middle font-normal;
+    }
+
+    main[data-page="account"] td[data-authenticator] :is(span[data-backup], span[data-transports]) {
+        @apply block text-xs opacity-60;
+    }
+
     /* Taking something back is not the action a page offers first. */
     main[data-page="account"] form button[name="revoke"],
     main[data-page="account"] form[data-two-factor="revoke"] button[type="submit"] {

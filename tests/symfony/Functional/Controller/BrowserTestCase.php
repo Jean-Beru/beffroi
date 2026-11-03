@@ -98,7 +98,9 @@ abstract class BrowserTestCase extends DatabaseTestCase
         // what the provider does in production, and the recorded events span the test instead of the last
         // request, so a fixture that raises some calls forgetEvents() before its act.
         $this->browser->disableReboot();
-        new Filesystem()->remove(self::keyStorage());
+        // A test starts where a deployment starts: no key drawn, and no FIDO metadata nor list of the
+        // community stored, which a test that needs them writes itself.
+        new Filesystem()->remove([self::keyStorage(), self::metadataStorage()]);
     }
 
     /**
@@ -124,9 +126,9 @@ abstract class BrowserTestCase extends DatabaseTestCase
 
     protected function tearDown(): void
     {
-        // Before the parent, which shuts the kernel down: keyStorage() asks the container where it
-        // writes, and a container that is down would be booted again just to answer.
-        new Filesystem()->remove(self::keyStorage());
+        // Before the parent, which shuts the kernel down: keyStorage() and metadataStorage() ask the
+        // container where it writes, and a container that is down would be booted again just to answer.
+        new Filesystem()->remove([self::keyStorage(), self::metadataStorage()]);
         parent::tearDown();
     }
 
