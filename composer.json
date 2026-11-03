@@ -65,7 +65,7 @@
         "symfony/twig-bundle": "8.2.*",
         "symfony/uid": "8.2.*",
         "twig/twig": "^3.21",
-        "web-auth/webauthn-lib": "^5.3.11",
+        "web-auth/webauthn-lib": "^5.3.12",
         "web-token/jwt-library": "^4.2"
     },
     "require-dev": {
