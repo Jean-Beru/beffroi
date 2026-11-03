@@ -20,15 +20,18 @@ use Beffroi\Bundle\Doctrine\Type\AddressType;
 use Beffroi\Bundle\Doctrine\Type\AuthenticationContextPolicyType;
 use Beffroi\Bundle\Doctrine\Type\AuthenticationPredicateType;
 use Beffroi\Bundle\Doctrine\Type\AuthenticationProofsType;
+use Beffroi\Bundle\Doctrine\Type\AuthenticationSnapshotType;
 use Beffroi\Bundle\Doctrine\Type\BackupCodesType;
 use Beffroi\Bundle\Doctrine\Type\ClaimsRequestType;
 use Beffroi\Bundle\Doctrine\Type\ClientSecretType;
 use Beffroi\Bundle\Doctrine\Type\CodeChallengeType;
+use Beffroi\Bundle\Doctrine\Type\ConfirmationType;
 use Beffroi\Bundle\Doctrine\Type\DeviceType;
 use Beffroi\Bundle\Doctrine\Type\EmailAddressType;
 use Beffroi\Bundle\Doctrine\Type\GeoLocationType;
 use Beffroi\Bundle\Doctrine\Type\IssuerType;
 use Beffroi\Bundle\Doctrine\Type\PasskeyUserHandleType;
+use Beffroi\Bundle\Doctrine\Type\PasswordHashType;
 use Beffroi\Bundle\Doctrine\Type\RedirectUriType;
 use Beffroi\Bundle\Doctrine\Type\AuthorizationDetailsType;
 use Beffroi\Bundle\Doctrine\Type\ResourceIndicatorsType;
@@ -451,8 +454,9 @@ final class TypesTest extends TestCase
     }
 
     /**
-     * The JSON documents are JSONB on PostgreSQL when the mapping asks, JSON otherwise; a string is a
-     * string everywhere.
+     * A document is JSONB on PostgreSQL when its type declares it, as DBAL's own `JsonbType` does, the
+     * mapping asking nothing of the platform (doctrine/dbal#6939), and JSON otherwise; a string is a string
+     * everywhere.
      *
      * @param class-string<Type> $type
      * @param array<string, mixed> $column
@@ -470,14 +474,13 @@ final class TypesTest extends TestCase
      */
     public static function provideColumnDeclarations(): iterable
     {
-        yield 'JSONB on PostgreSQL when asked' => [
-            GeoLocationType::class,
-            [
-                'jsonb' => true,
-            ],
-            new PostgreSQLPlatform(),
-            'JSONB',
-        ];
+        yield 'JSONB on PostgreSQL for an actor' => [ActorType::class, [], new PostgreSQLPlatform(), 'JSONB'];
+        yield 'JSONB on PostgreSQL for the proofs of a session' => [AuthenticationProofsType::class, [], new PostgreSQLPlatform(), 'JSONB'];
+        yield 'JSONB on PostgreSQL for an authentication snapshot' => [AuthenticationSnapshotType::class, [], new PostgreSQLPlatform(), 'JSONB'];
+        yield 'JSONB on PostgreSQL for authorization details' => [AuthorizationDetailsType::class, [], new PostgreSQLPlatform(), 'JSONB'];
+        yield 'JSONB on PostgreSQL for a claims request' => [ClaimsRequestType::class, [], new PostgreSQLPlatform(), 'JSONB'];
+        yield 'JSONB on PostgreSQL for a confirmation' => [ConfirmationType::class, [], new PostgreSQLPlatform(), 'JSONB'];
+        yield 'JSONB on PostgreSQL for a password hash' => [PasswordHashType::class, [], new PostgreSQLPlatform(), 'JSONB'];
         yield 'JSON on PostgreSQL otherwise' => [AddressType::class, [], new PostgreSQLPlatform(), 'JSON'];
         yield 'CLOB on SQLite' => [ClaimsRequestType::class, [], new SQLitePlatform(), 'CLOB'];
         yield 'a string with a length' => [

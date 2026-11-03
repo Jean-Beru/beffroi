@@ -32,11 +32,7 @@
           request, because it is this migration that touches this table.
         -->
         <field name="bindingMessage" type="beffroi_encrypted_backchannel_authentication_request_binding_message" column="binding_message" length="255" nullable="true"/>
-        <field name="acrValues" type="json" column="acr_values">
-            <options>
-                <option name="jsonb">true</option>
-            </options>
-        </field>
+        <field name="acrValues" type="jsonb" column="acr_values"/>
         <field name="sealedAuthRequestId" type="beffroi_bytes" column="sealed_auth_request_id" nullable="true"/>
         <field name="sealedNotificationToken" type="beffroi_bytes" column="sealed_notification_token" nullable="true"/>
         <!--
@@ -57,11 +53,7 @@
         <many-to-one field="session" target-entity="Beffroi\Core\Domain\Session\AuthenticationSession">
             <join-column name="session_id" referenced-column-name="id" nullable="true" on-delete="CASCADE"/>
         </many-to-one>
-        <field name="authentication" type="beffroi_authentication_snapshot" column="authentication" nullable="true">
-            <options>
-                <option name="jsonb">true</option>
-            </options>
-        </field>
+        <field name="authentication" type="beffroi_authentication_snapshot" column="authentication" nullable="true"/>
         <entity-listeners>
             <entity-listener class="Beffroi\Bundle\Doctrine\Listener\ClientResolver">
                 <lifecycle-callback type="postLoad" method="postLoad"/>

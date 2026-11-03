@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Bundle\Tests\Functional\Controller;
 
-use Closure;
-use Doctrine\Deprecations\Deprecation;
+use Beffroi\Bundle\Tests\Fixture\DoctrineDeprecations;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
@@ -29,7 +28,7 @@ final class ThePagesOfTheAccountRaiseNoDeprecationTest extends BrowserTestCase
     public function aPageOfTheAccountRaisesNoDeprecationOfDoctrine(string $page): void
     {
         // When
-        $deprecations = self::doctrineDeprecationsRaisedWhile(fn (): object => $this->browser->request('GET', $page));
+        $deprecations = DoctrineDeprecations::raisedWhile(fn (): object => $this->browser->request('GET', $page));
 
         // Then
         $response = $this->browser->getResponse();
@@ -54,32 +53,5 @@ final class ThePagesOfTheAccountRaiseNoDeprecationTest extends BrowserTestCase
         yield 'the changes of the profile' => ['/account/profile/changes'];
         yield 'the sessions' => ['/account/sessions'];
         yield 'the two-factor authentication' => ['/account/two-factor'];
-    }
-
-    /**
-     * How many times each deprecation of Doctrine was raised while the call ran, by its identifier. Doctrine
-     * counts every one and raises it once in a process, so the count is what is read: a page read after
-     * another that ordered its rows the same way would otherwise raise nothing.
-     *
-     * @param Closure(): mixed $call
-     *
-     * @return array<string, int>
-     */
-    private static function doctrineDeprecationsRaisedWhile(Closure $call): array
-    {
-        // counted whatever DOCTRINE_DEPRECATIONS says: Doctrine reads it at the first deprecation of the
-        // process, which may come before any kernel booted, and FrameworkBundle sets it when one does
-        Deprecation::enableTrackingDeprecations();
-        $before = Deprecation::getTriggeredDeprecations();
-        $call();
-        $raised = [];
-        foreach (Deprecation::getTriggeredDeprecations() as $identifier => $count) {
-            $times = $count - ($before[$identifier] ?? 0);
-            if ($times > 0) {
-                $raised[$identifier] = $times;
-            }
-        }
-
-        return $raised;
     }
 }

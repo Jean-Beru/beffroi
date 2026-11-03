@@ -11,9 +11,9 @@ use Beffroi\Oidc\Domain\Exchange\Actor;
  * the members themselves, nested, so that the row says the same thing an "at+jwt" says of the same token and
  * the introspection of either renders one chain.
  *
- * @extends JsonObjectType<Actor>
+ * @extends JsonbObjectType<Actor>
  */
-final class ActorType extends JsonObjectType
+final class ActorType extends JsonbObjectType
 {
     public const string NAME = 'beffroi_actor';
 

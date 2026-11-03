@@ -11,9 +11,9 @@ use Beffroi\Core\Domain\Session\AuthenticationProofs;
  * the shape of TokenInterface::getAuthenticationProofs() and the proofs' own
  * (`AuthenticationProofs::toTimestamps()`).
  *
- * @extends JsonObjectType<AuthenticationProofs>
+ * @extends JsonbObjectType<AuthenticationProofs>
  */
-final class AuthenticationProofsType extends JsonObjectType
+final class AuthenticationProofsType extends JsonbObjectType
 {
     public const string NAME = 'beffroi_authentication_proofs';
 

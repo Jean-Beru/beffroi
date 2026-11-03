@@ -32,29 +32,13 @@
         </many-to-one>
         <field name="scopes" type="beffroi_scopes" column="scopes"/>
         <field name="resources" type="beffroi_resources" column="resources" nullable="true"/>
-        <field name="authorizationDetails" type="beffroi_authorization_details" column="authorization_details" nullable="true">
-            <options>
-                <option name="jsonb">true</option>
-            </options>
-        </field>
-        <field name="claimsRequest" type="beffroi_claims_request" column="claims" nullable="true">
-            <options>
-                <option name="jsonb">true</option>
-            </options>
-        </field>
-        <field name="authentication" type="beffroi_authentication_snapshot" column="authentication">
-            <options>
-                <option name="jsonb">true</option>
-            </options>
-        </field>
+        <field name="authorizationDetails" type="beffroi_authorization_details" column="authorization_details" nullable="true"/>
+        <field name="claimsRequest" type="beffroi_claims_request" column="claims" nullable="true"/>
+        <field name="authentication" type="beffroi_authentication_snapshot" column="authentication"/>
         <field name="issuedAt" type="datetime_immutable" column="issued_at"/>
         <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
         <field name="rotatedAt" type="datetime_immutable" column="rotated_at" nullable="true"/>
-        <field name="confirmation" type="beffroi_confirmation" column="cnf" nullable="true">
-            <options>
-                <option name="jsonb">true</option>
-            </options>
-        </field>
+        <field name="confirmation" type="beffroi_confirmation" column="cnf" nullable="true"/>
         <field name="revokedAt" type="datetime_immutable" column="revoked_at" nullable="true"/>
         <entity-listeners>
             <entity-listener class="Beffroi\Bundle\Doctrine\Listener\ClientResolver">

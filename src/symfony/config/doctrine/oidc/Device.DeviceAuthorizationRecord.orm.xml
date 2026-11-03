@@ -47,11 +47,7 @@
         <many-to-one field="session" target-entity="Beffroi\Core\Domain\Session\AuthenticationSession">
             <join-column name="session_id" referenced-column-name="id" nullable="true" on-delete="CASCADE"/>
         </many-to-one>
-        <field name="authentication" type="beffroi_authentication_snapshot" column="authentication" nullable="true">
-            <options>
-                <option name="jsonb">true</option>
-            </options>
-        </field>
+        <field name="authentication" type="beffroi_authentication_snapshot" column="authentication" nullable="true"/>
         <entity-listeners>
             <entity-listener class="Beffroi\Bundle\Doctrine\Listener\ClientResolver">
                 <lifecycle-callback type="postLoad" method="postLoad"/>

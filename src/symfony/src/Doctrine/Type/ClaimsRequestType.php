@@ -10,9 +10,9 @@ use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
  * The "claims" parameter (OIDC Core §5.5) in one JSON column, in the form of the wire, which is the
  * document the request writes itself as (`ClaimsRequest::toDocument()`).
  *
- * @extends JsonObjectType<ClaimsRequest>
+ * @extends JsonbObjectType<ClaimsRequest>
  */
-final class ClaimsRequestType extends JsonObjectType
+final class ClaimsRequestType extends JsonbObjectType
 {
     public const string NAME = 'beffroi_claims_request';
 

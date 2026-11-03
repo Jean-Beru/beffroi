@@ -19,15 +19,7 @@
         <!-- The person this token is in the name of (issue #593), resolved once where the presented token was read and kept here: the "sub" above means something for the client that token was written for and for no other, so nothing can read it back under the client that asked. Null when nothing read it back as somebody this provider serves. In the clear as every other subject of this schema, a subject naming a person without saying anything about them. -->
         <field name="person" type="beffroi_subject" column="person" length="255" nullable="true"/>
         <field name="sessionId" type="uuid" column="session_id" nullable="true"/>
-        <field name="authentication" type="beffroi_authentication_snapshot" column="authentication" nullable="true">
-            <options>
-                <option name="jsonb">true</option>
-            </options>
-        </field>
-        <field name="actor" type="beffroi_actor" column="act" nullable="true">
-            <options>
-                <option name="jsonb">true</option>
-            </options>
-        </field>
+        <field name="authentication" type="beffroi_authentication_snapshot" column="authentication" nullable="true"/>
+        <field name="actor" type="beffroi_actor" column="act" nullable="true"/>
     </entity>
 </doctrine-mapping>

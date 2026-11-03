@@ -17,11 +17,7 @@
         <field name="clientId" type="string" column="client_id" length="255"/>
         <field name="scopes" type="beffroi_scopes" column="scopes"/>
         <field name="resources" type="beffroi_resources" column="resources" nullable="true"/>
-        <field name="confirmation" type="beffroi_confirmation" column="cnf" nullable="true">
-            <options>
-                <option name="jsonb">true</option>
-            </options>
-        </field>
+        <field name="confirmation" type="beffroi_confirmation" column="cnf" nullable="true"/>
         <field name="issuedAt" type="datetime_immutable" column="issued_at"/>
         <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
     </mapped-superclass>

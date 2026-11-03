@@ -14,9 +14,9 @@ use LogicException;
  * thing an "at+jwt" says of the same token, and a confirmation of another kind is another member and not
  * another column.
  *
- * @extends JsonObjectType<ConfirmationInterface>
+ * @extends JsonbObjectType<ConfirmationInterface>
  */
-final class ConfirmationType extends JsonObjectType implements NeedsConfirmationReaderInterface
+final class ConfirmationType extends JsonbObjectType implements NeedsConfirmationReaderInterface
 {
     public const string NAME = 'beffroi_confirmation';
 
