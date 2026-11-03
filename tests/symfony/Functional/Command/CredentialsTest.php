@@ -14,6 +14,8 @@ use Beffroi\Core\Domain\Credential\RevocableCredentialInterface;
 use Beffroi\Core\Domain\Event\CredentialRevoked;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\MetadataBlobStoreInterface;
+use Beffroi\Core\Tests\Fixture\MetadataBlobs;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Totps;
 use PHPUnit\Framework\Attributes\Test;
@@ -50,9 +52,40 @@ final class CredentialsTest extends ConsoleTestCase
         $display = self::string(preg_replace('/ +/', ' ', $tester->getDisplay(true)));
         static::assertStringContainsString('password ' . $password->id->toRfc4122() . ' 2026-09-15 10:00:00', $display);
         static::assertStringContainsString(
-            'passkey ' . $passkey->id->toRfc4122() . ' YubiKey 5 2026-09-15 10:00:00 2026-09-15 11:00:00 2026-09-15 12:00:00',
+            'passkey '
+            . $passkey->id->toRfc4122()
+            . ' YubiKey 5 unknown (AAGUID '
+            . $passkey->aaguid->toRfc4122()
+            . ') 2026-09-15 10:00:00 2026-09-15 11:00:00 2026-09-15 12:00:00',
             $display,
         );
+    }
+
+    /**
+     * Issue #983: the authenticator of a passkey is named as the page of the passkeys names it, with its source.
+     */
+    #[Test]
+    public function theAuthenticatorOfAPasskeyIsShownWithTheSourceThatNamesIt(): void
+    {
+        // Given
+        $user = self::user('alice');
+        $passkey = self::passkey($user);
+        self::credentials()->save($passkey);
+        self::service('test.beffroi.metadata_store', MetadataBlobStoreInterface::class)
+            ->write(
+                'mds-user-show',
+                MetadataBlobs::payload([MetadataBlobs::entry($passkey->aaguid->toRfc4122(), description: 'YubiKey 5 Series')]),
+            );
+
+        // When
+        $tester = self::console('beffroi:user:show', [
+            'username' => 'alice',
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        $display = self::string(preg_replace('/ +/', ' ', $tester->getDisplay(true)));
+        static::assertStringContainsString('passkey ' . $passkey->id->toRfc4122() . ' YubiKey 5 YubiKey 5 Series (fido-metadata-service) 2026-09-15', $display);
     }
 
     #[Test]

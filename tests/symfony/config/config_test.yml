@@ -1162,6 +1162,9 @@ services:
     test.beffroi.metadata_store:
         alias: Beffroi\Core\Port\MetadataBlobStoreInterface
         public: true
+    test.beffroi.authenticator_list_store:
+        alias: Beffroi\Core\Port\AuthenticatorListStoreInterface
+        public: true
     test.beffroi.sessions:
         alias: Beffroi\Core\Port\AuthenticationSessionRepositoryInterface
         public: true

@@ -235,7 +235,8 @@ nelmio_security:
             # another host (beffroi.yaml: logo_uri), and neither it nor the logo of an asking client is
             # named here: every page that shows the logo of the tenant names its origin, the consent page
             # names the one of the client, and the bundle completes this directive with them
-            # (Beffroi\Bundle\Http\ImageSource).
+            # (Beffroi\Bundle\Http\ImageSource). "data:" is the images the stylesheet draws the arrows of a
+            # pager with, and the logos of the authenticators the page of the passkeys writes (issue #983).
             img-src: ['self', 'data:']
             font-src: ['none']
             media-src: ['none']

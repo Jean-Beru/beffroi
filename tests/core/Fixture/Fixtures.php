@@ -130,6 +130,9 @@ final class Fixtures
 
     /**
      * A device-bound passkey, unused, with a handle of its own unless one is given.
+     *
+     * @param list<string> $transports what its authenticator declared (WebAuthn Level 3 §5.8.4)
+     * @param Uuid|null $aaguid the model its authenticator declared (§6), one drawn at random unless given
      */
     public static function passkey(
         ?User $user = null,
@@ -139,6 +142,8 @@ final class Fixtures
         bool $backupEligible = false,
         bool $backedUp = false,
         ?DateTimeImmutable $createdAt = null,
+        array $transports = ['usb'],
+        ?Uuid $aaguid = null,
     ): PasskeyCredential {
         return new PasskeyCredential(
             Uuid::v7(),
@@ -147,10 +152,10 @@ final class Fixtures
             $credentialId,
             'cose-public-key',
             0,
-            ['usb'],
+            $transports,
             $backupEligible,
             $backedUp,
-            Uuid::v4(),
+            $aaguid ?? Uuid::v4(),
             $userHandle ?? self::userHandle(),
             $createdAt ?? self::now(),
         );

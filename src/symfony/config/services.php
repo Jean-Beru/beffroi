@@ -240,9 +240,12 @@ use Beffroi\Core\Port\ClaimHistoryInterface;
 use Beffroi\Core\Port\JournalInterface;
 use Beffroi\Bundle\Twig\LocaleExtension;
 use Beffroi\Bundle\Twig\MomentExtension;
+use Beffroi\Bundle\Twig\AuthenticatorModelExtension;
 use Beffroi\Bundle\Twig\DeviceExtension;
 use Beffroi\Bundle\Twig\PlaceExtension;
 use Beffroi\Bundle\Twig\TenantExtension;
+use Beffroi\Bundle\Webauthn\DocumentDownload;
+use Beffroi\Bundle\Webauthn\FileAuthenticatorListStore;
 use Beffroi\Bundle\Webauthn\FileMetadataBlobStore;
 use Beffroi\Bundle\Webauthn\RevocationListClient;
 use Beffroi\Core\Application\Authentication\DecoyHash;
@@ -256,6 +259,7 @@ use Beffroi\Core\Application\Authentication\SessionOpener;
 use Beffroi\Core\Application\Authentication\OtherSessionsTermination;
 use Beffroi\Core\Application\Authentication\SessionTerminator;
 use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Credential\AuthenticatorModels;
 use Beffroi\Core\Application\Credential\ActivePassword;
 use Beffroi\Core\Application\Credential\BreachedPasswordLookup;
 use Beffroi\Core\Application\Credential\BreachedPasswordRefusal;
@@ -411,6 +415,8 @@ use Beffroi\Core\Domain\Session\TwoFactors;
 use Beffroi\Core\Bridge\Webauthn\MetadataBlobVerifier;
 use Beffroi\Core\Bridge\Webauthn\PasskeyAlgorithms;
 use Beffroi\Core\Bridge\Webauthn\ProviderPasskeyAlgorithms;
+use Beffroi\Core\Bridge\Webauthn\MetadataAuthenticatorModels;
+use Beffroi\Core\Bridge\Webauthn\StoredAuthenticatorList;
 use Beffroi\Core\Bridge\Webauthn\StoredMetadata;
 use Beffroi\Core\Bridge\Webauthn\WebauthnCeremonies;
 use Beffroi\Core\Bridge\Webauthn\WebauthnPasskeyAuthenticator;
@@ -435,6 +441,7 @@ use Beffroi\Core\Port\MessageBodyOpenerInterface;
 use Beffroi\Core\Port\MessageBodySealerInterface;
 use Beffroi\Core\Port\MessageKeyProviderInterface;
 use Beffroi\Core\Port\MessageSealingAlgorithmsInterface;
+use Beffroi\Core\Port\AuthenticatorListStoreInterface;
 use Beffroi\Core\Port\MetadataBlobStoreInterface;
 use Beffroi\Core\Port\PasskeyAuthenticatorInterface;
 use Beffroi\Core\Port\PasskeyRegistrarInterface;
@@ -970,6 +977,8 @@ return static function (ContainerConfigurator $container): void {
     // where a provenance came from, on the two pages that show one (issue #473)
     $services->set(PlaceExtension::class);
     $services->set(DeviceExtension::class);
+    // the authenticator of a passkey, on the page of the passkeys (issue #983)
+    $services->set(AuthenticatorModelExtension::class);
     // what the pages read of the organisation the visitor came for (issue #449), and the origin of its
     // logo named for the page that reads it (issue #926)
     $services->set(TenantExtension::class);
@@ -1482,6 +1491,8 @@ return static function (ContainerConfigurator $container): void {
     // lets an unreachable one pass, as the library does
     $services->set(FileMetadataBlobStore::class);
     $services->alias(MetadataBlobStoreInterface::class, FileMetadataBlobStore::class);
+    // the one GET of the two commands that fill it, and of the one that stores the list below
+    $services->set(DocumentDownload::class);
     $services->set(StoredMetadata::class);
     $services->alias(MetadataStatementRepository::class, StoredMetadata::class);
     $services->alias(StatusReportRepository::class, StoredMetadata::class);
@@ -1498,6 +1509,18 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(PasskeyRegistrarInterface::class, WebauthnPasskeyRegistrar::class);
     $services->set(WebauthnPasskeyAuthenticator::class);
     $services->alias(PasskeyAuthenticatorInterface::class, WebauthnPasskeyAuthenticator::class);
+    // The make and model of the authenticator of a passkey (issue #983), named by the FIDO metadata first, so
+    // that a name the FIDO Alliance signed is never replaced by one nobody signed, then by the list of the
+    // community the console stored (beffroi:webauthn:aaguids-refresh), which names the passkey providers the
+    // metadata do not; read by the page of the passkeys and the console, by no ceremony
+    $services->set(MetadataAuthenticatorModels::class);
+    $services->set(FileAuthenticatorListStore::class);
+    $services->alias(AuthenticatorListStoreInterface::class, FileAuthenticatorListStore::class);
+    $services->set(StoredAuthenticatorList::class);
+    $services->set(AuthenticatorModels::class)->args([[
+        service(MetadataAuthenticatorModels::class),
+        service(StoredAuthenticatorList::class),
+    ]]);
 
     // The core: RFC 6238 on otphp (architecture §3.4)
     $services->set(OtphpTotpAlgorithm::class);

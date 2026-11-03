@@ -51,6 +51,7 @@ final class SoftwareAuthenticator
      * @param bool $forgesAttestation a packed statement whose signature does not hold: the test of a
      *                                statement verified rather than skipped
      * @param SoftwareCredentialKey $credentialKey the key pair of the credential, and so its algorithm
+     * @param string|null $aaguid the AAGUID it declares (§6), sixteen bytes, one drawn at random unless given
      */
     public function __construct(
         private string $origin,
@@ -62,9 +63,10 @@ final class SoftwareAuthenticator
         private string $attestation = 'none',
         private bool $forgesAttestation = false,
         private SoftwareCredentialKey $credentialKey = new Es256SoftwareKey(),
+        ?string $aaguid = null,
     ) {
         $this->credentialId = random_bytes(32);
-        $this->aaguid = random_bytes(16);
+        $this->aaguid = $aaguid ?? random_bytes(16);
     }
 
     /**

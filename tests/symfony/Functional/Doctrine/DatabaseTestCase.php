@@ -92,12 +92,27 @@ abstract class DatabaseTestCase extends WebTestCase
      */
     protected static function keyStorage(): string
     {
+        return self::cacheDirectory() . '/keys';
+    }
+
+    /**
+     * Where the bundle keeps the FIDO metadata and, in its "community" directory, the list of the community
+     * (issue #983), which config_test.yml points at "%kernel.cache_dir%/webauthn", read from the container as
+     * keyStorage() is.
+     */
+    protected static function metadataStorage(): string
+    {
+        return self::cacheDirectory() . '/webauthn';
+    }
+
+    private static function cacheDirectory(): string
+    {
         $cacheDirectory = static::getContainer()->getParameter('kernel.cache_dir');
         if (! is_string($cacheDirectory)) {
             static::fail('The cache directory of the test kernel is not a path.');
         }
 
-        return $cacheDirectory . '/keys';
+        return $cacheDirectory;
     }
 
     private static function prepareDatabase(): void
