@@ -201,7 +201,7 @@
             "dist": {
                 "type": "path",
                 "url": "../../src/core",
-                "reference": "5b71d7ffa879efe33de8619bfa3dacf05ed48d4b"
+                "reference": "44d2a73f674a680b1750d53fa710cd75200a3e7d"
             },
             "require": {
                 "ext-intl": "*",
@@ -215,7 +215,7 @@
                 "spomky-labs/pki-framework": "^1.2.1",
                 "symfony/key-management": "8.2.*",
                 "symfony/uid": "8.2.*",
-                "web-auth/webauthn-lib": "^5.3.10",
+                "web-auth/webauthn-lib": "^5.3.11",
                 "web-token/jwt-library": "^4.2"
             },
             "type": "library",
@@ -9486,16 +9486,16 @@
         },
         {
             "name": "web-auth/webauthn-lib",
-            "version": "5.3.10",
+            "version": "5.3.11",
             "source": {
                 "type": "git",
                 "url": "https://github.com/web-auth/webauthn-lib.git",
-                "reference": "894f6be8c8a47354a4dfd134a5979246e26d8639"
+                "reference": "02423c37cbb6fd08980b7903ab0c54d811af08cd"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/web-auth/webauthn-lib/zipball/894f6be8c8a47354a4dfd134a5979246e26d8639",
-                "reference": "894f6be8c8a47354a4dfd134a5979246e26d8639",
+                "url": "https://api.github.com/repos/web-auth/webauthn-lib/zipball/02423c37cbb6fd08980b7903ab0c54d811af08cd",
+                "reference": "02423c37cbb6fd08980b7903ab0c54d811af08cd",
                 "shasum": ""
             },
             "require": {
@@ -9556,7 +9556,7 @@
                 "webauthn"
             ],
             "support": {
-                "source": "https://github.com/web-auth/webauthn-lib/tree/5.3.10"
+                "source": "https://github.com/web-auth/webauthn-lib/tree/5.3.11"
             },
             "funding": [
                 {
@@ -9568,8 +9568,8 @@
                     "type": "patreon"
                 }
             ],
-            "time": "2026-10-31T12:44:21+00:00",
-            "published-time": "2026-10-31T14:07:02+00:00"
+            "time": "2026-11-03T08:29:26+00:00",
+            "published-time": "2026-11-03T08:46:57+00:00"
         },
         {
             "name": "web-token/jwt-library",
