@@ -16,8 +16,8 @@ use Webauthn\PublicKeyCredentialParameters;
 final class ProviderPasskeyAlgorithmsTest extends TestCase
 {
     /**
-     * Decision 0033: ES384, EdDSA over Ed25519, ES256 and RS256, from the strongest to the weakest
-     * (w3c/webauthn#2448).
+     * Decision 0033: EdDSA over Ed25519, ES256 and RS256, from the strongest to the weakest
+     * (w3c/webauthn#2448), ES384 not among them.
      */
     #[Test]
     public function theOptionsOfferTheAlgorithmsOfTheProviderFromTheStrongest(): void
@@ -30,14 +30,14 @@ final class ProviderPasskeyAlgorithmsTest extends TestCase
 
         // Then
         static::assertSame(
-            [-35, -8, -7, -257],
+            [-8, -7, -257],
             array_map(static fn (PublicKeyCredentialParameters $parameter): int => $parameter->alg, $parameters),
         );
     }
 
     /**
      * Decision 0033: the signatures are verified with the algorithms the options offer, and none other,
-     * RS1 (-65535) not among them.
+     * neither ES384 (-35) nor RS1 (-65535) among them.
      */
     #[Test]
     public function theSignaturesAreVerifiedWithTheOfferedAlgorithmsAlone(): void
@@ -49,7 +49,7 @@ final class ProviderPasskeyAlgorithmsTest extends TestCase
         $verified = iterator_to_array($algorithms->verifiers()->list(), false);
 
         // Then
-        static::assertSame([-35, -8, -7, -257], $verified);
+        static::assertSame([-8, -7, -257], $verified);
     }
 
     /**

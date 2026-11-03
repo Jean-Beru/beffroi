@@ -8,6 +8,7 @@ use function array_map;
 use Beffroi\Core\Bridge\Webauthn\PasskeyAlgorithms;
 use Cose\Algorithm\Algorithm;
 use Cose\Algorithm\Manager;
+use Cose\Algorithm\Signature\ECDSA\ES384;
 use Cose\Algorithm\Signature\ECDSA\ES512;
 use Cose\Algorithm\Signature\RSA\PS256;
 use Cose\Algorithm\Signature\RSA\PS384;
@@ -24,6 +25,7 @@ use Webauthn\PublicKeyCredentialParameters;
  * The algorithms of the FIDO2 server API of the conformance tools (decision 0033): those of the provider,
  * then what the server tests ask a server to verify and the provider never offers.
  *
+ * - ES384 (RFC 9053 §2.1), which the provider neither offers nor verifies.
  * - RS1, RSASSA-PKCS1-v1_5 with SHA-1 (RFC 8812 §2), for a self attestation and an assertion, and the TPM
  *   attestations signed with it: the tests do not mark them optional (Resp-4 P-8, Resp-9 P-2), and their
  *   weakness is acknowledged by name, here and nowhere else.
@@ -72,6 +74,7 @@ final readonly class ConformanceToolsAlgorithms implements PasskeyAlgorithms
     private static function algorithms(): array
     {
         return [
+            ES384::create(),
             RS1::create(acknowledgeInsecureAlgorithm: true),
             ES512::create(),
             RS384::create(),

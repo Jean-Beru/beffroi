@@ -73,7 +73,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
         static::assertSame('alice', $options->user->displayName);
         static::assertSame(32, strlen($options->challenge));
         static::assertSame(
-            [-35, -8, -7, -257],
+            [-8, -7, -257],
             array_map(static fn (PublicKeyCredentialParameters $parameters): int => $parameters->alg, $options->pubKeyCredParams),
         );
         static::assertSame('required', $options->authenticatorSelection?->residentKey);
@@ -212,20 +212,20 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
      */
     public static function provideKeysOfTheOfferedAlgorithms(): iterable
     {
-        yield 'ES384' => [new Es384SoftwareKey()];
         yield 'EdDSA over Ed25519' => [new Ed25519SoftwareKey()];
         yield 'ES256' => [new Es256SoftwareKey()];
     }
 
     /**
-     * Decision 0033 and §7.1 (CheckAlgorithm): the product neither offers nor verifies RS1, so a passkey of that
-     * algorithm does not enrol through it.
+     * Decision 0033 and §7.1 (CheckAlgorithm): a passkey of an algorithm the options do not offer does not enrol
+     * through them, RS1 and ES384 among them, which the product neither offers nor verifies.
      */
     #[Test]
-    public function aPasskeyOfAnAlgorithmTheOptionsDoNotOfferIsRefused(): void
+    #[DataProvider('provideKeysOfTheAlgorithmsNotOffered')]
+    public function aPasskeyOfAnAlgorithmTheOptionsDoNotOfferIsRefused(SoftwareCredentialKey $key): void
     {
         // Given
-        $authenticator = new SoftwareAuthenticator('https://id.acme.example', credentialKey: new Rs1SoftwareKey());
+        $authenticator = new SoftwareAuthenticator('https://id.acme.example', credentialKey: $key);
         $options = $this->creationOptions();
 
         // Then
@@ -234,6 +234,15 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
 
         // When
         $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)));
+    }
+
+    /**
+     * @return iterable<string, array{SoftwareCredentialKey}>
+     */
+    public static function provideKeysOfTheAlgorithmsNotOffered(): iterable
+    {
+        yield 'RS1' => [new Rs1SoftwareKey()];
+        yield 'ES384' => [new Es384SoftwareKey()];
     }
 
     /**
