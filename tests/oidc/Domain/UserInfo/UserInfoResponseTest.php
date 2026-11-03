@@ -250,7 +250,7 @@ final class UserInfoResponseTest extends TestCase
     }
 
     /**
-     * RFC 9449 §7.2: a token honoured here and not enough is a 403 under the scheme it was presented
+     * RFC 9449 §7.2: a token that holds and is not enough is a 403 under the scheme it was presented
      * under, the challenge naming the scope that would have done (RFC 6750 §3) and, under "DPoP", the
      * algorithms a proof may be signed with (RFC 9449 §7.1).
      */
