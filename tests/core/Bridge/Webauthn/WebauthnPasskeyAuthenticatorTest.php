@@ -14,8 +14,11 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\PasskeyCeremonyFailedException;
 use Beffroi\Core\Tests\Fixture\Ed25519SoftwareKey;
+use Beffroi\Core\Tests\Fixture\Es256SoftwareKey;
+use Beffroi\Core\Tests\Fixture\Es384SoftwareKey;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\SoftwareAuthenticator;
+use Beffroi\Core\Tests\Fixture\SoftwareCredentialKey;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -127,13 +130,14 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     }
 
     /**
-     * Decision 0033: the signature of a passkey of EdDSA over Ed25519 is verified as the others are.
+     * Decision 0033: the signature of a passkey of an algorithm the provider offers is verified with it.
      */
     #[Test]
-    public function anAssertionOfAnEd25519PasskeyIsVerified(): void
+    #[DataProvider('provideKeysOfTheOfferedAlgorithms')]
+    public function anAssertionOfAPasskeyOfAnOfferedAlgorithmIsVerified(SoftwareCredentialKey $key): void
     {
         // Given
-        $device = new SoftwareAuthenticator('https://id.acme.example', credentialKey: new Ed25519SoftwareKey());
+        $device = new SoftwareAuthenticator('https://id.acme.example', credentialKey: $key);
         $passkey = $this->enrol($device);
         $options = $this->authenticator->requestOptions($this->tenant, []);
 
@@ -143,6 +147,16 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
         // Then
         static::assertSame($passkey, $assertion->credential);
         static::assertSame(1, $assertion->authenticatorData->signCount);
+    }
+
+    /**
+     * @return iterable<string, array{SoftwareCredentialKey}>
+     */
+    public static function provideKeysOfTheOfferedAlgorithms(): iterable
+    {
+        yield 'ES384' => [new Es384SoftwareKey()];
+        yield 'EdDSA over Ed25519' => [new Ed25519SoftwareKey()];
+        yield 'ES256' => [new Es256SoftwareKey()];
     }
 
     /**
