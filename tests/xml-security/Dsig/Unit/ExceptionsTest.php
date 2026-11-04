@@ -23,8 +23,7 @@ use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 /**
- * Section 5.6: every refusal is a SignatureRefused, which is a RefusedXml of Core, so that a consumer catching that
- * base class catches everything the package refuses; a SigningFailed is never input.
+ * Section 5.6
  */
 final class ExceptionsTest extends TestCase
 {

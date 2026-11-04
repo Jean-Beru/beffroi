@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3: what a consumer registers; the index of I-8 is built over every registered attribute at once.
+ * Section 5.3, I-8
  */
 final class IdAttributesTest extends TestCase
 {
@@ -36,7 +36,7 @@ final class IdAttributesTest extends TestCase
     }
 
     /**
-     * Section 5.3: a value object; withAttribute() returns a new set and leaves the original as it was.
+     * Section 5.3
      */
     #[Test]
     public function withAttributeAppendsToANewSet(): void

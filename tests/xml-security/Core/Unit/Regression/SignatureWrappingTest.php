@@ -18,11 +18,7 @@ use PHPUnit\Framework\TestCase;
 use function sprintf;
 
 /**
- * Section 3, signature wrapping: the signed element is moved where the verifier does not look, and an unsigned one
- * is put where the consumer reads ("On Breaking SAML: Be Whoever You Want to Be", USENIX Security 2012, eleven of
- * fourteen frameworks; CVE-2026-63182 in 2026). The rules: one ID space and no duplicate (I-8), navigation by direct
- * children only (I-11), and the element a consumer receives is the re-parse of the canonical bytes that were hashed
- * (section 6.6).
+ * Section 3, CVE-2026-63182, I-8, I-11, section 6.6
  */
 final class SignatureWrappingTest extends TestCase
 {
@@ -32,10 +28,6 @@ final class SignatureWrappingTest extends TestCase
             . '<saml:Assertion ID="%s"><saml:Subject><saml:NameID>attacker@example.org</saml:NameID></saml:Subject></saml:Assertion>'
             . '</samlp:Response>';
 
-    /**
-     * On Breaking SAML, 2012: the evil assertion carries the ID the signature reference points at; the document is
-     * refused as a whole, and getElementById()'s silent first match never happens.
-     */
     #[Test]
     public function onBreakingSaml2012TwoAssertionsSharingTheSignedIdRefuseTheDocument(): void
     {
@@ -50,10 +42,6 @@ final class SignatureWrappingTest extends TestCase
         new Loader(Stack::idAttributes())->load($bytes);
     }
 
-    /**
-     * On Breaking SAML, 2012: with distinct IDs, the assertion wrapped inside samlp:Extensions is not a child of the
-     * response, and the one the consumer navigates to is the direct child, whose text is what it is.
-     */
     #[Test]
     public function onBreakingSaml2012AWrappedAssertionIsNotAChildOfTheResponse(): void
     {
@@ -69,8 +57,7 @@ final class SignatureWrappingTest extends TestCase
     }
 
     /**
-     * CVE-2026-63182, section 6.6: what a verifier hands to the consumer is the re-parse of the canonical bytes it
-     * hashed, one root, no wrapper, no sibling, no second assertion.
+     * CVE-2026-63182, section 6.6
      */
     #[Test]
     public function cve202663182TheElementReceivedIsTheReparseOfTheBytesHashed(): void

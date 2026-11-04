@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.7: libxml parsed but reported something (I-3). A consumer catches the base class when it does not care which rule fired.
+ * Section 5.7, I-3
  */
 final class ParserDiagnosticTest extends TestCase
 {

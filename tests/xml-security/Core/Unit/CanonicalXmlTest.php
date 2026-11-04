@@ -10,7 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * I-13: nothing canonicalizes to nothing. CVE-2025-66578 hashed the empty string libxml returned.
+ * I-13, CVE-2025-66578
  */
 final class CanonicalXmlTest extends TestCase
 {
@@ -25,7 +25,7 @@ final class CanonicalXmlTest extends TestCase
     }
 
     /**
-     * §9.2 row 30, I-13: the empty string is refused in the constructor, whatever produced it.
+     * §9.2 row 30, I-13
      */
     #[Test]
     public function itRefusesTheEmptyString(): void

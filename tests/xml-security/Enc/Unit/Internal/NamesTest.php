@@ -12,7 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Core I-10: the names the model matches, on namespace URI and local name, never a prefix.
+ * Core I-10
  */
 final class NamesTest extends TestCase
 {

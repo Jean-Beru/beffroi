@@ -13,8 +13,7 @@ use Dom\XMLDocument;
 use RuntimeException;
 
 /**
- * What a consumer builds and signs (section 6.2): a SAML-shaped response holding one assertion, every element
- * prefixed, the Issuer first in each, as the tests of the signer and the fixture the signer produced share it.
+ * Section 6.2
  */
 final class Built
 {
@@ -71,9 +70,6 @@ final class Built
         return $document;
     }
 
-    /**
-     * A signed entity descriptor's shape: the Signature will be its first child.
-     */
     public static function entityDescriptor(): Document
     {
         $document = new DocumentFactory()->create(new Name(Stack::SAML_METADATA, 'EntityDescriptor'), 'md');

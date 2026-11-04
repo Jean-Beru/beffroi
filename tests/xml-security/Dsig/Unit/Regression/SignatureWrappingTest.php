@@ -17,16 +17,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 3, signature wrapping: "On Breaking SAML" (2012), eleven frameworks of fourteen, and CVE-2026-63182 in
- * litesaml/lightsaml in 2026. The rules: one ID space per document (Core I-8), the Signature a direct child of the
- * claimed element (D-1), the one reference resolved by identity to that element (D-2), the consumer reading the
- * reload of the hashed bytes and nothing else (D-10).
+ * Section 3, CVE-2026-63182, Core I-8, D-1, D-2, D-10
  */
 final class SignatureWrappingTest extends TestCase
 {
     /**
-     * CVE-2026-63182, the first variant of 2012: the signed assertion moved elsewhere, an unsigned one with the same
-     * ID where the consumer looks. Refused at load, before anything is verified.
+     * CVE-2026-63182
      */
     #[Test]
     public function cve202663182TheWrappedAssertionWithTheSameIdIsRefusedAtLoad(): void
@@ -42,8 +38,7 @@ final class SignatureWrappingTest extends TestCase
     }
 
     /**
-     * CVE-2026-63182, the second variant: the unsigned assertion given a new ID and a copy of the Signature; the
-     * reference still names the wrapped original, not the claimed element.
+     * CVE-2026-63182
      */
     #[Test]
     public function cve202663182TheClaimedElementIsNotTheOneTheReferenceNames(): void

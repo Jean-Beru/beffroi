@@ -17,8 +17,7 @@ use function preg_replace;
 use function str_starts_with;
 
 /**
- * Section 5.2, D-16: a trusted key from a certificate's PEM, from the base64 of its DER, or from a public key's
- * PEM; RSA of at least 2048 bits, and nothing else.
+ * Section 5.2, D-16
  */
 final class VerificationKeyTest extends TestCase
 {
@@ -35,8 +34,7 @@ final class VerificationKeyTest extends TestCase
     }
 
     /**
-     * §9.3 row 16, section 13: the base64 of an X509Certificate element, line breaks inside, as a peer's metadata
-     * carries it.
+     * §9.3 row 16, section 13
      */
     #[Test]
     public function itReadsTheBase64OfACertificate(): void
@@ -80,7 +78,7 @@ final class VerificationKeyTest extends TestCase
     }
 
     /**
-     * D-16: what is not base64 is not a certificate.
+     * D-16
      */
     #[Test]
     #[TestWith(['not base64!'], 'a character outside the alphabet')]
@@ -97,7 +95,7 @@ final class VerificationKeyTest extends TestCase
     }
 
     /**
-     * D-16: one block of type CERTIFICATE whose bytes openssl cannot read as a certificate.
+     * D-16
      */
     #[Test]
     public function itRefusesACertificateBlockAroundGarbage(): void
@@ -111,8 +109,7 @@ final class VerificationKeyTest extends TestCase
     }
 
     /**
-     * §9.2 row 41, D-16: what is not exactly one block of type CERTIFICATE never reaches openssl, a path to a file
-     * that holds one first.
+     * §9.2 row 41, D-16
      */
     #[Test]
     #[DataProvider('provideWhatIsNotOneCertificateBlock')]
@@ -143,7 +140,7 @@ final class VerificationKeyTest extends TestCase
     }
 
     /**
-     * §9.2 row 41, D-16: what is not exactly one block of type PUBLIC KEY never reaches openssl.
+     * §9.2 row 41, D-16
      */
     #[Test]
     #[DataProvider('provideWhatIsNotOnePublicKeyBlock')]
@@ -168,7 +165,7 @@ final class VerificationKeyTest extends TestCase
     }
 
     /**
-     * D-16: the base64 of something that is not a certificate.
+     * D-16
      */
     #[Test]
     public function itRefusesTheBase64OfSomethingThatIsNotACertificate(): void
@@ -182,7 +179,7 @@ final class VerificationKeyTest extends TestCase
     }
 
     /**
-     * §9.2 row 35, D-16: a 1024-bit RSA key, then an EC key.
+     * §9.2 row 35, D-16
      */
     #[Test]
     #[TestWith(['weak-rsa-1024-certificate.pem'], 'RSA-1024')]
@@ -200,9 +197,6 @@ final class VerificationKeyTest extends TestCase
         VerificationKey::fromCertificatePem($pem);
     }
 
-    /**
-     * The PEM of the test key's public half, as openssl writes it.
-     */
     private static function publicKeyPem(): string
     {
         $details = openssl_pkey_get_details(
@@ -215,7 +209,7 @@ final class VerificationKeyTest extends TestCase
     }
 
     /**
-     * D-13: a refusal of the key carries nothing of the PEM.
+     * D-13
      */
     #[Test]
     public function itsRefusalCarriesNothingOfThePem(): void

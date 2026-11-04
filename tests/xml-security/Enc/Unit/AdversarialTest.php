@@ -30,10 +30,7 @@ use PHPUnit\Framework\TestCase;
 use Throwable;
 
 /**
- * Section 9.7, the adversarial pass of 27 September 2026: each row of section 3 attacked with inputs the corpus of
- * 9.2 does not list, every attempt a fixture whatever its outcome (tests/xml-security/Enc/Fixture/hostile/derive-adversarial.php),
- * refused with the exception and the message it got, failed in the one way, or decrypted when the attempt changes
- * nothing the cipher covers. None bypassed a rule, and no failing attempt said more than the one message.
+ * Section 9.7, section 3
  */
 final class AdversarialTest extends TestCase
 {
@@ -48,8 +45,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.7, E-1, E-5, E-7: every attempt the reading model refuses, with its rule named and nothing of the
-     * input (E-12).
+     * Section 9.7, E-1, E-5, E-7, E-12
      *
      * @param class-string<Throwable> $exception
      */
@@ -158,9 +154,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.7, E-2, E-3: every attempt that passes the model fails in the one way, with the one message: the
-     * cipher value shortened and lengthened around the IV and the tag, a wrapped key of the modulus length filled
-     * with zeros, with ones, and equal to the modulus.
+     * Section 9.7, E-2, E-3
      */
     #[Test]
     #[DataProvider('provideFailingAttempts')]
@@ -200,8 +194,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.7, Core I-8: an Id on the EncryptedData equal to the ID of the response is refused at load, before
-     * anything is read.
+     * Section 9.7, Core I-8
      */
     #[Test]
     public function itsLoaderRefusesAnIdTakenTwice(): void
@@ -217,8 +210,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.7, E-5, Core I-10: an EncryptedData in a namespace that is almost the right one is not an
-     * EncryptedData.
+     * Section 9.7, E-5, Core I-10
      */
     #[Test]
     public function itRefusesAnEncryptedDataInAlmostTheNamespace(): void
@@ -240,7 +232,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.7: every attempt that changes nothing the cipher covers decrypts to the assertion of the vector.
+     * Section 9.7
      */
     #[Test]
     #[DataProvider('provideDecryptingAttempts')]
@@ -291,8 +283,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.7, E-4: an assertion holding an EncryptedData decrypts to that assertion, its EncryptedData left
-     * as it is; the consumer decrypts it when it decides to, here with the same key, since it is the vector's.
+     * Section 9.7, E-4
      */
     #[Test]
     public function itDecryptsAnAssertionHoldingAnEncryptedDataItDoesNotTouch(): void
@@ -316,7 +307,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.7, E-11: keys of every wrong kind, refused with the rule named and nothing of the PEM.
+     * Section 9.7, E-11
      */
     #[Test]
     #[DataProvider('provideWrongKinds')]
@@ -357,8 +348,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * §9.3 row 17, E-12: every refusal of the pass ends with the rule in parentheses and carries no URI, no ID and
-     * no base64; every failure is the one message.
+     * §9.3 row 17, E-12
      */
     #[Test]
     public function itsRefusalsNameTheRuleAndNothingOfTheInput(): void

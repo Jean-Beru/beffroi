@@ -8,8 +8,7 @@ use Beffroi\Xml\Dsig\SignatureAlgorithm;
 use Beffroi\Xml\Dsig\SigningKeyInterface;
 
 /**
- * A signing key that records what it was asked to sign and answers with what the test decided: the port of
- * section 5.2 implemented by a test, as a key management service would implement it.
+ * Section 5.2
  */
 final class RecordingKey implements SigningKeyInterface
 {

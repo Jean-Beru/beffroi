@@ -12,8 +12,7 @@ use Beffroi\Xml\Enc\PlaintextReaderInterface;
 use Beffroi\Xml\Tests\Core\Support\Stack;
 
 /**
- * A reading of section 5.2 that reads one value of the plaintext, the Issuer of the assertion, as a consumer copies the
- * values it accepts out of the document before it lets it go.
+ * Section 5.2
  *
  * @implements PlaintextReaderInterface<string>
  */

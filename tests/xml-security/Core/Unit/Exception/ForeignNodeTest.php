@@ -12,8 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.7: a node of a document the brick did not produce is a programming error of the caller (I-4), never
- * caught by the stack as a refusal.
+ * Section 5.7, I-4
  */
 final class ForeignNodeTest extends TestCase
 {

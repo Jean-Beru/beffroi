@@ -12,20 +12,17 @@ use function libxml_use_internal_errors;
 use LibXMLError;
 
 /**
- * libxml's global state, what I-3 saves and restores: the internal-errors mode and the error buffer.
+ * I-3
  */
 final class Libxml
 {
-    /**
-     * Sets the internal-errors mode and leaves one diagnostic in the buffer.
-     */
     public static function fillBuffer(): void
     {
         libxml_use_internal_errors(true);
         try {
             XMLDocument::createFromString('<unclosed>', LIBXML_NONET);
         } catch (DOMException) {
-            // the parse failed on purpose: its diagnostic is what fills the buffer
+            // The parse fails on purpose: its diagnostic is what fills the buffer.
         }
     }
 

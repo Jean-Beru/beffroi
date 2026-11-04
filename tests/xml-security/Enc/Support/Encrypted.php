@@ -10,10 +10,6 @@ use Beffroi\Xml\Core\Name;
 use Beffroi\Xml\Tests\Core\Support\Stack;
 use Dom\Element;
 
-/**
- * Where the vectors and the hostile fixtures keep their encrypted assertion: a SAML response whose
- * EncryptedAssertion holds the xenc:EncryptedData, the element a consumer hands to the decryptor.
- */
 final class Encrypted
 {
     public static function dataOf(Document $document): Element
@@ -24,9 +20,6 @@ final class Encrypted
         );
     }
 
-    /**
-     * The xenc:EncryptedKey inside the KeyInfo of that EncryptedData.
-     */
     public static function keyOf(Document $document): Element
     {
         return Children::one(

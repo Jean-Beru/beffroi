@@ -16,7 +16,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.2 and 6.2: the root, the ID index built at load, and the recognition of the brick's own nodes (I-4, I-9).
+ * Section 5.2 and 6.2, I-4, I-9
  */
 final class DocumentTest extends TestCase
 {
@@ -35,7 +35,7 @@ final class DocumentTest extends TestCase
     }
 
     /**
-     * I-9, section 6.2: the index built at load, compared exactly.
+     * I-9, section 6.2
      */
     #[Test]
     public function itFindsAnElementByItsId(): void
@@ -52,7 +52,7 @@ final class DocumentTest extends TestCase
     }
 
     /**
-     * Section 6.2: an absent value throws UnknownId, and the message carries no input (I-16).
+     * Section 6.2, I-16
      */
     #[Test]
     public function itRefusesAnUnknownId(): void
@@ -69,7 +69,7 @@ final class DocumentTest extends TestCase
     }
 
     /**
-     * Section 6.2: the comparison is exact, never a prefix, never a case fold.
+     * Section 6.2
      */
     #[Test]
     public function itComparesAnIdExactly(): void
@@ -85,7 +85,7 @@ final class DocumentTest extends TestCase
     }
 
     /**
-     * §9.3 row 14: owning() on a node of a loaded document.
+     * §9.3 row 14
      */
     #[Test]
     public function itIsTheOwnerOfEveryNodeOfALoadedDocument(): void
@@ -106,8 +106,7 @@ final class DocumentTest extends TestCase
     }
 
     /**
-     * §9.3 row 14, section 6.6: owning() on the root of a re-loaded canonical form is the new Document, not the
-     * document the form was rendered from.
+     * §9.3 row 14, section 6.6
      */
     #[Test]
     public function itIsTheOwnerOfTheRootOfAReloadedCanonicalForm(): void
@@ -129,7 +128,7 @@ final class DocumentTest extends TestCase
     }
 
     /**
-     * I-4: the document node itself is recognised too.
+     * I-4
      */
     #[Test]
     public function itIsTheOwnerOfItsOwnDocumentNode(): void
@@ -144,7 +143,7 @@ final class DocumentTest extends TestCase
     }
 
     /**
-     * §9.2 row 26, I-4: a document from a direct createFromString() call that bypassed the Loader.
+     * §9.2 row 26, I-4
      */
     #[Test]
     public function itRefusesANodeOfADocumentParsedOutsideTheLoader(): void
@@ -163,7 +162,7 @@ final class DocumentTest extends TestCase
     }
 
     /**
-     * I-4: a node that belongs to no XML document at all, an HTML document here.
+     * I-4
      */
     #[Test]
     public function itRefusesANodeOfAnHtmlDocument(): void
@@ -180,7 +179,7 @@ final class DocumentTest extends TestCase
     }
 
     /**
-     * I-4: a Document built by hand around a foreign root is not the brick's; the registry is the truth.
+     * I-4
      */
     #[Test]
     public function itRefusesTheRootOfADocumentBuiltByHand(): void

@@ -24,12 +24,7 @@ use function str_starts_with;
 use function strtolower;
 
 /**
- * Section 8 of the specifications: the methods of the Dom API and the functions of OpenSSL never called, and the
- * calls allowed in one file each (createFromString() in Loader, createEmpty() in DocumentFactory, C14N() in
- * Canonicalizer, saveXml() in Serializer for Core, I-4, I-13, I-15; openssl_verify() in Verifier, openssl_sign() in
- * PrivateKey and the two key loaders for Dsig, D-15). A dynamic call or a dynamic instantiation would escape the
- * rule, so both are refused too. ekino/phpstan-banned-code bans a function everywhere or nowhere; this rule confines
- * one to named files.
+ * Section 8 of the specifications, I-4, I-13, I-15, D-15
  *
  * @implements Rule<CallLike>
  */

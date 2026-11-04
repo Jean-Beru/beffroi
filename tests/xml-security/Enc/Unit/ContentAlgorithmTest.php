@@ -11,12 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.1, E-1: the closed list of content encryption methods, and what each case knows of itself.
+ * Section 5.1, E-1
  */
 final class ContentAlgorithmTest extends TestCase
 {
     /**
-     * §9.3 row 12: each case round-trips through fromUri().
+     * §9.3 row 12
      */
     #[Test]
     #[DataProvider('provideCases')]
@@ -37,8 +37,7 @@ final class ContentAlgorithmTest extends TestCase
     }
 
     /**
-     * §9.2 rows 1 and 2, E-1: the CBC modes, 3DES, aes192-gcm and every unknown URI are refused by name, before
-     * anything is decoded.
+     * §9.2 rows 1 and 2, E-1
      */
     #[Test]
     #[DataProvider('provideRefusedUris')]
@@ -70,7 +69,7 @@ final class ContentAlgorithmTest extends TestCase
     }
 
     /**
-     * E-2: the one length of the session key each case accepts.
+     * E-2
      */
     #[Test]
     public function itKnowsTheLengthOfItsKey(): void
@@ -81,8 +80,7 @@ final class ContentAlgorithmTest extends TestCase
     }
 
     /**
-     * §9.3 row 25, E-15: every case of the one type the encryptor takes is an AES-GCM method, so that nothing is
-     * encrypted in CBC.
+     * §9.3 row 25, E-15
      */
     #[Test]
     #[DataProvider('provideCases')]
@@ -94,7 +92,7 @@ final class ContentAlgorithmTest extends TestCase
     }
 
     /**
-     * Section 5.1: what the two OpenSSL functions take.
+     * Section 5.1
      */
     #[Test]
     public function itKnowsItsOpensslCipher(): void

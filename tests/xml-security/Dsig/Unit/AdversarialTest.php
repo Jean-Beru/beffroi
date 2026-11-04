@@ -28,9 +28,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 9.7, the adversarial pass of 27 September 2026: each row of section 3 attacked with inputs the corpus of
- * 9.2 does not list, every attempt a fixture whatever its outcome, refused with the exception and the message it
- * got, or verified when the attempt changes nothing the signature covers. None bypassed a rule.
+ * Section 9.7, section 3
  */
 final class AdversarialTest extends TestCase
 {
@@ -47,7 +45,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.7, D-1, D-2, D-3, D-5, D-6, D-8, D-9: every attempt the verifier refuses, with its rule named.
+     * Section 9.7, D-1, D-2, D-3, D-5, D-6, D-8, D-9
      *
      * @param class-string<Throwable> $exception
      */
@@ -225,7 +223,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.7, Core I-1 and I-8: two attempts the loader refuses before anything is verified.
+     * Section 9.7, Core I-1 and I-8
      *
      * @param class-string<Throwable> $exception
      */
@@ -262,8 +260,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.7, D-7, D-8, D-10: attempts that change nothing the signature covers verify, and what comes back is
-     * still the signed element.
+     * Section 9.7, D-7, D-8, D-10
      */
     #[Test]
     #[DataProvider('provideHarmlessAttempts')]
@@ -298,8 +295,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * §9.3 row 17, D-13: every refusal of the pass ends with the rule in parentheses and carries no URI, no ID and
-     * no base64.
+     * §9.3 row 17, D-13
      */
     #[Test]
     public function itsRefusalsNameTheRuleAndNothingOfTheInput(): void

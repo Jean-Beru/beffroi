@@ -13,8 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.1 step 7: the weak maps that make Document::owning() recognise every node of a document the brick
- * produced (I-4), give Serializer its Dom\XMLDocument, and forget a document the caller drops.
+ * Section 6.1 step 7, I-4
  */
 final class RegistryTest extends TestCase
 {
@@ -47,7 +46,7 @@ final class RegistryTest extends TestCase
     }
 
     /**
-     * I-4: a Document built by hand around a parsed root has no Dom\XMLDocument for the brick.
+     * I-4
      */
     #[Test]
     public function itRefusesToGiveTheXmlOfADocumentBuiltByHand(): void
@@ -66,8 +65,7 @@ final class RegistryTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 7: the entry keeps the Dom\XMLDocument object alive as long as the Document is held, so
-     * that ownerDocument yields the very object the entry is keyed by; a node object alone does not keep it.
+     * Section 6.1 step 7
      */
     #[Test]
     public function itKeepsTheXmlDocumentAliveWhileTheDocumentIsHeld(): void
@@ -90,7 +88,7 @@ final class RegistryTest extends TestCase
     }
 
     /**
-     * §9.3 row 15: a Document dropped by the caller, the WeakMap entry is gone, whatever nodes are still held.
+     * §9.3 row 15
      */
     #[Test]
     public function itForgetsADocumentTheCallerDrops(): void

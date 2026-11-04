@@ -13,13 +13,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 3, what libxml parses and only reports: an unbound prefix, an empty prefixed namespace, the xml or xmlns
- * prefix misused, XML 1.1. The rule: any diagnostic, whatever its level, refuses the document (I-3).
+ * Section 3, I-3
  */
 final class ParserDiagnosticsTest extends TestCase
 {
     /**
-     * I-3: every shape libxml parses with a diagnostic is refused, the level notwithstanding.
+     * I-3
      */
     #[Test]
     #[DataProvider('provideDiagnosticShapes')]

@@ -12,13 +12,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.4: attributes read with getAttributeNS(), null for an absent one, matched on namespace URI and local
- * name (I-10).
+ * Section 6.4, I-10
  */
 final class AttributesTest extends TestCase
 {
     /**
-     * §9.3 row 10: optional() on an absent attribute is null, not ''.
+     * §9.3 row 10
      */
     #[Test]
     public function optionalIsNullForAnAbsentAttribute(): void
@@ -31,7 +30,7 @@ final class AttributesTest extends TestCase
     }
 
     /**
-     * Section 6.4: an attribute that is present and empty reads as '', which is not absent.
+     * Section 6.4
      */
     #[Test]
     public function optionalReadsAnEmptyAttributeAsEmpty(): void
@@ -54,7 +53,7 @@ final class AttributesTest extends TestCase
     }
 
     /**
-     * Section 6.4, I-16: required() on an absent attribute refuses, naming the attribute asked for.
+     * Section 6.4, I-16
      */
     #[Test]
     public function requiredRefusesAnAbsentAttribute(): void
@@ -71,7 +70,7 @@ final class AttributesTest extends TestCase
     }
 
     /**
-     * I-10: a namespaced attribute, xml:lang here, is read by its namespace URI and local name.
+     * I-10
      */
     #[Test]
     public function itReadsANamespacedAttribute(): void
@@ -87,7 +86,7 @@ final class AttributesTest extends TestCase
     }
 
     /**
-     * Section 6.4, I-16: a namespaced attribute asked for is named in Clark notation in the refusal.
+     * Section 6.4, I-16
      */
     #[Test]
     public function requiredNamesANamespacedAttributeInClarkNotation(): void

@@ -16,12 +16,12 @@ use PHPUnit\Framework\TestCase;
 use function strlen;
 
 /**
- * Section 5.1, D-5: the closed list of digest methods, their raw digests and their lengths.
+ * Section 5.1, D-5
  */
 final class DigestAlgorithmTest extends TestCase
 {
     /**
-     * §9.3 row 13: each case round-trips through fromUri().
+     * §9.3 row 13
      */
     #[Test]
     #[DataProvider('provideCases')]
@@ -42,7 +42,7 @@ final class DigestAlgorithmTest extends TestCase
     }
 
     /**
-     * §9.2 row 21, D-5: SHA-1, MD5 and every unknown URI are refused by name.
+     * §9.2 row 21, D-5
      */
     #[Test]
     #[DataProvider('provideRefusedUris')]
@@ -68,9 +68,6 @@ final class DigestAlgorithmTest extends TestCase
         yield 'empty' => [''];
     }
 
-    /**
-     * The raw digest, as hash() gives it with its binary flag, and its length.
-     */
     #[Test]
     #[DataProvider('provideHashes')]
     public function itHashesWithItsFunctionAndKnowsItsLength(
@@ -98,7 +95,7 @@ final class DigestAlgorithmTest extends TestCase
     }
 
     /**
-     * Section 5.1: the OpenSSL algorithm the two primitives take.
+     * Section 5.1
      */
     #[Test]
     #[DataProvider('provideOpensslAlgorithms')]

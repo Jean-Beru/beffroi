@@ -11,14 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 3, the relative namespace URI: libxml's canonicalization fails on it, and the parser reports nothing. The
- * rule: every namespace declaration is checked at load, an absolute URI or the empty undeclaration (I-6).
+ * Section 3, I-6
  */
 final class RelativeNamespaceUriTest extends TestCase
 {
     /**
-     * I-6: a relative namespace URI on the assertion a signature covers is refused at load, before anything is
-     * canonicalized or hashed.
+     * I-6
      */
     #[Test]
     public function aRelativeNamespaceUriIsRefusedAtLoad(): void

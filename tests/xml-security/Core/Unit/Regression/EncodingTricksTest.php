@@ -13,15 +13,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 3, encoding tricks: UTF-16 with a byte order mark is accepted by libxml and then reported as UTF-8, so
- * what the bytes say and what the DOM says differ. The rule: valid UTF-8, no UTF-16 or UTF-32 mark, checked before
- * parsing; a declared encoding is UTF-8 (I-5).
+ * Section 3, I-5
  */
 final class EncodingTricksTest extends TestCase
 {
     /**
-     * I-5: a UTF-16 response with a byte order mark, which libxml would parse and call UTF-8, is refused before
-     * parsing.
+     * I-5
      */
     #[Test]
     public function aUtf16ResponseWithAByteOrderMarkIsRefused(): void
@@ -43,7 +40,7 @@ final class EncodingTricksTest extends TestCase
     }
 
     /**
-     * I-5: a declared single-byte encoding, which libxml converts silently, is refused after parsing.
+     * I-5
      */
     #[Test]
     public function aDeclaredSingleByteEncodingIsRefused(): void

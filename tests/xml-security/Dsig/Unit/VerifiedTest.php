@@ -14,7 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.4, D-10: what a verification hands to the consumer, four values and nothing computed.
+ * Section 5.4, D-10
  */
 final class VerifiedTest extends TestCase
 {

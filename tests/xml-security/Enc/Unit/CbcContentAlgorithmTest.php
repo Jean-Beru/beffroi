@@ -9,13 +9,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.1, E-1, E-15: the two AES-CBC methods the reading model reads and decryptCovered() alone opens, and what
- * each case knows of itself.
+ * Section 5.1, E-1, E-15
  */
 final class CbcContentAlgorithmTest extends TestCase
 {
     /**
-     * §9.3 row 24: each case round-trips through its URI, and nothing else names a case.
+     * §9.3 row 24
      */
     #[Test]
     public function itNamesAes128CbcAndAes256Cbc(): void
@@ -38,7 +37,7 @@ final class CbcContentAlgorithmTest extends TestCase
     }
 
     /**
-     * §9.3 row 24, E-2: the one length of the session key each case accepts.
+     * §9.3 row 24, E-2
      */
     #[Test]
     public function itKnowsTheLengthOfItsKey(): void
@@ -48,7 +47,7 @@ final class CbcContentAlgorithmTest extends TestCase
     }
 
     /**
-     * §9.3 row 24: what openssl_decrypt() takes.
+     * §9.3 row 24
      */
     #[Test]
     public function itKnowsItsOpensslCipher(): void

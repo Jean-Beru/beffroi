@@ -29,19 +29,11 @@ use function strpos;
 use function substr;
 use function trim;
 
-/**
- * What a traceability test reads: a specification, the invariants it declares under a prefix (I for Core, D for
- * Dsig), the rows of its corpus tables, the CVEs of its threat model, and the tests of one namespace that cite
- * them. The tests are the proof and the specification is the law: a row or an invariant added there without a
- * test is what the test built on this class fails on.
- */
 final readonly class Traceability
 {
     private string $specification;
 
     /**
-     * @param string $specificationPath the absolute path of the specification
-     * @param string $testsDirectory the absolute path of the tests that cite it
      * @param string $invariantPrefix "I" for the invariants I-1 to I-16 of core.md, "D" for those of dsig.md
      */
     public function __construct(
@@ -57,9 +49,7 @@ final readonly class Traceability
     }
 
     /**
-     * The invariants section 4 declares, "I-1" to "I-16" for core.md.
-     *
-     * @return list<string>
+     * @return list<string> declared in section 4, "I-1" to "I-16" for core.md
      */
     public function invariants(): array
     {
@@ -69,8 +59,6 @@ final readonly class Traceability
     }
 
     /**
-     * The invariants the tests cite, each once.
-     *
      * @return list<string>
      */
     public function citedInvariants(): array
@@ -83,9 +71,7 @@ final readonly class Traceability
     }
 
     /**
-     * The rows of the table under a heading, numbered from 1, the header and its separator left aside.
-     *
-     * @return array<int, string>
+     * @return array<int, string> keyed by row number, from 1
      */
     public function tableRows(string $heading): array
     {
@@ -147,8 +133,6 @@ final readonly class Traceability
     }
 
     /**
-     * The CVEs a section names, each once, sorted.
-     *
      * @return list<string>
      */
     public function cves(string $from, string $until): array
@@ -160,9 +144,6 @@ final readonly class Traceability
         return $cves;
     }
 
-    /**
-     * The source of every test under the tests directory, or under one of its subdirectories, concatenated.
-     */
     public function tests(string $directory = ''): string
     {
         $sources = [];

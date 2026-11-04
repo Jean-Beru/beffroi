@@ -20,13 +20,12 @@ use function str_repeat;
 use function strlen;
 
 /**
- * Section 5.2, E-3, E-11: the decryption key on a PEM, RSA of at least 2048 bits, answering the session key or
- * null and never why.
+ * Section 5.2, E-3, E-11
  */
 final class PrivateDecryptionKeyTest extends TestCase
 {
     /**
-     * Section 5.2: the test key unwraps the session key of a vector, whose length is the method's.
+     * Section 5.2
      */
     #[Test]
     #[TestWith(['response-encrypted-assertion-aes256-gcm.xml', 32], 'aes256-gcm')]
@@ -48,8 +47,7 @@ final class PrivateDecryptionKeyTest extends TestCase
     }
 
     /**
-     * §9.1 row 5, section 13: under SHA-256 where the RSA functions take a digest, PHP 8.5; AlgorithmUnavailable
-     * on 8.4, before the key is touched.
+     * §9.1 row 5, section 13
      */
     #[Test]
     public function itUnwrapsUnderSha256WhereTheBuildTakesADigest(): void
@@ -71,8 +69,7 @@ final class PrivateDecryptionKeyTest extends TestCase
     }
 
     /**
-     * §9.2 rows 19, 20 and 21, E-3: what does not unwrap is null, never why: the stranger's transport, PKCS#1 v1.5
-     * padding, a blob altered by one byte, a blob of the wrong length, nothing at all.
+     * §9.2 rows 19, 20 and 21, E-3
      */
     #[Test]
     #[TestWith(['hostile/encrypted-under-the-stranger-certificate-refused.xml'], 'the stranger\'s certificate')]
@@ -89,8 +86,7 @@ final class PrivateDecryptionKeyTest extends TestCase
     }
 
     /**
-     * §9.2 row 39, E-3: a wrapped key that does not unwrap leaves nothing in OpenSSL's error queue, which would say
-     * which step failed to whoever reads it.
+     * §9.2 row 39, E-3
      */
     #[Test]
     #[TestWith(['hostile/key-wrapped-under-pkcs1-v1-5-refused.xml'], 'PKCS#1 v1.5 padding')]
@@ -123,7 +119,7 @@ final class PrivateDecryptionKeyTest extends TestCase
     }
 
     /**
-     * Section 13: a blob wrapped under SHA-1 does not unwrap under SHA-256, where the build takes a digest.
+     * Section 13
      */
     #[Test]
     public function itAnswersNullUnderAnotherHash(): void
@@ -140,8 +136,7 @@ final class PrivateDecryptionKeyTest extends TestCase
     }
 
     /**
-     * Section 5.2: a passphrase-protected PEM opens with its passphrase; it is another key, which unwraps nothing
-     * of the vectors.
+     * Section 5.2
      */
     #[Test]
     public function itReadsAnEncryptedPemWithItsPassphrase(): void
@@ -158,7 +153,7 @@ final class PrivateDecryptionKeyTest extends TestCase
     }
 
     /**
-     * E-11: a PEM that gives no private key.
+     * E-11
      */
     #[Test]
     #[TestWith(['keys/encrypted-rsa-2048-key.pem', 'wrong'], 'a wrong passphrase')]
@@ -178,7 +173,7 @@ final class PrivateDecryptionKeyTest extends TestCase
     }
 
     /**
-     * §9.2 row 38, E-11: a path is not a PEM, even one OpenSSL would open and read the key from.
+     * §9.2 row 38, E-11
      */
     #[Test]
     public function itRefusesAPathToAKeyFile(): void
@@ -195,7 +190,7 @@ final class PrivateDecryptionKeyTest extends TestCase
     }
 
     /**
-     * §9.2 row 31, E-11: a key under 2048 bits, or not RSA.
+     * §9.2 row 31, E-11
      */
     #[Test]
     #[TestWith(['keys/weak-rsa-1024-key.pem'], 'RSA-1024')]
@@ -215,7 +210,7 @@ final class PrivateDecryptionKeyTest extends TestCase
     }
 
     /**
-     * E-12: the refusal carries nothing of the PEM.
+     * E-12
      */
     #[Test]
     public function itsRefusalCarriesNothingOfThePem(): void

@@ -14,14 +14,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 3, the empty canonical form: xmlseclibs hashed the empty string libxml returned when canonicalization
- * failed (CVE-2025-66578, 8 December 2025). The rule: a false return is an exception and a CanonicalXml cannot hold
- * the empty string (I-13).
+ * Section 3, CVE-2025-66578, I-13
  */
 final class EmptyCanonicalFormTest extends TestCase
 {
     /**
-     * CVE-2025-66578: a canonicalization libxml cannot do is a refusal, never a string to hash.
+     * CVE-2025-66578
      */
     #[Test]
     public function cve202566578AFailedCanonicalizationIsARefusalNotAString(): void
@@ -42,7 +40,7 @@ final class EmptyCanonicalFormTest extends TestCase
     }
 
     /**
-     * CVE-2025-66578: the empty string cannot become a CanonicalXml, whoever produced it.
+     * CVE-2025-66578
      */
     #[Test]
     public function cve202566578TheEmptyStringIsNeverACanonicalForm(): void

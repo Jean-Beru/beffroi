@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.7: a relative namespace URI, a prefixed node without namespace (I-6). A consumer catches the base class when it does not care which rule fired.
+ * Section 5.7, I-6
  */
 final class NamespaceRefusedTest extends TestCase
 {

@@ -17,11 +17,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 3, the structure read loosely: CVE-2025-29774 and CVE-2025-29775, xml-crypto before 6.0.1 verified
- * documents holding several SignedInfo elements or a DigestValue split by a comment; CVE-2023-49087, the
- * validation of SignedInfo in simplesamlphp/xml-security. The rule: three children of Signature, three of
- * SignedInfo, one Reference, each read once and counted (D-9), and the signature verified over the canonical
- * SignedInfo before any digest is read (D-6).
+ * Section 3, CVE-2025-29774, CVE-2025-29775, CVE-2023-49087, D-6, D-9
  */
 final class LooseStructureTest extends TestCase
 {
@@ -38,7 +34,7 @@ final class LooseStructureTest extends TestCase
     }
 
     /**
-     * CVE-2025-29774: two SignedInfo elements, the second one the attacker's, are a refusal, not a choice.
+     * CVE-2025-29774
      */
     #[Test]
     public function cve202529774TwoSignedInfoAreRefused(): void
@@ -56,8 +52,7 @@ final class LooseStructureTest extends TestCase
     }
 
     /**
-     * CVE-2025-29775: a DigestValue split by a comment reads as one value, and an altered one is caught by the
-     * signature over SignedInfo, never by a comparison of what the attacker wrote.
+     * CVE-2025-29775
      */
     #[Test]
     public function cve202529775ADigestValueSplitByACommentVerifiesAndAnAlteredOneDoesNot(): void
@@ -76,7 +71,7 @@ final class LooseStructureTest extends TestCase
     }
 
     /**
-     * CVE-2023-49087: a SignedInfo holding a second Reference, whatever it names, is a refusal.
+     * CVE-2023-49087
      */
     #[Test]
     public function cve202349087ASecondReferenceIsRefused(): void

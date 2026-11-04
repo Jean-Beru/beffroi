@@ -12,14 +12,13 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 9.5: two soft assertions, run in CI only, where the machine is known. The measured baseline is 13 ms for
- * the document at the six default bounds on the development machine (section 13).
+ * Section 9.5, section 13
  */
 #[RequiresEnvironmentVariable('CI')]
 final class PerformanceTest extends TestCase
 {
     /**
-     * Section 9.5: loading and indexing the largest fixture of section 9.4 takes less than 50 ms.
+     * Section 9.5, section 9.4
      */
     #[Test]
     public function itLoadsTheLargestRealDocumentInLessThan50Milliseconds(): void
@@ -38,7 +37,7 @@ final class PerformanceTest extends TestCase
     }
 
     /**
-     * Section 9.5: loading a synthetic document at the six default bounds takes less than 500 ms.
+     * Section 9.5
      */
     #[Test]
     public function itLoadsADocumentAtTheSixDefaultBoundsInLessThan500Milliseconds(): void

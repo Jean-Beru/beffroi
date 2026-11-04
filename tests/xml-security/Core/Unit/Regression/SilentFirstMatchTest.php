@@ -13,14 +13,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 3, the silent first match: getElementById() returns the first of two elements sharing an ID and says
- * nothing (measured, section 13). The rule: it is never called, and the brick's own index refuses duplicates
- * (I-8, I-14).
+ * Section 3, section 13, I-8, I-14
  */
 final class SilentFirstMatchTest extends TestCase
 {
     /**
-     * I-8: two elements sharing an ID, under one attribute or two, refuse the whole document; no first match.
+     * I-8
      */
     #[Test]
     #[DataProvider('provideDuplicates')]

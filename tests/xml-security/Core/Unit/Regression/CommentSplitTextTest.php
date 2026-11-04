@@ -15,9 +15,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 3, comment-split text: a comment inside a NameID splits its text node, and several implementations read
- * only the first half (Duo Labs, 27 February 2018: CVE-2017-11427, CVE-2017-11428, CVE-2017-11429, CVE-2017-11430,
- * CVE-2018-0489, CVE-2018-7340). The rule: Text::of() concatenates every text and CDATA child (I-12).
+ * Section 3, CVE-2017-11427, CVE-2017-11428, CVE-2017-11429, CVE-2017-11430, CVE-2018-0489, CVE-2018-7340, I-12
  */
 final class CommentSplitTextTest extends TestCase
 {
@@ -27,7 +25,7 @@ final class CommentSplitTextTest extends TestCase
             . '</samlp:Response>';
 
     /**
-     * CVE-2017-11428, CVE-2018-0489: the NameID read is the whole text, the value the signature covers.
+     * CVE-2017-11428, CVE-2018-0489
      */
     #[Test]
     public function cve201711428TheNameIdReadIsTheWholeTextAroundTheComment(): void
@@ -44,8 +42,7 @@ final class CommentSplitTextTest extends TestCase
     }
 
     /**
-     * CVE-2018-0489: the canonical form without comments, the one signed, carries the whole text too, so what is
-     * verified is what is read.
+     * CVE-2018-0489
      */
     #[Test]
     public function cve20180489TheCanonicalFormSignedCarriesTheWholeText(): void

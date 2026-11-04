@@ -33,17 +33,12 @@ use function range;
 use function sprintf;
 
 /**
- * The adversarial pass: for each row of section 3, inputs section 9 does not list, written to defeat the invariant.
- * DOCTYPE placement and casing, encoding and byte order mark variants, overlong and surrogate sequences, ID values
- * that would collide after a normalisation the brick must not do, prefix rebinding and xmlns games, documents at and
- * just over every bound, comments and processing instructions at every position, detached and foreign nodes. Every
- * attempt is a fixture whatever its outcome (adversarial-*-refused.xml, adversarial-*-loads.xml); none bypassed a
- * rule. I-1, I-2, I-3, I-4, I-5, I-6, I-7, I-8, I-10, I-11, I-12, I-13, I-14.
+ * Section 3, I-1, I-2, I-3, I-4, I-5, I-6, I-7, I-8, I-10, I-11, I-12, I-13, I-14
  */
 final class AdversarialTest extends TestCase
 {
     /**
-     * Section 3: an attempt the brick refuses, with the rule named.
+     * Section 3
      *
      * @param class-string<RefusedXml> $exception
      */
@@ -405,8 +400,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 3, section 8: an attempt the brick accepts on purpose, consistently with what the specification
-     * accepts, and loads as an ordinary document.
+     * Section 3, section 8
      */
     #[Test]
     #[DataProvider('provideAcceptedAttempts')]
@@ -504,8 +498,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * I-8: two ID values that differ in case, or in Unicode composition (U+00E9 against e and U+0301), are two IDs;
-     * the brick normalises nothing.
+     * I-8
      */
     #[Test]
     public function itKeepsIdsDistinctThatANormalisationWouldMerge(): void
@@ -520,8 +513,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * I-4, section 8: a node of another document cannot be appended without importNode() or adoptNode(), which are
-     * never called; the Dom API refuses it, so a foreign subtree never enters a document of the brick.
+     * I-4, section 8
      */
     #[Test]
     public function itsDocumentsRefuseAForeignNodeAppendedToThem(): void
@@ -540,7 +532,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 1: an apex inside a detached subtree is not connected either.
+     * Section 6.3 step 1
      */
     #[Test]
     public function itRefusesAnApexInsideADetachedSubtree(): void
@@ -560,8 +552,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Exclusive XML Canonicalization §4, section 13: a prefix of the list that names no declaration in scope, xml,
-     * xmlns or a name with a colon, changes nothing.
+     * Exclusive XML Canonicalization §4, section 13
      */
     #[Test]
     #[DataProvider('provideInertPrefixes')]
@@ -594,8 +585,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 13, measured: libxml reads an empty prefix as the default namespace, like #default; fromPrefixList()
-     * never produces one, since it drops empty entries.
+     * Section 13
      */
     #[Test]
     public function itRendersTheDefaultNamespaceForAnEmptyPrefixOfTheList(): void
@@ -617,7 +607,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 7: a prefix list of ten thousand entries is no denial of service; the form is unchanged.
+     * Section 7
      */
     #[Test]
     public function itRendersTheSameFormForAHugePrefixList(): void
@@ -639,9 +629,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * I-11, section 6.6: an assertion wrapped in samlp:Extensions under another prefix of the same namespace is not
-     * a child of the response, though the index, which is per document, reaches it by ID; what a verifier hands
-     * over is the re-parse of the canonical bytes it hashed, never the document as it arrived.
+     * I-11, section 6.6
      */
     #[Test]
     public function itDoesNotListAWrappedAssertionUnderAnotherPrefixAsAChild(): void
@@ -658,8 +646,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * I-14: the comments of an excluded subtree are left out with it, and the others stay, with a method that
-     * keeps comments.
+     * I-14
      */
     #[Test]
     public function itLeavesTheCommentsOfAnExcludedSubtreeOut(): void

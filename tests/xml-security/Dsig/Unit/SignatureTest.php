@@ -25,15 +25,14 @@ use PHPUnit\Framework\TestCase;
 use function strlen;
 
 /**
- * Section 5.3, D-9: the ds:Signature element read strictly, nothing computed; KeyInfo never read (D-7); every
- * shape of section 9.2 the model refuses, with its rule named (D-13).
+ * Section 5.3, section 9.2, D-7, D-9, D-13
  */
 final class SignatureTest extends TestCase
 {
     private const string DSIG = 'http://www.w3.org/2000/09/xmldsig#';
 
     /**
-     * Section 5.3: the signature of the vector, every field where section 9.1 says it is.
+     * Section 5.3, section 9.1
      */
     #[Test]
     public function itReadsTheSignatureOfTheVector(): void
@@ -59,7 +58,7 @@ final class SignatureTest extends TestCase
     }
 
     /**
-     * Section 5.3, D-7: a Signature without KeyInfo reads the same, since KeyInfo is never read.
+     * Section 5.3, D-7
      */
     #[Test]
     public function itReadsASignatureWithoutKeyInfo(): void
@@ -75,7 +74,7 @@ final class SignatureTest extends TestCase
     }
 
     /**
-     * §9.2 row 13, D-8: a DigestValue split by a comment reads as one value, Text::of() concatenating.
+     * §9.2 row 13, D-8
      */
     #[Test]
     public function itReadsADigestValueSplitByAComment(): void
@@ -93,8 +92,7 @@ final class SignatureTest extends TestCase
     }
 
     /**
-     * §9.2 rows 3, 7 to 12 and 18 to 33, D-2, D-3, D-4, D-5, D-8, D-9, D-14: every shape the model refuses, with the
-     * rule named and never the input (D-13).
+     * §9.2 rows 3, 7 to 12 and 18 to 33, D-2, D-3, D-4, D-5, D-8, D-9, D-13, D-14
      *
      * @param class-string<Throwable> $exception
      */
@@ -347,7 +345,7 @@ final class SignatureTest extends TestCase
     }
 
     /**
-     * Section 5.3, D-9: an element that is not a ds:Signature.
+     * Section 5.3, D-9
      */
     #[Test]
     public function itRefusesAnElementThatIsNotASignature(): void
@@ -365,7 +363,7 @@ final class SignatureTest extends TestCase
     }
 
     /**
-     * §9.2 row 40, Core I-4: an element of a document parsed outside the loader.
+     * §9.2 row 40, Core I-4
      */
     #[Test]
     public function itRefusesAnElementOfAForeignDocument(): void

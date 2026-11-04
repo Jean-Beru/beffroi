@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.7: no direct child of that name (section 6.4). A consumer catches the base class when it does not care which rule fired.
+ * Section 5.7, section 6.4
  */
 final class MissingChildTest extends TestCase
 {

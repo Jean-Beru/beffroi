@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 /**
- * Section 5.7: a RefusedXml is input the brick refuses, a runtime condition, never a programming error.
+ * Section 5.7
  */
 final class RefusedXmlTest extends TestCase
 {

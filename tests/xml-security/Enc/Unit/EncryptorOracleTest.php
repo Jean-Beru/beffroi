@@ -30,11 +30,7 @@ use PHPUnit\Framework\TestCase;
 use function sprintf;
 
 /**
- * §9.3 row 10: the assertion of a built response, a comment in it and a QName value naming a prefix of the response,
- * encrypted under each content method and each hash this build offers, written into the directory XMLSEC_ORACLE
- * names with the document xmlsec1 must give back, in its exclusive canonical form with comments
- * (tests/xml-security/Enc/Fixture/oracle/README.md, the job Oracle of the CI). The files are the input of the oracle, not
- * fixtures: the test is skipped when the variable is not set.
+ * §9.3 row 10
  */
 #[RequiresEnvironmentVariable('XMLSEC_ORACLE')]
 final class EncryptorOracleTest extends TestCase
@@ -68,7 +64,6 @@ final class EncryptorOracleTest extends TestCase
             ),
             new Name(Stack::SAML_ASSERTION, 'AttributeValue'),
         )->setAttributeNS(self::XSI, 'xsi:type', 'xs:string');
-        // the assertion inside the EncryptedAssertion the consumer builds, where the EncryptedData will stand
         $wrapper = $xml->createElementNS(Stack::SAML_ASSERTION, 'saml:EncryptedAssertion');
         $root->replaceChild($wrapper, $assertion);
         $wrapper->appendChild($assertion);

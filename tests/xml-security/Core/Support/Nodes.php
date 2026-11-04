@@ -8,9 +8,6 @@ use Dom\Element;
 use RuntimeException;
 use function sprintf;
 
-/**
- * Direct navigation for the tests, by local name only: what a test needs to reach an apex or an element to exclude.
- */
 final class Nodes
 {
     public static function childNamed(Element $parent, string $local): Element

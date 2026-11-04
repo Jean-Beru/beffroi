@@ -16,8 +16,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.5: a new XML 1.0, UTF-8 document whose root is created with createElementNS(), its namespace declared
- * on it as an attribute, registered so that the brick recognises what a consumer builds under it.
+ * Section 6.5
  */
 final class DocumentFactoryTest extends TestCase
 {
@@ -67,7 +66,7 @@ final class DocumentFactoryTest extends TestCase
     }
 
     /**
-     * Section 6.5: XML 1.0, UTF-8, formatOutput false.
+     * Section 6.5
      */
     #[Test]
     public function itCreatesAnXml10Utf8Document(): void
@@ -82,7 +81,7 @@ final class DocumentFactoryTest extends TestCase
     }
 
     /**
-     * Section 6.2: a created document has an empty index; what a consumer builds, it holds by reference.
+     * Section 6.2
      */
     #[Test]
     public function itCreatesADocumentWithAnEmptyIndex(): void
@@ -95,7 +94,7 @@ final class DocumentFactoryTest extends TestCase
     }
 
     /**
-     * §9.3 row 14, I-4: owning() on a node of a created document, and on what a consumer builds under its root.
+     * §9.3 row 14, I-4
      */
     #[Test]
     public function itsDocumentOwnsWhatAConsumerBuildsUnderTheRoot(): void
@@ -115,7 +114,7 @@ final class DocumentFactoryTest extends TestCase
     }
 
     /**
-     * Section 6.5: each call is a new document, recognised on its own.
+     * Section 6.5
      */
     #[Test]
     public function itCreatesADistinctDocumentEachTime(): void
@@ -131,8 +130,7 @@ final class DocumentFactoryTest extends TestCase
     }
 
     /**
-     * Section 6.5: the namespace of a prefixed root is declared on it as an xmlns:prefix attribute, and nothing else
-     * is.
+     * Section 6.5
      */
     #[Test]
     public function itDeclaresTheNamespaceOfARootWithAPrefix(): void
@@ -146,8 +144,7 @@ final class DocumentFactoryTest extends TestCase
     }
 
     /**
-     * Section 6.5: the namespace of a root without a prefix is declared on it as an xmlns attribute; C14N() renders
-     * the declarations that exist as attributes and would lose the namespace otherwise (measured, section 13).
+     * Section 6.5, section 13
      */
     #[Test]
     public function itDeclaresTheDefaultNamespaceOfARootWithoutAPrefix(): void
@@ -161,7 +158,7 @@ final class DocumentFactoryTest extends TestCase
     }
 
     /**
-     * Section 6.5: a root in no namespace declares nothing.
+     * Section 6.5
      */
     #[Test]
     public function itDeclaresNothingOnARootInNoNamespace(): void
@@ -174,8 +171,7 @@ final class DocumentFactoryTest extends TestCase
     }
 
     /**
-     * §9.3 row 18, section 6.5: a document built without a prefix canonicalizes with its declaration, and to the
-     * same bytes after serialize() then load(); the signature computed before sending is the one the peer verifies.
+     * §9.3 row 18, section 6.5
      */
     #[Test]
     public function itsRootCanonicalizesWithItsNamespaceBeforeAndAfterARoundTrip(): void

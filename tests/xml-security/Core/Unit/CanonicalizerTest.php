@@ -27,9 +27,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.3 and the vectors of section 9.1: the mapping of methods to flags, the subtree exclusion, the prefix
- * list handling and the guards, on outputs the recommendations fix. Every test byte-compares the serialized document
- * before and after the call (I-14).
+ * Section 6.3, section 9.1, I-14
  */
 final class CanonicalizerTest extends TestCase
 {
@@ -46,8 +44,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * Section 9.1: the vectors of Canonical XML 1.0 §3 and Exclusive XML Canonicalization §2, the four measured
-     * cases of section 13 and the text rows of section 9.3 (rows 1 and 2), byte for byte.
+     * Section 9.1, Canonical XML 1.0 §3, Exclusive XML Canonicalization §2, section 13, section 9.3 (rows 1 and 2)
      *
      * @param list<string> $prefixes
      */
@@ -63,8 +60,7 @@ final class CanonicalizerTest extends TestCase
         // Given
         $document = Loaded::fixture($fixture);
         $apex = $apexName === null ? $document->root() : Nodes::childNamed($document->root(), $apexName);
-        // the witness that the document is untouched afterwards: the §3.4 vector carries a carriage return, which
-        // the serializer refuses (section 6.5), so the witness is the canonical form with comments of the root
+        // The serializer refuses the carriage return of the §3.4 vector (section 6.5), so the witness is a canonical form.
         $before = $this->canonicalizer->canonicalize($document->root(), CanonicalizationMethod::InclusiveWithComments);
 
         // When
@@ -246,9 +242,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * §9.3 row 12, I-14: the enveloped exclusion of ds:Signature gives the bytes of the XPath node-set form the
-     * fixture carries, computed outside the repository; the excluded element in the middle, first, last, and two
-     * of them; the document unchanged afterwards.
+     * §9.3 row 12, I-14
      */
     #[Test]
     #[DataProvider('provideEnvelopedCases')]
@@ -300,8 +294,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 4: the excluded elements are reinserted at their position whatever the order they were
-     * listed in, two adjacent siblings included.
+     * Section 6.3 step 4
      */
     #[Test]
     public function itReinsertsAdjacentExclusionsWhateverTheirOrder(): void
@@ -325,8 +318,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 3: a nested exclusion, the inner one listed first, is detached and put back inside its
-     * parent, itself detached and put back.
+     * Section 6.3 step 3
      */
     #[Test]
     public function itReinsertsANestedExclusion(): void
@@ -351,7 +343,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * §9.3 row 13, I-14: a failing canonicalization with exclusions leaves the excluded elements back in place.
+     * §9.3 row 13, I-14
      */
     #[Test]
     public function itPutsTheExclusionsBackWhenTheCanonicalizationFails(): void
@@ -380,8 +372,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * §9.2 row 29, I-13: a relative namespace on a document of the brick makes libxml return false; the refusal
-     * carries libxml's error code and never its message, which quotes the URI (I-16).
+     * §9.2 row 29, I-13, I-16
      */
     #[Test]
     public function itRefusesARelativeNamespaceLibxmlCannotCanonicalize(): void
@@ -402,7 +393,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * §9.2 row 26, I-4: a document from a direct createFromString() call that bypassed the Loader.
+     * §9.2 row 26, I-4
      */
     #[Test]
     public function itRefusesAForeignApex(): void
@@ -420,7 +411,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * §9.2 row 27, section 6.3 step 1: an apex removed from its parent is a programming error.
+     * §9.2 row 27, section 6.3 step 1
      */
     #[Test]
     public function itRefusesAnApexThatIsNotConnected(): void
@@ -445,7 +436,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * §9.2 row 27: the check runs before any exclusion is detached.
+     * §9.2 row 27
      */
     #[Test]
     public function itDetachesNothingWhenTheApexIsNotConnected(): void
@@ -473,7 +464,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * §9.2 row 28, section 6.3 step 3: an excluded element that is not a strict descendant of the apex.
+     * §9.2 row 28, section 6.3 step 3
      */
     #[Test]
     #[DataProvider('provideNonDescendants')]
@@ -519,7 +510,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * §9.2 row 28, I-14: the document is unchanged after the refusal, since nothing was detached.
+     * §9.2 row 28, I-14
      */
     #[Test]
     public function itLeavesTheDocumentUnchangedAfterRefusingAnExclusion(): void
@@ -543,7 +534,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 3: an element listed twice would be detached twice; refused before anything is detached.
+     * Section 6.3 step 3
      */
     #[Test]
     public function itRefusesAnElementExcludedTwice(): void
@@ -567,7 +558,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * §9.2 row 31, section 6.3: inclusive canonicalization renders every in-scope namespace already.
+     * §9.2 row 31, section 6.3
      */
     #[Test]
     #[DataProvider('provideInclusiveMethods')]
@@ -595,7 +586,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 4: an empty prefix list with an exclusive method renders the visibly utilised namespaces.
+     * Section 6.3 step 4
      */
     #[Test]
     public function itAcceptsAnEmptyPrefixListWithAnExclusiveMethod(): void
@@ -616,7 +607,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 5: libxml's internal-errors mode is restored after a canonicalization, on the success path.
+     * Section 6.3 step 5
      */
     #[Test]
     public function itRestoresAnInternalErrorsModeOfFalseAfterACanonicalization(): void
@@ -634,8 +625,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 5: the mode is restored and the buffer emptied after a refusal, the diagnostic of libxml
-     * not left behind.
+     * Section 6.3 step 5
      */
     #[Test]
     public function itEmptiesTheBufferAndRestoresTheModeAfterARefusal(): void
@@ -660,8 +650,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * Section 6.6: the canonical bytes load again through the Loader, with every namespace declaration and every
-     * inherited xml attribute the form rendered; the re-parsed root is what a consumer receives.
+     * Section 6.6
      */
     #[Test]
     public function itsCanonicalFormLoadsAgainAsOneRootWithItsInheritedContext(): void
@@ -685,8 +674,6 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * Every ds:Signature element of the document, by direct navigation, in document order.
-     *
      * @return list<Element>
      */
     private function signaturesOf(Document $document): array
@@ -708,8 +695,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * §9.3 row 19, section 6.3 step 2: a built element without a prefix whose namespace no xmlns attribute in
-     * scope declares; C14N() would render it without a declaration (measured, section 13).
+     * §9.3 row 19, section 6.3 step 2, section 13
      */
     #[Test]
     public function itRefusesABuiltElementWithoutAPrefixWhoseNamespaceNoDeclarationCovers(): void
@@ -730,8 +716,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * §9.3 row 19, section 6.3 step 2: a built child in no namespace under a default namespace, without its own
-     * xmlns=""; C14N() would render it inside the default namespace (measured, section 13).
+     * §9.3 row 19, section 6.3 step 2, section 13
      */
     #[Test]
     public function itRefusesABuiltChildInNoNamespaceUnderADefaultNamespaceWithoutItsOwnEmptyDeclaration(): void
@@ -752,8 +737,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * §9.3 row 19, section 6.3 step 2: the refusal comes before anything is detached, so the excluded element is
-     * still in place afterwards.
+     * §9.3 row 19, section 6.3 step 2
      */
     #[Test]
     public function itRefusesAnUndeclaredDefaultNamespaceBeforeDetachingAnything(): void
@@ -779,9 +763,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * §9.3 row 18, section 6.3 step 2: what the xmlns attributes of built elements declare is rendered, the default
-     * namespace of a child, the xmlns="" of a child in no namespace, the prefix of a prefixed child; and the same
-     * bytes come back after serialize() then load().
+     * §9.3 row 18, section 6.3 step 2
      */
     #[Test]
     public function itRendersTheDeclarationsBuiltElementsCarry(): void
@@ -815,8 +797,7 @@ final class CanonicalizerTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 2: the declarations above the apex count. A built apex without a prefix under the root that
-     * declares its namespace passes, and the form carries the declaration it inherits.
+     * Section 6.3 step 2
      */
     #[Test]
     public function itReadsTheDeclarationsAboveTheApex(): void

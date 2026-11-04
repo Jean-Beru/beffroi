@@ -23,28 +23,25 @@ use function str_starts_with;
 use function strtolower;
 
 /**
- * Section 8 of the specification: the classes and the constants never used, in the brick and in its consumers, and
- * those used in the files named only (OPENSSL_ZERO_PADDING in the decryptor of Enc, enc.md E-16).
- * ekino/phpstan-banned-code bans function names and whole node types; this rule reads every name written inside
- * a class, an enum, an interface or a trait, and every name a use statement imports.
+ * Section 8, enc.md E-16
  *
  * @implements Rule<Node>
  */
 final class BannedNamesRule implements Rule
 {
     /**
-     * @var array<string, string> the banned names, lowercased, mapped to the spelling of the configuration
+     * @var array<string, string> lowercased name to its spelling in the configuration
      */
     private array $names = [];
 
     /**
-     * @var array<string, array{spelling: string, allowedIn: list<string>}> the confined names, lowercased
+     * @var array<string, array{spelling: string, allowedIn: list<string>}> keyed by the lowercased name
      */
     private array $confined = [];
 
     /**
      * @param list<string> $names
-     * @param list<array{name: string, allowedIn: list<string>}> $confined the names allowed in the files listed only
+     * @param list<array{name: string, allowedIn: list<string>}> $confined
      */
     public function __construct(
         array $names,
@@ -118,12 +115,8 @@ final class BannedNamesRule implements Rule
     }
 
     /**
-     * The entry of $entries that $name names, as written, resolved or namespaced.
-     *
      * @template T
-     *
      * @param array<string, T> $entries keyed by the lowercased name
-     *
      * @return ?T
      */
     private function spelling(Name $name, array $entries): mixed

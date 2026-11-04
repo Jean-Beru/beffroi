@@ -16,10 +16,7 @@ use PHPUnit\Framework\TestCase;
 use function str_contains;
 
 /**
- * The tests are the proof and the specification is the law: every invariant of section 4 of spec/dsig.md, every
- * row of the hostile corpus of section 9.2 and of the behaviour corpus of section 9.3, and every CVE of the threat
- * model of section 3 is cited by at least one test of this namespace. The rows are counted in the specification
- * itself, so a row added there without a test fails here.
+ * Sections 3, 4, 9.2 and 9.3 of spec/dsig.md
  */
 final class TraceabilityTest extends TestCase
 {
@@ -31,7 +28,7 @@ final class TraceabilityTest extends TestCase
     }
 
     /**
-     * Section 4: D-1 to D-17, each cited by a test.
+     * Section 4, D-1 to D-17
      */
     #[Test]
     public function everyInvariantIsCitedByATest(): void
@@ -48,7 +45,7 @@ final class TraceabilityTest extends TestCase
     }
 
     /**
-     * Section 9.2: every row of the hostile corpus, cited as "§9.2 row N".
+     * Section 9.2
      */
     #[Test]
     public function everyRowOfTheHostileCorpusIsCitedByATest(): void
@@ -65,7 +62,7 @@ final class TraceabilityTest extends TestCase
     }
 
     /**
-     * Section 9.3: every row of the behaviour corpus, cited as "§9.3 row N".
+     * Section 9.3
      */
     #[Test]
     public function everyRowOfTheBehaviourCorpusIsCitedByATest(): void
@@ -82,7 +79,7 @@ final class TraceabilityTest extends TestCase
     }
 
     /**
-     * Section 3: every CVE of the threat model has a regression test naming it.
+     * Section 3
      */
     #[Test]
     public function everyCveOfTheThreatModelHasARegressionTest(): void

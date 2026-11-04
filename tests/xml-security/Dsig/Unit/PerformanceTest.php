@@ -20,7 +20,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 9.5: a soft assertion, run in CI only, where the machine is known.
+ * Section 9.5
  */
 #[RequiresEnvironmentVariable('CI')]
 final class PerformanceTest extends TestCase
@@ -28,7 +28,7 @@ final class PerformanceTest extends TestCase
     private const string DSIG = 'http://www.w3.org/2000/09/xmldsig#';
 
     /**
-     * Section 9.5: verifying Entra's metadata, the reload included, takes less than 20 ms.
+     * Section 9.5
      */
     #[Test]
     public function itVerifiesEntrasMetadataInLessThanTwentyMilliseconds(): void

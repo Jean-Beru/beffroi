@@ -22,8 +22,7 @@ use PHPUnit\Framework\TestCase;
 use function strlen;
 
 /**
- * Section 9.4: the real documents, verified with the key their producer published; the signature is proven, not
- * the trust, which is the metadata layer's business.
+ * Section 9.4
  */
 final class RealDocumentsTest extends TestCase
 {
@@ -32,9 +31,7 @@ final class RealDocumentsTest extends TestCase
     private const string DSIG = 'http://www.w3.org/2000/09/xmldsig#';
 
     /**
-     * §9.4, section 13: Entra's common federation metadata of 23 September 2026, signed with rsa-sha256, exclusive
-     * canonicalization, the enveloped transform then exclusive canonicalization, a sha256 digest, one reference to
-     * the root's ID; the trusted key is the certificate of the Signature's own KeyInfo.
+     * §9.4, section 13
      */
     #[Test]
     public function itVerifiesEntrasFederationMetadata(): void
@@ -56,7 +53,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * §9.4: the canonical form is stable across two runs.
+     * §9.4
      */
     #[Test]
     public function itVerifiesEntrasFederationMetadataToTheSameBytesTwice(): void
@@ -75,9 +72,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * §9.4, the judge of sub-spike 8a: the response SimpleSAMLphp's own library signed (simplesamlphp/saml2 4.20.3
-     * on xmlseclibs 3.1.5, 27 September 2026) verifies with the test certificate; the reverse is in
-     * tests/xml-security/Dsig/Fixture/real/README.md.
+     * §9.4
      */
     #[Test]
     public function itVerifiesTheAssertionSimpleSamlPhpSigned(): void
@@ -99,8 +94,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * §9.3 row 20, section 6.3: the QName of an attribute value is not resolved in Verified::$document, whose bytes
-     * never declared its prefix; the value reads as the text SimpleSAMLphp wrote.
+     * §9.3 row 20, section 6.3
      */
     #[Test]
     public function itLeavesTheQnameOfAnAttributeValueUnresolved(): void
@@ -129,7 +123,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * §9.4: the response SimpleSAMLphp's library signed over its signed assertion, both signatures verified.
+     * §9.4
      */
     #[Test]
     public function itVerifiesTheResponseAndTheAssertionSimpleSamlPhpSigned(): void
@@ -151,10 +145,6 @@ final class RealDocumentsTest extends TestCase
         static::assertSame('Assertion', $assertion->document->root()->localName);
     }
 
-    /**
-     * The certificate the Signature's KeyInfo carries, read with Core's readers: a hint the test takes as the
-     * trusted key, which the metadata layer never does.
-     */
     private function certificateOf(Element $signed): VerificationKey
     {
         $signature = Children::one($signed, new Name(self::DSIG, 'Signature'));

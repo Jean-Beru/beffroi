@@ -13,7 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.2, D-14: one to sixteen trusted keys, in the consumer's order.
+ * Section 5.2, D-14
  */
 final class VerificationKeysTest extends TestCase
 {
@@ -32,7 +32,7 @@ final class VerificationKeysTest extends TestCase
     }
 
     /**
-     * §9.2 row 34, D-14: seventeen keys.
+     * §9.2 row 34, D-14
      */
     #[Test]
     public function itRefusesMoreThanSixteenKeys(): void
@@ -49,7 +49,7 @@ final class VerificationKeysTest extends TestCase
     }
 
     /**
-     * D-14: sixteen keys are the bound, not over it.
+     * D-14
      */
     #[Test]
     public function itHoldsSixteenKeys(): void
@@ -65,7 +65,7 @@ final class VerificationKeysTest extends TestCase
     }
 
     /**
-     * D-14: no key at all is a programming error.
+     * D-14
      */
     #[Test]
     public function itRefusesNoKey(): void
