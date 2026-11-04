@@ -19,13 +19,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3: the service provider role of an entity, under the rules of its values and the counts of section 7
- * (SAML Metadata §2.4.4).
+ * Section 5.3, section 7, SAML Metadata §2.4.4
  */
 final class ServiceProviderTest extends TestCase
 {
     /**
-     * Section 5.3: every field, kept as given.
+     * Section 5.3
      */
     #[Test]
     public function itKeepsItsFields(): void
@@ -72,7 +71,7 @@ final class ServiceProviderTest extends TestCase
     }
 
     /**
-     * Section 6.5 step 7: no single logout service, no format, and neither flag, by default.
+     * Section 6.5 step 7
      */
     #[Test]
     public function itHasNoLogoutServiceNoFormatAndNoFlagByDefault(): void
@@ -88,7 +87,7 @@ final class ServiceProviderTest extends TestCase
     }
 
     /**
-     * M-17: the rules the two roles share apply, here 65 single logout services.
+     * M-17
      */
     #[Test]
     public function itAppliesTheRulesOfARole(): void
@@ -108,7 +107,7 @@ final class ServiceProviderTest extends TestCase
     }
 
     /**
-     * M-3, section 5.3: the keys of its signing certificates, which verify what it signs.
+     * M-3, section 5.3
      */
     #[Test]
     public function itHasTheKeysOfItsSigningCertificates(): void
@@ -138,7 +137,7 @@ final class ServiceProviderTest extends TestCase
     }
 
     /**
-     * Section 5.3, M-3: a role without a signing certificate has no keys.
+     * Section 5.3, M-3
      */
     #[Test]
     public function itHasNoKeysWithoutASigningCertificate(): void

@@ -23,16 +23,13 @@ use PHPUnit\Framework\TestCase;
 use function sprintf;
 
 /**
- * Section 9.1, M-15: the responses the writer signs with every scheme this build offers, the assertion alone and the
- * response over it, and a signed failure, written into the directory XMLSEC_ORACLE names for xmlsec1 to verify every
- * signature of each (tests/saml2-model/Fixture/oracle/README.md, the job Oracle of the CI). The files are the input of the oracle,
- * not fixtures: the test is skipped when the variable is not set.
+ * Section 9.1, M-15
  */
 #[RequiresEnvironmentVariable('XMLSEC_ORACLE')]
 final class ResponseWriterOracleTest extends TestCase
 {
     /**
-     * Section 9.1 rows "a response with its signed assertion" and "with the response signed too".
+     * Section 9.1 rows "a response with its signed assertion" and "with the response signed too"
      */
     #[Test]
     #[DataProvider('provideSchemes')]
@@ -64,7 +61,7 @@ final class ResponseWriterOracleTest extends TestCase
     }
 
     /**
-     * Section 9.1 row "a failure", signed.
+     * Section 9.1 row "a failure"
      */
     #[Test]
     public function itWritesASignedFailureForXmlsec1(): void
@@ -80,16 +77,13 @@ final class ResponseWriterOracleTest extends TestCase
     }
 
     /**
-     * The identity provider's test key and its certificate, the KeyInfo hint of D-17.
+     * D-17
      */
     private function signing(SignatureAlgorithm $algorithm): Signing
     {
         return new Signing(MetadataFixtures::signingKey('idp'), $algorithm, MetadataFixtures::certificatePem('idp'));
     }
 
-    /**
-     * @return int|false what file_put_contents() returns
-     */
     private function put(string $name, Document $document): int|false
     {
         $directory = getenv('XMLSEC_ORACLE');

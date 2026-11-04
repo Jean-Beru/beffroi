@@ -28,18 +28,7 @@ use function substr_count;
 use function trim;
 
 /**
- * The fixtures of the adversarial pass of section 9.8 (story #12): each row of section 3 attacked with inputs the
- * corpus of 9.2 and 9.3 does not list, every attempt a file whatever its outcome, hostile/adversarial-<attempt>-refused.xml
- * or behaviour/adversarial-<attempt>-accepted.xml, each a variant of one valid message with the change its name says,
- * signed with the test keys of tests/saml2-model/Fixture/keys/ through Dsig's Signer wherever the attack needs a valid signature.
- * RSA PKCS#1 v1.5 is deterministic: the same keys build the same bytes, which the adversarial test checks against the
- * committed files. The command that writes them is in tests/saml2-model/Fixture/hostile/adversarial-README.md.
- *
- * Every message is issued at 2026-09-30T11:59:59Z, and the tests freeze the clock at 12:00:00Z: the response answers
- * the request _request of the service provider https://sp.example.com/saml at its assertion consumer service
- * https://sp.example.com/saml/acs, from the identity provider https://idp.example.com/saml; the AuthnRequest goes the
- * other way, to https://idp.example.com/saml/sso; the LogoutRequest goes from the identity provider to the service
- * provider's https://sp.example.com/saml/slo, and the LogoutResponse back to https://idp.example.com/saml/slo.
+ * Section 9.8
  */
 final class AdversarialFixtureBuilder
 {
@@ -49,16 +38,10 @@ final class AdversarialFixtureBuilder
 
     private const string SUCCESS = '<samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/>';
 
-    /**
-     * The response's own Issuer, told from the assertion's by its indentation.
-     */
     private const string RESPONSE_ISSUER = "\n  <saml:Issuer>https://idp.example.com/saml</saml:Issuer>";
 
     private const string ASSERTION_ISSUER = '<saml:Issuer>https://idp.example.com/saml</saml:Issuer>';
 
-    /**
-     * The assertion's Issuer in the unsigned response, told from the response's by its indentation.
-     */
     private const string ASSERTION_ISSUER_IN_RESPONSE = "\n    <saml:Issuer>https://idp.example.com/saml</saml:Issuer>";
 
     private const string DESTINATION = 'Destination="https://sp.example.com/saml/acs"';
@@ -80,9 +63,7 @@ final class AdversarialFixtureBuilder
     private const string XML_ATTRIBUTES = ' xml:base="https://attacker.example.com/" xml:lang="fr"';
 
     /**
-     * Every fixture, its path under tests/saml2-model/Fixture/ mapped to its bytes.
-     *
-     * @return array<string, string>
+     * @return array<string, string> path under tests/saml2-model/Fixture/ to bytes
      */
     public static function fixtures(): array
     {
@@ -100,9 +81,6 @@ final class AdversarialFixtureBuilder
         ];
     }
 
-    /**
-     * Writes every fixture under $directory, tests/saml2-model/Fixture/ of the repository.
-     */
     public static function write(string $directory): void
     {
         foreach (self::fixtures() as $path => $bytes) {
@@ -113,8 +91,7 @@ final class AdversarialFixtureBuilder
     }
 
     /**
-     * Section 3 row 1, M-1, M-4: the signed assertion moved to the places the 2012 study names and those it does not,
-     * an unsigned assertion where the consumer reads, the signature copied or the response signed over the original.
+     * Section 3 row 1, M-1, M-4
      *
      * @return array<string, string>
      */
@@ -241,8 +218,7 @@ final class AdversarialFixtureBuilder
     }
 
     /**
-     * Section 3 rows 1 and 11, M-5: the SAML elements under the default namespace, another prefix, swapped prefixes, a
-     * prefix rebound on a child, a SAML name in another namespace, attributes in a namespace next to the real ones.
+     * Section 3 rows 1 and 11, M-5
      *
      * @return array<string, string>
      */
@@ -401,8 +377,7 @@ final class AdversarialFixtureBuilder
     }
 
     /**
-     * Section 3 rows 6 and 7, M-8: xml:base and xml:lang on every element, which the model never reads, and a relative
-     * URI that an xml:base would resolve to the expected one.
+     * Section 3 rows 6 and 7, M-8
      *
      * @return array<string, string>
      */
@@ -471,8 +446,7 @@ final class AdversarialFixtureBuilder
     }
 
     /**
-     * Section 3 rows 1, 7, 8 and 14, M-10, M-11, M-14: IDs that collide only after a normalisation the model must not
-     * do, case, Unicode composition, a full-width character, whitespace, and xml:id, which is no ID attribute here.
+     * Section 3 rows 1, 7, 8 and 14, M-10, M-11, M-14
      *
      * @return array<string, string>
      */
@@ -541,9 +515,7 @@ final class AdversarialFixtureBuilder
     }
 
     /**
-     * M-6, M-7: times at the edges of their lexical form, the IssueInstant of an unsigned AuthnRequest and the
-     * validUntil of metadata carrying them; nine fractional digits, and the tenth; a bound missed by less than the
-     * microsecond the times are compared to.
+     * M-6, M-7
      *
      * @return array<string, string>
      */
@@ -586,7 +558,7 @@ final class AdversarialFixtureBuilder
     }
 
     /**
-     * M-6: booleans at the edges of their four lexical forms, compared as strings and never cast.
+     * M-6
      *
      * @return array<string, string>
      */
@@ -628,8 +600,7 @@ final class AdversarialFixtureBuilder
     }
 
     /**
-     * Section 3 rows 5, 6 and 10, M-8, M-9: URIs that differ from the expected one by what a normaliser would erase,
-     * each compared exactly.
+     * Section 3 rows 5, 6 and 10, M-8, M-9
      *
      * @return array<string, string>
      */
@@ -686,8 +657,7 @@ final class AdversarialFixtureBuilder
     }
 
     /**
-     * Section 3 row 16, section 7, M-17: every bound at its value and one over, the lengths of M-6 and M-12 among
-     * them, in characters of one byte and of two.
+     * Section 3 row 16, section 7, M-6, M-12, M-17
      *
      * @return array<string, string>
      */
@@ -817,9 +787,7 @@ final class AdversarialFixtureBuilder
     }
 
     /**
-     * Section 3 row 4, M-12, I-12: comments inserted into the signed elements after signing, which the exclusive
-     * canonical form without comments leaves out of the digest, and processing instructions, which it renders; both
-     * before signing; a CDATA section and a character reference.
+     * Section 3 row 4, M-12, I-12
      *
      * @return array<string, string>
      */
@@ -889,8 +857,7 @@ final class AdversarialFixtureBuilder
     }
 
     /**
-     * The rows of section 3 the groups above do not reach: key substitution, a signature out of its place, a condition
-     * of another namespace, the vocabularies of metadata in another case.
+     * Section 3
      *
      * @return array<string, string>
      */
@@ -1003,9 +970,6 @@ final class AdversarialFixtureBuilder
         ];
     }
 
-    /**
-     * $response with the signed assertion $original moved into its samlp:Extensions, and in its place the attacker's assertion of ID $id carrying the signature of $original.
-     */
     private static function wrappedWithId(string $id, string $original, string $response): string
     {
         return self::inExtensions(
@@ -1014,9 +978,6 @@ final class AdversarialFixtureBuilder
         );
     }
 
-    /**
-     * The valid response and its assertion answering the request $id, both signed.
-     */
     private static function answering(string $id): string
     {
         return self::signed(
@@ -1025,9 +986,6 @@ final class AdversarialFixtureBuilder
         );
     }
 
-    /**
-     * The unsigned AuthnRequest issued at $time, as the serializer writes it.
-     */
     private static function issuedAt(string $time): string
     {
         return self::unsigned(self::replace(
@@ -1037,9 +995,6 @@ final class AdversarialFixtureBuilder
         ));
     }
 
-    /**
-     * The unsigned AuthnRequest issued at $time, its bytes as written here.
-     */
     private static function issuedAtAsWritten(string $time): string
     {
         return self::declared(self::replace(
@@ -1049,9 +1004,6 @@ final class AdversarialFixtureBuilder
         ));
     }
 
-    /**
-     * The metadata of the identity provider valid until $time.
-     */
     private static function validUntil(string $time): string
     {
         return self::unsigned(self::replace(
@@ -1061,9 +1013,6 @@ final class AdversarialFixtureBuilder
         ));
     }
 
-    /**
-     * The unsigned AuthnRequest with IsPassive $value, its bytes as written here.
-     */
     private static function passive(string $value): string
     {
         return self::declared(self::replace(
@@ -1073,9 +1022,6 @@ final class AdversarialFixtureBuilder
         ));
     }
 
-    /**
-     * The valid response to the Destination $url, the assertion and the response signed.
-     */
     private static function withDestination(string $url): string
     {
         return self::signed(
@@ -1084,9 +1030,6 @@ final class AdversarialFixtureBuilder
         );
     }
 
-    /**
-     * The valid response whose bearer confirmation names the Recipient $url, the assertion signed.
-     */
     private static function withRecipient(string $url): string
     {
         return self::signed(
@@ -1095,9 +1038,6 @@ final class AdversarialFixtureBuilder
         );
     }
 
-    /**
-     * The valid response whose one Audience is $url, the assertion signed.
-     */
     private static function withAudience(string $url): string
     {
         return self::signed(
@@ -1106,9 +1046,6 @@ final class AdversarialFixtureBuilder
         );
     }
 
-    /**
-     * The valid response whose assertion names the Issuer $url, the assertion signed.
-     */
     private static function withIssuer(string $url): string
     {
         return self::signed(
@@ -1121,9 +1058,6 @@ final class AdversarialFixtureBuilder
         );
     }
 
-    /**
-     * The unsigned AuthnRequest whose AssertionConsumerServiceURL is $url.
-     */
     private static function withAssertionConsumerServiceUrl(string $url): string
     {
         return self::unsigned(
@@ -1131,9 +1065,6 @@ final class AdversarialFixtureBuilder
         );
     }
 
-    /**
-     * The valid response with $audience after our Audience, the assertion signed.
-     */
     private static function withSecondAudience(string $audience): string
     {
         return self::signed(
@@ -1146,9 +1077,6 @@ final class AdversarialFixtureBuilder
         );
     }
 
-    /**
-     * The valid response whose NameID is $value of the format urn:oasis:names:tc:$format, the assertion signed.
-     */
     private static function withNameId(string $format, string $value): string
     {
         return self::signed(
@@ -1161,9 +1089,6 @@ final class AdversarialFixtureBuilder
         );
     }
 
-    /**
-     * The valid response whose assertion has the ID $id, the assertion signed.
-     */
     private static function withAssertionId(string $id): string
     {
         return self::signed(
@@ -1172,9 +1097,6 @@ final class AdversarialFixtureBuilder
         );
     }
 
-    /**
-     * The unsigned AuthnRequest asking for $count class references.
-     */
     private static function withClassReferences(int $count): string
     {
         return self::unsigned(self::replace(
@@ -1189,9 +1111,6 @@ final class AdversarialFixtureBuilder
         ));
     }
 
-    /**
-     * $xml with $search replaced by $count times $repeated, unsigned.
-     */
     private static function repeated(string $search, string $repeated, int $count, string $xml): string
     {
         return self::unsigned(
@@ -1199,10 +1118,6 @@ final class AdversarialFixtureBuilder
         );
     }
 
-    /**
-     * The valid response, unsigned: one assertion of a persistent NameID, a bearer confirmation, one audience, an
-     * authentication statement and one attribute, as story #7's builder writes it.
-     */
     private static function response(): string
     {
         return <<<'XML'
@@ -1239,9 +1154,6 @@ final class AdversarialFixtureBuilder
             XML;
     }
 
-    /**
-     * The valid AuthnRequest of the service provider, unsigned, its assertion consumer service named by URL.
-     */
     private static function authnRequest(): string
     {
         return <<<'XML'
@@ -1252,9 +1164,6 @@ final class AdversarialFixtureBuilder
             XML;
     }
 
-    /**
-     * The valid LogoutRequest of the identity provider to the service provider, unsigned.
-     */
     private static function logoutRequest(): string
     {
         return <<<'XML'
@@ -1266,9 +1175,6 @@ final class AdversarialFixtureBuilder
             XML;
     }
 
-    /**
-     * The valid LogoutResponse of the service provider to the identity provider, unsigned.
-     */
     private static function logoutResponse(): string
     {
         return <<<'XML'
@@ -1281,9 +1187,6 @@ final class AdversarialFixtureBuilder
             XML;
     }
 
-    /**
-     * The metadata of the identity provider, its signing key the test key of its role.
-     */
     private static function identityProviderMetadata(): string
     {
         return sprintf(
@@ -1308,9 +1211,6 @@ final class AdversarialFixtureBuilder
         );
     }
 
-    /**
-     * The metadata of the service provider, its signing key the test key of its role, one assertion consumer service.
-     */
     private static function serviceProviderMetadata(): string
     {
         return sprintf(
@@ -1334,9 +1234,6 @@ final class AdversarialFixtureBuilder
         );
     }
 
-    /**
-     * The unsigned assertion of the attacker, of ID $id, its NameID _attacker.
-     */
     private static function evil(string $id = '_evil'): string
     {
         return self::replace(
@@ -1350,9 +1247,6 @@ final class AdversarialFixtureBuilder
         );
     }
 
-    /**
-     * $assertion carrying, after its Issuer, the ds:Signature of the signed assertion $original.
-     */
     private static function withSignatureOf(string $assertion, string $original): string
     {
         return self::replace(
@@ -1362,9 +1256,6 @@ final class AdversarialFixtureBuilder
         );
     }
 
-    /**
-     * $response with $wrapped in a samlp:StatusDetail after its StatusCode.
-     */
     private static function inStatusDetail(string $response, string $wrapped): string
     {
         return self::replace(
@@ -1374,9 +1265,6 @@ final class AdversarialFixtureBuilder
         );
     }
 
-    /**
-     * $response with $wrapped in a samlp:Extensions before its Status.
-     */
     private static function inExtensions(string $response, string $wrapped): string
     {
         return self::replace(
@@ -1386,9 +1274,6 @@ final class AdversarialFixtureBuilder
         );
     }
 
-    /**
-     * $xml with the element $qualifiedName, its first, renamed in its start tag to $start and in its end tag to $end.
-     */
     private static function renamed(string $xml, string $qualifiedName, string $start, string $end): string
     {
         $element = self::element($xml, $qualifiedName);
@@ -1404,9 +1289,6 @@ final class AdversarialFixtureBuilder
         return self::replace($element, $renamed, $xml);
     }
 
-    /**
-     * $xml with $attributes added to every start tag, after the name of the element.
-     */
     private static function onEveryStartTag(string $xml, string $attributes): string
     {
         return (
@@ -1418,10 +1300,6 @@ final class AdversarialFixtureBuilder
         );
     }
 
-    /**
-     * $xml with $node before every child and every text of each element of $fragment, and inside every text that is
-     * not whitespace alone, after its first character; $fragment is $xml unless it is a part of it.
-     */
     private static function everywhere(string $fragment, string $node, ?string $xml = null): string
     {
         $inserted = preg_replace_callback(
@@ -1435,18 +1313,11 @@ final class AdversarialFixtureBuilder
         return $xml === null ? $inserted : self::replace($fragment, $inserted, $xml);
     }
 
-    /**
-     * The document, loaded then serialized as the serializer writes it, unsigned.
-     */
     private static function unsigned(string $xml): string
     {
         return new Serializer()->serialize(SamlLoader::create()->load($xml));
     }
 
-    /**
-     * The bytes of a document the loader refuses, one whose signature a change after signing covers or not, or one
-     * whose bytes the serializer would write otherwise, with the XML declaration the serializer writes in front.
-     */
     private static function declared(string $xml): string
     {
         return preg_match('~\A<\?xml ~', $xml) === 1
@@ -1455,12 +1326,10 @@ final class AdversarialFixtureBuilder
     }
 
     /**
-     * The document with an enveloped signature over each element of $ids, in order, after its saml:Issuer when it
-     * has one and first otherwise (SAML Core §5.4.1).
+     * SAML Core §5.4.1
      *
-     * @param list<string> $ids
-     * @param 'idp'|'sp' $key the test key of the identity provider, or of the service provider
-     * @param ?string $certificatePem the certificate the signatures carry in their KeyInfo, none by default
+     * @param list<string> $ids signed in this order
+     * @param 'idp'|'sp' $key
      */
     private static function signed(string $xml, array $ids, string $key = 'idp', ?string $certificatePem = null): string
     {
@@ -1481,8 +1350,6 @@ final class AdversarialFixtureBuilder
     }
 
     /**
-     * The base64 of the certificate of a test key, on one line, as an X509Certificate carries it.
-     *
      * @param 'idp'|'sp' $key
      */
     private static function certificate(string $key): string
@@ -1496,10 +1363,6 @@ final class AdversarialFixtureBuilder
         );
     }
 
-    /**
-     * The first element $qualifiedName of $xml, from its start tag to its end tag, as written: never one that holds
-     * another of its name.
-     */
     private static function element(string $xml, string $qualifiedName): string
     {
         $name = preg_quote($qualifiedName, '~');
@@ -1510,9 +1373,6 @@ final class AdversarialFixtureBuilder
         return $match[0];
     }
 
-    /**
-     * The text of the first element $qualifiedName of $xml, as written.
-     */
     private static function text(string $xml, string $qualifiedName): string
     {
         $name = preg_quote($qualifiedName, '~');
@@ -1523,10 +1383,6 @@ final class AdversarialFixtureBuilder
         return $match[1];
     }
 
-    /**
-     * $subject with $search replaced, which occurs exactly $count times: a variant that changes nothing is a
-     * mistake of the builder, never a fixture.
-     */
     private static function replace(string $search, string $replace, string $subject, int $count = 1): string
     {
         if (substr_count($subject, $search) !== $count) {

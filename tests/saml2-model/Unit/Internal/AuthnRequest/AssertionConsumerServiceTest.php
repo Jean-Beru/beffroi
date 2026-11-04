@@ -19,9 +19,7 @@ use PHPUnit\Framework\TestCase;
 use function sprintf;
 
 /**
- * Section 6.2 step 4, M-9: the assertion consumer service of an AuthnRequest, resolved in the service provider's
- * metadata by URL, by index or by default (SAML Metadata §2.2.3), the index exclusive of the URL and of the
- * ProtocolBinding (SAML Core §3.4.1), the ProtocolBinding HTTP-POST (section 8).
+ * Section 6.2 step 4, M-9, SAML Metadata §2.2.3, SAML Core §3.4.1, section 8
  */
 final class AssertionConsumerServiceTest extends TestCase
 {
@@ -32,8 +30,7 @@ final class AssertionConsumerServiceTest extends TestCase
     private const string ACS = 'https://sp.example.com/saml/acs';
 
     /**
-     * M-9: the service whose Location is the AssertionConsumerServiceURL, compared exactly, with the ProtocolBinding
-     * HTTP-POST or without one.
+     * M-9
      */
     #[Test]
     #[DataProvider('provideUrls')]
@@ -63,7 +60,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * M-9: the service of the AssertionConsumerServiceIndex, 0 and the largest xs:unsignedShort included.
+     * M-9
      */
     #[Test]
     #[DataProvider('provideIndexes')]
@@ -91,8 +88,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * §9.3 row 13, "an AuthnRequest without an assertion consumer service", M-9: the default of SAML Metadata
-     * §2.2.3, the ProtocolBinding HTTP-POST or absent.
+     * §9.3 row 13, M-9, SAML Metadata §2.2.3
      */
     #[Test]
     #[DataProvider('provideNoService')]
@@ -119,8 +115,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * §9.2 row 30, "an AuthnRequest whose AssertionConsumerServiceURL the metadata does not list; whose index it
-     * does not list", M-9: UnknownEndpoint.
+     * §9.2 row 30, M-9
      */
     #[Test]
     #[DataProvider('provideServicesNotListed')]
@@ -157,8 +152,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * §9.2 row 30, "an AuthnRequest with both", M-9, SAML Core §3.4.1: an index next to a URL or a ProtocolBinding,
-     * the URL listed or not.
+     * §9.2 row 30, M-9, SAML Core §3.4.1
      */
     #[Test]
     #[DataProvider('provideIndexNextToAnother')]
@@ -190,8 +184,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * §9.2 row 33, "an AuthnRequest with ProtocolBinding HTTP-Redirect", section 8: Unsupported, after the service
-     * is resolved; the Artifact binding as well.
+     * §9.2 row 33, section 8
      */
     #[Test]
     #[DataProvider('provideBindingsOtherThanPost')]
@@ -222,8 +215,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * Section 8: the one place of the rule on the ProtocolBinding, which the maintainer may change after Keycloak's
-     * finding F1 (tests/saml2-model/Interop/keycloak/README.md): HTTP-POST, and nothing else.
+     * Section 8
      */
     #[Test]
     public function itAcceptsThePostProtocolBindingOnly(): void
@@ -233,7 +225,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * M-6: the index is an xs:unsignedShort in its one lexical form, the URL and the ProtocolBinding URIs.
+     * M-6
      */
     #[Test]
     #[DataProvider('provideMalformedAttributes')]
@@ -268,9 +260,6 @@ final class AssertionConsumerServiceTest extends TestCase
         yield 'a relative ProtocolBinding' => ['ProtocolBinding="HTTP-POST"', 'A URI is not absolute (M-6).'];
     }
 
-    /**
-     * The services of the metadata: index 0, then index 1 its default, then the largest index.
-     */
     private function services(): IndexedEndpoints
     {
         return new IndexedEndpoints([

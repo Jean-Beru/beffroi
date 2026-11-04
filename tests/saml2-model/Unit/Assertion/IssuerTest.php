@@ -12,12 +12,12 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * Section 5.3, M-6, M-8: the Issuer is an entity ID, a URI of at most 1024 characters (SAML Core §2.2.5, §8.3.6).
+ * Section 5.3, M-6, M-8, SAML Core §2.2.5, §8.3.6
  */
 final class IssuerTest extends TestCase
 {
     /**
-     * M-6, M-8: the entity ID, kept as read, never normalised.
+     * M-6, M-8
      */
     #[Test]
     #[DataProvider('provideEntityIds')]
@@ -42,7 +42,7 @@ final class IssuerTest extends TestCase
     }
 
     /**
-     * §9.2 row 26, SAML Core §8.3.6: an entity ID of 1025 characters; the message carries nothing of it (M-16).
+     * §9.2 row 26, SAML Core §8.3.6, M-16
      */
     #[Test]
     public function itRefusesAnEntityIdOf1025Characters(): void
@@ -56,7 +56,7 @@ final class IssuerTest extends TestCase
     }
 
     /**
-     * M-6, SAML Core §1.3.2: an entity ID that is not absolute.
+     * M-6, SAML Core §1.3.2
      */
     #[Test]
     #[DataProvider('provideRelativeEntityIds')]
@@ -81,7 +81,7 @@ final class IssuerTest extends TestCase
     }
 
     /**
-     * M-6: whitespace around an entity ID, never trimmed.
+     * M-6
      */
     #[Test]
     #[DataProvider('provideSurroundedEntityIds')]

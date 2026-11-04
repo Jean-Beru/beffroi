@@ -20,8 +20,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.6 steps 2 and 4, core.md section 6.5, SAML Core §2.3.3, SAML Profiles §4.1.4.2: the saml:Assertion of the
- * identity provider, built under a samlp:Response with one prefix per namespace, in the order of the schema.
+ * Section 6.6 steps 2 and 4, core.md section 6.5, SAML Core §2.3.3, SAML Profiles §4.1.4.2
  */
 final class AssertionBuilderTest extends TestCase
 {
@@ -30,9 +29,7 @@ final class AssertionBuilderTest extends TestCase
     private const string ASSERTION = 'urn:oasis:names:tc:SAML:2.0:assertion';
 
     /**
-     * Section 6.6 step 2, core.md section 6.5, SAML Core §2.3.3: the saml prefix declared on the assertion, which
-     * introduces it, and on none of its descendants; its attributes, its Issuer without Format (M-8), and its children
-     * in the order of the schema, no AttributeStatement without attributes.
+     * Section 6.6 step 2, core.md section 6.5, SAML Core §2.3.3, M-8
      */
     #[Test]
     public function itBuildsTheAssertionInTheOrderOfTheSchema(): void
@@ -66,9 +63,7 @@ final class AssertionBuilderTest extends TestCase
     }
 
     /**
-     * M-12, SAML Core §2.2.3, §2.4.1.2, SAML Profiles §4.1.4.2: the NameID with its Format and its three qualifiers,
-     * then one bearer confirmation whose data carries its NotOnOrAfter, Recipient, InResponseTo and Address, and no
-     * element.
+     * M-12, SAML Core §2.2.3, §2.4.1.2, SAML Profiles §4.1.4.2
      */
     #[Test]
     public function itBuildsTheSubjectWithEverythingItHolds(): void
@@ -116,8 +111,7 @@ final class AssertionBuilderTest extends TestCase
     }
 
     /**
-     * M-10, M-12, E60: an unspecified NameID is written with the Format of its 1.1 URI, never omitted; a confirmation
-     * of an unsolicited response carries no InResponseTo, and no Address when it has none.
+     * M-10, M-12, E60
      */
     #[Test]
     public function itBuildsTheSubjectWithoutWhatItDoesNotHold(): void
@@ -143,8 +137,7 @@ final class AssertionBuilderTest extends TestCase
     }
 
     /**
-     * SAML Core §2.5.1, §2.5.1.4, §2.5.1.5: the Conditions with their window, each AudienceRestriction with its
-     * audiences in order, then OneTimeUse.
+     * SAML Core §2.5.1, §2.5.1.4, §2.5.1.5
      */
     #[Test]
     public function itBuildsTheConditionsWithEverythingTheyHold(): void
@@ -186,7 +179,7 @@ final class AssertionBuilderTest extends TestCase
     }
 
     /**
-     * SAML Core §2.5.1: Conditions without window and without OneTimeUse carry their restriction alone.
+     * SAML Core §2.5.1
      */
     #[Test]
     public function itBuildsTheConditionsWithoutWhatTheyDoNotHold(): void
@@ -212,8 +205,7 @@ final class AssertionBuilderTest extends TestCase
     }
 
     /**
-     * SAML Core §2.7.2, SAML Profiles §4.1.4.2: the authentication statement with its AuthnInstant, SessionIndex and
-     * SessionNotOnOrAfter, and one AuthnContextClassRef in its AuthnContext.
+     * SAML Core §2.7.2, SAML Profiles §4.1.4.2
      */
     #[Test]
     public function itBuildsTheAuthnStatementWithEverythingItHolds(): void
@@ -247,8 +239,7 @@ final class AssertionBuilderTest extends TestCase
     }
 
     /**
-     * SAML Core §2.7.2: an authentication statement without SessionIndex and SessionNotOnOrAfter carries its
-     * AuthnInstant alone; that the identity provider always gives a SessionIndex is the writer's check.
+     * SAML Core §2.7.2
      */
     #[Test]
     public function itBuildsTheAuthnStatementWithoutWhatItDoesNotHold(): void
@@ -264,9 +255,7 @@ final class AssertionBuilderTest extends TestCase
     }
 
     /**
-     * SAML Core §2.7.3.1, section 12: one AttributeStatement after the AuthnStatement, each Attribute with its Name,
-     * its NameFormat written whatever it is, its FriendlyName when given, and its values as text, without xsi:type
-     * and without a namespace declaration.
+     * SAML Core §2.7.3.1, section 12
      */
     #[Test]
     public function itBuildsTheAttributes(): void
@@ -315,9 +304,6 @@ final class AssertionBuilderTest extends TestCase
         );
     }
 
-    /**
-     * The assertion built under the root of a samlp:Response.
-     */
     private function built(Assertion $assertion): Element
     {
         $document = new DocumentFactory()->create(new Name(self::PROTOCOL, 'Response'), 'samlp');
@@ -327,8 +313,6 @@ final class AssertionBuilderTest extends TestCase
     }
 
     /**
-     * The namespace declarations of the descendants of $element.
-     *
      * @return list<array<string, string>>
      */
     private function declarationsBelow(Element $element): array

@@ -16,15 +16,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.1 step 8, M-4, M-12: the subject of an assertion, one NameID and one bearer confirmation (SAML Core
- * §2.4.1, SAML Profiles §4.1.4.2).
+ * Section 6.1 step 8, M-4, M-12, SAML Core §2.4.1, SAML Profiles §4.1.4.2
  */
 final class SubjectReaderTest extends TestCase
 {
     use AssertionFixtures;
 
     /**
-     * M-12, section 5.3: the NameID, its format and its qualifiers, as read.
+     * M-12, section 5.3
      */
     #[Test]
     public function itReadsTheNameId(): void
@@ -49,8 +48,7 @@ final class SubjectReaderTest extends TestCase
     }
 
     /**
-     * §9.3 row 1, M-12, I-12: a comment splits the NameID; its value is the text of both sides, as the signer signed
-     * it, never the text before the comment.
+     * §9.3 row 1, M-12, I-12
      */
     #[Test]
     public function itReadsACommentSplitNameIdWhole(): void
@@ -66,8 +64,7 @@ final class SubjectReaderTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 8, section 5.3: the Recipient, the NotOnOrAfter, the InResponseTo and the Address of the bearer
-     * confirmation, as read.
+     * Section 6.1 step 8, section 5.3
      */
     #[Test]
     public function itReadsTheBearerConfirmation(): void
@@ -91,7 +88,7 @@ final class SubjectReaderTest extends TestCase
     }
 
     /**
-     * M-10, SAML Profiles §4.1.5: an unsolicited response's confirmation answers no request.
+     * M-10, SAML Profiles §4.1.5
      */
     #[Test]
     public function itAcceptsAConfirmationWithoutInResponseToForAnUnsolicitedResponse(): void
@@ -107,8 +104,7 @@ final class SubjectReaderTest extends TestCase
     }
 
     /**
-     * M-7: a bearer NotOnOrAfter one second after now minus the skew, and one at now plus maxBearerWindow and the
-     * skew, the edges of the bearer window, are accepted.
+     * M-7
      */
     #[Test]
     #[DataProvider('provideBearerWindowEdges')]
@@ -140,8 +136,7 @@ final class SubjectReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 18, M-7: the bearer NotOnOrAfter passed, at now minus the skew; a bearer window beyond maxBearerWindow
-     * and the skew by one second; each message names its window.
+     * §9.2 row 18, M-7
      */
     #[Test]
     #[DataProvider('provideBearerWindowsOutside')]
@@ -175,7 +170,7 @@ final class SubjectReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 14, M-8: a Recipient other than the URL of arrival, here by a trailing slash, compared exactly.
+     * §9.2 row 14, M-8
      */
     #[Test]
     public function itRefusesARecipientOtherThanTheUrlOfArrival(): void
@@ -194,8 +189,7 @@ final class SubjectReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 17, M-10: the InResponseTo of the confirmation another request; present on an unsolicited response;
-     * absent on a solicited one.
+     * §9.2 row 17, M-10
      */
     #[Test]
     #[DataProvider('provideInResponseToMismatches')]
@@ -225,9 +219,7 @@ final class SubjectReaderTest extends TestCase
     }
 
     /**
-     * §9.2 rows 14, 20, 25 and 28, M-4, M-5, SAML Profiles §4.1.4.2: the structure of the subject and of its bearer
-     * confirmation; the Recipient absent; a SubjectConfirmationData with NotBefore, or without NotOnOrAfter; an
-     * unknown saml: element in the subject; two bearer confirmations.
+     * §9.2 rows 14, 20, 25 and 28, M-4, M-5, SAML Profiles §4.1.4.2
      */
     #[Test]
     #[DataProvider('provideMalformedSubjects')]
@@ -297,9 +289,7 @@ final class SubjectReaderTest extends TestCase
     }
 
     /**
-     * §9.2 rows 28 and 29, section 8, section 6.7: a subject or a confirmation the package does not support; a
-     * holder-of-key confirmation, a sender-vouches one; an identifier in the bearer confirmation, an element in its
-     * SubjectConfirmationData; saml:BaseID, and saml:EncryptedID.
+     * §9.2 rows 28 and 29, section 8, section 6.7
      */
     #[Test]
     #[DataProvider('provideUnsupportedSubjects')]

@@ -30,10 +30,7 @@ use PHPUnit\Framework\TestCase;
 use function strtr;
 
 /**
- * Sections 5.6 and 6.4: a samlp:LogoutResponse validated by either role, signed (M-2, SAML Profiles §4.4.4.2) or
- * authenticated by its binding (section 6.8), answering the request the consumer names (M-10); the service provider's
- * response to the identity provider's request unless a test says otherwise. The rules of the header it shares with a
- * request are LogoutRequestValidatorTest's.
+ * Sections 5.6 and 6.4, M-2, SAML Profiles §4.4.4.2, section 6.8, M-10
  */
 final class LogoutResponseValidatorTest extends TestCase
 {
@@ -42,9 +39,7 @@ final class LogoutResponseValidatorTest extends TestCase
     private const string REDIRECT = 'behaviour/logout-response-written-for-http-redirect.xml';
 
     /**
-     * Section 6.4, M-2, M-1: a response signed by the peer, at the ResponseLocation of our single logout service on
-     * HTTP-POST (SAML Metadata §2.2.2), is verified with the keys of its metadata and read from what the signature
-     * covered.
+     * Section 6.4, M-2, M-1, SAML Metadata §2.2.2
      */
     #[Test]
     public function itAcceptsAResponseSignedByThePeer(): void
@@ -69,8 +64,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * Section 6.8, SAML Metadata §2.2.2: a response the binding authenticated, at the Location of our single logout
-     * service on HTTP-Redirect, which has no ResponseLocation, is read as received.
+     * Section 6.8, SAML Metadata §2.2.2
      */
     #[Test]
     public function itAcceptsAResponseTheBindingAuthenticated(): void
@@ -89,7 +83,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 34, M-10: a signed response that answers another request than the one the consumer names.
+     * §9.2 row 34, M-10
      */
     #[Test]
     public function itRefusesAResponseAnsweringAnotherRequest(): void
@@ -114,7 +108,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 17, M-10: a response that names no request answers none.
+     * §9.2 row 17, M-10
      */
     #[Test]
     public function itRefusesAResponseWithoutInResponseTo(): void
@@ -131,8 +125,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * M-2, SAML Profiles §4.4.4.2: an unsigned LogoutResponse given to validate() is refused; the same document is
-     * accepted by the binding path.
+     * M-2, SAML Profiles §4.4.4.2
      */
     #[Test]
     public function itRefusesAnUnsignedResponseGivenToValidate(): void
@@ -155,7 +148,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * Section 5.6, SAML Bindings §3.4.4.1: a response the binding authenticated carries no ds:Signature.
+     * Section 5.6, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesASignatureInAResponseTheBindingAuthenticated(): void
@@ -172,8 +165,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.3 row 15, section 6.4: a signed response whose status is Success with PartialLogout as second level is an
-     * answer, returned and not thrown.
+     * §9.3 row 15, section 6.4
      */
     #[Test]
     public function itReturnsAPartialLogout(): void
@@ -195,8 +187,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * Section 6.4, M-13: whatever the status, a failure included, it is returned, never thrown; a second-level code
-     * SAML Core does not list reads as null.
+     * Section 6.4, M-13
      */
     #[Test]
     #[DataProvider('provideStatuses')]
@@ -232,7 +223,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * SAML Core §3.2.2: the StatusMessage and the StatusDetail are accepted and not read, nor is a third-level code.
+     * SAML Core §3.2.2
      */
     #[Test]
     public function itReadsNeitherTheStatusMessageNorTheStatusDetail(): void
@@ -245,8 +236,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * M-5, SAML Core §3.2.2.2: the top-level status code is one of the four of SAML Core, and every code read has a
-     * Value.
+     * M-5, SAML Core §3.2.2.2
      */
     #[Test]
     #[DataProvider('provideStatusValuesRefused')]
@@ -279,8 +269,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * M-5, SAML Core §3.2.2.2: a top-level status code outside the four of SAML Core; the message carries nothing of
-     * it (M-16).
+     * M-5, SAML Core §3.2.2.2, M-16
      */
     #[Test]
     public function itRefusesAnUnknownTopLevelStatusCode(): void
@@ -297,8 +286,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * M-5, section 6.4, SAML Profiles §4.4.4.2: the structure of the response and of its status is the schema's,
-     * checked before any signature.
+     * M-5, section 6.4, SAML Profiles §4.4.4.2
      */
     #[Test]
     #[DataProvider('provideStructuresRefused')]
@@ -365,8 +353,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * Sections 5.6 and 6.4, SAML Metadata §2.2.2: a response arrives at the ResponseLocation of a single logout
-     * service that has one, not at its Location, where requests arrive.
+     * Sections 5.6 and 6.4, SAML Metadata §2.2.2
      */
     #[Test]
     public function itRefusesAResponseAtTheLocationOfAServiceWithAResponseLocation(): void
@@ -385,8 +372,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * Section 6.4: the identity provider's response to the service provider's request, at the Location of the service
-     * provider's single logout service, which has no ResponseLocation.
+     * Section 6.4
      */
     #[Test]
     public function itAcceptsAResponseToTheServiceProvider(): void
@@ -414,8 +400,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * M-8, §9.2 row 16, "the Issuer ... with a NameQualifier, an SPNameQualifier or an SPProvidedID", SAML Core §8.3.6:
-     * the Issuer of a response carries none of the three qualifiers an entity identifier omits.
+     * M-8, §9.2 row 16, SAML Core §8.3.6
      *
      * @param array<string, string> $replacements
      */
@@ -452,7 +437,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * Section 5.6: our role is the one that faces the peer's.
+     * Section 5.6
      */
     #[Test]
     #[DataProvider('provideRolesThatDoNotFaceEachOther')]
@@ -487,8 +472,6 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * The response of the fixture for HTTP-Redirect with the replacements made, loaded with SamlLoader::create().
-     *
      * @param array<string, string> $replacements
      */
     private function variant(array $replacements): Document
@@ -497,8 +480,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * Section 6.8, M-3: the binding verified the query string with the keys of the peer's metadata; a peer whose
-     * metadata holds no signing key cannot have been verified so, and is refused as validate() refuses it.
+     * Section 6.8, M-3
      */
     #[Test]
     public function itRefusesTheBindingPathForAPeerWithoutKey(): void
@@ -512,8 +494,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 37, M-11: a signed response accepted once is Replayed when it is given to validate() again, inside its
-     * window.
+     * §9.2 row 37, M-11
      */
     #[Test]
     public function itRefusesTheSameSignedResponseTwice(): void
@@ -543,8 +524,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 37, M-11, issue #708: a response the binding authenticated, accepted once, is Replayed when it is
-     * presented a second time inside its window.
+     * §9.2 row 37, M-11
      */
     #[Test]
     public function itRefusesTheSameResponseTheBindingAuthenticatedTwice(): void
@@ -562,8 +542,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.3 row 22, M-11, section 6.4: an accepted response, which carries no NotOnOrAfter, is remembered under its
-     * issuer and its ID until its IssueInstant plus maxMessageAge and the skew.
+     * §9.3 row 22, M-11, section 6.4
      */
     #[Test]
     public function itRemembersAResponseUntilItsWindowCloses(): void
@@ -582,7 +561,7 @@ final class LogoutResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.3 row 21, M-11: a response refused by a rule, here one answering another request, remembers nothing.
+     * §9.3 row 21, M-11
      */
     #[Test]
     public function itRemembersNothingOfARefusedResponse(): void
@@ -603,9 +582,6 @@ final class LogoutResponseValidatorTest extends TestCase
         static::assertTrue($replay->isEmpty());
     }
 
-    /**
-     * The service provider's response given to the identity provider's validateAuthenticatedByBinding().
-     */
     private function byBinding(
         Document $document,
         string $receivedAt = LogoutFixtures::IDP_SLO,

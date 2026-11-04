@@ -11,12 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3, M-6: the authentication statement, its context class a URI (SAML Core §2.7.2).
+ * Section 5.3, M-6, SAML Core §2.7.2
  */
 final class AuthnStatementTest extends TestCase
 {
     /**
-     * Section 5.3: the instant, the session index, the end of the session and the context class, kept as given.
+     * Section 5.3
      */
     #[Test]
     public function itKeepsItsInstantSessionAndContextClass(): void
@@ -51,7 +51,7 @@ final class AuthnStatementTest extends TestCase
     }
 
     /**
-     * M-6, section 6.1 step 10: the AuthnContextClassRef is a URI.
+     * M-6, section 6.1 step 10
      */
     #[Test]
     public function itRefusesAContextClassThatIsNotAUri(): void
@@ -65,8 +65,7 @@ final class AuthnStatementTest extends TestCase
     }
 
     /**
-     * M-15: a session index holding a NUL, which the DOM would cut the written value at, refused whoever builds the
-     * statement.
+     * M-15
      */
     #[Test]
     public function itRefusesASessionIndexXmlDoesNotCarry(): void

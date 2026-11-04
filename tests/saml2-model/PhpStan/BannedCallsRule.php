@@ -27,13 +27,7 @@ use function str_starts_with;
 use function strtolower;
 
 /**
- * Section 8 of the specification: the methods of the Dom API and the functions never called, in src/ and in tests/.
- * Each is banned everywhere, but a confined method, called in the files named only whatever its receiver:
- * decryptCovered() of Enc, which the model's reader alone calls (enc.md E-15). A function name ending with * bans the prefix (every openssl_* function). A method of a class of
- * this package is not the Dom method of the same name (ResponseValidator::validate() is not Dom\Document::validate()),
- * so a call whose receiver is known to be one is let through. A dynamic call or a dynamic instantiation would escape
- * the rule, so both are refused too. ekino/phpstan-banned-code bans a function by the name as written; this rule reads
- * the name as resolved, whatever its case.
+ * Section 8, enc.md E-15
  *
  * @implements Rule<CallLike>
  */
@@ -42,30 +36,29 @@ final class BannedCallsRule implements Rule
     private const string PACKAGE = 'beffroi\\saml2\\model\\';
 
     /**
-     * @var array<string, string> the lowercased method names, mapped to the spelling of the configuration
+     * @var array<string, string> lowercased name to its configured spelling
      */
     private array $methods = [];
 
     /**
-     * @var array<string, string> the lowercased function names, mapped to the spelling of the configuration
+     * @var array<string, string> lowercased name to its configured spelling
      */
     private array $functions = [];
 
     /**
-     * @var array<string, string> the lowercased function prefixes, mapped to the spelling of the configuration
+     * @var array<string, string> lowercased prefix to its configured spelling
      */
     private array $prefixes = [];
 
     /**
-     * @var array<string, array{spelling: string, allowedIn: list<string>}> the lowercased confined method names
+     * @var array<string, array{spelling: string, allowedIn: list<string>}> keyed by lowercased name
      */
     private array $confined = [];
 
     /**
      * @param list<string> $methods
-     * @param list<string> $functions each a name, or a prefix followed by *
-     * @param list<array{method: string, allowedIn: list<string>}> $confined the methods called in the files named
-     *                                                                    only, relative to $workingDirectory
+     * @param list<string> $functions a name, or a prefix followed by *
+     * @param list<array{method: string, allowedIn: list<string>}> $confined allowedIn relative to $workingDirectory
      */
     public function __construct(
         array $methods,
@@ -133,9 +126,6 @@ final class BannedCallsRule implements Rule
         return $this->banned($method . '()');
     }
 
-    /**
-     * The banned function $name calls, as the configuration spells it or, for a banned prefix, as written; else null.
-     */
     private function function(Name $name): ?string
     {
         $function = $this->functions[$name->toLowerString()] ?? null;
@@ -151,9 +141,6 @@ final class BannedCallsRule implements Rule
         return null;
     }
 
-    /**
-     * Whether the receiver of the call is a class of this package, as far as PHPStan knows its type.
-     */
     private function ofThePackage(MethodCall|NullsafeMethodCall|StaticCall $node, Scope $scope): bool
     {
         if ($node instanceof StaticCall) {

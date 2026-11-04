@@ -25,9 +25,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 9.4: the AuthnRequest documents of tests/saml2-model/Fixture/real/, bytes as received, validated with a clock frozen at
- * their IssueInstant against the metadata their producers published in the same capture. A request the model refuses
- * is a finding (section 9.4): Keycloak 26.7.4's, under the rule of section 8 as it stands.
+ * Section 9.4, section 8
  */
 final class RealAuthnRequestsTest extends TestCase
 {
@@ -38,10 +36,7 @@ final class RealAuthnRequestsTest extends TestCase
     private const string KEYCLOAK_SSO = 'http://localhost:8180/realms/idp/protocol/saml';
 
     /**
-     * Section 9.4, section 6.8: the AuthnRequest of SimpleSAMLphp 2.5.3.1's service provider, which HTTP-Redirect
-     * carried with a signature over its query string that the capture verified under the service provider's metadata
-     * (tests/saml2-model/Interop/simplesamlphp/README.md): accepted as authenticated by the binding, its assertion consumer service
-     * the one of its URL.
+     * Section 9.4, section 6.8
      */
     #[Test]
     public function itAcceptsTheRequestOfSimpleSamlPhp(): void
@@ -83,8 +78,7 @@ final class RealAuthnRequestsTest extends TestCase
     }
 
     /**
-     * Section 9.4, M-2, Profiles §4.1.6: the same request given to validate(), as if it had arrived without the
-     * signature of its query string, is refused, since SimpleSAMLphp's metadata says AuthnRequestsSigned.
+     * Section 9.4, M-2, Profiles §4.1.6
      */
     #[Test]
     public function itRefusesTheRequestOfSimpleSamlPhpWithoutTheSignatureOfItsBinding(): void
@@ -106,9 +100,7 @@ final class RealAuthnRequestsTest extends TestCase
     }
 
     /**
-     * Section 9.4, M-2, M-3: the AuthnRequest simplesamlphp/saml2 4.20.3 signed with the service provider's test key,
-     * in its HTTP-POST form, verified under the certificate of that service provider's metadata and not the one of
-     * its KeyInfo; its NameIDPolicy returned.
+     * Section 9.4, M-2, M-3
      */
     #[Test]
     public function itAcceptsTheRequestTheSimpleSamlPhpLibrarySigned(): void
@@ -145,11 +137,7 @@ final class RealAuthnRequestsTest extends TestCase
     }
 
     /**
-     * Section 9.4, section 8, finding F1 of tests/saml2-model/Interop/keycloak/README.md: the AuthnRequest of Keycloak 26.7.4's
-     * broker asks for its response over HTTP-Redirect, and is refused by name under the rule as it stands, once its
-     * assertion consumer service is resolved to the broker's HTTP-POST one. The identity provider is the model in the
-     * place of Keycloak's realm idp, at its single sign-on service, not asking for signed requests as the installation's
-     * client did not (saml.client.signature=false): the broker signs none under its defaults.
+     * Section 9.4, section 8, finding F1 of tests/saml2-model/Interop/keycloak/README.md
      */
     #[Test]
     public function itRefusesTheRequestOfKeycloakByItsProtocolBinding(): void
@@ -180,9 +168,6 @@ final class RealAuthnRequestsTest extends TestCase
         );
     }
 
-    /**
-     * The validator, its clock frozen at the IssueInstant of the request.
-     */
     private function validator(string $issueInstant): AuthnRequestValidator
     {
         return new AuthnRequestValidator(SamlLoader::create(), new FrozenClock(new DateTimeImmutable($issueInstant)));
@@ -199,7 +184,7 @@ final class RealAuthnRequestsTest extends TestCase
     }
 
     /**
-     * The metadata of the same capture, read by readTrusted() at noon of its day (section 9.4).
+     * Section 9.4
      */
     private function metadata(string $file): EntityDescriptor
     {

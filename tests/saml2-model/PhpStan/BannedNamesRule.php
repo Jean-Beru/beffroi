@@ -21,16 +21,14 @@ use function sprintf;
 use function strtolower;
 
 /**
- * Section 8 of the specification: the classes and the constants never used, in src/ and in tests/.
- * ekino/phpstan-banned-code bans function names and whole node types; this rule reads every name written inside
- * a class, an enum, an interface or a trait, and every name a use statement imports.
+ * Section 8
  *
  * @implements Rule<Node>
  */
 final class BannedNamesRule implements Rule
 {
     /**
-     * @var array<string, string> the banned names, lowercased, mapped to the spelling of the configuration
+     * @var array<string, string> lowercased name to its configured spelling
      */
     private array $names = [];
 

@@ -11,13 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * M-7: the edges of the windows, from now read once and the bounds of section 7, the one place every reader takes
- * them from.
+ * M-7
  */
 final class WindowTest extends TestCase
 {
     /**
-     * M-7: now plus the clock skew, the latest a NotBefore, an IssueInstant or an AuthnInstant may be.
+     * M-7
      */
     #[Test]
     public function itGivesNowPlusTheSkewAsTheLatestInstant(): void
@@ -27,8 +26,7 @@ final class WindowTest extends TestCase
     }
 
     /**
-     * M-7: now minus the clock skew, at or before which a NotOnOrAfter, a SessionNotOnOrAfter or a validUntil has
-     * passed.
+     * M-7
      */
     #[Test]
     public function itGivesNowMinusTheSkewAsTheEarliestInstant(): void
@@ -38,7 +36,7 @@ final class WindowTest extends TestCase
     }
 
     /**
-     * M-7: now minus maxMessageAge, the skew not added, before which an IssueInstant is too old.
+     * M-7
      */
     #[Test]
     public function itGivesNowMinusTheMessageAgeAsTheOldestInstant(): void
@@ -48,9 +46,7 @@ final class WindowTest extends TestCase
     }
 
     /**
-     * M-7, section 7: now plus maxBearerWindow and the clock skew, the latest a bearer NotOnOrAfter may be, the skew
-     * added as to every instant ahead of now, since Entra ends its bearer window maxBearerWindow itself after the
-     * instant it issues from.
+     * M-7, section 7
      */
     #[Test]
     public function itGivesNowPlusTheBearerWindowAndTheSkewAsItsLimit(): void

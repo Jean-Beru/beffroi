@@ -12,12 +12,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3, M-5: the attribute name formats, a closed vocabulary (SAML Core §8.2).
+ * Section 5.3, M-5, SAML Core §8.2
  */
 final class AttributeNameFormatTest extends TestCase
 {
     /**
-     * SAML Core §8.2.1 to §8.2.3: the three URIs.
+     * SAML Core §8.2.1 to §8.2.3
      */
     #[Test]
     public function itHoldsTheThreeFormatsOfSamlCore(): void
@@ -58,7 +58,7 @@ final class AttributeNameFormatTest extends TestCase
     }
 
     /**
-     * SAML Core §2.7.3.1: an attribute without NameFormat is of the unspecified format.
+     * SAML Core §2.7.3.1
      */
     #[Test]
     public function itReadsAnAbsentFormatAsUnspecified(): void
@@ -68,7 +68,7 @@ final class AttributeNameFormatTest extends TestCase
     }
 
     /**
-     * M-5: an unknown NameFormat, compared byte for byte; the message carries nothing of it (M-16).
+     * M-5, M-16
      */
     #[Test]
     #[DataProvider('provideUnknownFormats')]

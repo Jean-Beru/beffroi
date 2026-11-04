@@ -38,17 +38,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.1, M-1, M-2, M-3, M-4, M-8, M-10, M-11, M-13: a response validated in the order of section 6.1, from
- * UnverifiedResponse::of() to AcceptedAssertion; the message-level wrapping corpus of §9.2 and the rows of §9.3 that
- * concern a response (SAML Profiles §4.1.4.2, §4.1.4.3, §4.1.4.5).
+ * Sections 6.1, 9.2 and 9.3, M-1, M-2, M-3, M-4, M-8, M-10, M-11, M-13, SAML Profiles §4.1.4.2, §4.1.4.3, §4.1.4.5
  */
 final class ResponseValidatorTest extends TestCase
 {
     use ResponseFixtures;
 
     /**
-     * §9.3 rows 2 and 3, M-2, SAML Profiles §4.1.4.5 as corrected by E26: the assertion covered by its own signature,
-     * by the response's, or by both, each verified.
+     * §9.3 rows 2 and 3, M-2, SAML Profiles §4.1.4.5 as corrected by E26
      */
     #[Test]
     #[DataProvider('provideCoverages')]
@@ -81,8 +78,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * Section 5.5, section 6.1 step 14, M-1: the ID of the response and the values of the assertion, read from the
-     * verified documents.
+     * Section 5.5, section 6.1 step 14, M-1
      */
     #[Test]
     public function itReturnsTheValuesOfTheVerifiedResponse(): void
@@ -119,8 +115,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.3 row 4, section 6.1 step 5: a signed response over an assertion signed with a PrefixList naming a prefix the
-     * response declares is accepted, the assertion verified where it arrived, not in the response's re-parse.
+     * §9.3 row 4, section 6.1 step 5
      */
     #[Test]
     public function itAcceptsAnAssertionSignedWithAPrefixListNamingAPrefixOfTheResponse(): void
@@ -136,8 +131,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * M-10, SAML Profiles §4.1.5: an unsolicited response, InResponseTo absent everywhere, where the consumer accepts
-     * one.
+     * M-10, SAML Profiles §4.1.5
      */
     #[Test]
     public function itAcceptsAnUnsolicitedResponse(): void
@@ -153,8 +147,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.3 row 7, M-11: the replay key is the pair of the issuer and the ID, so the same assertion ID from another
-     * issuer is accepted too.
+     * §9.3 row 7, M-11
      */
     #[Test]
     public function itAcceptsTheSameAssertionIdFromAnotherIssuer(): void
@@ -183,7 +176,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.3 row 9, M-5: a samlp:Extensions with content is accepted and never read.
+     * §9.3 row 9, M-5
      */
     #[Test]
     public function itAcceptsExtensionsItDoesNotRead(): void
@@ -199,8 +192,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 6, SAML Profiles §4.1.4.2 as corrected by E17, SAML Core §3.2.1: an unsigned response needs
-     * neither an Issuer nor a Destination, its assertion signed.
+     * Section 6.1 step 6, SAML Profiles §4.1.4.2 as corrected by E17, SAML Core §3.2.1
      */
     #[Test]
     #[DataProvider('provideUnsignedResponsesWithoutOptionalParts')]
@@ -226,8 +218,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * M-11, section 6.1 step 13: the verified ID of the assertion is remembered under its issuer until the end of its
-     * bearer window plus the skew.
+     * M-11, section 6.1 step 13
      */
     #[Test]
     public function itRemembersTheAssertionUntilItsBearerWindowEndsPlusTheSkew(): void
@@ -247,8 +238,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 1, I-8, M-14: the signed assertion moved into samlp:Extensions, an unsigned assertion of the same ID
-     * in its place, is refused by the loader.
+     * §9.2 row 1, I-8, M-14
      */
     #[Test]
     public function itRefusesAtLoadAnAssertionOfTheSameIdAsTheWrappedOne(): void
@@ -265,9 +255,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 rows 2, 3, 4 and 8, M-1, M-4, D-2, D-9: the signed assertion moved into samlp:Extensions or into the
-     * ds:Object of the signature, an assertion of another ID in its place: the direct child is the one verified, and
-     * the wrapped one is never found.
+     * §9.2 rows 2, 3, 4 and 8, M-1, M-4, D-2, D-9
      *
      * @param class-string<RefusedXml> $exception
      */
@@ -315,8 +303,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 rows 5 and 6, M-4, section 6.1 step 2: two assertions as direct children, signed or not, in either order,
-     * are refused before any signature is verified: the metadata here lists a key that verifies none of them.
+     * §9.2 rows 5 and 6, M-4, section 6.1 step 2
      */
     #[Test]
     #[DataProvider('provideSeveralAssertions')]
@@ -354,7 +341,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 7, section 8: an assertion inside the signed assertion's saml:Advice.
+     * §9.2 row 7, section 8
      */
     #[Test]
     public function itRefusesAnAssertionInAdvice(): void
@@ -373,7 +360,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 9, M-2, SAML Profiles §4.1.4.5 as corrected by E26: a response and an assertion both unsigned.
+     * §9.2 row 9, M-2, SAML Profiles §4.1.4.5 as corrected by E26
      */
     #[Test]
     public function itRefusesAResponseNoSignatureCovers(): void
@@ -392,8 +379,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 10, M-2: a signed response whose assertion carries a signature that fails; a present signature is
-     * never skipped.
+     * §9.2 row 10, M-2
      */
     #[Test]
     public function itRefusesAnAssertionWhoseSignatureFailsUnderASignedResponse(): void
@@ -410,7 +396,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 11, M-3, D-7: the assertion signed by a key the metadata does not list, its certificate in KeyInfo.
+     * §9.2 row 11, M-3, D-7
      */
     #[Test]
     public function itRefusesASignatureUnderAKeyTheMetadataDoesNotList(): void
@@ -427,7 +413,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * M-3, section 5.3: the metadata of an identity provider without a signing key verifies nothing.
+     * M-3, section 5.3
      */
     #[Test]
     public function itRefusesAResponseFromAnIdentityProviderWithoutSigningKey(): void
@@ -450,8 +436,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 rows 12 and 13, M-8: the Destination of a signed response other than the URL of arrival, compared byte for
-     * byte: another URL, a trailing slash, another case in the host, a percent-encoded character.
+     * §9.2 rows 12 and 13, M-8
      */
     #[Test]
     #[DataProvider('provideOtherDestinations')]
@@ -482,7 +467,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 12, M-8, SAML Bindings §3.5.5.2: a signed response without Destination.
+     * §9.2 row 12, M-8, SAML Bindings §3.5.5.2
      */
     #[Test]
     public function itRefusesASignedResponseWithoutDestination(): void
@@ -501,7 +486,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 14, M-8, SAML Profiles §4.1.4.3: the Recipient of the bearer confirmation other than the URL of arrival.
+     * §9.2 row 14, M-8, SAML Profiles §4.1.4.3
      */
     #[Test]
     public function itRefusesARecipientOtherThanTheUrlOfArrival(): void
@@ -520,7 +505,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 14, M-8: a bearer confirmation without Recipient.
+     * §9.2 row 14, M-8
      */
     #[Test]
     public function itRefusesAConfirmationWithoutRecipient(): void
@@ -539,8 +524,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 16, M-8, SAML Core §8.3.6: the response's Issuer another entity than the assertion's and the identity
-     * provider's, or carrying a qualifier.
+     * §9.2 row 16, M-8, SAML Core §8.3.6
      */
     #[Test]
     #[DataProvider('provideIssuersOfTheResponse')]
@@ -574,7 +558,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * M-8, SAML Profiles §4.1.4.2 as corrected by E17: a signed response without Issuer.
+     * M-8, SAML Profiles §4.1.4.2 as corrected by E17
      */
     #[Test]
     public function itRefusesASignedResponseWithoutIssuer(): void
@@ -593,8 +577,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 17, M-10, SAML Profiles §4.1.4.3, §4.1.5: the InResponseTo of the response, then of the confirmation,
-     * other than the request; present on an unsolicited response; absent on a solicited one.
+     * §9.2 row 17, M-10, SAML Profiles §4.1.4.3, §4.1.5
      */
     #[Test]
     #[DataProvider('provideOtherInResponseTo')]
@@ -644,7 +627,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 21, M-11: the same valid response validated twice.
+     * §9.2 row 21, M-11
      */
     #[Test]
     public function itRefusesTheSameResponseTwice(): void
@@ -669,7 +652,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.3 row 8, M-11: an assertion refused for its audience leaves nothing in the replay store.
+     * §9.3 row 8, M-11
      */
     #[Test]
     public function itRemembersNothingOfAnAssertionItRefuses(): void
@@ -689,7 +672,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 22, M-13, SAML Profiles §4.1.4.2: a status of Responder with an assertion; Success without one.
+     * §9.2 row 22, M-13, SAML Profiles §4.1.4.2
      */
     #[Test]
     #[DataProvider('provideAssertionsTheStatusForbids')]
@@ -723,9 +706,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 25, M-5, section 6.1 steps 2 and 5: a ds:Signature before the Issuer, the response's refused before
-     * its signature is verified, the assertion's refused on the received element, since the verification removes it
-     * from the document the reader reads (D-10).
+     * §9.2 row 25, M-5, section 6.1 steps 2 and 5, D-10
      */
     #[Test]
     #[DataProvider('provideSignaturesOutOfTheirPlace')]
@@ -759,8 +740,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * §9.3 row 14, M-13, M-16, section 6.1 step 4: a failure Responder / AuthnFailed, unsigned or signed, is
-     * UnsuccessfulResponse carrying both codes; its message is fixed and carries no StatusMessage.
+     * §9.3 row 14, M-13, M-16, section 6.1 step 4
      */
     #[Test]
     #[DataProvider('provideFailures')]
@@ -796,7 +776,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * M-2, section 6.1 steps 3 and 4: the signature of a failure is verified before the failure is reported.
+     * M-2, section 6.1 steps 3 and 4
      */
     #[Test]
     public function itVerifiesTheSignatureOfAFailureBeforeReportingIt(): void
@@ -813,8 +793,7 @@ final class ResponseValidatorTest extends TestCase
     }
 
     /**
-     * M-10, section 6.1 step 4: the envelope rules run on a failure before it is reported, so that a failure
-     * answering another request is refused as such.
+     * M-10, section 6.1 step 4
      */
     #[Test]
     public function itAppliesTheEnvelopeRulesToAFailure(): void
@@ -832,9 +811,6 @@ final class ResponseValidatorTest extends TestCase
         $this->validator()->validate($response, self::identityProvider(), self::expected());
     }
 
-    /**
-     * A response to the request _request, received at our assertion consumer service, for our entity ID.
-     */
     private static function expected(): ExpectedResponse
     {
         return ExpectedResponse::toRequest(
@@ -844,18 +820,11 @@ final class ResponseValidatorTest extends TestCase
         );
     }
 
-    /**
-     * An unsolicited response, received at our assertion consumer service, for our entity ID.
-     */
     private static function unsolicited(): ExpectedResponse
     {
         return ExpectedResponse::unsolicited('https://sp.example.com/saml/acs', 'https://sp.example.com/saml');
     }
 
-    /**
-     * The validator, its clock frozen at 2026-09-30T12:00:00Z, a second after the response was issued, its replay
-     * store $replay.
-     */
     private function validator(InMemoryReplayGuard $replay = new InMemoryReplayGuard()): ResponseValidator
     {
         return new ResponseValidator(

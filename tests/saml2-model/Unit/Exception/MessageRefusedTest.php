@@ -11,8 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.8: a MessageRefused is a RefusedXml of Core, so that a consumer catching that base class catches
- * everything the stack refuses, the model's refusals with those of Core and Dsig.
+ * Section 5.8
  */
 final class MessageRefusedTest extends TestCase
 {

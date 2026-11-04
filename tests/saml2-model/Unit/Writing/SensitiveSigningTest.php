@@ -32,15 +32,12 @@ use SensitiveParameterValue;
 use function str_starts_with;
 
 /**
- * Section 5.7, M-16, D-13: the Signing a writer is given is a sensitive parameter of every method that takes it, so
- * that an exception thrown while signing, a private key handed in the place of the certificate among them (D-17),
- * carries no Signing in the arguments of its trace, which an error handler logs when zend.exception_ignore_args is Off,
- * as .ci-tools/phpunit.xml.dist sets it.
+ * Section 5.7, M-16, D-13, D-17
  */
 final class SensitiveSigningTest extends TestCase
 {
     /**
-     * Section 5.7, M-16: every frame of a writer holds the Signing masked, never the object.
+     * Section 5.7, M-16
      */
     #[Test]
     #[TestWith(['ResponseWriter::write()'])]

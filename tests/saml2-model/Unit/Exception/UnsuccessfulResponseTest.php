@@ -16,7 +16,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.8, M-13: a response whose status is not Success yields no assertion, and the refusal carries its status.
+ * Section 5.8, M-13
  */
 final class UnsuccessfulResponseTest extends TestCase
 {
@@ -28,7 +28,7 @@ final class UnsuccessfulResponseTest extends TestCase
     }
 
     /**
-     * M-13: the consumer reads both codes of a failure, Responder / AuthnFailed, from the refusal.
+     * M-13
      */
     #[Test]
     public function itCarriesTheStatusOfTheResponse(): void
@@ -44,7 +44,7 @@ final class UnsuccessfulResponseTest extends TestCase
     }
 
     /**
-     * M-16: the message names the rule, the same whatever the codes, which the consumer reads from the status.
+     * M-16
      */
     #[Test]
     #[DataProvider('provideFailures')]
@@ -75,7 +75,7 @@ final class UnsuccessfulResponseTest extends TestCase
     }
 
     /**
-     * Section 5.8: a Success status is no refusal; building one is a programming error of the caller.
+     * Section 5.8
      */
     #[Test]
     #[DataProvider('provideSuccesses')]

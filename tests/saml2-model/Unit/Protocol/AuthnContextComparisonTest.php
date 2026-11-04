@@ -12,13 +12,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3, M-5: the comparison of a requested authentication context, a closed vocabulary (SAML Core
- * §3.3.2.2.1).
+ * Section 5.3, M-5, SAML Core §3.3.2.2.1
  */
 final class AuthnContextComparisonTest extends TestCase
 {
     /**
-     * SAML Core §3.3.2.2.1: the four values of AuthnContextComparisonType, and no other.
+     * SAML Core §3.3.2.2.1
      */
     #[Test]
     public function itHoldsTheFourComparisonsOfSamlCore(): void
@@ -52,7 +51,7 @@ final class AuthnContextComparisonTest extends TestCase
     }
 
     /**
-     * SAML Core §3.3.2.2.1: "If Comparison is omitted, then exact is used."
+     * SAML Core §3.3.2.2.1
      */
     #[Test]
     public function itReadsAnAbsentComparisonAsExact(): void
@@ -62,7 +61,7 @@ final class AuthnContextComparisonTest extends TestCase
     }
 
     /**
-     * M-5, M-6: any other value is refused, compared as a string, and the refusal carries none of it (M-16).
+     * M-5, M-6, M-16
      */
     #[Test]
     #[DataProvider('provideRefusedValues')]

@@ -11,14 +11,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.7 step 4, M-4: the plaintext of an encrypted assertion, as Enc loaded it, is a saml:Assertion.
+ * Section 6.7 step 4, M-4
  */
 final class DecryptedAssertionTest extends TestCase
 {
     use ResponseFixtures;
 
     /**
-     * Section 6.7 step 4, M-4: a plaintext whose root is a saml:Assertion is held as it is.
+     * Section 6.7 step 4, M-4
      */
     #[Test]
     public function itHoldsAPlaintextWhoseRootIsAnAssertion(): void
@@ -34,7 +34,7 @@ final class DecryptedAssertionTest extends TestCase
     }
 
     /**
-     * §9.2 row 41, M-4: a plaintext whose root is not a saml:Assertion, a samlp:Response here, is refused.
+     * §9.2 row 41, M-4
      */
     #[Test]
     public function itRefusesAPlaintextThatIsNotAnAssertion(): void

@@ -11,12 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.7: how a writer signs, the Dsig signing port, the algorithm and the KeyInfo hint of D-17.
+ * Section 5.7, D-17
  */
 final class SigningTest extends TestCase
 {
     /**
-     * Section 5.7: the key, the algorithm and the certificate, kept as given.
+     * Section 5.7
      */
     #[Test]
     public function itKeepsItsFields(): void
@@ -35,7 +35,7 @@ final class SigningTest extends TestCase
     }
 
     /**
-     * Section 5.7: RSA with SHA-256 and no KeyInfo, by default.
+     * Section 5.7
      */
     #[Test]
     public function itSignsWithRsaSha256AndNoKeyInfoByDefault(): void

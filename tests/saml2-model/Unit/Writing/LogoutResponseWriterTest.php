@@ -28,16 +28,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Sections 5.7 and 6.6, M-15: a samlp:LogoutResponse written, and read back by the validator of the peer role; the
- * logout response rows of section 9.1.
+ * Sections 5.7, 6.6 and 9.1, M-15
  */
 final class LogoutResponseWriterTest extends TestCase
 {
     private const string DSIG = 'http://www.w3.org/2000/09/xmldsig#';
 
     /**
-     * §9.1, M-15, SAML Profiles §4.4.4.2: a response signed for HTTP-POST, serialized with Core, loaded again with
-     * SamlLoader::create(), is accepted by validate() of the peer as it was written, whatever its status.
+     * §9.1, M-15, SAML Profiles §4.4.4.2
      */
     #[Test]
     #[DataProvider('provideResponses')]
@@ -70,8 +68,7 @@ final class LogoutResponseWriterTest extends TestCase
     }
 
     /**
-     * §9.1, M-15, section 6.8: a response written unsigned for HTTP-Redirect, whose binding signs the query string, is
-     * accepted by validateAuthenticatedByBinding() of the peer as it was written.
+     * §9.1, M-15, section 6.8
      */
     #[Test]
     #[DataProvider('provideResponses')]
@@ -130,8 +127,7 @@ final class LogoutResponseWriterTest extends TestCase
     }
 
     /**
-     * Section 6.6, M-15, SAML Core §3.2.1, §5.4.1: the Signature is enveloped after the Issuer, over the ID of the
-     * response, before the Status; the prefixes are samlp and saml.
+     * Section 6.6, M-15, SAML Core §3.2.1, §5.4.1
      */
     #[Test]
     public function itSignsAfterTheIssuer(): void
@@ -164,7 +160,7 @@ final class LogoutResponseWriterTest extends TestCase
     }
 
     /**
-     * Section 6.8, SAML Bindings §3.4.4.1: for HTTP-Redirect the response carries no ds:Signature.
+     * Section 6.8, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itWritesNoSignatureForHttpRedirect(): void

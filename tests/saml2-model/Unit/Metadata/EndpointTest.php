@@ -11,12 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3: an endpoint, its binding and its two locations, URIs of M-6 (SAML Metadata §2.2.2).
+ * Section 5.3, M-6, SAML Metadata §2.2.2
  */
 final class EndpointTest extends TestCase
 {
     /**
-     * Section 5.3: the binding, the location and the response location, kept as given.
+     * Section 5.3
      */
     #[Test]
     public function itKeepsItsBindingAndLocations(): void
@@ -36,7 +36,7 @@ final class EndpointTest extends TestCase
     }
 
     /**
-     * SAML Metadata §2.2.2: the response location is optional.
+     * SAML Metadata §2.2.2
      */
     #[Test]
     public function itHasNoResponseLocationByDefault(): void
@@ -49,7 +49,7 @@ final class EndpointTest extends TestCase
     }
 
     /**
-     * M-6, section 6.5 step 6: the location is an absolute URI.
+     * M-6, section 6.5 step 6
      */
     #[Test]
     public function itRefusesARelativeLocation(): void
@@ -63,7 +63,7 @@ final class EndpointTest extends TestCase
     }
 
     /**
-     * M-6: the response location is an absolute URI too.
+     * M-6
      */
     #[Test]
     public function itRefusesARelativeResponseLocation(): void

@@ -10,13 +10,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * M-6, M-12, M-15: the two rules of the characters a value may hold, what XML 1.0 carries (XML 1.0 §2.2) and what is
- * visible.
+ * M-6, M-12, M-15, XML 1.0 §2.2
  */
 final class CharactersTest extends TestCase
 {
     /**
-     * M-15: a value whose every character is one of XML 1.0's Char, at each edge of its ranges.
+     * M-15
      */
     #[Test]
     #[DataProvider('provideCarried')]
@@ -45,8 +44,7 @@ final class CharactersTest extends TestCase
     }
 
     /**
-     * M-15: a NUL, which the DOM truncates the value at, and every other character XML 1.0 does not carry, which the
-     * reload of the Signer refuses; bytes that are not UTF-8.
+     * M-15
      */
     #[Test]
     #[DataProvider('provideNotCarried')]
@@ -74,7 +72,7 @@ final class CharactersTest extends TestCase
     }
 
     /**
-     * M-6, M-12: a value without an invisible character, the neighbours of each range included.
+     * M-6, M-12
      */
     #[Test]
     #[DataProvider('provideVisible')]
@@ -114,8 +112,7 @@ final class CharactersTest extends TestCase
     }
 
     /**
-     * M-6, M-12: a format character, a default-ignorable code point of another category or a blank filler, each one
-     * rendered as nothing, and bytes that are not UTF-8.
+     * M-6, M-12
      */
     #[Test]
     #[DataProvider('provideInvisible')]

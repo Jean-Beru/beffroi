@@ -13,10 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 9.7: the tests are the proof and the specification is the law. Every invariant of section 4 of
- * spec/model.md, every row of the hostile corpus of section 9.2 and every row of the behaviour corpus of section 9.3
- * is cited by the docblock of at least one test. The rows are counted in the specification itself, so that a row added
- * there without a test fails here.
+ * Section 9.7
  */
 final class TraceabilityTest extends TestCase
 {
@@ -28,7 +25,7 @@ final class TraceabilityTest extends TestCase
     }
 
     /**
-     * Section 4: M-1 to M-18, each cited by a test docblock.
+     * Section 4, M-1 to M-18
      */
     #[Test]
     public function everyInvariantIsCitedByATest(): void
@@ -45,7 +42,7 @@ final class TraceabilityTest extends TestCase
     }
 
     /**
-     * Section 9.2: every row of the hostile corpus, cited as "§9.2 row N".
+     * Section 9.2
      */
     #[Test]
     public function everyRowOfTheHostileCorpusIsCitedByATest(): void
@@ -62,7 +59,7 @@ final class TraceabilityTest extends TestCase
     }
 
     /**
-     * Section 9.3: every row of the behaviour corpus, cited as "§9.3 row N".
+     * Section 9.3
      */
     #[Test]
     public function everyRowOfTheBehaviourCorpusIsCitedByATest(): void
@@ -79,7 +76,7 @@ final class TraceabilityTest extends TestCase
     }
 
     /**
-     * Section 9.7: a citation names a row the table has, never one past its end.
+     * Section 9.7
      */
     #[Test]
     public function everyCitedRowExists(): void

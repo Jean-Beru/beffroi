@@ -13,13 +13,12 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * M-6, M-15: an ID and an InResponseTo are NCNames of at most 128 bytes; an ID the package writes holds 160 random bits
- * (SAML Core §1.3.4).
+ * M-6, M-15, SAML Core §1.3.4
  */
 final class SamlIdTest extends TestCase
 {
     /**
-     * §9.3 row 17, M-15, SAML Core §1.3.4: an underscore and the 40 lowercase hexadecimal digits of 160 bits, 41 bytes.
+     * §9.3 row 17, M-15, SAML Core §1.3.4
      */
     #[Test]
     public function itGeneratesAnUnderscoreAndFortyLowercaseHexadecimalDigits(): void
@@ -32,7 +31,7 @@ final class SamlIdTest extends TestCase
     }
 
     /**
-     * §9.3 row 17, core.md I-8: what the package generates, the loader indexes.
+     * §9.3 row 17, core.md I-8
      */
     #[Test]
     public function itGeneratesAnNcName(): void
@@ -45,7 +44,7 @@ final class SamlIdTest extends TestCase
     }
 
     /**
-     * §9.3 row 17, SAML Core §1.3.4: negligible probability that two identifiers are the same.
+     * §9.3 row 17, SAML Core §1.3.4
      */
     #[Test]
     public function itGeneratesADifferentIdOnEachCall(): void
@@ -59,7 +58,7 @@ final class SamlIdTest extends TestCase
     }
 
     /**
-     * M-6, core.md I-8: an NCName of at most 128 bytes, returned as it is.
+     * M-6, core.md I-8
      */
     #[Test]
     #[DataProvider('provideIds')]
@@ -83,7 +82,7 @@ final class SamlIdTest extends TestCase
     }
 
     /**
-     * Section 7: longer than the maxIdLength of Core, counted in bytes; the message carries nothing of it (M-16).
+     * Section 7, M-16
      */
     #[Test]
     #[DataProvider('provideTooLong')]
@@ -107,7 +106,7 @@ final class SamlIdTest extends TestCase
     }
 
     /**
-     * M-6, core.md I-8, Namespaces in XML 1.0 §3: an ID or an InResponseTo that is not an NCName.
+     * M-6, core.md I-8, Namespaces in XML 1.0 §3
      */
     #[Test]
     #[DataProvider('provideNotAnNcName')]

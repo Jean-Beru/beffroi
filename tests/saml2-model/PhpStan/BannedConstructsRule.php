@@ -25,12 +25,7 @@ use function sprintf;
 use function strtolower;
 
 /**
- * Section 8 of the specification: the constructs never written, in src/ and in tests/. A loose comparison, == and
- * != (<> included), and switch, which compares loosely too: a value of the message is compared with === (M-8). A
- * (bool) cast: a boolean of the message is one of its four lexical forms, compared as a string (M-6). A \DateTime or
- * a \DateTimeImmutable built without an explicit time, which reads the clock of the machine: the clock port is the
- * time (M-7). A constant time string is explicit when it names a date, a time and the UTC zone, and nothing relative
- * ("now", "today", "+1 day"); a time string known only at runtime is what the model parses from a message, and passes.
+ * Section 8, M-6, M-7, M-8
  *
  * @implements Rule<Node>
  */

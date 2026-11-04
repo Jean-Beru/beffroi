@@ -19,15 +19,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.1 step 9, M-7, M-8, M-13: the conditions of an assertion, their window, their audience restrictions and
- * OneTimeUse, and nothing else (SAML Core §2.5.1).
+ * Section 6.1 step 9, M-7, M-8, M-13, SAML Core §2.5.1
  */
 final class ConditionsReaderTest extends TestCase
 {
     use AssertionFixtures;
 
     /**
-     * Section 5.3: the window, the audiences of the restriction and no OneTimeUse, as read.
+     * Section 5.3
      */
     #[Test]
     public function itReadsTheWindowAndTheAudiences(): void
@@ -51,7 +50,7 @@ final class ConditionsReaderTest extends TestCase
     }
 
     /**
-     * SAML Core §2.5.1.2: Conditions without NotBefore or NotOnOrAfter are open at both ends.
+     * SAML Core §2.5.1.2
      */
     #[Test]
     public function itReadsConditionsWithoutAWindow(): void
@@ -70,8 +69,7 @@ final class ConditionsReaderTest extends TestCase
     }
 
     /**
-     * §9.3 row 6, M-7: a NotBefore at now plus the skew, and a NotOnOrAfter one second after now minus the skew, the
-     * edges of the window, are accepted.
+     * §9.3 row 6, M-7
      */
     #[Test]
     #[DataProvider('provideWindowEdges')]
@@ -108,8 +106,7 @@ final class ConditionsReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 18, M-7: the Conditions NotOnOrAfter at now minus the skew; the NotBefore at now plus the skew plus one
-     * second; each message names its window.
+     * §9.2 row 18, M-7
      */
     #[Test]
     #[DataProvider('provideWindowsOutside')]
@@ -143,7 +140,7 @@ final class ConditionsReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 19, M-7, SAML Core §2.5.1.2: NotBefore equal to NotOnOrAfter.
+     * §9.2 row 19, M-7, SAML Core §2.5.1.2
      */
     #[Test]
     public function itRefusesANotBeforeEqualToTheNotOnOrAfter(): void
@@ -162,7 +159,7 @@ final class ConditionsReaderTest extends TestCase
     }
 
     /**
-     * §9.3 row 5, M-8, E46: two AudienceRestriction, each holding ours among others; the audiences are kept as read.
+     * §9.3 row 5, M-8, E46
      */
     #[Test]
     public function itAcceptsTwoRestrictionsBothHoldingOurs(): void
@@ -187,8 +184,7 @@ final class ConditionsReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 15, M-8, E46: an Audience other than ours; two AudienceRestriction, one without ours; no
-     * AudienceRestriction.
+     * §9.2 row 15, M-8, E46
      */
     #[Test]
     #[DataProvider('provideAudienceMismatches')]
@@ -226,8 +222,7 @@ final class ConditionsReaderTest extends TestCase
     }
 
     /**
-     * §9.2 rows 25 and 26, M-5, M-6: an Audience relative/path next to ours; an AudienceRestriction without Audience,
-     * or holding another element; two OneTimeUse (SAML Core §2.5.1.5).
+     * §9.2 rows 25 and 26, M-5, M-6, SAML Core §2.5.1.5
      */
     #[Test]
     #[DataProvider('provideMalformedConditions')]
@@ -269,7 +264,7 @@ final class ConditionsReaderTest extends TestCase
     }
 
     /**
-     * Section 5.3, M-11, SAML Core §2.5.1.5: one OneTimeUse, which the replay rule already honours.
+     * Section 5.3, M-11, SAML Core §2.5.1.5
      */
     #[Test]
     public function itReadsOneTimeUse(): void
@@ -282,8 +277,7 @@ final class ConditionsReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 23, M-13, SAML Core §2.5.1.1: a saml:Condition with an xsi:type, or any other element, is a condition
-     * the package does not understand; the assertion is Indeterminate, and refused.
+     * §9.2 row 23, M-13, SAML Core §2.5.1.1
      */
     #[Test]
     #[DataProvider('provideIndeterminateConditions')]
@@ -312,7 +306,7 @@ final class ConditionsReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 24, section 8, SAML Core §2.5.1.6: a saml:ProxyRestriction, with Count="0" and with an Audience.
+     * §9.2 row 24, section 8, SAML Core §2.5.1.6
      */
     #[Test]
     #[DataProvider('provideProxyRestrictions')]
@@ -341,7 +335,7 @@ final class ConditionsReaderTest extends TestCase
     }
 
     /**
-     * Section 7, M-17: eight AudienceRestriction, and sixteen Audience in one, the bounds, are accepted.
+     * Section 7, M-17
      */
     #[Test]
     #[DataProvider('provideCountsAtTheirBound')]
@@ -370,7 +364,7 @@ final class ConditionsReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 36, section 7, M-17: nine AudienceRestriction; seventeen Audience in one; the message names the bound.
+     * §9.2 row 36, section 7, M-17
      */
     #[Test]
     #[DataProvider('provideCountsOverTheirBound')]

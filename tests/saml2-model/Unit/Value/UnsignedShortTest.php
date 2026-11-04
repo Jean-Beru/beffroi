@@ -11,14 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * M-6: an index is an xs:unsignedShort, from 0 to 65535, read in its one lexical form (XML Schema Part 2 §3.3.23),
- * the index of an md:AssertionConsumerService (SAML Metadata §2.2.3) and the AssertionConsumerServiceIndex of an
- * AuthnRequest (SAML Core §3.4.1).
+ * M-6, XML Schema Part 2 §3.3.23, SAML Metadata §2.2.3, SAML Core §3.4.1
  */
 final class UnsignedShortTest extends TestCase
 {
     /**
-     * M-6: decimal digits without sign or leading zero, both ends included.
+     * M-6
      */
     #[Test]
     #[DataProvider('provideIndexes')]
@@ -39,7 +37,7 @@ final class UnsignedShortTest extends TestCase
     }
 
     /**
-     * §9.2 row 26, M-6: every other form, the value over 65535 included; the message carries nothing of it (M-16).
+     * §9.2 row 26, M-6, M-16
      */
     #[Test]
     #[DataProvider('provideNotAnIndex')]
@@ -70,7 +68,7 @@ final class UnsignedShortTest extends TestCase
     }
 
     /**
-     * M-6, M-15: an index built as an integer holds whoever builds it, both ends included.
+     * M-6, M-15
      */
     #[Test]
     #[DataProvider('provideIntegers')]
@@ -90,7 +88,7 @@ final class UnsignedShortTest extends TestCase
     }
 
     /**
-     * M-6: an integer under 0 or over 65535 is not an index.
+     * M-6
      */
     #[Test]
     #[DataProvider('provideIntegersOutOfRange')]

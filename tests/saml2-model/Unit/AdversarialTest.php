@@ -68,22 +68,12 @@ use function sprintf;
 use function str_repeat;
 
 /**
- * Section 9.8, the adversarial pass of 30 September 2026: each row of section 3 attacked with inputs the corpus of 9.2
- * and 9.3 does not list, every attempt a fixture of tests/saml2-model/Support/AdversarialFixtureBuilder whatever its outcome,
- * refused with the exception and the message it got, or accepted with the values read. Two attempts bypassed a rule
- * and were reported before their fix: the Issuer of an AuthnRequest, a LogoutRequest or a LogoutResponse carrying a
- * qualifier (M-8), fixed and asserted by the tests of those validators, and a time within a microsecond after its
- * bound (M-6, M-7), which section 9.8 records and the attempts below pin. The clock is frozen at 2026-09-30T12:00:00Z,
- * a second after every message was issued.
+ * Section 9.8, M-6, M-7, M-8
  */
 final class AdversarialTest extends TestCase
 {
     private const string NOW = '2026-09-30T12:00:00Z';
 
-    /**
-     * The attempts written by hand with the fix of the bypass they found (tests/saml2-model/Fixture/hostile/adversarial-README.md),
-     * asserted here as the builder's are.
-     */
     private const array WRITTEN_BY_HAND = [
         'hostile/adversarial-authn-request-issuer-name-qualifier-refused.xml',
         'hostile/adversarial-logout-request-issuer-sp-name-qualifier-refused.xml',
@@ -91,8 +81,7 @@ final class AdversarialTest extends TestCase
     ];
 
     /**
-     * Section 9.8, section 9.7: every adversarial fixture on disk is what the builder writes, byte for byte, so that
-     * the command of tests/saml2-model/Fixture/hostile/adversarial-README.md writes them again.
+     * Section 9.8, section 9.7
      */
     #[Test]
     public function itBuildsTheCommittedFixtures(): void
@@ -107,8 +96,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8: every attempt, the builder's and those written by hand, is asserted by one case of this class, none
-     * left unread.
+     * Section 9.8
      */
     #[Test]
     public function itAssertsEveryAttempt(): void
@@ -151,8 +139,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, section 3 rows 1, 2, 3, 5 to 7, 10, 11, 13 to 16, M-1 to M-8, M-10, M-12, M-13, M-14, M-17: every
-     * response attempt that is refused, with the exception and the message it got.
+     * Section 9.8, section 3 rows 1, 2, 3, 5 to 7, 10, 11, 13 to 16, M-1 to M-8, M-10, M-12, M-13, M-14, M-17
      *
      * @param class-string<RefusedXml> $exception
      */
@@ -568,10 +555,9 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, M-1, M-4, M-5, M-6, M-8, M-12: every response attempt that is accepted, with the values read, the
-     * ones the attempt tried to change among them.
+     * Section 9.8, M-1, M-4, M-5, M-6, M-8, M-12
      *
-     * @param array<string, mixed> $values the values read that differ from those of the valid response
+     * @param array<string, mixed> $values only those that differ from the valid response
      */
     #[Test]
     #[DataProvider('provideAcceptedResponses')]
@@ -686,8 +672,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, M-11: the replay store remembers the exact pair of the issuer and the ID; an ID that differs by
-     * case or by Unicode composition only is another assertion, accepted after the first.
+     * Section 9.8, M-11
      */
     #[Test]
     #[DataProvider('provideAssertionsOfAnotherId')]
@@ -722,8 +707,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, M-11: the signed assertion of an accepted response, in another response of another ID, is the same
-     * pair of issuer and ID, and is refused.
+     * Section 9.8, M-11
      */
     #[Test]
     public function itRefusesTheSameAssertionInAnotherResponse(): void
@@ -745,8 +729,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, section 3 rows 5, 6, 7 and 11, M-2, M-5, M-6, M-7, M-8, M-9, M-17: every AuthnRequest attempt that
-     * is refused, with the exception and the message it got.
+     * Section 9.8, section 3 rows 5, 6, 7 and 11, M-2, M-5, M-6, M-7, M-8, M-9, M-17
      *
      * @param class-string<RefusedXml> $exception
      */
@@ -975,9 +958,9 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, M-5, M-6, M-7, M-17: every AuthnRequest attempt that is accepted, with the values read.
+     * Section 9.8, M-5, M-6, M-7, M-17
      *
-     * @param array<string, mixed> $values the values read that differ from those of the valid request
+     * @param array<string, mixed> $values only those that differ from the valid request
      */
     #[Test]
     #[DataProvider('provideAcceptedAuthnRequests')]
@@ -1018,8 +1001,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, M-2, M-8: every LogoutRequest attempt that is refused, with the exception and the message it got;
-     * a signed one is given to validate(), the others to validateAuthenticatedByBinding().
+     * Section 9.8, M-2, M-8
      *
      * @param class-string<RefusedXml> $exception
      */
@@ -1061,9 +1043,9 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, M-12, M-17: every LogoutRequest attempt that is accepted, with the values read.
+     * Section 9.8, M-12, M-17
      *
-     * @param array<string, mixed> $values the values read that differ from those of the valid request
+     * @param array<string, mixed> $values only those that differ from the valid request
      */
     #[Test]
     #[DataProvider('provideAcceptedLogoutRequests')]
@@ -1093,7 +1075,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, M-8, M-10: every LogoutResponse attempt that is refused, with the exception and the message it got.
+     * Section 9.8, M-8, M-10
      *
      * @param class-string<RefusedXml> $exception
      */
@@ -1135,9 +1117,9 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8: every LogoutResponse attempt that is accepted, with the values read.
+     * Section 9.8
      *
-     * @param array<string, mixed> $values the values read that differ from those of the valid response
+     * @param array<string, mixed> $values only those that differ from the valid response
      */
     #[Test]
     #[DataProvider('provideAcceptedLogoutResponses')]
@@ -1162,8 +1144,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, section 3 rows 3 and 16, M-3, M-5, M-6, M-7, M-13: every metadata attempt that is refused, with the
-     * exception and the message it got.
+     * Section 9.8, section 3 rows 3 and 16, M-3, M-5, M-6, M-7, M-13
      *
      * @param class-string<RefusedXml> $exception
      */
@@ -1242,9 +1223,9 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, M-5, M-6, M-7, M-17: every metadata attempt that is accepted, with the values read.
+     * Section 9.8, M-5, M-6, M-7, M-17
      *
-     * @param array<string, mixed> $values the values read that differ from those of the valid metadata
+     * @param array<string, mixed> $values only those that differ from the valid metadata
      */
     #[Test]
     #[DataProvider('provideAcceptedMetadata')]
@@ -1316,10 +1297,6 @@ final class AdversarialTest extends TestCase
         ];
     }
 
-    /**
-     * The response of $path, loaded, read before verification and validated as the service provider's, a response to
-     * $requestId received at its assertion consumer service.
-     */
     private function validateResponse(
         string $path,
         string $requestId,
@@ -1338,8 +1315,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * The AuthnRequest of $path, validated by the identity provider at its single sign-on service at $now, neither
-     * party asking for signed requests: a signature present is verified all the same (M-2).
+     * M-2
      */
     private function validateAuthnRequest(string $path, string $now = self::NOW): AcceptedAuthnRequest
     {
@@ -1351,10 +1327,6 @@ final class AdversarialTest extends TestCase
         );
     }
 
-    /**
-     * The LogoutRequest of $path, from the identity provider to the service provider's single logout service: given
-     * to validate() when it carries a ds:Signature, to validateAuthenticatedByBinding() otherwise.
-     */
     private function validateLogoutRequest(string $path): AcceptedLogoutRequest
     {
         $document = $this->load($path);
@@ -1376,10 +1348,6 @@ final class AdversarialTest extends TestCase
             );
     }
 
-    /**
-     * The LogoutResponse of $path, from the service provider to the identity provider's single logout service, which
-     * the binding authenticated, answering _logout-request.
-     */
     private function validateLogoutResponse(string $path): AcceptedLogoutResponse
     {
         return LogoutFixtures::responseValidator()->validateAuthenticatedByBinding(
@@ -1391,16 +1359,13 @@ final class AdversarialTest extends TestCase
         );
     }
 
-    /**
-     * The metadata of $path, read as trusted by its channel.
-     */
     private function readMetadata(string $path): EntityDescriptor
     {
         return new MetadataReader(SamlLoader::create(), $this->clock())->readTrusted($this->load($path));
     }
 
     /**
-     * @return array<string, mixed> the values of the valid response, as the service provider reads them
+     * @return array<string, mixed>
      */
     private function responseValues(): array
     {
@@ -1441,7 +1406,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * @return array<string, mixed> the values of the valid AuthnRequest, as the identity provider reads them
+     * @return array<string, mixed>
      */
     private function authnRequestValues(): array
     {
@@ -1479,7 +1444,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * @return array<string, mixed> the values of the valid LogoutRequest, as the service provider reads them
+     * @return array<string, mixed>
      */
     private function logoutRequestValues(): array
     {
@@ -1507,7 +1472,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * @return array<string, mixed> the values of the valid LogoutResponse, as the identity provider reads them
+     * @return array<string, mixed>
      */
     private function logoutResponseValues(): array
     {
@@ -1535,7 +1500,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * @return array<string, mixed> the values of the identity provider's valid metadata
+     * @return array<string, mixed>
      */
     private function metadataValues(): array
     {
@@ -1575,9 +1540,6 @@ final class AdversarialTest extends TestCase
         ];
     }
 
-    /**
-     * Whether the root of $document carries a ds:Signature as a direct child.
-     */
     private function signed(Document $document): bool
     {
         return Children::named($document->root(), new Name('http://www.w3.org/2000/09/xmldsig#', 'Signature')) !== [];

@@ -14,15 +14,14 @@ use PHPUnit\Framework\TestCase;
 use function str_replace;
 
 /**
- * Section 5.4, M-1: a received samlp:LogoutResponse before any verification, its root checked, its Issuer and its
- * InResponseTo read to choose the peer and the request, nothing else.
+ * Section 5.4, M-1
  */
 final class UnverifiedLogoutResponseTest extends TestCase
 {
     private const string RESPONSE = 'behaviour/logout-response-written-for-http-redirect.xml';
 
     /**
-     * Section 5.4: the Issuer, the InResponseTo, and the document held for the validator.
+     * Section 5.4
      */
     #[Test]
     public function itReadsTheIssuerAndTheInResponseTo(): void
@@ -42,8 +41,7 @@ final class UnverifiedLogoutResponseTest extends TestCase
     }
 
     /**
-     * Section 5.4, SAML Core §3.2.2: the Issuer and the InResponseTo the schema leaves optional are read as null; the
-     * validator refuses their absence (SAML Profiles §4.4.4.2, M-10).
+     * Section 5.4, SAML Core §3.2.2, SAML Profiles §4.4.4.2, M-10
      */
     #[Test]
     public function itReadsNoIssuerAndNoInResponseToAsNull(): void
@@ -63,7 +61,7 @@ final class UnverifiedLogoutResponseTest extends TestCase
     }
 
     /**
-     * Section 5.4: a LogoutRequest is not a LogoutResponse.
+     * Section 5.4
      */
     #[Test]
     public function itRefusesAnotherRoot(): void
@@ -80,8 +78,7 @@ final class UnverifiedLogoutResponseTest extends TestCase
     }
 
     /**
-     * Section 5.4, M-6: an InResponseTo that is not an NCName is refused before it names anything; the message carries
-     * nothing of it (M-16).
+     * Section 5.4, M-6, M-16
      */
     #[Test]
     public function itRefusesAnInResponseToThatIsNotAnId(): void

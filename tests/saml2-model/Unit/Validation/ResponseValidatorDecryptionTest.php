@@ -30,18 +30,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.7, section 6.1 steps 2 to 6, M-1, M-2, M-4, M-8, M-11: a response whose assertion is encrypted, read by a
- * validator built with the key of the service provider, the response's signature verified before any decryption, every
- * failure of the decryption Enc's own (SAML Core §2.3.4, §6.2; enc.md E-3). The responses are those xmlsec1 encrypted,
- * under tests/saml2-model/Fixture/encrypted/.
+ * Section 6.7, section 6.1 steps 2 to 6, M-1, M-2, M-4, M-8, M-11, SAML Core §2.3.4, §6.2, enc.md E-3
  */
 final class ResponseValidatorDecryptionTest extends TestCase
 {
     use ResponseFixtures;
 
     /**
-     * §9.3 row 23, section 6.7, M-1: the signed assertion xmlsec1 encrypted in AES-GCM for the test key of the service
-     * provider is read as the same assertion in clear, its own signature verified once it is decrypted.
+     * §9.3 row 23, section 6.7, M-1
      */
     #[Test]
     public function itReadsAnEncryptedAssertionAsTheSameAssertionInClear(): void
@@ -65,8 +61,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * §9.3 row 26, M-18, section 6.1 step 14: an assertion the model decrypted is said to have arrived encrypted, which the
-     * consumer that requires a provider to encrypt reads (saml.md S-67).
+     * §9.3 row 26, M-18, section 6.1 step 14, saml.md S-67
      */
     #[Test]
     public function itSaysAnAssertionItDecryptedArrivedEncrypted(): void
@@ -82,7 +77,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * §9.3 row 26, M-18: the same assertion in clear is said to have arrived in clear, whoever signed it.
+     * §9.3 row 26, M-18
      */
     #[Test]
     public function itSaysAnAssertionInClearArrivedInClear(): void
@@ -98,8 +93,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * §9.3 row 24, M-1, M-2, section 6.7: an assertion encrypted without a signature, under a response xmlsec1 signed
-     * over its ciphertext, is read from the document of its decryption, the response's signature covering it.
+     * §9.3 row 24, M-1, M-2, section 6.7
      */
     #[Test]
     public function itReadsAnUnsignedAssertionWhoseCiphertextTheResponsesSignatureCovered(): void
@@ -118,8 +112,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * §9.2 row 38, section 6.7, enc.md E-3: a ciphertext altered by one byte, a key that is not the one it was
-     * encrypted for, and a tag truncated by one byte are refused with the one failure of Enc, whatever failed.
+     * §9.2 row 38, section 6.7, enc.md E-3
      *
      * @param 'idp'|'sp' $key
      */
@@ -149,9 +142,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * §9.2 row 39, M-2, section 6.7, SAML Core §6.2: under a signed response, an altered ciphertext is refused by the
-     * signature of the response, which is verified before any decryption: decrypted first, it would have failed as
-     * DecryptionFailed.
+     * §9.2 row 39, M-2, section 6.7, SAML Core §6.2
      */
     #[Test]
     public function itVerifiesTheSignatureOfTheResponseBeforeAnyDecryption(): void
@@ -168,8 +159,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * §9.2 row 40, M-2, section 6.7: an assertion encrypted without a signature, in an unsigned response, is covered by
-     * nothing: anyone encrypts for the key of the service provider.
+     * §9.2 row 40, M-2, section 6.7
      */
     #[Test]
     public function itRefusesAnEncryptedAssertionNoSignatureCovers(): void
@@ -187,8 +177,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * §9.2 row 41, M-4, section 6.7: a plaintext that is not a saml:Assertion, a samlp:Response here, is refused,
-     * whatever it holds.
+     * §9.2 row 41, M-4, section 6.7
      */
     #[Test]
     public function itRefusesAPlaintextThatIsNotAnAssertion(): void
@@ -205,9 +194,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * §9.2 row 42, section 6.7, M-8, M-10, SAML Profiles §4.1.4.2 as corrected by E17: the envelope of an unsigned
-     * response, which needs nothing of the plaintext, is refused before any operation of the decryption key, the
-     * Issuer E17 requires at step 2 and the rest of step 6 before the decryption.
+     * §9.2 row 42, section 6.7, M-8, M-10, SAML Profiles §4.1.4.2 as corrected by E17
      *
      * @param class-string<MessageRefused> $exception
      */
@@ -253,9 +240,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * §9.2 row 46, M-2, section 6.7, SAML Core §6.2: an assertion whose NameID was changed after it was signed,
-     * encrypted for the key of the service provider, is refused by its own signature once decrypted, in an unsigned
-     * response as under a response whose signature over the ciphertext holds.
+     * §9.2 row 46, M-2, section 6.7, SAML Core §6.2
      */
     #[Test]
     #[DataProvider('provideAssertionsChangedAfterSigning')]
@@ -284,9 +269,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * §9.2 row 44, section 6.7, section 6.1 step 2, section 5.5: an identity provider given without a decryption key has
-     * its encrypted assertion refused by name before any key is touched: under metadata that would refuse the signature of the response, the
-     * refusal is still that one.
+     * §9.2 row 44, section 6.7, section 6.1 step 2, section 5.5
      */
     #[Test]
     public function itRefusesAnEncryptedAssertionWithoutADecryptionKey(): void
@@ -305,8 +288,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * §9.2 row 45, section 5.8, enc.md E-5: what the reading model of Enc refuses, an xenc:EncryptedData that holds
-     * nothing, passes as Enc refuses it.
+     * §9.2 row 45, section 5.8, enc.md E-5
      */
     #[Test]
     public function itLetsTheRefusalOfEncThroughAsItIs(): void
@@ -323,8 +305,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * M-11, section 6.7: an assertion accepted encrypted is remembered under its issuer and its ID, so that the same
-     * assertion in clear is a replay.
+     * M-11, section 6.7
      */
     #[Test]
     public function itRemembersAnAssertionThatArrivedEncrypted(): void
@@ -347,10 +328,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * §9.3 row 25, section 6.7, enc.md E-15, decision 0013: the signed assertion xmlsec1 encrypted in aes128-cbc, and
-     * in aes256-cbc under rsa-oaep-mgf1p with its DigestMethod of SHA-1, the shape of Entra and ADFS, in a response the
-     * identity provider signed over the ciphertext, is read as the same assertion in clear: AES-CBC is opened under
-     * the response's signature, verified before any decryption.
+     * §9.3 row 25, section 6.7, enc.md E-15, decision 0013
      */
     #[Test]
     #[DataProvider('provideCbcResponsesTheIdentityProviderSigned')]
@@ -387,10 +365,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * §9.2 row 47, section 6.7, M-2, enc.md E-15: an assertion encrypted in AES-CBC that no signature of the response
-     * covers is refused by name before any key is touched: the assertion unsigned, the assertion signed inside the
-     * ciphertext, where its signature covers nothing of it, and a valid signature of the identity provider over another
-     * element, in samlp:Extensions, where nothing is verified.
+     * §9.2 row 47, section 6.7, M-2, enc.md E-15
      */
     #[Test]
     #[DataProvider('provideCbcResponsesNoSignatureOfTheResponseCovers')]
@@ -431,9 +406,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * §9.2 row 48, section 6.7, enc.md E-3, E-16: under a signature of the response that holds, an AES-CBC ciphertext
-     * altered before the identity provider signed it, its padding or its first block, fails as a key that is not the
-     * one it was encrypted for: the one DecryptionFailed, whatever failed.
+     * §9.2 row 48, section 6.7, enc.md E-3, E-16
      *
      * @param 'idp'|'sp' $key
      */
@@ -469,10 +442,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * §9.2 row 49, section 5.5, section 6.7, enc.md E-15: the aes128-cbc ciphertext of the identity provider A, intact,
-     * in a response a second provider B signed with its own key, under its own Issuer, to the request sent to it, is
-     * opened under the key given with B, which does not open it: the one failure, and the key given with A, which would
-     * open it, is never asked. The consumer chooses the provider by the unverified Issuer, as section 5.4 says.
+     * §9.2 row 49, section 5.5, section 6.7, enc.md E-15, section 5.4
      */
     #[Test]
     public function itOpensAResponseWithTheKeyGivenWithTheProviderThatSignedItOnly(): void
@@ -500,8 +470,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * §9.2 row 50, M-2, section 6.7: an aes128-cbc ciphertext altered after the identity provider signed the response
-     * is refused by the signature, before the key is asked anything.
+     * §9.2 row 50, M-2, section 6.7
      */
     #[Test]
     public function itRefusesAnAesCbcCiphertextAlteredAfterTheSignatureBeforeAskingTheKey(): void
@@ -524,9 +493,7 @@ final class ResponseValidatorDecryptionTest extends TestCase
     }
 
     /**
-     * §9.2 row 51, section 6.7, enc.md E-16: under AES-CBC, in a response the identity provider signed over the
-     * ciphertext, what the reading after the decryption refuses, the plaintext that is not an assertion, the assertion's
-     * own signature, its Issuer, is the one failure of the decryption.
+     * §9.2 row 51, section 6.7, enc.md E-16
      */
     #[Test]
     #[DataProvider('provideCbcPlaintextsTheReadingRefuses')]
@@ -559,17 +526,13 @@ final class ResponseValidatorDecryptionTest extends TestCase
         ];
     }
 
-    /**
-     * A response to the request $requestId, received at our assertion consumer service, for our entity ID.
-     */
     private static function expected(string $requestId = '_request'): ExpectedResponse
     {
         return ExpectedResponse::toRequest($requestId, 'https://sp.example.com/saml/acs', 'https://sp.example.com/saml');
     }
 
     /**
-     * The validator of the service provider, its clock frozen at 2026-09-30T12:00:00Z, a second after the responses
-     * were issued; the key that decrypts is given with the identity provider (section 5.5).
+     * Section 5.5
      */
     private function validator(InMemoryReplayGuard $replay = new InMemoryReplayGuard()): ResponseValidator
     {

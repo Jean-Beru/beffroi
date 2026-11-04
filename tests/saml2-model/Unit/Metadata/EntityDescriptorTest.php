@@ -19,13 +19,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3: an entity descriptor, its entity ID a URI of M-6, its roles carrying that entity ID (SAML Metadata
- * §2.3.2).
+ * Section 5.3, M-6, SAML Metadata §2.3.2
  */
 final class EntityDescriptorTest extends TestCase
 {
     /**
-     * Section 5.3: every field, kept as given.
+     * Section 5.3
      */
     #[Test]
     public function itKeepsItsFields(): void
@@ -52,7 +51,7 @@ final class EntityDescriptorTest extends TestCase
     }
 
     /**
-     * Section 5.3: no validUntil, no role and no cacheDuration, by default.
+     * Section 5.3
      */
     #[Test]
     public function itHasNoValidUntilNoRoleAndNoCacheDurationByDefault(): void
@@ -70,7 +69,7 @@ final class EntityDescriptorTest extends TestCase
     }
 
     /**
-     * Section 5.3: the shortest cacheDuration it carries is one second.
+     * Section 5.3
      */
     #[Test]
     public function itKeepsACacheDurationOfOneSecond(): void
@@ -80,7 +79,7 @@ final class EntityDescriptorTest extends TestCase
     }
 
     /**
-     * Section 5.3: a cacheDuration is a number of seconds, one at least, a programming error of the caller otherwise.
+     * Section 5.3
      */
     #[Test]
     #[DataProvider('provideCacheDurationsRefused')]
@@ -104,7 +103,7 @@ final class EntityDescriptorTest extends TestCase
     }
 
     /**
-     * M-6, section 6.5 step 1: the entity ID is an absolute URI.
+     * M-6, section 6.5 step 1
      */
     #[Test]
     public function itRefusesARelativeEntityId(): void
@@ -118,7 +117,7 @@ final class EntityDescriptorTest extends TestCase
     }
 
     /**
-     * Section 5.3: the identity provider carries the entity ID of its descriptor.
+     * Section 5.3
      */
     #[Test]
     public function itRefusesAnIdentityProviderOfAnotherEntity(): void
@@ -132,7 +131,7 @@ final class EntityDescriptorTest extends TestCase
     }
 
     /**
-     * Section 5.3: the service provider carries the entity ID of its descriptor.
+     * Section 5.3
      */
     #[Test]
     public function itRefusesAServiceProviderOfAnotherEntity(): void

@@ -11,12 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * M-6: a boolean is one of its four lexical forms, compared as a string and never cast (XML Schema Part 2 §3.2.2.1).
+ * M-6, XML Schema Part 2 §3.2.2.1
  */
 final class BooleanTest extends TestCase
 {
     /**
-     * XML Schema Part 2 §3.2.2.1: true and 1, false and 0.
+     * XML Schema Part 2 §3.2.2.1
      */
     #[Test]
     #[DataProvider('provideBooleans')]
@@ -38,7 +38,7 @@ final class BooleanTest extends TestCase
     }
 
     /**
-     * §9.2 row 26, M-6: any other string, compared byte for byte; the message carries nothing of it (M-16).
+     * §9.2 row 26, M-6, M-16
      */
     #[Test]
     #[DataProvider('provideNotABoolean')]
@@ -73,7 +73,7 @@ final class BooleanTest extends TestCase
     }
 
     /**
-     * M-15: the package writes true and false, never 1 and 0.
+     * M-15
      */
     #[Test]
     #[DataProvider('provideWrittenBooleans')]

@@ -22,8 +22,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.6 step 2, core.md section 6.5, SAML Core §3.2.2: the samlp:Response of the identity provider, built with
- * one prefix per namespace, in the order of the schema, before it is signed.
+ * Section 6.6 step 2, core.md section 6.5, SAML Core §3.2.2
  */
 final class ResponseBuilderTest extends TestCase
 {
@@ -32,9 +31,7 @@ final class ResponseBuilderTest extends TestCase
     private const string ASSERTION = 'urn:oasis:names:tc:SAML:2.0:assertion';
 
     /**
-     * Section 6.6 step 2, core.md section 6.5, SAML Profiles §4.1.4.2 as corrected by E17: the samlp prefix declared
-     * on the root, the saml prefix on the Issuer and on the Assertion, which introduce it; the attributes of the
-     * response, its Issuer without Format, its Status, then its assertion.
+     * Section 6.6 step 2, core.md section 6.5, SAML Profiles §4.1.4.2 as corrected by E17
      */
     #[Test]
     public function itBuildsTheResponseWithOnePrefixPerNamespace(): void
@@ -74,8 +71,7 @@ final class ResponseBuilderTest extends TestCase
     }
 
     /**
-     * SAML Core §3.2.2.2, M-13: a failure carries its top-level code and its second-level one, nested, and no
-     * assertion.
+     * SAML Core §3.2.2.2, M-13
      */
     #[Test]
     public function itBuildsAFailureWithItsTwoCodes(): void
@@ -106,7 +102,7 @@ final class ResponseBuilderTest extends TestCase
     }
 
     /**
-     * SAML Core §3.2.2.2: a status without second-level code is one samlp:StatusCode, empty.
+     * SAML Core §3.2.2.2
      */
     #[Test]
     public function itBuildsATopLevelCodeAlone(): void
@@ -129,7 +125,7 @@ final class ResponseBuilderTest extends TestCase
     }
 
     /**
-     * SAML Core §3.2.2, M-10: a response without Destination, unsolicited, carries neither attribute.
+     * SAML Core §3.2.2, M-10
      */
     #[Test]
     public function itLeavesOutTheDestinationAndTheInResponseToItIsNotGiven(): void
@@ -156,8 +152,7 @@ final class ResponseBuilderTest extends TestCase
     }
 
     /**
-     * M-15, SAML Core §1.3.3: the IssueInstant is written in UTC to the second, whatever the zone and the fraction of
-     * the time it was given.
+     * M-15, SAML Core §1.3.3
      */
     #[Test]
     public function itWritesTheIssueInstantInUtcToTheSecond(): void

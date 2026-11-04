@@ -29,16 +29,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Sections 5.7 and 6.6, M-15: a samlp:LogoutRequest written, and read back by the validator of the peer role; the
- * logout request rows of section 9.1.
+ * Sections 5.7, 6.6 and 9.1, M-15
  */
 final class LogoutRequestWriterTest extends TestCase
 {
     private const string DSIG = 'http://www.w3.org/2000/09/xmldsig#';
 
     /**
-     * §9.1, M-15, SAML Profiles §4.4.4.1: a request signed for HTTP-POST, serialized with Core, loaded again with
-     * SamlLoader::create(), is accepted by validate() of the peer as it was written.
+     * §9.1, M-15, SAML Profiles §4.4.4.1
      */
     #[Test]
     #[DataProvider('provideRequests')]
@@ -67,8 +65,7 @@ final class LogoutRequestWriterTest extends TestCase
     }
 
     /**
-     * §9.1, M-15, section 6.8: a request written unsigned for HTTP-Redirect, whose binding signs the query string, is
-     * accepted by validateAuthenticatedByBinding() of the peer as it was written.
+     * §9.1, M-15, section 6.8
      */
     #[Test]
     #[DataProvider('provideRequests')]
@@ -135,8 +132,7 @@ final class LogoutRequestWriterTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 1, M-15, section 6.3: a NotOnOrAfter not later than the IssueInstant, the two compared as the
-     * writer writes them, to the second, is refused before anything is built, since the reader would refuse it.
+     * Section 6.6 step 1, M-15, section 6.3
      */
     #[Test]
     #[DataProvider('provideNotOnOrAfterNotAfterTheIssueInstant')]
@@ -166,7 +162,7 @@ final class LogoutRequestWriterTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 1, M-15: a NotOnOrAfter one second after the IssueInstant is written, and read back.
+     * Section 6.6 step 1, M-15
      */
     #[Test]
     public function itWritesANotOnOrAfterOneSecondAfterTheIssueInstant(): void
@@ -185,8 +181,7 @@ final class LogoutRequestWriterTest extends TestCase
     }
 
     /**
-     * Section 6.6, M-15, SAML Core §3.2.1, §5.4.1: the Signature is enveloped after the Issuer, over the ID of the
-     * request, with no InclusiveNamespaces; the prefixes are samlp and saml.
+     * Section 6.6, M-15, SAML Core §3.2.1, §5.4.1
      */
     #[Test]
     public function itSignsAfterTheIssuer(): void
@@ -219,7 +214,7 @@ final class LogoutRequestWriterTest extends TestCase
     }
 
     /**
-     * Section 5.7, D-17: the certificate of the key travels in the KeyInfo when the signing asks for it.
+     * Section 5.7, D-17
      */
     #[Test]
     public function itCarriesTheCertificateWhenAsked(): void
@@ -250,7 +245,7 @@ final class LogoutRequestWriterTest extends TestCase
     }
 
     /**
-     * Section 6.8, SAML Bindings §3.4.4.1: for HTTP-Redirect the request carries no ds:Signature.
+     * Section 6.8, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itWritesNoSignatureForHttpRedirect(): void

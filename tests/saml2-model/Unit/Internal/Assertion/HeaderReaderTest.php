@@ -13,15 +13,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.1 step 7: the header of an assertion, its Version, ID, IssueInstant and Issuer (SAML Core §2.3.3), and
- * saml:Advice refused by name (section 8).
+ * Section 6.1 step 7, SAML Core §2.3.3, section 8
  */
 final class HeaderReaderTest extends TestCase
 {
     use AssertionFixtures;
 
     /**
-     * Section 6.1 step 7: the ID, the IssueInstant and the Issuer, as read.
+     * Section 6.1 step 7
      */
     #[Test]
     public function itReadsTheIdIssueInstantAndIssuer(): void
@@ -40,7 +39,7 @@ final class HeaderReaderTest extends TestCase
     }
 
     /**
-     * M-7: an IssueInstant at now plus the skew, the edge of its window, is accepted.
+     * M-7
      */
     #[Test]
     public function itAcceptsAnIssueInstantAtNowPlusTheSkew(): void
@@ -56,7 +55,7 @@ final class HeaderReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 18, M-7: an IssueInstant one second beyond now plus the skew; the message names the window.
+     * §9.2 row 18, M-7
      */
     #[Test]
     public function itRefusesAnIssueInstantBeyondNowPlusTheSkew(): void
@@ -75,7 +74,7 @@ final class HeaderReaderTest extends TestCase
     }
 
     /**
-     * M-7: an assertion exactly maxMessageAge old, the edge of its window, the skew not added, is accepted.
+     * M-7
      */
     #[Test]
     public function itAcceptsAnAssertionExactlyMaxMessageAgeOld(): void
@@ -91,8 +90,7 @@ final class HeaderReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 18, M-7: an assertion one second older than maxMessageAge, which a fresh response may carry, is a replay
-     * the bearer window does not see.
+     * §9.2 row 18, M-7
      */
     #[Test]
     public function itRefusesAnAssertionOlderThanMaxMessageAge(): void
@@ -111,7 +109,7 @@ final class HeaderReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 26, M-6: Version="2.1".
+     * §9.2 row 26, M-6
      */
     #[Test]
     public function itRefusesAVersionOtherThan20(): void
@@ -130,7 +128,7 @@ final class HeaderReaderTest extends TestCase
     }
 
     /**
-     * M-5, SAML Core §2.3.3: Version, ID and IssueInstant are required.
+     * M-5, SAML Core §2.3.3
      */
     #[Test]
     #[DataProvider('provideMissingAttributes')]
@@ -165,8 +163,7 @@ final class HeaderReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 7, section 8: an assertion inside the saml:Advice of the verified assertion; the Advice is refused by
-     * name, whatever it holds.
+     * §9.2 row 7, section 8
      */
     #[Test]
     public function itRefusesAdvice(): void

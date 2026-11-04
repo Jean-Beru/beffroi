@@ -16,13 +16,12 @@ use PHPUnit\Framework\TestCase;
 use function sprintf;
 
 /**
- * Section 5.4, M-1: an AuthnRequest read before anything is verified, its root and its Issuer, what the identity
- * provider needs to choose the service provider.
+ * Section 5.4, M-1
  */
 final class UnverifiedAuthnRequestTest extends TestCase
 {
     /**
-     * M-1: the document as loaded, and the Issuer of the request.
+     * M-1
      */
     #[Test]
     public function itReadsTheIssuerOfTheRequest(): void
@@ -38,7 +37,7 @@ final class UnverifiedAuthnRequestTest extends TestCase
     }
 
     /**
-     * M-1: a request without Issuer is read, its Issuer null; the validator refuses it (section 6.2 step 1).
+     * M-1, section 6.2 step 1
      */
     #[Test]
     public function itReadsARequestWithoutIssuer(): void
@@ -54,7 +53,7 @@ final class UnverifiedAuthnRequestTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 1: the root is a samlp:AuthnRequest, compared by namespace and local name.
+     * Section 6.2 step 1
      */
     #[Test]
     #[DataProvider('provideOtherRoots')]
@@ -84,7 +83,7 @@ final class UnverifiedAuthnRequestTest extends TestCase
     }
 
     /**
-     * M-4: one saml:Issuer, a direct child.
+     * M-4
      */
     #[Test]
     public function itRefusesTwoIssuers(): void
@@ -101,7 +100,7 @@ final class UnverifiedAuthnRequestTest extends TestCase
     }
 
     /**
-     * M-6: the Issuer is an entity ID, a URI.
+     * M-6
      */
     #[Test]
     public function itRefusesAnIssuerThatIsNotAUri(): void
@@ -118,7 +117,7 @@ final class UnverifiedAuthnRequestTest extends TestCase
     }
 
     /**
-     * I-12: the Issuer is read with Text::of(), comments concatenated, an element refused.
+     * I-12
      */
     #[Test]
     public function itReadsTheIssuerAsTheSignerMeantIt(): void
@@ -134,7 +133,7 @@ final class UnverifiedAuthnRequestTest extends TestCase
     }
 
     /**
-     * I-12: an Issuer holding an element is Core's MixedContent.
+     * I-12
      */
     #[Test]
     public function itRefusesAnIssuerHoldingAnElement(): void

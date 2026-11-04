@@ -12,13 +12,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3: an indexed endpoint, its location a URI of M-6 and its index an xs:unsignedShort (SAML Metadata
- * §2.2.3).
+ * Section 5.3, M-6, SAML Metadata §2.2.3
  */
 final class IndexedEndpointTest extends TestCase
 {
     /**
-     * Section 5.3: the binding, the location, the index and isDefault, kept as given.
+     * Section 5.3
      */
     #[Test]
     public function itKeepsItsFields(): void
@@ -34,7 +33,7 @@ final class IndexedEndpointTest extends TestCase
     }
 
     /**
-     * SAML Metadata §2.2.3: isDefault absent is null, which default() tells apart from false.
+     * SAML Metadata §2.2.3
      */
     #[Test]
     public function itHasNoIsDefaultByDefault(): void
@@ -47,7 +46,7 @@ final class IndexedEndpointTest extends TestCase
     }
 
     /**
-     * M-6: the two ends of xs:unsignedShort.
+     * M-6
      */
     #[Test]
     #[DataProvider('provideIndexes')]
@@ -70,7 +69,7 @@ final class IndexedEndpointTest extends TestCase
     }
 
     /**
-     * M-6: an index outside xs:unsignedShort.
+     * M-6
      */
     #[Test]
     #[DataProvider('provideIndexesOutside')]
@@ -94,7 +93,7 @@ final class IndexedEndpointTest extends TestCase
     }
 
     /**
-     * M-6, section 6.5 step 6: the location is an absolute URI.
+     * M-6, section 6.5 step 6
      */
     #[Test]
     public function itRefusesARelativeLocation(): void

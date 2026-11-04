@@ -19,14 +19,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3, M-6, M-13: a response and the rules of its values, whoever builds it.
+ * Section 5.3, M-6, M-13
  */
 final class ResponseTest extends TestCase
 {
     use AssertionFixtures;
 
     /**
-     * Section 5.3: a successful response, its values as given, its one assertion.
+     * Section 5.3
      */
     #[Test]
     public function itKeepsTheValuesOfASuccessfulResponse(): void
@@ -63,8 +63,7 @@ final class ResponseTest extends TestCase
     }
 
     /**
-     * M-13, SAML Profiles §4.1.4.2: a failure carries no assertion; unsolicited and unsigned, it has neither
-     * InResponseTo nor Destination.
+     * M-13, SAML Profiles §4.1.4.2
      */
     #[Test]
     public function itKeepsAFailureWithoutAssertion(): void
@@ -85,7 +84,7 @@ final class ResponseTest extends TestCase
     }
 
     /**
-     * M-6: an ID or an InResponseTo that is not an NCName, a relative Destination.
+     * M-6
      */
     #[Test]
     #[DataProvider('provideValuesNotOfTheirLexicalForm')]
@@ -131,7 +130,7 @@ final class ResponseTest extends TestCase
     }
 
     /**
-     * M-13: a response whose status is Success carries its assertion.
+     * M-13
      */
     #[Test]
     public function itRefusesASuccessWithoutAssertion(): void
@@ -153,7 +152,7 @@ final class ResponseTest extends TestCase
     }
 
     /**
-     * M-13, SAML Profiles §4.1.4.2: a failure carries no assertion.
+     * M-13, SAML Profiles §4.1.4.2
      */
     #[Test]
     public function itRefusesAFailureWithAnAssertion(): void

@@ -14,8 +14,7 @@ use PHPUnit\Framework\TestCase;
 use function sprintf;
 
 /**
- * Section 6.2 step 1, M-4, M-5: the structure of an AuthnRequest, the order and the cardinality of its schema (SAML
- * Core §3.2.1, §3.4.1). The rows of section 9.2 run through AuthnRequestValidatorTest.
+ * Section 6.2 step 1, M-4, M-5, SAML Core §3.2.1, §3.4.1
  */
 final class AuthnRequestReaderTest extends TestCase
 {
@@ -30,7 +29,7 @@ final class AuthnRequestReaderTest extends TestCase
     private const string CONTEXT = '<samlp:RequestedAuthnContext/>';
 
     /**
-     * M-5: every child the model reads, in the order of the schema, each optional one present or absent.
+     * M-5
      */
     #[Test]
     #[DataProvider('provideSequences')]
@@ -57,7 +56,7 @@ final class AuthnRequestReaderTest extends TestCase
     }
 
     /**
-     * M-5: a child after one that the schema puts after it.
+     * M-5
      */
     #[Test]
     #[DataProvider('provideChildrenOutOfOrder')]
@@ -89,7 +88,7 @@ final class AuthnRequestReaderTest extends TestCase
     }
 
     /**
-     * M-4: each child the schema allows once, repeated, even with another between them.
+     * M-4
      */
     #[Test]
     #[DataProvider('provideRepeatedChildren')]
@@ -120,7 +119,7 @@ final class AuthnRequestReaderTest extends TestCase
     }
 
     /**
-     * M-4, Profiles §4.1.4.1: the saml:Issuer is required, whatever else the request holds.
+     * M-4, Profiles §4.1.4.1
      */
     #[Test]
     public function itRefusesARequestWithoutIssuer(): void

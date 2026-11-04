@@ -15,13 +15,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3, M-7, M-8: the conditions of an assertion, a window that ends after it starts and at least one audience
- * restriction (SAML Core §2.5.1).
+ * Section 5.3, M-7, M-8, SAML Core §2.5.1
  */
 final class ConditionsTest extends TestCase
 {
     /**
-     * Section 5.3: the window, the audiences of each restriction in their order, OneTimeUse, kept as given.
+     * Section 5.3
      */
     #[Test]
     public function itKeepsItsWindowAudiencesAndOneTimeUse(): void
@@ -51,7 +50,7 @@ final class ConditionsTest extends TestCase
     }
 
     /**
-     * SAML Core §2.5.1.2: either end of the window, or both, may be absent.
+     * SAML Core §2.5.1.2
      */
     #[Test]
     #[DataProvider('provideOpenWindows')]
@@ -84,8 +83,7 @@ final class ConditionsTest extends TestCase
     }
 
     /**
-     * §9.2 row 19, M-7, SAML Core §2.5.1.2: the interval ends at NotOnOrAfter, so a NotBefore equal to it, or later,
-     * leaves no instant at which the assertion is valid.
+     * §9.2 row 19, M-7, SAML Core §2.5.1.2
      */
     #[Test]
     #[DataProvider('provideEmptyWindows')]
@@ -114,8 +112,7 @@ final class ConditionsTest extends TestCase
     }
 
     /**
-     * §9.2 row 15, M-8, SAML Profiles §4.1.4.2: an assertion of the Web Browser SSO profile carries at least one
-     * AudienceRestriction.
+     * §9.2 row 15, M-8, SAML Profiles §4.1.4.2
      */
     #[Test]
     public function itRefusesNoAudienceRestriction(): void
@@ -129,7 +126,7 @@ final class ConditionsTest extends TestCase
     }
 
     /**
-     * M-5, SAML Core §2.5.1.4: an AudienceRestriction holds one Audience or more.
+     * M-5, SAML Core §2.5.1.4
      */
     #[Test]
     public function itRefusesARestrictionWithoutAudience(): void
@@ -143,7 +140,7 @@ final class ConditionsTest extends TestCase
     }
 
     /**
-     * §9.2 row 26, M-6: an Audience relative/path, in any restriction; the message carries nothing of it (M-16).
+     * §9.2 row 26, M-6, M-16
      */
     #[Test]
     public function itRefusesAnAudienceThatIsNotAUri(): void
@@ -162,8 +159,7 @@ final class ConditionsTest extends TestCase
     }
 
     /**
-     * Section 7, M-15, M-17: 8 AudienceRestriction of 16 Audience each, the bounds the reader of the service provider
-     * applies, are the most the Conditions hold whoever builds them.
+     * Section 7, M-15, M-17
      */
     #[Test]
     public function itHoldsTheBoundsOfSection7(): void
@@ -179,8 +175,7 @@ final class ConditionsTest extends TestCase
     }
 
     /**
-     * §9.2 row 36, M-15, M-17: one restriction or one audience over its bound of section 7, which the reader of the
-     * service provider would refuse, is refused whoever builds the Conditions, a writer included.
+     * §9.2 row 36, M-15, M-17
      *
      * @param list<list<string>> $audiences
      */

@@ -12,13 +12,12 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * M-6: a URI is absolute (SAML Core §1.3.2, RFC 3986 §4.3), holds no whitespace and no control character, and is at
- * most 1024 characters (SAML Core §8.3.6, section 7).
+ * M-6, SAML Core §1.3.2, RFC 3986 §4.3, SAML Core §8.3.6, section 7
  */
 final class UriTest extends TestCase
 {
     /**
-     * M-6, M-8: an absolute URI, returned as it is, never normalised.
+     * M-6, M-8
      */
     #[Test]
     #[DataProvider('provideUris')]
@@ -47,7 +46,7 @@ final class UriTest extends TestCase
     }
 
     /**
-     * §9.2 row 26, section 7, SAML Core §8.3.6: longer than 1024 characters; the message carries nothing of it (M-16).
+     * §9.2 row 26, section 7, SAML Core §8.3.6, M-16
      */
     #[Test]
     #[DataProvider('provideTooLong')]
@@ -71,8 +70,7 @@ final class UriTest extends TestCase
     }
 
     /**
-     * §9.2 row 26, M-6, SAML Core §1.3.2: whitespace, a control or a format character, anywhere, and bytes that are not
-     * UTF-8.
+     * §9.2 row 26, M-6, SAML Core §1.3.2
      */
     #[Test]
     #[DataProvider('provideWhitespaceOrControl')]
@@ -112,7 +110,7 @@ final class UriTest extends TestCase
     }
 
     /**
-     * §9.2 row 26, M-6, RFC 3986 §4.3: a relative reference, or a scheme that does not start with a letter.
+     * §9.2 row 26, M-6, RFC 3986 §4.3
      */
     #[Test]
     #[DataProvider('provideNotAbsolute')]

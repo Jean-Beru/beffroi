@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.8, M-8: a Destination that is not the URL of arrival, refused with the rest of what the model refuses.
+ * Section 5.8, M-8
  */
 final class DestinationMismatchTest extends TestCase
 {

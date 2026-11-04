@@ -13,15 +13,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.1 step 10, M-7: the authentication statement of an assertion, its instant, its session and its context
- * class (SAML Core §2.7.2).
+ * Section 6.1 step 10, M-7, SAML Core §2.7.2
  */
 final class AuthnStatementReaderTest extends TestCase
 {
     use AssertionFixtures;
 
     /**
-     * Section 5.3: the AuthnInstant, the SessionIndex, the SessionNotOnOrAfter and the AuthnContextClassRef, as read.
+     * Section 5.3
      */
     #[Test]
     public function itReadsTheInstantSessionAndContextClass(): void
@@ -50,7 +49,7 @@ final class AuthnStatementReaderTest extends TestCase
     }
 
     /**
-     * SAML Core §2.7.2: SessionIndex and SessionNotOnOrAfter are optional.
+     * SAML Core §2.7.2
      */
     #[Test]
     public function itReadsAStatementWithoutSession(): void
@@ -69,8 +68,7 @@ final class AuthnStatementReaderTest extends TestCase
     }
 
     /**
-     * §9.3 row 19, section 6.1 step 10: a saml:SubjectLocality and two saml:AuthenticatingAuthority are accepted and
-     * not read.
+     * §9.3 row 19, section 6.1 step 10
      */
     #[Test]
     public function itAcceptsASubjectLocalityAndAuthenticatingAuthorities(): void
@@ -92,8 +90,7 @@ final class AuthnStatementReaderTest extends TestCase
     }
 
     /**
-     * M-7: an AuthnInstant at now plus the skew, and a SessionNotOnOrAfter one second after now minus the skew, the
-     * edges of their windows, are accepted.
+     * M-7
      */
     #[Test]
     #[DataProvider('provideWindowEdges')]
@@ -133,8 +130,7 @@ final class AuthnStatementReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 18, M-7: the AuthnInstant one second beyond now plus the skew; the SessionNotOnOrAfter passed, at now
-     * minus the skew; each message names its window.
+     * §9.2 row 18, M-7
      */
     #[Test]
     #[DataProvider('provideWindowsOutside')]
@@ -168,8 +164,7 @@ final class AuthnStatementReaderTest extends TestCase
     }
 
     /**
-     * M-4, M-5, section 6.1 step 10: an AuthnContext without AuthnContextClassRef; an AuthnStatement without
-     * AuthnContext.
+     * M-4, M-5, section 6.1 step 10
      */
     #[Test]
     #[DataProvider('provideMalformedStatements')]
@@ -203,7 +198,7 @@ final class AuthnStatementReaderTest extends TestCase
     }
 
     /**
-     * Section 8, section 6.1 step 10: saml:AuthnContextDecl next to the class, saml:AuthnContextDeclRef in its place.
+     * Section 8, section 6.1 step 10
      */
     #[Test]
     #[DataProvider('provideDeclarations')]

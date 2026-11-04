@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.8, M-7: a time outside its window, refused with the rest of what the model refuses.
+ * Section 5.8, M-7
  */
 final class OutsideValidityWindowTest extends TestCase
 {

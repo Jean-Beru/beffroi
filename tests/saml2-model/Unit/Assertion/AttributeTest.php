@@ -14,12 +14,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3, section 6.1 step 11: an attribute as read, its values as text (SAML Core §2.7.3.1).
+ * Section 5.3, section 6.1 step 11, SAML Core §2.7.3.1
  */
 final class AttributeTest extends TestCase
 {
     /**
-     * Section 6.1 step 11: the name, the format, the friendly name and the values in their order, kept as given.
+     * Section 6.1 step 11
      */
     #[Test]
     public function itKeepsItsNameFormatFriendlyNameAndValues(): void
@@ -48,7 +48,7 @@ final class AttributeTest extends TestCase
     }
 
     /**
-     * Section 7, M-15, M-17: 256 values, the bound the reader of the service provider applies.
+     * Section 7, M-15, M-17
      */
     #[Test]
     public function itHoldsTheValuesOfItsBound(): void
@@ -64,8 +64,7 @@ final class AttributeTest extends TestCase
     }
 
     /**
-     * §9.2 row 36, M-15, M-17: 257 values, which the reader of the service provider would refuse, are refused whoever
-     * builds the attribute, a writer included.
+     * §9.2 row 36, M-15, M-17
      */
     #[Test]
     public function itRefusesValuesOverTheirBound(): void
@@ -79,8 +78,7 @@ final class AttributeTest extends TestCase
     }
 
     /**
-     * M-15: a NUL in the name, the friendly name or a value, which the DOM would cut the written value at, or another
-     * character XML does not carry, refused whoever builds the attribute.
+     * M-15
      */
     #[Test]
     #[DataProvider('provideTextsNotCarried')]

@@ -22,15 +22,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.1 step 11: the attributes of an assertion, as read, their values as text (SAML Core §2.7.3).
+ * Section 6.1 step 11, SAML Core §2.7.3
  */
 final class AttributeStatementReaderTest extends TestCase
 {
     use AssertionFixtures;
 
     /**
-     * Section 5.3, section 6.1 step 11: each attribute with its Name, NameFormat, FriendlyName and values, in document
-     * order.
+     * Section 5.3, section 6.1 step 11
      */
     #[Test]
     public function itReadsTheAttributesInDocumentOrder(): void
@@ -70,8 +69,7 @@ final class AttributeStatementReaderTest extends TestCase
     }
 
     /**
-     * §9.3 row 18, section 6.1 step 11: Keycloak's six saml:Attribute named Role, one value each, are six attributes
-     * in document order, none merged.
+     * §9.3 row 18, section 6.1 step 11
      */
     #[Test]
     public function itKeepsRepeatedNamesInDocumentOrder(): void
@@ -100,8 +98,7 @@ final class AttributeStatementReaderTest extends TestCase
     }
 
     /**
-     * §9.3 row 10, dsig.md §6.3: SimpleSAMLphp's AttributeValue with xsi:type="xs:string", where the prefix xs
-     * resolves to nothing, as in the verified document; the value is its text, and the type is never resolved.
+     * §9.3 row 10, dsig.md §6.3
      */
     #[Test]
     public function itReadsAValueWithAnUnresolvedXsiTypeAsItsText(): void
@@ -133,7 +130,7 @@ final class AttributeStatementReaderTest extends TestCase
     }
 
     /**
-     * Section 7, M-17: 256 attributes in the statement, and 256 values in an attribute, the bounds, are accepted.
+     * Section 7, M-17
      */
     #[Test]
     #[DataProvider('provideCountsAtTheirBound')]
@@ -162,8 +159,7 @@ final class AttributeStatementReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 36, section 7, M-17: 257 attributes in the statement; 257 values in an attribute; the message names the
-     * bound.
+     * §9.2 row 36, section 7, M-17
      */
     #[Test]
     #[DataProvider('provideCountsOverTheirBound')]
@@ -197,8 +193,7 @@ final class AttributeStatementReaderTest extends TestCase
     }
 
     /**
-     * M-4, M-5, SAML Core §2.7.3: an empty statement, an element that is not an attribute in it, an attribute without
-     * Name, an unknown NameFormat, an element that is not a value in an attribute.
+     * M-4, M-5, SAML Core §2.7.3
      */
     #[Test]
     #[DataProvider('provideMalformedStatements')]
@@ -244,8 +239,7 @@ final class AttributeStatementReaderTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 11, section 12, I-12: a value holding an element, a NameID as the value of eduPersonTargetedID,
-     * is refused by Core as it refuses it.
+     * Section 6.1 step 11, section 12, I-12
      */
     #[Test]
     public function itLetsCoreRefuseAValueHoldingAnElement(): void
@@ -262,7 +256,7 @@ final class AttributeStatementReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 29, section 6.7: saml:EncryptedAttribute, refused by name.
+     * §9.2 row 29, section 6.7
      */
     #[Test]
     public function itRefusesAnEncryptedAttribute(): void

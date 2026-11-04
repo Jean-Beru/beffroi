@@ -34,18 +34,12 @@ use const T_SPACESHIP;
 use const T_STRING;
 
 /**
- * Section 8 of spec/model.md, read on the source of src/ itself, next to the PHPStan rules of .ci-tools/phpstan-saml2-model.neon:
- * what PHPStan cannot see. The property reads Text::of() replaces (textContent, nodeValue, innerHTML), the change of
- * the process's time zone, the comparison <=>, and a DateTimeImmutable::createFromFormat() whose format fills the
- * missing fields from the clock. Comments and string literals are not code and are not scanned: a refusal message may
- * name what it refuses.
- *
- * M-6, M-7, M-12, I-12.
+ * Section 8, M-6, M-7, M-12, I-12
  */
 final class SourceGuardTest extends TestCase
 {
     /**
-     * Section 8, M-12, I-12: never written in src/, whatever the case.
+     * Section 8, M-12, I-12
      */
     #[Test]
     #[DataProvider('provideBannedTokens')]
@@ -63,16 +57,16 @@ final class SourceGuardTest extends TestCase
      */
     public static function provideBannedTokens(): iterable
     {
-        // the property reads Text::of() replaces (M-12, I-12)
+        // The property reads Text::of() replaces (M-12, I-12).
         yield 'textContent' => ['textContent'];
         yield 'nodeValue' => ['nodeValue'];
         yield 'innerHTML' => ['innerHTML'];
-        // the time is the clock port's, in UTC (M-7)
+        // The time is the clock port's, in UTC (M-7).
         yield 'date_default_timezone_set()' => ['date_default_timezone_set('];
     }
 
     /**
-     * Section 8, M-6: no comparison <=>, which orders values of any type with PHP's own rules.
+     * Section 8, M-6
      */
     #[Test]
     public function itNeverComparesWithTheSpaceship(): void
@@ -88,8 +82,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * Section 8, M-7: every DateTimeImmutable::createFromFormat() of src/ has a literal format that resets the fields it
-     * does not name, with "!" or "|", rather than filling them from the machine's clock.
+     * Section 8, M-7
      */
     #[Test]
     public function itNeverFillsATimeFromTheClock(): void
@@ -112,8 +105,6 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * The scans find what they look for, and only that.
-     *
      * @param list<string> $formats
      */
     #[Test]
@@ -149,10 +140,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * The first argument of every createFromFormat() of $source, as written: a literal with its quotes, or the token
-     * that stands in its place.
-     *
-     * @return list<string>
+     * @return list<string> as written, a literal with its quotes
      */
     private function formats(string $source): array
     {
@@ -173,9 +161,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * The files of src/ holding $banned in their code, comments and string literals left aside, each with its count.
-     *
-     * @return array<string, int>
+     * @return array<string, int> count by file of src/, comments and string literals left aside
      */
     private function occurrences(string $banned): array
     {
@@ -198,7 +184,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * @return array<string, string> the source of every PHP file of src/, keyed by its path relative to src/
+     * @return array<string, string> source by path relative to src/
      */
     private function sources(): array
     {

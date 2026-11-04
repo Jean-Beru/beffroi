@@ -13,13 +13,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3, section 6.2 step 5: the NameIDPolicy of an AuthnRequest (SAML Core §3.4.1.1), its format one of SAML
- * Core §8.3 or encrypted.
+ * Section 5.3, section 6.2 step 5, SAML Core §3.4.1.1, §8.3
  */
 final class NameIdPolicyTest extends TestCase
 {
     /**
-     * Section 5.3: the format, the SPNameQualifier and AllowCreate, as given.
+     * Section 5.3
      */
     #[Test]
     public function itHoldsItsFields(): void
@@ -35,7 +34,7 @@ final class NameIdPolicyTest extends TestCase
     }
 
     /**
-     * SAML Core §3.4.1.1: every attribute is optional, AllowCreate false when absent.
+     * SAML Core §3.4.1.1
      */
     #[Test]
     public function itHoldsNothingByDefault(): void
@@ -48,7 +47,7 @@ final class NameIdPolicyTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 5, SAML Core §3.4.1.1: the eight formats of SAML Core §8.3 and encrypted.
+     * Section 6.2 step 5, SAML Core §3.4.1.1, §8.3
      */
     #[Test]
     #[DataProvider('provideFormats')]
@@ -73,7 +72,7 @@ final class NameIdPolicyTest extends TestCase
     }
 
     /**
-     * M-12, section 6.2 step 5: any other format is refused, compared byte for byte.
+     * M-12, section 6.2 step 5
      */
     #[Test]
     #[DataProvider('provideRefusedFormats')]
@@ -99,7 +98,7 @@ final class NameIdPolicyTest extends TestCase
     }
 
     /**
-     * M-6: the SPNameQualifier names a service provider or an affiliation by its entity ID, a URI.
+     * M-6
      */
     #[Test]
     public function itRefusesAnSpNameQualifierThatIsNotAUri(): void

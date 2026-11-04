@@ -32,16 +32,14 @@ use SplFileInfo;
 use function str_contains;
 
 /**
- * M-1, M-4, M-5, section 6.1 steps 7 to 11: an assertion read strictly from the document of a verification, its
- * children in the order and with the cardinality of the schema, one of each part (SAML Core §2.3.3); the package reads
- * it through readCovered() only, from the selection of the signed element (section 6.1 step 5).
+ * M-1, M-4, M-5, section 6.1 steps 7 to 11, SAML Core §2.3.3, section 6.1 step 5
  */
 final class AssertionReaderTest extends TestCase
 {
     use ResponseFixtures;
 
     /**
-     * Section 6.1 steps 7 to 11, section 5.3: every part of the assertion, as read.
+     * Section 6.1 steps 7 to 11, section 5.3
      */
     #[Test]
     public function itReadsTheAssertion(): void
@@ -85,8 +83,7 @@ final class AssertionReaderTest extends TestCase
     }
 
     /**
-     * §9.3 row 1, M-12, I-12: <saml:NameID>user@example.com<!---->.evil.com</saml:NameID> in the assertion; the NameID
-     * is user@example.com.evil.com.
+     * §9.3 row 1, M-12, I-12
      */
     #[Test]
     public function itReadsTheCommentSplitNameIdWhole(): void
@@ -102,8 +99,7 @@ final class AssertionReaderTest extends TestCase
     }
 
     /**
-     * M-5, SAML Core §2.3.3: the statements in any order among themselves, a ds:Signature after the Issuer, no
-     * AttributeStatement: each is an assertion the schema allows.
+     * M-5, SAML Core §2.3.3
      */
     #[Test]
     #[DataProvider('provideAssertionsTheSchemaAllows')]
@@ -136,8 +132,7 @@ final class AssertionReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 25, M-4, M-5: the root another element; children out of order, a ds:Signature before the Issuer, an
-     * Advice after the statements, an unknown saml: element; a part missing or repeated.
+     * §9.2 row 25, M-4, M-5
      */
     #[Test]
     #[DataProvider('provideMalformedAssertions')]
@@ -204,7 +199,7 @@ final class AssertionReaderTest extends TestCase
     }
 
     /**
-     * Section 8, section 6.1 step 10: saml:AuthzDecisionStatement, and a saml:Statement of any xsi:type.
+     * Section 8, section 6.1 step 10
      */
     #[Test]
     #[DataProvider('provideUnsupportedStatements')]
@@ -233,7 +228,7 @@ final class AssertionReaderTest extends TestCase
     }
 
     /**
-     * M-1, section 6.1 step 5: the assertion whose own signature was verified is the root of Verified::$document.
+     * M-1, section 6.1 step 5
      */
     #[Test]
     public function itReadsTheAssertionAVerificationOfItsOwnSignatureCovered(): void
@@ -249,8 +244,7 @@ final class AssertionReaderTest extends TestCase
     }
 
     /**
-     * M-1, section 6.1 step 5: an unsigned assertion is the one saml:Assertion child of the root of the response's
-     * Verified::$document.
+     * M-1, section 6.1 step 5
      */
     #[Test]
     public function itReadsTheAssertionTheSignatureOfTheResponseCovered(): void
@@ -266,8 +260,7 @@ final class AssertionReaderTest extends TestCase
     }
 
     /**
-     * M-1, M-4: a verification of anything but an assertion or a response, and a verified response without its one
-     * assertion, yield no assertion, whatever element without a signature of its own was selected in it.
+     * M-1, M-4
      */
     #[Test]
     #[DataProvider('provideVerificationsOfNoAssertion')]
@@ -302,9 +295,7 @@ final class AssertionReaderTest extends TestCase
     }
 
     /**
-     * M-1, section 6.7: every call the source of the package makes to the reader is readCovered(), which takes the
-     * SignedAssertion the selection of section 6.1 step 5 built, from a verification or from a decryption a verified
-     * signature covered: no path reads an assertion from a document that no signature covered.
+     * M-1, section 6.7
      */
     #[Test]
     public function thePackageReadsAnAssertionThroughAVerificationOnly(): void
@@ -321,7 +312,7 @@ final class AssertionReaderTest extends TestCase
     }
 
     /**
-     * M-1, D-10: the package builds no Verified of its own; each one comes from Dsig's Verifier.
+     * M-1, D-10
      */
     #[Test]
     public function thePackageBuildsNoVerifiedOfItsOwn(): void
@@ -337,8 +328,7 @@ final class AssertionReaderTest extends TestCase
     }
 
     /**
-     * The selection of section 6.1 step 5 in $fixture, under the identity provider's test key: the root's signature
-     * verified when it has one, then the child $received of the root, its own signature verified when it has one.
+     * Section 6.1 step 5
      */
     private function selected(string $fixture, Name $received): SignedAssertion
     {
@@ -353,7 +343,7 @@ final class AssertionReaderTest extends TestCase
     }
 
     /**
-     * @return array<string, string> the source of every PHP file of src/ but the reader itself, by its path
+     * @return array<string, string> source by path
      */
     private function sources(): array
     {

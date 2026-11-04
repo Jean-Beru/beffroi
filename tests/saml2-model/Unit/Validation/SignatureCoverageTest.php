@@ -10,13 +10,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.5, M-2: which signature covered an accepted assertion.
+ * Section 5.5, M-2
  */
 final class SignatureCoverageTest extends TestCase
 {
     /**
-     * Section 5.5, SAML Profiles §4.1.4.5 as corrected by E26: the assertion's, the response's, or both, and no other
-     * case.
+     * Section 5.5, SAML Profiles §4.1.4.5 as corrected by E26
      */
     #[Test]
     public function itIsTheAssertionsTheResponsesOrBoth(): void

@@ -33,9 +33,7 @@ use PHPUnit\Framework\TestCase;
 use function strtr;
 
 /**
- * Sections 5.6 and 6.3: a samlp:LogoutRequest validated by either role, signed (M-2, SAML Profiles §4.4.4.1) or
- * authenticated by its binding (section 6.8); the identity provider's request to the service provider unless a test
- * says otherwise.
+ * Sections 5.6 and 6.3, M-2, SAML Profiles §4.4.4.1, section 6.8
  */
 final class LogoutRequestValidatorTest extends TestCase
 {
@@ -44,8 +42,7 @@ final class LogoutRequestValidatorTest extends TestCase
     private const string REDIRECT = 'behaviour/logout-request-written-for-http-redirect.xml';
 
     /**
-     * Section 6.3, M-2, M-1: a request signed by the peer is verified with the keys of its metadata and read from what
-     * the signature covered.
+     * Section 6.3, M-2, M-1
      */
     #[Test]
     public function itAcceptsARequestSignedByThePeer(): void
@@ -69,8 +66,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * Section 6.8, SAML Bindings §3.4.4.1: a request whose signature over the query string saml2-bindings verified is
-     * read as received.
+     * Section 6.8, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itAcceptsARequestTheBindingAuthenticated(): void
@@ -83,8 +79,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * Section 6.8, M-3: the binding verified the query string with the keys of the peer's metadata; a peer whose
-     * metadata holds no signing key cannot have been verified so, and is refused as validate() refuses it.
+     * Section 6.8, M-3
      */
     #[Test]
     public function itRefusesTheBindingPathForAPeerWithoutKey(): void
@@ -98,8 +93,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 34, M-2, SAML Profiles §4.4.4.1: an unsigned LogoutRequest given to validate(), the path of HTTP-POST
-     * and of an HTTP-Redirect without signature, is refused; the same document is accepted by the binding path.
+     * §9.2 row 34, M-2, SAML Profiles §4.4.4.1
      */
     #[Test]
     public function itRefusesAnUnsignedRequestGivenToValidate(): void
@@ -121,7 +115,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-3, D-7: the keys are those of the peer's metadata; a signature by another key does not verify.
+     * M-3, D-7
      */
     #[Test]
     public function itRefusesARequestSignedByAKeyNotOfThePeer(): void
@@ -143,7 +137,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-3, section 5.3: a peer whose metadata holds no signing key cannot have signed the request.
+     * M-3, section 5.3
      */
     #[Test]
     public function itRefusesWhenThePeerHasNoSigningKey(): void
@@ -165,8 +159,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * Section 5.6, SAML Bindings §3.4.4.1: the HTTP-Redirect encoding removes the ds:Signature of the message; one that
-     * carries it did not come that way.
+     * Section 5.6, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesASignatureInARequestTheBindingAuthenticated(): void
@@ -183,8 +176,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 34, M-7, SAML Core §3.7.1: a signed request whose NotOnOrAfter is at now minus the clock skew has
-     * expired, its IssueInstant earlier still and within maxMessageAge, so that the window alone refuses it.
+     * §9.2 row 34, M-7, SAML Core §3.7.1
      */
     #[Test]
     public function itRefusesARequestWhoseNotOnOrAfterHasPassed(): void
@@ -208,7 +200,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 16, M-8, SAML Profiles §4.4.4.1: a request signed with the peer's key whose Issuer names another entity.
+     * §9.2 row 16, M-8, SAML Profiles §4.4.4.1
      */
     #[Test]
     public function itRefusesTheIssuerOfAnotherEntity(): void
@@ -232,7 +224,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 36, section 7, M-17: a signed request that names one session index over the bound.
+     * §9.2 row 36, section 7, M-17
      */
     #[Test]
     public function itRefusesOneSessionIndexOverTheBound(): void
@@ -256,7 +248,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-17, D-6: the session indexes are counted before any key is touched, even from a peer that has none.
+     * M-17, D-6
      */
     #[Test]
     public function itCountsTheSessionIndexesBeforeAnySignature(): void
@@ -280,8 +272,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 25, M-5, section 6.3: the structure of the request is the schema's, checked before any signature;
-     * saml:BaseID is refused by name (section 8), saml:EncryptedID too (§9.2 row 29, section 6.7).
+     * §9.2 row 25, M-5, section 6.3, section 8, §9.2 row 29, section 6.7
      *
      * @param class-string<MessageRefused> $exception
      */
@@ -354,8 +345,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 rows 16, 25, 26 and 27, M-5, M-6, M-8, M-12: a value of the request that is not of its lexical form or not
-     * the peer's; the message carries nothing of it (M-16).
+     * §9.2 rows 16, 25, 26 and 27, M-5, M-6, M-8, M-12, M-16
      *
      * @param array<string, string> $replacements
      * @param class-string<MessageRefused> $exception
@@ -456,8 +446,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-7: an IssueInstant later than now plus the clock skew, or older than maxMessageAge, and a NotOnOrAfter at now
-     * minus the skew, each naming its window.
+     * M-7
      */
     #[Test]
     #[DataProvider('provideInstantsRefused')]
@@ -497,8 +486,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-7, section 6.3: the edges of the windows are accepted: an IssueInstant at now plus the skew, or exactly
-     * maxMessageAge old, a NotOnOrAfter one second after now minus the skew, or one second after the IssueInstant.
+     * M-7, section 6.3
      */
     #[Test]
     #[DataProvider('provideInstantsAccepted')]
@@ -526,8 +514,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-8, section 9.8: the adversarial pass found a request whose Issuer carries an SPNameQualifier accepted; the one
-     * reader of an Issuer refuses it.
+     * M-8, section 9.8
      */
     #[Test]
     public function itRefusesTheIssuerQualifierTheAdversarialPassFound(): void
@@ -544,8 +531,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 34, section 6.3, SAML Core §3.7.1: a request whose NotOnOrAfter is at or before its IssueInstant
-     * expires when it is issued, and is malformed, whatever the clock says.
+     * §9.2 row 34, section 6.3, SAML Core §3.7.1
      */
     #[Test]
     #[DataProvider('provideNotOnOrAfterNotAfterTheIssueInstant')]
@@ -572,8 +558,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 rows 12 and 13, M-8, SAML Bindings §3.4.5.2: the Destination of an authenticated request is required and is
-     * the URL at which it arrived, compared byte for byte, without normalisation.
+     * §9.2 rows 12 and 13, M-8, SAML Bindings §3.4.5.2
      */
     #[Test]
     #[DataProvider('provideDestinationsRefused')]
@@ -604,8 +589,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * Sections 5.6 and 6.3, M-8: the URL of arrival is one of our single logout services, its Location for a request,
-     * never a URL the caller made up nor the ResponseLocation where responses arrive (SAML Metadata §2.2.2).
+     * Sections 5.6 and 6.3, M-8, SAML Metadata §2.2.2
      */
     #[Test]
     #[DataProvider('provideUrlsOfArrivalNotOurs')]
@@ -649,8 +633,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * Sections 5.6 and 6.3, SAML Profiles §4.4.4.1: the service provider's request to the identity provider, at the
-     * Location of either of its single logout services.
+     * Sections 5.6 and 6.3, SAML Profiles §4.4.4.1
      */
     #[Test]
     #[DataProvider('provideLocationsOfTheIdentityProvider')]
@@ -688,8 +671,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * Section 5.6: our role is the one that faces the peer's; two identity providers or two service providers are a
-     * programming error of the caller.
+     * Section 5.6
      */
     #[Test]
     #[DataProvider('provideRolesThatDoNotFaceEachOther')]
@@ -718,7 +700,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-8: an Issuer whose Format is entity is the peer's entity ID.
+     * M-8
      */
     #[Test]
     public function itAcceptsAnIssuerOfFormatEntity(): void
@@ -736,7 +718,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-12, I-12, §9.3 row 1: the NameID is read with Text::of(), its comments concatenated.
+     * M-12, I-12, §9.3 row 1
      */
     #[Test]
     public function itReadsTheNameIdAroundAComment(): void
@@ -752,7 +734,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.3 row 9, M-5: a samlp:Extensions with content is accepted and never read.
+     * §9.3 row 9, M-5
      */
     #[Test]
     public function itAcceptsExtensionsWithoutReadingThem(): void
@@ -765,7 +747,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * SAML Core §3.7.1: a request without NotOnOrAfter, Reason or session index, its NameID of the unspecified format.
+     * SAML Core §3.7.1
      */
     #[Test]
     public function itAcceptsARequestWithoutItsOptionalParts(): void
@@ -789,8 +771,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 37, M-11: a signed request accepted once is Replayed when it is given to validate() again, inside its
-     * window.
+     * §9.2 row 37, M-11
      */
     #[Test]
     public function itRefusesTheSameSignedRequestTwice(): void
@@ -818,8 +799,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 37, M-11, issue #708: a request the binding authenticated, accepted once, is Replayed when its query
-     * string, which verifies again, is presented a second time inside its window.
+     * §9.2 row 37, M-11
      */
     #[Test]
     public function itRefusesTheSameRequestTheBindingAuthenticatedTwice(): void
@@ -837,7 +817,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-11: the key is the issuer and the ID together, the verified ones.
+     * M-11
      */
     #[Test]
     public function itRemembersTheIssuerAndTheIdOfTheRequest(): void
@@ -853,8 +833,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.3 row 21, M-11: a request refused by a rule, here its Destination, remembers nothing, so that an attacker
-     * cannot burn the ID of a request it could not have had accepted.
+     * §9.3 row 21, M-11
      */
     #[Test]
     public function itRemembersNothingOfARefusedRequest(): void
@@ -874,8 +853,7 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.3 row 22, M-11, section 6.3: an accepted request is remembered until the window in which it would be accepted
-     * again closes, its IssueInstant plus maxMessageAge and the skew, or its NotOnOrAfter plus the skew when earlier.
+     * §9.3 row 22, M-11, section 6.3
      */
     #[Test]
     #[DataProvider('provideWindowsOfARequest')]
@@ -909,8 +887,6 @@ final class LogoutRequestValidatorTest extends TestCase
     }
 
     /**
-     * The request of the fixture for HTTP-Redirect with the replacements made, loaded with SamlLoader::create().
-     *
      * @param array<string, string> $replacements
      */
     private function variant(array $replacements): Document
@@ -918,10 +894,6 @@ final class LogoutRequestValidatorTest extends TestCase
         return SamlLoader::create()->load(strtr(MetadataFixtures::bytes(self::REDIRECT), $replacements));
     }
 
-    /**
-     * The request given to validateAuthenticatedByBinding(), from the identity provider to the service provider unless
-     * other roles are given, with the clock moved by $seconds.
-     */
     private function byBinding(
         Document $document,
         int $seconds = 0,

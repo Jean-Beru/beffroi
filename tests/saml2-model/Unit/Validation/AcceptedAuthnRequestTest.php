@@ -15,7 +15,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.6: what the identity provider accepted, the request, the endpoint of M-9 and how it was authenticated.
+ * Section 5.6, M-9
  */
 final class AcceptedAuthnRequestTest extends TestCase
 {

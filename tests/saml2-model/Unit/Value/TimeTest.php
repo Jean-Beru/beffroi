@@ -13,13 +13,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * M-6, M-15: a time is an xs:dateTime in UTC with the Z designator (SAML Core §1.3.3), read to the microsecond and
- * written to the second.
+ * M-6, M-15, SAML Core §1.3.3
  */
 final class TimeTest extends TestCase
 {
     /**
-     * SAML Core §1.3.3, XML Schema Part 2 §3.2.7: the one lexical form, read to the microsecond.
+     * SAML Core §1.3.3, XML Schema Part 2 §3.2.7
      */
     #[Test]
     #[DataProvider('provideTimes')]
@@ -51,7 +50,7 @@ final class TimeTest extends TestCase
     }
 
     /**
-     * SAML Core §1.3.3: in UTC form, whatever the default zone of the process.
+     * SAML Core §1.3.3
      */
     #[Test]
     public function itReadsATimeInUtc(): void
@@ -64,8 +63,7 @@ final class TimeTest extends TestCase
     }
 
     /**
-     * §9.2 row 26, M-6, SAML Core §1.3.3: no zone but Z, no hour 24, no leap second, at most nine fractional digits,
-     * nothing around it; the message names the rule and carries nothing of the value (M-16).
+     * §9.2 row 26, M-6, SAML Core §1.3.3, M-16
      */
     #[Test]
     #[DataProvider('provideNotTheLexicalForm')]
@@ -109,7 +107,7 @@ final class TimeTest extends TestCase
     }
 
     /**
-     * §9.2 row 26, M-6: a date that no calendar has.
+     * §9.2 row 26, M-6
      */
     #[Test]
     #[DataProvider('provideNotADateOfTheCalendar')]
@@ -138,7 +136,7 @@ final class TimeTest extends TestCase
     }
 
     /**
-     * M-15: in UTC, to the second, with the Z designator.
+     * M-15
      */
     #[Test]
     #[DataProvider('provideWrittenTimes')]
@@ -165,7 +163,7 @@ final class TimeTest extends TestCase
     }
 
     /**
-     * M-15: what is written is what is read; the reader reads it back to the second.
+     * M-15
      */
     #[Test]
     public function itReadsBackWhatItWrites(): void
@@ -181,7 +179,7 @@ final class TimeTest extends TestCase
     }
 
     /**
-     * M-15: a year the reader would refuse is never written.
+     * M-15
      */
     #[Test]
     #[DataProvider('provideUnwritableYears')]

@@ -12,12 +12,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * M-6: the Version of a message or an assertion is 2.0 (SAML Core §2.3.3, §3.2.1).
+ * M-6, SAML Core §2.3.3, §3.2.1
  */
 final class VersionTest extends TestCase
 {
     /**
-     * M-6, M-15: the version the package writes is the one it reads.
+     * M-6, M-15
      */
     #[Test]
     public function itReadsTheVersionThePackageWrites(): void
@@ -27,7 +27,7 @@ final class VersionTest extends TestCase
     }
 
     /**
-     * §9.2 row 26, M-6: any other string, compared byte for byte; the message carries nothing of it (M-16).
+     * §9.2 row 26, M-6, M-16
      */
     #[Test]
     #[DataProvider('provideOtherVersions')]

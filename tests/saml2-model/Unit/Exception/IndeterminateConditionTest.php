@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.8, M-13: a condition not understood, refused with the rest of what the model refuses.
+ * Section 5.8, M-13
  */
 final class IndeterminateConditionTest extends TestCase
 {

@@ -8,14 +8,12 @@ use Beffroi\Saml2\Model\Port\ReplayGuardInterface;
 use DateTimeImmutable;
 
 /**
- * The replay port of section 5.2 in the memory of one process, for the tests only and never shipped: in a pool of
- * workers, a store per process forgets across them. A pair is keyed by its issuer and its ID, never by the ID alone
- * (M-11), and is never forgotten: the tests read when it expires instead.
+ * Section 5.2, M-11
  */
 final class InMemoryReplayGuard implements ReplayGuardInterface
 {
     /**
-     * @var array<string, array<string, DateTimeImmutable>> when each ID of each issuer may be forgotten
+     * @var array<string, array<string, DateTimeImmutable>> expiry by issuer, then by ID
      */
     private array $remembered = [];
 
@@ -29,16 +27,13 @@ final class InMemoryReplayGuard implements ReplayGuardInterface
         return true;
     }
 
-    /**
-     * When the pair may be forgotten, as the validator said, or null when it was never remembered.
-     */
     public function expiresAt(string $issuer, string $id): ?DateTimeImmutable
     {
         return $this->remembered[$issuer][$id] ?? null;
     }
 
     /**
-     * Whether nothing was remembered: what a refused assertion leaves behind (M-11, §9.3).
+     * M-11, §9.3
      */
     public function isEmpty(): bool
     {
