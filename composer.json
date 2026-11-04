@@ -78,6 +78,11 @@
         "symfony/web-profiler-bundle": "8.2.*",
         "symfony/yaml": "8.2.*"
     },
+    "conflict": {
+        "symfony/cache-contracts": "3.8.0",
+        "symfony/event-dispatcher-contracts": "3.8.0",
+        "symfony/service-contracts": "3.8.0"
+    },
     "replace": {
         "symfony/polyfill-intl-icu": "*",
         "beffroi/core": "self.version",
