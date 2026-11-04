@@ -3,24 +3,7 @@
 declare(strict_types=1);
 
 /*
- * The model half of "castor saml-sp" (.castor/lab/saml.php, issue #732): the documents the SimpleSAMLphp service
- * provider sent to the provider, read back by the packages that provider is built on, not by SimpleSAMLphp and not by
- * xmlsec1. Each AuthnRequest the walk captured is received by the receiver of its binding (RedirectReceiver on the
- * query string, PostReceiver on the fields of the form), its signature verified under the key of the service provider's
- * metadata, and the request validated by the model against the metadata of both roles, as the single sign-on
- * service of the provider has to when it receives it (spec/saml.md section 6.8).
- *
- * It reads a directory the walk wrote and nothing else:
- *
- *   idp-metadata.xml                  the metadata of the provider, as it served them
- *   sp-metadata.xml                   the metadata of the service provider, as it served them
- *   authn-request-redirect.url        the URL the service provider redirected the browser to
- *   authn-request-post.fields.json    the fields of the form it had the browser post, as a browser reads them
- *
- * A binding with no file is not played and is not asked for. One line per request accepted; the exit status is not 0 when
- * one is refused, with the rule the model gives. From the root of the repository, in the phpqa image (the walk runs it):
- *
- *   docker run --rm -v "$PWD:/project" -w /project ghcr.io/spomky-labs/phpqa:8.5 php tests/demo/saml-sp-model.php var/saml-sp/captured
+ * Model half of "castor saml-sp": SimpleSAMLphp's AuthnRequests received and validated (spec/saml.md section 6.8).
  */
 
 use Beffroi\Saml2\Bindings\PostReceiver;
@@ -35,7 +18,7 @@ use Psr\Clock\ClockInterface;
 require __DIR__ . '/../../vendor/autoload.php';
 
 /**
- * @throws RuntimeException when the file cannot be read
+ * @throws RuntimeException
  */
 function captured(string $directory, string $name): string
 {
@@ -100,20 +83,15 @@ try {
         );
     }
 } catch (Throwable $throwable) {
-    // the line is written for the task that reads it, then the exception ends the process: its status is what the
-    // task asserts on, as it does of the other programs of tests/demo/
     fwrite(\STDERR, sprintf("not accepted by the model: %s: %s\n", $throwable::class, $throwable->getMessage()));
 
     throw $throwable;
 }
 
 /**
- * The URL of the single sign-on service of the provider for the binding the request arrived over, the one it was
- * received at.
- *
  * @param list<Endpoint> $services
  *
- * @throws RuntimeException when the provider publishes none for that binding
+ * @throws RuntimeException
  */
 function single_sign_on_location(array $services, ReceivedAuthnRequest $request): string
 {

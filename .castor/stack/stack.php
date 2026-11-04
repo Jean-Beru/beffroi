@@ -2,11 +2,6 @@
 
 declare(strict_types=1);
 
-/*
- * The development stack: the OP on FrankenPHP, its database and broker, the optional KMS backends and the
- * conformance suite, up, down, logs and console. What the CI starts before the conformance plans.
- */
-
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsRawTokens;
 use Castor\Attribute\AsTask;
@@ -17,13 +12,6 @@ use function Castor\run;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
 
-/**
- * The KMS backends of the development stack, by the value "--kms" takes: the compose profile that runs
- * the backend, none for a local one, and the scheme of the DSN "castor provision" writes for it. The DSN
- * is the only difference between two of them (architecture §3.3): sodium and file are the same local
- * backend, the key inline in the environment or in a file of its own; vault and aws are a KMS on the
- * network, the master key never leaves it.
- */
 const KMS_BACKENDS = [
     'sodium' => [
         'profile' => null,
@@ -44,8 +32,7 @@ const KMS_BACKENDS = [
 ];
 
 /**
- * Where the key of the file backend lives in the containers: the volume kms_data of compose.yaml, outside
- * the web root and outside the sealed keys, mounted on the process that serves and on the one that rotates.
+ * The volume kms_data of compose.yaml, outside the web root and apart from the sealed keys.
  */
 const KMS_FILE_DIRECTORY = '/app/var/kms';
 
@@ -55,46 +42,31 @@ const KMS_FILE_DIRECTORY = '/app/var/kms';
 const COMPOSE_PROFILES = ['conformance', 'vault', 'aws', 'saml-sp', 'saml-idp'];
 
 /**
- * Where the op container publishes the root of the authority that signed the certificate it serves, in its
- * data directory (XDG_DATA_HOME of the FrankenPHP image): a copy of the mkcert root, or a link to the root
- * of the internal CA of Caddy (docker/op/entrypoint.sh).
+ * Published by docker/op/entrypoint.sh: a copy of the mkcert root, or a link to the root of Caddy's internal CA.
  */
 const CADDY_ROOT_CERTIFICATE = '/data/beffroi/root.crt';
 
 /**
- * Every name the stack serves over HTTPS, by the variable of compose.yaml that can rename it, or under no key
- * when nothing renames it, and the one list the certificate mkcert issues for the stack is drawn from
- * (stack_certificate()). A site the stack comes to serve is one line here: a name left out is served under the
- * internal CA of Caddy, which the walks, trusting the root of the certificate, refuse.
+ * Keyed by the compose.yaml variable that renames the name, if any; a name left out is not on the stack certificate.
  *
  * @var array<int|string, string>
  */
 const STACK_HOSTS = [
     'SERVER_NAME' => 'op.localhost',
     'MTLS_SERVER_NAME' => 'mtls.op.localhost',
-    // The service provider of the SAML judge (docker/saml-sp/saml-sp.Caddyfile), whose configuration names it.
     'saml-sp.localhost',
-    // The identity provider of the SAML judge (docker/saml-idp/saml-idp.Caddyfile), whose configuration names it.
     'saml-idp.localhost',
 ];
 
 /**
- * Where castor keeps the certificate mkcert issues for the stack, its key and a copy of the mkcert root
- * (the certificate, never its key), relative to the root of the repository: under var/, which git ignores,
- * and mounted read-only in the op container by compose.yaml.
+ * Relative to the root of the repository; compose.yaml mounts it read-only in the op container.
  */
 const STACK_CERTIFICATE_DIRECTORY = 'var/stack-certificate';
 
-/**
- * How long before it expires the certificate of the stack is issued again.
- */
 const STACK_CERTIFICATE_RENEWAL_DAYS = 30;
 
 /**
- * The sidecars that carry the loopback port 8443 of the suite into the network namespace of another
- * container (compose.yaml), by the container each one follows: the worker reaches the back-channel logout
- * URI the suite gives its clients, and the op container reads the sector identifier documents the modules
- * of the Dynamic plan serve (OIDC Registration §5).
+ * Keyed by the container whose network namespace the sidecar joins to carry port 8443 of the suite.
  *
  * @var array<string, string>
  */
@@ -125,12 +97,9 @@ function start(
     $environment = [];
     if ($conformance) {
         $command = [...$command, '--profile', 'conformance'];
-        // A plan of a hundred requests has no use for a hundred profiles, and the toolbar has no place in
-        // the pages the scripted browser of the suite reads.
+        // The scripted browser of the suite reads pages that must not carry the toolbar.
         $environment['APP_PROFILER'] = '0';
-        // What tells the entrypoints of the op container and of the worker that there is a certificate of
-        // the suite to trust (docker/conformance/trust-nginx.sh). It is said here and not found by looking
-        // the name up: the op container starts before the suite does, and would find nothing.
+        // Named, not looked up: the op container starts before the suite does and would find nothing to trust.
         $environment['CONFORMANCE_NGINX_HOST'] = 'conformance-nginx';
     }
     if ($backend['profile'] !== null) {
@@ -142,12 +111,10 @@ function start(
     $certificate = stack_certificate();
     if ($certificate !== null) {
         $environment['BEFFROI_STACK_CERTIFICATE'] = $certificate;
-        // Caddy reads the certificate when it starts: one issued again is a configuration compose sees
-        // change, so the op container is created again rather than left serving the one it read.
+        // Caddy reads the certificate when it starts: a new fingerprint makes compose recreate the op container.
         $environment['BEFFROI_STACK_CERTIFICATE_FINGERPRINT'] = stack_certificate_fingerprint($certificate);
     }
-    // The directories compose.yaml mounts into op and worker for the metadata of the SAML judges: made here by whoever
-    // runs the task, or Docker makes them as root and "castor saml-sp" or "castor saml-idp" cannot write a file into them.
+    // Created here, or Docker creates these mounted directories as root and the SAML tasks cannot write into them.
     foreach (['var/saml-sp/metadata', 'var/saml-idp/metadata'] as $directory) {
         if (! is_dir($directory) && ! mkdir($directory, 0o777, true) && ! is_dir($directory)) {
             io()->error(sprintf('Cannot create %s.', $directory));
@@ -163,10 +130,7 @@ function start(
     if ($provisioned) {
         run([...$command, ...$up], context: $context);
     } else {
-        // The worker refuses to boot without the KMS "castor provision" names (issue #773), so on a stack that
-        // task has not provisioned yet "up --wait" would wait for a container that cannot become healthy.
-        // Everything else is started and waited for; the worker is created with the environment above and
-        // left stopped, and "castor provision" starts it once the DSN is written (provision_start_worker()).
+        // The worker cannot boot before "castor provision" names its KMS: "up --wait" would wait on it forever.
         run([...$command, ...$up, ...compose_services_but_the_worker($command, $context)], context: $context);
         run([...$command, 'create', ...($build ? ['--build'] : []), 'worker'], context: $context);
     }
@@ -186,10 +150,6 @@ function start(
     );
 }
 
-/**
- * Whether apps/op/.env.local names the KMS of the stack, which "castor provision" writes there and the worker
- * cannot boot without (issue #773). That one line of the file is read, and nothing else of it.
- */
 function stack_names_a_kms(): bool
 {
     $path = getcwd() . '/' . DEV_ENV_LOCAL;
@@ -198,8 +158,7 @@ function stack_names_a_kms(): bool
 }
 
 /**
- * The services a "docker compose" command starts under its profiles, but the worker and the sidecar that
- * joins its network namespace.
+ * Also leaves out the sidecar that joins the network namespace of the worker.
  *
  * @param list<string> $compose "docker compose" and its profiles
  *
@@ -213,9 +172,6 @@ function compose_services_but_the_worker(array $compose, Context $context): arra
 }
 
 /**
- * The names of STACK_HOSTS, each one that has a variable renamed by it when the environment sets it, as
- * compose.yaml does.
- *
  * @return list<string>
  */
 function stack_hosts(): array
@@ -229,11 +185,6 @@ function stack_hosts(): array
     return $hosts;
 }
 
-/**
- * The directory of the mkcert CA of the machine, when it holds a root and its key, and null otherwise (no
- * mkcert, as on a CI runner, or a root without its key). Nothing of it is configured by hand, and nothing
- * here installs anything in a trust store.
- */
 function mkcert_caroot(): ?string
 {
     $mkcert = new ExecutableFinder()->find('mkcert');
@@ -253,13 +204,7 @@ function mkcert_caroot(): ?string
 }
 
 /**
- * The directory of the certificate the stack serves for every name of stack_hosts(), issued by mkcert on
- * this machine, or null when the machine has no mkcert CA and Caddy keeps its internal one, as on a CI
- * runner. The key of the mkcert root stays where mkcert keeps it: what the op container is given is the
- * certificate of the stack, its key and a copy of the root certificate, which is what the walks and the
- * conformance suite trust (docker/op/entrypoint.sh). The certificate is issued again when it is missing,
- * when it expires within STACK_CERTIFICATE_RENEWAL_DAYS, when the names it covers are not the names of the
- * stack, or when the root beside it is no longer the root of mkcert.
+ * The key of the mkcert root never leaves the directory mkcert keeps it in.
  */
 function stack_certificate(): ?string
 {
@@ -296,9 +241,6 @@ function stack_certificate(): ?string
     return $directory;
 }
 
-/**
- * The SHA-256 fingerprint of the certificate kept in this directory.
- */
 function stack_certificate_fingerprint(string $directory): string
 {
     $certificate = file_get_contents($directory . '/cert.pem');
@@ -312,9 +254,6 @@ function stack_certificate_fingerprint(string $directory): string
 }
 
 /**
- * Whether the certificate kept in this directory covers exactly these names, is valid for longer than
- * STACK_CERTIFICATE_RENEWAL_DAYS, and sits beside a copy of this root.
- *
  * @param list<string> $hosts
  */
 function stack_certificate_is_current(string $directory, array $hosts, string $root): bool
@@ -371,8 +310,6 @@ function compose_profiles(): array
 }
 
 /**
- * The services of the stack that are running, as compose names them.
- *
  * @return array<string>
  */
 function compose_running_services(): array
@@ -386,12 +323,7 @@ function compose_running_services(): array
 }
 
 /**
- * The root of the certificate the stack serves, copied out of the op container to a file of the host and
- * left there: the mkcert root when "castor start" found one, or an authority that exists only inside the
- * container, so curl and the PHP of the machine trust that file and nothing else (mtls.php, demo.php),
- * whichever of the two the stack was started with. Every walk of the laboratory asks for it here, so that
- * the path is written once and a stack that is not up is said in one wording instead of being an exit code
- * under a quiet process.
+ * Copies out of the op container the root of the certificate the stack serves: mkcert's or Caddy's internal one.
  */
 function caddy_ca(string $destination): string
 {
@@ -425,20 +357,9 @@ function caddy_ca(string $destination): string
 }
 
 /**
- * Brings the sidecars of the containers just restarted or started back up, and does nothing when the stack
- * runs without the suite (a run against a suite of its own has no sidecar to bring back). A sidecar that was
- * never started is brought up the same way: "castor start" leaves the one of the worker for "castor
- * provision", which starts the worker it follows.
+ * Recreated, never restarted, after the container it follows: a sidecar keeps the namespace it joined at creation.
  *
- * One is created again, never restarted, and always after the container it follows: it holds the
- * identifier of the container whose network namespace it joined, resolved once when Docker created it. A
- * container that restarts leaves that namespace behind, and one that is recreated takes the identifier
- * with it, so restarting the sidecar forwards nothing at best and fails outright at worst ("joining
- * network namespace of container: No such container"). Nothing says so either way, and the only things
- * that notice are the back-channel logout plan, five minutes later, on a logout token that never left,
- * and the two sector modules of the Dynamic plan, on a document that cannot be reached.
- *
- * @param list<string> $restarted the containers just restarted or started, whose network namespace is a new one
+ * @param list<string> $restarted
  */
 function compose_recreate_redirectors(array $restarted): void
 {
@@ -457,17 +378,7 @@ function compose_recreate_redirectors(array $restarted): void
 }
 
 /**
- * Restarts what reads the schema, after a migration that changes the type of a column.
- *
- * A migration that seals a column recreates it as BYTEA, and a process that booted before the mapping
- * changed still holds the type registry it built then: it reads that column with the type it had, which
- * throws on a column typed "string" and, on one typed "text", hands its caller the raw ciphertext as a
- * string with nothing at all to say so ([beffroi#430](https://github.com/beffroi-auth/beffroi/issues/430)). The
- * op container holds the kernel of the application for every request its FrankenPHP workers serve, the
- * worker container runs for an hour, and neither restarts on a write in the database.
- *
- * Whether the migration applied anything is not asked: a restart nothing needed costs a few seconds on a
- * development stack, and one that was needed and not done costs a green walk and an hour in the logs.
+ * The op and worker processes keep the type registry they booted with, and read a retyped column with its old type.
  */
 function compose_restart_after_migration(): void
 {
@@ -514,12 +425,7 @@ function console(#[AsRawTokens] array $args = []): void
 }
 
 /**
- * Whether these arguments run the migration command, under whatever abbreviation of its name was typed:
- * the console resolves "d:m:m" and "doctrine:mig:migrate" to the same command, so what is recognised here
- * is the command and not one spelling of it. A dry run changes no type and is not one of them.
- *
- * Every token is looked at rather than the first that is not an option, an option whose value is written
- * apart from its name making that value look like the command; no value of one abbreviates this command.
+ * Every token is scanned, not only the first non-option one, which may be the value of an option written apart.
  *
  * @param array<string> $args
  */
@@ -532,8 +438,7 @@ function console_runs_the_migrations(array $args): bool
 }
 
 /**
- * Whether a token names a command or abbreviates it, the way the console resolves one: as many parts as
- * the name has, each a non-empty prefix of the part at its place (Symfony\Component\Console\Application).
+ * Mirrors how Symfony\Component\Console\Application resolves an abbreviated command name.
  */
 function console_abbreviates(string $token, string $command): bool
 {
@@ -546,9 +451,6 @@ function console_abbreviates(string $token, string $command): bool
 }
 
 /**
- * Runs a console command of the application inside the op container, without a TTY when the input is
- * fed by the task (the password of the development user) or when the output is captured.
- *
  * @param array<string> $args
  */
 function op_console(array $args, ?Context $context = null): Process

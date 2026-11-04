@@ -36,12 +36,10 @@ $builder->withPaths([
 ]);
 $builder->withSkip([
     PreferPHPUnitThisCallRector::class,
-    // The demonstration and the lab of the application are no part of the product (apps/op/config/services.yaml).
+    // The demonstration and the lab of the application are no part of the product.
     __DIR__ . '/../apps/op/src/Demonstration/*',
     __DIR__ . '/../apps/op/src/Lab/*',
-    // The fixtures of the SAML packages are data, and their interoperability projects (tests/xml-security/Dsig/
-    // Fixture/real, tests/saml2-model/Interop, tests/saml2-bindings/Interop, tests/saml/Interop) are throwaway
-    // Composer projects or scripts run in their own containers against libraries that are not dependencies here.
+    // Fixtures are data; the interop projects run in their own containers against libraries not installed here.
     __DIR__ . '/../tests/xml-security/*/Fixture/*',
     __DIR__ . '/../tests/saml2-model/Fixture/*',
     __DIR__ . '/../tests/saml2-model/Interop/*',
@@ -50,31 +48,26 @@ $builder->withSkip([
     __DIR__ . '/../tests/saml/Interop/*',
     // The fixture of the bans of beffroi/saml is code written to be refused, one line per banned form.
     __DIR__ . '/../tests/saml/PhpStan/Fixture/*',
-    // The source guard tests of the SAML packages list the banned class names of their section 8 as tokens to search
-    // for, never to reference: turning 'Dom\XPath' into XPath::class is the very thing the ban catches.
+    // The source guards search banned class names as strings: turning 'Dom\XPath' into XPath::class trips the ban.
     StringClassNameToClassConstantRector::class => [
         __DIR__ . '/../tests/xml-security',
         __DIR__ . '/../tests/saml2-model',
     ],
-    // assertNotNull() narrows a nullable node for PHPStan already; the assertInstanceOf() this rule adds after it is
-    // one PHPStan then reports as always true.
+    // After assertNotNull(), the assertInstanceOf() this rule adds is one PHPStan reports as always true.
     AddInstanceofAssertForNullableArgumentRector::class => [
         __DIR__ . '/../tests/xml-security',
         __DIR__ . '/../tests/saml2-model',
         __DIR__ . '/../tests/saml2-bindings',
     ],
-    // openssl_sign() and openssl_verify() take a fifth parameter, the padding, on PHP 8.5 (spec/dsig.md section 13);
-    // Rector reads the PHP 8.4 signatures and would strip the argument the PSS schemes pass.
+    // Rector reads the PHP 8.4 signatures and would strip the padding that openssl_sign() and openssl_verify()
+    // take as a fifth argument on PHP 8.5.
     RemoveExtraParametersRector::class => [
         __DIR__ . '/../src/xml-security',
         __DIR__ . '/../tests/xml-security',
     ],
 ]);
 $builder->withParallel();
-// A hash per file, so a run re-reads only what changed. The directory is of the repository and not of
-// the system temporary one, which is where the CI keeps it from one run to the next (ci.yml) and which
-// a container of the QA image does not carry over. Rector drops the whole cache itself when the
-// snapshot of this configuration changes, so nothing here has to be invalidated by hand.
+// Not in the system temporary directory, which a QA image container does not carry over; the CI caches this one.
 $builder->withCache(__DIR__ . '/cache/rector');
 $builder->withImportNames();
 

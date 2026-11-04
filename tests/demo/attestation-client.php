@@ -3,21 +3,7 @@
 declare(strict_types=1);
 
 /*
- * The client side of "castor demo --attested" (.castor/lab/demo.php, demo_attested_check): a client whose
- * registration this provider authorises on nothing it issued, and everything on a statement an authority the
- * tenant pinned signed (RFC 7591 §2.3, the fourth mode of decision 0009).
- *
- * It is the mode that crosses the boundary of an organisation: an initial access token is a secret this
- * provider issues, counts and revokes for every team that integrates, where a statement is signed by whoever
- * distributes the software and read by whoever pinned that authority. Nothing of this provider is presented
- * here, and the only credential the client ends up with is the one the 201 hands it.
- *
- * The task is what runs under castor, which loads no code of the monorepo; this script runs under the
- * autoloader of the monorepo, for its HTTP client and for the one thing a task cannot do, sign. It plays one
- * pass: the statement that registers, then the four refusals, each one a rule and not an accident. The
- * browser and the token belong to the walk, which has both already.
- *
- * Reads one JSON object on stdin and writes one JSON object on stdout.
+ * The client of "castor demo --attested": a registration authorised by a software statement (RFC 7591 §2.3).
  */
 
 use Jose\Component\Core\AlgorithmManager;
@@ -31,12 +17,6 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 require __DIR__ . '/../../vendor/autoload.php';
 
-/**
- * An authority that attests a piece of software, as far as this demonstration is concerned: a store, a
- * publisher, the security team of a group. It signs statements about the software and never about a user,
- * which is what tells its key from the one of the trusted issuer of "castor demo --assertion"; the provider
- * holds its public half alone and reads no key a statement carries (RFC 8725 §3.10).
- */
 final readonly class AttestationAuthority
 {
     private const string ALGORITHM = 'ES256';
@@ -54,12 +34,9 @@ final readonly class AttestationAuthority
     }
 
     /**
-     * RFC 7591 §2.3: the claims of a statement are client metadata, plus what says whose it is and how long
-     * it is good for. This provider requires the last ones of every signed thing it takes back (decision
-     * 0006): one audience, its own identifier, an "exp" it bounds, an "iat" and an identifier of its own,
-     * which is what makes one statement register one client.
+     * RFC 7591 §2.3
      *
-     * @param array<string, mixed> $members what the authority says of the software and of the client
+     * @param array<string, mixed> $members
      *
      * @return array{0: string, 1: array<string, mixed>} the compact JWS and the claims it carries
      */
@@ -71,8 +48,7 @@ final readonly class AttestationAuthority
             'aud' => $audience,
             'iat' => $now,
             'exp' => $now + $lifetime,
-            // drawn, never counted: an identifier a replay guard remembers must not be one another party
-            // can produce
+            // Drawn, never counted: nobody else may produce an identifier the replay guard remembers.
             'jti' => rtrim(strtr(base64_encode(random_bytes(16)), '+/', '-_'), '='),
             ...$members,
         ];
@@ -91,9 +67,7 @@ final readonly class AttestationAuthority
 }
 
 /**
- * The client the statement is about. It writes the registration of RFC 7591 §3.1 like any other client, and
- * the one thing that tells it apart is what authorises it: the statement in the body, under the member
- * RFC 7591 §2 gives it, and no credential of this provider in any header.
+ * RFC 7591 §3.1
  */
 final readonly class AttestedClient
 {
@@ -110,7 +84,7 @@ final readonly class AttestedClient
     }
 
     /**
-     * @param array<string, mixed> $metadata what the client says of itself
+     * @param array<string, mixed> $metadata
      *
      * @return array{status: int, body: array<string, mixed>}
      */
@@ -178,9 +152,6 @@ function attestation_cli_object(array $input, string $name): array
     return is_array($value) ? attestation_cli_named($value) : throw new RuntimeException(sprintf('The input carries no "%s" object.', $name));
 }
 
-/**
- * The first key of a set held whole, private half included: what an authority signs with.
- */
 function attestation_cli_key(string $file): JWK
 {
     $set = json_decode((string) file_get_contents($file), true, 8, JSON_THROW_ON_ERROR);
@@ -199,8 +170,7 @@ $authority = new AttestationAuthority(
     attestation_cli_key(attestation_cli_text($input, 'jwks_file')),
     attestation_cli_text($input, 'authority'),
 );
-// An authority this tenant pinned for something else: it signs the assertions of "castor demo --assertion",
-// and a tenant that trusts it about a user has not pinned it about a piece of software (RFC 7591 §2.3).
+// The issuer of "castor demo --assertion": pinned by this tenant for users, never for software (RFC 7591 §2.3).
 $stranger = new AttestationAuthority(
     attestation_cli_key(attestation_cli_text($input, 'stranger_jwks_file')),
     attestation_cli_text($input, 'stranger_authority'),
@@ -209,9 +179,6 @@ $client = new AttestedClient(attestation_cli_text($input, 'cafile'), attestation
 $metadata = attestation_cli_object($input, 'metadata');
 $attested = attestation_cli_object($input, 'attested');
 
-// The one that registers, then the four refusals: the same statement again (one statement registers one
-// client), one signed by an authority this tenant did not pin for statements, one an authority signed for
-// somebody else, and a body carrying none at all, which is a request presenting nothing this mode acts on.
 [$statement, $claims] = $authority->sign($audience, $attested);
 $registered = $client->register($metadata, $statement);
 $replayed = $client->register($metadata, $statement);

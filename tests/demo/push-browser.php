@@ -3,30 +3,7 @@
 declare(strict_types=1);
 
 /*
- * The browser of "castor demo --push" (.castor/lab/demo.php, demo_push_check): what a browser is on the
- * two sides of a web push that nothing else of this repository is. It draws the key pair and the
- * authentication secret a subscription is made of (RFC 8291 §3.1), and it opens what the push service was
- * handed, which is the one thing a mock never does.
- *
- * Nothing here needs a real browser: subscribing draws a P-256 pair and sixteen octets, which PHP draws as
- * well, and the service worker that would show the notification reads three strings this program prints.
- * What it is not is a user agent: the walk carries its HTTP, holds its session on the provider and posts
- * the form of /account/notifications with what "draw" gave it.
- *
- * One JSON object on stdin, one on stdout, as tests/demo/dpop-client.php does, so that the private half
- * never reaches a command line:
- *
- *   {"action":"draw"}
- *     -> {"p256dh", "auth", "private_key"}          the two the form takes, and the half to keep
- *
- *   {"action":"open", "private_key", "auth", "p256dh", "body", "authorization", "endpoint",
- *    "application_server_key", "subject"}
- *     -> {"payload", "title", "body", "url", "vapid": {...}}
- *
- * "open" answers what the browser would have had: the payload decrypted (RFC 8291) and what the request
- * that carried it proved (RFC 8292 §4.2). A message it cannot open, or a signature that is not of the key
- * the provider published, is an error and an exit code of 1: the walk asserts on the answer, and there is
- * no answer to give.
+ * The browser of "castor demo --push": it draws a subscription (RFC 8291 §3.1) and opens the pushes it is sent.
  */
 
 use Jose\Component\Core\AlgorithmManager;
@@ -38,38 +15,36 @@ use Jose\Component\Signature\Serializer\CompactSerializer;
 require __DIR__ . '/../../vendor/autoload.php';
 
 /**
- * The half of a subscription a browser keeps (RFC 8291 §3.1): a P-256 key pair whose public half the
- * provider encrypts to, and an authentication secret that salts the derivation, so that holding the
- * public half is not enough to write to this browser.
+ * RFC 8291 §3.1
  */
 final readonly class LabBrowser
 {
     /**
-     * RFC 8291 §3.1: sixteen octets.
+     * RFC 8291 §3.1
      */
     private const int AUTH_SECRET_LENGTH = 16;
 
     /**
-     * RFC 8291 §3.3: the length of a P-256 coordinate, and of the salt in front of a body.
+     * RFC 8291 §3.3
      */
     private const int COORDINATE_LENGTH = 32;
 
     private const int SALT_LENGTH = 16;
 
     /**
-     * RFC 8188 §2.1: the record size, which this provider writes as one record and nothing reads back.
+     * RFC 8188 §2.1
      */
     private const int RECORD_SIZE_LENGTH = 4;
 
     /**
-     * The uncompressed point of SEC1 §2.3.3, which is the shape both keys of a subscription travel in.
+     * SEC1 §2.3.3
      */
     private const string UNCOMPRESSED_POINT = "\x04";
 
     private const int UNCOMPRESSED_POINT_LENGTH = 65;
 
     /**
-     * RFC 8291 §3.4: what the two derivations are labelled, the second one of RFC 8188 §2.2.
+     * RFC 8291 §3.4, RFC 8188 §2.2
      */
     private const string KEY_INFO = "WebPush: info\0";
 
@@ -84,20 +59,17 @@ final readonly class LabBrowser
     private const int TAG_LENGTH = 16;
 
     /**
-     * RFC 8188 §2: the delimiter of the last record, and the padding after it.
+     * RFC 8188 §2
      */
     private const string LAST_RECORD = "\x02";
 
     /**
-     * The DER of a P-256 public key, everything before the point: an EC key of prime256v1, as
-     * SubjectPublicKeyInfo. What OpenSSL reads, and a point alone is not.
+     * What precedes a P-256 point in a SubjectPublicKeyInfo: OpenSSL reads no point alone.
      */
     private const string SPKI_PREFIX = "\x30\x59\x30\x13\x06\x07\x2a\x86\x48\xce\x3d\x02\x01\x06\x08\x2a\x86\x48\xce\x3d\x03\x01\x07\x03\x42\x00";
 
     /**
-     * What a browser hands the page that subscribes it, and the half it keeps.
-     *
-     * @throws RuntimeException when this machine cannot draw a P-256 key
+     * @throws RuntimeException
      *
      * @return array{p256dh: string, auth: string, private_key: string}
      */
@@ -123,10 +95,9 @@ final readonly class LabBrowser
     }
 
     /**
-     * The payload as the service worker of this browser would read it (RFC 8291 §3.4, the body of
-     * RFC 8188 §2): the salt, the record size, the ephemeral public key of the sender and one record.
+     * RFC 8291 §3.4, RFC 8188 §2
      *
-     * @throws RuntimeException when what arrived is not a message for this browser
+     * @throws RuntimeException
      */
     public static function open(string $body, string $privateKey, string $authSecret, string $publicKey): string
     {
@@ -183,11 +154,9 @@ final readonly class LabBrowser
     }
 
     /**
-     * What the request that carried the message proved (RFC 8292 §4.2): a token signed by the application
-     * server key the page of the provider handed this browser, addressed to the origin of this
-     * subscription, and naming somebody a push service could reach.
+     * RFC 8292 §4.2
      *
-     * @throws RuntimeException when the header proves nothing, or proves it of another key
+     * @throws RuntimeException
      *
      * @return array{key_matches: bool, aud: string, expected_aud: string, sub: string, exp: int, algorithm: string}
      */
@@ -216,8 +185,6 @@ final readonly class LabBrowser
         );
 
         return [
-            // RFC 8292 §3.2: a push service takes a request for this subscription only from the key the
-            // browser subscribed under, so this is the whole of what binds the two
             'key_matches' => hash_equals($applicationServerKey, $key),
             'aud' => is_string($claims['aud'] ?? null) ? $claims['aud'] : '',
             'expected_aud' => $origin,
@@ -227,9 +194,6 @@ final readonly class LabBrowser
         ];
     }
 
-    /**
-     * A JWK of the uncompressed point the header names, which is what verifies the signature over it.
-     */
     private static function jwkOf(string $point): JWK
     {
         $decoded = self::base64UrlDecode($point);
@@ -245,9 +209,6 @@ final readonly class LabBrowser
         ]);
     }
 
-    /**
-     * A point as OpenSSL takes a public key: the DER of an EC key of prime256v1, PEM armoured.
-     */
     private static function publicKeyOf(string $point): string
     {
         return sprintf(
@@ -256,17 +217,11 @@ final readonly class LabBrowser
         );
     }
 
-    /**
-     * A coordinate OpenSSL hands back without its leading zeroes is still thirty-two octets on the wire.
-     */
     private static function coordinate(string $value): string
     {
         return str_pad($value, self::COORDINATE_LENGTH, "\0", \STR_PAD_LEFT);
     }
 
-    /**
-     * What OpenSSL says went wrong, when it says anything.
-     */
     private static function opensslError(): string
     {
         $reason = openssl_error_string();
@@ -298,8 +253,6 @@ function push_browser_input(): array
 }
 
 /**
- * One value of the input, which every action of this program needs given and non-empty.
- *
  * @param array<mixed> $input
  *
  * @throws RuntimeException
@@ -344,8 +297,6 @@ try {
     };
     fwrite(\STDOUT, json_encode($answer, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES) . "\n");
 } catch (JsonException|RuntimeException $exception) {
-    // the reason is written for whoever reads these lines, then the exception ends the process: its code is
-    // what the walk asserts on, as it does of the other programs of tests/demo/
     fwrite(\STDERR, $exception->getMessage() . "\n");
 
     throw $exception;

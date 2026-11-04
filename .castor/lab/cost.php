@@ -2,17 +2,6 @@
 
 declare(strict_types=1);
 
-/*
- * The third success criterion of spike 8 (issue #399): what a login costs on the development stack, and how
- * many times the KMS was asked for something while it was being served. The baseline is taken before the
- * first column is encrypted and the same run is taken again after the last one, by hand, twice, on one
- * machine, and read against the threshold decision 0018 fixes on the first day of the spike.
- *
- * Two numbers per run and no more: the p95 of the whole journey, and the count of what the KMS was asked.
- * The count is read in the log of the KMS itself and never in ours, because what our own code reports of
- * its own calls is what our own code decides to report, and the criterion is about what left the process.
- */
-
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
 use function Castor\context;
@@ -21,68 +10,32 @@ use function Castor\io;
 use function Castor\load_dot_env;
 use function Castor\run;
 
-/**
- * Where the internal CA of Caddy is copied for the PHP of the host, as the walks of the laboratory copy it
- * for themselves: the OP serves a certificate of an authority that exists only inside the stack.
- */
 const COST_CA_FILE = 'var/caddy-root.crt';
 
-/**
- * How many complete logins a run plays by default. The p95 is the smallest journey that ninety-five percent
- * of them are at or under, so fifty samples name the 48th: many fewer and the p95 is the slowest journey
- * under another name, many more and a measurement taken by hand stops being taken twice.
- */
 const COST_JOURNEYS = 50;
 
 /**
- * The fewest journeys a run accepts, below which what it printed would not be a p95 of anything.
+ * Below twenty samples, the p95 by nearest rank is the slowest journey.
  */
 const COST_JOURNEYS_MINIMUM = 20;
 
-/**
- * How many journeys are played and thrown away before the ones that count. What they take out of the figure
- * is the first journeys of a cold process, which are not what a stack that is serving costs: production is
- * warm, and the ceiling of decision 0018 is written in the server time of a stack that serves. What they do
- * not do, measured rather than assumed, is narrow the dispersion between two runs: that dispersion is the
- * machine's, it is of the same order as the threshold, and the journal of the spike states it.
- */
 const COST_WARM_UP = 5;
 
 /**
- * What decision 0018 allows the p95 of the journey to grow by over the baseline taken before the first
- * column was encrypted: twenty percent, which on a journey dominated by an argon2id verification at PHP's
- * defaults is of the order of a few tens of milliseconds, an order of magnitude above what an AES-256-GCM
- * on a key already in memory asks for.
+ * What decision 0018 allows the p95 of the journey to grow by over its baseline.
  */
 const COST_MARGIN = 1.20;
 
 /**
- * The absolute ceiling of decision 0018, in seconds: no request of the journey above 800 ms at the p95, the
- * "good" line of the TTFB metric of the Core Web Vitals (web.dev, "Time to First Byte (TTFB)", read on
- * 2026-09-30). It does not decide the spike; it is the line under which the relative threshold is read, so
- * that a baseline which is already slow does not make +20 % acceptable.
+ * The ceiling of decision 0018 on the p95 of every request, in seconds.
  */
 const COST_CEILING = 0.800;
 
 /**
- * The requests of the step of the address, which a tenant that federates an e-mail domain to an upstream identity
- * provider asks for before the login page (beffroi/saml S-61), as the development tenant does since issue #788: the
- * address posted, and the usual login page opened again. They are measured apart and left out of the sum of the
- * journey, whose p95 stays the one of the eight requests the baselines of decision 0018 were taken on; each of them is
- * still held to the ceiling, as every request is.
+ * Left out of the sum of the journey, so that its p95 stays comparable to the baselines of decision 0018.
  */
 const COST_ADDRESS_STEPS = ['address', 'login page after the address'];
 
-/**
- * The KMS the count is read from, which is the value "--kms" takes for it, the compose profile that runs it
- * and the name of its service, all three being the same word (KMS_BACKENDS, compose.yaml).
- *
- * Vault is the KMS of the spike, and its audit device is the one log of the stack that says what the OP
- * asked for without the OP being asked. A local backend has none: the master key lives in the process, so
- * there is nothing on a network to log and no count to read. LocalStack writes an access log of its own,
- * one line per call it serves, which nothing of this repository reads yet; what would read it goes beside
- * cost_kms_calls(), the day a run is taken on the aws backend.
- */
 const COST_KMS = 'vault';
 
 #[AsTask(
@@ -117,8 +70,6 @@ function login_cost(
         }
     }
 
-    // Before a single journey is played: fifty logins take a minute, and a stack whose master key lives in
-    // the process cannot answer half of what is being measured whatever they cost.
     $backend = kms_backend_of((string) ($env['BEFFROI_KMS_DSN'] ?? ''));
     if ($backend === null) {
         io()->error(sprintf('%s names no KMS: run "castor provision --kms %s" first.', DEV_ENV_LOCAL, COST_KMS));
@@ -182,10 +133,7 @@ function login_cost(
     for ($journey = 0; $journey < COST_WARM_UP; ++$journey) {
         cost_journey($issuer, $env['BEFFROI_DEV_USER_PASSWORD'], $env['OIDC_DEMO_SECRET'], $ca);
     }
-    // The window the count is read over, as an instant and not as a duration: a duration is resolved
-    // against the moment the log is read, which is after the last journey, and would reach back before the
-    // first one. What the stack asked of the KMS a second before the run is not what the run cost, and the
-    // warm-up above is not part of the run either.
+    // Taken after the warm-up, whose calls to the KMS are not part of the run.
     $since = cost_now();
     /** @var array<string, list<float>> $steps */
     $steps = [];
@@ -269,14 +217,7 @@ function login_cost(
 }
 
 /**
- * One complete login, end to end, with a cookie jar of its own, and the seconds each of its requests took.
- *
- * This is the journey every walk of demo.php drives through demo_login() and demo_resume(), played against
- * the OP alone. It asserts the same steps and narrates none of them, fifty journeys having no use for four
- * hundred ✓ lines, and it shares the one part worth sharing, demo_request(), so that a change of cookie or
- * of redirect handling is made in one place.
- *
- * @return array<string, float> the seconds of each request, in the order they were played
+ * @return array<string, float> the seconds of each step, in the order they were played
  */
 function cost_journey(string $issuer, string $password, string $secret, string $ca): array
 {
@@ -292,9 +233,6 @@ function cost_journey(string $issuer, string $password, string $secret, string $
     );
 
     [$status, , $page] = cost_request($steps, $cookies, 'login page', $ca, 'GET', $location);
-    // A tenant that federates an e-mail domain to an upstream identity provider, as the development tenant does
-    // (beffroi.saml.identity_providers), asks for the address first (beffroi/saml S-61): the username, of no domain, is
-    // sent on to the usual page, two requests more of the journey of every login of such a tenant.
     if (str_contains($page, 'data-step="address"')) {
         cost_expect(
             preg_match('/data-step="address".*?name="_token" value="([^"]+)"/s', $page, $token) === 1
@@ -308,8 +246,7 @@ function cost_journey(string $issuer, string $password, string $secret, string $
         cost_expect(in_array($status, [302, 303], true), sprintf('the address was not taken (got %d)', $status));
         [$status, , $page] = cost_request($steps, $cookies, 'login page after the address', $ca, 'GET', $location);
     }
-    // The form of the password, named by its field: the layout of the page puts the forms of the locale and of the
-    // theme before it, each with a token of its own (demo_form_with()).
+    // Picked by its field: the forms of the locale and of the theme come first, each with a token of its own.
     cost_expect(
         $status === 200
         && preg_match('/<form\b(?:(?!<\/form>).)*?name="_username"(?:(?!<\/form>).)*<\/form>/s', $page, $form) === 1
@@ -325,9 +262,6 @@ function cost_journey(string $issuer, string $password, string $secret, string $
     ]);
     cost_expect($status === 302, sprintf('the form was not accepted (got %d)', $status));
 
-    // A sign-in that was refused comes back to the form, which says so, and one that was taken resumes into
-    // the consent this request asked for: the two are the same redirection, so a password the provider does
-    // not take is named here rather than three requests later (demo_resume, LoginController).
     [$status, $location] = cost_request($steps, $cookies, 'resume', $ca, 'GET', $location);
     cost_expect(
         $status === 302 && str_starts_with($location, $issuer . '/consent?'),
@@ -340,7 +274,6 @@ function cost_journey(string $issuer, string $password, string $secret, string $
     );
 
     [$status, , $page] = cost_request($steps, $cookies, 'consent page', $ca, 'GET', $location);
-    // the form of the answer, named by its field, after the forms of the layout as on the login page
     cost_expect(
         $status === 200
         && preg_match('/<form\b(?:(?!<\/form>).)*?name="answer"(?:(?!<\/form>).)*<\/form>/s', $page, $form) === 1
@@ -380,10 +313,7 @@ function cost_journey(string $issuer, string $password, string $secret, string $
 }
 
 /**
- * The authorization request of the run: the parameters `oidc_login` sends, PKCE included (decision 0006),
- * and a consent asked for rather than hoped for. A consent already in force answers the request without
- * showing a page (OIDC Core §3.1.2.4), and the second journey of a run would then be a shorter journey than
- * the first; what is measured is the whole of a login, so every journey pays for the page.
+ * Asks for consent: one already in force skips the page, and every journey must pay for it.
  */
 function cost_authorization(string $issuer, string $verifier, string $redirectUri): string
 {
@@ -403,9 +333,7 @@ function cost_authorization(string $issuer, string $verifier, string $redirectUr
 }
 
 /**
- * The code spent by the client it was issued to, with the verifier of its challenge (RFC 6749 §4.1.3,
- * RFC 7636 §4.5). What the endpoint answered comes back whatever its status: the journey reads it, in the
- * one place where every other step of it is read too.
+ * RFC 6749 §4.1.3, RFC 7636 §4.5
  *
  * @return array<string, mixed>
  */
@@ -427,9 +355,6 @@ function cost_token(string $issuer, string $ca, string $secret, string $code, st
 }
 
 /**
- * One request of the browser, timed, its seconds kept under the name of its step. The cookie jar crosses
- * every step of one journey and no other, which is what makes each journey a login.
- *
  * @param array<string, float> $steps
  * @param array<string, array<string, string>> $cookies
  * @param array<string, string> $form
@@ -445,14 +370,9 @@ function cost_request(array &$steps, array &$cookies, string $step, string $ca, 
 }
 
 /**
- * What of the stack is instrumented, each read where it is true and not in a file.
+ * Asks for the JWK Set: the profiler configuration excludes the well-known paths from collection.
  *
- * The profiler marks a response it collected with an X-Debug-Token, and the JWK Set is what is asked
- * because the well-known paths are the ones its configuration excludes from collection. The kernel in
- * debug is what wires the decorators the provider puts on the encrypter and on the store (beffroi#427), which
- * record every opening whether a profile is kept or not, and the application answers for it itself.
- *
- * @return list<string> what is instrumented, empty when nothing is
+ * @return list<string>
  */
 function cost_instrumented(string $issuer): array
 {
@@ -475,10 +395,6 @@ function cost_instrumented(string $issuer): array
 }
 
 /**
- * One request the client makes of the provider server to server, timed the same way: it carries no cookie,
- * a token endpoint and a UserInfo endpoint being reached by whoever holds the credential and never by a
- * session.
- *
  * @template T
  * @param array<string, float> $steps
  * @param callable(): T $request
@@ -493,18 +409,11 @@ function cost_step(array &$steps, string $step, callable $request): mixed
     return $answer;
 }
 
-/**
- * Now, as the log of a container dates its lines: RFC 3339 in UTC with its microseconds, which is what
- * "docker compose logs --since" reads and what makes the window of a run an instant rather than a duration.
- */
 function cost_now(): string
 {
     return new DateTimeImmutable('now', new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.u\Z');
 }
 
-/**
- * The seconds since a reading of the monotonic clock, which is the one clock a duration may be taken on.
- */
 function cost_seconds(float|int $started): float
 {
     return (hrtime(true) - $started) / 1_000_000_000;
@@ -516,8 +425,7 @@ function cost_milliseconds(float $seconds): int
 }
 
 /**
- * By how much a p95 grew over a baseline, in percent, which is the figure the threshold of decision 0018 is
- * a ceiling on.
+ * The growth of a p95 over its baseline, in percent.
  */
 function cost_growth(float $p95, float $baseline): int
 {
@@ -525,8 +433,7 @@ function cost_growth(float $p95, float $baseline): int
 }
 
 /**
- * A step of the journey that did not answer what a login answers stops the run: a p95 taken off journeys
- * that are not logins is worse than no figure at all, and it would be written in a journal.
+ * Stops the run: a p95 taken off journeys that are not logins is worse than no figure.
  */
 function cost_expect(bool $condition, string $what): void
 {
@@ -539,8 +446,6 @@ function cost_expect(bool $condition, string $what): void
 }
 
 /**
- * The seconds each journey took, which is the sum of its requests: what the p95 of the run is read off.
- *
  * @param array<string, list<float>> $steps
  * @return list<float>
  */
@@ -557,9 +462,7 @@ function cost_journey_times(array $steps): array
 }
 
 /**
- * The p95 by nearest rank: the smallest sample that ninety-five percent of them are at or under, which is
- * what a latency budget means by a p95 and what two runs of the same task can be compared on. Nothing is
- * interpolated, an interpolated p95 being a figure no journey took.
+ * By nearest rank, never interpolated: the p95 is a figure a journey took.
  *
  * @param list<float> $samples
  */
@@ -575,11 +478,8 @@ function cost_p95(array $samples): float
 }
 
 /**
- * The request of the journey whose own p95 is the highest, and that p95: the ceiling of decision 0018 is
- * read per request and not on the journey, so what it is read against is the worst request of it.
- *
  * @param array<string, list<float>> $steps
- * @return array{0: string, 1: float}
+ * @return array{0: string, 1: float} the step and its own p95
  */
 function cost_slowest_request(array $steps): array
 {
@@ -595,14 +495,8 @@ function cost_slowest_request(array $steps): array
 }
 
 /**
- * What the OP asked the KMS since the instant the journeys started, counted in the audit device of Vault.
- *
- * An entry is counted when it is the request half of the pair, a response entry being the same call
- * answered; when its path is one of the Transit engine, which is the whole of what the OP can reach there
- * (the data key it mints, the one it unwraps, and the configuration of the master key it reads once per
- * process: symfony/hashicorp-vault-key-management, TransitKms); and when the token that made it is the one
- * of the OP rather than the root token, which the healthcheck of compose.yaml and docker/vault/init.sh
- * hold. The policy of a token is what tells the two apart (docker/vault/beffroi-op.hcl).
+ * Only the calls of the token of the OP: the healthcheck of compose.yaml and docker/vault/init.sh use the
+ * root token.
  */
 function cost_kms_calls(string $since): int
 {
@@ -637,10 +531,6 @@ function cost_kms_calls(string $since): int
     return $asked;
 }
 
-/**
- * Which log the count was read in, said in the result so that a figure written in a journal names its
- * source.
- */
 function cost_kms_log(): string
 {
     return sprintf(
@@ -650,10 +540,6 @@ function cost_kms_log(): string
     );
 }
 
-/**
- * The commit the stack serves, which the journal row of a measurement names: a figure without one cannot be
- * taken again.
- */
 function cost_commit(): string
 {
     $commit = run(['git', 'rev-parse', '--short', 'HEAD'], context: context()->withQuiet()->withAllowFailure());

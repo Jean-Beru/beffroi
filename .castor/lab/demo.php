@@ -2,15 +2,6 @@
 
 declare(strict_types=1);
 
-/*
- * oidc-demo (Symfony oidc_login) against the stack: the experiments of the spikes, one request at a time from
- * the command line, so that every step is looked at (--check, --rotate, --passkey, --form-post,
- * --logout-others, --resource-server, --api, --dpop, --forge, --device, --service, --ciba, --assertion,
- * --rar, --native, --push). The last five need no oidc-demo: their clients are the CLIs of tests/demo/ and the walk
- * itself, because what they play has no browser of the demonstration in it, or asks for something oidc_login
- * does not send.
- */
-
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
 use Castor\Context;
@@ -22,38 +13,18 @@ use function Castor\run;
 use Symfony\Component\Process\InputStream;
 use Symfony\Component\Process\Process;
 
-/**
- * oidc-demo, the reference client of the core (Symfony's oidc_login): where it is checked out, next to this
- * repository or next to the repository this one is nested in, where its server listens, and the client the
- * application registers for it (apps/op/config/packages/dev/beffroi.yaml).
- */
 const DEMO_DIRS = ['../oidc-demo', '../../oidc-demo'];
 
 const DEMO_URL = 'https://localhost:8002';
 
 const DEMO_CLIENT_ID = 'oidc-demo';
 
-/**
- * The second instance of oidc-demo, the one --logout-others logs out by back-channel from the first: the
- * same checkout, another client, another port, and a host of its own, because a cookie is not told apart
- * by port and the two instances would otherwise share a session. Plain HTTP on a loopback name: the worker
- * that carries it a logout token trusts no certificate of the Symfony CLI, and a client registers a
- * loopback URI or an HTTPS one (decision 0006).
- */
+/** A host of its own, as a cookie ignores the port; plain HTTP, as the worker trusts no Symfony CLI certificate. */
 const DEMO_SECOND_URL = 'http://demo.localhost:8003';
 
 const DEMO_SECOND_CLIENT_ID = 'oidc-demo-second';
 
-/**
- * The secrets of the clients this tenant declares in its configuration that the demonstration holds
- * besides its own: the one with opaque access tokens, and the one of the rich authorization request. Its
- * API describes a token any of them handed out (RFC 7662 §2.2), which is what it needs their secrets
- * for, and "castor provision" generated them.
- *
- * A client the forge builds is none of these: it registers itself, and the keys it signs with or receives
- * an encrypted document with are drawn when it is built and published to the provider in its
- * registration, so nothing of it is provisioned and nothing of it is written here.
- */
+/** The secrets of the other declared clients, with which the API of the demo introspects their tokens. */
 const DEMO_FORGE_SECRETS = [
     'OIDC_DEMO_OPAQUE_SECRET' => 'DEMO_OPAQUE_SECRET',
     'DEMO_RAR_SECRET' => 'DEMO_RAR_SECRET',
@@ -182,22 +153,14 @@ function demo(
         'OIDC_PROVIDER_URI' => $env['BEFFROI_ISSUER'],
         'OIDC_CLIENT_ID' => DEMO_CLIENT_ID,
         'OIDC_CLIENT_SECRET' => $env['OIDC_DEMO_SECRET'],
-        // the declared clients beside this one keep secrets of their own, which the walks above never
-        // swap (demo_forge_values)
         ...demo_forge_values($env),
     ];
-    // RFC 7591 §1.2: the credential the registration endpoint asks for in the mode the forge plays, issued
-    // here and not in the walk below, because the server has to be started with it: the Symfony CLI hands
-    // the names of this file to the PHP it runs, and a name written after it started is a name that server
-    // does not have (demo_context).
+    // Issued before the server starts: the Symfony CLI hands its PHP only the names .env.local held then.
     if ($forge) {
         $fixture['FORGE_INITIAL_ACCESS_TOKEN'] = demo_initial_access_token(DEMO_FORGE_TOKEN_NAME, count(DEMO_FORGE_PRESETS) + 1);
     }
-    // .env.local only: the .env of the demo, which its repository holds, is not touched
     demo_write_env_local($dir . '/.env.local', $fixture);
-    // The OP serves a certificate of Caddy's internal CA, which the PHP of the host does not know unless
-    // the CA was installed on the machine: the demo runs with a php.ini of its own that trusts it, which
-    // the Symfony CLI reads from the root of the project.
+    // The Symfony CLI reads a php.ini at the root of the project: through it the demo trusts the CA of Caddy.
     $ca = caddy_ca($dir . '/var/caddy-root.crt');
     file_put_contents($dir . '/php.ini', sprintf(
         "; written by \"castor demo\" of the OP: trust the CA of Caddy for https://op.localhost\nopenssl.cafile=%s\ncurl.cainfo=%s\n",
@@ -367,18 +330,7 @@ function demo(
 }
 
 /**
- * The context the commands of the demonstration run in: its directory, and not one of the names its
- * .env.local carries, the file this walk writes its secrets into.
- *
- * This walk reads the dotenv of the provider to hand the demonstration its secrets, and reading it puts
- * every value in the environment of this process, from where every child inherits it as a real
- * environment variable. A real environment variable wins over a dotenv file, and a server started as a
- * daemon keeps the environment it was started with for as long as it lives. Two names are the same on
- * both sides, DEMO_RAR_SECRET being one, so a server older than the "castor provision" that regenerated
- * it authenticated that client with the secret of the provisioning before it, and the provider answered
- * "401 invalid_client" to a client that had asked for nothing wrong (issue #491). What that file says is what the server serves, and it is read again at every request:
- * the walks already count on that, demo_form_post_check writing a response mode and playing it without
- * starting anything again.
+ * Takes the names of the demo's .env.local out of the inherited environment, where they would win over the file.
  */
 function demo_context(string $dir): Context
 {
@@ -387,8 +339,7 @@ function demo_context(string $dir): Context
     if (is_file($path)) {
         preg_match_all('/^([A-Z][A-Z0-9_]*)=/m', (string) file_get_contents($path), $names);
         foreach ($names[1] as $name) {
-            // "false" takes the name out of the environment of the child, where "null" would hand it the
-            // empty string, which is a value and wins over the file just the same
+            // False unsets the name in the child; null would pass the empty string, which wins over the file too.
             $written[$name] = false;
         }
     }
@@ -397,18 +348,11 @@ function demo_context(string $dir): Context
 }
 
 /**
- * The server of the demonstration, listening and serving the fixture this walk has just written.
- *
- * A server that is up already is compared with that fixture before anything is played against it, and
- * the run stops on a name it holds another value for: the walk that hands the demonstration its secrets
- * is the walk that must know the server has them, and a red read at the token endpoint of the provider
- * would be a red that is not the provider's (issue #491).
- *
- * @param array<string, string> $fixture what demo_write_env_local has just written
+ * @param array<string, string> $fixture
  */
 function demo_server(Context $server, array $fixture): void
 {
-    // the discovery document of the previous issuer may still be cached
+    // The discovery document of a previous issuer may still be cached.
     run(['php', 'bin/console', 'cache:clear'], context: $server->withQuiet());
     $status = run(['symfony', 'server:status', '--no-ansi'], context: $server->withAllowFailure()->withQuiet())->getOutput();
     if (! str_contains($status, 'Listening on')) {
@@ -419,9 +363,6 @@ function demo_server(Context $server, array $fixture): void
 
     $stale = demo_server_stale_values($status, $fixture);
     if ($stale === null) {
-        // nothing here says what a running process was started with, so there is nothing to compare: the
-        // server is started again rather than played against on trust, which is the other way to answer
-        // the same question
         io()->note('What the server of oidc-demo was started with cannot be read here, so it is started again.');
         run(['symfony', 'server:stop'], context: $server->withQuiet()->withAllowFailure());
         demo_server_start($server);
@@ -442,19 +383,12 @@ function demo_server(Context $server, array $fixture): void
     io()->note('The server of oidc-demo runs already; "castor demo --stop" stops it.');
 }
 
-/**
- * Starts the server of the demonstration as a daemon, on the port of DEMO_URL.
- */
 function demo_server_start(Context $server): void
 {
     run(['symfony', 'server:start', '--port=' . parse_url(DEMO_URL, \PHP_URL_PORT), '--daemon'], context: $server);
 }
 
 /**
- * The names of the fixture the running server of the demonstration holds another value for, read from the
- * environment of the processes "symfony server:status" names, or null where the environment of a running
- * process cannot be read, nothing of the fixture being then comparable with anything.
- *
  * @param array<string, string> $fixture
  *
  * @return list<string>|null
@@ -484,12 +418,7 @@ function demo_server_stale_values(string $status, array $fixture): ?array
 }
 
 /**
- * What the declared clients of this tenant need of the OP beside the one the demonstration signs in as,
- * read where "castor provision" left it: the secret of each. A secret that is not there yet is left out
- * rather than written empty, so that a demonstration configured before the provisioning says which client
- * is missing instead of failing to boot.
- *
- * @param array<string, string> $env apps/op/.env of the monorepo, .env.local merged over it
+ * @param array<string, string> $env
  *
  * @return array<string, string>
  */
@@ -506,8 +435,6 @@ function demo_forge_values(array $env): array
 }
 
 /**
- * Sets or replaces the given variables in a dotenv file and keeps every other line.
- *
  * @param array<string, string> $values
  */
 function demo_write_env_local(string $path, array $values): void
@@ -529,13 +456,6 @@ function demo_write_env_local(string $path, array $values): void
     file_put_contents($path, implode("\n", array_filter($lines, static fn (string $line): bool => $line !== '')) . "\n");
 }
 
-/**
- * The success criterion of spike 1, second half, from the command line: what a browser does from
- * /profile of the demo to the login page of the OP, the callback, /profile again and the logout, one
- * request at a time (no redirect followed), so that every step is looked at: PKCE S256 in the
- * authorization request, "iss" on the callback (RFC 9207), an "at+jwt" access token and an ID token with
- * the nonce on the page, the RP-Initiated Logout round trip, and no session left at the OP afterwards.
- */
 function demo_check(string $issuer, string $password, string $ca): void
 {
     io()->section('Sign in, /profile, logout');
@@ -551,7 +471,6 @@ function demo_check(string $issuer, string $password, string $ca): void
     $verified[] = ['ID token', sprintf('nonce, auth_time, acr=%s, amr=%s, at_hash, sid', $idToken['acr'] ?? '?', json_encode($idToken['amr'] ?? null))];
     $verified[] = ['Access token', sprintf('typ=at+jwt, scope="%s", jti %s', $accessToken['scope'] ?? '?', $accessToken['jti'] ?? '?')];
 
-    // RP-Initiated Logout: the demo ends its session and the one of the OP, which sends the browser back
     demo_logout($cookies, $issuer, $ca);
     [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/profile');
     demo_expect($status === 302 && str_starts_with($location, $issuer . '/authorize?'), '/profile asks for a new login');
@@ -567,41 +486,12 @@ function demo_check(string $issuer, string $password, string $ca): void
     io()->success('oidc-demo signed in, opened /profile and logged out against the OP, without a patch.');
 }
 
-/**
- * The browser with a software authenticator of the passkey check: the enrolment and the assertion, driven
- * over HTTP against the OP by the SoftwareAuthenticator of the functional tests, under the autoloader of
- * the monorepo, which castor does not load.
- */
 const DEMO_PASSKEY_BROWSER = 'tests/demo/passkey-browser.php';
 
-/**
- * The class /vault of the demo requires (OpenID Connect EAP ACR Values 1.0), the one of the default policy
- * of the tenant a passkey proves (decision 0010 of the design repository).
- */
 const DEMO_PASSKEY_CLASS = 'phr';
 
-/**
- * What the walk calls the key it enrols, before the instant it appends to tell two runs apart. A person
- * typed that name, so the column holding it is sealed, and "castor dump-search" looks for this prefix in a
- * dump of the database: read there rather than typed again, so that renaming it here renames what is
- * searched for.
- */
 const DEMO_PASSKEY_NAME_PREFIX = 'castor demo --passkey ';
 
-/**
- * The third success criterion of spike 3 (issue #93): oidc-demo, on Symfony's oidc_login without a patch,
- * requires a phishing-resistant login on /vault and gets one. From the command line, one request at a
- * time as demo_check: a password sign-in through the demo and /profile open, whose ID token says acr "1";
- * /vault, which access_control protects with REQUIRES_PHR, an attribute of the demonstration, sends the browser back to
- * the authorization endpoint with acr_values=phr, prompt=login and the previous ID token as id_token_hint
- * (the re-authentication entry point of oidc_login); the OP asks for a login, where the browser of
- * DEMO_PASSKEY_BROWSER enrols a passkey on the account of its session and signs the assertion; the OP
- * records the proof on the same session, resumes the interaction and sends the browser to the callback
- * with a code; the demo verifies the new ID token (acr=phr, "hwk" in amr, the same sid, a later auth_time)
- * and opens /vault, which prints what oidc_login recorded on the security token. Then the RP-Initiated
- * Logout round trip, across the step-up: one session, one sid. The passkey is revoked at the end, so that
- * the user is left as found.
- */
 function demo_passkey_check(string $issuer, string $password, string $ca): void
 {
     io()->section('Sign in with a password, /vault asks for a passkey, logout');
@@ -627,7 +517,6 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
         ),
     ];
 
-    // /vault: the demo denies REQUIRES_PHR and starts the re-authentication from its access denied handler
     [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/vault');
     demo_expect(
         $status === 302 && str_starts_with($location, $issuer . '/authorize?'),
@@ -648,7 +537,6 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
     );
     $verified[] = ['/vault', sprintf('302 to the OP with acr_values=%s, prompt=login, id_token_hint', DEMO_PASSKEY_CLASS)];
 
-    // the OP holds the session of the password login and asks for a login anyway (prompt=login)
     [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
     demo_expect(
         $status === 302 && str_starts_with($location, $issuer . '/login?interaction='),
@@ -656,8 +544,6 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
     );
     parse_str((string) parse_url($location, \PHP_URL_QUERY), $login);
 
-    // the browser with the software authenticator: a passkey enrolled, the assertion signed and posted, under a
-    // name of this run alone, by which the passkey is found again to be revoked
     io()->text(' <comment>tests/demo/passkey-browser.php</comment>');
     $passkeyName = DEMO_PASSKEY_NAME_PREFIX . date('Y-m-d H:i:s');
     $browser = run(
@@ -680,7 +566,6 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
                 \JSON_THROW_ON_ERROR,
             )),
     );
-    // the steps of the browser, then the reason of a failure without the trace of the exception that ends it
     foreach (explode("\n", rtrim($browser->getErrorOutput(), "\n")) as $line) {
         if (str_starts_with($line, 'Stack trace:')) {
             break;
@@ -701,7 +586,6 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
         ),
     ];
 
-    // the login page resumes the interaction: the browser goes to the callback with a code
     [$status, $location] = demo_resume($cookies, $ca, $issuer, (string) ($passkey['location'] ?? ''));
     demo_expect(
         $status === 302 && str_starts_with($location, DEMO_URL . '/oidc/callback?'),
@@ -720,7 +604,6 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
     ));
     $verified[] = ['Callback', 'code exchanged, ID token verified, back to /vault'];
 
-    // /vault opens: what oidc_login recorded from the new ID token
     [$status, , $page] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/vault');
     demo_expect($status === 200, sprintf('/vault opens (got %d)', $status));
     $received = [];
@@ -747,7 +630,6 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
         sprintf('open; oidc_login received acr=%s, amr=%s, auth_time %s, sid %s', $received['acr'], $received['amr'], $received['auth-time'], $received['sid']),
     ];
 
-    // RP-Initiated Logout across the step-up: the hint is the new ID token, the one session ends
     $kid = demo_logout($cookies, $issuer, $ca);
     [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/profile');
     demo_expect($status === 302 && str_starts_with($location, $issuer . '/authorize?'), '/profile asks for a new login');
@@ -758,9 +640,6 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
         sprintf('id_token_hint of the step-up verified (kid %s), back to %s/, the OP asks for a login again', $kid, DEMO_URL),
     ];
 
-    // the passkey of the run is revoked: beffroi:user:show lists it by the name this run gave it, and not by the
-    // prefix every run shares, which the passkey of an earlier run, revoked or not, carries as well;
-    // beffroi:user:revoke-credential takes its identifier
     $shown = op_console(['beffroi:user:show', DEV_USERNAME], context()->withQuiet())->getOutput();
     demo_expect(
         preg_match('/^\s*passkey\s+([0-9a-f-]{36})\s+' . preg_quote($passkeyName, '/') . '/m', $shown, $found) === 1,
@@ -776,33 +655,10 @@ function demo_passkey_check(string $issuer, string $password, string $ca): void
     ));
 }
 
-/**
- * The variable of the demo that says which response mode the provider is asked for
- * (config/packages/security.yaml of oidc-demo, "authorization_params"), written into its .env.local
- * for the time of a run and left on "query", which is the default of the code flow.
- */
 const DEMO_RESPONSE_MODE_ENV = 'OIDC_RESPONSE_MODE';
 
-/**
- * The cookie the session of the demo is carried by: the name PHP gives it, the demo configuring none.
- */
 const DEMO_SESSION_COOKIE = 'PHPSESSID';
 
-/**
- * The third success criterion of spike 4 (issue #137): oidc-demo receives a "form_post" response and
- * finds its session again, "state" and PKCE verifier included. The demo is configured with
- * response_mode=form_post for the run, and the round trip is played one request at a time as
- * demo_check does, up to the page the OP answers the authorization request with: a form that posts the
- * response to the callback of the demo, which is the one thing about this mode that is not a redirect
- * like any other, a cross-site POST.
- *
- * The unknown of the spike is in the session cookie of the demo. A browser sends a "SameSite=Lax"
- * cookie, the default, on a top-level navigation and never on a cross-site POST, so the very same POST
- * is played twice, with the cookies the demo set and without them: that is what the callback looks like
- * under each value of the attribute. The value the demo actually sets is read from its Set-Cookie and
- * printed; the rule itself is applied here, because it is a browser that enforces it and this is not
- * one.
- */
 function demo_form_post_check(string $dir, string $issuer, string $password, string $ca): void
 {
     io()->section('response_mode=form_post');
@@ -814,7 +670,6 @@ function demo_form_post_check(string $dir, string $issuer, string $password, str
         $cookies = [];
         $verified = [];
 
-        // /profile: the demo starts the flow, asking for the mode it is configured with
         $setCookies = [];
         [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/profile', setCookies: $setCookies);
         demo_expect(
@@ -827,7 +682,6 @@ function demo_form_post_check(string $dir, string $issuer, string $password, str
         demo_expect($sameSite !== null, 'the demo opened a session to hold the "state" and the PKCE verifier of the attempt');
         $verified[] = ['Authorization request', 'response_type=code, PKCE S256, response_mode=form_post'];
 
-        // the login of the OP, unchanged: the mode says how the response comes back, not how it is obtained
         [$status, $location] = demo_request($cookies, $ca, 'GET', $location);
         demo_expect(
             $status === 302 && str_starts_with($location, $issuer . '/login?interaction='),
@@ -848,7 +702,6 @@ function demo_form_post_check(string $dir, string $issuer, string $password, str
         ]);
         demo_expect($status === 302, sprintf('the form is accepted (got %d)', $status));
 
-        // and here the mode shows: a page, not a redirection
         [$status, $location, $page, $headers] = demo_resume($cookies, $ca, $issuer, $location);
         demo_expect($status === 200 && $location === '', sprintf(
             'the OP answers the authorization request with a page of its own, not with a redirection (got %d %s)',
@@ -866,7 +719,6 @@ function demo_form_post_check(string $dir, string $issuer, string $password, str
         );
         $verified[] = ['Authorization response', sprintf('a form of %d fields posted to %s, no-store', count($response), $formAction)];
 
-        // the cross-site POST, first as a browser makes it of a cookie it does not send
         $withoutCookies = [];
         [$status, $location] = demo_request($withoutCookies, $ca, 'POST', $formAction, $response);
         demo_expect($status === 302 && $location === DEMO_URL . '/login', sprintf(
@@ -883,7 +735,6 @@ function demo_form_post_check(string $dir, string $issuer, string $password, str
         );
         $verified[] = ['Cookie withheld', sprintf('"%s", which is what SameSite=Lax makes of the POST', $refusal)];
 
-        // then as a browser makes it of a cookie it does send
         [$status, $location] = demo_request($cookies, $ca, 'POST', $formAction, $response);
         demo_expect($status === 302 && $location === DEMO_URL . '/profile', sprintf(
             'with the session cookie, the demo signs the user in (got %d %s)',
@@ -915,9 +766,7 @@ function demo_form_post_check(string $dir, string $issuer, string $password, str
 }
 
 /**
- * The value of the "SameSite" attribute of the given cookie among the Set-Cookie headers of a response,
- * lowercased, or null when that cookie is not among them. PHP sends no attribute for "lax", which is
- * what a browser assumes anyway (RFC 6265bis §5.4.7).
+ * No attribute reads as "lax": PHP sends none for it, and a browser assumes it (RFC 6265bis §5.4.7).
  *
  * @param list<string> $setCookies
  */
@@ -935,9 +784,6 @@ function demo_same_site_of(array $setCookies, string $name): ?string
 }
 
 /**
- * The fields of the self-submitting form of a "form_post" response, by name (Form Post Response Mode §2:
- * one hidden input per parameter of the authorization response).
- *
  * @return array<string, string>
  */
 function demo_form_fields(string $page): array
@@ -953,17 +799,6 @@ function demo_form_fields(string $page): array
     return $fields;
 }
 
-/**
- * The second success criterion of spike 4 (issue #137): two instances of oidc-demo signed in on one
- * session of the OP, and the second logged out by back-channel when the first logs out, without its user
- * going through it. The first instance is the one already running; the second is the same checkout,
- * started on another port as another client (demo_second_instance), which is what gives it a session and
- * a back-channel logout endpoint of its own.
- *
- * What is measured is the whole delay the issue asks for: from the logout request of the first instance
- * to the moment the second one refuses to serve its page again. It covers the end of the session, the
- * event, the queue, the worker and the POST to the client (issue #136).
- */
 function demo_logout_others_check(string $dir, string $issuer, string $password, string $secret, string $ca): void
 {
     io()->section('Two instances on one OP, the second logged out by back-channel');
@@ -989,7 +824,6 @@ function demo_logout_others_check(string $dir, string $issuer, string $password,
         );
         $verified[] = [DEMO_SECOND_CLIENT_ID, 'signed in on the same session, without a login page'];
 
-        // the first instance logs out: its own session, then the one of the OP, and nothing of the second
         $startedAt = hrtime(true);
         demo_logout($cookies, $issuer, $ca);
         $verified[] = ['RP-Initiated Logout', sprintf('from %s, which the second instance is told nothing of', DEMO_URL)];
@@ -1008,17 +842,13 @@ function demo_logout_others_check(string $dir, string $issuer, string $password,
 }
 
 /**
- * The second instance of the demo: the same checkout, the built-in server of PHP because the server of
- * the Symfony CLI is one per directory and the first instance already holds this one, and the client of
- * its own that the OP registers with a back-channel logout URI. Everything that tells the two instances
- * apart is passed as an environment variable, which the dotenv of the demo does not override; it listens
- * on every address, because the worker of the stack reaches it from its container.
+ * The built-in server of PHP, as the Symfony CLI runs one server per directory; on every address, as the worker
+ * reaches it from its container.
  */
 function demo_second_instance(string $dir, string $issuer, string $secret, string $ca): Process
 {
     $port = (string) parse_url(DEMO_SECOND_URL, \PHP_URL_PORT);
-    // variables_order: the built-in server of PHP does not put the environment of the process into
-    // $_ENV unless it is asked to, and the dotenv of the demo only steps aside for what is there
+    // EGPCS makes the built-in server fill $_ENV, which is what the dotenv of the demo steps aside for.
     $server = new Process(
         [
             'php',
@@ -1066,10 +896,6 @@ function demo_second_instance(string $dir, string $issuer, string $secret, strin
 }
 
 /**
- * A sign-in of the second instance on the session the first one opened: the OP answers the authorization
- * request from the session it holds, without a page of its own, which is what makes the two logins one
- * session. The tokens of its /profile are returned.
- *
  * @param array<string, array<string, string>> $cookies host => name => value
  * @return array<string, array{raw: string, header: array<string, mixed>, claims: array<string, mixed>}>
  */
@@ -1105,10 +931,6 @@ function demo_second_sign_in(array &$cookies, string $issuer, string $ca): array
 }
 
 /**
- * Waits for the second instance to ask for a login again, which is the logout token having arrived, and
- * returns the seconds elapsed since the given instant. The page is asked for ten times a second: the
- * delay printed is that of the whole path, granular to the poll.
- *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
 function demo_wait_for_logout(array &$cookies, string $ca, float|int $startedAt, float $timeout = 60.0): float
@@ -1126,56 +948,18 @@ function demo_wait_for_logout(array &$cookies, string $ca, float|int $startedAt,
     exit(1);
 }
 
-/**
- * The client the OP issues opaque access tokens to (apps/op/config/packages/dev/beffroi.yaml): the same
- * demonstration, registered a second time, so that the two shapes of access token are played one after
- * the other without the OP being reconfigured between them.
- */
 const DEMO_OPAQUE_CLIENT_ID = 'oidc-demo-opaque';
 
-/**
- * Where the resource server of the demonstration introspects the tokens it is presented with
- * (config/packages/framework.yaml of oidc-demo), written into its .env.local from the discovery
- * document of the OP.
- */
 const DEMO_INTROSPECTION_ENV = 'OIDC_INTROSPECTION_URI';
 
-/**
- * RFC 8414 §3: where a resource server looks for the metadata of its authorization server, which is where
- * Symfony's "oauth2" token handler reads the keys a signed introspection response is verified against. The
- * issuer of the development OP is an origin, so the path is simply appended to it (§3 inserts it before
- * the path of an issuer that carries one, where OIDC Discovery §4.1 appends it).
- */
+/** RFC 8414 §3: appended to the issuer, which is right only for an issuer without a path. */
 const DEMO_AUTHORIZATION_SERVER_METADATA_PATH = '/.well-known/oauth-authorization-server';
 
-/**
- * The last acceptance step of issue #61, the one that lives in another repository (issue #64):
- * `oidc-demo` is also a resource server, and the access token it holds for its user is checked in the
- * three ways Symfony's `access_token` authenticator offers, each behind a firewall of its own
- * (`/api/me`, `/api/me/signed`, `/api/me/offline`).
- *
- * The walk is played twice, once per registration, because what the client registered is what the
- * shape of its access token is (architecture §4.6):
- *
- * - as `oidc-demo-opaque`, whose token says nothing to whoever reads it: the resource server asks the
- *   OP what it is (RFC 7662), first reading the JSON answer, then requiring the signed one (RFC 9701),
- *   whose keys it finds through the RFC 8414 metadata of the OP, the one thing the OP did not serve
- *   yet. The token is then revoked, and the next call is refused: the OP is asked at every request, so
- *   it answers with what it knows now.
- * - as `oidc-demo`, whose token is an `at+jwt` the resource server verifies itself against the JWK Set
- *   of the OP, without asking it anything. That one cannot be revoked at all, and the OP says so
- *   (`unsupported_token_type`, RFC 7009 §2.2.1); what ends it is the end of the session, after which
- *   the OP refuses it at UserInfo (issue #150) while the resource server, which asks the OP nothing,
- *   goes on accepting it until it expires. That is the trade between the two shapes, seen rather than
- *   described.
- */
 function demo_resource_server_check(string $dir, string $issuer, string $password, string $opaqueSecret, string $demoSecret, string $ca): void
 {
     io()->section('A resource server behind the introspection endpoint');
     $verified = [];
 
-    // RFC 8414 §3 and OIDC Discovery §4.1: one document, two well-known locations, and the token
-    // handler of Symfony reads the keys of a signed introspection response at the first one
     $metadata = demo_metadata($issuer . '/.well-known/openid-configuration', $ca);
     $authorizationServer = demo_metadata($issuer . DEMO_AUTHORIZATION_SERVER_METADATA_PATH, $ca);
     demo_expect(
@@ -1190,7 +974,6 @@ function demo_resource_server_check(string $dir, string $issuer, string $passwor
     $verified[] = ['Authorization server metadata', sprintf('%s, jwks_uri %s', DEMO_AUTHORIZATION_SERVER_METADATA_PATH, $metadata['jwks_uri'])];
 
     try {
-        // an opaque access token: nothing to read, everything to ask
         demo_write_env_local($dir . '/.env.local', [
             'OIDC_CLIENT_ID' => DEMO_OPAQUE_CLIENT_ID,
             'OIDC_CLIENT_SECRET' => $opaqueSecret,
@@ -1226,7 +1009,6 @@ function demo_resource_server_check(string $dir, string $issuer, string $passwor
         $verified[] = ['Revoked, then /api/me', '401, without the resource server knowing anything of the revocation'];
         demo_logout($cookies, $issuer, $ca);
 
-        // an at+jwt: everything to read, nothing asked
         demo_write_env_local($dir . '/.env.local', [
             'OIDC_CLIENT_ID' => DEMO_CLIENT_ID,
             'OIDC_CLIENT_SECRET' => $demoSecret,
@@ -1258,7 +1040,6 @@ function demo_resource_server_check(string $dir, string $issuer, string $passwor
         ));
         $verified[] = ['/revoke of an at+jwt', sprintf('400 %s, "%s"', $body['error'], $body['error_description'] ?? '')];
 
-        // what ends it is the end of the session, which the OP knows and the resource server does not
         demo_logout($cookies, $issuer, $ca);
         demo_expect(demo_userinfo($issuer, $ca, $accessToken) === 401, 'the session ended, and the OP refuses the same token at UserInfo (issue #150)');
         [$status, $body] = demo_api(DEMO_URL . '/api/me/offline', $accessToken);
@@ -1281,9 +1062,6 @@ function demo_resource_server_check(string $dir, string $issuer, string $passwor
 }
 
 /**
- * A sign-in through the demo for the resource server check: the walk of demo_sign_in, but the tokens are
- * read raw from the page, because an opaque access token has nothing demo_tokens_of() could tell it by.
- *
  * @param array<string, array<string, string>> $cookies host => name => value
  * @return array{id_token: string, access_token: string}
  */
@@ -1301,10 +1079,6 @@ function demo_resource_server_sign_in(array &$cookies, string $issuer, string $p
 }
 
 /**
- * The two tokens the profile page prints in full, in the order it prints them: the ID token, then the
- * access token, whatever they are made of. demo_tokens_of() tells them apart by what they carry, which
- * an opaque access token carries nothing of.
- *
  * @return array{id_token: string, access_token: string}
  */
 function demo_raw_tokens_of(string $page): array
@@ -1323,8 +1097,6 @@ function demo_raw_tokens_of(string $page): array
 }
 
 /**
- * A document of the OP read as JSON, the CA of Caddy trusted as everywhere else in this file.
- *
  * @return array<string, mixed>
  */
 function demo_metadata(string $url, string $ca): array
@@ -1339,9 +1111,7 @@ function demo_metadata(string $url, string $ca): array
 }
 
 /**
- * A call of the resource server of the demo with a bearer token (RFC 6750 §2.1): its status and the JSON
- * it answered with. The demo serves a certificate of the Symfony CLI, verified against nothing, as
- * demo_request() does for it.
+ * RFC 6750 §2.1
  *
  * @return array{int, array<string, mixed>}
  */
@@ -1358,9 +1128,7 @@ function demo_api(string $url, string $accessToken): array
 }
 
 /**
- * RFC 7009 §2.1: an access token revoked at the endpoint of the OP by the client it was issued to, which
- * authenticates the way it registered (client_secret_basic for the clients of the demonstration). Its
- * status and what it answered, because a refusal names itself (§2.2.1).
+ * RFC 7009 §2.1
  *
  * @return array{int, array<string, mixed>}
  */
@@ -1379,20 +1147,6 @@ function demo_revoke(string $issuer, string $ca, string $clientId, string $secre
     return [$response->getStatusCode(), (array) json_decode($response->getContent(false), true)];
 }
 
-/**
- * The presets of the forge, as its page offers them (`App\Forge\Presets` of the demonstration), and what
- * each one has to show for this walk to be satisfied: what the browser carried to the authorization
- * endpoint, the shape the answer came back in, the fragments the page of the built client must hold, and
- * the items of the Symfony status document that composition hits.
- *
- * The five rungs of the ladder this page replaced are the first five, which is why they are written in
- * that order: what a reader saw there is still reachable in one click. The three below them are
- * compositions the ladder had no rung for.
- *
- * A preset the provider refuses for a reason that is written down carries its issue in "known", and the
- * walk then asserts the refusal rather than a success it will not get, as the "known" list of the
- * conformance plans does.
- */
 const DEMO_FORGE_PRESETS = [
     'basic' => [
         'carries' => 'parameters',
@@ -1414,8 +1168,6 @@ const DEMO_FORGE_PRESETS = [
         'returns' => 'query',
         'holds' => ['private_key_jwt', 'Front-Channel Logout'],
         'gaps' => ['RP-07'],
-        // the one preset whose sign-out is played too: the forge holds its own RP-Initiated Logout, this
-        // firewall being none of "oidc_login"'s (ForgeLogoutListener of the demonstration)
         'signs_out' => true,
     ],
     'rar' => [
@@ -1455,42 +1207,16 @@ const DEMO_FORGE_PRESETS = [
     ],
 ];
 
-/**
- * What the tenant calls the initial access token of this run, and the block of apps/op/.env.local the run
- * owns while it plays (demo_registration_mode).
- */
 const DEMO_FORGE_TOKEN_NAME = 'castor demo --forge';
 
 const DEMO_FORGE_ENV_MARKER = 'castor demo --forge';
 
-/**
- * The mode this walk asks the tenant for, by the name the class that is that mode gives itself: a
- * credential the tenant issues, names, limits and revokes (RFC 7591 §1.2), which is the mode decision 0009
- * calls controlled by initial token and the one a real ecosystem of clients uses.
- */
 const DEMO_FORGE_MODE = 'initial_access_token';
 
-/**
- * The forge of clients (issue #582), played preset by preset, one request at a time.
- *
- * Every preset is composed on the page of the forge, registered at the provider by that page (RFC 7591
- * §3), signs the same user in and is deleted again (RFC 7592 §2.3). What changes from one to the next is
- * what the client registered and what travelled, which is what this walk looks at: the authorization
- * request of the FAPI presets carries nothing but a client and a URI, their answer is one signed
- * parameter, their ID token is a JWE and their access token names what it is bound to, where the first
- * preset has all of it in the open.
- *
- * Nothing of the provider is written for this: the tenant is asked for the mode decision 0009 calls
- * controlled by initial token for the length of the run, it is given back at the end, and the clients the
- * presets register are the clients any caller registering the same metadata would get.
- */
 function demo_forge_check(string $issuer, string $password, string $ca): void
 {
     io()->section('The forge of clients');
 
-    // The tenant is asked for the mode decision 0009 calls controlled by initial token for the length of
-    // this run, and given it back at the end; the credential it asks for is the one the demonstration was
-    // started with, worth one registration per preset and one for the composition built by hand below.
     demo_registration_mode($issuer, $ca, DEMO_FORGE_ENV_MARKER, DEMO_FORGE_MODE);
 
     $verified = [];
@@ -1498,14 +1224,12 @@ function demo_forge_check(string $issuer, string $password, string $ca): void
         $cookies = [];
         $profile = DEMO_URL . '/c/' . $slug . '/profile';
 
-        // the page offers that preset, and what it submits is the form of the forge and nothing else
         [$status, , $page] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/');
         demo_expect(
             $status === 200 && str_contains($page, 'name="preset" value="' . $slug . '"'),
             sprintf('%s: the page of the forge offers this preset (got %d)', $slug, $status),
         );
 
-        // one request builds it: the client is registered at the provider and did not exist before it
         [$status, $location] = demo_request($cookies, $ca, 'POST', DEMO_URL . '/forge/build', [
             'preset' => $slug,
         ]);
@@ -1516,7 +1240,6 @@ function demo_forge_check(string $issuer, string $password, string $ca): void
             $location,
         ));
 
-        // and the page of a client that is not signed in starts its flow, which is the demonstration
         [$status, $location] = demo_request($cookies, $ca, 'GET', $profile);
         demo_expect($status === 302 && str_starts_with($location, $issuer . '/authorize?'), sprintf(
             '%s: its page sends the browser to the authorization endpoint (got %d %s)',
@@ -1546,8 +1269,6 @@ function demo_forge_check(string $issuer, string $password, string $ca): void
             $carried = sprintf('%d parameters in the query', count($authorization));
         }
 
-        // the login of the provider, the same for every preset: what a composition changes is never how a
-        // user proves who they are
         $location = demo_interaction_login($cookies, $issuer, $password, $ca, $location);
 
         [$status, $location, $page] = demo_resume($cookies, $ca, $issuer, $location);
@@ -1606,9 +1327,6 @@ function demo_forge_check(string $issuer, string $password, string $ca): void
             demo_expect(str_contains($read, $fragment), sprintf('%s: its page says "%s"', $slug, $fragment));
         }
 
-        // What `oidc_login` could not have served, which is the one thing the forge shows that the ladder
-        // could not: the page names the item of the status document, or says that configuration alone
-        // reaches this composition.
         foreach ($preset['gaps'] as $gap) {
             demo_expect(str_contains($read, $gap), sprintf('%s: its page names %s of the status document', $slug, $gap));
         }
@@ -1621,8 +1339,6 @@ function demo_forge_check(string $issuer, string $password, string $ca): void
         $hops = demo_forge_hops($page);
         demo_expect($hops !== [], sprintf('%s: its page shows what travelled, hop by hop', $slug));
 
-        // the identifier the provider assigned, which the page carries for this walk to read, and the
-        // trace the provider recorded while that very client signed in (issue #462)
         demo_expect(
             preg_match('/data-client-id="([^"]+)"/', $page, $registered) === 1,
             sprintf('%s: its page names the client the provider registered', $slug),
@@ -1643,8 +1359,6 @@ function demo_forge_check(string $issuer, string $password, string $ca): void
         ];
     }
 
-    // A composition nobody wrote down: the form is what is submitted, so a client of a shape no preset
-    // holds is built the same way, which is what the page is for.
     $verified[] = demo_forge_by_hand($issuer, $password, $ca);
 
     demo_registration_mode($issuer, $ca, DEMO_FORGE_ENV_MARKER, null);
@@ -1659,10 +1373,6 @@ function demo_forge_check(string $issuer, string $password, string $ca): void
 }
 
 /**
- * A composition the walk writes itself, posted field by field as the form of the page posts it: a client
- * that authenticates with a secret it signs rather than sends (RFC 7523 §2.2), asks for one scope and
- * reads an answer posted back. No preset holds it, which is the point: what the page submits is a form.
- *
  * @return array{string, string, string, string, string}
  */
 function demo_forge_by_hand(string $issuer, string $password, string $ca): array
@@ -1720,15 +1430,7 @@ function demo_forge_by_hand(string $issuer, string $password, string $ca): array
 }
 
 /**
- * RP-Initiated Logout §2 and Front-Channel Logout 1.0 §3 for a client of the forge: signing out of the
- * demonstration ends the session at the provider too, which no listener of "oidc_login" does here, this
- * firewall being none of its own (ForgeLogoutListener), and the provider then answers the page that loads
- * the front-channel URI of every client of that session in a frame.
- *
- * The frame is followed, in the browser that signed in and with its cookies, which is the whole of what
- * the front channel is: the request arrives in the browser of the user and the application writes that
- * route itself (`RP-07` of the status document, whose back channel has merged upstream and whose front
- * channel has not).
+ * RP-Initiated Logout §2, Front-Channel Logout 1.0 §3
  *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
@@ -1764,7 +1466,6 @@ function demo_forge_sign_out(array &$cookies, string $ca, string $issuer, string
         sprintf('%s: and the page sends the browser back where this client asked to be sent', $slug),
     );
 
-    // the frame itself, which is a request of this browser and carries its cookies
     [$status, , $ended] = demo_request($cookies, $ca, 'GET', $loaded);
     demo_expect(
         $status === 200 && str_contains($ended, 'was ended'),
@@ -1780,9 +1481,7 @@ function demo_forge_sign_out(array &$cookies, string $ca, string $issuer, string
 }
 
 /**
- * RFC 7592 §2.1: the built client reads itself at the URI it was handed, with the credential it was
- * handed, which is the one way a dynamic client reads its own registration. It is asked for from its page,
- * so it is asked for while that client is signed in.
+ * RFC 7592 §2.1
  *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
@@ -1796,9 +1495,7 @@ function demo_forge_read(array &$cookies, string $ca, string $handle, string $cl
 }
 
 /**
- * RFC 7592 §2.3: the client deletes itself at the provider, which answers 204 and no body, and the page
- * says what came back rather than claiming the deletion. The route is not behind the firewall of the
- * forge: a client that has signed out deletes itself all the same.
+ * RFC 7592 §2.3
  *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
@@ -1827,9 +1524,6 @@ function demo_forge_delete(array &$cookies, string $ca, string $handle): string
 }
 
 /**
- * A preset the provider refuses for a reason that is written down: the demonstration lands on the page
- * that says why, and the walk reads that reason rather than asserting a success it will not get.
- *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
 function demo_forge_known(array &$cookies, string $ca, string $slug, int $status, string $location, string $issue): string
@@ -1847,11 +1541,6 @@ function demo_forge_known(array &$cookies, string $ca, string $slug, int $status
 }
 
 /**
- * The login of the provider for a client of the forge: the request is parked, the page carries the form,
- * the form is posted, and what comes back is where the interaction resumes. The same three requests for
- * every composition, whatever it registered: what a client asks for never changes how a user proves who
- * they are.
- *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
 function demo_interaction_login(array &$cookies, string $issuer, string $password, string $ca, string $authorization): string
@@ -1881,10 +1570,6 @@ function demo_interaction_login(array &$cookies, string $issuer, string $passwor
 }
 
 /**
- * What the page of a built client says travelled, by the label of each hop and in the order it happened.
- * The page names those cards for this walk to read, the other cards of it being what the client is and
- * what Symfony's own authenticator could not have served.
- *
  * @return list<string>
  */
 function demo_forge_hops(string $page): array
@@ -1894,73 +1579,21 @@ function demo_forge_hops(string $page): array
     return array_map(trim(...), $matches[1]);
 }
 
-/**
- * The API of the demonstration (issue #556): API Platform serves it under /api/v1 of oidc-demo, behind a
- * firewall of its own, and the access token the client holds for its user is described by the OP at every
- * request (RFC 7662).
- *
- * The six routes of /api/ next to it answer who a token names and nothing else: what they demonstrate is
- * how a token is checked. This is an API, so what is seen here is what a resource server does with the
- * answer it got: one scope per operation, a refusal that names the scope that is missing, and the window
- * during which the OP is not asked again.
- *
- * That window is the one thing a walk has to play on both sides, its whole subject being a few seconds of
- * disagreement between the two: the token is read fresh, the session is ended, and the same token is
- * accepted once more inside the window and refused once it has closed, the OP refusing it at UserInfo
- * throughout. The figure is read from what the API says of itself, so this walk cannot assert a lifetime
- * other than the one the firewall applies.
- */
 const DEMO_API_BASE = DEMO_URL . '/api/v1';
 
-/**
- * The invoice of the book of the API that "castor demo --rar" asks to pay, and what it is for: a scope
- * says a kind of thing, "invoices.pay" meaning any invoice of whoever holds the token, and the detail of
- * a rich authorization request names this one and the most that may be moved (RFC 9396 §2). The two
- * readings meet on the same invoice on purpose, and this walk pays it to the figure that detail bounds.
- */
 const DEMO_API_INVOICE_AMOUNT = '45.00';
 
-/**
- * The invoice this walk tries to write, which it never gets to: the demonstration is not granted
- * "invoices.write" (config/packages/security.yaml of oidc-demo).
- */
 const DEMO_API_WRITTEN_INVOICE = ['reference' => 'INV-9000', 'label' => 'Written by the walk', 'amount' => '10.00', 'currency' => 'EUR'];
 
-/**
- * What the document of the API has to say each operation requires, path and method as OpenAPI writes them.
- *
- * It is the expectation of this walk and not a list the API reads: the API derives what it documents from
- * the "security" expression that enforces it (`ScopesInTheDocument` of the demonstration), and this is the
- * other end, so a scope that changed on one side without the other shows up here.
- */
-/**
- * A value of the shape an opaque access token of this OP has, which it never issued: what the API answers
- * when no client of the demonstration is told anything about the token it was handed.
- */
 const DEMO_API_UNKNOWN_TOKEN = 'ZZZZnobodyZZZZissuedZZZZthisZZZZvalueZZZZZZZ';
 
-/**
- * The page of the demonstration that calls the API with the access token of its session.
- */
 const DEMO_API_PAGE_PATH = '/api-calls';
 
-/**
- * The path of a call as the document of the API writes it: the reference of an invoice is a variable there
- * and a value on the page, so the two are compared on the template and not on the string.
- */
 function demo_api_template(string $path): string
 {
     return (string) preg_replace('#/invoices/INV-[0-9]+#', '/invoices/{reference}', $path);
 }
 
-/**
- * The page of the demonstration where the access token of a session calls the API (/api-calls): what each
- * call it offers is answered, and the scope the page says it needs.
- *
- * The page declares the calls itself (CallsOfThePage of the demonstration) and the walk replays what it
- * declares, as a browser would: a call the page offers and the API refuses, or a scope the page names and
- * the document does not require, is a page that would mislead whoever reads it.
- */
 const DEMO_API_PAGE_CALLS = [
     'account' => ['status' => 200, 'scope' => 'profile'],
     'invoices' => ['status' => 200, 'scope' => 'invoices.read'],
@@ -1982,14 +1615,9 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
     io()->section('An API behind the introspection endpoint');
     $verified = [];
 
-    // The book of invoices and the answers the firewall kept both live in the cache pool of the
-    // demonstration, so the run starts from the book a deployment starts with: a payment is something that
-    // happened, and a walk asserting that it happens would pass once and conflict ever after. It is the
-    // fixture of this walk, cleared where every other walk writes the .env.local it needs.
+    // The book of invoices lives in cache.app, cleared so that the payment of a previous run does not conflict.
     run(['php', 'bin/console', 'cache:pool:clear', 'cache.app'], context: demo_context($dir)->withQuiet());
 
-    // RFC 7662 §2.1: where the API asks, and with the credentials of the client the token was issued to,
-    // because the OP describes a token to that client and to no other (§2.2)
     $metadata = demo_metadata($issuer . '/.well-known/openid-configuration', $ca);
     $introspection = (string) ($metadata['introspection_endpoint'] ?? '');
     demo_expect($introspection !== '', 'the document names the introspection endpoint the API asks at');
@@ -2000,22 +1628,16 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
     ]);
     $verified[] = ['Introspection endpoint', $introspection];
 
-    // RFC 6750 §3: a request carrying no token is not an authenticated one, and the challenge of the
-    // firewall is what says so, naming the realm and nothing of anybody's invoices
     [$status, $body, $headers] = demo_api_request('GET', DEMO_API_BASE . '/invoices');
     demo_expect($status === 401, sprintf('a request carrying no token is refused (got %d %s)', $status, json_encode($body)));
     $challenge = (string) ($headers['www-authenticate'][0] ?? '');
     demo_expect(str_starts_with($challenge, 'Bearer realm='), sprintf('with the challenge of RFC 6750 §3 (got "%s")', $challenge));
     $verified[] = ['No token', sprintf('401, %s', $challenge)];
 
-    // what an API says of itself is public; what it holds is not
     [$status] = demo_api_request('GET', DEMO_API_BASE . '/docs');
     demo_expect($status === 200, sprintf('the documentation of the API is served without a token (got %d)', $status));
     $verified[] = ['/api/v1/docs', '200 without a token: the shape of the API is public, the invoices are not'];
 
-    // The document itself, in the media type OpenAPI defines for it: what the page offers to whoever reads
-    // it is one way of being authorized, the bearer token of RFC 6750 §2.1, and what each operation
-    // requires is written where the operation is described rather than left to be discovered by a 403.
     [$status, $document] = demo_api_request('GET', DEMO_API_BASE . '/docs', accept: 'application/vnd.openapi+json');
     demo_expect($status === 200, sprintf('the document is served in the media type OpenAPI defines for it (got %d)', $status));
     $schemes = $document['components']['securitySchemes'] ?? [];
@@ -2036,7 +1658,6 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
             $documented[$method . ' ' . $path] = $operation['description'] ?? '';
         }
     }
-    // the same operations, whatever order the document lists them in
     $listed = array_keys($documented);
     $expected = array_keys(DEMO_API_DOCUMENTED_SCOPES);
     sort($listed);
@@ -2056,9 +1677,6 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
         sprintf('one "http" scheme, "bearer", and %d operations each naming the scope it needs', count(DEMO_API_DOCUMENTED_SCOPES)),
     ];
 
-    // the client signs its user in and holds an access token, which is the one it sends to the API; the
-    // token is read raw off the page, as the resource server walk reads it, because what travels to an API
-    // is the string and not what this file could make of it
     $cookies = [];
     $tokens = demo_resource_server_sign_in($cookies, $issuer, $password, $ca, DEMO_CLIENT_ID);
     $accessToken = $tokens['access_token'];
@@ -2074,7 +1692,6 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
     $subject = (string) ($claims['sub'] ?? '?');
     $verified[] = ['The access token', sprintf('scope "%s", sub %s', $claims['scope'] ?? '', $subject)];
 
-    // what the API knows of the request is what the OP answered about the token, and nothing else
     [$status, $account] = demo_api_request('GET', DEMO_API_BASE . '/account', $accessToken);
     demo_expect(
         $status === 200 && ($account['sub'] ?? null) === $subject,
@@ -2091,7 +1708,6 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
     $ttl = (int) $window[1];
     $verified[] = ['/api/v1/account', sprintf('200 on "profile", the answer of the OP kept at most %d seconds', $ttl)];
 
-    // one scope, one operation: the book of this subject
     [$status, $collection] = demo_api_request('GET', DEMO_API_BASE . '/invoices', $accessToken);
     $references = array_column($collection, 'reference');
     demo_expect(
@@ -2100,7 +1716,6 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
     );
     $verified[] = ['GET /api/v1/invoices', sprintf('200 on "invoices.read", %d invoices, %s among them', count($collection), DEMO_RAR_INVOICE)];
 
-    // the other scope, on the one operation that changes something
     [$status, $payment] = demo_api_request(
         'POST',
         DEMO_API_BASE . '/invoices/' . DEMO_RAR_INVOICE . '/payments',
@@ -2118,8 +1733,6 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
     );
     $verified[] = ['POST .../payments', sprintf('201 on "invoices.pay", %s paid at %s', DEMO_RAR_INVOICE, $payment['paidAt'])];
 
-    // RFC 6750 §3.1: a scope the token was never granted is a 403 and not a 401, the token being a good
-    // one, and the challenge names what is missing rather than what was asked for
     [$status, $refused, $headers] = demo_api_request('POST', DEMO_API_BASE . '/invoices', $accessToken, DEMO_API_WRITTEN_INVOICE);
     demo_expect($status === 403, sprintf('a write is refused on that token (got %d %s)', $status, json_encode($refused)));
     $challenge = (string) ($headers['www-authenticate'][0] ?? '');
@@ -2134,13 +1747,6 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
     );
     $verified[] = ['POST /api/v1/invoices', sprintf('403, %s', $challenge)];
 
-    // RFC 7662 §2.2: the OP describes a token to the client it was issued to and to no other. The
-    // demonstration is not one client, its main firewall and each declared client of the tenant being one, so
-    // whoever reads one of its pages holds a token of whichever client that page belongs to: the API asks
-    // the OP as each client whose secret the demonstration holds, and the first answer that describes the
-    // token is the one its firewall reads (WhicheverClientKnowsTheToken of the demonstration). A token of
-    // another client is therefore served here, and the account says which client it was issued to, which
-    // is the OP's answer and not something the API decided.
     demo_write_env_local($dir . '/.env.local', [
         'OIDC_CLIENT_ID' => DEMO_OPAQUE_CLIENT_ID,
         'OIDC_CLIENT_SECRET' => $opaqueSecret,
@@ -2174,8 +1780,6 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
     ];
     demo_logout($otherCookies, $issuer, $ca);
 
-    // and a value this OP never issued: every client of the demonstration is asked, none of them is
-    // answered anything about it, and what the firewall reports is what the OP said of it
     [$status, $body, $headers] = demo_api_request('GET', DEMO_API_BASE . '/account', DEMO_API_UNKNOWN_TOKEN);
     demo_expect($status === 401, sprintf('a value this OP never issued is refused (got %d %s)', $status, json_encode($body)));
     demo_expect(
@@ -2184,10 +1788,7 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
     );
     $verified[] = ['A token nobody issued', '401, after every client of the demonstration was asked about it'];
 
-    // The page of the demonstration where a session uses its own access token against the API: the browser
-    // makes the calls, so what the walk can judge is what the page hands it, the token and the calls it
-    // offers, and whether the API answers each of them as the page says it will. The book of invoices is
-    // opened again first, because the payment above is the payment this page offers.
+    // The book of invoices is reset: the payment above is the one this page offers.
     run(['php', 'bin/console', 'cache:pool:clear', 'cache.app'], context: demo_context($dir)->withQuiet());
     [$status, , $page] = demo_request($cookies, $ca, 'GET', DEMO_URL . DEMO_API_PAGE_PATH);
     demo_expect($status === 200, sprintf('%s opens on the session of the demonstration (got %d)', DEMO_API_PAGE_PATH, $status));
@@ -2232,8 +1833,7 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
         sprintf('200 with the token of the session, %d calls offered and each answered as the page says', count(DEMO_API_PAGE_CALLS)),
     ];
 
-    // the window, played on both sides. The answer of an active token is read fresh here, so that what
-    // follows is measured from a known moment rather than from whatever this walk asked a minute ago.
+    // Past the window, so the answer is read fresh and what follows is measured from a known moment.
     sleep($ttl + 1);
     $readAt = microtime(true);
     [$status] = demo_api_request('GET', DEMO_API_BASE . '/account', $accessToken);
@@ -2265,8 +1865,7 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
 }
 
 /**
- * What the OP says of a token to the client it was issued to (RFC 7662 §2.1): the client authenticates,
- * because an endpoint that described a token to whoever asked would tell a stranger that it exists.
+ * RFC 7662 §2.1
  *
  * @return array<string, mixed>
  */
@@ -2282,14 +1881,7 @@ function demo_introspect(string $endpoint, string $ca, string $clientId, string 
 }
 
 /**
- * A request to the API of the demonstration: the method, the token if the walk is sending one, and the
- * JSON of the body for an operation that takes one.
- *
- * The answer comes back with its headers, because what a refusal says is in one of them: the challenge of
- * RFC 6750 names the realm, the error and, for a missing scope, the scope.
- *
  * @param array<string, mixed>|null $payload
- * @param string $accept The media type the walk asks for, plain JSON unless it is reading the document
  * @return array{0: int, 1: array<mixed>, 2: array<string, list<string>>}
  */
 function demo_api_request(
@@ -2303,8 +1895,6 @@ function demo_api_request(
         'max_redirects' => 0,
         'verify_peer' => false,
         'verify_host' => false,
-        // the API serves JSON-LD and plain JSON, and a walk reading an object rather than a vocabulary
-        // asks for the second (config/packages/api_platform.yaml)
         'headers' => ['Accept' => $accept],
     ];
     if ($accessToken !== null) {
@@ -2323,25 +1913,12 @@ function demo_api_request(
     ];
 }
 
-/**
- * The DPoP side of the run, which lives under the autoloader of the monorepo: the key pair, the token
- * request that binds the token to it, and the five ways that token is then presented (tests/demo/).
- */
 const DEMO_DPOP_CLIENT = 'tests/demo/dpop-client.php';
 
-/**
- * The two routes of the demonstration behind a token bound by DPoP, one per shape of access token
- * (config/packages/security.yaml of oidc-demo).
- */
 const DEMO_DPOP_PATH = '/api/me/dpop';
 
 const DEMO_DPOP_INTROSPECTED_PATH = '/api/me/dpop/introspected';
 
-/**
- * The pages of the demonstration (issue #462), where the flows of this provider are drawn: the index,
- * the page of one flow, and the two calls a live run is played with. A flow travels in the query and
- * not in a path, a grant type being named by an absolute URI often enough.
- */
 const DEMO_FLOWS_PATH = '/demonstration/';
 
 const DEMO_FLOW_PATH = '/demonstration/flow';
@@ -2350,45 +1927,17 @@ const DEMO_FLOW_ADVANCE_PATH = '/demonstration/flow/advance';
 
 const DEMO_FLOW_OPEN_PATH = '/demonstration/flow/open';
 
-/**
- * The two flows the demonstration plays from a page, named by the registries that name them (RFC 8628
- * §3.1, CIBA Core §4): what the demonstration can play is what the lab registered a client for, and
- * these two are the ones this walk follows hop by hop.
- */
 const DEMO_DEVICE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:device_code';
 
 const DEMO_CIBA_GRANT_TYPE = 'urn:openid:params:grant-type:ciba';
 
-/**
- * A name no grant of this provider gives itself (decision 0006 wired no password grant): the page of a
- * flow it does not serve is a 404, which is what says the set of pages is the set of pictures.
- */
 const DEMO_UNSERVED_GRANT = 'password';
 
-/**
- * How many advances a live run is given before this walk gives up on it: a device flow is three hops of
- * the client and one poll per interval, and a run needing more than this is a run that will not end.
- */
 const DEMO_FLOW_ADVANCES = 24;
 
-/**
- * Seconds between two polls, which is the interval this provider asks a client to wait (RFC 8628 §3.5).
- */
+/** Seconds: the interval this provider asks a client to poll at (RFC 8628 §3.5). */
 const DEMO_FLOW_POLL_INTERVAL = 5;
 
-/**
- * Issue #462: every flow this provider serves is drawn, and two of them are played hop by hop from a
- * page, each hop showing the request that was sent and the answer that came back.
- *
- * What is asserted of the pictures is that they are the wiring: the page of every grant the discovery
- * document announces answers, the page of a grant it does not announce is a 404, and the index draws
- * those grants in that order. Nothing here writes down which flows those are.
- *
- * What is asserted of a run is that the demonstration took the hops of the client and stood in for
- * nobody: the code of the device flow is typed in a browser of this walk, the backchannel request is
- * allowed on the page of the user, and both of those hops are in the trace because this provider
- * recorded them while it served them.
- */
 function demo_flows_check(string $issuer, string $password, string $ca): void
 {
     io()->section('Every flow, drawn');
@@ -2426,11 +1975,6 @@ function demo_flows_check(string $issuer, string $password, string $ca): void
 }
 
 /**
- * RFC 8628 played from a page, one hop per advance: the client asks, is handed a code to show, and polls
- * while nobody has answered; the user types that code in a browser that holds nothing else; the client
- * is answered and spends what it was given. Every poll is in the trace, each refusal with the reason
- * the provider gave for it.
- *
  * @return array{string, string}
  */
 function demo_flow_device_run(string $issuer, string $password, string $ca): array
@@ -2460,7 +2004,6 @@ function demo_flow_device_run(string $issuer, string $password, string $ca): arr
         sprintf('a hop that failed is drawn as it failed (%s)', (string) ($pending['reason'] ?? '')),
     );
 
-    // the other device: a browser that holds nothing of the flow but the code it was read
     demo_device_confirm($issuer, $password, $ca, $userCode);
 
     $drawing = demo_flow_run($cookies, $ca, $issuer, DEMO_DEVICE_GRANT_TYPE);
@@ -2487,9 +2030,6 @@ function demo_flow_device_run(string $issuer, string $password, string $ca): arr
 }
 
 /**
- * CIBA Core played from a page the same way: the client names the user it is asking for and waits, this
- * provider reaches them, and the answer comes from the page of what is waiting for that user.
- *
  * @return array{string, string}
  */
 function demo_flow_backchannel_run(string $issuer, string $password, string $ca): array
@@ -2517,7 +2057,6 @@ function demo_flow_backchannel_run(string $issuer, string $password, string $ca)
         sprintf('the client is told to wait (%s)', (string) ($pending['reason'] ?? '')),
     );
 
-    // the user, on a device they already hold, reading the message the client wrote
     demo_ciba_approve($issuer, $password, $ca, DEMO_CIBA_CLIENTS['poll']['client'], $binding);
 
     $drawing = demo_flow_run($cookies, $ca, $issuer, DEMO_CIBA_GRANT_TYPE);
@@ -2539,10 +2078,6 @@ function demo_flow_backchannel_run(string $issuer, string $password, string $ca)
 }
 
 /**
- * A sign-in replayed after the fact (issue #462): the trace this provider recorded while a client of the
- * forge signed its user in, read from the page that draws it. The back-channel token request is in it,
- * which is the whole reason a narrator living in the page of a client cannot do this.
- *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
 function demo_forge_replay(array &$cookies, string $ca, string $issuer, string $slug, string $clientId): string
@@ -2565,8 +2100,6 @@ function demo_forge_replay(array &$cookies, string $ca, string $issuer, string $
 }
 
 /**
- * A run started over: what the previous one exchanged is forgotten with it.
- *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
 function demo_flow_open(array &$cookies, string $ca, string $issuer, string $flow): void
@@ -2576,9 +2109,6 @@ function demo_flow_open(array &$cookies, string $ca, string $issuer, string $flo
 }
 
 /**
- * One advance of a live run, which is what the next button of the page is: the demonstration takes the
- * next hop of the flow, for real, and answers the trace as it is once it has.
- *
  * @param array<string, array<string, string>> $cookies host => name => value
  *
  * @return array<string, mixed>
@@ -2592,9 +2122,6 @@ function demo_flow_advance(array &$cookies, string $ca, string $issuer, string $
 }
 
 /**
- * The trace drawn on the page of a flow, read from the page as every walk of this file reads a page: it
- * carries what it draws in an attribute, so that the script of the page and this walk read one thing.
- *
  * @param array<string, array<string, string>> $cookies host => name => value
  *
  * @return array<string, mixed>
@@ -2613,9 +2140,6 @@ function demo_flow_trace(array &$cookies, string $ca, string $issuer, string $fl
 }
 
 /**
- * The plan drawn on the page of a flow: one row per hop of the picture, with how many times it was
- * taken, read from the rows themselves.
- *
  * @return list<array{name: string, taken: int}>
  */
 function demo_flow_plan(string $page): array
@@ -2633,10 +2157,6 @@ function demo_flow_plan(string $page): array
 }
 
 /**
- * A run advanced until the flow has nothing left to take, waiting out the interval this provider asks a
- * client to poll on: a client that asks faster is told to slow down, and the demonstration is a client
- * like any other.
- *
  * @param array<string, array<string, string>> $cookies host => name => value
  *
  * @return array<string, mixed>
@@ -2663,8 +2183,6 @@ function demo_flow_run(array &$cookies, string $ca, string $issuer, string $flow
 }
 
 /**
- * One hop of a drawing by name, the first one drawn or the last.
- *
  * @param array<string, mixed> $drawing
  *
  * @return array<string, mixed>|null
@@ -2686,8 +2204,6 @@ function demo_flow_hop(array $drawing, string $name, bool $last = false): ?array
 }
 
 /**
- * How many times a hop was taken, as the plan of the drawing counts it.
- *
  * @param array<string, mixed> $drawing
  */
 function demo_flow_taken(array $drawing, string $name): int
@@ -2702,9 +2218,6 @@ function demo_flow_taken(array $drawing, string $name): int
 }
 
 /**
- * No page shows a payload that was not exchanged, and nothing is drawn that the picture does not plan:
- * every hop of the trace is a hop of the plan, and every hop that was answered says what it carried.
- *
  * @param array<string, mixed> $drawing
  */
 function demo_flow_drawn_is_planned(array $drawing): void
@@ -2719,26 +2232,6 @@ function demo_flow_drawn_is_planned(array $drawing): void
     demo_expect($unplanned === [], sprintf('every hop drawn is a hop the picture plans (%s)', implode(', ', $unplanned)));
 }
 
-/**
- * The two criteria of spike 5 that are judged at the client and not by the conformance suite (issue #167).
- *
- * The first is that nothing of FAPI 2 reaches a client that did not ask for it: the provider serves PAR,
- * request objects, JARM, DPoP and mTLS, and `oidc-demo` signs in as it always did, with no pushed request,
- * no request object and no proof, and gets a bearer token bound to nothing. No patch, no option, no
- * exception is written for it.
- *
- * The second is that a Symfony resource server verifies a token bound by DPoP. The run plays the client
- * that binds one: it walks the browser through an authorization request of its own, exchanges the code
- * with a proof made for the token endpoint (RFC 9449 §5), and presents what comes back to the two routes
- * `oidc-demo` serves for it, once as the holder of the key and four times as whoever took the token off
- * the wire would: the same proof again, a proof of another key, no proof at all, and as a bearer token.
- * The binding is checked on both shapes of access token, the "cnf.jkt" of an "at+jwt" read by the resource
- * server itself, and the "cnf" of an opaque token read from the introspection response (§7.1).
- *
- * That check is `RS-05` of the Symfony status document, written during this spike and merged into 8.2
- * (symfony/symfony#66465), so the demonstration asks for it of the released component like everything
- * else it uses.
- */
 function demo_dpop_check(string $dir, string $issuer, string $password, string $demoSecret, string $opaqueSecret, string $ca): void
 {
     io()->section('A token bound to a key, and a client that asked for none');
@@ -2766,7 +2259,6 @@ function demo_dpop_check(string $dir, string $issuer, string $password, string $
     demo_expect($introspection !== '' && $tokenEndpoint !== '', 'the document names the token endpoint and the introspection endpoint');
 
     try {
-        // the client that asked for none of it, on the very provider that serves all of it
         demo_write_env_local($dir . '/.env.local', [
             'OIDC_CLIENT_ID' => DEMO_CLIENT_ID,
             'OIDC_CLIENT_SECRET' => $demoSecret,
@@ -2802,7 +2294,6 @@ function demo_dpop_check(string $dir, string $issuer, string $password, string $
         ];
         demo_logout($cookies, $issuer, $ca);
 
-        // the client that binds its token to a key, on both shapes of access token
         foreach ([
             [DEMO_CLIENT_ID,        $demoSecret,   DEMO_DPOP_PATH,              'at+jwt, the binding read by the resource server itself'],
             [DEMO_OPAQUE_CLIENT_ID, $opaqueSecret, DEMO_DPOP_INTROSPECTED_PATH, 'opaque, the binding read from the introspection response'],
@@ -2895,11 +2386,6 @@ function demo_dpop_check(string $dir, string $issuer, string $password, string $
     }
 }
 
-/**
- * The authorization request of the run itself, the one a client binding its tokens sends: the parameters
- * `oidc_login` would send, PKCE included, and nothing else. The code it comes back with is exchanged by
- * the DPoP client and never by the demonstration, whose callback is only where the browser lands.
- */
 function demo_dpop_authorization(string $issuer, string $clientId, string $verifier): string
 {
     return $issuer
@@ -2917,8 +2403,6 @@ function demo_dpop_authorization(string $issuer, string $clientId, string $verif
 }
 
 /**
- * The DPoP client of tests/demo/, run under the autoloader of the monorepo, which castor does not load.
- *
  * @param array<string, string> $input
  * @return array<string, mixed>
  */
@@ -2934,11 +2418,6 @@ function demo_dpop_client(array $input): array
     return $run;
 }
 
-/**
- * What the provider says the token is bound to (RFC 7800 §3.1): the "cnf.jkt" of an "at+jwt", read from the
- * token itself, and the one of an opaque token, read where a resource server reads it, at the introspection
- * endpoint.
- */
 function demo_dpop_binding(string $issuer, string $ca, string $clientId, string $secret, string $accessToken, string $introspection): string
 {
     if (substr_count($accessToken, '.') === 2) {
@@ -2961,47 +2440,22 @@ function demo_dpop_binding(string $issuer, string $ca, string $clientId, string 
 }
 
 /**
- * The JWK Set max-age and the JWS lifetimes of the rotation run, seconds: written into apps/op/.env.local
- * for the time of the run (BEFFROI_JWKS_MAX_AGE, BEFFROI_ACCESS_TOKEN_TTL, BEFFROI_ID_TOKEN_TTL, which
- * config/packages/beffroi.yaml reads at runtime), so that the staging delay (max-age plus the 60 s cooldown,
- * StagingDelay) and the retirement window (the longest lifetime) fit in minutes rather than in a quarter
- * of an hour. The max-age stays above the cooldown, or the last section could not tell the two apart: a
- * copy that expires before the cooldown elapsed is refreshed, never refetched.
+ * Seconds. The max-age stays above DEMO_ROTATION_COOLDOWN: a copy expiring before it is refreshed, never refetched.
  */
 const DEMO_ROTATION_JWKS_MAX_AGE = 90;
 
 const DEMO_ROTATION_TOKEN_TTL = 60;
 
-/**
- * OidcSignatureVerifier::ROTATION_COOLDOWN of Symfony's oidc_login (StagingDelay::ROTATION_COOLDOWN in
- * the provider): a JWK Set copy younger than this is not refetched on an unknown "kid".
- */
+/** Mirrors OidcSignatureVerifier::ROTATION_COOLDOWN of Symfony's oidc_login, in seconds. */
 const DEMO_ROTATION_COOLDOWN = 60;
 
 const DEMO_ROTATION_ENV_MARKER = 'castor demo --rotate';
 
 /**
- * The family of keys the run rotates: the one "beffroi:keys:rotate" reaches when it names none, the first
- * signature algorithm the provider is wired with, which signs the ID tokens and the access tokens of a client
- * that registers no algorithm of its own (OIDC Registration §2), oidc-demo among them. The tenant holds a key of
- * every other family beside it, the encryption key, the key messages are sealed to, VAPID and SAML among them
- * (issue #164), and the run counts none of them and leaves them where they are.
+ * The family beffroi:keys:rotate rotates by default: the first signature algorithm the provider is wired with.
  */
 const DEMO_ROTATION_ALGORITHM = 'RS256';
 
-/**
- * The second success criterion of spike 2 (issue #59): oidc-demo, on Symfony's oidc_login without a
- * patch, notices nothing across a rotation. The seven steps of the issue against the running OP and demo,
- * with the windows shortened for the run (DEMO_ROTATION_*): sign in twice; "beffroi:keys:rotate", a second
- * key in the JWK Set, staged; the scheduled step of the worker activates it when the staging delay
- * elapsed; a fresh browser session signs in and its ID token names the new key; the first session
- * refreshes its access token, signed by the new key; the second session logs out with the ID token of its
- * login, signed by the key now retiring, without a question; the old key retires at its due date, leaves
- * the JWK Set, and its access token is refused at UserInfo. Then the measurement the issue asks for, on
- * the emergency path ("rotate --now"): what oidc_login does on an unknown "kid" with a cold copy of the
- * JWK Set, a warm one younger than the cooldown, and one older. Every fetch of /jwks by the demo is read
- * in the access log of Caddy (docker compose logs op), by the User-Agent of Symfony's HttpClient.
- */
 function demo_rotation_check(Context $server, string $issuer, string $password, string $ca): void
 {
     io()->section('A rotation, as scheduled');
@@ -3037,8 +2491,6 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
         count($before),
     ));
 
-    // 1. Two sessions, both signed by the first key: the first refreshes at step 5, the second logs out at
-    // step 6 with the ID token of its login. The demo fetches the JWK Set once, for the first.
     io()->text('<comment>1.</comment> Sign in, twice');
     $start = new DateTimeImmutable();
     $first = [];
@@ -3056,7 +2508,6 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
     $fetches[] = ['Cold copy', $at($fetched[0]), 'The first verification fetches the JWK Set; the second login used the copy'];
     $firstFetch = $fetched[0];
 
-    // 2. The rotation as an operator does it: the new key is published at once and signs later.
     io()->text('<comment>2.</comment> beffroi:keys:rotate');
     $kid2 = demo_rotate([]);
     $keys = demo_keys();
@@ -3076,7 +2527,6 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
         sprintf('%s staged, activates at %s; the JWK Set has %d keys, %s still signs', $kid2, $at($activationDue), count($published), $kid1),
     ];
 
-    // 3. Time activates it: the scheduled step of the worker, every minute (compose.yaml).
     io()->text('<comment>3.</comment> The scheduled step activates the key');
     demo_wait_until($activationDue, sprintf('the staging delay of "%s"', $kid2));
     $deadline = $activationDue->modify('+90 seconds');
@@ -3111,8 +2561,6 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
         ),
     ];
 
-    // 4. A fresh browser: the ID token names the new key. The copy of the demo is older than the max-age
-    // by now, the login refreshes it as any expired copy, and the new key was in the JWK Set before it signed.
     io()->text('<comment>4.</comment> Sign in again, in a fresh browser session');
     $third = [];
     $since = new DateTimeImmutable();
@@ -3140,9 +2588,6 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
         sprintf('%d s after the previous fetch, past the max-age: refreshed before any check, the staged key was in it', $age),
     ];
 
-    // 5. The first session: its access token expired (lifetime minus the 30 s leeway of oidc_login), the
-    // next request renews it with the refresh token grant; the new tokens are signed by the new key and
-    // the demo verifies the new ID token; the refresh token, opaque, is not on the page and not concerned.
     io()->text('<comment>5.</comment> The first session refreshes its access token');
     [$status, , $page] = demo_request($first, $ca, 'GET', DEMO_URL . '/profile');
     demo_expect($status === 200, sprintf('/profile of the first session opens (got %d)', $status));
@@ -3165,11 +2610,7 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
         sprintf('new at+jwt signed by %s (jti %s to %s), ID token re-issued and verified, same sub', $kid2, $jtiBefore, $jtiAfter),
     ];
 
-    // 6. Logout across the rotation, both ways. Through the demo: /logout runs the refresh listener first
-    // (priority 0, the logout listener at -127), so the hint is the ID token just re-issued, signed by the
-    // new key. As an oidc_login without refresh_access_token (its default) does it, with the ID token of
-    // the login, signed by the key now retiring: the very request OidcEndSessionListener builds,
-    // id_token_hint and post_logout_redirect_uri, on the OP session of the first browser.
+    // The refresh listener of oidc_login (priority 0) precedes the logout one (-127): the hint is the new ID token.
     io()->text('<comment>6.</comment> Log out, with the re-issued ID token and with the one of the login');
     $hint = demo_logout($second, $issuer, $ca);
     demo_expect($hint === $kid2, sprintf(
@@ -3203,7 +2644,6 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
         ),
     ];
 
-    // 7. The retirement, when due: every JWS the old key signed has expired.
     io()->text('<comment>7.</comment> The old key retires');
     demo_wait_until($retirementDue, sprintf('the retirement window of "%s"', $kid1));
     $retirement = op_console(['beffroi:keys:retire', '--due', '--no-ansi'], context()->withAllowFailure()->withQuiet());
@@ -3223,10 +2663,6 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
         sprintf('%s retired %s, out of the JWK Set (%d key(s)); the access token of step 1 gets 401 at UserInfo', $kid1, $byWhom, count($published)),
     ];
 
-    // What oidc_login does on an unknown "kid" (OidcSignatureVerifier::getKeys()): a copy older than the
-    // max-age is refreshed before any check; a valid copy that lacks the "kid" is refetched once, if it
-    // was fetched 60 s ago at least (ROTATION_COOLDOWN), and the verification fails otherwise. Measured on
-    // the emergency path, "rotate --now", where the new key signs before any relying party could see it.
     io()->section('What oidc_login does on an unknown "kid"');
     run(['php', 'bin/console', 'cache:pool:clear', 'cache.app'], context: $server->withQuiet());
     $since = new DateTimeImmutable();
@@ -3286,12 +2722,6 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
     io()->success('oidc-demo noticed nothing across a scheduled rotation; on an unknown "kid", oidc_login refetches the JWK Set once its copy is 60 s old, and refuses the token before that.');
 }
 
-/**
- * Shortens the windows of a rotation in apps/op/.env.local for the run, or removes them: a block the task
- * owns, rewritten every time (a run interrupted before its end leaves it, the next one removes it). The
- * workers of the op container restart on the change (the watch of compose.yaml), the console commands
- * read the file each time; the JWK Set says when the new values serve.
- */
 function demo_rotation_lifetimes(string $issuer, string $ca, bool $shorten): void
 {
     $path = getcwd() . '/' . DEV_ENV_LOCAL;
@@ -3304,14 +2734,13 @@ function demo_rotation_lifetimes(string $issuer, string $ca, bool $shorten): voi
             DEMO_ROTATION_JWKS_MAX_AGE,
             DEMO_ROTATION_TOKEN_TTL,
         );
-        // demo_expect() exits, and exit() skips finally blocks: the file is restored whatever ends the run.
+        // Restored by a shutdown function: demo_expect() exits, and exit() skips finally blocks.
         register_shutdown_function(static function () use ($path, $block): void {
             file_put_contents($path, rtrim((string) preg_replace($block, "\n", (string) file_get_contents($path)), "\n") . "\n");
         });
     }
     file_put_contents($path, $content);
-    // The worker is the process that dates the retirement of the key it replaces (the longest lifetime of a
-    // JWS, read on the issuers of its own container): a consumer reads the file once, at its start.
+    // The worker dates the retirement from the lifetimes, and a consumer reads .env.local only when it starts.
     run(['docker', 'compose', 'restart', 'worker'], context: context()->withQuiet());
     $deadline = time() + 60;
     do {
@@ -3340,8 +2769,6 @@ function demo_rotation_lifetimes(string $issuer, string $ca, bool $shorten): voi
 }
 
 /**
- * The published keys of the tenant, in the order of the JWK Set.
- *
  * @return list<string>
  */
 function demo_jwks(string $issuer, string $ca): array
@@ -3354,9 +2781,6 @@ function demo_jwks(string $issuer, string $ca): array
 }
 
 /**
- * The keys of the tenant with their family, their status and the two dates the run waits for, read from
- * beffroi:keys:list, which says of each key its algorithm, then its use, then its status.
- *
  * @return array<string, array{algorithm: string, status: string, activates_at: ?DateTimeImmutable, retirement_due_at: ?DateTimeImmutable}>
  */
 function demo_keys(): array
@@ -3378,8 +2802,6 @@ function demo_keys(): array
 }
 
 /**
- * Runs beffroi:keys:rotate on the OP, shows its output, and returns the identifier of the new key.
- *
  * @param array<string> $options
  */
 function demo_rotate(array $options): string
@@ -3392,10 +2814,6 @@ function demo_rotate(array $options): string
 }
 
 /**
- * When the demo fetched the JWK Set of the OP since the given instant: the access log of Caddy (op
- * container), the requests on /jwks whose User-Agent is the one of Symfony's HttpClient, which the demo
- * uses (the conformance suite and a browser say otherwise). Caddy logs in UTC.
- *
  * @return list<DateTimeImmutable>
  */
 function demo_jwks_fetches(DateTimeImmutable $since): array
@@ -3441,9 +2859,6 @@ function demo_wait_until(DateTimeImmutable $when, string $what): void
     sleep($seconds);
 }
 
-/**
- * The status UserInfo gives a bearer access token.
- */
 function demo_userinfo(string $issuer, string $ca, string $accessToken): int
 {
     return http_request('GET', $issuer . '/userinfo', [
@@ -3453,16 +2868,10 @@ function demo_userinfo(string $issuer, string $ca, string $accessToken): int
 }
 
 /**
- * The walk of a browser from /profile of the demo to the callback of the demo, one request at a time (no
- * redirect followed), every step looked at: PKCE S256 in the authorization request, the login page of the
- * OP and its form, "iss" on the callback (RFC 9207). Returns the URL of the callback, for the caller to
- * see what the demo makes of it.
- *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
 function demo_authenticate(array &$cookies, string $issuer, string $password, string $ca, string $clientId = DEMO_CLIENT_ID): string
 {
-    // /profile: the demo starts the flow
     [$status, $location] = demo_request($cookies, $ca, 'GET', DEMO_URL . '/profile');
     demo_expect(
         $status === 302 && str_starts_with($location, $issuer . '/authorize?'),
@@ -3477,16 +2886,10 @@ function demo_authenticate(array &$cookies, string $issuer, string $password, st
 }
 
 /**
- * The login the provider asks for before it can answer an authorization request, one request at a time: it
- * parks the request, sends the browser to its login page, and that page carries the form. Returns where the
- * login sent the browser, which is the interaction to resume; what the provider then answers the request
- * with is the caller's to read, a redirection for most clients and a page for a response mode of its own.
- *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
 function demo_login(array &$cookies, string $issuer, string $password, string $ca, string $authorization): string
 {
-    // the OP parks the request and asks for a login
     [$status, $location] = demo_request($cookies, $ca, 'GET', $authorization);
     demo_expect(
         $status === 302 && str_starts_with($location, $issuer . '/login?interaction='),
@@ -3501,9 +2904,7 @@ function demo_login(array &$cookies, string $issuer, string $password, string $c
         'which says where it posts and carries its token',
     );
 
-    // the form, then the login page resumes the interaction. The firewall sends the browser back to the
-    // very URL the form was posted to, whether it took the password or not (LoginController): what the
-    // outcome was is read where the interaction is resumed, not here (demo_resume).
+    // The firewall redirects alike whether or not it took the password: demo_resume reads the outcome.
     [$status, $location] = demo_request($cookies, $ca, 'POST', $issuer . html_entity_decode($action[1]), [
         '_username' => DEV_USERNAME,
         '_password' => $password,
@@ -3515,10 +2916,6 @@ function demo_login(array &$cookies, string $issuer, string $password, string $c
 }
 
 /**
- * The browser from an authorization request to the callback it is sent to: the login above, then the
- * interaction resumed into the redirect the client registered. Returns that redirect, for the caller to
- * see what is on it; the authorization request is the caller's, whether the demo built it or the run did.
- *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
 function demo_login_at(array &$cookies, string $issuer, string $password, string $ca, string $authorization): string
@@ -3535,26 +2932,13 @@ function demo_login_at(array &$cookies, string $issuer, string $password, string
 }
 
 /**
- * The interaction resumed, and the consent given if the provider asks for one (architecture §4.3, OIDC
- * Core §3.1.2.4): the browser goes where the login sent it, and a client that is not exempt from the
- * consent puts one page more between that login and its response, which the walk answers as whoever is in
- * front of the browser would. A client the provider does not ask about, and a consent already in force,
- * go straight through: the page is answered when it is shown and never expected.
- *
- * What comes back is what the provider answers the request with, a redirection to the client or the page
- * a response mode of its own renders, so that every walk reads its answer where it already read it.
- *
  * @param array<string, array<string, string>> $cookies host => name => value
- * @param (callable(string): void)|null $onConsent handed the consent page before it is answered, for a walk
- *                                                that has something to read on it
+ * @param (callable(string): void)|null $onConsent handed the consent page
  * @return array{int, string, string, array<string, list<string>>}
  */
 function demo_resume(array &$cookies, string $ca, string $issuer, string $url, ?callable $onConsent = null): array
 {
     [$status, $location, $page, $headers] = demo_request($cookies, $ca, 'GET', $url);
-    // A login that was refused brings the browser back to the form, which says so; a login that was taken
-    // resumes into what the provider answers the request with. The two are the same redirection, so this is
-    // where a refusal is named, rather than three requests later (LoginController, the page of the login).
     demo_expect(! str_contains($page, 'data-error="authentication_failed"'), sprintf(
         'the login page does not come back saying the sign-in was refused ("beffroi:user:show %s" says which credentials that user holds, and a second factor is one no walk of this file answers)',
         DEV_USERNAME,
@@ -3583,9 +2967,6 @@ function demo_resume(array &$cookies, string $ca, string $issuer, string $url, ?
 }
 
 /**
- * A sign-in through the demo: the walk to the callback, then the demo exchanges the code, verifies the ID
- * token, reads UserInfo and opens /profile, whose tokens are returned.
- *
  * @param array<string, array<string, string>> $cookies host => name => value
  * @return array{page: string, tokens: array<string, array{raw: string, header: array<string, mixed>, claims: array<string, mixed>}>}
  */
@@ -3606,12 +2987,6 @@ function demo_sign_in(array &$cookies, string $issuer, string $password, string 
 }
 
 /**
- * The step of the address of the login page (spec/saml.md S-61): a tenant that federates an e-mail domain to an
- * upstream identity provider, as the development tenant does (beffroi.saml.identity_providers, "castor saml-idp"), asks
- * for the address first and offers nothing else. A username holds no "@" and is of no domain, so the page sends it on
- * to the usual login page, which this returns, its field of the username holding it; a login page that asks for no
- * address is returned as it is.
- *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
 function demo_past_the_address(array &$cookies, string $ca, string $issuer, string $page, string $username = DEV_USERNAME): string
@@ -3639,14 +3014,7 @@ function demo_past_the_address(array &$cookies, string $ca, string $issuer, stri
 }
 
 /**
- * The form of a page that carries a field, from its opening tag to its closing one, which is the form a
- * browser would submit when somebody answers with that field.
- *
- * A page of an interaction carries the question it asks and the controls the layout of the deployment puts
- * on it, the language and the theme being two, each a form of its own with a token of its own
- * (apps/op/templates). A walk that posted to the first form of the page would send the answer of the
- * question to whichever control the layout happens to render first, and be refused for a token that was
- * never its own. So the form is named by the field that belongs to the question.
+ * A page also carries the forms of its layout (language, theme), so the form is picked by a field of its own.
  */
 function demo_form_with(string $page, string $field, string $what): string
 {
@@ -3657,9 +3025,6 @@ function demo_form_with(string $page, string $field, string $what): string
 }
 
 /**
- * A sign-in the demo refuses at the callback: the browser lands on the failure path of oidc_login, the
- * login page of the demo, which says why. Returns that reason.
- *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
 function demo_sign_in_refused(array &$cookies, string $issuer, string $password, string $ca): string
@@ -3678,10 +3043,6 @@ function demo_sign_in_refused(array &$cookies, string $issuer, string $password,
 }
 
 /**
- * RP-Initiated Logout through the demo: /logout ends its session and sends the browser to the end session
- * endpoint of the OP with id_token_hint and post_logout_redirect_uri, the OP ends its session and sends
- * the browser back. Returns the "kid" of the hint, the ID token the session held.
- *
  * @param array<string, array<string, string>> $cookies host => name => value
  */
 function demo_logout(array &$cookies, string $issuer, string $ca): string
@@ -3707,14 +3068,11 @@ function demo_logout(array &$cookies, string $issuer, string $ca): string
 }
 
 /**
- * One request of the browser of the check, cookies kept per host, no redirect followed. The demo is a
- * development server with a certificate of the Symfony CLI, verified against nothing; the OP is verified
- * against the CA of Caddy.
+ * The demo, on localhost, serves a certificate of the Symfony CLI, which is verified against nothing.
  *
  * @param array<string, array<string, string>> $cookies host => name => value
  * @param array<string, string> $form
- * @param list<string> $setCookies filled with the Set-Cookie headers of the response, for a check that
- *                                 looks at the attributes of a cookie and not only at its value
+ * @param list<string> $setCookies filled with the Set-Cookie headers of the response
  * @return array{int, string, string, array<string, list<string>>} status, Location, body, headers
  */
 function demo_request(array &$cookies, string $ca, string $method, string $url, array $form = [], array &$setCookies = []): array
@@ -3751,7 +3109,6 @@ function demo_request(array &$cookies, string $ca, string $method, string $url, 
         $cookies[$host][trim($name)] = trim($value);
     }
 
-    // a Location may be relative (RFC 9110 §10.2.2): resolved against the origin of the request
     $location = $headers['location'][0] ?? '';
     if (str_starts_with($location, '/')) {
         $port = parse_url($url, \PHP_URL_PORT);
@@ -3771,9 +3128,7 @@ function demo_expect(bool $condition, string $what): void
 }
 
 /**
- * The tokens the profile page prints in full, by their kind: the header "typ" tells the access token
- * (RFC 9068 §2.1), the audience the ID token (OIDC Core §2; the nonce would not do, an ID token issued on
- * a refresh carries none, §12.2).
+ * An ID token is told by its audience and not by its nonce, which one issued on a refresh lacks (OIDC Core §12.2).
  *
  * @return array<string, array{raw: string, header: array<string, mixed>, claims: array<string, mixed>}>
  */
@@ -3794,8 +3149,6 @@ function demo_tokens_of(string $page): array
 }
 
 /**
- * A compact JWS read, not verified: the check looks at what the demo shows, the demo verified it.
- *
  * @return array{raw: string, header: array<string, mixed>, claims: array<string, mixed>}
  */
 function demo_jwt(string $jwt): array
@@ -3813,19 +3166,10 @@ function demo_jwt(string $jwt): array
     ];
 }
 
-/**
- * The CLI of the device grant (issue #228): tests/demo/device-cli.php, the program of an appliance with no
- * browser and no secret, and the client the application registers for it.
- */
 const DEMO_DEVICE_CLI = 'tests/demo/device-cli.php';
 
 const DEMO_DEVICE_CLIENT_ID = 'demo-appliance';
 
-/**
- * The resource the service and the gateway ask their tokens for, which is the one the resource server of the
- * demonstration answers for (its OIDC_RESOURCE), and the one it does not: a token addressed elsewhere is
- * refused there rather than described (RFC 8707 §2).
- */
 const DEMO_SERVICE_RESOURCE = DEMO_URL . '/api/service';
 
 const DEMO_OTHER_RESOURCE = 'https://cal.example.com/';
@@ -3836,17 +3180,6 @@ const DEMO_GATEWAY_CLIENT_ID = 'demo-gateway';
 
 const DEMO_ACCESS_TOKEN_TYPE = 'urn:ietf:params:oauth:token-type:access_token';
 
-/**
- * The first interoperability criterion of spike 6 (issue #228): a PHP CLI obtains a token by the device
- * grant (RFC 8628), with the code it displays confirmed in a browser. What makes it a demonstration rather
- * than a test is that the two halves are really two: the CLI runs as its own process and polls the token
- * endpoint, while this walk goes to the address it printed and answers as whoever is in front of the browser
- * would, on a device that shares nothing with it but the code.
- *
- * Every step is asserted as the forge asserts its presets: what the provider hands the CLI to display
- * (§3.2), what the page shows of the request before anybody agrees to it (BCP 10027 §2: the provider that
- * asks, the client that asks, where it asked from, the code itself), and what the CLI ends up holding.
- */
 function demo_device_check(string $issuer, string $password, string $ca): void
 {
     io()->section('A CLI on the device grant');
@@ -3859,7 +3192,6 @@ function demo_device_check(string $issuer, string $password, string $ca): void
     $cli->start();
 
     try {
-        // RFC 8628 §3.2: what the appliance is given to show, read from the first line it writes
         $asked = demo_cli_step($cli, 'device_authorization');
         $userCode = (string) ($asked['user_code'] ?? '');
         demo_expect(
@@ -3883,11 +3215,9 @@ function demo_device_check(string $issuer, string $password, string $ca): void
             sprintf('code %s at %s, every %d s for %d s', $userCode, (string) $asked['verification_uri'], (int) $asked['interval'], (int) $asked['expires_in']),
         ];
 
-        // the other device: a browser that knows nothing of the CLI but the code it was read
         demo_device_confirm($issuer, $password, $ca, $userCode);
         $verified[] = ['Confirmation in a browser', sprintf('%s signed in, read what the code asks for and allowed it', DEV_USERNAME)];
 
-        // the CLI was polling all along, and answers itself once somebody has answered for it
         $tokens = demo_cli_step($cli, 'tokens');
         demo_expect(($tokens['token_type'] ?? null) === 'Bearer', sprintf('the CLI holds a bearer token (got %s)', (string) ($tokens['token_type'] ?? '')));
         demo_expect(($tokens['sub'] ?? null) !== null, 'the token names the user who confirmed the code');
@@ -3920,11 +3250,6 @@ function demo_device_check(string $issuer, string $password, string $ca): void
 }
 
 /**
- * The next step a CLI of tests/demo/ writes on its standard output, one JSON object per line: the device
- * grant, the backchannel client and the native client all report that way, because all three keep working
- * while the walk does something else. The lines are read as they come and never waited for all at once; a
- * line that says the flow ended is an error of the run and is reported as it is.
- *
  * @throws RuntimeException when the CLI ends before the step, or says the flow ended without tokens
  *
  * @return array<string, mixed>
@@ -3962,16 +3287,13 @@ function demo_cli_step(Process $cli, string $step, float $timeout = 150.0): arra
 }
 
 /**
- * The other device of the device grant (RFC 8628 §3.3): a browser that holds nothing of the flow but the
- * code, signs its user in at the provider, reads what the code is asking for and allows it. The page is
- * asserted against BCP 10027 §2, which is what tells this flow from one where a code is enough.
+ * RFC 8628 §3.3
  */
 function demo_device_confirm(string $issuer, string $password, string $ca, string $userCode): void
 {
     $cookies = [];
     $page = $issuer . '/device?user_code=' . rawurlencode($userCode);
 
-    // no session yet, so the page asks for a login and remembers the code it was carrying
     [$status, $location] = demo_request($cookies, $ca, 'GET', $page);
     demo_expect(
         $status === 302 && str_starts_with($location, $issuer . '/login'),
@@ -3992,7 +3314,6 @@ function demo_device_confirm(string $issuer, string $password, string $ca, strin
     ]);
     demo_expect($status === 302, sprintf('the form is accepted (got %d)', $status));
 
-    // the login brings the browser back to the code it was carrying (LoginTarget)
     [$status, , $approval] = demo_request($cookies, $ca, 'GET', $location);
     demo_expect(
         $status === 200 && str_contains($approval, 'data-warning="unexpected"'),
@@ -4011,7 +3332,6 @@ function demo_device_confirm(string $issuer, string $password, string $ca, strin
         sprintf('it names every scope of the request (%s)', implode(' ', $scopes[1] ?? [])),
     );
 
-    // allow, with the token of the page and the code it carried
     $fields = demo_form_fields($approval);
     [$status, , $answered] = demo_request($cookies, $ca, 'POST', $issuer . '/device', [
         ...$fields,
@@ -4024,24 +3344,11 @@ function demo_device_confirm(string $issuer, string $password, string $ca, strin
     );
 }
 
-/**
- * The second and third interoperability criteria of spike 6 (issue #228): a service obtains a token for
- * itself (RFC 6749 §4.4) for a resource it named (RFC 8707 §2), a gateway exchanges that token to act on its
- * behalf (RFC 8693), and the resource server of the demonstration is handed the result.
- *
- * Three parties and no browser anywhere. What the resource server proves is what Symfony gives a resource
- * server: its `access_token` authenticator compares the `aud` of the token with the identifier of the
- * resource it answers for, so a token addressed to the other resource is refused there without the provider
- * being asked anything. Who is acting for the subject is in the token and not in what the authenticator
- * hands over, so the route reads it from the payload the firewall has already verified; that is the gap this
- * criterion measures, and it is written down as `RS-16` of the Symfony status document.
- */
 function demo_service_check(string $dir, string $issuer, string $serviceSecret, string $gatewaySecret, string $ca): void
 {
     io()->section('A service, a gateway acting for it, and a resource server');
     $verified = [];
 
-    // the resource server answers for one resource, which is what its firewall compares an "aud" with
     demo_write_env_local($dir . '/.env.local', [
         'OIDC_RESOURCE' => DEMO_SERVICE_RESOURCE,
     ]);
@@ -4049,7 +3356,6 @@ function demo_service_check(string $dir, string $issuer, string $serviceSecret, 
     run(['symfony', 'server:stop'], context: $server->withAllowFailure());
     demo_server_start($server);
 
-    // RFC 6749 §4.4: the service asks for itself, and names what the token is for
     $service = demo_client_credentials($issuer, $ca, DEMO_SERVICE_CLIENT_ID, $serviceSecret, DEMO_SERVICE_RESOURCE);
     $claims = demo_claims_of($service['access_token']);
     demo_expect(($claims['sub'] ?? null) === DEMO_SERVICE_CLIENT_ID, sprintf(
@@ -4068,8 +3374,6 @@ function demo_service_check(string $dir, string $issuer, string $serviceSecret, 
     );
     $verified[] = ['client_credentials', sprintf('%s holds a token for %s, may_act %s', DEMO_SERVICE_CLIENT_ID, DEMO_SERVICE_RESOURCE, DEMO_GATEWAY_CLIENT_ID)];
 
-    // RFC 8693 §2.1: the gateway presents the token of the service and a token of its own, which is what
-    // makes the exchange a delegation rather than an impersonation (§1.3)
     $gateway = demo_client_credentials($issuer, $ca, DEMO_GATEWAY_CLIENT_ID, $gatewaySecret, DEMO_SERVICE_RESOURCE);
     $exchanged = demo_token_exchange($issuer, $ca, $gatewaySecret, $service['access_token'], $gateway['access_token'], DEMO_SERVICE_RESOURCE);
     $claims = demo_claims_of($exchanged['access_token']);
@@ -4088,7 +3392,6 @@ function demo_service_check(string $dir, string $issuer, string $serviceSecret, 
     demo_expect(($claims['client_id'] ?? null) === DEMO_GATEWAY_CLIENT_ID, 'while "client_id" names the client that asked (RFC 9068 §2.2)');
     $verified[] = ['Token exchange', sprintf('sub %s, act %s, client_id %s', DEMO_SERVICE_CLIENT_ID, DEMO_GATEWAY_CLIENT_ID, DEMO_GATEWAY_CLIENT_ID)];
 
-    // the resource server: the token is accepted because it is addressed to this resource
     [$status, $answer] = demo_api_call(DEMO_SERVICE_RESOURCE, $exchanged['access_token']);
     demo_expect($status === 200, sprintf('the resource server accepts the exchanged token (got %d)', $status));
     demo_expect(
@@ -4101,7 +3404,6 @@ function demo_service_check(string $dir, string $issuer, string $serviceSecret, 
     );
     $verified[] = ['Resource server', sprintf('%s accepted, sub %s, act %s', DEMO_SERVICE_RESOURCE, DEMO_SERVICE_CLIENT_ID, DEMO_GATEWAY_CLIENT_ID)];
 
-    // RFC 8707 §2: and refuses one addressed somewhere else, without asking the provider anything
     $elsewhere = demo_client_credentials($issuer, $ca, DEMO_SERVICE_CLIENT_ID, $serviceSecret, DEMO_OTHER_RESOURCE);
     [$status] = demo_api_call(DEMO_SERVICE_RESOURCE, $elsewhere['access_token']);
     demo_expect($status === 401, sprintf('a token addressed to %s is refused there (got %d)', DEMO_OTHER_RESOURCE, $status));
@@ -4112,7 +3414,7 @@ function demo_service_check(string $dir, string $issuer, string $serviceSecret, 
 }
 
 /**
- * A token a client holds for itself (RFC 6749 §4.4), addressed to the resource it named.
+ * RFC 6749 §4.4
  *
  * @return array<string, mixed>
  */
@@ -4138,8 +3440,7 @@ function demo_client_credentials(string $issuer, string $ca, string $clientId, s
 }
 
 /**
- * RFC 8693 §2.1: the token of the service and a token of the gateway, exchanged for one the gateway holds on
- * the service's behalf.
+ * RFC 8693 §2.1
  *
  * @return array<string, mixed>
  */
@@ -4167,8 +3468,6 @@ function demo_token_exchange(string $issuer, string $ca, string $gatewaySecret, 
 }
 
 /**
- * The route of the demonstration that answers for a resource, called with the token it is handed.
- *
  * @return array{int, array<string, mixed>}
  */
 function demo_api_call(string $url, string $accessToken): array
@@ -4186,9 +3485,6 @@ function demo_api_call(string $url, string $accessToken): array
 }
 
 /**
- * The claims of a self-contained access token (RFC 9068 §2.2), read to assert on them; nothing is verified
- * here, the walk being the client and not a resource server.
- *
  * @return array<string, mixed>
  */
 function demo_claims_of(mixed $accessToken): array
@@ -4200,11 +3496,6 @@ function demo_claims_of(mixed $accessToken): array
     return is_array($payload) ? $payload : [];
 }
 
-/**
- * The client of the two backchannel walks, run under the autoloader of the monorepo, which castor does not
- * load, and the two clients it is: one per delivery mode, because a client registers one and one only
- * (CIBA Core §4).
- */
 const DEMO_CIBA_CLIENT = 'tests/demo/ciba-client.php';
 
 const DEMO_CIBA_CLIENTS = [
@@ -4221,38 +3512,19 @@ const DEMO_CIBA_CLIENTS = [
 ];
 
 /**
- * Where the client of the "ping" walk listens, as the worker of the stack reaches it: the port is registered
- * with that client (apps/op/config/packages/dev/beffroi.yaml), so it is fixed rather than drawn.
+ * Registered with the ping client (apps/op/config/packages/dev/beffroi.yaml), so it is fixed rather than drawn.
  */
 const DEMO_CIBA_NOTIFICATION_PORT = 8004;
 
-/**
- * CIBA Core §7.1: what the client writes for the user to read on the device where they answer, which is what
- * ties the thing they are looking at to the thing that asked.
- */
 const DEMO_CIBA_BINDING_MESSAGE = 'Invoice 4711';
 
 /**
- * The first part of issue #299: a client asks for a user it names and waits, and that user answers on a
- * device of their own. Both delivery modes, one after the other.
- *
- * What it looks at is the part no specification writes for us. The request reaches the user as a line on a
- * page they went to themselves, found by who they are and never by a link they were sent (BCP 10027 §5.2),
- * and it carries the message the client wrote, so that somebody who started nothing sees a message they do
- * not recognise and refuses. The two modes differ in one thing and the walk measures exactly that: how many
- * times the client had to ask.
- *
- * @param string $subject what a "login_hint" names for this tenant: the subject this provider issued, which is
- *                        the reading the application wired (beffroi.backchannel_authentication.login_hint) and
- *                        what CIBA Core §15 asks for, an identifier that says nothing outside this provider
- * @param array<string, string> $secrets apps/op/.env.local, by the name of the variable each client's is under
+ * @param array<string, string> $secrets apps/op/.env.local, by variable name
  */
 function demo_ciba_check(string $issuer, string $password, string $ca, string $subject, array $secrets, bool $byHand = false): void
 {
     io()->section($byHand ? 'A backchannel client, and you are the other device' : 'A backchannel client, and the user who answers it elsewhere');
     $verified = [];
-    // by hand there is one delivery mode and not two: what is being shown is the other device, which is a
-    // person, and asking them to do it twice shows nothing the first one did not
     $clients = $byHand
         ? [
             'poll' => DEMO_CIBA_CLIENTS['poll'],
@@ -4278,7 +3550,6 @@ function demo_ciba_check(string $issuer, string $password, string $ca, string $s
         $cli->start();
 
         try {
-            // CIBA Core §7.3: the client is handed an identifier, a lifetime and an interval, and no token
             $asked = demo_cli_step($cli, 'backchannel_authentication');
             demo_expect(
                 ($asked['mode'] ?? null) === $mode && is_int($asked['expires_in'] ?? null) && $asked['expires_in'] > 0,
@@ -4289,8 +3560,6 @@ function demo_ciba_check(string $issuer, string $password, string $ca, string $s
                 sprintf('%s: the client is told how often it may ask (%s s)', $mode, (string) ($asked['interval'] ?? '?')),
             );
 
-            // the other device: the browser of a user who holds nothing of the request and finds it by who
-            // they are. By hand, that browser is yours and nothing here answers for you.
             if ($byHand) {
                 demo_ciba_wait_for_you($issuer, $asked);
             } else {
@@ -4298,8 +3567,6 @@ function demo_ciba_check(string $issuer, string $password, string $ca, string $s
             }
 
             if ($mode === 'ping') {
-                // CIBA Core §10.2: the provider posts the identifier to the endpoint that client registered,
-                // with the token that client gave it, and carries no token there
                 $notified = demo_cli_step($cli, 'notification');
                 demo_expect(
                     ($notified['auth_req_id_matches'] ?? false) === true && ($notified['token_matches'] ?? false) === true,
@@ -4347,21 +3614,9 @@ function demo_ciba_check(string $issuer, string $password, string $ca, string $s
     );
 }
 
-/**
- * How long a run that waits for a person gives them, in seconds: the lifetime of a backchannel request is
- * five minutes on this stack, and there is no point waiting past the thing they would be answering.
- */
 const DEMO_CIBA_BY_HAND_TIMEOUT = 300;
 
 /**
- * The other device, when it is yours. Nothing here answers the request: the run says what is on its way to
- * you and where to answer it, and then waits for the client to be handed its token, which only happens
- * once you have allowed it.
- *
- * This is what the rest of this task is not: every other walk plays both sides, which is what makes it a
- * test, and a flow whose whole point is that somebody is asked cannot be shown by a program that answers
- * itself.
- *
  * @param array<string, mixed> $asked what the backchannel authentication endpoint answered
  */
 function demo_ciba_wait_for_you(string $issuer, array $asked): void
@@ -4388,21 +3643,12 @@ function demo_ciba_wait_for_you(string $issuer, array $asked): void
     );
 }
 
-/**
- * The other device of the backchannel flow (CIBA Core §10.1, BCP 10027 §5.2): a browser that holds nothing of
- * the request, signs its user in, finds what is waiting for them and allows it.
- *
- * There is no code to type here and no link that carries the request, which is what tells this page from the
- * one of the device grant: what reaches a user from outside says that something is waiting, and what they
- * find at the provider is found by who they are.
- */
 function demo_ciba_approve(string $issuer, string $password, string $ca, string $clientId, ?string $bindingMessage = null): void
 {
     $bindingMessage ??= DEMO_CIBA_BINDING_MESSAGE;
     $cookies = [];
     $page = $issuer . '/account/approvals';
 
-    // no session yet, so the page asks for a login and brings the browser back to it (LoginTarget)
     $approvals = demo_browser_sign_in($cookies, $issuer, $password, $ca, $page);
     demo_expect(
         preg_match('/data-approval="([^"]+)"/', $approvals) === 1,
@@ -4422,7 +3668,6 @@ function demo_ciba_approve(string $issuer, string $password, string $ca, string 
     );
     demo_expect(str_contains($approvals, 'data-warning="unexpected"'), 'and tells whoever started nothing to refuse (BCP 10027 §5.2)');
 
-    // allow, with the token of the page and the handle of the request it named
     $fields = demo_form_fields($approvals);
     [$status, , $answered] = demo_request($cookies, $ca, 'POST', $page, [
         ...$fields,
@@ -4435,11 +3680,6 @@ function demo_ciba_approve(string $issuer, string $password, string $ca, string 
     );
 }
 
-/**
- * The signing client of the assertion walk, and the issuer it signs for: the "iss" its assertions carry, the
- * subject the development user is known by over there, and one nobody resolves, which is what the walk gets
- * the same refusal for. They are what "castor provision" registered and linked (.castor/stack/provision.php).
- */
 const DEMO_ASSERTION_CLIENT = 'tests/demo/assertion-client.php';
 
 const DEMO_ASSERTION_CLIENT_ID = 'demo-assertion';
@@ -4450,20 +3690,8 @@ const DEMO_ASSERTION_SUBJECT = 'alice@issuer.demo.localhost';
 
 const DEMO_ASSERTION_UNKNOWN_SUBJECT = 'nobody@issuer.demo.localhost';
 
-/**
- * Where "castor provision" left the private half of the key of that issuer.
- */
 const DEMO_ASSERTION_JWKS = 'var/demo/demo-issuer.jwks.json';
 
-/**
- * The second part of issue #299: an assertion signed by an issuer the tenant trusts, exchanged for an access
- * token for the user it names (RFC 7523 §2.1).
- *
- * It is one paragraph of a specification and a whole trust decision, so the walk plays the decision and not
- * only the grant: the assertion that works, the same one again, one about somebody no linked identity
- * resolves, and one asking for an authentication this grant performs for nobody. The three refusals say the
- * same thing, which is what the walk checks last: what a tenant trusts is not something an error teaches.
- */
 function demo_assertion_check(string $issuer, string $ca, string $secret): void
 {
     io()->section('An assertion of a trusted issuer, exchanged for a token');
@@ -4475,8 +3703,7 @@ function demo_assertion_check(string $issuer, string $ca, string $secret): void
         'client_id' => DEMO_ASSERTION_CLIENT_ID,
         'client_secret' => $secret,
         'trusted_issuer' => DEMO_ASSERTION_ISSUER,
-        // RFC 7523 §3, FAPI 2.0 §5.3.2.1: the issuer identifier of the provider is the one name an assertion
-        // may be addressed to (issue #267)
+        // RFC 7523 §3, FAPI 2.0 §5.3.2.1: the issuer identifier is the one audience an assertion may name.
         'audience' => $issuer,
         'subject' => DEMO_ASSERTION_SUBJECT,
         'unknown_subject' => DEMO_ASSERTION_UNKNOWN_SUBJECT,
@@ -4511,8 +3738,6 @@ function demo_assertion_check(string $issuer, string $ca, string $secret): void
         sprintf('sub %s for %s, "%s"', (string) ($claims['sub'] ?? '?'), DEMO_SERVICE_RESOURCE, (string) ($granted['scope'] ?? '?')),
     ];
 
-    // The three refusals, each one a rule of the grant, and all three the same words: an error response of
-    // this grant says that the assertion was not accepted and nothing else.
     $refusals = [];
     foreach (['replayed', 'unknown_subject', 'openid_refused'] as $attempt) {
         $refused = is_array($run[$attempt] ?? null) ? $run[$attempt] : [];
@@ -4536,8 +3761,6 @@ function demo_assertion_check(string $issuer, string $ca, string $secret): void
 }
 
 /**
- * The assertion client of tests/demo/, run under the autoloader of the monorepo, which castor does not load.
- *
  * @param array<string, string> $input
  * @return array<string, mixed>
  */
@@ -4553,11 +3776,6 @@ function demo_assertion_client(array $input): array
     return $run;
 }
 
-/**
- * The client of the rich authorization request walk, the one type of detail the development stack wires
- * (App\Lab\AuthorizationDetails\InvoicePaymentType) and a type it does not, which is what the refusal is asked
- * for. The detail says what may be done, to what, and how much, which is the whole difference with a scope.
- */
 const DEMO_RAR_CLIENT_ID = 'demo-rar';
 
 const DEMO_RAR_INVOICE = 'INV-4711';
@@ -4575,16 +3793,7 @@ const DEMO_RAR_DETAILS = [
     ],
 ];
 
-/**
- * The same detail as the type built it, which is what comes back everywhere it is rendered: the members in the
- * order that type chose, and its lists sorted, where the request above wrote the two actions the other way
- * round.
- *
- * It is not a detail of this walk. Two requests that ask for the same thing have to be the same detail whatever
- * order they were written in, or a consent given for one would not cover the other
- * (AuthorizationDetail::equals()), so what a token carries is what the type made of the request and never the
- * request as it arrived.
- */
+/** DEMO_RAR_DETAILS as its type builds it, lists sorted: what comes back everywhere it is rendered. */
 const DEMO_RAR_GRANTED = [
     [
         'type' => 'invoice_payment',
@@ -4605,14 +3814,6 @@ const DEMO_RAR_UNWIRED_DETAILS = [
     ],
 ];
 
-/**
- * The third part of issue #299: a request that asks for what it may do, to what and how much (RFC 9396).
- *
- * A scope is a kind of thing and a detail is a thing, so a detail is the one part of an authorization a user
- * has to be able to read before agreeing to it: the walk therefore reads the consent page before answering
- * it, and only then follows the detail into the access token (§7) and into the introspection (§9), which is
- * where a resource server finds it. Then a type nobody wired, refused at the endpoint the browser is on.
- */
 function demo_rar_check(string $issuer, string $password, string $ca, string $secret): void
 {
     io()->section('A request that asks for what it may do, to what and how much');
@@ -4621,7 +3822,6 @@ function demo_rar_check(string $issuer, string $password, string $ca, string $se
     $verifier = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
     $redirectUri = DEMO_URL . '/c/rar/callback';
 
-    // RFC 9396 §2: the parameter is the JSON of the array, in the query of the browser like every other
     $authorization = demo_rar_authorization($issuer, $verifier, $redirectUri, DEMO_RAR_DETAILS);
     $shown = null;
     [$status, $location] = demo_resume(
@@ -4652,7 +3852,6 @@ function demo_rar_check(string $issuer, string $password, string $ca, string $se
     );
     $verified[] = ['Consent', sprintf('the detail rendered as "%s", invoice %s, at most 45.00 EUR', $rendered[1], DEMO_RAR_INVOICE)];
 
-    // the code, then the token it is spent for
     demo_expect(
         $status === 302 && str_starts_with($location, $redirectUri . '?'),
         sprintf('the provider answers the request with a redirection to the client (got %d %s)', $status, $location),
@@ -4676,7 +3875,6 @@ function demo_rar_check(string $issuer, string $password, string $ca, string $se
     $verified[] = ['Access token', sprintf('authorization_details of %d object(s), in the order of its type', count(DEMO_RAR_GRANTED))];
     $verified[] = ['The token response', sprintf('says what it granted, %d object(s)', count(DEMO_RAR_GRANTED))];
 
-    // RFC 9396 §9: where a resource server that does not read the token itself finds the same thing
     $described = demo_rar_introspection($issuer, $ca, $secret, (string) ($tokens['access_token'] ?? ''));
     demo_expect(
         ($described['authorization_details'] ?? null) === DEMO_RAR_GRANTED,
@@ -4687,8 +3885,6 @@ function demo_rar_check(string $issuer, string $password, string $ca, string $se
     );
     $verified[] = ['Introspection', 'the same detail, rendered for a resource server that asks'];
 
-    // RFC 9396 §11: what a client may ask for is the closed list of its registration, and a type nobody
-    // wired is a detail nothing could describe or show
     $refused = [];
     [$status, $location] = demo_request(
         $refused,
@@ -4716,7 +3912,7 @@ function demo_rar_check(string $issuer, string $password, string $ca, string $se
 }
 
 /**
- * RFC 9396 §2: the authorization request of that client, carrying the JSON of the details it asks for.
+ * RFC 9396 §2
  *
  * @param list<array<string, mixed>> $details
  */
@@ -4733,17 +3929,14 @@ function demo_rar_authorization(string $issuer, string $verifier, string $redire
         'nonce' => bin2hex(random_bytes(16)),
         'code_challenge' => rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '='),
         'code_challenge_method' => 'S256',
-        // OIDC Core §3.1.2.1: the page is what this walk reads, and a consent already in force would answer
-        // the request without showing one, so it is asked for rather than hoped for
+        // The walk reads the consent page, which a consent already in force would skip.
         'prompt' => 'consent',
         'authorization_details' => json_encode($details, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES),
     ]);
 }
 
 /**
- * A code spent by the client it was issued to, with the verifier of its challenge when it sent one
- * (RFC 6749 §4.1.3, RFC 7636 §4.5): the one exchange of the laboratory, whatever the walk asks for it,
- * because a client that registered itself spends a code exactly as a declared one does.
+ * RFC 6749 §4.1.3, RFC 7636 §4.5
  *
  * @return array<string, mixed>
  */
@@ -4770,8 +3963,6 @@ function demo_exchange_code(
         'auth_basic' => $clientId . ':' . $secret,
         'body' => $body,
     ]);
-    // What the endpoint answered belongs in the message only when there is something wrong with it: a token
-    // response printed on success buries the assertions that read it.
     $exchanged = $response->getStatusCode() === 200;
     demo_expect($exchanged, sprintf(
         'the code is exchanged%s',
@@ -4782,7 +3973,7 @@ function demo_exchange_code(
 }
 
 /**
- * RFC 7662 §2.2, RFC 9396 §9: the token described to the client it was issued to.
+ * RFC 7662 §2.2, RFC 9396 §9
  *
  * @return array<string, mixed>
  */
@@ -4803,30 +3994,13 @@ function demo_rar_introspection(string $issuer, string $ca, string $secret, stri
     return $described;
 }
 
-/**
- * The native client of the loopback walk, and the two runs it makes: the port is what varies between them,
- * and it is the one thing of the redirection this provider does not compare byte for byte (RFC 8252 §7.3).
- */
 const DEMO_NATIVE_CLI = 'tests/demo/native-cli.php';
 
 const DEMO_NATIVE_CLIENT_ID = 'demo-native';
 
-/**
- * RFC 8252 §8.3: the loopback interface named by a name rather than by its IP literal, which a native client
- * must not be sent back to, whatever resolves it on the machine of the user.
- */
+/** RFC 8252 §8.3 */
 const DEMO_NATIVE_REFUSED_REDIRECT = 'http://localhost/callback';
 
-/**
- * The fourth part of issue #299: a program on the machine of its user, receiving the authorization response on
- * the loopback interface (RFC 8252 §7.3).
- *
- * The walk is the run twice, because one run proves nothing: what is claimed is that the port varies and the
- * provider serves it, so two runs on two ports are what says so. Then the exception is shown to be an
- * exception and not a hole: a redirection on a name rather than on the IP literal is refused, the path is
- * compared as it is for every other client, and the code is worth nothing without the verifier of its
- * challenge, this client holding no secret at all.
- */
 function demo_native_check(string $issuer, string $password, string $ca): void
 {
     io()->section('A native client on the loopback interface');
@@ -4841,8 +4015,6 @@ function demo_native_check(string $issuer, string $password, string $ca): void
         $cli->start();
 
         try {
-            // the operating system hands it a port, and the redirection it gives the provider carries that
-            // port and nothing else of its own
             $listening = demo_cli_step($cli, 'listening');
             $port = is_int($listening['port'] ?? null) ? $listening['port'] : 0;
             demo_expect($port > 0, sprintf('run %d: the client is listening on a port it was given (got %s)', $run, (string) $port));
@@ -4856,8 +4028,6 @@ function demo_native_check(string $issuer, string $password, string $ca): void
             );
             $ports[] = $port;
 
-            // the browser of the user: the provider serves the request, the login and the consent, and sends
-            // the browser back to the port of this run
             $cookies = [];
             [$status, $location] = demo_resume(
                 $cookies,
@@ -4869,7 +4039,6 @@ function demo_native_check(string $issuer, string $password, string $ca): void
                 $status === 302 && str_starts_with($location, $listening['redirect_uri'] . '?'),
                 sprintf('run %d: the provider sends the browser back to the port of this run (got %d %s)', $run, $status, $location),
             );
-            // the browser goes there, which is what hands the code to the program waiting behind it
             demo_request($cookies, $ca, 'GET', $location);
 
             $redirected = demo_cli_step($cli, 'redirected');
@@ -4904,8 +4073,6 @@ function demo_native_check(string $issuer, string $password, string $ca): void
     );
     $verified[] = ['The exception', sprintf('two ports served on one registration, %s', implode(' and ', $ports))];
 
-    // RFC 8252 §8.3: the exception is the port and nothing else. A name is resolved by whatever answers for
-    // it on the machine of the user, and a redirection carrying a code is not a thing to hand to that.
     $cookies = [];
     [$status, , $page] = demo_request(
         $cookies,
@@ -4941,73 +4108,34 @@ const DEMO_PUSH_SERVICE = 'tests/demo/push-service.php';
 const DEMO_PUSH_BROWSER = 'tests/demo/push-browser.php';
 
 /**
- * Where the push service of the walk listens, and the name the containers of the stack reach it by: the
- * same ".localhost" name the second instance of the demonstration and the listener of the ping client are
- * reached by, since from inside a container "localhost" is the container (compose.yaml, extra_hosts).
+ * The containers reach this machine as demo.localhost (compose.yaml, extra_hosts): their localhost is themselves.
  */
 const DEMO_PUSH_PORT = 8005;
 
 const DEMO_PUSH_HOST = 'demo.localhost';
 
-/**
- * The certificate that push service answers with, and where the container that pushes is made to trust
- * it. Under var/, which the repository ignores, beside the key material of the other clients of the lab:
- * an endpoint of a subscription is an absolute HTTPS URL (RFC 8030 §2), so there is no plain listener to
- * fall back on as the ping client has.
- */
+/** A certificate, since the endpoint of a subscription is an absolute HTTPS URL (RFC 8030 §2). */
 const DEMO_PUSH_CERTIFICATE = 'var/demo/push-service.crt';
 
 const DEMO_PUSH_KEY = 'var/demo/push-service.key';
 
 const DEMO_PUSH_TRUSTED_CERTIFICATE = '/usr/local/share/ca-certificates/beffroi-lab-push.crt';
 
-/**
- * The user this walk asks for, and never the development user. What it measures of a push service that
- * answers 503 is the notifications lane coming back, and the lane comes back only when **no** browser at
- * all was reached (architecture §5.6): a browser somebody enrolled by hand on the account they use would
- * answer that question instead of it. So the walk holds a user whose only browser is the one it draws, and
- * anybody looking at this flow in a browser of their own is left alone.
- *
- * Created on the first run and kept, with the password of the development user, which is the one secret a
- * development stack has for a person.
- */
+/** A user of its own: the lane comes back on a 503 only when no browser of the user was reached at all. */
 const DEMO_PUSH_USERNAME = 'push-walk';
 
-/**
- * What the user calls this browser of theirs on the page that subscribes it.
- */
 const DEMO_PUSH_LABEL = 'The browser of the push walk';
 
 /**
- * The "sub" of every signed request this provider sends a push service (RFC 8292 §2.1), as the
- * application wires it (apps/op/config/packages/beffroi.yaml, beffroi.web_push.subject).
+ * The "sub" of RFC 8292 §2.1, as beffroi.web_push.subject wires it (apps/op/config/packages/beffroi.yaml).
  */
 const DEMO_PUSH_SUBJECT = 'mailto:operator@op.localhost';
 
-/**
- * The seconds the notifications lane waits before the first retry (NotificationRetryPolicy): the lower
- * bound of what a walk may read between two attempts at the same message.
- */
+/** Seconds, mirroring the first delay of NotificationRetryPolicy. */
 const DEMO_PUSH_FIRST_RETRY = 2;
 
 /**
- * Issue #311: the first notification this provider has ever had decrypted. The channel of issue #265 was
- * verified against a mock and against nothing else, which is a channel nobody has sent through, and it is
- * the argument issue #299 made about the grants no client of the lab played.
- *
- * Three things stand where a third party stands. A push service that keeps what it was POSTed and answers
- * what it is told to (tests/demo/push-service.php), over HTTPS because nothing else is a subscription
- * (RFC 8030 §2), trusted by the container that pushes for the time of the walk. A browser that draws the
- * pair and the secret a subscription is made of and holds the private half (tests/demo/push-browser.php),
- * which is all a browser is on this path. And the walk, which asks for an authorization for "alice" and
- * then reads what the push service was handed: the signature of RFC 8292, the payload of RFC 8291, and
- * the one rule the channel exists to keep, that nothing anywhere in it names the request or answers one
- * (BCP 10027 §5.2).
- *
- * Then the two answers a push service gives that are not a yes: 503, and the message coming back under
- * the patience of the notifications lane; 410, and the row taken out rather than tried for ever.
- *
- * @param array<string, string> $secrets apps/op/.env.local, by the name of the variable each client's is under
+ * @param array<string, string> $secrets apps/op/.env.local, by variable name
  */
 function demo_push_check(string $issuer, string $password, string $ca, array $secrets): void
 {
@@ -5020,13 +4148,11 @@ function demo_push_check(string $issuer, string $password, string $ca, array $se
     demo_expect($backchannel !== '', 'the provider announces a backchannel authentication endpoint (CIBA Core §4)');
     [$certificate, $privateKey] = demo_push_certificate();
     demo_push_trust($certificate);
-    // a fresh path per run, as a push service hands a browser one: a row of a previous run is then not
-    // what this one measures
+    // A fresh path per run, so that a row of a previous run is not what this one measures.
     $endpoint = sprintf('https://%s:%d/push/%s', DEMO_PUSH_HOST, DEMO_PUSH_PORT, bin2hex(random_bytes(8)));
     [$service, $told] = demo_push_service($certificate, $privateKey);
 
     try {
-        // the browser: its own key pair, and the secret that makes holding the public half not enough
         $browser = demo_push_browser([
             'action' => 'draw',
         ]);
@@ -5035,12 +4161,10 @@ function demo_push_check(string $issuer, string $password, string $ca, array $se
             'the browser drew the key pair and the authentication secret of a subscription (RFC 8291 §3.1)',
         );
 
-        // the page of the account hands out the application server key, and takes back the endpoint
         $cookies = [];
         $applicationServerKey = demo_push_subscribe($cookies, $issuer, $password, $ca, $browser, $endpoint);
         $verified[] = ['Subscribed', sprintf('under the application server key %s… of the tenant', substr($applicationServerKey, 0, 12))];
 
-        // a client asks for something only that user can answer, and this is what has to reach them
         $asked = demo_push_backchannel($backchannel, $ca, $registration['client'], $secrets[$registration['secret']], $subject);
         $push = demo_cli_step($service, 'push', 60.0);
         demo_expect(
@@ -5052,7 +4176,6 @@ function demo_push_check(string $issuer, string $password, string $ca, array $se
             'the body is encrypted with the one content encoding of RFC 8291 §4, "aes128gcm" and not the draft before it',
         );
 
-        // the browser opens it, which is the thing no double has ever done here
         $opened = demo_push_browser([
             'action' => 'open',
             'private_key' => $browser['private_key'],
@@ -5096,7 +4219,6 @@ function demo_push_check(string $issuer, string $password, string $ca, array $se
         );
         $verified[] = ['Opened', sprintf('"%s" / "%s"', (string) ($opened['title'] ?? ''), (string) ($opened['body'] ?? ''))];
 
-        // BCP 10027 §5.2: the rule the channel exists to keep, read on everything that left this provider
         $authRequestId = (string) ($asked['auth_req_id'] ?? '');
         $carried = ($push['head'] ?? '') . ($push['body'] ?? '') . ($opened['payload'] ?? '');
         demo_expect(
@@ -5105,7 +4227,6 @@ function demo_push_check(string $issuer, string $password, string $ca, array $se
         );
         $verified[] = ['Names nothing', 'neither the identifier of the request nor a link that answers it'];
 
-        // RFC 8030 §5.2: what is worth delivering is the request it is about
         $ttl = (int) demo_push_header((string) ($push['head'] ?? ''), 'ttl');
         $expiresIn = is_int($asked['expires_in'] ?? null) ? $asked['expires_in'] : 0;
         demo_expect(
@@ -5114,7 +4235,6 @@ function demo_push_check(string $issuer, string $password, string $ca, array $se
         );
         $verified[] = ['Worth delivering', sprintf('TTL %d s, the request living %d s', $ttl, $expiresIn)];
 
-        // a push service having a bad minute: the lane comes back, as it does for a logout token
         demo_push_told($told, 503);
         demo_push_backchannel($backchannel, $ca, $registration['client'], $secrets[$registration['secret']], $subject);
         $refused = demo_cli_step($service, 'push', 60.0);
@@ -5122,7 +4242,6 @@ function demo_push_check(string $issuer, string $password, string $ca, array $se
             ($refused['answer'] ?? null) === 503,
             'a push service that cannot answer for a browser now is answered 503',
         );
-        // and the row is taken out on the attempt that is told the browser is gone (RFC 8030 §7.3)
         demo_push_told($told, 410);
         $retried = demo_cli_step($service, 'push', 120.0);
         demo_expect(
@@ -5151,23 +4270,8 @@ function demo_push_check(string $issuer, string $password, string $ca, array $se
     io()->success('A notification of this provider was signed, encrypted, carried by a push service and opened by the browser it was for.');
 }
 
-/**
- * How long a run that waits for a push service to answer gives it, in seconds: the first attempt leaves at
- * once, so a browser nobody reached in this long is one nothing is reaching today.
- */
 const DEMO_PUSH_BY_HAND_TIMEOUT = 45;
 
-/**
- * Issue #311 by hand: nothing of the laboratory stands in for anybody. No push service of ours, no browser
- * of ours, no user of ours. The request is made for the development user, the notification goes to the
- * browsers that user subscribed, through their own push services, and what this says is which of them this
- * provider reached and when.
- *
- * It is the other half of "castor demo --push", and the half a program cannot assert: whether a person sees
- * a notification is between their browser, their push service and their operating system, and the most this
- * can do is say what left here and what came back. What it reads it reads from the page of the account and
- * from nowhere else, so what it reports is what that user reads for themselves.
- */
 function demo_push_by_hand(string $issuer, string $password, string $ca, string $clientId, string $secret, string $subject): void
 {
     io()->section('A notification to a browser of yours, and nobody answering for you');
@@ -5192,7 +4296,6 @@ function demo_push_by_hand(string $issuer, string $password, string $ca, string 
     demo_expect($backchannel !== '', 'the provider announces a backchannel authentication endpoint (CIBA Core §4)');
     $asked = demo_push_backchannel($backchannel, $ca, $clientId, $secret, $subject);
 
-    // the page is what says a browser was told, and it is the page that user reads themselves
     $deadline = microtime(true) + DEMO_PUSH_BY_HAND_TIMEOUT;
     $after = $before;
     while (microtime(true) < $deadline) {
@@ -5242,9 +4345,6 @@ function demo_push_by_hand(string $issuer, string $password, string $ca, string 
 }
 
 /**
- * What the page says of one browser, in the words of a run that waits for a person: told by this run, told
- * before it, or never told at all.
- *
  * @param array{label: string, told: string} $browser
  */
 function demo_push_said_of(array $browser, bool $reached): string
@@ -5257,11 +4357,7 @@ function demo_push_said_of(array $browser, bool $reached): string
 }
 
 /**
- * The browsers the page of the account lists, by the identifier it gives each row: what the user called it,
- * and when this provider last left a message for it, as that page says it (an empty string for a browser it
- * never has).
- *
- * @return array<string, array{label: string, told: string}>
+ * @return array<string, array{label: string, told: string}> by row identifier, "told" empty when never told
  */
 function demo_push_browsers(string $page): array
 {
@@ -5273,8 +4369,7 @@ function demo_push_browsers(string $page): array
         preg_match_all('/<time datetime="([^"]+)"/', $row, $dates);
         preg_match('#<td>([^<]*)</td>#', $row, $label);
         $browsers[$id[1]] = [
-            // the first date of a row is when the browser subscribed, the second, when there is one, is when
-            // this provider last left a message for it
+            // The first date of a row is the subscription; the second, when there is one, the last message.
             'label' => trim(html_entity_decode($label[1] ?? '')),
             'told' => $dates[1][1] ?? '',
         ];
@@ -5284,9 +4379,6 @@ function demo_push_browsers(string $page): array
 }
 
 /**
- * The browsers this provider left a message for between the two readings of the page: a row whose date
- * moved, and a row that has one where it had none.
- *
  * @param array<string, array{label: string, told: string}> $before
  * @param array<string, array{label: string, told: string}> $after
  *
@@ -5305,23 +4397,16 @@ function demo_push_reached(array $before, array $after): array
 }
 
 /**
- * The user this walk asks for, created on the first run and kept, with the password of the development
- * user: the account it subscribes a browser on, and the one a backchannel request names.
- *
- * Its own user rather than the development one, because the browsers of a user are what the lane reaches:
- * this walk needs the only browser of whoever it asks for, and somebody looking at this flow by hand uses
- * the development user.
- *
- * @return string the subject this provider issued it, which is what a "login_hint" names for this tenant
+ * @return string the subject this provider issued it
  */
 function demo_push_user(string $password): string
 {
-    // created if it is not there, kept if it is: the command says so itself and the run reads its own user
+    // Allowed to fail: a user created by an earlier run is kept.
     op_console(
         ['beffroi:user:create', DEMO_PUSH_USERNAME, '--email', DEMO_PUSH_USERNAME . '@op.localhost', '--email-verified'],
         context()->withAllowFailure()->withQuiet(),
     );
-    // never on the command line: the command reads it on its standard input
+    // The password never goes on the command line.
     op_console(
         ['beffroi:user:set-password', DEMO_PUSH_USERNAME, '--password-stdin'],
         context()->withQuiet()->withInput($password . "\n"),
@@ -5337,12 +4422,6 @@ function demo_push_user(string $password): string
 }
 
 /**
- * The certificate the push service of the walk answers with: one self-signed certificate on a P-256 key,
- * kept while it is valid, as the client certificate of "castor provision" is. It names the host the
- * containers reach this machine by, in a subject alternative name, which is what a client verifies; and it
- * is a certificate authority as well as a leaf, because what makes it verifiable inside a container is
- * being installed there as a trust anchor and nothing signs above it.
- *
  * @return array{string, string} the certificate and its private key, absolute paths
  */
 function demo_push_certificate(): array
@@ -5362,15 +4441,6 @@ function demo_push_certificate(): array
     return [$certificateFile, $keyFile];
 }
 
-/**
- * What makes the worker able to push to that service at all: the certificate added to the trust store of
- * the container, which is the same thing its entrypoint does for the certificate of the conformance
- * suite (docker/worker/entrypoint.sh). The worker is the one process that pushes, the notification being a
- * Notification and leaving on the lane of its own (apps/op/config/packages/messenger.yaml), so it is the
- * one container this is done to.
- *
- * Replayed on every run, which is what a container recreated by "castor start" needs.
- */
 function demo_push_trust(string $certificate): void
 {
     run(['docker', 'compose', 'cp', $certificate, 'worker:' . DEMO_PUSH_TRUSTED_CERTIFICATE], context: context()->withQuiet());
@@ -5379,11 +4449,6 @@ function demo_push_trust(string $certificate): void
 }
 
 /**
- * The push service of the walk, started and listening. Its standard input is kept open so that it can be
- * told what to answer next: a push service that takes the message, one that says the subscription is gone
- * and one that cannot answer now are the same service on the same port, a subscription being recognised by
- * its endpoint.
- *
  * @return array{Process, InputStream}
  */
 function demo_push_service(string $certificate, string $privateKey): array
@@ -5408,9 +4473,6 @@ function demo_push_service(string $certificate, string $privateKey): array
     return [$service, $told];
 }
 
-/**
- * Tells the running push service what to answer the next push.
- */
 function demo_push_told(InputStream $told, int $answer): void
 {
     $told->write(
@@ -5425,8 +4487,7 @@ function demo_push_told(InputStream $told, int $answer): void
 }
 
 /**
- * The browser of the lab, in one process per question asked of it: it draws, and it opens. The private
- * half travels on the standard input of that process and never on a command line.
+ * The private half travels on standard input, never on a command line.
  *
  * @param array<string, mixed> $input
  *
@@ -5447,25 +4508,18 @@ function demo_push_browser(array $input): array
 }
 
 /**
- * The page of the account where a user says which of their browsers this provider may reach (Push API §4):
- * the application server key it hands out, and the endpoint and the two keys it takes back.
- *
  * @param array<string, array<string, string>> $cookies
  * @param array<string, mixed> $browser what the browser of the lab drew
  *
- * @return string the application server key the page handed out, base64url (RFC 8292 §3.2)
+ * @return string the application server key, base64url (RFC 8292 §3.2)
  */
 function demo_push_subscribe(array &$cookies, string $issuer, string $password, string $ca, array $browser, string $endpoint): string
 {
     $page = $issuer . '/account/notifications';
-    // a page of the account belongs to no client and to no interaction, so it answers a browser without a
-    // session 401 and sends it nowhere (AccountAccess): the browser signs in where a user of this flow goes
-    // by themselves, the page of what is waiting for them, and walks to the account from there
+    // This page answers 401 without a session (AccountAccess), so the sign-in starts on /account/approvals.
     demo_browser_sign_in($cookies, $issuer, $password, $ca, $issuer . '/account/approvals', DEMO_PUSH_USERNAME);
     [$status, , $rendered] = demo_request($cookies, $ca, 'GET', $page);
     demo_expect($status === 200, sprintf('the page of the browsers this provider may reach opens (got %d)', $status));
-    // this walk has to be the only browser this provider can reach; a browser of a previous run of itself is
-    // taken out here, one somebody else enrolled is not
     $rendered = demo_push_alone($cookies, $ca, $issuer, $page, $rendered);
     demo_expect(
         preg_match('/data-application-server-key="([^"]+)"/', $rendered, $key) === 1,
@@ -5479,8 +4533,6 @@ function demo_push_subscribe(array &$cookies, string $issuer, string $password, 
         'auth' => (string) ($browser['auth'] ?? ''),
         'label' => DEMO_PUSH_LABEL,
     ]);
-    // the form answers with a redirection to the page whether the subscription was recorded or refused, what was
-    // refused crossing it in the session (issue #481): the page it comes back to is what says which
     demo_expect($status === 303 && $location === $page, sprintf('the form sends the browser back to the page of the browsers (got %d %s)', $status, $location));
     [, , $rendered] = demo_request($cookies, $ca, 'GET', $page);
     demo_expect(
@@ -5492,14 +4544,6 @@ function demo_push_subscribe(array &$cookies, string $issuer, string $password, 
 }
 
 /**
- * This walk has to hold the only browser of the user it asks for. What it measures of a push service that
- * answers 503 is the lane coming back, and the lane comes back only when **no** browser of that user was
- * reached (architecture §5.6): a second browser that took the message would answer that question instead of
- * it. The user is the walk's own (DEMO_PUSH_USERNAME), so nothing anybody enrolled by hand is in the way.
- *
- * A browser a run of this walk left behind is taken out here, recognised by the name it subscribes under.
- * Anything else on that account is not this walk's to revoke, and it says which and stops.
- *
  * @param array<string, array<string, string>> $cookies
  *
  * @return string the page once this walk is alone on it
@@ -5531,9 +4575,6 @@ function demo_push_alone(array &$cookies, string $ca, string $issuer, string $pa
 }
 
 /**
- * The rows of the page of the browsers, as the table renders one per subscription; those whose name is the
- * one given, or every one of them when no name is.
- *
  * @return list<string>
  */
 function demo_push_rows(string $page, ?string $label): array
@@ -5552,10 +4593,6 @@ function demo_push_rows(string $page, ?string $label): array
 }
 
 /**
- * A browser on a page of this provider it went to itself, which is where two walks of this task start: no
- * session yet, so the page remembers where the browser was going, sends it to the login of the firewall
- * and brings it back (LoginTarget). No client and no interaction anywhere in it.
- *
  * @param array<string, array<string, string>> $cookies
  *
  * @return string the page, once the browser is signed in and on it
@@ -5591,13 +4628,9 @@ function demo_browser_sign_in(array &$cookies, string $issuer, string $password,
 }
 
 /**
- * A backchannel authorization request for the development user, which is what has to reach them (CIBA Core
- * §7.1). The walk makes it itself rather than through a client of tests/demo/: what is measured here is
- * what leaves the provider towards the user, and nothing of this walk waits for a token.
+ * CIBA Core §7.1
  *
- * @param string $endpoint the backchannel authentication endpoint the provider announces
- *
- * @return array<string, mixed> the response of the backchannel authentication endpoint
+ * @return array<string, mixed>
  */
 function demo_push_backchannel(string $endpoint, string $ca, string $clientId, string $secret, string $loginHint): array
 {
@@ -5620,40 +4653,23 @@ function demo_push_backchannel(string $endpoint, string $ca, string $clientId, s
     return is_array($answer) ? $answer : [];
 }
 
-/**
- * One header of a request the push service was handed, by its lowercased name; "" when it carries none.
- */
 function demo_push_header(string $head, string $name): string
 {
     return preg_match('/^' . preg_quote($name, '/') . ':\s*(.+)$/im', $head, $matches) === 1 ? trim($matches[1]) : '';
 }
 
-/**
- * The self-registering client of the walk below, and the mode the tenant has to be in for it to exist at
- * all: a credential this provider issued, named, limited in number and revocable (RFC 7591 §1.2). The
- * development tenant serves the conformance suite in "open" mode the rest of the time, so the walk asks
- * for the mode it needs and gives it back.
- */
 const DEMO_REGISTER_CLIENT = 'tests/demo/registration-client.php';
 
 const DEMO_REGISTER_ENV_MARKER = 'castor demo --register';
 
 const DEMO_REGISTER_MODE = 'initial_access_token';
 
-/**
- * What the initial access token of the run is called and what it is worth: two registrations, which is the
- * number the walk needs and therefore the number the third one is refused for.
- */
 const DEMO_REGISTER_TOKEN_NAME = 'castor demo --register';
 
 const DEMO_REGISTER_REGISTRATIONS = 2;
 
 /**
- * The two clients that write themselves, on two hosts. The host is the whole point of the pair: with
- * "subject_type=pairwise" and no "sector_identifier_uri", the sector of a client is the host of its
- * redirection URI (OIDC Core §8.1), so these two are two sectors and the same user is two subjects. Both
- * are loopback names, which is what the provider allows plain HTTP for (RFC 8252 §7.3), and nothing ever
- * connects to them: the walk reads the code off the redirection, as every walk of this file does.
+ * Two hosts, two sectors: without a sector_identifier_uri, a sector is the host of the redirect URI (OIDC Core §8.1).
  */
 const DEMO_REGISTER_CLIENTS = [
     'first' => [
@@ -5666,30 +4682,13 @@ const DEMO_REGISTER_CLIENTS = [
     ],
 ];
 
-/**
- * The scopes the pair asks for, all of them announced by the tenant: a registration is held to what the
- * provider says it serves (issue #278), so asking for these is asking for nothing of its own.
- */
 const DEMO_REGISTER_SCOPE = 'openid profile email';
 
-/**
- * Issue #345, the third success criterion of spike 7 played rather than asserted: a client this provider
- * had never seen registers itself and gets exactly what a declared client gets, and exactly the same
- * refusals.
- *
- * Every other client of this demonstration is a registration in apps/op/config/packages/dev/beffroi.yaml. This
- * walk is the one that declares nothing: the console issues a credential, a program of tests/demo/ spends
- * it, and what it is answered is what it signs a user in with. The pairwise pair is the property of the
- * spike that a unit test proves and a walk shows: the same user, two clients, two subjects, printed side
- * by side.
- */
 function demo_register_check(string $issuer, string $password, string $ca): void
 {
     io()->section('A client nobody declared registers itself, signs in, and is two subjects');
     $verified = [];
 
-    // The mode first, and given back whatever ends the run: the tenant registers whoever asks the rest of
-    // the time, which is what the conformance plans need and what this walk must not leave behind.
     demo_registration_mode($issuer, $ca, DEMO_REGISTER_ENV_MARKER, DEMO_REGISTER_MODE);
 
     $token = demo_initial_access_token(DEMO_REGISTER_TOKEN_NAME, DEMO_REGISTER_REGISTRATIONS);
@@ -5698,7 +4697,6 @@ function demo_register_check(string $issuer, string $password, string $ca): void
         sprintf('"%s", worth %d registrations (beffroi:client:token:issue)', DEMO_REGISTER_TOKEN_NAME, DEMO_REGISTER_REGISTRATIONS),
     ];
 
-    // Phase one: the two registrations, then one more than the credential was issued for.
     $clients = [];
     foreach (DEMO_REGISTER_CLIENTS as $key => $wanted) {
         $clients[$key] = [
@@ -5709,7 +4707,6 @@ function demo_register_check(string $issuer, string $password, string $ca): void
                 'grant_types' => ['authorization_code'],
                 'response_types' => ['code'],
                 'scope' => DEMO_REGISTER_SCOPE,
-                // OIDC Core §8.1: what makes the two of them two subjects of the same user
                 'subject_type' => 'pairwise',
             ],
         ];
@@ -5721,7 +4718,6 @@ function demo_register_check(string $issuer, string $password, string $ca): void
         'authorization_endpoint' => $issuer . '/authorize',
         'initial_access_token' => $token,
         'clients' => $clients,
-        // the registration the spent credential does not buy
         'beyond' => [
             'client_name' => 'One registration too many',
             'redirect_uris' => ['http://127.0.0.1:9103/callback'],
@@ -5730,7 +4726,6 @@ function demo_register_check(string $issuer, string $password, string $ca): void
             'response_types' => ['code'],
             'scope' => DEMO_REGISTER_SCOPE,
         ],
-        // and the one no credential at all buys, which is the mode this tenant is not in
         'without_token' => [
             'client_name' => 'A client presenting nothing',
             'redirect_uris' => ['http://127.0.0.1:9104/callback'],
@@ -5796,8 +4791,6 @@ function demo_register_check(string $issuer, string $password, string $ca): void
         sprintf('%s "%s"', (string) ($without['status'] ?? '?'), (string) ($without['body']['error'] ?? null ?? '')),
     ];
 
-    // Phase two: each client signs the development user in, with what its registration was answered. One
-    // browser per client, so that each sees its own subject and not the session of the other.
     $exchange = [];
     foreach (array_keys(DEMO_REGISTER_CLIENTS) as $key) {
         $each = $registered[$key];
@@ -5859,7 +4852,6 @@ function demo_register_check(string $issuer, string $password, string $ca): void
         $subjects[$key] = (string) $each['sub'];
     }
 
-    // The property of the spike, shown: the same user, two sectors, two subjects.
     demo_expect($subjects['first'] !== $subjects['second'], sprintf(
         'the same user is a different subject to each of the two clients (OIDC Core §8.1): "%s" and "%s"',
         $subjects['first'],
@@ -5869,7 +4861,6 @@ function demo_register_check(string $issuer, string $password, string $ca): void
     io()->text(sprintf(' <info>✓</info> %s sees sub %s', parse_url(DEMO_REGISTER_CLIENTS['second']['redirect_uri'], \PHP_URL_HOST), $subjects['second']));
     $verified[] = ['Pairwise', sprintf('%s and %s, the same "alice"', $subjects['first'], $subjects['second'])];
 
-    // Phase three: the client reads and replaces itself, and is refused what the provider does not offer.
     $first = $registered['first'];
     $configured = demo_register_client([
         'action' => 'configure',
@@ -5887,7 +4878,6 @@ function demo_register_check(string $issuer, string $password, string $ca): void
             'scope' => DEMO_REGISTER_SCOPE,
             'subject_type' => 'pairwise',
         ],
-        // a grant nobody wired: the member exists, the value is not one this provider has (RFC 7591 §3.2.2)
         'refused' => [
             'client_id' => (string) $first['body']['client_id'],
             'redirect_uris' => [DEMO_REGISTER_CLIENTS['first']['redirect_uri']],
@@ -5946,7 +4936,6 @@ function demo_register_check(string $issuer, string $password, string $ca): void
         ),
     ];
 
-    // Phase four: the client removes itself, and what it held is worth nothing.
     $gone = demo_register_client([
         'action' => 'delete',
         'cafile' => $ca,
@@ -5962,9 +4951,6 @@ function demo_register_check(string $issuer, string $password, string $ca): void
     ));
     $verified[] = ['Deleted', sprintf('204, then %s on the same URI', (string) ($after['status'] ?? '?'))];
 
-    // The second client is left to the purge that decision 0009 put on the scheduled step: it was used, so
-    // it lives as long as the tenant said a used client does. The walk says so rather than tidying, because
-    // what removes a dynamic client here is the provider and not the run.
     demo_registration_mode($issuer, $ca, DEMO_REGISTER_ENV_MARKER, null);
 
     io()->table(['Step', 'Verified'], $verified);
@@ -5979,14 +4965,8 @@ function demo_register_check(string $issuer, string $password, string $ca): void
 }
 
 /**
- * Writes the registration mode a walk asks the tenant for into apps/op/.env.local, or takes it back out: a
- * block named after the walk that owns it, rewritten every time, restored by a shutdown function because
- * demo_expect() exits and an exit skips a finally. The tenant serves the conformance plans in "open" mode, so
- * a run that left another mode behind would turn every registration module red.
- *
- * What says the mode is in force is the endpoint itself: a registration presenting no credential is refused
- * in every mode but the open one, and answered 201 in that one, so the walk polls on that and on nothing
- * else. A mode of null gives the tenant back the one "castor provision" wrote above the block, "open".
+ * A null mode gives the tenant back the "open" mode the conformance plans need; the shutdown function restores it
+ * too, since demo_expect() exits and exit() skips finally blocks.
  */
 function demo_registration_mode(string $issuer, string $ca, string $marker, ?string $mode): void
 {
@@ -6023,7 +5003,6 @@ function demo_registration_mode(string $issuer, string $ca, string $marker, ?str
                 $mode === null ? 'whoever asks again' : 'only whoever presents what "' . $mode . '" asks for',
                 $status,
             ));
-            // The open mode answers the probe with a client; it is not left behind.
             if ($mode === null && $status === 201) {
                 $body = json_decode($response->getContent(false), true);
                 if (is_array($body) && is_string($body['registration_client_uri'] ?? null) && is_string($body['registration_access_token'] ?? null)) {
@@ -6046,11 +5025,6 @@ function demo_registration_mode(string $issuer, string $ca, string $marker, ?str
     exit(1);
 }
 
-/**
- * An initial access token of the tenant, issued by the console command a tenant issues them with (#344):
- * the value is printed once, on the last line, and this provider cannot show it again. Two walks ask for
- * one, under a name of their own and worth what they will spend, so it is written here once.
- */
 function demo_initial_access_token(string $name, int $registrations): string
 {
     $process = new Process([
@@ -6086,9 +5060,6 @@ function demo_initial_access_token(string $name, int $registrations): string
 }
 
 /**
- * The self-registering client of tests/demo/, one phase per call: it holds nothing between them, because
- * the browser step in the middle is the walk's.
- *
  * @param array<string, mixed> $input
  * @return array<string, mixed>
  */
@@ -6098,8 +5069,6 @@ function demo_register_client(array $input): array
     $process = new Process(['php', DEMO_REGISTER_CLIENT], input: (string) json_encode($input));
     $process->setTimeout(120.0);
     $process->run();
-    // What the phase answered belongs in the message only when there is something wrong with it: three
-    // phases printing their whole JSON on success would bury the assertions that follow them.
     demo_expect($process->isSuccessful(), sprintf(
         'the registration client ran its "%s" phase%s',
         $phase,
@@ -6117,54 +5086,27 @@ function demo_register_client(array $input): array
     return $run;
 }
 
-/**
- * The client of the attested mode, run under the autoloader of the monorepo: it is the only party of this
- * walk that signs anything, the statements being the authority's and the browser and the token the walk's.
- */
 const DEMO_ATTESTED_CLIENT = 'tests/demo/attestation-client.php';
 
-/**
- * The block this walk writes in apps/op/.env.local while it runs, and the mode it asks the tenant for: the
- * conformance plans need the open mode the rest of the time, so the block is named and taken back out.
- */
 const DEMO_ATTESTED_ENV_MARKER = 'castor demo --attested';
 
 const DEMO_ATTESTED_MODE = 'software_statement';
 
-/**
- * The authority this tenant pinned for statements, and the key of it the laboratory holds whole, which
- * "castor provision" generates and publishes the public half of (DEV_DEMO_ATTESTATION_AUTHORITY).
- */
 const DEMO_ATTESTED_AUTHORITY = 'https://attestation.demo.localhost';
 
 const DEMO_ATTESTED_AUTHORITY_KEYS = 'var/demo/demo-attestation.jwks.json';
 
-/**
- * An authority this tenant pinned for something else: it signs the assertions of "castor demo --assertion"
- * about the users it knows, and a tenant that trusts it about a user has not pinned it about a piece of
- * software. Its statement is refused for that reason and for no other, which is what makes it the right
- * stranger to play.
- */
+/** Pinned by this tenant for assertions about users, not for statements about software. */
 const DEMO_ATTESTED_STRANGER = 'https://issuer.demo.localhost';
 
 const DEMO_ATTESTED_STRANGER_KEYS = 'var/demo/demo-issuer.jwks.json';
 
-/**
- * The provider a statement of the walk names when it is addressed to somebody else (RFC 7591 §2.3): a name
- * no tenant of this stack answers to.
- */
 const DEMO_ATTESTED_ELSEWHERE = 'https://another.op.example';
 
 const DEMO_ATTESTED_REDIRECT_URI = 'http://127.0.0.1:9105/callback';
 
 const DEMO_ATTESTED_SCOPE = 'openid profile email';
 
-/**
- * What the authority says of the software: the identifier it calls the product by across every installation
- * of it, the version of this one, and the name a user will read on the consent page. The client sends a name
- * of its own, which the statement outranks (RFC 7591 §3.1.1), and that is the whole point of an attestation:
- * what a stranger says of itself is not what its publisher signed.
- */
 const DEMO_ATTESTED_SOFTWARE_ID = 'invoice-reader';
 
 const DEMO_ATTESTED_SOFTWARE_VERSION = '2.1.0';
@@ -6173,23 +5115,11 @@ const DEMO_ATTESTED_NAME = 'Invoice reader, attested by its publisher';
 
 const DEMO_ATTESTED_CLAIMED_NAME = 'The name the client wrote for itself';
 
-/**
- * RFC 7591 §2.3, the fourth mode of decision 0009: a registration this provider authorises on nothing it
- * issued. No initial access token, no credential in any header, and a statement signed by an authority the
- * policy of the tenant pinned; the client is answered credentials it never had before and is a client like
- * any other from that moment, which the sign-in below is what proves.
- *
- * The refusals are played as the acceptance is, because a mode that crosses the boundary of an organisation
- * is only as good as what it turns away: the same statement twice, one signed by an authority pinned for
- * something else, one an authority signed for another provider, and a body carrying none at all.
- */
 function demo_attested_check(string $issuer, string $password, string $ca): void
 {
     io()->section('A client an authority attested registers, and nothing of this provider authorises it');
     $verified = [];
 
-    // The mode first, and given back whatever ends the run: the tenant registers whoever asks the rest of
-    // the time, which is what the conformance plans need and what this walk must not leave behind.
     demo_registration_mode($issuer, $ca, DEMO_ATTESTED_ENV_MARKER, DEMO_ATTESTED_MODE);
 
     $run = demo_attested_client([
@@ -6248,8 +5178,6 @@ function demo_attested_check(string $issuer, string $password, string $ca): void
         sprintf('"%s" and %s %s, over the name the client sent', DEMO_ATTESTED_NAME, DEMO_ATTESTED_SOFTWARE_ID, DEMO_ATTESTED_SOFTWARE_VERSION),
     ];
 
-    // Every refusal about a statement is the same refusal, and whoever presents one learns nothing else
-    // (SoftwareStatementVerifier, decision 0006).
     foreach (DEMO_ATTESTED_REFUSALS as $key => $what) {
         $refused = is_array($run[$key] ?? null) ? $run[$key] : [];
         $answered = is_array($refused['body'] ?? null) ? $refused['body'] : [];
@@ -6265,8 +5193,6 @@ function demo_attested_check(string $issuer, string $password, string $ca): void
         'the same statement again, an authority pinned for something else, one addressed elsewhere, and none at all',
     ];
 
-    // And it is a client like any other from there: the code flow of every other walk, with the credentials
-    // the registration handed it and the name its publisher signed on the page the user reads.
     $cookies = [];
     $verifier = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
     $state = bin2hex(random_bytes(16));
@@ -6322,8 +5248,7 @@ function demo_attested_check(string $issuer, string $password, string $ca): void
         sprintf('"%s" is %s… to it, on a code spent with the secret the registration gave', DEV_USERNAME, substr((string) $claims['sub'], 0, 12)),
     ];
 
-    // Given back before the table rather than by the shutdown function alone, so that what the next run of a
-    // conformance plan finds is asserted here and not hoped for.
+    // Given back here too, and not by the shutdown function alone, so that the restore is asserted.
     demo_registration_mode($issuer, $ca, DEMO_ATTESTED_ENV_MARKER, null);
 
     io()->table(['Step', 'Verified'], $verified);
@@ -6338,12 +5263,6 @@ function demo_attested_check(string $issuer, string $password, string $ca): void
     ));
 }
 
-/**
- * What each refused registration of the walk must answer, by the key the client program returns it under.
- * A statement this tenant does not accept, whatever is wrong with it, is one refusal and one message
- * (`invalid_software_statement`); a body carrying none at all presents nothing this mode acts on, which is
- * not a bad statement but an unauthorized request.
- */
 const DEMO_ATTESTED_REFUSALS = [
     'replayed' => [
         'status' => 400,
@@ -6368,9 +5287,6 @@ const DEMO_ATTESTED_REFUSALS = [
 ];
 
 /**
- * The attestation client of tests/demo/, which castor cannot run itself: it holds the key of the authority
- * and is the only thing here that signs.
- *
  * @param array<string, mixed> $input
  *
  * @return array<string, mixed>

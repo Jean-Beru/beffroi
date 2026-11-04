@@ -3,23 +3,7 @@
 declare(strict_types=1);
 
 /*
- * The model half of "castor saml-idp" (.castor/lab/saml-idp.php, issue #788): the metadata the SimpleSAMLphp identity
- * provider of the stack served, read back by the package the provider reads the metadata of an upstream identity
- * provider with, not by SimpleSAMLphp and not by xmlsec1. readTrusted(), the reading of metadata whose channel vouches
- * for them, finds an identity provider named by the URL of its metadata, its single sign-on service on HTTP-Redirect and
- * on HTTP-POST at https endpoints, the persistent NameID format, and one signing certificate, the one the walk drew;
- * then readSigned() verifies the signature SimpleSAMLphp put on them under that certificate, pinned, and reads the same
- * descriptor (spec/model.md section 6.5, M-2).
- *
- * It reads a directory the walk wrote and nothing else of it:
- *
- *   captured/idp-metadata.xml   the metadata of the identity provider, as it served them
- *   idp.crt                     the certificate of the identity provider, as the walk drew it
- *
- * One line per verification; the exit status is not 0 when one fails, with the rule the model gives. From the root of
- * the repository, in the phpqa image (the walk runs it):
- *
- *   docker run --rm -v "$PWD:/project" -w /project ghcr.io/spomky-labs/phpqa:8.5 php tests/demo/saml-idp-model.php var/saml-idp
+ * Model half of "castor saml-idp": SimpleSAMLphp's metadata read back by the model (spec/model.md section 6.5, M-2).
  */
 
 use Beffroi\Saml2\Model\Assertion\NameIdFormat;
@@ -38,7 +22,7 @@ const SAML_IDP_MODEL_ENTITY_ID = 'https://saml-idp.localhost/simplesaml/module.p
 const SAML_IDP_MODEL_SINGLE_SIGN_ON = 'https://saml-idp.localhost/simplesaml/module.php/saml/idp/singleSignOnService';
 
 /**
- * @throws RuntimeException when the file cannot be read
+ * @throws RuntimeException
  */
 function saml_idp_model_file(string $path): string
 {
@@ -51,7 +35,7 @@ function saml_idp_model_file(string $path): string
 }
 
 /**
- * @throws RuntimeException when the condition does not hold, naming what was not verified
+ * @throws RuntimeException
  */
 function saml_idp_model_verified(bool $condition, string $what): void
 {

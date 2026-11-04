@@ -3,19 +3,7 @@
 declare(strict_types=1);
 
 /*
- * The passkey side of "castor demo --passkey" (castor.php, demo_passkey_check): a browser holding a
- * software authenticator, the SoftwareAuthenticator of the functional tests, driven over HTTP against
- * the running OP the way the script of the provider drives the two ceremonies. The task is what runs
- * under castor, which loads no code of the monorepo; this script runs under the autoloader of the
- * monorepo, in one process, so that the key pair generated at the enrolment signs the assertion.
- *
- * Reads one JSON object on stdin: "issuer", "cafile", "cookies" (name to value, the cookies the task
- * holds on the OP), "interaction" (the interaction the login page is asked for), "name" (the name
- * of the passkey) and "username" (what the step of the address is answered with, when the tenant
- * federates a domain and the login page asks for an address first, beffroi/saml S-61). Enrols a hardware key without a PIN on the account of the session the cookies bind
- * (WebAuthn Level 3 §7.1), then signs in with it on the login page of the interaction (§7.2). Writes
- * one JSON object on stdout: "cookies" as the OP left them, "location" the login page sent the browser
- * to, "credential_id" of the passkey (base64url) and "sign_count" after the assertion.
+ * The browser of "castor demo --passkey": it enrols a passkey and signs in with it (WebAuthn Level 3 §7.1, §7.2).
  */
 
 use Beffroi\Core\Tests\Fixture\SoftwareAuthenticator;
@@ -25,9 +13,6 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 require __DIR__ . '/../../vendor/autoload.php';
 
-/**
- * The HTTP side: cookies kept as the task keeps them, no redirect followed, the CA of the OP verified.
- */
 final class PasskeyBrowser
 {
     private readonly HttpClientInterface $http;
@@ -47,11 +32,9 @@ final class PasskeyBrowser
     }
 
     /**
-     * §7.1 through the account page: the token of the form, the creation options, the attestation posted.
+     * WebAuthn Level 3 §7.1
      *
-     * The form answers with a redirection to the page whether the ceremony was completed or refused, what was
-     * refused crossing it in the session (issue #481), so the page it comes back to is what says which: no
-     * refusal on it, and the name of the passkey in the form that renames it, which only an active one has.
+     * The form redirects whether the ceremony succeeded or not: the page it comes back to says which.
      */
     public function enrol(SoftwareAuthenticator $device, string $name): void
     {
@@ -77,10 +60,7 @@ final class PasskeyBrowser
     }
 
     /**
-     * §7.2 through the login page of the interaction: the step of the address when the page asks for one
-     * first (beffroi/saml S-61), a username being of no domain and sent on to the usual page; then the
-     * token of the form, the request options, the assertion posted. Returns where the login page sends the
-     * browser.
+     * WebAuthn Level 3 §7.2, beffroi/saml S-61
      */
     public function login(SoftwareAuthenticator $device, string $interaction, string $username): string
     {
@@ -149,17 +129,11 @@ final class PasskeyBrowser
         return [$response->getStatusCode(), $location, $response->getContent(false)];
     }
 
-    /**
-     * What an error page of the OP says, for the message of a failed expectation.
-     */
     private static function reason(string $page): string
     {
         return preg_match('/<h1[^>]*>([^<]+)<\/h1>|<p[^>]*data-error[^>]*>([^<]+)<\/p>/', $page, $found) === 1 ? trim($found[2] ?? $found[1]) : '';
     }
 
-    /**
-     * The first group of the pattern in the page, an expectation of its own.
-     */
     private static function capture(string $pattern, string $page, string $what): string
     {
         $found = preg_match($pattern, $page, $groups) === 1 ? $groups[1] : null;
@@ -168,10 +142,6 @@ final class PasskeyBrowser
         return html_entity_decode((string) $found);
     }
 
-    /**
-     * Each step told on stderr, the way the task tells its own; a failed one ends the script, whose exit
-     * code the task reads (an uncaught exception, PHP exits with 255).
-     */
     private static function expect(bool $condition, string $what): void
     {
         if (! $condition) {
@@ -198,8 +168,6 @@ foreach ((array) ($input['cookies'] ?? []) as $cookieName => $value) {
     }
 }
 
-// a hardware key without a PIN (userVerified false), bound to its authenticator (not synced): "hwk" and
-// "user", the "phr" class of the default policy of the tenant; the origin is the issuer itself
 $device = new SoftwareAuthenticator($issuer);
 $browser = new PasskeyBrowser($issuer, $cafile, $cookies);
 $browser->enrol($device, $name);

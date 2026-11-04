@@ -3,31 +3,7 @@
 declare(strict_types=1);
 
 /*
- * The client of "castor demo --ciba" (.castor/lab/demo.php, demo_ciba_check): a program that asks for a
- * user it names and waits, with no browser of its own anywhere in the flow (CIBA Core 1.0). It is a
- * demonstration before it is a test: run by hand it prints who it asked for and the message that user will
- * read, then waits for them to answer somewhere else.
- *
- * Both delivery modes, because they are two different clients (§4). In "poll" mode it asks the token
- * endpoint again and again at the interval it was given. In "ping" mode it is called back first, so it
- * binds a listener of its own before it asks for anything, presents a token it drew to the provider, and
- * asks the token endpoint once, when it is told there is something to come and get. A token is never
- * carried to the listener: §10.3 is not served, and what the notification says is that the answer is
- * ready.
- *
- * Two streams, for the two readers it has. The trace a human follows goes to stderr; stdout carries one
- * JSON object per step, one per line, so that the task can assert on each step while this program is still
- * waiting for the next:
- *
- *   {"step":"backchannel_authentication", "auth_req_id_prefix", "expires_in", "interval", "mode"}
- *   {"step":"pending", "error", "interval", "polls"}            one per refusal to answer yet, poll mode
- *   {"step":"notification", "auth_req_id_matches", "token_matches", "waited"}       ping mode
- *   {"step":"tokens", "token_type", "scope", "expires_in", "refresh_token", "id_token", "sub", "aud", "polls"}
- *   {"step":"error", "error", "polls"}                          and exit 1
- *
- * Options: --issuer, --client-id, --secret, --mode, --login-hint (required: what a "login_hint" names is the
- * provider's to decide, and this stack reads the subject it issued), --binding-message, --scope,
- * --notification-port, --cafile (the CA of the OP), --timeout.
+ * The client of "castor demo --ciba": a backchannel authentication in "poll" or "ping" mode (CIBA Core 1.0).
  */
 
 use Symfony\Component\HttpClient\HttpClient;
@@ -37,25 +13,22 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 require __DIR__ . '/../../vendor/autoload.php';
 
 /**
- * A client that asks for somebody else's approval (CIBA Core §7): it names the user, writes the message
- * that user will read on the device where they answer, and is handed an identifier for the request. What
- * it must not do is poll faster than it was told (§11): the interval belongs to the provider, and
- * "slow_down" moves it.
+ * CIBA Core §7
  */
 final class BackchannelClient
 {
     /**
-     * CIBA Core §7.3, registered in the IANA "OAuth URI" registry.
+     * CIBA Core §7.3
      */
     public const string GRANT_TYPE = 'urn:openid:params:grant-type:ciba';
 
     /**
-     * CIBA Core §11: the provider asks for five more seconds each time it says so.
+     * CIBA Core §11
      */
     private const int SLOW_DOWN_SECONDS = 5;
 
     /**
-     * CIBA Core §7.3: what a provider that names no interval means.
+     * CIBA Core §7.3
      */
     private const int DEFAULT_INTERVAL = 5;
 
@@ -72,11 +45,9 @@ final class BackchannelClient
     }
 
     /**
-     * CIBA Core §7.1, §7.3: the request naming the user it is made for, and what comes back for the client
-     * to wait on. The notification token is the credential this provider will present back to the listener
-     * of a client it calls, and a client that only polls sends none (§7.1).
+     * CIBA Core §7.1, §7.3
      *
-     * @throws RuntimeException when the provider refuses to start the flow
+     * @throws RuntimeException
      *
      * @return array<string, mixed>
      */
@@ -101,13 +72,11 @@ final class BackchannelClient
     }
 
     /**
-     * CIBA Core §10.1, §11: the same request again and again until the user has answered, at the interval
-     * the provider named, five seconds more each time it says to slow down. Every refusal that is not
-     * "authorization_pending" nor "slow_down" ends the flow: an expired request and a refusal are answers.
+     * CIBA Core §10.1, §11
      *
      * @param callable(array<string, mixed>): void $pending told of every refusal to answer yet
      *
-     * @throws RuntimeException when the flow ends without tokens
+     * @throws RuntimeException
      *
      * @return array<string, mixed>
      */
@@ -144,11 +113,9 @@ final class BackchannelClient
     }
 
     /**
-     * CIBA Core §10.2, §10.3: what a client that was called back does, which is what a poller does once. The
-     * notification says the answer is ready and carries none, so this is still the token endpoint and still
-     * the same grant; a request refused here is the flow ending, there being nothing left to wait for.
+     * CIBA Core §10.2, §10.3
      *
-     * @throws RuntimeException when the flow ends without tokens
+     * @throws RuntimeException
      *
      * @return array<string, mixed>
      */
@@ -173,9 +140,6 @@ final class BackchannelClient
     }
 
     /**
-     * A member of an answer, as the thing it must be; the provider writes them and this program reads them,
-     * so a member that is not what it must be is an answer this client cannot use.
-     *
      * @param array<string, mixed> $answer
      *
      * @throws RuntimeException
@@ -198,8 +162,6 @@ final class BackchannelClient
     }
 
     /**
-     * One request to the token endpoint for the identifier it holds, counted, whatever comes back.
-     *
      * @throws RuntimeException
      *
      * @return array<string, mixed>
@@ -229,8 +191,6 @@ final class BackchannelClient
     {
         try {
             $response = $this->http->request('POST', $url, [
-                // CIBA Core §7.1: a client of this flow is a confidential one and authenticates at the
-                // backchannel endpoint exactly as it does at the token endpoint
                 'auth_basic' => $this->clientId . ':' . $this->secret,
                 'body' => $body,
             ]);
@@ -242,7 +202,6 @@ final class BackchannelClient
         if (! is_array($decoded)) {
             throw new RuntimeException(sprintf('%s answered something that is not a JSON object.', $url));
         }
-        // a JSON object decodes with keys of its own, which are the names of its members
         $answer = [];
         foreach ($decoded as $member => $value) {
             $answer[(string) $member] = $value;
@@ -260,21 +219,14 @@ final class BackchannelClient
 }
 
 /**
- * The listener of a client the provider calls back (CIBA Core §10.2): the one endpoint of this program,
- * bound before anything is asked for, answering the one POST that says the request has been answered.
+ * CIBA Core §10.2
  *
- * It is what the client registered as its notification endpoint, so it verifies what it registered for:
- * the token it drew and handed to the provider, compared in constant time, and the identifier of the
- * request it is waiting on. Anything else is a caller this client did not ask for, answered 401 and
- * waited past. Nothing of a token is expected in the body, §10.3 not being served.
- *
- * It binds every address of the machine and not the loopback one: the provider runs in a container of the
- * development stack and reaches the host by its gateway, which is not 127.0.0.1 from in there.
+ * Binds every address and not the loopback one: the provider, in a container, reaches the host by its gateway.
  */
 final class NotificationListener
 {
     /**
-     * CIBA Core §10.2: the one member of the body.
+     * CIBA Core §10.2
      */
     private const string PARAMETER = 'auth_req_id';
 
@@ -284,7 +236,7 @@ final class NotificationListener
     private $socket;
 
     /**
-     * @throws RuntimeException when the port is not one this program may listen on
+     * @throws RuntimeException
      */
     public function __construct(int $port)
     {
@@ -301,11 +253,7 @@ final class NotificationListener
     }
 
     /**
-     * Waits for the notification of one request, and says what it was: whether the identifier it carried is
-     * the one this client is waiting on, and whether the token it was presented is the one this client drew.
-     * Both are answered rather than asserted here, the walk being what judges them.
-     *
-     * @throws RuntimeException when nothing arrives in time
+     * @throws RuntimeException
      *
      * @return array{auth_req_id_matches: bool, token_matches: bool, waited: float}
      */
@@ -327,8 +275,6 @@ final class NotificationListener
             self::answer($connection, $matches && $authenticated ? '204 No Content' : '401 Unauthorized');
             fclose($connection);
             if (! $matches || ! $authenticated) {
-                // somebody this client never handed anything to, or a request it is not waiting on: the
-                // answer above said so, and this listener goes back to waiting for the one it asked for
                 continue;
             }
 
@@ -348,9 +294,6 @@ final class NotificationListener
     }
 
     /**
-     * The request, headers and body, read until the body announced by "Content-Length" is in: a POST of
-     * "application/json" is what this endpoint is called with, and nothing else is served here.
-     *
      * @param resource $connection
      */
     private static function read($connection): string
@@ -386,7 +329,7 @@ final class NotificationListener
     }
 
     /**
-     * RFC 6750 §2.1: the token the provider presents back, as it was handed to it.
+     * RFC 6750 §2.1
      */
     private static function bearerOf(string $request): ?string
     {
@@ -403,9 +346,7 @@ final class NotificationListener
 }
 
 /**
- * The options of the run, each one with what a development stack makes of it.
- *
- * @throws RuntimeException when an option is given without a value
+ * @throws RuntimeException
  *
  * @return array<string, string>
  */
@@ -437,9 +378,7 @@ function ciba_cli_options(): array
     if ($options['secret'] === '') {
         throw new RuntimeException('A client of this flow is a confidential one: pass its secret with --secret.');
     }
-    // CIBA Core §7.1, §15: what a "login_hint" names is the provider's to decide and not this client's to
-    // guess, so there is no default; this development stack reads it as the subject it issued
-    // (beffroi.backchannel_authentication.login_hint).
+    // No default: what a "login_hint" names is the provider's to decide (CIBA Core §7.1, §15).
     if ($options['login-hint'] === '') {
         throw new RuntimeException('Name the user the request is made for with --login-hint, as the provider reads one.');
     }
@@ -451,8 +390,6 @@ function ciba_cli_options(): array
 }
 
 /**
- * One step, on the two streams it belongs to: the line the task reads, and the sentence a human reads.
- *
  * @param array<string, mixed> $step
  */
 function ciba_cli_step(array $step, string $said): void
@@ -479,8 +416,6 @@ $client = new BackchannelClient(
     $options['scope'],
 );
 $calledBack = $options['mode'] === 'ping';
-// the credential the provider will present back to the listener below (CIBA Core §7.1): drawn here,
-// never guessed, and compared in constant time when it comes back
 $notificationToken = $calledBack ? rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=') : null;
 $listener = $calledBack ? new NotificationListener((int) $options['notification-port']) : null;
 
@@ -490,8 +425,7 @@ try {
     ciba_cli_step(
         [
             'step' => 'backchannel_authentication',
-            // an auth_req_id is a credential of this flow: what a step carries is enough to follow it and
-            // never the whole of it
+            // An auth_req_id is a credential: a step carries enough of it to follow it, never the whole.
             'auth_req_id_prefix' => substr($authRequestId, 0, 8),
             'expires_in' => BackchannelClient::number($asked, 'expires_in'),
             'interval' => BackchannelClient::number($asked, 'interval'),
@@ -538,8 +472,7 @@ try {
     }
 
     $accessToken = BackchannelClient::text($tokens, 'access_token');
-    // RFC 9068 §2.2: what the token says of itself, read here only to print it; a client is not a resource
-    // server and reads nothing of a token it merely carries
+    // Decoded only to print its RFC 9068 §2.2 claims: a client verifies nothing of a token it merely carries.
     $claims = [];
     $parts = explode('.', $accessToken);
     if (count($parts) === 3) {
@@ -570,8 +503,6 @@ try {
         ),
     );
 } catch (RuntimeException $exception) {
-    // the step is written for the task that reads these lines, then the exception ends the process: its
-    // code is what the task asserts on, as it does of the other programs of tests/demo/
     ciba_cli_step(
         [
             'step' => 'error',
