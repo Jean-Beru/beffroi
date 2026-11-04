@@ -36,8 +36,8 @@ final readonly class RouterEndpointLocator implements ClientConfigurationEndpoin
     /**
      * @param string|null $mutualTlsOrigin the scheme and authority of the host that asks for a client
      *                                     certificate, null or empty for a deployment that serves none,
-     *                                     an empty value being what an environment variable nobody set
-     *                                     gives
+     *                                     an empty value being what an environment variable declared
+     *                                     empty gives
      */
     public function __construct(
         private UrlGeneratorInterface $router,

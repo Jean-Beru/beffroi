@@ -41,7 +41,7 @@ final class StagingDelayTest extends TestCase
     }
 
     /**
-     * Issue #911: an environment variable nobody set is an empty string, which is no delay configured.
+     * Issue #911: an environment variable declared empty is an empty string, which is no delay configured.
      */
     #[Test]
     public function anEmptyDelayDerivesFromTheJwksMaxAge(): void

@@ -17,7 +17,7 @@ use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
  * when the key starts signing. The cooldown is the margin for a copy that came late through a shared HTTP
  * cache (the JWK Set is public): such a party refetches on the unknown "kid" once its copy is that old.
  *
- * Not configured is null, or an empty string, which is what an environment variable nobody set gives: the
+ * Not configured is null, or an empty string, which is what an environment variable declared empty gives: the
  * delay of a deployment that names none follows the max-age it names, so the two cannot drift apart.
  */
 final readonly class StagingDelay
