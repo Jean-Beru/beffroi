@@ -10,8 +10,7 @@ use Beffroi\Core\Port\KeyAlgorithmsInterface;
 use function sprintf;
 
 /**
- * The algorithms a deployment of the tests wires, by name: the keys of the upstream identity providers it declares
- * among them (spec/saml.md S-64), as the provider's registries answer them.
+ * spec/saml.md S-64
  */
 final readonly class WiredAlgorithmsOf implements KeyAlgorithmsInterface
 {

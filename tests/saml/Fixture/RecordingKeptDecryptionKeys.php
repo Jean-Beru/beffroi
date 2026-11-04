@@ -9,13 +9,12 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\KeptDecryptionKeyProviderInterface;
 
 /**
- * The keys the core opens to decrypt, each "kid" asked recorded: what a test of the key that is never asked reads
- * (spec/saml.md S-66).
+ * spec/saml.md S-66
  */
 final class RecordingKeptDecryptionKeys implements KeptDecryptionKeyProviderInterface
 {
     /**
-     * @var list<string> the "kid" of each key asked, in order
+     * @var list<string> the "kid" of each key asked
      */
     public private(set) array $asked = [];
 

@@ -18,8 +18,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * spec/saml.md S-6, S-8, section 6.2 step 6: the document read takes the place of the accepted one, an older one read
- * signed refused.
+ * spec/saml.md S-6, S-8, section 6.2 step 6
  */
 final class AcceptedMetadataTest extends TestCase
 {
@@ -30,8 +29,7 @@ final class AcceptedMetadataTest extends TestCase
     private const string NEWER = '<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"/>';
 
     /**
-     * S-8, section 6.2 step 6: the accepted document is the bytes that were read, so a refresh that reads them again
-     * writes nothing.
+     * S-8, section 6.2 step 6
      */
     #[Test]
     public function itHoldsTheBytesThatWereRead(): void
@@ -44,8 +42,7 @@ final class AcceptedMetadataTest extends TestCase
     }
 
     /**
-     * S-8, section 6.2 step 6: bytes that differ by one are another document, compared as they were read and never
-     * normalised.
+     * S-8, section 6.2 step 6
      */
     #[Test]
     public function itDoesNotHoldOtherBytes(): void
@@ -58,9 +55,7 @@ final class AcceptedMetadataTest extends TestCase
     }
 
     /**
-     * S-6, section 6.2 step 6: a document read signed that is not older than the accepted one takes its place, its
-     * bytes, its validUntil and the instant of the clock; two without validUntil cannot be told apart, and the newer
-     * reading replaces the older (section 12).
+     * S-6, section 6.2 step 6, section 12
      */
     #[Test]
     #[DataProvider('provideNewerDocuments')]
@@ -91,8 +86,7 @@ final class AcceptedMetadataTest extends TestCase
     }
 
     /**
-     * S-6, the acceptance of issue #729: a document read signed that is older than the one accepted is refused, the
-     * accepted one kept, an older document signed by the same key verifying as well.
+     * S-6
      */
     #[Test]
     #[DataProvider('provideOlderDocuments')]
@@ -125,9 +119,7 @@ final class AcceptedMetadataTest extends TestCase
     }
 
     /**
-     * S-6, the security review of 20 October 2026 (finding B-1): a document its channel vouches for takes the place of
-     * the accepted one whatever its validUntil, earlier, absent or later, so that a far validUntil written by whoever
-     * held the channel once pins nothing.
+     * S-6, finding B-1 of the security review of 20 October 2026
      */
     #[Test]
     #[DataProvider('provideDocumentsTrustedByTheirChannel')]
@@ -157,8 +149,7 @@ final class AcceptedMetadataTest extends TestCase
     }
 
     /**
-     * S-6, section 6.2 step 6: an older document refused leaves the accepted one as it was, its bytes, its validUntil
-     * and the instant it was accepted.
+     * S-6, section 6.2 step 6
      */
     #[Test]
     public function anOlderDocumentLeavesTheAcceptedOneAsItWas(): void
@@ -180,7 +171,7 @@ final class AcceptedMetadataTest extends TestCase
     }
 
     /**
-     * S-6: the validUntil is kept to the second, as its column keeps it.
+     * S-6
      */
     #[Test]
     public function theValidUntilIsKeptToTheSecond(): void
@@ -193,8 +184,7 @@ final class AcceptedMetadataTest extends TestCase
     }
 
     /**
-     * S-6: a document read signed whose validUntil is in the same second as the accepted one's is not older, whatever
-     * their fractions, the column keeping neither.
+     * S-6
      */
     #[Test]
     public function aValidUntilWithAFractionOfTheSameSecondIsNotOlder(): void
@@ -210,9 +200,7 @@ final class AcceptedMetadataTest extends TestCase
     }
 
     /**
-     * Section 6.2 steps 4 and 6: the refresh compares the entity ID of the document to the declared one before it
-     * replaces anything (S-5), so a document of another entity reaching the accepted one is a fault of the caller and
-     * not a refusal.
+     * Section 6.2 steps 4 and 6, S-5
      */
     #[Test]
     public function aDocumentOfAnotherEntityIsAProgrammingError(): void
@@ -233,7 +221,7 @@ final class AcceptedMetadataTest extends TestCase
     }
 
     /**
-     * S-8: an accepted document holds the bytes that were read, which are never none.
+     * S-8
      */
     #[Test]
     public function anEmptyDocumentIsNotAccepted(): void
@@ -247,7 +235,7 @@ final class AcceptedMetadataTest extends TestCase
     }
 
     /**
-     * S-8, section 6.2 step 6: an empty document replaces nothing, the accepted one holding the bytes that were read.
+     * S-8, section 6.2 step 6
      */
     #[Test]
     public function anEmptyDocumentDoesNotReplaceTheAcceptedOne(): void
@@ -264,7 +252,7 @@ final class AcceptedMetadataTest extends TestCase
     }
 
     /**
-     * S-8: the document is sealed in the family of its own table.
+     * S-8
      */
     #[Test]
     public function theDocumentIsSealedInTheFamilyOfItsTable(): void
@@ -281,9 +269,6 @@ final class AcceptedMetadataTest extends TestCase
         return new AcceptedServiceProviderMetadata(Uuid::v7(), Fixtures::tenant(), self::ENTITY_ID, self::ACCEPTED, $validUntil, Fixtures::now());
     }
 
-    /**
-     * A reading of a document of the same entity, its validUntil given, read signed or by its channel.
-     */
     private static function read(?DateTimeImmutable $validUntil, bool $readSigned): ServiceProviderMetadata
     {
         return new ServiceProviderMetadata(self::ENTITY_ID, $validUntil, [], false, [], $readSigned);

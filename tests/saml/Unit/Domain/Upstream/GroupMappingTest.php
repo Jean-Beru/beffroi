@@ -14,15 +14,14 @@ use function range;
 use function str_repeat;
 
 /**
- * spec/saml.md S-45: the attribute that carries the groups of a person at an upstream identity provider, and the name
- * of a group of the tenant each of its values stands for.
+ * S-45
  */
 final class GroupMappingTest extends TestCase
 {
     private const string OBJECT_ID = '9f5c2a7e-1b3d-4e8f-a6c0-2d7b9e1f4a35';
 
     /**
-     * S-45: a value the map names stands for its group of the tenant, compared exactly.
+     * S-45
      */
     #[Test]
     public function aValueTheMapNamesStandsForItsGroup(): void
@@ -35,7 +34,7 @@ final class GroupMappingTest extends TestCase
     }
 
     /**
-     * S-45: a value the map does not name is no group, its case included.
+     * S-45
      */
     #[Test]
     #[DataProvider('provideValuesTheMapDoesNotName')]
@@ -59,7 +58,7 @@ final class GroupMappingTest extends TestCase
     }
 
     /**
-     * S-45: a value of digits alone, which PHP keeps as an integer key, stands for its group as any other.
+     * S-45
      */
     #[Test]
     public function aValueOfDigitsStandsForItsGroup(): void
@@ -72,7 +71,7 @@ final class GroupMappingTest extends TestCase
     }
 
     /**
-     * S-45: the name of the attribute of the groups is a name.
+     * S-45
      */
     #[Test]
     public function anAttributeThatIsNoNameIsRefused(): void
@@ -86,7 +85,7 @@ final class GroupMappingTest extends TestCase
     }
 
     /**
-     * S-45: a value of the groups is not empty, holds no control character and is at most 1 024 characters.
+     * S-45
      */
     #[Test]
     #[DataProvider('provideWhatIsNoValue')]
@@ -113,7 +112,7 @@ final class GroupMappingTest extends TestCase
     }
 
     /**
-     * S-45: a value with a space, as a directory names a group, and a value of 1 024 characters are values.
+     * S-45
      */
     #[Test]
     #[DataProvider('provideValues')]
@@ -137,7 +136,7 @@ final class GroupMappingTest extends TestCase
     }
 
     /**
-     * S-45: a value names a group, never an empty name.
+     * S-45
      */
     #[Test]
     public function aValueThatNamesNoGroupIsRefused(): void
@@ -151,7 +150,7 @@ final class GroupMappingTest extends TestCase
     }
 
     /**
-     * Section 7: the groups of an identity provider map 256 values at most.
+     * Section 7
      */
     #[Test]
     public function moreThan256ValuesAreRefused(): void
@@ -165,7 +164,7 @@ final class GroupMappingTest extends TestCase
     }
 
     /**
-     * Section 7: 256 values are mapped.
+     * Section 7
      */
     #[Test]
     public function twoHundredAndFiftySixValuesAreMapped(): void

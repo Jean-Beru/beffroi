@@ -10,8 +10,7 @@ use Beffroi\Saml\Port\SessionParticipationRepositoryInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Each service provider's part in a session (spec/saml.md S-26) in the memory of one process, written once per session
- * and service provider as the provider writes it.
+ * spec/saml.md S-26
  */
 final class InMemorySessionParticipations implements SessionParticipationRepositoryInterface
 {

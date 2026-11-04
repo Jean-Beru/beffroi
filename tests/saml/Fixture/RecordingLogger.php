@@ -7,9 +7,6 @@ namespace Beffroi\Saml\Tests\Fixture;
 use Psr\Log\AbstractLogger;
 use Stringable;
 
-/**
- * What was written to the log, level, message and context, for a test to read.
- */
 final class RecordingLogger extends AbstractLogger
 {
     /**

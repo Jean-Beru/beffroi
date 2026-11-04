@@ -12,14 +12,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md section 6.1 steps 1 and 3: what the metadata of an identity provider says.
+ * spec/saml.md section 6.1 steps 1 and 3
  */
 final class IdentityProviderDescriptionTest extends TestCase
 {
     private const string METADATA = 'https://id.acme.example/saml/metadata';
 
     /**
-     * Section 6.1 step 3, Metadata §4.1: the entity ID is the URL of the metadata.
+     * Section 6.1 step 3, Metadata §4.1
      */
     #[Test]
     public function itsEntityIdIsTheUrlOfItsMetadata(): void
@@ -32,7 +32,7 @@ final class IdentityProviderDescriptionTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 1: metadata whose messages nothing verifies is not metadata to publish.
+     * Section 6.1 step 1
      */
     #[Test]
     public function itRefusesToDescribeAnIdentityProviderWithoutACertificate(): void

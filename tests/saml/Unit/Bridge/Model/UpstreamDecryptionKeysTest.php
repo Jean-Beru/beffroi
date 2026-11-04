@@ -49,11 +49,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-64, S-66, section 6.13, the acceptance of issue #787: the key the model is given with an upstream
- * identity provider opens what was encrypted for the certificate its metadata publish (S-65), during a rotation the
- * previous one until it retires, and never what was encrypted for another provider, whose key it never asks for. The
- * responses are written by saml2-model's writer as an identity provider writes them, signed by the test key of its
- * suite, their assertion encrypted for the certificate EncryptionCertificates builds, and read by its ResponseValidator.
+ * spec/saml.md S-64, S-66, section 6.13, S-65
  */
 final class UpstreamDecryptionKeysTest extends TestCase
 {
@@ -61,9 +57,6 @@ final class UpstreamDecryptionKeysTest extends TestCase
 
     private const string OTHER_PROVIDER = 'https://idp-b.example/metadata';
 
-    /**
-     * The identity providers of the responses of saml2-model's suite (tests/saml2-model/Fixture/encrypted/).
-     */
     private const string FIXTURE_PROVIDER = 'https://idp.example.com/saml';
 
     private const string FIXTURE_OTHER_PROVIDER = 'https://idp-b.example.com/saml';
@@ -93,8 +86,7 @@ final class UpstreamDecryptionKeysTest extends TestCase
     }
 
     /**
-     * The acceptance, S-66: an assertion encrypted for the certificate the metadata of a provider publish is read with
-     * the key the provider is given.
+     * S-66
      */
     #[Test]
     public function anAssertionEncryptedForThePublishedCertificateIsRead(): void
@@ -115,8 +107,7 @@ final class UpstreamDecryptionKeysTest extends TestCase
     }
 
     /**
-     * The acceptance, S-66, enc.md E-3: the same ciphertext presented under another provider is refused with the one
-     * failure of a decryption.
+     * S-66, enc.md E-3
      */
     #[Test]
     public function theCiphertextOfAProviderPresentedUnderAnotherIsRefused(): void
@@ -139,8 +130,7 @@ final class UpstreamDecryptionKeysTest extends TestCase
     }
 
     /**
-     * The acceptance, S-66: presented under another provider, the ciphertext of a provider has the keys of that other
-     * provider asked, and the key it was made for never.
+     * S-66
      */
     #[Test]
     public function theKeyACiphertextWasMadeForIsNeverAskedUnderAnotherProvider(): void
@@ -166,10 +156,7 @@ final class UpstreamDecryptionKeysTest extends TestCase
     }
 
     /**
-     * S-66, decision 0013, enc.md E-15: the session key a provider wrapped for its own certificate, handed to the key
-     * of another provider, unwraps to nothing, and the key it was wrapped for is never asked. The unwrap is the one
-     * AES-CBC and AES-GCM share, so that another provider carrying that ciphertext under its own signature reads no
-     * answer of the decryption under either.
+     * S-66, decision 0013, enc.md E-15
      */
     #[Test]
     public function theKeyOfAnotherProviderUnwrapsNothingOfACiphertextMadeForTheFirst(): void
@@ -188,12 +175,7 @@ final class UpstreamDecryptionKeysTest extends TestCase
     }
 
     /**
-     * S-66, decision 0013, enc.md E-15, E-16: a provider that signs what it sends, carrying under its own signature the
-     * AES-CBC ciphertext another provider was given a certificate for, is given its own key with its metadata, and gets
-     * the one DecryptionFailed and no other refusal, its keys unwrapping nothing of that ciphertext; the key the
-     * ciphertext was made for is never asked. The response is
-     * the one xmlsec1 wrote for saml2-model, its ciphertext made for the service provider's test key and its signature
-     * the second identity provider's (tests/saml2-model/Fixture/encrypted/README.md).
+     * S-66, decision 0013, enc.md E-15, E-16
      */
     #[Test]
     public function anotherProviderReplayingTheCbcCiphertextOfAProviderGetsTheOneFailure(): void
@@ -227,8 +209,7 @@ final class UpstreamDecryptionKeysTest extends TestCase
     }
 
     /**
-     * The acceptance, S-65, S-66: after a rotation, an assertion encrypted for the previous certificate is still read
-     * while that key is retiring.
+     * S-65, S-66
      */
     #[Test]
     public function anAssertionEncryptedForThePreviousCertificateIsReadUntilItsKeyRetires(): void
@@ -251,7 +232,7 @@ final class UpstreamDecryptionKeysTest extends TestCase
     }
 
     /**
-     * S-66: once the previous key has retired, what was encrypted for its certificate is refused with the one failure.
+     * S-66
      */
     #[Test]
     public function anAssertionEncryptedForARetiredKeyIsRefused(): void
@@ -275,8 +256,7 @@ final class UpstreamDecryptionKeysTest extends TestCase
     }
 
     /**
-     * S-65, S-66: the certificate of a staged key is published first, and what a provider encrypts for it from then on
-     * is read.
+     * S-65, S-66
      */
     #[Test]
     public function anAssertionEncryptedForTheStagedCertificateIsRead(): void
@@ -298,8 +278,7 @@ final class UpstreamDecryptionKeysTest extends TestCase
     }
 
     /**
-     * Section 6.13 step 1: a provider for which the tenant holds no key in service is given none, and the model refuses
-     * its encrypted assertion by name.
+     * Section 6.13 step 1
      */
     #[Test]
     public function aProviderWithoutAKeyIsGivenNone(): void
@@ -315,8 +294,7 @@ final class UpstreamDecryptionKeysTest extends TestCase
     }
 
     /**
-     * Section 6.13 step 1: a provider the deployment does not wire, which declares no such provider, is given none, and
-     * nothing is opened for it.
+     * Section 6.13 step 1
      */
     #[Test]
     public function aProviderNothingWiresIsGivenNone(): void
@@ -333,7 +311,7 @@ final class UpstreamDecryptionKeysTest extends TestCase
     }
 
     /**
-     * S-64: an algorithm wired under the name of a provider that is not the key of a provider gives no key.
+     * S-64
      */
     #[Test]
     public function anAlgorithmThatIsNoKeyOfAProviderGivesNone(): void
@@ -350,8 +328,7 @@ final class UpstreamDecryptionKeysTest extends TestCase
     }
 
     /**
-     * Section 6.13 step 2: a key of the provider that has retired since the last response leaves a process that lives
-     * for months, the key that took over opened in its place.
+     * Section 6.13 step 2
      */
     #[Test]
     public function aKeyRetiredSinceTheLastResponseLeavesTheProcess(): void
@@ -373,8 +350,7 @@ final class UpstreamDecryptionKeysTest extends TestCase
     }
 
     /**
-     * Section 6.13 step 2: the keys of a provider that have all retired leave the process too, though the provider is
-     * given none.
+     * Section 6.13 step 2
      */
     #[Test]
     public function theKeysOfAProviderThatHaveAllRetiredLeaveTheProcess(): void
@@ -396,7 +372,7 @@ final class UpstreamDecryptionKeysTest extends TestCase
     }
 
     /**
-     * Section 6.13 step 2: a KMS that does not answer refuses the key before anything of a response is unwrapped.
+     * Section 6.13 step 2
      */
     #[Test]
     public function aKmsThatDoesNotAnswerRefusesBeforeAnythingIsUnwrapped(): void
@@ -416,7 +392,7 @@ final class UpstreamDecryptionKeysTest extends TestCase
     }
 
     /**
-     * The key the provider is given, as the assertion consumer service asks for it (section 6.13).
+     * Section 6.13
      */
     private function keyOf(string $identityProvider): DecryptionKeyInterface
     {
@@ -427,9 +403,7 @@ final class UpstreamDecryptionKeysTest extends TestCase
     }
 
     /**
-     * The response as the identity provider writes it: its assertion signed, encrypted for the first certificate the
-     * metadata of the provider publish, the one a SimpleSAMLphp identity provider takes (S-19, S-65), and the response
-     * signed over the ciphertext.
+     * S-19, S-65
      */
     private function encryptedFor(Response $response, string $identityProvider): UnverifiedResponse
     {
@@ -460,9 +434,6 @@ final class UpstreamDecryptionKeysTest extends TestCase
         return $key;
     }
 
-    /**
-     * A rotation of the key of the provider: the next key takes over, and the previous one starts retiring.
-     */
     private function rotate(TenantKey $previous): void
     {
         $this->activeKey(SamlKeys::encryptionKey($this->tenant, self::PROVIDER, 2, Fixtures::now()->modify('+1 day')));

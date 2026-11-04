@@ -21,10 +21,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * spec/saml.md section 6.11, S-48, S-50, S-68: a sign-on at an upstream identity provider started for a provider the
- * tenant declares, the request written from that provider, the service provider of the tenant, whether the provider
- * forces a login, the instant of the clock and the address the provider hands for a provider that reads one, under a
- * reference drawn for it.
+ * spec/saml.md section 6.11, S-48, S-50, S-68
  */
 final class UpstreamSignOnTest extends TestCase
 {
@@ -65,7 +62,7 @@ final class UpstreamSignOnTest extends TestCase
     }
 
     /**
-     * S-48, section 6.11 step 1: a provider the tenant does not declare is refused.
+     * S-48, section 6.11 step 1
      */
     #[Test]
     public function aProviderTheTenantDoesNotDeclareIsRefused(): void
@@ -79,7 +76,7 @@ final class UpstreamSignOnTest extends TestCase
     }
 
     /**
-     * S-48, section 6.11 step 1: nothing is sent to a provider the tenant does not declare.
+     * S-48, section 6.11 step 1
      */
     #[Test]
     public function nothingIsSentToAProviderTheTenantDoesNotDeclare(): void
@@ -95,8 +92,7 @@ final class UpstreamSignOnTest extends TestCase
     }
 
     /**
-     * Section 6.11 step 3: the request is written from the provider, the endpoints of the service provider of the
-     * tenant, whether the provider forces a login (S-49) and the instant of the clock.
+     * Section 6.11 step 3, S-49
      */
     #[Test]
     #[DataProvider('provideForceAuthn')]
@@ -123,8 +119,7 @@ final class UpstreamSignOnTest extends TestCase
     }
 
     /**
-     * S-68, section 6.11 step 3: the request to a provider that reads the address carries the address the provider
-     * handed, in the parameter its declaration names, its domain written as its A-label.
+     * S-68, section 6.11 step 3
      */
     #[Test]
     public function theRequestCarriesTheAddressToAProviderThatReadsOne(): void
@@ -138,8 +133,7 @@ final class UpstreamSignOnTest extends TestCase
     }
 
     /**
-     * S-68: a provider whose declaration names no parameter of the address is sent none, nor is a request for which
-     * the provider handed none.
+     * S-68
      */
     #[Test]
     #[DataProvider('provideSignOnsWithoutAHint')]
@@ -163,7 +157,7 @@ final class UpstreamSignOnTest extends TestCase
     }
 
     /**
-     * Section 6.11 step 5: what the sender sent is what the sign-on started.
+     * Section 6.11 step 5
      */
     #[Test]
     public function whatTheSenderSentIsReturned(): void
@@ -179,8 +173,7 @@ final class UpstreamSignOnTest extends TestCase
     }
 
     /**
-     * S-50, section 6.11 step 2: the RelayState is a reference of 32 bytes of random_bytes() in base64url, 43
-     * characters, and nothing else.
+     * S-50, section 6.11 step 2
      */
     #[Test]
     public function theRelayStateIsAReferenceOfThirtyTwoBytes(): void
@@ -193,8 +186,7 @@ final class UpstreamSignOnTest extends TestCase
     }
 
     /**
-     * S-61: a sign-on of the tenant may send a browser to the single sign-on service of each provider it declares, and
-     * to none of a provider whose sign-on would be refused.
+     * S-61
      */
     #[Test]
     public function aSignOnMaySendABrowserToTheServiceOfEachProviderItWouldStart(): void
@@ -204,7 +196,7 @@ final class UpstreamSignOnTest extends TestCase
     }
 
     /**
-     * S-61: a tenant that declares no provider sends a browser nowhere.
+     * S-61
      */
     #[Test]
     public function aTenantThatDeclaresNoProviderSendsABrowserNowhere(): void
@@ -214,7 +206,7 @@ final class UpstreamSignOnTest extends TestCase
     }
 
     /**
-     * S-50: each sign-on is remembered under a reference of its own.
+     * S-50
      */
     #[Test]
     public function eachSignOnHasAReferenceOfItsOwn(): void

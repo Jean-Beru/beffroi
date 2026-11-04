@@ -34,9 +34,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * spec/saml.md section 6.3, section 6.4 step 1: a request of a declared service provider received over either
- * binding, validated by the model at the URL of the single sign-on service of the tenant, and what it asks for kept;
- * anything else refused without a SAML answer.
+ * spec/saml.md section 6.3, section 6.4 step 1
  */
 final class ModelAuthnRequestReceiverTest extends TestCase
 {
@@ -66,7 +64,7 @@ final class ModelAuthnRequestReceiverTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 4, B-2: a request signed over its query string, its RelayState as it was sent.
+     * Section 6.3 step 4, B-2
      */
     #[Test]
     public function aRequestSignedOverHttpRedirectIsAccepted(): void
@@ -82,7 +80,7 @@ final class ModelAuthnRequestReceiverTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 4, M-2: a request signed in its XML over HTTP-POST, its RelayState byte for byte.
+     * Section 6.3 step 4, M-2
      */
     #[Test]
     public function aRequestSignedOverHttpPostIsAccepted(): void
@@ -98,7 +96,7 @@ final class ModelAuthnRequestReceiverTest extends TestCase
     }
 
     /**
-     * Section 6.4 step 1: what the request asks of the login and of the identifier is kept for the answer.
+     * Section 6.4 step 1
      */
     #[Test]
     public function whatTheRequestAsksForIsKept(): void
@@ -134,7 +132,7 @@ final class ModelAuthnRequestReceiverTest extends TestCase
     }
 
     /**
-     * S-9, section 6.3 step 4: a provider that signs gets no unsigned request accepted.
+     * S-9, section 6.3 step 4
      */
     #[Test]
     public function anUnsignedRequestOfAProviderThatSignsIsRefused(): void
@@ -151,7 +149,7 @@ final class ModelAuthnRequestReceiverTest extends TestCase
     }
 
     /**
-     * S-10, section 6.3 step 5: an assertion consumer service the accepted metadata do not list is refused.
+     * S-10, section 6.3 step 5
      */
     #[Test]
     public function anEndpointTheMetadataDoNotListIsRefused(): void
@@ -168,7 +166,7 @@ final class ModelAuthnRequestReceiverTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 1: an Issuer the tenant declares no service provider for is refused.
+     * Section 6.3 step 1
      */
     #[Test]
     public function anIssuerNobodyDeclaredIsRefused(): void
@@ -185,7 +183,7 @@ final class ModelAuthnRequestReceiverTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 1: a declared service provider whose metadata were never accepted is refused.
+     * Section 6.3 step 1
      */
     #[Test]
     public function aProviderWithoutAcceptedMetadataIsRefused(): void
@@ -203,7 +201,7 @@ final class ModelAuthnRequestReceiverTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 1: an accepted document the reading refuses now, past its validUntil, is refused.
+     * Section 6.3 step 1
      */
     #[Test]
     public function anAcceptedDocumentRefusedNowIsRefused(): void
@@ -228,7 +226,7 @@ final class ModelAuthnRequestReceiverTest extends TestCase
     }
 
     /**
-     * B-1: what the binding refuses is refused before anything else.
+     * B-1
      */
     #[Test]
     public function aQueryStringTheBindingRefusesIsRefused(): void
@@ -242,7 +240,7 @@ final class ModelAuthnRequestReceiverTest extends TestCase
     }
 
     /**
-     * B-1: what the binding refuses of a form is refused before anything else.
+     * B-1
      */
     #[Test]
     public function aFormTheBindingRefusesIsRefused(): void

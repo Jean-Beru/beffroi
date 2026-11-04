@@ -8,9 +8,6 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Saml\Domain\Upstream\UpstreamIdentityProvider;
 use Beffroi\Saml\Port\UpstreamIdentityProvidersInterface;
 
-/**
- * The providers a tenant declares, as the configuration of the suite declares them.
- */
 final readonly class DeclaredUpstreamProviders implements UpstreamIdentityProvidersInterface
 {
     /**

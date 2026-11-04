@@ -12,12 +12,12 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * spec/saml.md S-45: an attribute of an upstream identity provider that fills a claim of the profile of a person.
+ * S-45
  */
 final class ProfileAttributeTest extends TestCase
 {
     /**
-     * S-45: the name of the attribute and the claim it fills, as they are declared.
+     * S-45
      */
     #[Test]
     public function anAttributeNamesTheClaimItFills(): void
@@ -31,7 +31,7 @@ final class ProfileAttributeTest extends TestCase
     }
 
     /**
-     * S-45, Core §2.7.3.1: the name of an attribute is a name, at most 1 024 characters with no whitespace.
+     * S-45, Core §2.7.3.1
      */
     #[Test]
     #[DataProvider('provideWhatIsNoName')]
@@ -46,7 +46,7 @@ final class ProfileAttributeTest extends TestCase
     }
 
     /**
-     * S-45: the claim an attribute fills is a claim name.
+     * S-45
      */
     #[Test]
     #[DataProvider('provideWhatIsNoName')]

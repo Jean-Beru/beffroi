@@ -12,8 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md section 5.1: a certificate is the base64 of its DER in the alphabet of RFC 4648 §4, so that what is
- * published is what was built.
+ * spec/saml.md section 5.1, RFC 4648 §4
  */
 final class CertificateTest extends TestCase
 {
@@ -25,7 +24,7 @@ final class CertificateTest extends TestCase
     }
 
     /**
-     * S-37, RFC 7468 §5: the certificate as a PEM, in lines of 64 characters, as OpenSSL writes it.
+     * S-37, RFC 7468 §5
      */
     #[Test]
     public function itIsWrittenAsAPem(): void

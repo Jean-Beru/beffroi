@@ -12,8 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-57, RFC 8176 §2, SAML Authentication Context §3.4: a login of an upstream identity provider proves a
- * federated assertion, and the method its class of authentication names exactly, nothing a class does not say.
+ * S-57, RFC 8176 §2, SAML Authentication Context §3.4
  */
 final class AuthnContextMethodsTest extends TestCase
 {
@@ -44,8 +43,7 @@ final class AuthnContextMethodsTest extends TestCase
     }
 
     /**
-     * S-57: every method a login of an upstream identity provider may prove, each once, what the provider announces of
-     * that login.
+     * S-57
      */
     #[Test]
     public function everyMethodALoginMayProveIsAnnouncedOnce(): void

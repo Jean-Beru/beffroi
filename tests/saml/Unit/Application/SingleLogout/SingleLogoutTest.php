@@ -43,10 +43,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * spec/saml.md section 6.5 steps 2 to 4: the sessions a logout request accepted names, ended when their user is the
- * principal it names, as every session of the core ends, and the answer written with the status that says so, after
- * the chain of the other service providers when sessions ended (S-34); the answer of a service provider handed to the
- * chain it answers (section 6.6 step 4).
+ * spec/saml.md section 6.5 steps 2 to 4, S-34, section 6.6 step 4
  */
 final class SingleLogoutTest extends TestCase
 {
@@ -79,8 +76,7 @@ final class SingleLogoutTest extends TestCase
     }
 
     /**
-     * S-24, S-25: the session the request names, of the principal it names, ends, by the service provider of the
-     * request, which the core says with the context of the request.
+     * S-24, S-25
      */
     #[Test]
     public function theSessionOfThePrincipalEnds(): void
@@ -96,7 +92,7 @@ final class SingleLogoutTest extends TestCase
     }
 
     /**
-     * S-25: by a relying party, as the end session endpoint of OpenID Connect ends one.
+     * S-25
      */
     #[Test]
     public function theSessionEndsByARelyingParty(): void
@@ -109,9 +105,7 @@ final class SingleLogoutTest extends TestCase
     }
 
     /**
-     * S-29, S-34, section 6.5 step 3: a request that ended a session begins the chain of the other service providers of
-     * that session, its answer waiting for its end: nothing is answered yet, and the chain is to be resumed for the
-     * session ended.
+     * S-29, S-34, section 6.5 step 3
      */
     #[Test]
     public function aRequestThatEndedASessionBeginsTheChain(): void
@@ -125,9 +119,7 @@ final class SingleLogoutTest extends TestCase
     }
 
     /**
-     * S-24, S-27, S-34, section 6.5 step 4: once the chain is resumed and nobody else is to be told, the answer is
-     * written from the request, Success, issued by the identity provider of the tenant at the instant of the clock,
-     * and is what the browser carries back.
+     * S-24, S-27, S-34, section 6.5 step 4
      */
     #[Test]
     public function theAnswerSaysSuccessAtTheEndOfTheChain(): void
@@ -151,7 +143,7 @@ final class SingleLogoutTest extends TestCase
     }
 
     /**
-     * S-24: the NameID qualified by the two entities, as the assertion carried it, is the principal's.
+     * S-24
      */
     #[Test]
     public function aNameIdQualifiedByTheTwoEntitiesIsThePrincipals(): void
@@ -167,8 +159,7 @@ final class SingleLogoutTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 4, S-33: the answer of a service provider is handed to the chain it answers, which ends here,
-     * nobody else being left to tell and nobody to answer.
+     * Section 6.6 step 4, S-33
      */
     #[Test]
     public function anAnswerOfAServiceProviderMovesTheChainOn(): void
@@ -193,8 +184,7 @@ final class SingleLogoutTest extends TestCase
     }
 
     /**
-     * S-24: a session ended already, a session of another tenant, a session index that names no session and one that
-     * is no UUID, are ended already: Success, and nothing ends.
+     * S-24
      */
     #[Test]
     #[DataProvider('provideSessionsEndedAlready')]
@@ -230,8 +220,7 @@ final class SingleLogoutTest extends TestCase
     }
 
     /**
-     * S-24: a NameID that is not the principal of the session named, by its value, its format or a qualifier of
-     * another entity, ends nothing and is answered UnknownPrincipal.
+     * S-24
      */
     #[Test]
     #[DataProvider('provideOtherPrincipals')]
@@ -266,7 +255,7 @@ final class SingleLogoutTest extends TestCase
     }
 
     /**
-     * S-24: when one session named is of another principal, none of the sessions named ends.
+     * S-24
      */
     #[Test]
     public function oneSessionOfAnotherPrincipalEndsNone(): void
@@ -287,7 +276,7 @@ final class SingleLogoutTest extends TestCase
     }
 
     /**
-     * S-24, Core §3.7.3.2: a request naming no session index is not supported here (section 12); nothing ends.
+     * S-24, Core §3.7.3.2, section 12
      */
     #[Test]
     public function aRequestNamingNoSessionIsUnsupported(): void
@@ -303,7 +292,7 @@ final class SingleLogoutTest extends TestCase
     }
 
     /**
-     * S-24: every session named of the principal ends, each once.
+     * S-24
      */
     #[Test]
     public function everySessionNamedEnds(): void
@@ -321,8 +310,7 @@ final class SingleLogoutTest extends TestCase
     }
 
     /**
-     * S-25, S-27, section 6.5 step 1: the key that signs the answer is opened before anything ends, so that a tenant
-     * without its key, or a KMS that does not answer, ends no session.
+     * S-25, S-27, section 6.5 step 1
      */
     #[Test]
     #[DataProvider('provideKeysThatCannotBeOpened')]
@@ -342,8 +330,7 @@ final class SingleLogoutTest extends TestCase
     }
 
     /**
-     * S-23, section 6.5 step 1: the key is opened before the request is read, so that a tenant without its key, or a
-     * KMS that does not answer, remembers nothing, and the same request is accepted once the key or the KMS is back.
+     * S-23, section 6.5 step 1
      */
     #[Test]
     #[DataProvider('provideKeysThatCannotBeOpened')]
@@ -370,8 +357,7 @@ final class SingleLogoutTest extends TestCase
     }
 
     /**
-     * The request of the service provider of the fixtures for the session of setUp(), its NameID the one S-13
-     * computes for the user of that session unless the test says otherwise.
+     * S-13
      *
      * @param list<string>|null $sessionIndexes
      */
@@ -412,9 +398,6 @@ final class SingleLogoutTest extends TestCase
         return [$session->id->toRfc4122()];
     }
 
-    /**
-     * A logout over the binding named, which the key that cannot be opened refuses.
-     */
     private function failToLogOut(string $binding, GivenSignOutRequests $receiver): void
     {
         $singleLogout = $this->singleLogout($receiver);

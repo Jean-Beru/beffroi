@@ -54,10 +54,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * spec/saml.md S-31, section 6.6 step 3: the request the identity provider sends a service provider of an ended
- * session, written with the model's objects, signed by the SAML key of the tenant, sent to the first single logout
- * service of the accepted metadata of that service provider, and read back as the service provider reads it: by the
- * receiver of its binding and saml2-model's LogoutRequestValidator under the certificate the metadata publish.
+ * spec/saml.md S-31, section 6.6 step 3
  */
 final class ModelSignOutNotifierTest extends TestCase
 {
@@ -88,8 +85,7 @@ final class ModelSignOutNotifierTest extends TestCase
     }
 
     /**
-     * S-31, B-12: over HTTP-Redirect, the URL of the single logout service carries a LogoutRequest signed over its
-     * query string, which the service provider accepts under the certificate of the key of the tenant.
+     * S-31, B-12
      */
     #[Test]
     public function overHttpRedirectTheRequestIsSignedOverItsQueryString(): void
@@ -102,9 +98,7 @@ final class ModelSignOutNotifierTest extends TestCase
     }
 
     /**
-     * S-31, M-9, Metadata §2.2.2: the request goes to the Location of the single logout service, never its
-     * ResponseLocation; it is issued by the identity provider of the tenant at the instant of the notice, valid five
-     * minutes, its ID the one the chain waits for.
+     * S-31, M-9, Metadata §2.2.2
      */
     #[Test]
     public function theRequestIsAddressedToTheSingleLogoutService(): void
@@ -123,8 +117,7 @@ final class ModelSignOutNotifierTest extends TestCase
     }
 
     /**
-     * S-31, S-13, S-14: the NameID is the persistent one of the notice, qualified by the two entities as the assertion
-     * carried it, and the one SessionIndex is the ID of the session.
+     * S-31, S-13, S-14
      */
     #[Test]
     public function theRequestNamesThePrincipalAndTheSession(): void
@@ -140,7 +133,7 @@ final class ModelSignOutNotifierTest extends TestCase
     }
 
     /**
-     * S-31: the request carries no RelayState: its answer is found by its InResponseTo.
+     * S-31
      */
     #[Test]
     public function theRequestCarriesNoRelayState(): void
@@ -150,7 +143,7 @@ final class ModelSignOutNotifierTest extends TestCase
     }
 
     /**
-     * S-31, M-2: over HTTP-POST, the form posts to the single logout service a LogoutRequest signed in its XML.
+     * S-31, M-2
      */
     #[Test]
     public function overHttpPostTheRequestIsSignedInItsXml(): void
@@ -169,8 +162,7 @@ final class ModelSignOutNotifierTest extends TestCase
     }
 
     /**
-     * S-37: over HTTP-POST, the signature of the request carries, in its KeyInfo, the one certificate the metadata
-     * publish for the key that signed it.
+     * S-37
      */
     #[Test]
     public function overHttpPostTheSignatureCarriesTheCertificateOfTheMetadata(): void
@@ -187,7 +179,7 @@ final class ModelSignOutNotifierTest extends TestCase
     }
 
     /**
-     * S-31: the first single logout service listed is the one told, whatever its binding.
+     * S-31
      */
     #[Test]
     public function theFirstSingleLogoutServiceIsTold(): void
@@ -203,8 +195,7 @@ final class ModelSignOutNotifierTest extends TestCase
     }
 
     /**
-     * S-30: a service provider nobody declared, one with no accepted document, and one whose metadata list no single
-     * logout service, cannot be told.
+     * S-30
      */
     #[Test]
     #[DataProvider('provideServiceProvidersThatCannotBeTold')]
@@ -233,8 +224,7 @@ final class ModelSignOutNotifierTest extends TestCase
     }
 
     /**
-     * D-16, S-30, S-31: a key Dsig refuses to sign with, under 2 048 bits, signs no request, over either binding: a
-     * request the notifier cannot write, which passes its service provider over.
+     * D-16, S-30, S-31
      */
     #[Test]
     #[DataProvider('provideBindings')]
@@ -275,8 +265,6 @@ final class ModelSignOutNotifierTest extends TestCase
     }
 
     /**
-     * The metadata of the signed service provider accepted for the tenant, listing the single logout services given.
-     *
      * @param list<Endpoint> $singleLogoutServices
      */
     private function accept(array $singleLogoutServices): void
@@ -299,9 +287,6 @@ final class ModelSignOutNotifierTest extends TestCase
         return $sent;
     }
 
-    /**
-     * The LogoutRequest the form of HTTP-POST carries, loaded as the service provider loads it.
-     */
     private static function posted(SentSignOutNotice $sent): Document
     {
         $message = $sent->message;
@@ -321,10 +306,6 @@ final class ModelSignOutNotifierTest extends TestCase
         return $received;
     }
 
-    /**
-     * The request as the service provider validates it, at its single logout service, under the certificate of the key
-     * of the tenant.
-     */
     private function accepted(SentSignOutNotice $sent, string $location = self::SINGLE_LOGOUT): AcceptedLogoutRequest
     {
         $certificate = new SelfSignedCertificateIssuer()->selfSigned(SamlKeys::opened($this->key));

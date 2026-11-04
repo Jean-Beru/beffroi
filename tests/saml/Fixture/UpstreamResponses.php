@@ -29,31 +29,20 @@ use DateTimeImmutable;
 use function file_get_contents;
 
 /**
- * The responses an upstream identity provider posts to the assertion consumer service of a tenant (spec/saml.md S-53),
- * written and signed by saml2-model's writer as an identity provider writes them: a persistent NameID unless the test
- * says another, a bearer confirmation of five minutes to the assertion consumer service, the audience of the service
- * provider, an authentication statement of the class PasswordProtectedTransport, and the attributes given, the
- * assertion signed by the key given.
+ * spec/saml.md S-53
  */
 final class UpstreamResponses
 {
     public const string PASSWORD_PROTECTED_TRANSPORT = 'urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport';
 
-    /**
-     * The private key of the SimpleSAMLphp identity provider of the harnesses, whose certificate the document of the
-     * judge publishes (IdentityProviderDocuments::simpleSamlPhp()).
-     */
     public static function simpleSamlPhpKey(): PrivateKey
     {
         return PrivateKey::fromPem((string) file_get_contents(__DIR__ . '/../../saml2-bindings/Interop/simplesamlphp/installation/cert/idp.pem'));
     }
 
     /**
-     * The fields of the form the browser posts, SAMLResponse and RelayState, the response written and signed.
-     *
-     * @param array<string, list<string>> $attributes the values of each attribute, by its name
-     * @param array<string, list<string>> $repeated attributes written a second time after the others, as Keycloak names
-     *                                              one attribute once per value
+     * @param array<string, list<string>> $attributes by attribute name
+     * @param array<string, list<string>> $repeated written a second time, as Keycloak writes one attribute per value
      *
      * @return array<string, string>
      */
@@ -102,8 +91,7 @@ final class UpstreamResponses
     }
 
     /**
-     * The fields of the form of a response whose status is not Success, Responder with the second-level code given, the
-     * person having cancelled or failed at the provider, signed by the key given (model.md M-13).
+     * model.md M-13
      *
      * @return array<string, string>
      */
@@ -138,7 +126,6 @@ final class UpstreamResponses
     /**
      * @param array<string, list<string>> $attributes
      * @param array<string, list<string>> $repeated
-     * @param string|null $certificatePem the certificate of the key the signature carries in its KeyInfo, none when null
      */
     private static function document(
         PrivateKey $key,

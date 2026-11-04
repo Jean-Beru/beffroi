@@ -13,8 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md section 5.2, section 6.2 step 1: a claim of the provider sent as a SAML attribute (Core §2.7.3.1), its
- * name of the uri format unless declared otherwise (Core §8.2).
+ * spec/saml.md section 5.2, section 6.2 step 1, Core §2.7.3.1, Core §8.2
  */
 final class AttributeMappingTest extends TestCase
 {
@@ -34,7 +33,7 @@ final class AttributeMappingTest extends TestCase
     }
 
     /**
-     * Core §8.2.1: a name of the basic format is any name, which need not be a URI.
+     * Core §8.2.1
      */
     #[Test]
     public function aNameOfTheBasicFormatNeedNotBeAUri(): void
@@ -85,7 +84,7 @@ final class AttributeMappingTest extends TestCase
     }
 
     /**
-     * A name of 1024 characters is within the bound of a URI (model.md section 7).
+     * model.md section 7
      */
     #[Test]
     public function aNameOf1024CharactersIsAccepted(): void

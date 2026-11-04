@@ -17,13 +17,12 @@ use PHPUnit\Framework\TestCase;
 use function preg_match;
 
 /**
- * spec/saml.md S-31, S-32, section 7: a chain open ten minutes from its last step, kept under the digest of its
- * reference and bound to the digest of the secret of a browser; a request of the provider valid five minutes.
+ * spec/saml.md S-31, S-32, section 7
  */
 final class LogoutChainTest extends TestCase
 {
     /**
-     * S-32, section 7: a chain written now closes ten minutes later, open until the second before.
+     * S-32, section 7
      */
     #[Test]
     public function aChainIsOpenTenMinutes(): void
@@ -46,7 +45,7 @@ final class LogoutChainTest extends TestCase
     }
 
     /**
-     * S-32: what is kept of a reference is its SHA-256, in hexadecimal.
+     * S-32
      */
     #[Test]
     public function aReferenceIsKeptAsItsDigest(): void
@@ -56,7 +55,7 @@ final class LogoutChainTest extends TestCase
     }
 
     /**
-     * S-32: a chain is held by the secret whose digest it keeps, and by no other.
+     * S-32
      */
     #[Test]
     #[DataProvider('provideSecrets')]
@@ -86,8 +85,7 @@ final class LogoutChainTest extends TestCase
     }
 
     /**
-     * S-32: the secret of a browser is 32 bytes of random_bytes(), in base64url without padding, and none drawn is
-     * drawn twice.
+     * S-32
      */
     #[Test]
     public function aSecretIsThirtyTwoBytesDrawnAtRandom(): void
@@ -108,7 +106,7 @@ final class LogoutChainTest extends TestCase
     }
 
     /**
-     * S-32: what is kept of the secret of a browser is its SHA-256, in hexadecimal.
+     * S-32
      */
     #[Test]
     public function aSecretIsKeptAsItsDigest(): void
@@ -118,8 +116,7 @@ final class LogoutChainTest extends TestCase
     }
 
     /**
-     * S-32, decision 0011: a row names no person, two digests, its tenant, a request ID drawn at random, where the
-     * chain stands and when it closes.
+     * S-32, decision 0011
      */
     #[Test]
     public function aRowNamesNoPerson(): void
@@ -140,7 +137,7 @@ final class LogoutChainTest extends TestCase
     }
 
     /**
-     * S-31, section 7: the request the provider sends is valid five minutes from its IssueInstant.
+     * S-31, section 7
      */
     #[Test]
     public function aNoticeIsValidFiveMinutes(): void

@@ -69,9 +69,7 @@ use function preg_replace_callback;
 use function str_contains;
 
 /**
- * spec/saml.md section 6.4 step 7, S-13 to S-16: the answer written with the model's objects, signed by the SAML key of
- * the tenant and turned into the form of HTTP-POST, read back as the service provider reads it, by PostReceiver and
- * saml2-model's ResponseValidator under the certificate the metadata publish.
+ * spec/saml.md section 6.4 step 7, S-13 to S-16
  */
 final class ModelSignOnResponderTest extends TestCase
 {
@@ -98,8 +96,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * S-15, section 6.4 step 7: the form posts to the endpoint the model resolved, the RelayState received given
-     * back as it was.
+     * S-15, section 6.4 step 7
      */
     #[Test]
     public function theFormPostsToTheEndpointWithTheRelayStateReceived(): void
@@ -115,8 +112,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * S-15: the response and its assertion are both signed by the SAML key of the tenant, which the service
-     * provider verifies under the certificate of the metadata.
+     * S-15
      */
     #[Test]
     public function theResponseAndItsAssertionAreSigned(): void
@@ -129,8 +125,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * S-37: the signature of the response and the one of its assertion each carry, in their KeyInfo, the one
-     * certificate the metadata publish for the key that signed them.
+     * S-37
      */
     #[Test]
     public function eachSignatureCarriesTheCertificateOfTheMetadata(): void
@@ -146,7 +141,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * S-37: the signature of a failure carries the same certificate.
+     * S-37
      */
     #[Test]
     public function theSignatureOfAFailureCarriesTheCertificateOfTheMetadata(): void
@@ -165,7 +160,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * S-13: the persistent identifier, qualified by the identity provider and the service provider.
+     * S-13
      */
     #[Test]
     public function theSubjectIsThePersistentIdentifierQualifiedByBothEntities(): void
@@ -181,8 +176,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * S-14: the assertion is addressed to the request that asked for it: its issuer, its audience, its recipient and
-     * the request it answers.
+     * S-14
      */
     #[Test]
     public function theAssertionIsAddressedToTheRequest(): void
@@ -198,8 +192,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * S-15: valid five minutes from its issue, the NotBefore of its Conditions its IssueInstant, which Entra requires
-     * (section 7).
+     * S-15, section 7
      */
     #[Test]
     public function theAssertionIsValidFiveMinutesFromItsIssue(): void
@@ -220,7 +213,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * Section 6.4 step 7: the session by its ID and its latest proof, and the unspecified class.
+     * Section 6.4 step 7
      */
     #[Test]
     public function theStatementIsOfTheSession(): void
@@ -236,7 +229,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * S-16: the attributes released, under their mapping, without xsi:type.
+     * S-16
      */
     #[Test]
     public function theAttributesAreTheOnesReleased(): void
@@ -252,7 +245,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * Section 6.4 steps 4 and 7: a failure carries its status and no assertion, to the same endpoint.
+     * Section 6.4 steps 4 and 7
      */
     #[Test]
     public function aFailureCarriesItsStatus(): void
@@ -277,7 +270,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * Section 6.4 step 7: a failure goes back with the RelayState received too.
+     * Section 6.4 step 7
      */
     #[Test]
     public function aFailureGivesTheRelayStateBack(): void
@@ -293,7 +286,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * S-1: a tenant that holds no active SAML key signs nothing.
+     * S-1
      */
     #[Test]
     public function aTenantWithoutAnActiveKeySignsNothing(): void
@@ -309,7 +302,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * S-1, section 6.1 step 2: a private half that is not the one of the public JWK signs nothing, success or failure.
+     * S-1, section 6.1 step 2
      */
     #[Test]
     #[DataProvider('provideAnswers')]
@@ -328,7 +321,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * D-16: a key Dsig refuses to sign with, under 2 048 bits, signs nothing, success or failure.
+     * D-16
      */
     #[Test]
     #[DataProvider('provideAnswers')]
@@ -362,8 +355,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * S-19, S-21: for a response that names the certificate of a service provider, the response holds one
-     * saml:EncryptedAssertion and no saml:Assertion, its own signature after its Issuer.
+     * S-19, S-21
      */
     #[Test]
     public function theAssertionIsEncryptedForTheCertificateNamed(): void
@@ -379,8 +371,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * S-20: the content under aes256-gcm, the session key under rsa-oaep-mgf1p, no Algorithm of the response naming
-     * CBC.
+     * S-20
      */
     #[Test]
     public function theAssertionIsEncryptedUnderOneSchemeAndNothingInCbc(): void
@@ -401,7 +392,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * S-19: the EncryptedKey carries no KeyInfo, the service provider decrypting with the key it holds.
+     * S-19
      */
     #[Test]
     public function theEncryptedKeyCarriesNoKeyInfo(): void
@@ -414,9 +405,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * S-19, S-21, SAML Core §6.2: decrypted with the private key of the certificate named, the assertion is the one the
-     * tenant signed for the service provider: put back in place of its ciphertext, the signature of the response taken
-     * off, the model's validator accepts it, the assertion covering itself.
+     * S-19, S-21, SAML Core §6.2
      */
     #[Test]
     public function theDecryptedAssertionIsTheOneTheTenantSigned(): void
@@ -435,7 +424,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * S-21: the signature of the response verifies under the certificate of the tenant over the ciphertext.
+     * S-21
      */
     #[Test]
     public function theSignatureOfTheResponseVerifiesOverTheCiphertext(): void
@@ -451,8 +440,7 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * S-21: a byte of the ciphertext changed, the signature of the response no longer holds, so that the service
-     * provider refuses it before it decrypts anything.
+     * S-21
      */
     #[Test]
     public function theSignatureOfTheResponseCoversTheCiphertext(): void
@@ -473,8 +461,6 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * The only active SAML key of the tenant, on the halves given.
-     *
      * @param array<string, string> $publicJwk
      * @param array<string, string> $privateJwk
      */
@@ -504,17 +490,11 @@ final class ModelSignOnResponderTest extends TestCase
         return $this->validate(new PostReceiver(SamlLoader::create())->response($form->fields)->response);
     }
 
-    /**
-     * The response the form posts, loaded as the service provider loads it.
-     */
     private function posted(PostedForm $form): Document
     {
         return SamlLoader::create()->load((string) base64_decode($form->fields['SAMLResponse'], true));
     }
 
-    /**
-     * The certificate the metadata of the tenant publish, as Dsig verifies under it.
-     */
     private function tenantKeys(): VerificationKeys
     {
         return new VerificationKeys([VerificationKey::fromCertificateBase64(
@@ -522,11 +502,6 @@ final class ModelSignOnResponderTest extends TestCase
         )]);
     }
 
-    /**
-     * The response as the service provider reads it once it decrypted its assertion with the test key of a service
-     * provider of saml2-model: the plaintext in place of the saml:EncryptedAssertion, the signature of the response,
-     * which covered the ciphertext, taken off.
-     */
     private static function decryptedInPlace(Document $response): string
     {
         $plaintext = new Decryptor(SamlLoader::create())->decrypt(
@@ -557,9 +532,6 @@ final class ModelSignOnResponderTest extends TestCase
     }
 
     /**
-     * The Algorithm attributes under the root that name CBC, read from the attributes and never from the serialized
-     * response, whose base64 spells any three letters at random.
-     *
      * @return list<string>
      */
     private static function cbcAlgorithms(Element $root): array

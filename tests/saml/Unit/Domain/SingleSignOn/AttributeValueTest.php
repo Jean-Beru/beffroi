@@ -12,16 +12,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-16, XML 1.0 §2.2: an attribute value holds the characters XML carries, in UTF-8, and is the text of a
- * claim.
+ * S-16, XML 1.0 §2.2
  */
 final class AttributeValueTest extends TestCase
 {
     private const string REFUSED = 'An attribute value holds only the characters of XML 1.0, in UTF-8: no NUL, no other control character but the tab, the line feed and the carriage return, no surrogate, no U+FFFE or U+FFFF (spec/saml.md S-16).';
 
     /**
-     * S-16: a character outside the Char production, or bytes that are not UTF-8, refused when the value is built,
-     * rather than cut by the DOM or refused by the serializer once signed.
+     * S-16
      */
     #[Test]
     #[DataProvider('provideValuesXmlDoesNotCarry')]
@@ -54,7 +52,7 @@ final class AttributeValueTest extends TestCase
     }
 
     /**
-     * S-16: the characters XML carries are kept as they are, the three whitespace control characters among them.
+     * S-16
      */
     #[Test]
     #[DataProvider('provideValuesXmlCarries')]
@@ -81,7 +79,7 @@ final class AttributeValueTest extends TestCase
     }
 
     /**
-     * S-16, XML Schema Part 2 §3.2.2.1: the text of a claim as the provider serves it.
+     * S-16, XML Schema Part 2 §3.2.2.1
      *
      * @param list<string> $expected
      */
@@ -110,7 +108,7 @@ final class AttributeValueTest extends TestCase
     }
 
     /**
-     * S-16: a claim that is not text is not sent rather than written as something else.
+     * S-16
      */
     #[Test]
     #[DataProvider('provideClaimsThatAreNotText')]

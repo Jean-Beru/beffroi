@@ -46,11 +46,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * spec/saml.md S-53, section 6.14 step 3, model.md section 6.1: the response an upstream identity provider posts, read
- * by saml2-bindings and validated by saml2-model under the accepted document of the provider the request went to, as
- * the answer to that request, received at the assertion consumer service of the tenant for its entity ID, once. The
- * responses are written and signed by saml2-model's writer with the test key of an identity provider of its suite,
- * the one the accepted document publishes (IdentityProviderDocuments::signingOnAt()).
+ * spec/saml.md S-53, section 6.14 step 3, model.md section 6.1
  */
 final class ModelResponseReceiverTest extends TestCase
 {
@@ -99,8 +95,7 @@ final class ModelResponseReceiverTest extends TestCase
     }
 
     /**
-     * The acceptance of issue #784, S-53, Profiles §4.1.4.5: a response signed by the provider, for the request it
-     * answers, is read into what the model accepted of it, the values of each attribute by its name.
+     * S-53, Profiles §4.1.4.5
      */
     #[Test]
     public function aResponseOfTheProviderForTheRequestItAnswersIsAccepted(): void
@@ -133,8 +128,7 @@ final class ModelResponseReceiverTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 11 of model.md: an attribute named twice, as Keycloak sends one per value, is one attribute of
-     * the person, its values in document order.
+     * Section 6.1 step 11 of model.md
      */
     #[Test]
     public function anAttributeNamedTwiceIsOneAttribute(): void
@@ -153,8 +147,7 @@ final class ModelResponseReceiverTest extends TestCase
     }
 
     /**
-     * S-66, S-54, M-18: an assertion the provider encrypted for the certificate its metadata publish is opened by the
-     * key of that provider, given to the model with it, and said to have arrived encrypted.
+     * S-66, S-54, M-18
      */
     #[Test]
     public function anAssertionEncryptedForTheProviderIsOpenedWithItsKey(): void
@@ -184,7 +177,7 @@ final class ModelResponseReceiverTest extends TestCase
     }
 
     /**
-     * S-55, Core §8.3.7: whether the NameID is persistent is read from its format, any other being none.
+     * S-55, Core §8.3.7
      */
     #[Test]
     public function aNameIdOfAnotherFormatIsNotPersistent(): void
@@ -200,8 +193,7 @@ final class ModelResponseReceiverTest extends TestCase
     }
 
     /**
-     * The acceptance of issue #784, S-53, M-8, M-10, M-11, M-3: a response refused by the model under the accepted
-     * document and the request remembered, its message the one of the rule, naming no value (M-16).
+     * S-53, M-8, M-10, M-11, M-3, M-16
      *
      * @param array{issuer?: string, key?: 'idp'|'sp', inResponseTo?: string|null, audience?: string} $change
      */
@@ -244,8 +236,7 @@ final class ModelResponseReceiverTest extends TestCase
     }
 
     /**
-     * S-58, model.md M-13, Core §3.2.2.2: a response whose status is not Success, held to the request it answers, is an
-     * authentication the provider failed, which says whether it is NoPassive and nothing else of it.
+     * S-58, model.md M-13, Core §3.2.2.2
      */
     #[Test]
     #[DataProvider('provideFailures')]
@@ -286,7 +277,7 @@ final class ModelResponseReceiverTest extends TestCase
     }
 
     /**
-     * S-58, M-10: a failure for another request is refused for its InResponseTo, and is no failure of this one.
+     * S-58, M-10
      */
     #[Test]
     public function aFailureForAnotherRequestIsRefused(): void
@@ -310,8 +301,7 @@ final class ModelResponseReceiverTest extends TestCase
     }
 
     /**
-     * The acceptance of issue #784, S-53, M-11: the same assertion presented a second time is refused by the replay
-     * store, whatever request it claims to answer.
+     * S-53, M-11
      */
     #[Test]
     public function anAssertionPresentedTwiceIsRefused(): void
@@ -329,7 +319,7 @@ final class ModelResponseReceiverTest extends TestCase
     }
 
     /**
-     * S-53, S-42: a provider whose document was never accepted, or was forgotten, takes nothing.
+     * S-53, S-42
      */
     #[Test]
     public function aProviderWithNoAcceptedDocumentIsRefused(): void
@@ -346,8 +336,7 @@ final class ModelResponseReceiverTest extends TestCase
     }
 
     /**
-     * S-53, S-43: a document accepted before that the reading back refuses now, here one whose role holds no key to
-     * verify by, takes nothing, its refusal naming the rule.
+     * S-53, S-43
      */
     #[Test]
     public function aDocumentTheReadingBackRefusesIsRefused(): void
@@ -372,7 +361,7 @@ final class ModelResponseReceiverTest extends TestCase
 
     /**
      * @param array<string, list<string>> $attributes
-     * @param array<string, list<string>> $repeated attributes written a second time, after the others
+     * @param array<string, list<string>> $repeated
      * @param 'idp'|'sp' $key
      *
      * @return array<string, string>

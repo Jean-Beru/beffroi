@@ -10,13 +10,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-38: the entity ID of the service provider of a tenant is its own, never the one of its identity
- * provider.
+ * spec/saml.md S-38
  */
 final class ServiceProviderEndpointsTest extends TestCase
 {
     /**
-     * S-38: the entity ID of the identity provider of the tenant is not the one of its service provider.
+     * S-38
      */
     #[Test]
     public function theEntityIdOfTheIdentityProviderIsRefused(): void
@@ -30,8 +29,7 @@ final class ServiceProviderEndpointsTest extends TestCase
     }
 
     /**
-     * S-38, M-8: the two are compared exactly, so an entity ID that differs from the one of the identity provider by
-     * a character is the service provider's own.
+     * S-38, M-8
      */
     #[Test]
     public function anotherEntityIdIsTheServiceProvidersOwn(): void

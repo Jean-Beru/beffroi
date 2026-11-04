@@ -33,18 +33,14 @@ use function sprintf;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * spec/saml.md S-9, S-10, section 6.3 steps 3 to 5: the signature a request needs handed to saml2-model's
- * AuthnRequestValidator, the identity provider built with WantAuthnRequestsSigned true, as the tenant publishes it by
- * default; Entra's SAML federation of guests read from the metadata an administrator writes for it.
+ * spec/saml.md S-9, S-10, section 6.3 steps 3 to 5
  */
 final class ModelAuthnRequestPartiesTest extends TestCase
 {
     private const string ELSEWHERE = 'https://attacker.example.net/acs';
 
     /**
-     * The acceptance of issue #730, S-9: an unsigned request from a service provider declared unsigned, whose metadata
-     * say nothing of a signature, is accepted under the identity provider that wants requests signed, and its
-     * assertion goes to the assertion consumer service of its metadata.
+     * S-9
      */
     #[Test]
     public function itAcceptsAnUnsignedRequestFromAProviderDeclaredUnsigned(): void
@@ -66,7 +62,7 @@ final class ModelAuthnRequestPartiesTest extends TestCase
     }
 
     /**
-     * The acceptance of issue #730, S-9: the same request from the same provider, not declared unsigned, is refused.
+     * S-9
      */
     #[Test]
     public function itRefusesAnUnsignedRequestFromAProviderNotDeclaredUnsigned(): void
@@ -87,8 +83,7 @@ final class ModelAuthnRequestPartiesTest extends TestCase
     }
 
     /**
-     * S-9, the second row of section 6.3 step 2: metadata saying AuthnRequestsSigned="true" require a signature,
-     * though the declaration says the provider does not sign.
+     * S-9, the second row of section 6.3 step 2
      */
     #[Test]
     public function itRefusesAnUnsignedRequestFromAProviderWhoseMetadataSayItSigns(): void
@@ -109,8 +104,7 @@ final class ModelAuthnRequestPartiesTest extends TestCase
     }
 
     /**
-     * The acceptance of issue #730, S-10, M-9: an AssertionConsumerServiceURL the accepted metadata do not list is
-     * refused, though the request needed no signature.
+     * S-10, M-9
      */
     #[Test]
     public function itRefusesAnAssertionConsumerServiceOutsideTheMetadataOfAProviderDeclaredUnsigned(): void
@@ -131,8 +125,7 @@ final class ModelAuthnRequestPartiesTest extends TestCase
     }
 
     /**
-     * The acceptance of issue #730, S-10, M-9: a signed request whose AssertionConsumerServiceURL the accepted
-     * metadata of a provider that signs do not list is refused.
+     * S-10, M-9
      */
     #[Test]
     public function itRefusesAnAssertionConsumerServiceOutsideTheMetadataOfAProviderThatSigns(): void
@@ -163,7 +156,7 @@ final class ModelAuthnRequestPartiesTest extends TestCase
     }
 
     /**
-     * S-9, M-2: a signed request from a provider that signs is verified under the keys of its metadata.
+     * S-9, M-2
      */
     #[Test]
     public function itAcceptsASignedRequestFromAProviderThatSigns(): void
@@ -188,7 +181,7 @@ final class ModelAuthnRequestPartiesTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 3: both parties carry the requirement and every other value they were built with.
+     * Section 6.3 step 3
      */
     #[Test]
     public function itSetsTheRequirementOnBothPartiesAndKeepsTheRest(): void
@@ -246,7 +239,7 @@ final class ModelAuthnRequestPartiesTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 3: the requirement of one service provider is not handed to another.
+     * Section 6.3 step 3
      */
     #[Test]
     public function itRefusesAServiceProviderOfAnotherEntity(): void
@@ -263,8 +256,7 @@ final class ModelAuthnRequestPartiesTest extends TestCase
     }
 
     /**
-     * S-9: a requirement that says none, handed a service provider whose metadata say it signs, was not read from
-     * those metadata.
+     * S-9
      */
     #[Test]
     public function itRefusesAServiceProviderThatSignsUnderARequirementThatSaysNone(): void
@@ -288,10 +280,6 @@ final class ModelAuthnRequestPartiesTest extends TestCase
         );
     }
 
-    /**
-     * The parties of Entra's SAML federation of guests: its declaration, the metadata an administrator writes for it
-     * read by the model, and the identity provider of the fixtures wanting requests signed, as a tenant publishes it.
-     */
     private static function entraParties(bool $signsAuthnRequests, ?string $document = null): ModelAuthnRequestParties
     {
         $loader = SamlLoader::create();
@@ -307,9 +295,6 @@ final class ModelAuthnRequestPartiesTest extends TestCase
         );
     }
 
-    /**
-     * An unsigned request of Entra's SAML federation of guests to the single sign-on service of the fixtures.
-     */
     private static function entraRequest(string $assertionConsumerServiceUrl): UnverifiedAuthnRequest
     {
         return AuthnRequestFixtures::request(

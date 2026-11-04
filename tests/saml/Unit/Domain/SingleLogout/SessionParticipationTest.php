@@ -11,13 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-26: each service provider's part in a session.
+ * S-26
  */
 final class SessionParticipationTest extends TestCase
 {
     /**
-     * S-26, decision 0011: a row names an application and joins a session by its identifier, as an authorization code
-     * does.
+     * S-26, decision 0011
      */
     #[Test]
     public function aRowNamesNoPerson(): void

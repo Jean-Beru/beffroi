@@ -18,12 +18,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md sections 5.3 and 6.4: the values single sign-on writes its answers from.
+ * Sections 5.3 and 6.4
  */
 final class SignOnValuesTest extends TestCase
 {
     /**
-     * S-15: an assertion is valid five minutes from its issue.
+     * S-15
      */
     #[Test]
     public function aResponseIsValidFiveMinutes(): void
@@ -44,7 +44,7 @@ final class SignOnValuesTest extends TestCase
     }
 
     /**
-     * Core §3.2.2.2: the top-level code of each failure.
+     * Core §3.2.2.2
      */
     #[Test]
     #[DataProvider('provideStatuses')]
@@ -65,7 +65,7 @@ final class SignOnValuesTest extends TestCase
     }
 
     /**
-     * S-16: a claim the user does not hold sends no attribute, so an attribute carries one value at least.
+     * S-16
      */
     #[Test]
     public function anAttributeWithoutValueIsRefused(): void

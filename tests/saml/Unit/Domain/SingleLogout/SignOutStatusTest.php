@@ -10,13 +10,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-24, SAML Core §3.2.2.2: the status codes of the answer to a logout request.
+ * S-24, SAML Core §3.2.2.2
  */
 final class SignOutStatusTest extends TestCase
 {
     /**
-     * Core §3.2.2.2, spec/saml.md S-34: Success is a top-level code alone; a partial logout is Success above
-     * PartialLogout; a refusal is Requester above its second-level code.
+     * Core §3.2.2.2, S-34
      */
     #[Test]
     #[DataProvider('provideCodes')]

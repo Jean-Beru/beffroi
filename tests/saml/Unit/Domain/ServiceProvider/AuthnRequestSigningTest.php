@@ -14,16 +14,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-9, section 6.3 step 2: whether the requests of a service provider need a signature, read from its
- * declaration and its accepted metadata.
+ * spec/saml.md S-9, section 6.3 step 2
  */
 final class AuthnRequestSigningTest extends TestCase
 {
     private const string ENTITY_ID = 'https://login.microsoftonline.com/aaaabbbb-0000-cccc-1111-dddd2222eeee/';
 
     /**
-     * S-9, the table of section 6.3 step 2: a request is unsigned only where the declaration says the provider does
-     * not sign and its metadata do not say it does, the provider's own statement winning towards safety.
+     * S-9, the table of section 6.3 step 2
      */
     #[Test]
     #[DataProvider('provideTheStatementsOfAProvider')]
@@ -56,7 +54,7 @@ final class AuthnRequestSigningTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 2: the declaration and the metadata of two service providers say nothing of either.
+     * Section 6.3 step 2
      */
     #[Test]
     public function itRefusesTheDeclarationAndTheMetadataOfTwoEntities(): void

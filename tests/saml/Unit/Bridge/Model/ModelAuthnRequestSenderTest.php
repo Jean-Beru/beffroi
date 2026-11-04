@@ -63,11 +63,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * spec/saml.md S-48, S-49, S-50, section 6.11 steps 4 and 5: the request the service provider of a tenant sends an
- * upstream identity provider, written with the model's objects, signed by the SAML key of the tenant, sent to a single
- * sign-on service of the accepted document of that provider, and read back as the provider reads it: by the receiver
- * of its binding and saml2-model's AuthnRequestValidator under the certificate the metadata of the service provider
- * publish.
+ * spec/saml.md S-48, S-49, S-50, section 6.11 steps 4 and 5
  */
 final class ModelAuthnRequestSenderTest extends TestCase
 {
@@ -98,8 +94,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-48, B-12: over HTTP-Redirect, the URL of the single sign-on service carries an AuthnRequest signed over its
-     * query string, which the provider accepts under the certificate the metadata of the service provider publish.
+     * S-48, B-12
      */
     #[Test]
     public function overHttpRedirectTheRequestIsSignedOverItsQueryString(): void
@@ -112,7 +107,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-48, M-2: over HTTP-POST, the form posts to the single sign-on service an AuthnRequest signed in its XML.
+     * S-48, M-2
      */
     #[Test]
     public function overHttpPostTheRequestIsSignedInItsXml(): void
@@ -131,8 +126,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-37, S-48: over HTTP-POST, the signature of the request carries, in its KeyInfo, the one certificate the
-     * metadata publish for the key that signed it.
+     * S-37, S-48
      */
     #[Test]
     public function overHttpPostTheSignatureCarriesTheCertificateOfTheMetadata(): void
@@ -149,9 +143,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-48: the request goes to the single sign-on service of the accepted document, is issued by the service
-     * provider of the tenant at the instant it is written from, its ID the one the sign-on is remembered by, and asks
-     * for the response at the assertion consumer service of the metadata of the service provider, over HTTP-POST.
+     * S-48
      */
     #[Test]
     public function theRequestIsAddressedToTheSingleSignOnService(): void
@@ -186,8 +178,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-48: the request asks for a persistent identifier the provider may create, and neither a passive login nor a
-     * class of authentication.
+     * S-48
      */
     #[Test]
     public function theRequestAsksForAPersistentIdentifierTheProviderMayCreate(): void
@@ -203,7 +194,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-49: ForceAuthn is written when the request asks for a fresh login, and not otherwise.
+     * S-49
      */
     #[Test]
     #[DataProvider('provideForceAuthn')]
@@ -226,7 +217,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-50: the RelayState of the message is the reference of the request, and nothing else, over either binding.
+     * S-50
      */
     #[Test]
     #[DataProvider('provideBindings')]
@@ -243,8 +234,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-48: the single sign-on service on HTTP-Redirect is the one the request goes to when the document lists both
-     * bindings, whatever their order.
+     * S-48
      *
      * @param list<Endpoint> $singleSignOnServices
      */
@@ -279,8 +269,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-61, S-48: the destination a page names in its "form-action" is the single sign-on service the request is written
-     * to, the one on HTTP-Redirect whatever the order of the document.
+     * S-61, S-48
      *
      * @param list<Endpoint> $singleSignOnServices
      */
@@ -296,7 +285,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-61, S-48: a provider with no accepted document has no destination, a sign-on of it being refused.
+     * S-61, S-48
      */
     #[Test]
     public function aProviderWithNoAcceptedDocumentHasNoDestination(): void
@@ -313,8 +302,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-48: the first single sign-on service on HTTP-POST is the one the request goes to when the document lists no
-     * other binding.
+     * S-48
      */
     #[Test]
     public function theFirstServiceOnHttpPostIsChosenWhenThereIsNoOther(): void
@@ -334,7 +322,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-48: a provider with no accepted document is sent nothing.
+     * S-48
      */
     #[Test]
     public function aProviderWithNoAcceptedDocumentIsRefused(): void
@@ -351,8 +339,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-43, S-48: a document accepted before that the reading back refuses now is sent nothing, the refusal of the
-     * reading given as it is.
+     * S-43, S-48
      */
     #[Test]
     public function aDocumentTheReadingBackRefusesIsRefused(): void
@@ -370,8 +357,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-48, section 6.3 of bindings.md: a single sign-on service the binding refuses to send a browser to, its query
-     * holding a parameter of HTTP-Redirect, is sent nothing.
+     * S-48, section 6.3 of bindings.md
      */
     #[Test]
     public function aServiceTheBindingRefusesIsRefused(): void
@@ -389,7 +375,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * D-16, S-48: a key Dsig refuses to sign with, under 2 048 bits, signs no request, over either binding.
+     * D-16, S-48
      */
     #[Test]
     #[DataProvider('provideBindings')]
@@ -421,9 +407,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-48, section 6.11 step 5: a key of the tenant whose private half is not the one of its public JWK is a fault of
-     * the deployment, which goes on as it is, and never a request refused as one the model refuses to write, which
-     * would answer a person with a page and write nothing to the log.
+     * S-48, section 6.11 step 5
      */
     #[Test]
     public function aKeyWhosePrivateHalfIsNotItsOwnIsNoRequestRefused(): void
@@ -464,8 +448,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-68, Bindings §3.4.4.1: over HTTP-Redirect, the hint of the address comes after the Signature, the last
-     * parameter of the URL, its value percent-encoded.
+     * S-68, Bindings §3.4.4.1
      */
     #[Test]
     public function overHttpRedirectTheHintComesAfterTheSignature(): void
@@ -479,8 +462,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-68, S-48: over HTTP-Redirect, the request carrying a hint is still accepted signed over its query string, the
-     * hint outside the octets the signature covers.
+     * S-68, S-48
      */
     #[Test]
     public function overHttpRedirectTheRequestCarryingAHintIsStillAcceptedSigned(): void
@@ -493,10 +475,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-68, Bindings §3.4.4.1, bindings.md section 9.1: OpenSSL verifies the signature of the URL carrying a hint over
-     * the octets the oracle of saml2-bindings rebuilds from it, the raw values of SAMLRequest, RelayState and SigAlg
-     * taken by name and every other parameter skipped (tests/saml2-bindings/Fixture/oracle/read-redirect-url.py),
-     * under the certificate of the key of the tenant.
+     * S-68, Bindings §3.4.4.1, bindings.md section 9.1
      */
     #[Test]
     public function overHttpRedirectOpenSslVerifiesTheOctetsTheOracleRebuilds(): void
@@ -520,8 +499,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-68: over HTTP-POST, the hint of the address is in the query of the action of the form, after the query the
-     * single sign-on service holds, and the request posted is still accepted signed in its XML.
+     * S-68
      */
     #[Test]
     #[DataProvider('provideSingleSignOnServicesOverPost')]
@@ -548,8 +526,7 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * S-68: a request without a hint is sent as the binding wrote it, the Signature last over HTTP-Redirect and the
-     * single sign-on service the action over HTTP-POST.
+     * S-68
      */
     #[Test]
     public function withoutAHintTheMessageIsTheOneTheBindingWrote(): void
@@ -567,8 +544,6 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * The metadata of the provider accepted for the tenant, listing the single sign-on services given.
-     *
      * @param list<Endpoint> $singleSignOnServices
      */
     private function accept(array $singleSignOnServices): void
@@ -614,9 +589,6 @@ final class ModelAuthnRequestSenderTest extends TestCase
         return self::request(addressHint: new AddressHint('login_hint', new EmailAddress('alice@acme.example')));
     }
 
-    /**
-     * The URL of HTTP-Redirect the request was sent with.
-     */
     private static function redirected(SentAuthnRequest $sent): string
     {
         $message = $sent->message;
@@ -626,8 +598,6 @@ final class ModelAuthnRequestSenderTest extends TestCase
     }
 
     /**
-     * The names of the parameters of the query of a URL, in their order.
-     *
      * @return list<string>
      */
     private static function parameterNames(string $url): array
@@ -643,9 +613,6 @@ final class ModelAuthnRequestSenderTest extends TestCase
         return $this->sender()->send($this->tenant, $request ?? self::request());
     }
 
-    /**
-     * The AuthnRequest the form of HTTP-POST carries, loaded as the provider loads it.
-     */
     private static function posted(SentAuthnRequest $sent): Document
     {
         $message = $sent->message;
@@ -663,10 +630,6 @@ final class ModelAuthnRequestSenderTest extends TestCase
             : new PostReceiver(SamlLoader::create())->authnRequest($message->fields);
     }
 
-    /**
-     * The request as the provider validates it, at its single sign-on service, under the certificate of the key of the
-     * tenant the metadata of the service provider publish.
-     */
     private function acceptedBy(SentAuthnRequest $sent, Binding $binding, string $location = self::SINGLE_SIGN_ON): AcceptedAuthnRequest
     {
         $certificate = new SelfSignedCertificateIssuer()->selfSigned(SamlKeys::opened($this->key));

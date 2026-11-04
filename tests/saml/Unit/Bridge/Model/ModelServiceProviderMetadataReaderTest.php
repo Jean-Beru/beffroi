@@ -20,8 +20,7 @@ use Symfony\Component\Clock\MockClock;
 use function substr;
 
 /**
- * spec/saml.md S-5, S-6, section 6.2 steps 3 and 4: the metadata of a service provider read by saml2-model's
- * MetadataReader, by the channel or under the signers a declaration pins, at 2026-09-15T10:00:00Z.
+ * spec/saml.md S-5, S-6, section 6.2 steps 3 and 4
  */
 final class ModelServiceProviderMetadataReaderTest extends TestCase
 {
@@ -34,10 +33,6 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
         $this->reader = new ModelServiceProviderMetadataReader(new MockClock(Fixtures::now()));
     }
 
-    /**
-     * The acceptance of issue #729: the metadata a SimpleSAMLphp 2.5.3.1 service provider publishes, read by the
-     * channel, its entity ID and its key for encryption.
-     */
     #[Test]
     public function itReadsTheMetadataOfASimpleSamlPhpServiceProvider(): void
     {
@@ -52,7 +47,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-9, section 6.2 step 3: the SimpleSAMLphp service provider says it signs its requests.
+     * S-9, section 6.2 step 3
      */
     #[Test]
     public function itReadsThatAServiceProviderSignsItsRequests(): void
@@ -65,8 +60,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-9, section 6.2 step 3, Metadata §2.4.4: a document without AuthnRequestsSigned, as Entra's is written, says
-     * nothing of a signature.
+     * S-9, section 6.2 step 3, Metadata §2.4.4
      */
     #[Test]
     public function itReadsAnAbsentAuthnRequestsSignedAsFalse(): void
@@ -81,7 +75,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-11, section 6.2 step 3: the signing certificates of a document are those of its `KeyDescriptor` for signing.
+     * S-11, section 6.2 step 3
      */
     #[Test]
     public function itReadsTheSigningCertificatesOfADocument(): void
@@ -94,7 +88,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-11, section 6.2 step 3: a `KeyDescriptor` for encryption is not a key for signing.
+     * S-11, section 6.2 step 3
      */
     #[Test]
     public function itDoesNotReadAnEncryptionCertificateAsASigningOne(): void
@@ -108,7 +102,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-11, section 6.2 step 3: a document without a key, as Entra's is written, has no signing certificate.
+     * S-11, section 6.2 step 3
      */
     #[Test]
     public function itReadsADocumentWithoutAKeyAsHoldingNoSigningCertificate(): void
@@ -131,7 +125,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-6, the acceptance of issue #729: an expired document is refused (M-7), the skew of the model past.
+     * S-6, M-7
      */
     #[Test]
     public function itRefusesAnExpiredDocument(): void
@@ -151,8 +145,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * Section 5.1: a certificate the model reads and that is not the canonical base64 of its DER, one whose unused bits
-     * are set, is refused rather than kept in another spelling than the one it is compared in.
+     * Section 5.1
      */
     #[Test]
     public function itRefusesACertificateThatIsNotCanonicalBase64(): void
@@ -176,7 +169,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-5: a document without a service provider role is no service provider's.
+     * S-5
      */
     #[Test]
     public function itRefusesADocumentWithoutAServiceProviderRole(): void
@@ -190,7 +183,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 3: what Core refuses is refused, with its message.
+     * Section 6.2 step 3
      */
     #[Test]
     public function itRefusesWhatCoreRefuses(): void
@@ -204,7 +197,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-5: a document signed by a key the declaration pins is read under it.
+     * S-5
      */
     #[Test]
     public function itReadsADocumentSignedByAPinnedKey(): void
@@ -221,7 +214,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-6: a document read under a key the declaration pins says so, which holds it to the document accepted.
+     * S-6
      */
     #[Test]
     public function itSaysADocumentReadUnderAPinnedKeyWasReadSigned(): void
@@ -237,8 +230,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-6: a document read by its channel says it was not read signed, which lets it replace the document accepted
-     * whatever its validUntil.
+     * S-6
      */
     #[Test]
     public function itSaysADocumentReadByItsChannelWasNotReadSigned(): void
@@ -251,9 +243,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-11, the security review of 20 October 2026 (findings B-3, C-2, C-3): a document one of whose endpoints the
-     * identity provider sends a browser to is not an https URL on a host is refused at its reading, the refusal naming
-     * the endpoint and never its value (M-16).
+     * S-11, M-16, findings B-3, C-2, C-3 of the security review of 20 October 2026
      *
      * @param list<Endpoint> $singleLogoutServices
      */
@@ -299,7 +289,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-11: endpoints in https on a port, on an IPv6 literal, their scheme in capitals, are read.
+     * S-11
      */
     #[Test]
     public function itReadsADocumentWhoseEndpointsAreHttpsOnAHost(): void
@@ -319,7 +309,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-5: a document signed by another key than the pinned ones is refused.
+     * S-5
      */
     #[Test]
     public function itRefusesADocumentSignedByAnotherKey(): void
@@ -335,7 +325,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-5, M-2: an unsigned document is refused where a signer is pinned.
+     * S-5, M-2
      */
     #[Test]
     public function itRefusesAnUnsignedDocumentWhereASignerIsPinned(): void
@@ -349,8 +339,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-6: a signed document without validUntil is bounded by nothing, and an older one signed by the same key would
-     * verify as well (model.md section 6.5 step 3).
+     * S-6, model.md section 6.5 step 3
      */
     #[Test]
     public function itRefusesASignedDocumentWithoutValidUntil(): void
@@ -375,8 +364,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 1: the accepted document read back once, into what the signature of a request needs and into
-     * the model's role, which holds the assertion consumer services (S-10).
+     * Section 6.3 step 1, S-10
      */
     #[Test]
     public function itReadsAnAcceptedDocumentOnceIntoBothReadings(): void
@@ -392,7 +380,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 1, S-6: the accepted document read back is read by its store, never under a signer.
+     * Section 6.3 step 1, S-6
      */
     #[Test]
     public function itSaysAnAcceptedDocumentReadBackWasNotReadSigned(): void
@@ -405,7 +393,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 1: an accepted document the reading refuses now is refused.
+     * Section 6.3 step 1
      */
     #[Test]
     public function itRefusesAnAcceptedDocumentPastItsValidity(): void
@@ -419,8 +407,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 1, S-11: an accepted document read back is held to the same rule as a document read at a
-     * refresh, so that one accepted before the rule serves no request.
+     * Section 6.3 step 1, S-11
      */
     #[Test]
     public function itRefusesAnAcceptedDocumentAnEndpointOfWhichIsNotHttpsOnAHost(): void
@@ -434,7 +421,7 @@ final class ModelServiceProviderMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-5: an accepted document that holds no service provider role is refused.
+     * S-5
      */
     #[Test]
     public function itRefusesAnAcceptedDocumentWithoutAServiceProviderRole(): void

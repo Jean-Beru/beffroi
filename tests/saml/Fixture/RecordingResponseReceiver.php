@@ -9,9 +9,6 @@ use Beffroi\Saml\Domain\Upstream\UpstreamIdentityProvider;
 use Beffroi\Saml\Domain\Upstream\VerifiedAssertion;
 use Beffroi\Saml\Port\ResponseReceiverInterface;
 
-/**
- * The receiver of the suite: what the model accepted is the assertion it is given, and what it was asked is recorded.
- */
 final class RecordingResponseReceiver implements ResponseReceiverInterface
 {
     /**

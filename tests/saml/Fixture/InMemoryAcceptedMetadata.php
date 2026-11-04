@@ -9,11 +9,6 @@ use Beffroi\Saml\Domain\Metadata\AcceptedMetadata;
 use Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface;
 use Beffroi\Saml\Port\CanForgetAcceptedMetadataInterface;
 
-/**
- * The accepted documents in the memory of the test, counting what was written, so that a test can say nothing was,
- * and forgetting one when told. A test may have another process register a service provider between the reading and
- * the write of a refresh, as the unique index of the provider sees two of them at the same minute.
- */
 final class InMemoryAcceptedMetadata implements AcceptedMetadataRepositoryInterface, CanForgetAcceptedMetadataInterface
 {
     public private(set) int $saves = 0;
@@ -24,15 +19,12 @@ final class InMemoryAcceptedMetadata implements AcceptedMetadataRepositoryInterf
     private array $rows = [];
 
     /**
-     * What another process registers once a refresh has found nothing, by tenant and entity ID.
+     * What another process registers once a refresh has found nothing.
      *
-     * @var array<string, AcceptedMetadata>
+     * @var array<string, AcceptedMetadata> by tenant and entity ID
      */
     private array $meanwhile = [];
 
-    /**
-     * Another process registers this document as soon as a refresh of its service provider has found none.
-     */
     public function registeredMeanwhile(AcceptedMetadata $metadata): void
     {
         $this->meanwhile[self::key($metadata->tenant, $metadata->entityId)] = $metadata;

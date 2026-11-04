@@ -45,14 +45,10 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * spec/saml.md section 6.4: what a request accepted is answered with, from the session the browser holds, after a
- * login, or with a failure.
+ * spec/saml.md section 6.4
  */
 final class SingleSignOnTest extends TestCase
 {
-    /**
-     * The service provider declared with encrypt_assertions: the SimpleSAMLphp one, whose metadata hold a key for it.
-     */
     private const string ENCRYPTING = ServiceProviderDocuments::SIMPLESAMLPHP;
 
     private Tenant $tenant;
@@ -74,7 +70,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * S-17: a browser without a session signs in first.
+     * S-17
      */
     #[Test]
     public function aBrowserWithoutASessionSignsInFirst(): void
@@ -87,7 +83,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * S-17, Core §3.4.1: IsPassive without a session that answers is NoPassive, never a page.
+     * S-17, Core §3.4.1
      */
     #[Test]
     public function aPassiveRequestWithoutASessionIsNoPassive(): void
@@ -100,8 +96,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * Section 6.4 steps 5 to 7: an active session answers with the persistent identifier of its user at that service
-     * provider, its attributes, its ID as the SessionIndex and its latest proof, issued now.
+     * Section 6.4 steps 5 to 7
      */
     #[Test]
     public function anActiveSessionAnswers(): void
@@ -130,7 +125,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * S-17, Core §3.4.1: ForceAuthn is not answered from a proof older than the request.
+     * S-17, Core §3.4.1
      */
     #[Test]
     public function aForcedRequestIsNotAnsweredFromAnOlderProof(): void
@@ -146,7 +141,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * S-17: ForceAuthn is answered from a proof made at or after the request was received.
+     * S-17
      */
     #[Test]
     public function aForcedRequestIsAnsweredFromAProofMadeSinceIt(): void
@@ -162,8 +157,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * S-17: the core keeps a proof to the second, so the login a forced request waited for, typed in the second the
-     * request was received in, reads back as that second and answers it.
+     * S-17
      */
     #[Test]
     public function aForcedRequestIsAnsweredFromAProofOfTheSecondItWasReceivedIn(): void
@@ -180,7 +174,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * S-17: a session that has ended, or one of another tenant, answers nothing.
+     * S-17
      *
      * @param Closure(Tenant): AuthenticationSession $session
      */
@@ -210,7 +204,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * Section 6.4 step 4, Core §3.4.1.1: a NameIDPolicy of another format is InvalidNameIDPolicy, whatever the session.
+     * Section 6.4 step 4, Core §3.4.1.1
      */
     #[Test]
     public function aNameIdPolicyOfAnotherFormatIsRefused(): void
@@ -228,7 +222,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * Section 6.4 step 4: a NameIDPolicy of the persistent format, or of the unspecified one, is answered.
+     * Section 6.4 step 4
      */
     #[Test]
     #[DataProvider('provideAnsweredFormats')]
@@ -251,7 +245,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * Section 6.4 step 4, Core §3.3.2.2.1: a class of authentication context asked for is NoAuthnContext.
+     * Section 6.4 step 4, Core §3.3.2.2.1
      */
     #[Test]
     public function aRequestedAuthenticationContextIsNoAuthnContext(): void
@@ -272,7 +266,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * Section 6.4 step 4: what is never written is answered before anybody signs in.
+     * Section 6.4 step 4
      */
     #[Test]
     public function aFailureIsAnsweredBeforeALogin(): void
@@ -285,7 +279,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * S-18, section 7: a request is answered within ten minutes of its receipt and refused after.
+     * S-18, section 7
      */
     #[Test]
     public function aRequestThatWaitedTenMinutesIsRefused(): void
@@ -302,7 +296,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * S-18: a second before its ten minutes, the request is answered.
+     * S-18
      */
     #[Test]
     public function aRequestIsAnsweredWithinItsTenMinutes(): void
@@ -318,8 +312,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * S-7, S-19, section 6.4 step 2: a request of a service provider that asks for encryption, its accepted document
-     * holding no key for it, is refused when it arrives, before anybody signs in.
+     * S-7, S-19, section 6.4 step 2
      */
     #[Test]
     public function aServiceProviderThatAsksForEncryptionWithoutAKeyIsRefused(): void
@@ -336,8 +329,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * S-7, S-19, section 6.4 step 2: the same request is received when the accepted document holds a key for
-     * encryption.
+     * S-7, S-19, section 6.4 step 2
      */
     #[Test]
     public function aServiceProviderThatAsksForEncryptionWithAKeyIsReceived(): void
@@ -351,8 +343,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * S-19, section 6.4 step 7: the answer to a service provider that asks for encryption names the first certificate
-     * for encryption of its accepted document.
+     * S-19, section 6.4 step 7
      */
     #[Test]
     public function theAnswerToAServiceProviderThatAsksForEncryptionNamesTheKeyOfItsMetadata(): void
@@ -371,8 +362,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * S-19, section 6.4 step 7: the accepted document is read back when the request is answered, so that a key a
-     * refresh put in place while the request waited is the one the assertion is encrypted for.
+     * S-19, section 6.4 step 7
      */
     #[Test]
     public function theKeyIsReadAgainWhenTheRequestIsAnswered(): void
@@ -390,8 +380,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * S-19, section 6.4 step 7: a service provider that asks for encryption is refused at the answer when no key is
-     * read back from its accepted metadata by then, and nothing is written for it.
+     * S-19, section 6.4 step 7
      */
     #[Test]
     #[DataProvider('provideDocumentsWithoutAKey')]
@@ -423,8 +412,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * S-7, S-19: a service provider whose declaration does not ask for encryption is answered in clear, whatever keys
-     * its metadata hold.
+     * S-7, S-19
      */
     #[Test]
     public function aServiceProviderThatDoesNotAskIsAnsweredInClear(): void
@@ -440,7 +428,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * Section 6.4 step 2: a declaration removed while the request waited answers nothing.
+     * Section 6.4 step 2
      */
     #[Test]
     public function aServiceProviderNoLongerDeclaredIsRefused(): void
@@ -459,7 +447,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * Section 6.4 step 1: the request the receiver accepted over HTTP-POST, its service provider declared.
+     * Section 6.4 step 1
      */
     #[Test]
     public function aRequestPostedIsReceived(): void
@@ -469,7 +457,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * Section 6.4 step 1: the request the receiver accepted over HTTP-Redirect, its service provider declared.
+     * Section 6.4 step 1
      */
     #[Test]
     public function aRequestRedirectedIsReceived(): void
@@ -479,7 +467,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * S-19, section 6.4 step 2: the key is looked for when the request is posted too.
+     * S-19, section 6.4 step 2
      */
     #[Test]
     public function aRequestPostedForAServiceProviderThatAsksForEncryptionWithoutAKeyIsRefused(): void
@@ -529,8 +517,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * S-26: an assertion written from a session announces the service provider's part in it, the session by its ID,
-     * the service provider by its entity ID and the person by their subject, with the context of the request.
+     * S-26
      */
     #[Test]
     public function anAnswerFromASessionAnnouncesTheServiceProviderOfTheSession(): void
@@ -556,7 +543,7 @@ final class SingleSignOnTest extends TestCase
     }
 
     /**
-     * S-26: a failure is written from no session, and announces nothing.
+     * S-26
      */
     #[Test]
     public function aFailureAnnouncesNothing(): void
@@ -568,18 +555,11 @@ final class SingleSignOnTest extends TestCase
         static::assertSame([], $this->events->events);
     }
 
-    /**
-     * The document accepted for a service provider of the tenant, the one that asks for encryption by default.
-     */
     private function accepted(string $document, string $entityId = self::ENCRYPTING): void
     {
         $this->acceptedMetadata->save(new AcceptedServiceProviderMetadata(Uuid::v7(), $this->tenant, $entityId, $document, null, Fixtures::now()));
     }
 
-    /**
-     * An active session of the tenant, its one proof a password at the instant given, the instant of the fixtures
-     * by default.
-     */
     private function session(?DateTimeImmutable $provenAt = null): AuthenticationSession
     {
         $provenAt ??= Fixtures::now();

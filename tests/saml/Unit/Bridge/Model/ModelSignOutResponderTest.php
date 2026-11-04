@@ -50,10 +50,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md section 6.5 step 4, S-27: the answer to a logout request written with the model's objects, signed by
- * the SAML key of the tenant, and sent over the binding of the single logout service resolved when the request was
- * received, read back as the service provider reads it: by the receiver of that binding and saml2-model's
- * LogoutResponseValidator under the certificate the metadata publish.
+ * spec/saml.md section 6.5 step 4, S-27
  */
 final class ModelSignOutResponderTest extends TestCase
 {
@@ -74,8 +71,7 @@ final class ModelSignOutResponderTest extends TestCase
     }
 
     /**
-     * S-27, B-12: over HTTP-Redirect, the URL of the single logout service carries a LogoutResponse signed over its
-     * query string, which the service provider accepts under the certificate of the key of the tenant.
+     * S-27, B-12
      */
     #[Test]
     public function overHttpRedirectTheAnswerIsSignedOverItsQueryString(): void
@@ -88,8 +84,7 @@ final class ModelSignOutResponderTest extends TestCase
     }
 
     /**
-     * S-27, M-9, M-10: the answer goes to the single logout service resolved, answers the request, and is issued by the
-     * identity provider of the tenant at the instant given.
+     * S-27, M-9, M-10
      */
     #[Test]
     public function theAnswerIsAddressedToTheRequest(): void
@@ -105,7 +100,7 @@ final class ModelSignOutResponderTest extends TestCase
     }
 
     /**
-     * B-9: the RelayState received comes back byte for byte.
+     * B-9
      */
     #[Test]
     public function theRelayStateComesBack(): void
@@ -121,7 +116,7 @@ final class ModelSignOutResponderTest extends TestCase
     }
 
     /**
-     * S-27, M-2: over HTTP-POST, the form posts to the single logout service a LogoutResponse signed in its XML.
+     * S-27, M-2
      */
     #[Test]
     public function overHttpPostTheAnswerIsSignedInItsXml(): void
@@ -140,8 +135,7 @@ final class ModelSignOutResponderTest extends TestCase
     }
 
     /**
-     * S-37: over HTTP-POST, the signature of the answer carries, in its KeyInfo, the one certificate the metadata
-     * publish for the key that signed it.
+     * S-37
      */
     #[Test]
     public function overHttpPostTheSignatureCarriesTheCertificateOfTheMetadata(): void
@@ -157,8 +151,7 @@ final class ModelSignOutResponderTest extends TestCase
     }
 
     /**
-     * S-24, S-34, Core §3.2.2.2: the status of the answer, Success alone, Success above PartialLogout, or Requester
-     * above the code of the refusal.
+     * S-24, S-34, Core §3.2.2.2
      */
     #[Test]
     #[DataProvider('provideStatuses')]
@@ -186,7 +179,7 @@ final class ModelSignOutResponderTest extends TestCase
     }
 
     /**
-     * S-27, S-1: a tenant without an active SAML key cannot answer.
+     * S-27, S-1
      */
     #[Test]
     public function aTenantWithoutAnActiveKeyCannotAnswer(): void
@@ -199,7 +192,7 @@ final class ModelSignOutResponderTest extends TestCase
     }
 
     /**
-     * S-27, section 6.5 step 1: a tenant without an active SAML key has none to open, before any request is read.
+     * S-27, section 6.5 step 1
      */
     #[Test]
     public function aTenantWithoutAnActiveKeyHasNoneToOpen(): void
@@ -212,8 +205,7 @@ final class ModelSignOutResponderTest extends TestCase
     }
 
     /**
-     * D-16, S-1, section 6.5 step 1: a key that cannot sign, one Dsig refuses under 2 048 bits or one whose private half
-     * is not the one of its public JWK, is refused when it is opened, before any request is read.
+     * D-16, S-1, section 6.5 step 1
      */
     #[Test]
     #[DataProvider('provideKeysThatCannotSign')]
@@ -252,7 +244,7 @@ final class ModelSignOutResponderTest extends TestCase
     }
 
     /**
-     * D-16, section 6.5 step 4: a key Dsig refuses to sign with, under 2 048 bits, signs no answer, over either binding.
+     * D-16, section 6.5 step 4
      */
     #[Test]
     #[DataProvider('provideBindings')]
@@ -296,9 +288,6 @@ final class ModelSignOutResponderTest extends TestCase
         return new ModelSignOutResponder(SamlKeys::signing($this->keys));
     }
 
-    /**
-     * The LogoutResponse the form of HTTP-POST carries, loaded as the service provider loads it.
-     */
     private static function posted(PostedForm|RedirectedMessage $answer): Document
     {
         static::assertInstanceOf(PostedForm::class, $answer);
@@ -316,10 +305,6 @@ final class ModelSignOutResponderTest extends TestCase
         return $received;
     }
 
-    /**
-     * The answer as the service provider validates it, at its single logout service, under the certificate of the key
-     * of the tenant.
-     */
     private function accepted(PostedForm|RedirectedMessage $answer, string $location = SignOutRequests::SINGLE_LOGOUT): AcceptedLogoutResponse
     {
         $certificate = new SelfSignedCertificateIssuer()->selfSigned(SamlKeys::opened($this->key));
