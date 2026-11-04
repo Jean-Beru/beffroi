@@ -61,7 +61,7 @@ final class ConfigurationClientRegistrationPolicyTest extends TestCase
 
     /**
      * Closed is the default and closed is the absence of a policy: a deployment that named no mode has
-     * none, and an empty name is no name, which is what an environment variable nobody set gives.
+     * none, and an empty name is no name, which is what an environment variable declared empty gives.
      */
     #[Test]
     #[DataProvider('provideNamesThatAreNoMode')]
@@ -84,6 +84,6 @@ final class ConfigurationClientRegistrationPolicyTest extends TestCase
     {
         yield 'a deployment that wrote nothing' => [null];
 
-        yield 'an environment variable nobody set' => [''];
+        yield 'an environment variable declared empty' => [''];
     }
 }

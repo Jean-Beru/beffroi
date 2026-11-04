@@ -65,12 +65,12 @@ beffroi:
     # The default set of scopes is RFC 7591 §2 as this tenant writes it: the registration request of
     # every module of the plan carries no "scope" member at all, and two of them then ask for
     # "openid offline_access" at the authorization endpoint, which a client registered for "openid"
-    # alone is refused. It is the set the declared clients of this tenant carry, so a client that
-    # registers itself here is registered for what a client somebody wrote in this file is registered
-    # for, and it is held to what the tenant announces like every other registered scope: a scope
-    # written here that the tenant does not hand out tokens for refuses every registration rather than
-    # granting one. A client that names its own scopes keeps them. It is written here over the variable
-    # a deployment names its own by, the set being what this tenant serves the suite with.
+    # alone is refused. It is the set the clients this file declares for the OpenID Connect plans
+    # carry, so a client that registers itself here is registered for what those clients are
+    # registered for, and it is held to what the tenant announces like every other registered scope: a
+    # scope written here that the tenant does not hand out tokens for refuses every registration rather
+    # than granting one. A client that names its own scopes keeps them. It is written here over the
+    # variable a deployment names its own by, the set being what this tenant serves the suite with.
     #
     # A run of the lab may need another mode than the suite does: the plans register with no credential
     # and want "open", and "castor demo --register" plays the mode a real ecosystem uses, an initial

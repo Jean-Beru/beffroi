@@ -145,7 +145,7 @@ final class RouterEndpointLocatorTest extends TestCase
     }
 
     /**
-     * A deployment that serves one host names no origin, and an environment variable nobody set is an
+     * A deployment that serves one host names no origin, and an environment variable declared empty is an
      * empty one: both are "no such host", and the document announces no alias.
      */
     #[Test]
@@ -166,7 +166,7 @@ final class RouterEndpointLocatorTest extends TestCase
     {
         yield 'nothing configured' => [null];
 
-        yield 'an environment variable nobody set' => [''];
+        yield 'an environment variable declared empty' => [''];
     }
 
     private static function router(string $prefix, ?RequestContext $context = null): UrlGenerator

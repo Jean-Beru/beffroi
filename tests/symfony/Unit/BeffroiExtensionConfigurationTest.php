@@ -469,7 +469,7 @@ final class BeffroiExtensionConfigurationTest extends TestCase
     }
 
     /**
-     * Issue #911: an empty staging delay is the one an environment variable nobody set carries, which is no
+     * Issue #911: an empty staging delay is the one an environment variable declared empty carries, which is no
      * delay configured and leaves it to be derived from the max-age of the JWK Set.
      */
     #[Test]
