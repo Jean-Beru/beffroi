@@ -31,37 +31,13 @@ use Throwable;
 use function unserialize;
 
 /**
- * What this provider writes to a transport, sealed (decision 0020): the body is a JWE to the message key
- * of the tenant, so what a broker keeps on its disk, and what the table of a transport holds, is worth
- * nothing without the KMS, exactly as a column is at rest (decision 0011).
- *
- * **In place of the default serializer of Messenger**, which puts the whole envelope, stamps included, in
- * the body: this one separates the two. The body is `serialize($message)` under the seal, which asks
- * nothing new of a message that the default serializer did not already ask (the suites of both packages
- * write every event of theirs to a queue and read it back); the stamps go in headers, one per class, the
- * way the serializer of the component writes them (`X-Message-Stamp-<FQCN>`).
- *
- * **What stays in the clear is what makes a failed message readable**, and it is named rather than
- * discovered: the class of the message, the stamps, and the scope it was written under (TenantStamp). So
- * `messenger:failed:show` names a message, dates it and explains it without the body being opened, which
- * is what an operator needs of a failure whose scope is gone. Nothing of a person is among them.
- *
- * **A header decides nothing.** The scope is sealed with the body, so a header moved by whoever can write
- * to a transport makes the opening fail instead of opening somewhere else. Reading the stamps back
- * instantiates what a header names, which is the exposure the default serializer has today for the whole
- * envelope: it is why what decides is in the body and never here, and why a stamp that comes back as
- * anything other than what its header names is refused.
+ * A header decides nothing: the tenant is sealed with the body, and a stamp that reads back as another class
+ * than its header names is refused.
  */
 final readonly class SealedBodySerializer implements SerializerInterface
 {
-    /**
-     * One header per class of stamp, as the serializer of the component names them.
-     */
     public const string STAMP_HEADER_PREFIX = 'X-Message-Stamp-';
 
-    /**
-     * The class of the message, which names a failed one without its body being opened.
-     */
     public const string TYPE_HEADER = 'type';
 
     public function __construct(
@@ -74,12 +50,10 @@ final readonly class SealedBodySerializer implements SerializerInterface
     public function encode(Envelope $envelope): array
     {
         $message = $envelope->getMessage();
-        // A body that failed to decode goes on as it arrived: it is already sealed, and its headers
-        // describe it. Sealing the exception instead would put a body nobody can read behind a type
-        // nobody expects, and the failure transport is where an operator looks.
+        // A body that failed to decode goes on as it arrived: it is already sealed, and its headers describe it.
         $failed = self::bodyThatFailedToDecode($message);
         $envelope = $envelope->withoutStampsOfType(NonSendableStampInterface::class);
-        // handler results are for synchronous callers: a retry needs the names of the handlers that ran
+        // Results are for synchronous callers; a retry needs only the names of the handlers that ran.
         $handled = $envelope->all(HandledStamp::class);
         if ($handled !== []) {
             $envelope = $envelope
@@ -113,13 +87,9 @@ final readonly class SealedBodySerializer implements SerializerInterface
     }
 
     /**
-     * A body that does not open is a failure of this message and not of the process, so it comes back as
-     * the envelope the component expects, which the worker routes to the failure transport with the
-     * headers it arrived with.
-     *
-     * A KMS that does not answer is the other way round and is left to pass: the message is good, the
-     * process is not, and a message sent to the failure transport because a KMS was down is a message
-     * nobody will replay. The same holds for a process that has no tenant.
+     * A body that does not open is a failure of the message, sent to the failure transport. A KMS that does not
+     * answer, or a process without a tenant, is a failure of the process and propagates: nobody would replay a
+     * message sent to the failure transport for an outage.
      */
     public function decode(array $encodedEnvelope): Envelope
     {
@@ -210,8 +180,7 @@ final readonly class SealedBodySerializer implements SerializerInterface
     }
 
     /**
-     * The stamps that read back, and what went wrong with the first one that did not: a failure keeps the
-     * stamps it could read, so that the retries of a message are still counted.
+     * A stamp that does not read back leaves the others kept, so that the retries of the message are still counted.
      *
      * @param array{body?: string, headers?: array<string, string>, extra?: array<string, mixed>} $encodedEnvelope
      *
@@ -250,9 +219,6 @@ final readonly class SealedBodySerializer implements SerializerInterface
     }
 
     /**
-     * The headers of an encoded envelope, the ones that are a string under a string: what a transport
-     * carried is whatever it carried, and nothing here reads a header it cannot read twice.
-     *
      * @param array{body?: string, headers?: array<string, string>, extra?: array<string, mixed>} $encodedEnvelope
      *
      * @return array<string, string>
@@ -284,11 +250,6 @@ final readonly class SealedBodySerializer implements SerializerInterface
         return $scope;
     }
 
-    /**
-     * The message the opened body carried. A class this process does not have comes back incomplete, and
-     * anything that is not an object is not a message: both are a body that does not read back rather than
-     * a message handed to a bus.
-     */
     private static function read(string $opened): ?object
     {
         $message = @unserialize($opened, [

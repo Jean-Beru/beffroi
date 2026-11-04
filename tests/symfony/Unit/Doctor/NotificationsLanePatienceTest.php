@@ -21,18 +21,8 @@ use Symfony\Component\Messenger\Retry\RetryStrategyInterface;
 use Symfony\Component\Messenger\Transport\Sender\SenderInterface;
 use Symfony\Component\Messenger\Transport\Sender\SendersLocator;
 
-/**
- * Issue #196: what the check makes of a container that is not the one the provider wires. The two
- * containers of a deployment are judged by building them (tests/symfony/Functional/Doctor/DoctorTest);
- * what is here is each shape the two locators of the component can hand it, which a container reaches
- * one at a time, and the way a line says a length of time.
- */
 final class NotificationsLanePatienceTest extends TestCase
 {
-    /**
-     * A marker routed to nothing is a logout token carried inside the request that asked for the logout,
-     * so a client that does not answer at that moment is never told at all.
-     */
     #[Test]
     public function aLogoutTokenRoutedNowhereIsRed(): void
     {
@@ -64,10 +54,6 @@ final class NotificationsLanePatienceTest extends TestCase
         );
     }
 
-    /**
-     * A strategy that always says a message may come back is a walk this must return from, and a length of
-     * time the line cannot carry.
-     */
     #[Test]
     public function aLaneThatNeverGivesUpIsRedAndSaysSoInWords(): void
     {
@@ -85,10 +71,6 @@ final class NotificationsLanePatienceTest extends TestCase
         static::assertStringContainsString('for as long as it takes', self::firstLine($finding));
     }
 
-    /**
-     * The two lengths of time are the point: how long this deployment goes on trying, and how long what it
-     * sends can still be verified.
-     */
     #[Test]
     public function theLineCarriesHowLongItTriesAndHowLongWhatItSendsLasts(): void
     {
@@ -106,11 +88,7 @@ final class NotificationsLanePatienceTest extends TestCase
     }
 
     /**
-     * A length of time is said as a reader counts it, a figure in seconds being a figure nobody compares
-     * with anything.
-     *
-     * @param int $retries how many times the lane says a send may come back
-     * @param int $delay the milliseconds it waits before each one
+     * @param int $delay in milliseconds
      */
     #[Test]
     #[DataProvider('provideSchedules')]
@@ -139,11 +117,6 @@ final class NotificationsLanePatienceTest extends TestCase
         yield 'minutes and seconds' => [3, 45_000, '2 minutes 15 seconds'];
     }
 
-    /**
-     * The "exp" of a logout token and the retirement of the key that signed it are computed from the
-     * policy the container holds, so a second instance of the same class is a second schedule, free to
-     * change without those two following it.
-     */
     #[Test]
     public function aSecondInstanceOfThePolicyIsRed(): void
     {
@@ -158,10 +131,6 @@ final class NotificationsLanePatienceTest extends TestCase
         static::assertStringContainsString(NotificationRetryPolicy::class, self::firstLine($finding));
     }
 
-    /**
-     * Only the lane that is wrong is named: a marker routed to two transports is two answers, and the one
-     * that carries the policy is not a finding.
-     */
     #[Test]
     public function oneLaneOfTwoBeingWrongNamesThatOneAlone(): void
     {
@@ -186,9 +155,6 @@ final class NotificationsLanePatienceTest extends TestCase
         static::assertStringNotContainsString('"on_the_policy"', self::firstLine($finding));
     }
 
-    /**
-     * Two lanes both carrying the policy is a deployment that answers, and the line names both.
-     */
     #[Test]
     public function twoLanesBothOnThePolicyAreGreen(): void
     {
@@ -209,11 +175,6 @@ final class NotificationsLanePatienceTest extends TestCase
         static::assertStringContainsString('A logout token is retried on "one", "another" for', self::firstLine($finding));
     }
 
-    /**
-     * A check answers rather than throws, a doctor that stops on the first thing that is broken being a
-     * doctor that never reaches the second: a routing naming a transport the container does not hold is a
-     * line saying why.
-     */
     #[Test]
     public function aRoutingTheContainerCannotAnswerIsRedAndNamesWhy(): void
     {
@@ -236,10 +197,6 @@ final class NotificationsLanePatienceTest extends TestCase
         );
     }
 
-    /**
-     * The schedule the green line of the suite reads, and the one the two lengths of time of a deployment
-     * are computed from: a policy whose figures changed makes that line wrong rather than stale.
-     */
     #[Test]
     public function thePolicyPublishesThreeMinutesAndTwentySecondsOfRetries(): void
     {
@@ -253,8 +210,8 @@ final class NotificationsLanePatienceTest extends TestCase
     }
 
     /**
-     * @param list<string> $lanes the transports the marker is routed to
-     * @param array<string, RetryStrategyInterface> $strategies what retries each transport
+     * @param list<string> $lanes
+     * @param array<string, RetryStrategyInterface> $strategies by transport
      */
     private static function check(array $lanes, array $strategies): NotificationsLanePatience
     {
@@ -266,19 +223,11 @@ final class NotificationsLanePatienceTest extends TestCase
         );
     }
 
-    /**
-     * A strategy that waits the same number of milliseconds before each of its retries, so that what a
-     * line says of it is the product of two figures of the test.
-     */
     private static function retriedFor(int $retries, int $delay): RetryStrategyInterface
     {
         return new MultiplierRetryStrategy($retries, $delay, 1, $delay, 0);
     }
 
-    /**
-     * How long a logout token of these tests stays verifiable, which a deployment reads from the policy of
-     * the lane and from the timeout of one send.
-     */
     private static function window(): LogoutTokenDeliveryInterface
     {
         $window = static::createStub(LogoutTokenDeliveryInterface::class);
@@ -288,9 +237,6 @@ final class NotificationsLanePatienceTest extends TestCase
     }
 
     /**
-     * The locator of the component, with the marker of a notification routed to the given transports, as a
-     * container routes it.
-     *
      * @param list<string> $lanes
      */
     private static function senders(array $lanes): SendersLocator

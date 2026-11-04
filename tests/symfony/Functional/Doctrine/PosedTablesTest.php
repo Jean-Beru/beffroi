@@ -12,8 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §8: the tables spike 1 poses without using them (linked identities, groups, memberships)
- * are mapped and round-trip through the entity manager, so that spike 3 finds them in place.
+ * Architecture §8
  */
 final class PosedTablesTest extends DatabaseTestCase
 {

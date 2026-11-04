@@ -8,14 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * Single Logout started by a service provider (beffroi/saml, issue #734): the logout messages the model accepted,
- * remembered by every worker until their window closes (spec/saml.md S-23), and each service provider's part in a
- * session of the core, one row per session and service provider, deleted with the session (S-26).
- *
- * Nothing in either names a person: a digest of a message and an entity ID of an application, joined to a session by
- * its identifier. Both tables are new, so they hold no row to seal or to fill.
- */
 final class Version20261015173400 extends AbstractMigration
 {
     public function getDescription(): string

@@ -25,8 +25,7 @@ use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §3.2, §3.5: a session with its proofs and the provenance of its first and last request;
- * the active sessions of a user are those that neither ended nor expired.
+ * Architecture §3.2, §3.5
  */
 final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
 {
@@ -69,7 +68,7 @@ final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Architecture §3.5: the provenance of the session, enriched, comes back whole.
+     * Architecture §3.5
      */
     #[Test]
     public function aSessionComesBackWithItsEnrichedProvenance(): void
@@ -98,9 +97,6 @@ final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
         static::assertTrue($found->createdFrom->isEnriched());
     }
 
-    /**
-     * A touch is written on save: where and when the session was last seen, and its new expiry.
-     */
     #[Test]
     public function aTouchIsWrittenOnSave(): void
     {
@@ -142,10 +138,6 @@ final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
         static::assertTrue($found->hasEnded());
     }
 
-    /**
-     * The list a user sees when reviewing where they are logged in: ended and expired sessions are not
-     * in it, nor the sessions of somebody else.
-     */
     #[Test]
     public function theActiveSessionsOfAUserAreThoseNeitherEndedNorExpired(): void
     {
@@ -186,8 +178,7 @@ final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Decision 0031: what ends every session of a person reads those nobody ended, the expired ones included, in
-     * the order they were opened, and never the sessions of somebody else.
+     * Decision 0031
      */
     #[Test]
     public function theUnendedSessionsOfAUserAreThoseNobodyEndedTheExpiredOnesIncluded(): void
@@ -220,8 +211,7 @@ final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Decision 0011 (issue #884): the person a session names, by the subject their account carries, which stays in
-     * the clear.
+     * Decision 0011
      */
     #[Test]
     public function aSessionNamesItsPersonByTheirSubject(): void
@@ -238,8 +228,7 @@ final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Decision 0011 (issue #884): the subject is read as one column of one row, neither the session nor the person
-     * loaded, so nothing either of them seals under a data key of the tenant is opened and the KMS is asked nothing.
+     * Decision 0011
      */
     #[Test]
     public function theSubjectIsReadWithoutLoadingTheSessionOrThePerson(): void
@@ -286,9 +275,6 @@ final class DoctrineAuthenticationSessionRepositoryTest extends DatabaseTestCase
         return self::service('test.beffroi.unended_sessions', CanFindUnendedSessionsInterface::class);
     }
 
-    /**
-     * A request context with a location and a device, as the enrichment will produce it.
-     */
     private static function enrichedContext(DateTimeImmutable $receivedAt): RequestContext
     {
         return new RequestContext(

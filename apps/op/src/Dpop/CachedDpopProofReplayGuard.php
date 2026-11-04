@@ -12,9 +12,7 @@ use App\Cache\SeenOnce;
 use function sprintf;
 
 /**
- * The "jti" of the proofs already seen (RFC 9449 §11.1), so that a proof taken off the wire cannot be
- * sent again. What makes a "jti" unique is all this says; remembering it once is SeenOnce's, with the
- * caveat that goes with a pool.
+ * RFC 9449 §11.1
  */
 final readonly class CachedDpopProofReplayGuard implements DpopProofReplayGuardInterface
 {

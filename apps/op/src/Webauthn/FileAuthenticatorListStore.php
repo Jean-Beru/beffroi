@@ -19,11 +19,6 @@ use function rename;
 use function sprintf;
 use function unlink;
 
-/**
- * The list of models of authenticator the community keeps, as one file, "<storage>/authenticators.json", next to
- * the FIDO metadata and written the same way, through a sibling file renamed into place, so that a page never
- * reads half a list (architecture §3.4).
- */
 final readonly class FileAuthenticatorListStore implements AuthenticatorListStoreInterface
 {
     private const string FILE = 'authenticators.json';

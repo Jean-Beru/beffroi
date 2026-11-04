@@ -11,11 +11,6 @@ use Beffroi\Core\Application\Identity\ClaimHistoryRetention;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
-/**
- * Forgets what a record used to say past the duration the deployment keeps it for (issue #482), in the
- * shape every timed step of the provider has: bounded by the store, so a backlog is worked through over
- * several ticks, and silent when there was nothing to forget.
- */
 #[AsMessageHandler]
 final readonly class ForgetTheChangesPastTheirRetentionHandler
 {
@@ -31,7 +26,7 @@ final readonly class ForgetTheChangesPastTheirRetentionHandler
         try {
             $tenant = $this->tenants->provide();
         } catch (TenantNotSynchronizedException) {
-            // before the first provisioning no record has changed, and a tick is not the place to say so
+            // Nothing to do before the first provisioning, and a tick is not the place to say so.
             return;
         }
         $forgotten = $this->retention->enforce($tenant);

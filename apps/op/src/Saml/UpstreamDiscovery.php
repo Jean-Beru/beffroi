@@ -17,10 +17,8 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 /**
- * Where the login page of an interaction sends an address of a domain the tenant federates (beffroi/saml S-61, S-62):
- * the sign-on of S-51 at the one provider of that domain, for that interaction, and nothing read of a person. The
- * upstream providers are the SAML upstream identity providers of the tenant (SamlUpstreamProviders), so the sign-on is
- * theirs; a deployment that does not enable the service provider declares none, and no page asks for an address.
+ * Sends an address of a federated domain to the sign-on of its provider, reading nothing of a person
+ * (beffroi/saml S-61, S-62).
  */
 final readonly class UpstreamDiscovery
 {
@@ -33,7 +31,7 @@ final readonly class UpstreamDiscovery
     }
 
     /**
-     * S-61: whether the login page of an interaction asks for the address first.
+     * beffroi/saml S-61
      */
     public function asksForAnAddress(Tenant $tenant): bool
     {
@@ -41,8 +39,7 @@ final readonly class UpstreamDiscovery
     }
 
     /**
-     * S-62: the provider the "login_hint" of the request of the interaction is federated to, when it is an address of a
-     * federated domain, read for its domain alone; null for any other hint, the page then asked as without one.
+     * beffroi/saml S-62
      */
     public function hintedProvider(Tenant $tenant, Interaction $interaction): ?UpstreamProvider
     {
@@ -58,10 +55,7 @@ final readonly class UpstreamDiscovery
     }
 
     /**
-     * S-51: the parameters of the sign-on of that interaction at that provider, or of the login a page of the provider
-     * waits for when there is none (S-61), at the route of the interaction plane ServiceProviderRoutes::UPSTREAM_SIGN_ON
-     * names, with the one-time reference drawn for it in the HTTP session of the browser, without which the sign-on
-     * starts nothing (UpstreamSignOnReferences).
+     * beffroi/saml S-51
      *
      * @return array<string, string>
      */
@@ -76,8 +70,10 @@ final readonly class UpstreamDiscovery
     }
 
     /**
-     * S-61: the origin of the single sign-on service of each provider of the tenant, named in the "form-action" of the
-     * page of the address, whose submission ends there over HTTP-Redirect (FormTarget).
+     * beffroi/saml S-61
+     *
+     * Names in the "form-action" of the page of the address the origin of the single sign-on service of each
+     * provider, where its submission ends over HTTP-Redirect.
      */
     public function mayReachTheProviders(Request $request, Tenant $tenant): void
     {

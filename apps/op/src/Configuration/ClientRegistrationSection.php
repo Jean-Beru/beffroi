@@ -17,35 +17,16 @@ use function is_string;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
-/**
- * What the tenant does with a client that registers itself (RFC 7591, decision 0009). A deployment that
- * writes nothing here registers nobody: closed is the default, and a closed tenant has no
- * "registration_endpoint" in its document and none on the wire.
- */
 final readonly class ClientRegistrationSection extends ConfigurationSection
 {
-    /**
-     * The two durations of decision 0009 as the tree writes them, in seconds; a test checks they are the
-     * ones the policy of the module defaults to, so that the reference a deployment reads and the default a
-     * deployment gets cannot say different things.
-     */
     public const int DEFAULT_KEEP_A_CLIENT_UNUSED_FOR = 7_776_000;
 
     public const int DEFAULT_KEEP_A_CLIENT_NEVER_USED_FOR = 604_800;
 
-    /**
-     * What one read of a sector identifier document is given (OIDC Registration §5), the same numbers one
-     * read of a "jwks_uri" is given: a client that hangs must not hold a worker, and a registration is
-     * waiting on this one.
-     */
     public const float DEFAULT_SECTOR_IDENTIFIER_TIMEOUT = 3.0;
 
     public const int DEFAULT_SECTOR_IDENTIFIER_MAX_SIZE = 65536;
 
-    /**
-     * RFC 7591 §2.3: a statement is signed for one registration. The default is the one an assertion of a
-     * trusted issuer takes, for the same reason.
-     */
     public const int DEFAULT_STATEMENT_MAX_LIFETIME = 300;
 
     public const int DEFAULT_STATEMENT_LEEWAY = 30;
@@ -110,11 +91,6 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
     }
 
     /**
-     * The client registration policy of the tenant at runtime, from the authorities the configuration or the environment
-     * pins, held to the rules of the tree either way (decision 0030); every other argument is the one of the policy.
-     *
-     * @param mixed $statementIssuers the list of the authorities, as the configuration or the environment carries it
-     *
      * @throws InvalidConfigurationException when the list of the authorities is one the tree refuses
      * @throws InvalidArgumentException when an authority or the default set of scopes does not hold together
      * @throws LogicException when authorities are pinned and nothing verifies what they sign with
@@ -129,7 +105,7 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
         ?SignatureAlgorithmsInterface $algorithms = null,
         ?string $defaultScope = null,
     ): ConfigurationClientRegistrationPolicy {
-        /** @var array<string, array<string, mixed>> $issuers the tree declares each one the array of its children, keyed by its "iss" */
+        /** @var array<string, array<string, mixed>> $issuers keyed by "iss" */
         $issuers = self::statementIssuers()->normalized($statementIssuers, 'client_registration.statement_issuers');
 
         return new ConfigurationClientRegistrationPolicy(
@@ -144,9 +120,6 @@ final readonly class ClientRegistrationSection extends ConfigurationSection
         );
     }
 
-    /**
-     * The authorities as the tree declares them, which the environment may carry whole.
-     */
     private static function statementIssuers(): EnvironmentListDefinition
     {
         $issuers = new EnvironmentListDefinition('statement_issuers');

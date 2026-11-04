@@ -19,12 +19,7 @@ use Webauthn\Exception\InvalidDataException;
 use Webauthn\PublicKeyCredentialCreationOptions;
 
 /**
- * "/attestation/options" of the FIDO2 server API (FIDO Conformance Tools,
- * ServerPublicKeyCredentialCreationOptionsRequest): the options the enrolment of the tools draws for the
- * user they name, created on their first ceremony, its algorithms those of the tools (decision 0033,
- * ConformanceToolsAlgorithms), with what the tools ask for and the product never does (WebAuthn Level 3
- * §5.4: the attestation conveyance, the authenticator selection, the extensions), kept by their challenge
- * for the attestation that comes back.
+ * FIDO2 server API, ServerPublicKeyCredentialCreationOptionsRequest
  */
 #[AsController]
 final readonly class AttestationOptionsController
@@ -56,10 +51,6 @@ final readonly class AttestationOptionsController
     }
 
     /**
-     * The options the enrolment of the tools draws (the relying party, the user entity with its handle, the
-     * challenge, the algorithms of the tools, the passkeys excluded) with what the request of the tools asks
-     * for.
-     *
      * @throws ServerRequestException
      * @throws InvalidArgumentException
      * @throws InvalidDataException

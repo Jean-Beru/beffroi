@@ -13,10 +13,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * A group of the tenant (architecture §3.4, §5.5), local, as a person of the console is: the group the
- * declaration of an upstream provider maps the values it asserts to, which no provider creates (decision 0002).
- */
 #[AsCommand(
     name: 'beffroi:group:create',
     description: 'Create a group of the tenant, which the declaration of an upstream provider may map the groups it asserts to.',

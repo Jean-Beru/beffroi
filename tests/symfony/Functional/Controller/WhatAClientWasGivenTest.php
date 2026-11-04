@@ -13,11 +13,6 @@ use function json_decode;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * Issue #590: a complete login played on this kernel, the consent taken back after it, and the archive
- * that person asks for. What the journal says is that the act happened; what this chapter says is what
- * left with it, which is the question a person asks once the consent is gone and the grants with it.
- */
 final class WhatAClientWasGivenTest extends ConsoleTestCase
 {
     #[Test]
@@ -38,10 +33,6 @@ final class WhatAClientWasGivenTest extends ConsoleTestCase
         static::assertSame(['jwt'], array_column($disclosures, 'token_shape'));
     }
 
-    /**
-     * The whole point of the register: a consent answers for its own current state and goes away when it
-     * is taken back, where this says what was obtained under it and stays for the duration of the journal.
-     */
     #[Test]
     public function whatWasGivenOutlivesTheConsentItWasGivenUnder(): void
     {
@@ -68,8 +59,7 @@ final class WhatAClientWasGivenTest extends ConsoleTestCase
     }
 
     /**
-     * RFC 6749 §4.4: a client that obtained tokens for itself was given nothing of anybody, so there is no
-     * register of a person for a row to belong to.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function whatAClientObtainedForItselfIsInNobodysRegister(): void
@@ -135,10 +125,6 @@ final class WhatAClientWasGivenTest extends ConsoleTestCase
         return $chapter;
     }
 
-    /**
-     * The tokens of the demo client, which authenticates itself and requires no consent of its own, from
-     * the code flow of the browser already signed in.
-     */
     private function tokensOfTheDemoClient(): void
     {
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));

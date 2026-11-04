@@ -19,11 +19,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #451: what one application holds of a person is read from three stores and not from any object of
- * the model. Only what can still be renewed is counted, a rotated, revoked or expired token renewing
- * nothing; and of what waits for that person, this application's is what its page shows.
- */
 final class ApplicationHoldingTest extends TestCase
 {
     #[Test]
@@ -68,10 +63,6 @@ final class ApplicationHoldingTest extends TestCase
         static::assertSame($now->modify('-1 hour')->getTimestamp(), $holding->lastIssued?->getTimestamp());
     }
 
-    /**
-     * What waits for a person is the answer of the store, every application of theirs together; which of
-     * them this page shows is this reading's rule.
-     */
     #[Test]
     public function itKeepsOnlyWhatThatApplicationIsWaitingFor(): void
     {
@@ -112,7 +103,7 @@ final class ApplicationHoldingTest extends TestCase
         $session = Fixtures::session();
         $client = Clients::confidential($session->user->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
         if ($state === 'expired') {
-            // forty days ago, in a family of its own age: a token lives thirty days at most
+            // A token lives thirty days at most.
             $old = $now->modify('-40 days');
 
             return Tokens::refreshToken('the-token', $client, $session, $old, Tokens::family($old, $client->tenant));

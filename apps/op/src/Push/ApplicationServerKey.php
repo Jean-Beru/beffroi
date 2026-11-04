@@ -17,27 +17,21 @@ use const STR_PAD_LEFT;
 use function strtr;
 
 /**
- * The application server key of a tenant in the one shape a browser takes it (RFC 8292 §3.2, Push API
- * §7.2): the uncompressed point of SEC 1 §2.3.3, sixty-five octets of "\x04" and the two coordinates, in
- * base64url. What the tenant keeps is a JWK (architecture §3.3), what a browser subscribes with is this,
- * and the conversion between the two is here and nowhere else: the page that hands the key out and the
- * sender that signs with it read the same octets, or the push service would refuse a request made for a
- * subscription that was taken out under the other reading.
+ * RFC 8292 §3.2, Push API §7.2, SEC 1 §2.3.3
  */
 final readonly class ApplicationServerKey
 {
     /**
-     * RFC 7518 §6.2.1.2: a coordinate of P-256 is thirty-two octets, left-padded to that.
+     * RFC 7518 §6.2.1.2
      */
     public const int COORDINATE_LENGTH = 32;
 
     /**
-     * SEC 1 §2.3.3: what says the two coordinates follow whole.
+     * SEC 1 §2.3.3
      */
     private const string UNCOMPRESSED = "\x04";
 
     /**
-     * @param string $kid the key of the tenant this is the public half of
      * @param string $publicKey the uncompressed point, base64url
      */
     private function __construct(
@@ -47,7 +41,7 @@ final readonly class ApplicationServerKey
     }
 
     /**
-     * @throws InvalidArgumentException when the key is not a pair over P-256 carrying both coordinates
+     * @throws InvalidArgumentException
      */
     public static function of(TenantKey $key): self
     {
@@ -55,7 +49,7 @@ final readonly class ApplicationServerKey
     }
 
     /**
-     * @param array<string, mixed> $jwk the members of the key (RFC 7517 §4); the private ones are ignored
+     * @param array<string, mixed> $jwk
      *
      * @throws InvalidArgumentException
      */

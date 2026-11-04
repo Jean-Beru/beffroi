@@ -25,12 +25,6 @@ use Webauthn\AttestationStatement\AttestationStatementSupportManager;
 use Webauthn\Denormalizer\WebauthnSerializerFactory;
 use Webauthn\MetadataService\Statement\MetadataStatement;
 
-/**
- * A metadata statement the FIDO Metadata Service does not carry, published by a manufacturer for its
- * keys or shipped by the FIDO conformance tools for their virtual authenticators (FIDO Metadata Statement
- * v3 §4): unsigned, trusted as the file given is, stored as a document of one entry without status
- * report, so that the ceremonies read it like an entry of the blob.
- */
 #[AsCommand(
     name: 'beffroi:webauthn:mds-import',
     description: 'Store a metadata statement file (unsigned, trusted as the file is) next to the FIDO Metadata BLOB, for the keys of a manufacturer the service does not list or the authenticators of the FIDO conformance tools.',
@@ -72,8 +66,6 @@ final readonly class WebauthnMdsImportCommand
     }
 
     /**
-     * The statement read as the library reads one, then written as the one entry of a payload.
-     *
      * @return array{string, string, string}
      */
     private function wrap(string $file): array

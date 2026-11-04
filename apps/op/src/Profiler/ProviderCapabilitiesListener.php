@@ -17,16 +17,6 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
-/**
- * What this provider serves, for the tenant the request was made against: the discovery document itself
- * (OIDC Discovery §4), member by member. It is read from the handler that answers `/.well-known`, so the
- * panel announces what the provider announces, which is derived from what is wired and from nothing kept
- * in parallel (issue #98): a grant, a client authentication method, a response mode, an algorithm or a
- * logout channel that is wired shows up here for having been wired, and one that is not cannot appear.
- *
- * Built once the response is ready, and only for a request that reached an endpoint of the provider:
- * this is a page of a developer, not a cost every request of the application pays.
- */
 #[AsEventListener(event: KernelEvents::RESPONSE, priority: self::PRIORITY)]
 final readonly class ProviderCapabilitiesListener
 {

@@ -8,17 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * The clients this provider registered itself (RFC 7591 §3.2.1): one row per client, beside the clients a
- * deployment declares in its configuration, which stay where they are.
- *
- * The metadata is one column, in the members of RFC 7591 §2 as the client registered them, so that a
- * member this provider learns to read tomorrow is read from the rows that already carry it. The secret is
- * another column, the provider having assigned it rather than read it, and one column so that the day it
- * is encrypted at rest is the day one column changes. The identifier is unique under its tenant: it is
- * what a tenant answers to a client by, and two rows under one name would be one client with two
- * registrations.
- */
 final class Version20260928120000 extends AbstractMigration
 {
     public function getDescription(): string

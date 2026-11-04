@@ -13,14 +13,6 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Uid\Uuid;
 use function trim;
 
-/**
- * A tenant takes back an initial access token it issued (RFC 7591 §1.2, decision 0009): from that
- * instant it authorises no registration, whatever it was still worth and whenever it would have expired.
- *
- * It is taken back by the identifier beffroi:client:token:list shows, never by its value, which the tenant
- * does not hold. The clients it already registered stay: each of them is taken back by taking that
- * client back (beffroi:client:delete).
- */
 #[AsCommand(
     name: self::NAME,
     description: 'Revoke an initial access token by its identifier; it authorises no registration from that instant.',

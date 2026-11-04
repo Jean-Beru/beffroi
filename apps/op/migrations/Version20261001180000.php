@@ -11,32 +11,10 @@ use App\Doctrine\Migration\SealingMigration;
 use function sprintf;
 
 /**
- * The seventeen columns of `beffroi_user` that carry a personal datum, sealed under the data key of their
- * tenant, and the two blind indexes a search matches on (decisions 0011 and 0018).
- *
- * Every sealed column becomes unbounded binary, whatever it held: an encrypted type drops the length of
- * the column it decorates and asks the platform for a blob. `address` loses its `jsonb` with it, and with
- * that anything a query could have done with the JSON, what is in the column now being the ciphertext of
- * a JSON document.
- *
- * **The columns are recreated and their values are not carried over.** There is no deployment of this
- * provider, so there are no cleartext rows to migrate and no code to write for rows nobody has; a column
- * that would have to be read, sealed and written back is a path this repository would carry forever for a
- * case that never happens. A table that holds rows is refused before anything runs, with the sentence
- * `SealingMigration` gives it.
- *
- * **The unicity of a username within a tenant moves onto the index column.** A sealed column holds a
- * different ciphertext for every write of the same username, so a unique constraint on it would refuse
- * nothing at all. No constraint is added on the address: nothing today says two users of one tenant may
- * not share one, and this is not the place that decides it.
+ * The unique constraint moves onto the blind index: a sealed column holds a new ciphertext at every write.
  */
 final class Version20261001180000 extends SealingMigration
 {
-    /**
-     * The nullable columns that carry a personal datum, by what they held before they sealed, which is
-     * what `down` puts back. The one column of the seventeen that is not here is the username, which is
-     * not nullable and which the index constraint hangs off.
-     */
     private const array CLEARTEXT = [
         'email' => 'VARCHAR(255)',
         'phone_number' => 'VARCHAR(64)',

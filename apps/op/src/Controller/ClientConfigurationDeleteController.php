@@ -15,8 +15,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * A client deletes itself (RFC 7592 §2.3), DELETE only: a 204 and nothing to answer, the client being
- * gone. The token that read it reads nothing afterwards, which is what a client that comes back sees.
+ * RFC 7592 §2.3
  */
 #[AsController]
 final readonly class ClientConfigurationDeleteController

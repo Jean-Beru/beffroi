@@ -23,9 +23,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Front-Channel Logout 1.0 §2 and §3, architecture §4.9, §5.2: the page a browser is given once its
- * session has ended, one frame per client of the session that registered a URI. The back channel of the
- * same clients is answered by a mock, so that what is seen here is the page and nothing else.
+ * Front-Channel Logout 1.0 §2, §3, Architecture §4.9, §5.2
  */
 final class FrontChannelLogoutTest extends BrowserTestCase
 {
@@ -49,8 +47,7 @@ final class FrontChannelLogoutTest extends BrowserTestCase
     }
 
     /**
-     * §2: one frame per client of the session that registered a URI, and none for the client that
-     * registered nothing nor for the one that only registered a back channel.
+     * Front-Channel Logout 1.0 §2
      */
     #[Test]
     public function oneFrameIsLoadedForEachClientThatRegisteredAUri(): void
@@ -72,8 +69,7 @@ final class FrontChannelLogoutTest extends BrowserTestCase
     }
 
     /**
-     * §2 makes "iss" and "sid" conditional on frontchannel_logout_session_required: the client that
-     * asked for them gets them, the one that did not is loaded on the URI it registered.
+     * Front-Channel Logout 1.0 §2
      */
     #[Test]
     public function theSessionIsNamedOnlyToTheClientThatAskedForIt(): void
@@ -94,8 +90,7 @@ final class FrontChannelLogoutTest extends BrowserTestCase
     }
 
     /**
-     * §2: nothing loads but the frames the clients registered, nothing frames the page, the one script
-     * is named by its hash, and the page is never kept.
+     * Front-Channel Logout 1.0 §2
      */
     #[Test]
     public function thePageAllowsItsFramesItsScriptAndNothingElse(): void
@@ -119,8 +114,7 @@ final class FrontChannelLogoutTest extends BrowserTestCase
     }
 
     /**
-     * RP-Initiated Logout §3: the browser goes back to the client that asked once the frames are done,
-     * and the page says where, for the browser that runs no script as well as for the one that does.
+     * RP-Initiated Logout §3
      */
     #[Test]
     public function thePageCarriesTheBrowserBackToTheClientThatAsked(): void
@@ -139,10 +133,6 @@ final class FrontChannelLogoutTest extends BrowserTestCase
         );
     }
 
-    /**
-     * A logout that names nowhere to go back to ends on the page, which says the session is closed and
-     * runs no script, so its policy allows none.
-     */
     #[Test]
     public function aLogoutWithNowhereToGoBackToEndsOnThePage(): void
     {
@@ -158,10 +148,6 @@ final class FrontChannelLogoutTest extends BrowserTestCase
         static::assertStringContainsString("script-src 'none'", self::string($this->browser->getResponse()->headers->get('Content-Security-Policy')));
     }
 
-    /**
-     * A session whose clients registered no such URI is answered as it was before this page existed: the
-     * browser goes straight back to the client that asked.
-     */
     #[Test]
     public function aSessionWithNoSuchClientIsSentBackWithoutAPage(): void
     {
@@ -180,11 +166,7 @@ final class FrontChannelLogoutTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7591 §2, architecture §4.1, the security review of 20 October 2026: a client that registered itself
-     * before the host of its URIs was held to a name or an address, a front-channel logout URI on a host that
-     * carries a directive of a policy, is a row the reader refuses now. The session it signed in still ends, and
-     * the page of that session loads the frames of the other clients, under a policy that names their origins and
-     * nothing that row wrote.
+     * RFC 7591 §2, Architecture §4.1
      */
     #[Test]
     public function aClientWhoseRowNoLongerReadsLeavesThePageOfTheSessionToTheOthers(): void
@@ -215,8 +197,7 @@ final class FrontChannelLogoutTest extends BrowserTestCase
     }
 
     /**
-     * Back-Channel Logout 1.0 §3 and Front-Channel Logout 1.0 §3: the document announces the two ways
-     * the provider wires, and says that each of them carries the session.
+     * Back-Channel Logout 1.0 §3, Front-Channel Logout 1.0 §3
      */
     #[Test]
     public function theDiscoveryDocumentAnnouncesBothChannels(): void
@@ -232,10 +213,6 @@ final class FrontChannelLogoutTest extends BrowserTestCase
         static::assertTrue($document['frontchannel_logout_session_supported']);
     }
 
-    /**
-     * The session of alice, signed in by the two clients the logout page loads, by the one that
-     * registered nothing, and by the client that asks for the logout.
-     */
     private function signedInWithFourClients(): AuthenticationSession
     {
         $session = $this->signIn(self::user('alice'));
@@ -249,8 +226,7 @@ final class FrontChannelLogoutTest extends BrowserTestCase
     }
 
     /**
-     * A client that registered itself (RFC 7591 §3.1), its front-channel logout URI on its own host: the row as it
-     * was written before the rule.
+     * RFC 7591 §3.1
      */
     private static function registerTheStaleClient(): void
     {
@@ -268,10 +244,6 @@ final class FrontChannelLogoutTest extends BrowserTestCase
         self::reload();
     }
 
-    /**
-     * The row of that client holding another front-channel logout URI, written into the store as a row of an
-     * earlier version is found there, without the reader that would refuse it.
-     */
     private static function rewriteTheRowOfTheStaleClient(string $frontChannelLogoutUri): void
     {
         $store = self::service('test.beffroi.client_store', ClientStoreInterface::class);
@@ -309,9 +281,7 @@ final class FrontChannelLogoutTest extends BrowserTestCase
     }
 
     /**
-     * Sorted: which grant of the session comes first is the repository's business, not the page's.
-     *
-     * @return list<string>
+     * @return list<string> sorted
      */
     private static function framesOf(Crawler $crawler): array
     {
@@ -322,8 +292,8 @@ final class FrontChannelLogoutTest extends BrowserTestCase
     }
 
     /**
-     * CSP Level 3 §6.6.2.2, computed here rather than asked of the module: the page and the policy are
-     * checked against the same script the template renders, not against each other.
+     * Computed here (CSP Level 3 §6.6.2.2) rather than asked of the module, so that the page and the policy are not
+     * checked against each other.
      */
     private static function scriptHash(): string
     {

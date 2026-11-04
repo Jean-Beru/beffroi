@@ -10,19 +10,8 @@ use Doctrine\Migrations\AbstractMigration;
 use function array_keys;
 use function sprintf;
 
-/**
- * The four indexes the sweep of the dead rows reads (issue #177).
- *
- * Nothing removed a row that could no longer do anything, so no table was ever asked for its oldest rows
- * and no date of one was indexed for being read in that direction. The four tables here are the ones whose
- * expiry was not indexed already; the codes, the three kinds of opaque access token, the device requests
- * and the backchannel requests carry theirs since they were written.
- */
 final class Version20261010120000 extends AbstractMigration
 {
-    /**
-     * The index of each table, by the name the mapping gives it.
-     */
     private const array EXPIRY_INDEXES = [
         'beffroi_authentication_session_expiry' => 'beffroi_authentication_session',
         'beffroi_interaction_expiry' => 'beffroi_interaction',

@@ -20,11 +20,6 @@ use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * The operator's side of a rotation (architecture §3.3, §5.5): one command stages a key, time activates it.
- * The first key of a tenant is activated at once, nobody caches an empty JWK Set; so is a key the operator
- * asks for now, or one that replaces a compromised key.
- */
 #[AsCommand(
     name: 'beffroi:keys:rotate',
     description: 'Stage a new key, sealed by the configured KMS and published at once; it takes over once the staging delay elapsed, or at once with --now; --compromised retires the previous key with no window.',

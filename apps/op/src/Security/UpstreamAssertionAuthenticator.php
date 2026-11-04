@@ -60,31 +60,14 @@ use Symfony\Component\Security\Http\Authenticator\Token\PostAuthenticationToken;
 use function is_string;
 
 /**
- * The assertion consumer service of the service provider of the tenant, a login of the firewall of the interaction
- * pages (beffroi/saml, spec/saml.md S-52 to S-59, section 6.14): the response an upstream identity provider posted,
- * taken for the request this browser remembers under its RelayState, and once (S-53); the person it names resolved or
- * created with its groups (S-56); what the client asked of the login read by the rule of the login page, the request
- * sent once more with ForceAuthn at most (S-58); then the passport, whose session LoginSuccessListener opens dated by
- * the AuthnInstant (S-57), and the browser sent to the interaction or the page the request was remembered for, and
- * nowhere else (S-59).
+ * beffroi/saml spec/saml.md S-52 to S-59, section 6.14
  *
- * It takes no post from another site that came without the session cookie (S-28): the route posts it again from the
- * provider's own origin, and the second post, which carries the HTTP session the request was remembered in, is the one
- * read. No form token: the form is the provider's, and what binds it to this browser is the request remembered in its
- * HTTP session under the RelayState. A deployment that does not enable the service provider wires no use case, and
- * the route answers 404 (S-41).
+ * No form token: the request remembered in this browser's session under the RelayState binds the response to it.
  */
 final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInterface, InteractiveAuthenticatorInterface
 {
-    /**
-     * The code of the page a response that signs nobody in is shown, which the template of the error explains.
-     */
     public const string REFUSED = 'saml_assertion_refused';
 
-    /**
-     * Where the request remembered travels from authenticate() to the answer of a login, an attribute of the request
-     * and never anything the browser sent.
-     */
     private const string REMEMBERED = '_beffroi_upstream_sign_on';
 
     private const string RELAY_STATE = 'RelayState';
@@ -105,8 +88,7 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
     }
 
     /**
-     * A post to the route of S-52, a form, of a deployment that serves the service provider, and none from another site
-     * that came without the session cookie, which the route posts again (S-28).
+     * A cross-site post that came without the session cookie is posted again by the route from this origin (S-28).
      */
     public function supports(Request $request): bool
     {
@@ -127,7 +109,6 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
         $relayState = $request->request->get(self::RELAY_STATE);
         $remembered = is_string($relayState) && $relayState !== '' ? $this->signOns->take($request->getSession(), $tenant, $relayState, $now) : null;
         if (! $remembered instanceof RememberedSignOn) {
-            // S-53: an unsolicited response, or one for a request this browser does not remember (decision 0029)
             throw $this->refused(
                 'The response answers no request this browser remembers (spec/saml.md S-53).',
                 AuthenticationFailureReason::UpstreamResponseRefused,
@@ -141,14 +122,12 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
         } catch (AssertionRefusedException $exception) {
             throw $this->refused($exception->getMessage(), AuthenticationFailureReason::UpstreamResponseRefused);
         } catch (KeyNotFoundException) {
-            // S-66: a key of the provider retired between the reading of the store and its opening
             throw $this->refused(
                 'A key of the identity provider retired while the response was read (spec/saml.md S-66).',
                 AuthenticationFailureReason::UpstreamResponseRefused,
             );
         }
-        // S-57: held to the floor of the tenant before the person is written, the opening of the session refusing it
-        // past the firewall otherwise, where nothing catches it
+        // Before the person is written: past the firewall, nothing would catch the refusal of SessionOpener.
         if (! $tenant->loginFloor->isSatisfiedBy($assertion->methods)) {
             throw $this->refused(
                 'The login of the identity provider proves less than this tenant requires of every login (spec/saml.md S-57).',
@@ -162,8 +141,6 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
         try {
             $person = $consumer->personOf($tenant, $assertion, $context);
         } catch (UpstreamProvisioningRefusedException $exception) {
-            // a disabled person is announced as such, under the page of every refusal of the person, which says
-            // nothing of the state of the account (S-56)
             throw $this->personRefused(
                 $exception->reason === UpstreamProvisioningRefusalReason::PersonDisabled
                     ? AuthenticationFailureReason::DisabledUser
@@ -195,8 +172,7 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
     }
 
     /**
-     * S-59: the login page of the interaction, which resumes it and answers the client, or the page that waited, its
-     * route and its parameters as LoginTarget wrote them; nothing a response or a request carried.
+     * S-59: the target is the one remembered with the request, never one a response or a request carried.
      */
     public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): Response
     {
@@ -213,10 +189,6 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
         ]);
     }
 
-    /**
-     * What authenticate() decided, or the page of a refusal for what the firewall refused after it, a person whose
-     * account is disabled.
-     */
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): Response
     {
         if ($exception instanceof UpstreamLoginRefusedException) {
@@ -232,7 +204,7 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
     }
 
     /**
-     * S-53: the interaction of the request remembered, one this browser began and can still resume.
+     * S-53
      *
      * @throws UpstreamLoginRefusedException
      */
@@ -252,9 +224,7 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
     }
 
     /**
-     * S-58: what the client still asks of the login, read by the rule of the login page against the session this login
-     * leaves; asked, the request is sent once more with ForceAuthn when the one answered did not carry it, and the
-     * client is answered login_required when it did.
+     * S-58
      *
      * @throws UpstreamLoginRefusedException
      */
@@ -289,10 +259,8 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
         try {
             $sent = $signOn->start($tenant, $remembered->identityProvider, true);
         } catch (UpstreamSignOnRefusedException $exception) {
-            // no refused login: the request could not be sent again, which the sign-on refuses with the same message
             throw $this->refused($exception->getMessage(), null);
         } catch (KeyNotFoundException $exception) {
-            // as the route of the sign-on answers a tenant that holds no SAML key any more (S-51)
             throw new NotFoundHttpException('This tenant serves no SAML service provider.', $exception);
         }
         $this->signOns->keep($request->getSession(), $tenant, $interaction, $sent);
@@ -301,9 +269,7 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
     }
 
     /**
-     * S-59: a page that asked a person signed in for a fresh proof is answered by an authentication after its request
-     * was issued, and one that asked for one more by a login that proves one of the classes it asked for; neither is
-     * sent again, its request having carried ForceAuthn already.
+     * S-59
      *
      * @throws UpstreamLoginRefusedException
      */
@@ -333,9 +299,7 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
     }
 
     /**
-     * S-58: the provider authenticated nobody, the person having cancelled or failed there. The client is answered
-     * access_denied at its redirection URI with its state, login_required for NoPassive under prompt=none, the
-     * interaction over; a page that waited is the page of a refusal. Nothing of the provider travels in either.
+     * S-58
      */
     private function failedAtTheProvider(
         Request $request,
@@ -356,9 +320,7 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
     }
 
     /**
-     * S-56: the person the response named refused, by the core or by the profile. The refusal of the core names no
-     * value, and the claim the profile refuses would: neither travels on (S-53), and the page is the same whatever the
-     * reason the audit trail is told.
+     * S-56: the page is the same whatever the reason the audit trail is told.
      */
     private function personRefused(AuthenticationFailureReason $reason): UpstreamLoginRefusedException
     {
@@ -366,9 +328,7 @@ final readonly class UpstreamAssertionAuthenticator implements AuthenticatorInte
     }
 
     /**
-     * The page of a refusal, and what the audit trail is told of it (S-53): a federated assertion refused for that
-     * reason, nothing typed, the person when one was resolved; none when it is no refused login. No exception it
-     * caught travels on: the message of the rule is all a refusal carries, whatever the chain under it named.
+     * No caught exception travels on: the message of the rule is all a refusal carries.
      */
     private function refused(string $description, ?AuthenticationFailureReason $reason, ?User $person = null): UpstreamLoginRefusedException
     {

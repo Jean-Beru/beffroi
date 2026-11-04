@@ -16,26 +16,15 @@ use function sprintf;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * The pages where the demonstration draws the flows this provider serves (issue #462), on the kernel this
- * application deploys: they are routed in development and in this suite, and in a deployment they are
- * not there at all.
- *
- * What is judged here is that the set of pages is the wiring. The shapes themselves are judged by the
- * suite of the module, on fake wirings of grants.
- */
 final class DrawnFlowsTest extends DemonstrationTestCase
 {
     /**
-     * A name no grant of this provider gives itself: decision 0006 wired no password grant and never
-     * will.
+     * Decision 0006
      */
     private const string UNSERVED_GRANT = 'password';
 
     /**
-     * OIDC Discovery §3: the document announces what is wired, the pictures are read from the same
-     * wiring, and the index draws those grants in that order. Unwiring a grant takes its picture off
-     * this page without a line being edited.
+     * OIDC Discovery §3
      */
     #[Test]
     public function theIndexDrawsTheGrantsTheDocumentAnnounces(): void
@@ -88,8 +77,7 @@ final class DrawnFlowsTest extends DemonstrationTestCase
     }
 
     /**
-     * RFC 6749 §4.1: the page of a flow carries the hops its picture plans, in the order the flow
-     * happens in, each with the section of the specification that says what it is.
+     * RFC 6749 §4.1
      */
     #[Test]
     public function thePageOfAFlowCarriesTheHopsItsPicturePlans(): void
@@ -118,10 +106,6 @@ final class DrawnFlowsTest extends DemonstrationTestCase
         );
     }
 
-    /**
-     * A flow nothing has played yet is drawn with its plan and with nothing in it: a picture is not a
-     * payload, and the page of a flow nobody has run shows none.
-     */
     #[Test]
     public function aFlowNothingHasPlayedIsDrawnWithAnEmptyTrace(): void
     {
@@ -133,11 +117,6 @@ final class DrawnFlowsTest extends DemonstrationTestCase
         static::assertSame([], $page->filter('ol.plan li[data-taken]')->each(static fn (Crawler $hop): string => (string) $hop->attr('data-hop')));
     }
 
-    /**
-     * The flows the demonstration drives itself are the ones the lab registered a client for
-     * (config/packages/demonstration.yaml): a flow that opens in a browser navigating away is replayed, and the page
-     * says which of the two it is.
-     */
     #[Test]
     public function aFlowTheLabHasNoClientForIsNotPlayedFromThePage(): void
     {

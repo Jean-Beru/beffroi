@@ -13,18 +13,8 @@ use Symfony\Component\KeyManagement\BlindIndex\ProjectionInterface;
 use function trim;
 
 /**
- * An address folded whole, its local part as well as its domain (issue #781): `Bob@acme.example` and
- * `bob@acme.example` share a tag.
- *
- * RFC 5321 §2.4 leaves the case of a local part to the receiving server, and every server a person of a
- * tenant reads their mail on ignores it. An index that told the two apart would let a second person hold
- * `bob@acme.example` beside the `Bob@acme.example` of somebody else, and an upstream provider that names the
- * second would have this provider create them with a verified address that is the mailbox of the first.
- * So this provider counts one mailbox where the component, which follows the letter of the RFC, counts
- * two, and the component says that is a projection of one's own to write (`Email`).
- *
- * The domain is folded as the component folds it (`EmailDomain`), and the local part in lowercase, as
- * `EmailAddress::isTheSameMailboxAs()` folds it for the adapters in memory.
+ * Folds the local part too, which RFC 5321 §2.4 leaves to the receiving server: told apart by case, a second person
+ * could hold the mailbox of a first, verified by an upstream provider.
  */
 final class FoldedEmailAddress implements ProjectionInterface
 {

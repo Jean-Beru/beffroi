@@ -15,9 +15,7 @@ use Beffroi\Oidc\Port\ServedGrantsInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * RFC 8628 §3.4: the client asks the token endpoint for the code it is holding, and is told to wait
- * until its user has answered somewhere else. The hop repeats, which is why it is asked again on every
- * advance until it is answered.
+ * RFC 8628 §3.4
  */
 final readonly class PollForTheTokensOfADeviceFlow implements DrivenHopInterface
 {
@@ -34,7 +32,6 @@ final readonly class PollForTheTokensOfADeviceFlow implements DrivenHopInterface
         }
 
         return new DrivenCall(Request::METHOD_POST, $endpoints->token, [
-            // the grant of the run, read from the run: the demonstration writes no name of a grant
             'grant_type' => $trace->grantType,
             Holdings::DEVICE_CODE => $deviceCode,
         ]);

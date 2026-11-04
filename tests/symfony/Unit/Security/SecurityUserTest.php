@@ -21,8 +21,7 @@ use Symfony\Component\Uid\Uuid;
 use function unserialize;
 
 /**
- * Architecture §5.4, decision 0002: the adapter the security component sees, over a user of the core
- * and never over the User of another application.
+ * Architecture §5.4, Decision 0002
  */
 final class SecurityUserTest extends TestCase
 {
@@ -69,10 +68,6 @@ final class SecurityUserTest extends TestCase
         static::assertFalse(new SecurityUser($user, null)->enabled);
     }
 
-    /**
-     * The token of the firewall goes to the HTTP session between two requests: the identifier, the
-     * username, the state and the hash survive, the entities do not.
-     */
     #[Test]
     public function theSerialisedFormHoldsNoEntity(): void
     {
@@ -145,9 +140,6 @@ final class SecurityUserTest extends TestCase
         unserialize('O:25:"App\Security\SecurityUser":1:{s:2:"id";s:3:"foo";}');
     }
 
-    /**
-     * A rename does not sign the other browsers out.
-     */
     #[Test]
     public function aRenamedUserIsStillEqual(): void
     {
@@ -161,9 +153,6 @@ final class SecurityUserTest extends TestCase
         static::assertTrue($adapter->isEqualTo(new SecurityUser($user, new PasswordCredential(Uuid::v7(), $user, $hash, Fixtures::now()))));
     }
 
-    /**
-     * A password change signs the other browsers out.
-     */
     #[Test]
     public function aUserWithAnotherHashIsNotEqual(): void
     {
@@ -177,9 +166,6 @@ final class SecurityUserTest extends TestCase
         static::assertFalse($adapter->isEqualTo(new SecurityUser($user, null)));
     }
 
-    /**
-     * Another user never compares equal, nor does a user of another application.
-     */
     #[Test]
     #[DataProvider('provideOtherUsers')]
     public function anotherUserIsNotEqual(UserInterface $other): void

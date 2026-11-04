@@ -14,8 +14,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
 /**
- * RFC 7523 §3 and §4: an assertion authenticates once, and the "jti" that says so is remembered until it
- * expires.
+ * RFC 7523 §3, §4
  */
 final class ClientAssertionReplayGuardTest extends TestCase
 {
@@ -26,7 +25,7 @@ final class ClientAssertionReplayGuardTest extends TestCase
     protected function setUp(): void
     {
         $this->guard = new ClientAssertionReplayGuard(new SeenOnce(new ArrayAdapter()));
-        // the pool expires an item against the wall clock, so the assertion expires ahead of it
+        // The pool expires its items against the wall clock, so the assertion expires an hour ahead of it.
         $this->expiresAt = new DateTimeImmutable('+1 hour');
     }
 
@@ -49,7 +48,7 @@ final class ClientAssertionReplayGuardTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: a "jti" is unique to the client that issued it, and two clients may use the same one.
+     * RFC 7523 §3
      */
     #[Test]
     public function twoClientsMayUseTheSameIdentifier(): void

@@ -12,10 +12,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
- * Issue #450, architecture §5.5: the console says where a person is signed in and ends one of those
- * sessions, for an administrator asked to do it for somebody. It ends the same thing as the page of the
- * account, the rule being the use case's and not the command's, and a command that reads is not the
- * command that writes.
+ * Architecture §5.5
  */
 final class SessionsTest extends ConsoleTestCase
 {

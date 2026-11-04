@@ -15,9 +15,7 @@ use Beffroi\Oidc\Port\ServedGrantsInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * RFC 7662 §2.1: the resource server the token was spent at hands it over and is told what it is. The
- * demonstration stands in for that resource server, which is why this hop is drawn from the fourth
- * actor of the picture and not from the client.
+ * RFC 7662 §2.1
  */
 final readonly class IntrospectTheToken implements DrivenHopInterface
 {

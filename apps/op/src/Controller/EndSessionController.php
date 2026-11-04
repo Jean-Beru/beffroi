@@ -28,14 +28,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The end session endpoint (RP-Initiated Logout §2), GET or POST. A request a client posted from another site
- * without the session cookie is posted again from the origin of the provider first (CrossSitePost), so that the
- * session it would end is the one the browser holds and the confirmation page is one the browser can answer. An error
- * is a page, never a redirection (§4). The confirmation page re-submits the same parameters with the answer and the CSRF
- * token; a "no" ends nothing and sends the user nowhere. A session that ended and whose clients
- * registered a front-channel logout URI leaves through the page that loads them (Front-Channel Logout
- * 1.0 §3), then through the SAML service providers it signed in, each told in turn (beffroi/saml S-29 to
- * S-35), which is what then sends the browser back to the client that asked.
+ * RP-Initiated Logout §2, §4, Front-Channel Logout 1.0 §3
  */
 #[AsController]
 final readonly class EndSessionController
@@ -46,9 +39,6 @@ final readonly class EndSessionController
 
     public const string CONFIRM_YES = 'yes';
 
-    /**
-     * The parameters of §2 the confirmation page carries over.
-     */
     public const array PARAMETERS = ['id_token_hint', 'client_id', 'post_logout_redirect_uri', 'state', 'logout_hint', 'ui_locales'];
 
     public function __construct(
@@ -104,12 +94,8 @@ final readonly class EndSessionController
         if ($decision instanceof LogoutConfirmationRequired) {
             $postLogoutRedirectUri = $decision->request->postLogoutRedirectUri;
             if ($postLogoutRedirectUri !== null) {
-                // a confirmed logout ends where the client asked to be sent back, which this page names for
-                // the browser to follow the redirection that goes there (FormTarget)
                 $this->formTargets->mayEndAt($request, $postLogoutRedirectUri);
             }
-            // and the confirmed logout goes through the SAML service providers of the session first,
-            // redirections of the same submission (beffroi/saml S-36)
             $this->logoutChain->mayEnd($request, $decision->session);
 
             return $this->pages->render('logout.html.twig', [
@@ -124,9 +110,6 @@ final readonly class EndSessionController
         }
         if ($decision->endedSession !== null) {
             $this->browser->unbind($request->getSession());
-            // Front-Channel Logout 1.0 §3: the frames of the clients of the session, then each SAML
-            // service provider it signed in (beffroi/saml S-35), before the browser is sent back to the
-            // one that asked; a session nobody of those kinds signed in has none of it
             $page = $this->logoutChain->begin($tenant, [$decision->endedSession], $decision->redirect?->toUri());
             if ($page !== null) {
                 return $page;
@@ -145,7 +128,7 @@ final readonly class EndSessionController
     /**
      * @param array<string, mixed> $parameters
      *
-     * @return array<string, string> the ones that were single strings, which is what the parser accepted
+     * @return array<string, string>
      */
     private static function carriedOver(array $parameters): array
     {

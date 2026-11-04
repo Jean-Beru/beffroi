@@ -14,9 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Issue #482, architecture §5.2: what a person has changed of their own record, on a page of its own under
- * the page of their information. It is the one thing of that record that grows without end, so it is read
- * in pages and over the stretch of time asked for.
+ * Architecture §5.2
  */
 final class AccountClaimChangesTest extends BrowserTestCase
 {
@@ -52,9 +50,6 @@ final class AccountClaimChangesTest extends BrowserTestCase
         static::assertCount(1, $page->filter('table[data-changes="0"] tr[data-empty]'));
     }
 
-    /**
-     * A history grows without end, so the page reads one page of it and says where the rest is.
-     */
     #[Test]
     public function theHistoryIsReadInPages(): void
     {
@@ -74,10 +69,6 @@ final class AccountClaimChangesTest extends BrowserTestCase
         static::assertSame('/account/profile/changes?page=2', $page->filter('a[data-pager="next"]')->attr('href'));
     }
 
-    /**
-     * Issue #446: a table that grows without end is narrowed before it is paged, and what the control
-     * under it counts is what the reader asked for.
-     */
     #[Test]
     public function thePeriodNarrowsTheHistoryToTheDaysItNames(): void
     {
@@ -96,10 +87,6 @@ final class AccountClaimChangesTest extends BrowserTestCase
         static::assertSame('/account/profile/changes', $page->filter('a[data-filter="clear"]')->attr('href'));
     }
 
-    /**
-     * A period that ends before it starts is a link written by hand: the table is read whole, and the
-     * filter shows that nothing narrows it rather than showing a stretch of time nobody can have meant.
-     */
     #[Test]
     public function aPeriodThatEndsBeforeItStartsNarrowsNothing(): void
     {

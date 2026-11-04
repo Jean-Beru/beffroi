@@ -11,7 +11,7 @@ use function rawurlencode;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * RFC 6749 §3.1 and §3.2, RFC 6750 §2.3: where the parameters of a request are read from.
+ * RFC 6749 §3.1, §3.2, RFC 6750 §2.3
  */
 final class RequestParametersTest extends TestCase
 {
@@ -65,10 +65,6 @@ final class RequestParametersTest extends TestCase
         );
     }
 
-    /**
-     * A name PHP decodes into a structure of its own reaches the module as the array PHP made of it,
-     * for the module to refuse it where its specification takes a single string.
-     */
     #[Test]
     public function aParameterPhpDecodesIntoAnArrayIsHandedOverAsOne(): void
     {
@@ -85,8 +81,7 @@ final class RequestParametersTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: "resource" may be sent several times. PHP keeps the last occurrence of a repeated
-     * name, so the occurrences are counted on the query itself and handed over as the list they were.
+     * RFC 8707 §2
      */
     #[Test]
     public function aNameTheQueryCarriesTwiceIsHandedOverAsTheListItWas(): void
@@ -108,7 +103,7 @@ final class RequestParametersTest extends TestCase
     }
 
     /**
-     * The same of an encoded form, which is what the token endpoint reads (RFC 6749 §3.2).
+     * RFC 6749 §3.2
      */
     #[Test]
     public function aNameTheFormCarriesTwiceIsHandedOverAsTheListItWas(): void
@@ -138,9 +133,6 @@ final class RequestParametersTest extends TestCase
         );
     }
 
-    /**
-     * A name sent once is what PHP decoded of it, whatever the source says.
-     */
     #[Test]
     public function aNameSentOnceKeepsTheValuePhpDecoded(): void
     {
@@ -156,9 +148,6 @@ final class RequestParametersTest extends TestCase
         );
     }
 
-    /**
-     * A body of another shape is read by whoever knows that shape, and nothing is counted on it.
-     */
     #[Test]
     public function nothingIsCountedOnABodyThatIsNotAnEncodedForm(): void
     {
@@ -186,9 +175,6 @@ final class RequestParametersTest extends TestCase
         );
     }
 
-    /**
-     * A key that is not a name is no parameter of the protocol.
-     */
     #[Test]
     public function aNumericKeyIsDropped(): void
     {

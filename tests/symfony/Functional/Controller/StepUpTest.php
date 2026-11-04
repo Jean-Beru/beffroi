@@ -11,22 +11,14 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The acceptance of issue #92 on the authorization endpoint (decision 0010, architecture §4.3), decided
- * per user since issue #110: a password session of a user who holds a passkey, asked for a class only a
- * passkey proves, is sent to the login page for the missing factor, the passkey proven on the same
- * session satisfies the request and the ID token says so; the same request from a user without a passkey
- * is refused before any page when essential, answered with what the session has when voluntary; a class
- * the tenant does not name is refused before any login; a login that satisfies nothing is the way back to
- * the client. The browser holds a session of the core signed in with a password.
+ * Decision 0010, Architecture §4.3
  */
 final class StepUpTest extends PasskeyTestCase
 {
     private const string PASSWORD = 'correct horse battery staple';
 
     /**
-     * Decision 0010: essential or voluntary, a requested class the provider can prove, the session does
-     * not satisfy and a passkey of the user would is a step-up, told to the page with the classes and the
-     * kind of credential of the user that would do; the password form stays, it is the way back.
+     * Decision 0010
      *
      * @param array<string, string> $parameters
      */
@@ -69,9 +61,7 @@ final class StepUpTest extends PasskeyTestCase
     }
 
     /**
-     * Architecture §4.3: a user without a passkey can do nothing on the login page about an essential
-     * "phr": the request goes back to the client as unmet_authentication_requirements before any page,
-     * with the state and the issuer, as for a class the provider cannot prove.
+     * Architecture §4.3
      *
      * @param array<string, string> $parameters
      */
@@ -109,8 +99,7 @@ final class StepUpTest extends PasskeyTestCase
     }
 
     /**
-     * Architecture §4.3: a voluntary "phr" from a user without a passkey is answered at once with the
-     * class the session has, "1" for a password; no page.
+     * Architecture §4.3
      */
     #[Test]
     public function aPasswordSessionWithoutAPasskeyAskedForAVoluntaryPasskeyClassGetsTheCodeAtOnceWithTheCurrentClass(): void
@@ -145,10 +134,7 @@ final class StepUpTest extends PasskeyTestCase
     }
 
     /**
-     * Architecture §4.3: with prompt=login, as the re-authentication of Symfony sends it, a voluntary
-     * "phr" from a user without a passkey leaves the login the prompt asks for, and the page asks for a
-     * new login, not for a factor the user does not have; the passkey form stays, a passkey enrolled
-     * meanwhile on the account page satisfies the request, which is what castor demo --passkey plays.
+     * Architecture §4.3
      */
     #[Test]
     public function aPasswordSessionWithoutAPasskeyAskedForAVoluntaryPasskeyClassWithPromptLoginGetsAPlainReauthentication(): void
@@ -171,10 +157,7 @@ final class StepUpTest extends PasskeyTestCase
     }
 
     /**
-     * The third success criterion of the spike, on the provider's side: the passkey proven on the
-     * password session during the step-up satisfies "phr", the ID token carries "acr" "phr", the methods
-     * of both factors with "mfa" (RFC 8176 §2), "auth_time" moved to the passkey; one session on the OP,
-     * no second one opened.
+     * RFC 8176 §2
      */
     #[Test]
     public function thePasskeyProvenDuringTheStepUpSatisfiesTheRequestAndTheIdTokenSaysSo(): void
@@ -221,9 +204,7 @@ final class StepUpTest extends PasskeyTestCase
     }
 
     /**
-     * OIDC Core §5.5.1.1: an essential class still unsatisfied after the login, the user having signed in
-     * with the password again, goes back to the client as unmet_authentication_requirements, with the
-     * state and the issuer; no second login page.
+     * OIDC Core §5.5.1.1
      */
     #[Test]
     public function anEssentialClassStillUnsatisfiedAfterTheLoginGoesBackToTheClient(): void
@@ -251,8 +232,7 @@ final class StepUpTest extends PasskeyTestCase
     }
 
     /**
-     * OIDC Core §5.5.1.1: a voluntary class still unsatisfied after the login is answered with the class
-     * the session has, "1" for a password.
+     * OIDC Core §5.5.1.1
      */
     #[Test]
     public function aVoluntaryClassStillUnsatisfiedAfterTheLoginGetsTheCodeWithTheCurrentClass(): void
@@ -293,7 +273,7 @@ final class StepUpTest extends PasskeyTestCase
     }
 
     /**
-     * OIDC Core §3.1.2.6: prompt=none with a step-up is login_required, redirected.
+     * OIDC Core §3.1.2.6
      */
     #[Test]
     public function promptNoneWithAStepUpIsLoginRequired(): void
@@ -313,10 +293,6 @@ final class StepUpTest extends PasskeyTestCase
         static::assertSame('login_required', self::redirectedQuery($response)['error']);
     }
 
-    /**
-     * A session that already satisfies the class asked for is not asked anything: the code at once,
-     * with that class.
-     */
     #[Test]
     public function aSessionSatisfyingTheClassAskedForGetsTheCodeAtOnce(): void
     {

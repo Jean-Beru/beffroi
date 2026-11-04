@@ -9,10 +9,7 @@ use function rawurldecode;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * The client a call to this provider names (RFC 6749 §2.3.1, §3.2.1): the "client_id" it carries, or the
- * user half of the credentials it authenticated with, which a client registered for
- * "client_secret_basic" sends form-urlencoded. Read the same way at every endpoint that names a client,
- * so that no endpoint of the demonstration reads it its own way.
+ * RFC 6749 §2.3.1, §3.2.1
  */
 final readonly class NamedClient
 {

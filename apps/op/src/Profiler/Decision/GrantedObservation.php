@@ -11,8 +11,7 @@ use Beffroi\Oidc\Domain\Interaction\Granted;
 use function implode;
 
 /**
- * The answer that goes back to the client and the mode it goes back in; the names of the parameters and
- * never their values, a code being a credential.
+ * The names of the parameters of the answer and never their values: a code is a credential.
  */
 final readonly class GrantedObservation implements DecisionObservationInterface
 {

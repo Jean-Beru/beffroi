@@ -8,10 +8,6 @@ use function count;
 use App\Controller\AccountProfileController;
 use Beffroi\Core\Domain\Identity\User;
 
-/**
- * What this provider holds about the person, on the home page: how much of it they told us. What each
- * thing is, and what the account itself holds beside it, is on the page of the information.
- */
 final readonly class ProfileSection implements AccountSectionInterface
 {
     public function route(): string

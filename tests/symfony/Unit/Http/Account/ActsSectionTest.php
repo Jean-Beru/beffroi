@@ -20,10 +20,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * What the home of the account says of its acts (issue #842): how many of the last attempts to sign in as
- * the person were refused, and not how many refusals the journal holds.
- */
 final class ActsSectionTest extends TestCase
 {
     #[Test]
@@ -70,10 +66,6 @@ final class ActsSectionTest extends TestCase
     }
 
     /**
-     * The card says that somebody tried and did not recently, and what bounds "recently" is a number of
-     * attempts: a refusal the person has signed in past that many times is behind them, and of a long run
-     * of refusals only those the last attempts still hold are counted.
-     *
      * @param list<string> $acts the oldest first
      */
     #[Test]
@@ -118,10 +110,6 @@ final class ActsSectionTest extends TestCase
         ];
     }
 
-    /**
-     * A proof is how a sign-in got in and not an attempt of its own, and the other acts of an account are
-     * nobody trying: however many of them follow a refusal, they push it out of nothing.
-     */
     #[Test]
     #[DataProvider('provideActsThatAreNoAttempt')]
     public function anActThatIsNoAttemptTakesNoPlaceAmongTheLastAttempts(string $act): void
@@ -153,7 +141,7 @@ final class ActsSectionTest extends TestCase
     }
 
     /**
-     * @param list<string> $acts the acts of that person, the oldest first
+     * @param list<string> $acts the oldest first
      */
     private static function section(User $user, array $acts): ActsSection
     {

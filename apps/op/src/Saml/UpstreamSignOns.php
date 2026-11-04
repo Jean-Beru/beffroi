@@ -20,16 +20,7 @@ use function is_string;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 /**
- * The requests the service provider of a tenant sent upstream identity providers for the logins of a browser
- * (beffroi/saml, spec/saml.md S-50): kept in the HTTP session of that browser and never in a URL, each under the
- * reference its RelayState carries, 32 bytes of random_bytes() and nothing else, with the ID of the request, the entity
- * ID of the provider it was sent to, whether it carried ForceAuthn, the instant it was issued, the tenant, and the
- * interaction it serves or, for the login a page of the provider waits for (S-51), that page and the step-up it asked
- * for as LoginTarget remembered them when the request was sent; at most eight, the oldest forgotten first, as the
- * requests that wait for a login are kept (WaitingSignOns). The assertion consumer service takes there what a response
- * answers and which interaction or page it resumes (S-53, S-59), forgetting it as it reads it; another browser holds
- * none of them. Whether the request carried ForceAuthn tells the request sent once more from the one answered with
- * login_required (S-58), and the instant it was issued bounds its wait (section 7).
+ * beffroi/saml S-50
  *
  * @phpstan-type StepUp array{classes: non-empty-list<string>, kinds: non-empty-list<string>}
  * @phpstan-type Common array{tenant: string, request: string, identity_provider: string, force_authn: bool, issued_at: int}
@@ -42,8 +33,7 @@ final readonly class UpstreamSignOns
     public const int MAX_KEPT = 8;
 
     /**
-     * Section 7: the wait of a request for a login (S-18), so that a request of the service provider waits as long as
-     * an interaction.
+     * Seconds, as long as an interaction waits (spec/saml.md section 7).
      */
     public const int WAIT = 600;
 
@@ -80,9 +70,7 @@ final readonly class UpstreamSignOns
     }
 
     /**
-     * The request the RelayState of a response names, forgotten as it is read so that a form posted again finds
-     * nothing (S-53): null when this browser remembers none under it, when it was sent for another tenant, or when its
-     * wait is over.
+     * Forgotten as it is read, so that a form posted again finds nothing (beffroi/saml S-53).
      */
     public function take(SessionInterface $httpSession, Tenant $tenant, string $relayState, DateTimeImmutable $now): ?RememberedSignOn
     {
@@ -116,8 +104,6 @@ final readonly class UpstreamSignOns
     }
 
     /**
-     * What the session holds, an entry that is not one left out.
-     *
      * @return array<string, Kept>
      */
     private static function kept(SessionInterface $httpSession): array
@@ -163,8 +149,6 @@ final readonly class UpstreamSignOns
     }
 
     /**
-     * What every entry holds, as keep() wrote it; null when it does not.
-     *
      * @param array<array-key, mixed> $entry
      *
      * @return Common|null
@@ -190,8 +174,6 @@ final readonly class UpstreamSignOns
     }
 
     /**
-     * The page an entry serves, as keep() wrote it; null when it is not one.
-     *
      * @return array{route: string, parameters: array<string, string>}|null
      */
     private static function page(mixed $page): ?array
@@ -214,8 +196,6 @@ final readonly class UpstreamSignOns
     }
 
     /**
-     * The step-up a page asked for, as keep() wrote it; null when it asked for none, or when it is not one.
-     *
      * @return StepUp|null
      */
     private static function stepUp(mixed $stepUp): ?array

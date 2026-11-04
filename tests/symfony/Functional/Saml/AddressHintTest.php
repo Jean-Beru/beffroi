@@ -34,11 +34,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * beffroi/saml, spec/saml.md S-68, the acceptance of issue #816: in a deployment whose tenant is a service provider
- * (tests/symfony/config/config_test_service_provider.yml), the SimpleSAMLphp identity provider of the judge declared
- * with the parameter of its single sign-on service that takes the address, login_hint, as Entra reads it, the address
- * a person typed on the login page reaches that provider in that parameter over both bindings, the request still
- * signed as it was; a provider declared without it, and a sign-on started without an address, send none.
+ * beffroi/saml, spec/saml.md S-68
  */
 final class AddressHintTest extends ConsoleTestCase
 {
@@ -54,8 +50,7 @@ final class AddressHintTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #816, S-68, Bindings §3.4.4.1: over HTTP-Redirect, the address typed reaches the single
-     * sign-on service of the provider in the parameter its declaration names, after the Signature.
+     * S-68, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function overHttpRedirectTheAddressTypedFollowsTheSignature(): void
@@ -76,8 +71,7 @@ final class AddressHintTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #816, S-68, S-48: over HTTP-Redirect, the request that carries the address is still the
-     * one the provider accepts signed over its query string, the address outside what the signature covers.
+     * S-68, S-48
      */
     #[Test]
     public function overHttpRedirectTheRequestCarryingTheAddressIsStillAcceptedSigned(): void
@@ -106,8 +100,7 @@ final class AddressHintTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #816, S-68: over HTTP-POST, the address typed is in the query of the action of the form,
-     * and the request it posts is still the one the provider accepts signed in its XML.
+     * S-68
      */
     #[Test]
     public function overHttpPostTheAddressTypedIsInTheQueryOfTheAction(): void
@@ -143,8 +136,7 @@ final class AddressHintTest extends ConsoleTestCase
     }
 
     /**
-     * S-68, S-60: an address typed in capitals or with its domain in a U-label reaches the provider with its domain
-     * written as its A-label, its local part as it was typed.
+     * S-68, S-60
      */
     #[Test]
     #[DataProvider('provideSpellings')]
@@ -173,7 +165,7 @@ final class AddressHintTest extends ConsoleTestCase
     }
 
     /**
-     * S-68, S-62: the login_hint of a client that skips the page reaches the provider as an address typed there does.
+     * S-68, S-62
      */
     #[Test]
     public function theLoginHintThatSkipsThePageReachesTheProvider(): void
@@ -196,8 +188,7 @@ final class AddressHintTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #816, S-68: a provider whose declaration names no parameter of the address is sent none
-     * for an address of its domain.
+     * S-68
      */
     #[Test]
     public function aProviderDeclaredWithoutTheParameterIsSentNoAddress(): void
@@ -216,8 +207,7 @@ final class AddressHintTest extends ConsoleTestCase
     }
 
     /**
-     * S-68: the address kept for a sign-on is taken by it, which the HTTP session holds no longer; the same sign-on
-     * presented again starts nothing (S-51, UpstreamSignOnTest).
+     * S-68, S-51
      */
     #[Test]
     public function theAddressIsTakenByTheSignOnItWasKeptFor(): void
@@ -236,8 +226,7 @@ final class AddressHintTest extends ConsoleTestCase
     }
 
     /**
-     * S-68, section 7: an interaction that ends before its sign-on is reached, here once its ten minutes
-     * are over, takes the address kept for that sign-on with it, which the HTTP session holds no longer.
+     * S-68, section 7
      */
     #[Test]
     public function anInteractionThatEndsTakesTheAddressItsSignOnNeverTookWithIt(): void
@@ -258,8 +247,6 @@ final class AddressHintTest extends ConsoleTestCase
     }
 
     /**
-     * An interaction begun at the authorization endpoint, which sends the browser to the login.
-     *
      * @param array<string, string> $parameters
      */
     private function beginAuthorization(array $parameters = []): string
@@ -271,10 +258,6 @@ final class AddressHintTest extends ConsoleTestCase
         return self::redirectedInteraction($response);
     }
 
-    /**
-     * The address typed on the login page of the interaction and posted, as a person posts it: the browser is sent to
-     * the sign-on of its provider.
-     */
     private function typeAddress(string $interaction, string $address): void
     {
         $form = $this->browser->request('GET', '/login', [
@@ -286,9 +269,6 @@ final class AddressHintTest extends ConsoleTestCase
         static::assertSame(Response::HTTP_SEE_OTHER, $response->getStatusCode(), self::string($response->getContent()));
     }
 
-    /**
-     * Where the answer redirects the browser, the single sign-on service named.
-     */
     private function redirection(string $singleSignOn): string
     {
         $response = $this->browser->getResponse();
@@ -300,9 +280,7 @@ final class AddressHintTest extends ConsoleTestCase
     }
 
     /**
-     * The names of the parameters of the query of a URL, in their order.
-     *
-     * @return list<string>
+     * @return list<string> in their order in the query
      */
     private static function parameterNames(string $url): array
     {
@@ -313,8 +291,6 @@ final class AddressHintTest extends ConsoleTestCase
     }
 
     /**
-     * The query of a URL, decoded.
-     *
      * @return array<array-key, mixed>
      */
     private static function query(string $url): array
@@ -325,9 +301,6 @@ final class AddressHintTest extends ConsoleTestCase
         return $query;
     }
 
-    /**
-     * The SAML key of the tenant, drawn as an operator draws it.
-     */
     private static function generate(): void
     {
         $tester = self::console('beffroi:keys:generate', [
@@ -336,18 +309,12 @@ final class AddressHintTest extends ConsoleTestCase
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
     }
 
-    /**
-     * The document of a declared identity provider accepted for the tenant.
-     */
     private static function accept(string $entityId, string $document): void
     {
         self::service('test.beffroi.saml_upstream_accepted_metadata', AcceptedMetadataRepositoryInterface::class)
             ->save(new AcceptedUpstreamMetadata(Uuid::v7(), self::tenant(), $entityId, $document, null, self::currentSecond()));
     }
 
-    /**
-     * The service provider of the tenant, as the provider reads the metadata it serves.
-     */
     private function serviceProvider(): ServiceProvider
     {
         $this->browser->request('GET', '/saml/sp/metadata');

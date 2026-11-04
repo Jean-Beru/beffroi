@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Where a client with no browser starts its flow (RFC 8628 §3.1) and is handed the code it shows.
+ * RFC 8628 §3.1
  */
 final readonly class TheDeviceAuthorizationEndpoint implements RecordedEndpointInterface
 {

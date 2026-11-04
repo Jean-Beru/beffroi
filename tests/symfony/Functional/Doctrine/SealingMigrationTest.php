@@ -20,27 +20,10 @@ use Symfony\Component\Uid\Uuid;
 use function implode;
 
 /**
- * What an operator reads when a migration seals a table: when the table holds rows, and when it does not.
- *
- * The refusal itself is intended: a sealed column is binary and accepts no null, so a row whose values are
- * in the clear has nothing to become, and decision 0011 settled that there is no migration path for such
- * rows, no deployment existing. What this holds is the sentence, because without it the server answers
- * with a null violation on a column nobody made nullable and says nothing about what to do.
- *
- * The second sentence is the one a migration cannot act on: a process that booted before it reads these
- * columns with the type they had, and with `text` nothing throws, the ciphertext coming back as a string.
- * It is written whenever the migration goes through, which is also why it is asserted on an empty table.
- *
- * Both run on `preUp()`, which the executor of the migrations calls before `up()` and which nothing of
- * MigrationTest calls, that test comparing the DDL of every migration with the mappings without a database
- * at all.
+ * Decision 0011
  */
 final class SealingMigrationTest extends DatabaseTestCase
 {
-    /**
-     * The sentence names the table, how many rows it holds, and the two ways out: an operator running
-     * several of these knows which table to empty and what emptying it means.
-     */
     #[Test]
     public function aTableThatHoldsRowsIsRefusedWithTheTwoWaysOut(): void
     {
@@ -74,10 +57,6 @@ final class SealingMigrationTest extends DatabaseTestCase
         }
     }
 
-    /**
-     * Every migration of this kind, and not only the first: each one names the table it recreates columns
-     * of, and a migration that named none would refuse nothing at all.
-     */
     #[Test]
     public function theMigrationOfTheLinkedIdentitiesNamesItsOwnTable(): void
     {
@@ -93,9 +72,6 @@ final class SealingMigrationTest extends DatabaseTestCase
         $migration->preUp(new Schema());
     }
 
-    /**
-     * An empty table is what every migration of this kind expects, and it says nothing then.
-     */
     #[Test]
     public function anEmptyTableIsNotRefused(): void
     {
@@ -109,10 +85,6 @@ final class SealingMigrationTest extends DatabaseTestCase
         static::assertSame([], $migration->getSql());
     }
 
-    /**
-     * Going back is refused for the same reason and not the opposite one: nothing unseals a value, so a row
-     * would come back out of a column that no longer holds its ciphertext.
-     */
     #[Test]
     public function goingBackOnATableThatHoldsRowsIsRefusedToo(): void
     {
@@ -128,10 +100,6 @@ final class SealingMigrationTest extends DatabaseTestCase
         $migration->preDown(new Schema());
     }
 
-    /**
-     * The sentence names the tables, says to restart what reads them, and says that a column typed `text`
-     * comes back as the ciphertext without anything throwing, which is the case nobody would look for.
-     */
     #[Test]
     public function theWordsSayToRestartWhatReadsTheColumnsAndThatOneCaseIsSilent(): void
     {
@@ -151,10 +119,6 @@ final class SealingMigrationTest extends DatabaseTestCase
         static::assertStringContainsString('a column typed "text" does not, and returns the ciphertext as a string', $notices);
     }
 
-    /**
-     * Going back changes the type of the same columns in the other direction, so a process that booted
-     * before it reads them with the type they had just as much.
-     */
     #[Test]
     public function goingBackSaysToRestartThemToo(): void
     {

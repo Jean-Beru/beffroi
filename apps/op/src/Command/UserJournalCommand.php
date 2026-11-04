@@ -28,19 +28,6 @@ use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * What happened in the name of one person, for whoever answers for the instance (issue #591): one row per
- * act of their journal over a stretch of time, most recent first, each with the application it was done on
- * behalf of and where the request came from.
- *
- * It is the console counterpart of the page that shows the same rows, as "beffroi:user:applications" is of
- * the applications of an account. It reads and writes nothing: a request under article 15 of the GDPR is
- * answered from here, and the person reads the same acts in their own archive.
- *
- * **It says what the journal does not have.** A reading asked for a stretch of time the retention cannot
- * cover is answered with the duration this deployment keeps and the day it reaches, never with an empty
- * table: a register that looks complete and is not is worse than one that says where it stops.
- */
 #[AsCommand(
     name: self::NAME,
     description: 'List the acts of a user over a period, with the application each one was done on behalf of; for answering a request about what happened in their name.',
@@ -53,11 +40,6 @@ final readonly class UserJournalCommand
 
     public const string JSON = 'json';
 
-    /**
-     * How many acts one page reads. A bound and not a tuning, as the chapter of the archive has one: what
-     * fixes how much is printed is the period and the retention, and this fixes how much is in memory at
-     * once.
-     */
     public const int READ_AT_ONCE = 200;
 
     public function __construct(
@@ -114,9 +96,6 @@ final readonly class UserJournalCommand
     }
 
     /**
-     * The whole of what the question asks, read page by page: the journal of a person is not a query that
-     * holds the table, and what a reading of it prints is every row it asked for.
-     *
      * @return list<JournalEntry>
      */
     private function everyActOf(User $user, JournalQuestion $question): array
@@ -160,9 +139,6 @@ final readonly class UserJournalCommand
     }
 
     /**
-     * A document and not a terminal, because what a register is attached to is a file: the same shape the
-     * journal chapter of an archive writes, with what the retention can answer for beside it.
-     *
      * @param list<JournalEntry> $acts
      */
     private function writeDocument(SymfonyStyle $io, User $user, ?Period $period, array $acts): int
@@ -187,10 +163,6 @@ final readonly class UserJournalCommand
         return Command::SUCCESS;
     }
 
-    /**
-     * What this deployment keeps, said whenever the reading reaches past it: a period that starts before
-     * the retention holds anything, and a reading that named no first day at all.
-     */
     private function whereTheJournalStops(?Period $period): string
     {
         $since = $this->retention->keptSince();
@@ -206,11 +178,7 @@ final readonly class UserJournalCommand
     }
 
     /**
-     * A day as the shell handed it over, on UTC, which is the clock the rows are held on: the pages of an
-     * account are where a date is read in the time zone of the person (issue #469); a register attached to
-     * an answer says one clock.
-     *
-     * @throws InvalidArgumentException when it is not a day
+     * @throws InvalidArgumentException
      */
     private static function day(?string $asked, string $option): ?DateTimeImmutable
     {

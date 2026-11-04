@@ -16,21 +16,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * The enrolment of an authenticator app in progress (architecture §5.2): the QR code, the key for a manual
- * entry, and the field the first code is typed into.
- *
- * **It is a page and not the answer of a form** (issue #481). The step that draws the provisioning posts,
- * and a POST whose answer is this page is a page a browser offers to send again: reloading it would draw a
- * second secret and quietly make the QR code being scanned worthless. So the step that draws redirects
- * here, and here reads what it drew from the session of this browser (TotpProvisioningStore).
- *
- * A browser with nothing drawn is sent back to the page of the second factor saying so, which is what a
- * person reloading this page past the ten minutes of a provisioning gets.
- *
- * **A session alone does not open it** (AsksForARecentProofInterface): what this page draws becomes a way
- * in the moment the first code holds.
- */
 #[AsController]
 final readonly class AccountTwoFactorEnrolmentController implements AsksForARecentProofInterface
 {

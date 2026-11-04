@@ -17,19 +17,7 @@ use function rawurlencode;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Issue #641, RFC 8693 §2.2.1 and OIDC Core §8.1: the resources of this provider answer for the person a
- * self-contained exchanged token is about, which is the walk of issue #601 with the gateway's own tokens
- * carrying their claims instead of pointing at a row.
- *
- * Two clients and a sector each. The "sub" of the token the first one holds is the name that sector sees its
- * person under, and the token the exchange writes for the second one carries it, so looking it up under that
- * second client finds nobody: what answers is the person the exchange resolved when it read what was
- * presented, which the token says and nothing on disk does. What it says of that person it says to this
- * provider alone, the name the account carries being the one a pairwise kind exists to keep from a client.
- *
- * The two reads an exchanged token reaches are here. It is addressed to a resource and never to the client
- * that holds it (RFC 8707 §2, RFC 8693 §2.1), so the UserInfo endpoint of this provider refuses it whatever
- * it says of a person, as it refuses every token asked for a resource (ResourceIndicatorFlowTest).
+ * RFC 8693 §2.1, §2.2.1, RFC 8707 §2, OIDC Core §8.1
  */
 final class ThePersonOfASelfContainedExchangeTest extends BrowserTestCase
 {
@@ -58,8 +46,7 @@ final class ThePersonOfASelfContainedExchangeTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7662 §2.2: the gateway is told what the token it holds is good for, and the "sub" it is described
-     * by is the one the token carries, which is the name the first client's sector sees its person under.
+     * RFC 7662 §2.2
      */
     #[Test]
     public function theIntrospectionOfASelfContainedExchangedTokenDescribesIt(): void
@@ -76,11 +63,6 @@ final class ThePersonOfASelfContainedExchangeTest extends BrowserTestCase
         static::assertSame(self::subjectOf($presented), $described['sub']);
     }
 
-    /**
-     * Issue #589: a read that describes a person is an act of this provider, so the journal of that person
-     * holds it. It is the one place the fix shows itself as a row: the answer names nobody when the "sub" of
-     * the token is read under the client that asked for it.
-     */
     #[Test]
     public function theIntrospectionOfASelfContainedExchangedTokenIsInTheJournalOfItsPerson(): void
     {
@@ -97,8 +79,7 @@ final class ThePersonOfASelfContainedExchangeTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8693 §2.1: a token a gateway was given for the subject of another one is itself exchangeable, and
-     * what the second exchange is about is the person the token says and not the "sub" the gateway holds.
+     * RFC 8693 §2.1
      */
     #[Test]
     public function aSelfContainedExchangedTokenIsExchangedAgainForThePersonItIsAbout(): void
@@ -115,9 +96,7 @@ final class ThePersonOfASelfContainedExchangeTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §8.1: the name the account carries is the one that links a person across sectors, so nothing
-     * the gateway is handed carries it. What the provider wrote there it reads itself, and the gateway holds
-     * the same two names it held before, the "sub" of the first client's sector and nothing of this one.
+     * OIDC Core §8.1
      */
     #[Test]
     public function aSelfContainedExchangedTokenNamesThePersonToNobodyHoldingIt(): void
@@ -136,8 +115,7 @@ final class ThePersonOfASelfContainedExchangeTest extends BrowserTestCase
     }
 
     /**
-     * An access token of the client the person signed in to, addressed to the calendar (RFC 8707 §2): what
-     * the gateway presents at the exchange, carrying the "sub" that client's sector sees its person under.
+     * RFC 8707 §2
      */
     private function tokenOfThePerson(): string
     {
@@ -166,8 +144,7 @@ final class ThePersonOfASelfContainedExchangeTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8693 §2.1: the gateway exchanges what it was given for a token of its own, self-contained, so
-     * that the person this provider resolved travels in the token and is kept nowhere.
+     * RFC 8693 §2.1
      */
     private function exchanged(string $subjectToken): string
     {
@@ -188,7 +165,7 @@ final class ThePersonOfASelfContainedExchangeTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7662 §2.1: what the gateway is told of a token of its own.
+     * RFC 7662 §2.1
      *
      * @return array<string, mixed>
      */
@@ -208,8 +185,7 @@ final class ThePersonOfASelfContainedExchangeTest extends BrowserTestCase
     }
 
     /**
-     * The "sub" of an "at+jwt" of the first client, which is the pairwise identifier of its sector
-     * (OIDC Core §8.1).
+     * OIDC Core §8.1
      */
     private static function subjectOf(string $accessToken): string
     {

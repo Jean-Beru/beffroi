@@ -18,15 +18,11 @@ use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\inline_service;
 
 /**
- * How a section reads what was written under its key. The tree has already refused anything of the
- * wrong shape; what is left is that a value may still be an environment placeholder, a string the
- * container resolves into a number only at runtime, so a section never casts and never assumes.
+ * A value may still be an environment placeholder, resolved only at runtime: a section never casts it.
  */
 abstract readonly class ConfigurationSection implements ConfigurationSectionInterface
 {
     /**
-     * What was written under this section's own key.
-     *
      * @param array<array-key, mixed> $config
      *
      * @return array<array-key, mixed>
@@ -92,12 +88,7 @@ abstract readonly class ConfigurationSection implements ConfigurationSectionInte
     }
 
     /**
-     * A DateInterval built by the container from a number of seconds the tree holds to a floor, a second unless the
-     * node lets it be none, and, where it names one, to a maximum, held to the same bounds when it is built: an
-     * environment placeholder is a number only then (BoundedNumber).
-     *
      * @param array<array-key, mixed> $section
-     * @param string|null $named what the refusal calls the node, its key unless the key alone names several
      */
     protected static function bounded(array $section, string $key, ?int $maximum = null, ?string $named = null, int $minimum = 1): object
     {
@@ -110,11 +101,7 @@ abstract readonly class ConfigurationSection implements ConfigurationSectionInte
     }
 
     /**
-     * A Timeout built by the container from a number of seconds the tree holds to Timeout::MINIMUM, held to it when it
-     * is built (BoundedNumber).
-     *
      * @param array<array-key, mixed> $section
-     * @param string $named what the refusal calls the node, every section naming its timeout alike
      */
     protected static function timeout(array $section, string $key, string $named): object
     {
@@ -127,11 +114,7 @@ abstract readonly class ConfigurationSection implements ConfigurationSectionInte
     }
 
     /**
-     * A ByteLimit built by the container from a number of bytes the tree holds to one at least, held to it when it is
-     * built (BoundedNumber).
-     *
      * @param array<array-key, mixed> $section
-     * @param string $named what the refusal calls the node, every section naming its limit alike
      */
     protected static function bytes(array $section, string $key, string $named): object
     {
@@ -144,9 +127,6 @@ abstract readonly class ConfigurationSection implements ConfigurationSectionInte
     }
 
     /**
-     * A RetentionWindow built by the container from a number of days: what a store keeps and the moment
-     * before which it keeps nothing are one object, so no use case counts days from a number.
-     *
      * @param array<array-key, mixed> $section
      */
     protected static function days(array $section, string $key): object

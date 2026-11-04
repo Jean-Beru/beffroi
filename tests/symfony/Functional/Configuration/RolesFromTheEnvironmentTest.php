@@ -19,11 +19,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Decision 0030, issue #915: whether the tenant is a SAML identity provider, a SAML service provider, and whether it
- * reaches its users by push, a deployment names by environment, a role being read when the container builds what it
- * changes. The kernel of these tests switches each role by a variable (config_test_environment_roles.yml), so each test
- * names the values before it boots one, as a deployment names them before it starts, and a role turned off is
- * answered as one that was never declared (spec/saml.md S-40, S-41, architecture §5.6).
+ * Decision 0030, spec/saml.md S-40, S-41, architecture §5.6
  */
 final class RolesFromTheEnvironmentTest extends ConsoleTestCase
 {
@@ -52,7 +48,7 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
     }
 
     /**
-     * Spec/saml.md section 6.1: the identity provider the environment leaves on serves its metadata.
+     * Spec/saml.md section 6.1
      */
     #[Test]
     public function anIdentityProviderTheEnvironmentLeavesOnServesItsMetadata(): void
@@ -68,8 +64,7 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
     }
 
     /**
-     * S-41: the identity provider the environment turns off serves no metadata, though the tenant holds a SAML key in
-     * service for the service provider.
+     * S-41
      */
     #[Test]
     public function anIdentityProviderTheEnvironmentTurnsOffServesNoMetadata(): void
@@ -89,8 +84,7 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
     }
 
     /**
-     * Spec/saml.md section 6.9: the service provider the environment turns on serves its metadata, named by the URL of
-     * its metadata while the environment names no entity ID.
+     * Spec/saml.md section 6.9
      */
     #[Test]
     public function aServiceProviderTheEnvironmentTurnsOnServesItsMetadata(): void
@@ -109,7 +103,7 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
     }
 
     /**
-     * S-38: the service provider goes by the entity ID the environment names.
+     * S-38
      */
     #[Test]
     public function aServiceProviderGoesByTheEntityIdTheEnvironmentNames(): void
@@ -129,8 +123,7 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
     }
 
     /**
-     * S-41: the service provider the environment leaves off serves no metadata, though the tenant holds a SAML key in
-     * service for the identity provider.
+     * S-41
      */
     #[Test]
     public function aServiceProviderTheEnvironmentLeavesOffServesNoMetadata(): void
@@ -146,8 +139,7 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
     }
 
     /**
-     * S-40: with both roles turned off by the environment, the tenant draws no SAML key, its algorithm out of the
-     * registry of its family.
+     * S-40
      */
     #[Test]
     public function aTenantWhoseRolesTheEnvironmentTurnsOffDrawsNoSamlKey(): void
@@ -168,8 +160,7 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
     }
 
     /**
-     * Spec/saml.md section 5.1: the SAML key the tenant drew while the identity provider was on stays where it is once
-     * the environment turns both roles off, dormant: the keys of the tenant go on without it.
+     * Spec/saml.md section 5.1
      */
     #[Test]
     public function aSamlKeyDrawnBeforeTheEnvironmentTurnedTheRolesOffIsDormant(): void
@@ -188,8 +179,7 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
     }
 
     /**
-     * Architecture §5.6, RFC 8292 §2: web push is on while the environment names a subject, the tenant handing out
-     * the key of its algorithm.
+     * Architecture §5.6, RFC 8292 §2
      */
     #[Test]
     public function webPushIsOnWhileTheEnvironmentNamesASubject(): void
@@ -202,8 +192,7 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
     }
 
     /**
-     * Architecture §5.6: an empty subject is none, and web push is off: the tenant hands out no key, and nothing
-     * reaches anybody by push.
+     * Architecture §5.6
      */
     #[Test]
     public function webPushIsOffWhileTheEnvironmentNamesNoSubject(): void
@@ -221,8 +210,6 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
     }
 
     /**
-     * The deployment named before it starts: the variables, then a kernel booted on them.
-     *
      * @param array<string, string> $variables
      */
     private function deploy(array $variables): void
@@ -234,9 +221,6 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
         $this->browser->disableReboot();
     }
 
-    /**
-     * The SAML key of the tenant, drawn by the command an operator runs and active at once.
-     */
     private static function drawTheSamlKey(): void
     {
         $tester = self::console('beffroi:keys:generate', [

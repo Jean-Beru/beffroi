@@ -11,22 +11,8 @@ use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
-/**
- * The third parties whose signature the tenant trusts (architecture §5.1), keyed by the "iss" their assertions
- * carry. Whoever holds the signing key of one of them can name a user of this tenant and be answered with an
- * access token (RFC 7523 §2.1), so everything about it is written down here: the keys, the algorithms, the
- * clients that may present its assertions, the source of the identities it is about and what it is trusted
- * for. A tenant that declares none serves the grant to nobody.
- *
- * What one read of a "jwks_uri" of an issuer costs is read from "client_authentication" (ClientAuthenticationSection),
- * as the window of its assertions is: the bound belongs to the read and not to whoever registered the URL.
- */
 final readonly class TrustedIssuersSection extends ConfigurationSection
 {
-    /**
-     * RFC 7523 §3: an assertion is minted for one request. The default is the one client assertions take, for
-     * the same reason.
-     */
     public const int DEFAULT_ASSERTION_MAX_LIFETIME = 300;
 
     public const int DEFAULT_ASSERTION_LEEWAY = 30;
@@ -42,22 +28,16 @@ final readonly class TrustedIssuersSection extends ConfigurationSection
     }
 
     /**
-     * The trusted issuers of the tenant at runtime, from the list the configuration or the environment carries,
-     * held to the rules of the tree either way (decision 0030).
-     *
-     * @throws InvalidConfigurationException when the list is one the tree refuses
+     * @throws InvalidConfigurationException
      */
     public static function trustedIssuers(string $tenantSlug, mixed $definitions, SignatureAlgorithmsInterface $algorithms): ConfigurationTrustedIssuers
     {
-        /** @var array<string, array<string, mixed>> $issuers the tree declares each one the array of its children, keyed by its "iss" */
+        /** @var array<string, array<string, mixed>> $issuers */
         $issuers = self::issuers()->normalized($definitions, 'trusted_issuers');
 
         return new ConfigurationTrustedIssuers($tenantSlug, $issuers, $algorithms);
     }
 
-    /**
-     * The list as the tree declares it, which the environment may carry whole.
-     */
     private static function issuers(): EnvironmentListDefinition
     {
         $issuers = new EnvironmentListDefinition('trusted_issuers');

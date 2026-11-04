@@ -18,18 +18,6 @@ use function sprintf;
 use function str_contains;
 use function str_starts_with;
 
-/**
- * A payload as the demonstration shows it (issue #462): what travelled, written out indented when it is
- * JSON so that it can be read, and the compact JWTs it carries, each under the name the payload gave it.
- *
- * The raw is never rewritten: a form a client posted is drawn as the form it posted, and an address a
- * browser was moved to is drawn as that address. What is added is a reading beside it, so that a
- * request object, a JARM response, an "at+jwt" and a DPoP proof are read as what they are.
- *
- * Which of the three shapes a payload is, is read from the payload and not from a header: a trace holds
- * what travelled, and an answer of this provider is JSON, a request to it is a form, and what a
- * redirection carries is in the query of a URL.
- */
 final readonly class Payload
 {
     /**
@@ -55,9 +43,6 @@ final readonly class Payload
     }
 
     /**
-     * The fields of a form (RFC 6749 §4.1.3) or of the query of an address a browser was moved to
-     * (§4.1.2, JARM §4.1), and null for a payload that is neither.
-     *
      * @return array<array-key, mixed>|null
      */
     private static function query(string $raw): ?array
@@ -74,9 +59,6 @@ final readonly class Payload
     }
 
     /**
-     * Every string of a payload that reads as a compact JWT, under the name it is written at: "request",
-     * "access_token", "response", and the path of a field a payload holds several levels down.
-     *
      * @param array<array-key, mixed> $fields
      *
      * @return array<string, CompactJwt>

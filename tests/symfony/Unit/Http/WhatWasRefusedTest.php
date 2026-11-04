@@ -11,10 +11,6 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 
-/**
- * Issue #481: every form of these pages answers with a redirection, so a refusal crosses it in the session
- * of the browser, for the one read that follows.
- */
 final class WhatWasRefusedTest extends TestCase
 {
     #[Test]
@@ -32,9 +28,6 @@ final class WhatWasRefusedTest extends TestCase
         static::assertSame('zoneinfo', $refusal->field);
     }
 
-    /**
-     * Shown once: a person reloading the page they were sent to reads the page as it is.
-     */
     #[Test]
     public function aRefusalIsGoneOnTheNextRead(): void
     {
@@ -66,10 +59,6 @@ final class WhatWasRefusedTest extends TestCase
         static::assertNull(new WhatWasRefused()->take(self::request()));
     }
 
-    /**
-     * A request with no session at all: a page of the account never has one, having asked for a session of
-     * the core first, and nothing here is the answer rather than an error.
-     */
     #[Test]
     public function aRequestWithoutASessionTakesNothing(): void
     {
@@ -77,10 +66,6 @@ final class WhatWasRefusedTest extends TestCase
         static::assertNull(new WhatWasRefused()->take(new Request()));
     }
 
-    /**
-     * Whatever is in the session under that key, a page reads a refusal or nothing: a session is written by
-     * this provider and read back as what it declares.
-     */
     #[Test]
     public function whatIsNotARefusalIsNothing(): void
     {

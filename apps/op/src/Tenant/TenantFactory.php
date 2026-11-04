@@ -21,15 +21,7 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The tenant of the "beffroi.tenant" configuration (architecture §5.1); its identifier derives from its
- * slug, so renaming the slug is creating another tenant. Its "acr" policy is the configured classes in
- * their order (decision 0010), each named on one of the predicates the provider is wired with; what the
- * policy refuses, and a predicate nothing wired carries, refuse the start.
- *
- * Its issuer is an origin (issue #992): the routes of the provider are served at the root of it
- * (config/routes/beffroi.yaml), and an issuer that carries a path refuses the start, even behind a proxy that
- * would forward that path as a prefix: RFC 8414 §3 places the metadata of such an issuer at the origin, before
- * the path, where no route of the provider is.
+ * Its identifier derives from its slug: renaming the slug creates another tenant.
  */
 final readonly class TenantFactory
 {
@@ -39,11 +31,9 @@ final readonly class TenantFactory
     private const string NAMESPACE = '55ade059-fda4-45f4-96ca-43dc8ef74d3e';
 
     /**
-     * @param array<array-key, mixed> $authenticationClasses class name to the name of a predicate, in order; the default policy of the core when none is named
-     * @param array<array-key, mixed> $selfServedClaims the names of "beffroi.tenant.self_served_claims"
-     * @param WiredClaims|null $claims the claims this provider holds, against which those names are read
-     * @param array<array-key, mixed> $look the "beffroi.tenant.look" section, every value of it absent or
-     *                                      null for a deployment that declares no look (issue #449)
+     * @param array<array-key, mixed> $authenticationClasses class name to predicate name, in order
+     * @param array<array-key, mixed> $selfServedClaims
+     * @param array<array-key, mixed> $look
      */
     public function __construct(
         private string $issuer,
@@ -75,8 +65,7 @@ final readonly class TenantFactory
     }
 
     /**
-     * The issuer of the configuration, which the core accepts with a path (OIDC Discovery §4.1) and this
-     * provider does not.
+     * Refuses a path, which the core accepts: RFC 8414 §3 places the metadata of such an issuer where no route is.
      */
     private function issuer(): Issuer
     {
@@ -91,11 +80,6 @@ final readonly class TenantFactory
         return $issuer;
     }
 
-    /**
-     * What the configuration says a person may change of themselves, read against the claims this provider
-     * holds: a name no wired claim answers is a mistake nobody would see on a page, so it refuses the
-     * start, as a policy of authentication classes that does not hold does.
-     */
     public function selfServedClaims(): SelfServedClaims
     {
         $names = [];
@@ -116,11 +100,6 @@ final readonly class TenantFactory
         return new SelfServedClaims($names);
     }
 
-    /**
-     * What the configuration declares of the look of this tenant; the value object refuses a colour that
-     * is not hexadecimal and a logo that is not an absolute HTTPS URL, which is what makes a mistake in
-     * the configuration refuse the start rather than reach a page.
-     */
     public function look(): TenantLook
     {
         $logoUri = $this->look['logo_uri'] ?? null;
@@ -134,12 +113,6 @@ final readonly class TenantFactory
         );
     }
 
-    /**
-     * The classes the configuration names, each on the predicate the wiring holds for the name it names
-     * (decision 0010); the default policy of the core when it names none, which is what a tenant that
-     * configures nothing has always spoken. A name no wired predicate carries is refused by the registry,
-     * with the ones that are, as a claim no wired claim answers is above.
-     */
     public function authenticationContextPolicy(): AuthenticationContextPolicy
     {
         if ($this->authenticationClasses === []) {

@@ -20,35 +20,13 @@ use function sprintf;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The page that posts a form of SAML (beffroi/saml, spec/saml.md section 6.8, spec/bindings.md section 6.7): the form
- * PostSender returned, from a template an application may override, submitted by one script its
- * Content-Security-Policy names by its hash (CSP Level 3 §6.6.2.2), as the page of the form post response mode names
- * its own; nothing loads and nothing frames it. The caching headers are those of the binding (SAML Bindings
- * §3.5.5.1). Three renderings, one per kind of endpoint the form posts to, since where its submission goes next is not
- * the same (S-36, S-51):
- *
- * - a response of single sign-on, to an assertion consumer service, names no "form-action": that service answers the
- *   post with a redirection to where its application lives, often another origin nobody states (Entra's login.srf
- *   sends the browser on to the client that asked it), a browser checks the directive over every redirection of the
- *   submission, and the directive does not fall back to "default-src" (CSP Level 2 §7.6). This is where the page
- *   parts from the page of the form post response mode, which names the origin of the redirection URI;
- * - an AuthnRequest of the service provider of the tenant, to the single sign-on service of an upstream identity
- *   provider, names none either, for the same reason: that service answers the post with a redirection to its login
- *   page, at an origin no metadata state; its words say the browser goes to the sign-in of its organisation, and not
- *   back to an application;
- * - a message of Single Logout, to a single logout service, names in its "form-action" the origin of its action and
- *   of each URL the form reaches: a LogoutRequest of a chain may be answered by a redirection of the submission back
- *   to the provider, which carries the chain on by redirections; a LogoutResponse, which nobody answers, reaches
- *   nothing more.
+ * A response of single sign-on and an AuthnRequest name no "form-action" (beffroi/saml S-36, S-51): the endpoint
+ * they post to redirects to an origin nobody states, and a browser checks the directive over every redirection.
  */
 final readonly class SamlPostPage
 {
     public const string TEMPLATE = 'saml_post.html.twig';
 
-    /**
-     * What submits the form where the browser runs scripts. A constant, because the hash of the policy is computed
-     * from it.
-     */
     public const string SCRIPT = 'document.forms[0].submit();';
 
     public function __construct(
@@ -56,26 +34,16 @@ final readonly class SamlPostPage
     ) {
     }
 
-    /**
-     * A response of single sign-on, a success or a failure, posted to the assertion consumer service.
-     */
     public function signOnResponse(PostedForm $form): Response
     {
         return $this->render($form, self::policyWithoutFormAction());
     }
 
-    /**
-     * An AuthnRequest of the service provider of the tenant, posted to the single sign-on service of an upstream
-     * identity provider (spec/saml.md S-51).
-     */
     public function signOnRequest(PostedForm $form): Response
     {
         return $this->render($form, self::policyWithoutFormAction(), upstream: true);
     }
 
-    /**
-     * A LogoutRequest or a LogoutResponse, posted to the single logout service of a service provider.
-     */
     public function logoutMessage(PostedForm $form): Response
     {
         return $this->render($form, sprintf(
@@ -85,9 +53,6 @@ final readonly class SamlPostPage
         ));
     }
 
-    /**
-     * @param bool $upstream whether the form goes to an upstream identity provider, which the words of the page say
-     */
     private function render(PostedForm $form, string $policy, bool $upstream = false): Response
     {
         return $this->pages->render(
@@ -106,9 +71,6 @@ final readonly class SamlPostPage
         );
     }
 
-    /**
-     * The one script by its hash, nothing else loaded or framing the page, and no "form-action" (S-36, S-51).
-     */
     private static function policyWithoutFormAction(): string
     {
         return sprintf(
@@ -118,10 +80,10 @@ final readonly class SamlPostPage
     }
 
     /**
-     * The scheme, the host and the port of the URL, which a "form-action" names (CSP Level 3 §2.3.1), and nothing that
-     * would split the policy it is written into (SourceOrigin, S-36).
+     * The origin a "form-action" names (CSP Level 3 §2.3.1), with nothing that would split the policy it is
+     * written into.
      *
-     * @throws LogicException when the URL has no such origin, which the reading of the metadata refuses first (S-11)
+     * @throws LogicException
      */
     public static function originOf(string $url): string
     {

@@ -16,13 +16,6 @@ use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The enrolment tickets, in beffroi_enrolment_ticket (architecture §3.1, issue #613). The lookup is by
- * identifier: the row holds a hash of the value, salted, so nothing is found by the value itself.
- *
- * **A ticket spent or out of time can no longer do anything** and is swept with the other dead rows
- * (issue #177): what it opened is in the journal of its person and in the credential it posed, and a row
- * that opens nothing is not an act of anybody.
- *
  * @extends DoctrineRepository<EnrolmentTicket>
  */
 final readonly class DoctrineEnrolmentTicketRepository extends DoctrineRepository implements DeadRecordsInterface, EnrolmentTicketRepositoryInterface

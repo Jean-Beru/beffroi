@@ -17,18 +17,13 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * "/attestation/result" of the FIDO2 server API (ServerAuthenticatorAttestationResponse): the response of
- * the tools, verified by the enrolment of the core against the options drawn for the challenge it
- * carries, the passkey saved to the user those options were drawn for, under the name of the tools.
+ * FIDO2 server API, ServerAuthenticatorAttestationResponse
  */
 #[AsController]
 final readonly class AttestationResultController
 {
     public const string ROUTE = 'beffroi_fido_conformance_attestation_result';
 
-    /**
-     * What every passkey of the tools is called (PasskeyCredential::NAME_MAX_LENGTH).
-     */
     public const string PASSKEY_NAME = 'FIDO conformance tools';
 
     public function __construct(

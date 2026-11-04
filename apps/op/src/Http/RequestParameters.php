@@ -14,15 +14,9 @@ use Symfony\Component\HttpFoundation\Request;
 use function urldecode;
 
 /**
- * Which parameters of an HTTP request the module reads: the query of a GET or the form body of a POST
- * for a browser endpoint, the form body only for a server-to-server one (RFC 6750 §2.3, RFC 9700
- * §4.3.2). The values are handed over as PHP decoded them, arrays included; a numeric key is dropped.
- *
- * A name the request carried more than once is handed over as the list of what it carried. PHP keeps
- * the last occurrence of a repeated name and says nothing of the others, so the occurrences are counted
- * on the encoded source itself: the module then refuses the repetition where its specification forbids
- * it (RFC 6749 §3.1) and reads it where one allows it ("resource", RFC 8707 §2), instead of acting on a
- * request nobody sent.
+ * The parameters the module reads: the query or the form body at a browser endpoint, the form body alone at a
+ * server-to-server one (RFC 6750 §2.3, RFC 9700 §4.3.2). PHP keeps the last of a repeated name, so repetitions are
+ * counted on the encoded source and handed over as a list.
  */
 final readonly class RequestParameters
 {
@@ -65,11 +59,9 @@ final readonly class RequestParameters
     }
 
     /**
-     * The names the source carries more than once, with everything they carried, in order. A name PHP
-     * decodes into a structure of its own ("a[b]") is left to PHP, which is the one that knows what it
-     * made of it.
+     * A name PHP decodes into a structure ("a[b]") is left to PHP.
      *
-     * @return array<string, list<string>>
+     * @return array<string, list<string>> by name, the values in order
      */
     private static function repeated(string $source): array
     {
@@ -103,10 +95,6 @@ final readonly class RequestParameters
         return is_string($query) ? $query : '';
     }
 
-    /**
-     * An encoded form and nothing else: any other body is read by whoever knows its shape, and a
-     * multipart one carries no "&" to count anything on.
-     */
     private static function body(Request $request): string
     {
         $contentType = $request->headers->get('Content-Type');

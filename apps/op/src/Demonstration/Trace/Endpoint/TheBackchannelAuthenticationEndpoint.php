@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Where a client names the user it is asking for and is told the request was taken (CIBA Core §7, §7.3).
+ * CIBA Core §7, §7.3
  */
 final readonly class TheBackchannelAuthenticationEndpoint implements RecordedEndpointInterface
 {

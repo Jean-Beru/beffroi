@@ -15,14 +15,7 @@ use Beffroi\Core\Application\Key\KeyTakeOver;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
- * The three timed steps of architecture §3.3, in the order that lets one tick finish a rotation the
- * previous one started: what the console does by hand with "beffroi:keys:rotate", "beffroi:keys:activate"
- * and "beffroi:keys:retire --due".
- *
- * The first one starts a rotation nobody asked for (issue #455), and it comes first for the same reason
- * the other two are in this order: a successor staged here waits its staging window, so the tick that
- * stages it is never the tick that activates it, and a deployment nobody watches does not sign with the
- * same key for ever.
+ * The steps run in this order so that one tick finishes the rotation the previous one started.
  */
 #[AsMessageHandler(bus: 'command.bus')]
 final readonly class AdvanceKeyLifecycleHandler
@@ -41,7 +34,7 @@ final readonly class AdvanceKeyLifecycleHandler
         try {
             $tenant = $this->tenants->provide();
         } catch (TenantNotSynchronizedException) {
-            // before the first provisioning there is no key to move, and a tick is not the place to say so
+            // Nothing to do before the first provisioning, and a tick is not the place to say so.
             return;
         }
         $context = $this->contexts->fromSchedule(BeffroiSchedule::NAME);

@@ -18,8 +18,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The revocation endpoint (RFC 7009 §2), POST only: 200 with an empty body (§2.2), or the errors of
- * RFC 6749 §5.2 and §2.2.1 as JSON.
+ * RFC 7009 §2
  */
 #[AsController]
 final readonly class RevocationController

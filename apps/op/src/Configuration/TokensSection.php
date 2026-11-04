@@ -23,44 +23,35 @@ use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\inline_service;
 
-/**
- * How long what the provider issues stands (architecture §9). The bounds are the ones the specifications make, and a deployment may shorten but never lengthen past them.
- */
 final readonly class TokensSection extends ConfigurationSection
 {
     /**
-     * RFC 6749 §4.1.2, the recommendation made a bound.
+     * RFC 6749 §4.1.2
      */
     public const int MAX_AUTHORIZATION_CODE_TTL = 600;
 
     /**
-     * RFC 9126 §2.2: "typically be relatively short (e.g., between 5 and 600 seconds)", the upper end
-     * made a bound; a reference the provider holds is a request nobody has consented to yet.
+     * RFC 9126 §2.2
      */
     public const int MAX_REQUEST_URI_TTL = 600;
 
     /**
-     * RFC 8628 §3.2: a code a user reads off a screen and types elsewhere needs minutes, and thirty of them
-     * are as long as a code of thirty-four bits may be guessed at (§5.1), whatever the rate.
+     * RFC 8628 §3.2, §5.1
      */
     public const int MAX_DEVICE_CODE_TTL = 1800;
 
     /**
-     * RFC 8628 §3.5, the bound of a device authorization request (DeviceAuthorizationRecord::MAX_INTERVAL),
-     * which its handler holds the configured interval to when it is built.
+     * RFC 8628 §3.5
      */
     public const int MAX_DEVICE_CODE_INTERVAL = DeviceAuthorizationRecord::MAX_INTERVAL;
 
     /**
-     * CIBA Core §7.1: a request somebody has to be reached about and then answer needs minutes, and an
-     * hour is as long as a provider should hold one open for a user who is not going to answer it.
+     * CIBA Core §7.1
      */
     public const int MAX_BACKCHANNEL_AUTHENTICATION_TTL = 3600;
 
     /**
-     * CIBA Core §11, the bound of a backchannel authentication request
-     * (BackchannelAuthenticationRecord::MAX_INTERVAL), which its handler holds the configured interval to
-     * when it is built.
+     * CIBA Core §11
      */
     public const int MAX_BACKCHANNEL_AUTHENTICATION_INTERVAL = BackchannelAuthenticationRecord::MAX_INTERVAL;
 
@@ -140,8 +131,7 @@ final readonly class TokensSection extends ConfigurationSection
             ->end()
             ->validate()
             ->always(static function (array $tokens): array {
-                // an environment placeholder is a number at runtime only, where the issuer of the refresh
-                // tokens is handed the sliding lifetime through the same rule (SlidingRefreshLifetime)
+                // A placeholder is a number only at runtime, where SlidingRefreshLifetime checks the same rule.
                 if (is_int($tokens['refresh_token_ttl']) && is_int($tokens['refresh_token_absolute_ttl'])) {
                     SlidingRefreshLifetime::assertWithin($tokens['refresh_token_ttl'], $tokens['refresh_token_absolute_ttl']);
                 }
@@ -155,9 +145,6 @@ final readonly class TokensSection extends ConfigurationSection
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
     {
         $tokens = $this->own($config);
-        // Every lifetime is handed over through the bounds the tree holds it to, a second at least and the
-        // maximum where the tree names one, which is what holds a number an environment variable carries to
-        // them (BoundedNumber).
         $services->get(AuthorizationCodeIssuer::class)->arg('$lifetime', self::bounded(
             $tokens,
             'authorization_code_ttl',
@@ -188,12 +175,7 @@ final readonly class TokensSection extends ConfigurationSection
             self::bounded($tokens, 'backchannel_authentication_max_requested_expiry', self::MAX_BACKCHANNEL_AUTHENTICATION_TTL),
         );
         $services->get(BackchannelAuthenticationHandler::class)->arg('$interval', self::integer($tokens, 'backchannel_authentication_interval'));
-        // What a row an access token still needs is kept for (issue #177) is read from these same two
-        // nodes and from nowhere else: the grant a token descends from and the login that grant was given
-        // on are dropped once no access token of that grant can be presented, which is the absolute
-        // lifetime of a family plus the lifetime of the last token it can mint. Two places that must
-        // agree are one place, so the retention is not a node of its own that a deployment could set
-        // shorter than the tokens it issues.
+        // Read from the token lifetimes, never a node of its own: a shorter retention would drop rows live tokens need.
         $services->get(WhatATokenStillNeeds::class)->arg('$refreshTokenFamilyLifetime', self::bounded(
             $tokens,
             'refresh_token_absolute_ttl',

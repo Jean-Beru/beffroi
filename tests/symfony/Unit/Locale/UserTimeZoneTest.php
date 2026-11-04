@@ -13,8 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Issue #469: the clock a date is read on. "zoneinfo" is a claim of OIDC Core §5.1 and not a setting of
- * this provider, so it is read as a zone rather than taken as one, the way UserLocale reads a language.
+ * OIDC Core §5.1
  */
 final class UserTimeZoneTest extends TestCase
 {
@@ -28,10 +27,6 @@ final class UserTimeZoneTest extends TestCase
         static::assertSame('Europe/London', new UserTimeZone()->of($user)->getName());
     }
 
-    /**
-     * A claim nobody can resolve is not a zone of this process, whatever was written in it: the clock of
-     * the deployment answers, and nothing is refused.
-     */
     #[Test]
     #[DataProvider('provideUnresolvableZones')]
     public function aZoneThisProcessCannotResolveLeavesTheClockOfTheDeployment(string $claimed): void
@@ -64,10 +59,6 @@ final class UserTimeZoneTest extends TestCase
         static::assertSame(date_default_timezone_get(), new UserTimeZone()->of($user)->getName());
     }
 
-    /**
-     * A page that shows a date to nobody in particular is answered the same way, which is what the pages
-     * with no reader get.
-     */
     #[Test]
     public function nobodyReadsTheClockOfTheDeployment(): void
     {

@@ -12,17 +12,10 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Security\Http\Event\LoginFailureEvent;
 
-/**
- * A login the firewall refused, announced as AuthenticationFailed (architecture §3.4, §3.5). Only the
- * routes of the logins wired here are listened to, and what a refusal of one of them means is that
- * login's to read: this knows no login, and a login added to the firewall is a class tagged and nothing
- * edited here.
- */
 final readonly class LoginFailureListener
 {
     /**
-     * @param iterable<AnnouncesItsRefusalInterface> $logins the logins whose refusals this announces;
-     *                                                       one that announces its own is not among them
+     * @param iterable<AnnouncesItsRefusalInterface> $logins
      */
     public function __construct(
         private TenantProvider $tenants,

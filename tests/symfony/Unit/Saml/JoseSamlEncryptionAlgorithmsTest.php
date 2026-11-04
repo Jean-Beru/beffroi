@@ -11,13 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * beffroi/saml, spec/saml.md S-64: the family of the keys the upstream identity providers encrypt for, one algorithm
- * per provider, named after it.
+ * spec/saml.md S-64
  */
 final class JoseSamlEncryptionAlgorithmsTest extends TestCase
 {
     /**
-     * S-64: the algorithm of a provider is found by its name, "SAML-ENCRYPTION:" and the entity ID of the provider.
+     * S-64
      */
     #[Test]
     public function theAlgorithmOfAProviderIsFoundByItsName(): void
@@ -31,7 +30,7 @@ final class JoseSamlEncryptionAlgorithmsTest extends TestCase
     }
 
     /**
-     * S-64: the name of a provider nothing wires is refused, the refusal naming those that are.
+     * S-64
      */
     #[Test]
     public function theNameOfAProviderNothingWiresIsRefused(): void
@@ -53,7 +52,7 @@ final class JoseSamlEncryptionAlgorithmsTest extends TestCase
     }
 
     /**
-     * S-64: a deployment that declares no provider wires none, and says so.
+     * S-64
      */
     #[Test]
     public function aDeploymentThatDeclaresNoProviderWiresNone(): void
@@ -69,8 +68,7 @@ final class JoseSamlEncryptionAlgorithmsTest extends TestCase
     }
 
     /**
-     * S-64: the key of a provider is an RSA pair, its public JWK carrying the name of the algorithm of that provider
-     * and the use "enc".
+     * S-64
      */
     #[Test]
     public function theKeyOfAProviderIsAnRsaKeyForEncryption(): void

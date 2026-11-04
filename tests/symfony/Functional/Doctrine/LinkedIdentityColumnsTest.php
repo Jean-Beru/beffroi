@@ -27,36 +27,18 @@ use function sort;
 use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * The three columns of `beffroi_linked_identity` sealed, and the blind index of the pair a federated login
- * recognises an identity by (decisions 0011 and 0018).
- *
- * **The table is sealed before a federation fills it, and that is why it is sealed now.** What writes a row
- * today is `beffroi:user:link` and what reads one is the grant that reads an assertion of a trusted issuer,
- * so the lookup of the pair is a path this provider already takes; a federation will write one row per
- * person who signs in through it, and a blind index added at that point is a reindex of every row of every
- * tenant of a customer. The rows written here go through the repository that lookup uses, unchanged.
- */
 final class LinkedIdentityColumnsTest extends DatabaseTestCase
 {
     private const string PROVIDER = 'login.acme-federation.example';
 
     private const string SUBJECT = '110169484474386276334';
 
-    /**
-     * The three personal data of a linked identity, by the column each one lands in: what the fixture
-     * writes and what the row must not hold. The claims are a JSON document, so what is asserted of it is
-     * each value it carries.
-     */
     private const array PLAINTEXTS = [
         'provider' => self::PROVIDER,
         'subject' => self::SUBJECT,
         'claims' => 'ada@example.org',
     ];
 
-    /**
-     * The snapshot the upstream provider returned, which is what the column holds whole.
-     */
     private const array CLAIMS = [
         'email' => 'ada@example.org',
         'email_verified' => true,
@@ -64,9 +46,6 @@ final class LinkedIdentityColumnsTest extends DatabaseTestCase
         'locale' => 'en-GB',
     ];
 
-    /**
-     * The fixture writes every column the classification of the schema declares sealed, and no other.
-     */
     #[Test]
     public function theFixtureWritesEveryColumnTheClassificationDeclaresSealed(): void
     {
@@ -87,10 +66,6 @@ final class LinkedIdentityColumnsTest extends DatabaseTestCase
         static::assertSame($sealed, $written);
     }
 
-    /**
-     * The domain does not change because the columns seal: the snapshot comes back as the array that was
-     * written, the encrypted type decorating the JSON type the column had.
-     */
     #[Test]
     public function aRowIsReadBackAsTheDomainWroteIt(): void
     {
@@ -109,9 +84,6 @@ final class LinkedIdentityColumnsTest extends DatabaseTestCase
         static::assertSame(self::CLAIMS, $read->claims);
     }
 
-    /**
-     * Column by column: a column that stopped sealing fails on its own line.
-     */
     #[Test]
     #[DataProvider('provideSealedColumns')]
     public function theRowHoldsNoneOfThePlaintexts(string $column, string $plaintext): void
@@ -140,10 +112,6 @@ final class LinkedIdentityColumnsTest extends DatabaseTestCase
         }
     }
 
-    /**
-     * Not one value of the snapshot is in the column, the whole document being sealed and not its keys one
-     * by one.
-     */
     #[Test]
     public function theColumnOfTheSnapshotHoldsNoneOfItsValues(): void
     {
@@ -175,9 +143,7 @@ final class LinkedIdentityColumnsTest extends DatabaseTestCase
     }
 
     /**
-     * The unicity of the pair within a tenant, held on the two index columns: a constraint on the pair in
-     * the clear would refuse nothing, every write of one subject giving another ciphertext. Its violation is the
-     * exception of the core, naming nothing (beffroi/saml S-56).
+     * beffroi/saml S-56
      */
     #[Test]
     public function aSecondRowWithTheSamePairUnderOneTenantIsRefused(): void
@@ -194,10 +160,6 @@ final class LinkedIdentityColumnsTest extends DatabaseTestCase
         self::identity('someone-else-subject');
     }
 
-    /**
-     * And the same pair under another tenant is admitted: the constraint carries the tenant, so two tenants
-     * federating from one provider are two rows even when their tags are the same string.
-     */
     #[Test]
     public function theSamePairUnderAnotherTenantIsAdmitted(): void
     {
@@ -214,11 +176,6 @@ final class LinkedIdentityColumnsTest extends DatabaseTestCase
         static::assertCount(2, self::connection()->fetchAllAssociative('SELECT id FROM beffroi_linked_identity'));
     }
 
-    /**
-     * What a federation was going to add, found in place in the mappings: the three sealed columns, the two
-     * index columns, and the unique constraint on the pair of tags. It has nothing to migrate and nothing
-     * to add, which is the whole reason this table is sealed before a directory is imported into it.
-     */
     #[Test]
     public function aFederationFindsTheColumnsAndTheConstraintInPlace(): void
     {
@@ -245,9 +202,6 @@ final class LinkedIdentityColumnsTest extends DatabaseTestCase
         );
     }
 
-    /**
-     * A linked identity of the fixture, saved through the repository the federation will use.
-     */
     private static function identity(string $subject = 'ada-subject', ?Tenant $tenant = null): LinkedIdentity
     {
         $user = User::create(Uuid::v7(), $tenant ?? self::tenant(), new Subject($subject), $subject, self::now());
@@ -259,10 +213,6 @@ final class LinkedIdentityColumnsTest extends DatabaseTestCase
     }
 
     /**
-     * The one row of the table as the database holds it, the three sealed columns and the two tags: a
-     * column that holds nothing is a column with nothing to assert against, so a null fails here and not
-     * silently in the test that reads it.
-     *
      * @return array<string, string>
      */
     private static function row(): array

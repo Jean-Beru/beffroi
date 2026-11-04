@@ -10,13 +10,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * beffroi/saml, spec/saml.md S-65: the last segment of the URL of the metadata given to an upstream identity provider,
- * its entity ID in base64url without padding.
+ * spec/saml.md S-65
  */
 final class IdentityProviderSegmentTest extends TestCase
 {
     /**
-     * S-65: the segment is the entity ID in the base64url of RFC 4648 §5, without padding, one segment of a path.
+     * S-65, RFC 4648 §5
      */
     #[Test]
     public function theSegmentIsTheEntityIdInBase64Url(): void
@@ -26,7 +25,7 @@ final class IdentityProviderSegmentTest extends TestCase
     }
 
     /**
-     * S-65: the entity ID is read back from the segment alone.
+     * S-65
      */
     #[Test]
     public function theEntityIdIsReadBackFromTheSegment(): void
@@ -36,8 +35,7 @@ final class IdentityProviderSegmentTest extends TestCase
     }
 
     /**
-     * S-65: a segment that is not base64url, one that writes an entity ID otherwise than the one way, and one whose
-     * value is no entity ID of M-6, name no provider.
+     * S-65, M-6
      */
     #[Test]
     #[DataProvider('provideSegmentsOfNoProvider')]

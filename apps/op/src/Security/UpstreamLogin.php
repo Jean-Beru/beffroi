@@ -10,14 +10,6 @@ use DateTimeImmutable;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
 
-/**
- * The login of the firewall an upstream identity provider proves (beffroi/saml S-52, S-57): what its assertion proved,
- * read from the badge the assertion consumer service put on the passport, dated by its AuthnInstant and bounded by its
- * SessionNotOnOrAfter; every method it may prove, "fed" and the methods its classes of authentication map to exactly,
- * is what the provider announces of it. Its refusals are announced as those of every login of the firewall (S-53).
- * Tagged "beffroi.login" and "beffroi.login.refusal" only when the service provider of the tenant is enabled, so that a
- * deployment that receives no assertion announces nothing of one.
- */
 final readonly class UpstreamLogin implements AnnouncesItsRefusalInterface, BoundsItsSessionInterface, DatesItsProofsInterface
 {
     public function proofs(Passport $passport): ?array
@@ -45,12 +37,6 @@ final readonly class UpstreamLogin implements AnnouncesItsRefusalInterface, Boun
         return ServiceProviderRoutes::ASSERTION_CONSUMER_SERVICE;
     }
 
-    /**
-     * What the assertion consumer service refused, as it decided to announce it: a response it did not take, a person
-     * it may not sign in, a login under the floor of the tenant, never a request sent once more nor the answer of a
-     * client; or the account the checker refused after the response was taken. Nothing was typed, so the identifier is
-     * null.
-     */
     public function refusal(AuthenticationException $exception, ?Passport $passport): ?LoginFailure
     {
         if ($exception instanceof UpstreamLoginRefusedException) {

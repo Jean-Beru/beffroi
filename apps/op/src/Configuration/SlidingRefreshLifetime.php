@@ -7,16 +7,10 @@ namespace App\Configuration;
 use DateInterval;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
-/**
- * The lifetime a refresh token is renewed for at each rotation, which no rotation may carry past the
- * absolute lifetime of its family (architecture §4.6). The tree checks the two numbers when both are
- * written down; a number an environment variable carries is one only at runtime, where the issuer of the
- * refresh tokens is handed the sliding lifetime through here, so the rule is checked again then.
- */
 final readonly class SlidingRefreshLifetime
 {
     /**
-     * @throws InvalidConfigurationException when the sliding lifetime exceeds the absolute one
+     * @throws InvalidConfigurationException
      */
     public static function assertWithin(int $sliding, int $absolute): void
     {
@@ -26,7 +20,7 @@ final readonly class SlidingRefreshLifetime
     }
 
     /**
-     * @throws InvalidConfigurationException when the sliding lifetime exceeds the absolute one, or is less than a second (BoundedNumber)
+     * @throws InvalidConfigurationException
      */
     public static function interval(int $sliding, int $absolute): DateInterval
     {

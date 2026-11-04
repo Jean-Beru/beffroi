@@ -11,12 +11,7 @@ use LogicException;
 use function sprintf;
 
 /**
- * The entity manager that maps a class, asked of the registry at every call and never held: a manager
- * closed by a failed flush is replaced in the registry, and whoever kept one would keep the closed one.
- *
- * A registry that answers with something else, or with nothing, is a mapping the provider was installed
- * without; it is a fault of the integration and never of a request, so it reads the same wherever it is
- * found and is written here alone.
+ * Asked of the registry at every call and never held: a manager closed by a failed flush is replaced there.
  */
 final readonly class EntityManagers
 {
@@ -28,7 +23,7 @@ final readonly class EntityManagers
     /**
      * @param class-string $class
      *
-     * @throws LogicException when no entity manager maps the class
+     * @throws LogicException
      */
     public function forClass(string $class): EntityManagerInterface
     {
@@ -41,9 +36,6 @@ final readonly class EntityManagers
     }
 
     /**
-     * Every manager of the deployment, for a caller that asks what is mapped rather than where one class
-     * is mapped: which kinds of credential exist is read from the mapping and from nothing else.
-     *
      * @return array<string, ObjectManager>
      */
     public function all(): array

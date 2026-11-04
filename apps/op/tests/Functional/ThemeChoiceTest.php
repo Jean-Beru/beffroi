@@ -8,11 +8,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * Issue #447, architecture §6: the form of the theme comes back to the page it was sent from when that is
- * a path of this origin, and to the root of the application otherwise, a choice of colour sending a browser
- * nowhere else (App\Theme\ChooseThemeController).
- */
 final class ThemeChoiceTest extends BrowserTestCase
 {
     protected function tearDown(): void
@@ -53,11 +48,6 @@ final class ThemeChoiceTest extends BrowserTestCase
         yield 'a line feed behind a path that would pass' => ["/account\n"];
     }
 
-    /**
-     * Issue #988, architecture §5.2: the choice of a theme is a form only a browser posts, so its route carries
-     * the interaction plane, and a process that serves the protocol alone answers it with the 404 an unknown
-     * path gets, as it answers every page meant for a browser (Plane::ofRoute).
-     */
     #[Test]
     #[DataProvider('provideThePlanesOfAProcess')]
     public function aProcessAnswersTheChoiceOfAThemeOnTheInteractionPlaneOnly(string $plane, int $status): void

@@ -22,18 +22,9 @@ use Webauthn\AttestationStatement\TPMAttestationStatementSupport;
 use Webauthn\PublicKeyCredentialParameters;
 
 /**
- * The algorithms of the FIDO2 server API of the conformance tools (decision 0033): those of the provider,
- * then what the server tests ask a server to verify and the provider never offers.
+ * Decision 0033
  *
- * - ES384 (RFC 9053 §2.1), which the provider neither offers nor verifies.
- * - RS1, RSASSA-PKCS1-v1_5 with SHA-1 (RFC 8812 §2), for a self attestation and an assertion, and the TPM
- *   attestations signed with it: the tests do not mark them optional (Resp-4 P-8, Resp-9 P-2), and their
- *   weakness is acknowledged by name, here and nowhere else.
- * - The optional algorithms of the tests that are not weak: ES512, RS384, RS512, PS256, PS384 and PS512.
- *   ES256K is not among them, since the tools do not play its case.
- *
- * Nothing of the product reaches this policy: the endpoints of Fido/Conformance run on ceremonies, a
- * registrar, an authenticator and use cases of their own (services.php).
+ * Only the conformance endpoints read this: the server tests require RS1 (Resp-4 P-8, Resp-9 P-2).
  */
 final readonly class ConformanceToolsAlgorithms implements PasskeyAlgorithms
 {

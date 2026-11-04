@@ -16,11 +16,6 @@ use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\HttpFoundation\Response;
 use function trim;
 
-/**
- * Issues #911, #915 and #920: what a deployment of the image chooses, it names by environment, and the image is not
- * rebuilt for it, the roles of its tenant and the scopes of its APIs among them. A real environment variable wins over
- * .env, as it does on a deployment, so the variables are named before the kernel boots and given back after.
- */
 final class ChoicesOfTheDeploymentTest extends BrowserTestCase
 {
     private const array CHOICES = [
@@ -60,8 +55,7 @@ final class ChoicesOfTheDeploymentTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7591, decision 0009: the mode a deployment names is the registration endpoint its tenant announces,
-     * which is how a client reaches an image that declares none.
+     * RFC 7591, Decision 0009
      */
     #[Test]
     public function theTenantAnnouncesTheRegistrationEndpointOfTheModeItNames(): void
@@ -76,8 +70,7 @@ final class ChoicesOfTheDeploymentTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Discovery §3, issue beffroi-auth/beffroi#920: the scopes of the APIs a deployment names are scopes its
-     * tenant hands out tokens for, announced after those of its claims, before any client registers them.
+     * OIDC Discovery §3
      */
     #[Test]
     public function theTenantAnnouncesTheScopesOfTheApisItNames(): void
@@ -95,9 +88,7 @@ final class ChoicesOfTheDeploymentTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7591 §3.1, decision 0009, issue beffroi-auth/beffroi#920: a client that registers itself with an initial
-     * access token of the console may register the scopes of the APIs the deployment names, which is how a relying
-     * party of an image that declares no client is given them.
+     * RFC 7591 §3.1, Decision 0009
      */
     #[Test]
     public function aClientThatRegistersItselfMayRegisterTheScopesOfTheApisItNames(): void
@@ -142,8 +133,7 @@ final class ChoicesOfTheDeploymentTest extends BrowserTestCase
     }
 
     /**
-     * CSP Level 3 §6.1, issue beffroi-auth/beffroi#926: the mark it names is served by a host of its own, which the
-     * policy of every page that shows it names beside this provider, here a page of the account.
+     * CSP Level 3 §6.1
      */
     #[Test]
     public function aPageMayLoadTheMarkItNamesFromTheHostThatServesIt(): void
@@ -162,8 +152,7 @@ final class ChoicesOfTheDeploymentTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0030, issue beffroi-auth/beffroi#452: a list of the configuration is a JSON document of the
-     * environment, here the claims a person may change of themselves.
+     * Decision 0030
      */
     #[Test]
     public function aPersonChangesOfThemselvesTheClaimsItOpens(): void
@@ -192,9 +181,7 @@ final class ChoicesOfTheDeploymentTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0030, issue beffroi-auth/beffroi#915: a role of the tenant is a variable too, here the SAML identity
-     * provider the image is until its deployment turns it off, which leaves the tenant no SAML key to draw, its service
-     * provider being off as in every image.
+     * Decision 0030
      */
     #[Test]
     public function aDeploymentThatTurnsItsSamlRolesOffDrawsNoSamlKey(): void
@@ -214,8 +201,7 @@ final class ChoicesOfTheDeploymentTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §3.1.2.1, issue beffroi-auth/beffroi#915: the "login_hint" of a request names the user the way the
-     * deployment says, here the name the user signs in with, which the login page offers.
+     * OIDC Core §3.1.2.1
      */
     #[Test]
     public function theLoginPageOffersTheUserTheHintNamesTheWayTheDeploymentReadsIt(): void
@@ -242,8 +228,7 @@ final class ChoicesOfTheDeploymentTest extends BrowserTestCase
     }
 
     /**
-     * An initial access token of the tenant (RFC 7591 §1.2), issued by the console as a deployment issues one: the
-     * command prints the value once, on the last line it writes.
+     * RFC 7591 §1.2
      */
     private function initialAccessToken(): string
     {

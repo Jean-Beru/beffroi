@@ -17,13 +17,6 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Throwable;
 
-/**
- * Issue #911: what a deployment chooses is an environment variable, and a variable is a value only once the
- * container runs. The kernel of these tests reads its settings the way the application does
- * (config_test.yml), so each test names its value before it boots one, as a deployment names it before it
- * starts: the bounds and the rules of the tree hold it all the same, and a requirement it switches on is
- * the class the provider is wired with.
- */
 final class SettingsFromTheEnvironmentTest extends KernelTestCase
 {
     private const array VARIABLES = [
@@ -87,9 +80,7 @@ final class SettingsFromTheEnvironmentTest extends KernelTestCase
     }
 
     /**
-     * RFC 6749 §4.1.2, the recommendation the tree makes a bound: a number the environment carries past it
-     * stops the issuer of the codes from being built, as the same number written in the file stops the build
-     * of the container.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function aLifetimeTheEnvironmentCarriesPastItsBoundIsRefused(): void
@@ -107,8 +98,7 @@ final class SettingsFromTheEnvironmentTest extends KernelTestCase
     }
 
     /**
-     * Architecture §4.6: no rotation carries a refresh token past the absolute lifetime of its family, ninety
-     * days by default.
+     * Architecture §4.6
      */
     #[Test]
     public function aSlidingRefreshLifetimeTheEnvironmentCarriesBeyondTheAbsoluteOneIsRefused(): void
@@ -126,11 +116,6 @@ final class SettingsFromTheEnvironmentTest extends KernelTestCase
     }
 
     /**
-     * Issues #913, #915 and #928: a value the tree refuses written, carried by the environment, refuses the build of
-     * the service it reaches, whichever object holds the rule: the number (BoundedNumber), the record of a flow
-     * that polls, the budget, the retry policy, the factory of the tenant, the handler of the SAML metadata, the
-     * readings of a hint, the sender.
-     *
      * @param class-string<Throwable> $refusal
      */
     #[Test]
@@ -505,8 +490,7 @@ final class SettingsFromTheEnvironmentTest extends KernelTestCase
     }
 
     /**
-     * Architecture §3.3: a variable left empty is no delay configured, so the delay follows the max-age of the
-     * JWK Set, 120 s in this kernel, plus the refetch cooldown of oidc_login.
+     * Architecture §3.3
      */
     #[Test]
     #[DataProvider('provideStagingDelays')]
@@ -534,8 +518,7 @@ final class SettingsFromTheEnvironmentTest extends KernelTestCase
     }
 
     /**
-     * Architecture §3.3: a key of the JOSE families works for the age the environment names before the planning
-     * stages a successor for it.
+     * Architecture §3.3
      */
     #[Test]
     public function theAgeOfTheJoseKeysIsTheOneTheEnvironmentNames(): void
@@ -553,8 +536,7 @@ final class SettingsFromTheEnvironmentTest extends KernelTestCase
     }
 
     /**
-     * Spec/saml.md S-12, issue #915: the family of the SAML keys rotates by the figures the environment names, a key
-     * published the moment it is staged among them, which the tree lets a deployment write.
+     * Spec/saml.md S-12
      */
     #[Test]
     public function theScheduleOfTheSamlKeysIsTheOneTheEnvironmentNames(): void
@@ -573,8 +555,7 @@ final class SettingsFromTheEnvironmentTest extends KernelTestCase
     }
 
     /**
-     * Back-Channel Logout 1.0 §2.5, issue #915: one attempt at delivering a logout token is given the time the
-     * environment names, a fraction of a second included.
+     * Back-Channel Logout 1.0 §2.5
      */
     #[Test]
     public function aLogoutTokenIsGivenTheTimeTheEnvironmentNames(): void
@@ -592,7 +573,7 @@ final class SettingsFromTheEnvironmentTest extends KernelTestCase
     }
 
     /**
-     * RFC 9449 §8: the requirement is read once, when the port is built, and is the class it is built as.
+     * RFC 9449 §8
      *
      * @param class-string $wired
      */

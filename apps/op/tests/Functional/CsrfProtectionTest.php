@@ -12,21 +12,10 @@ use Beffroi\Core\Port\PasswordHasherInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * The token the forms of these pages post (config/packages/csrf.yaml): the one their session holds, which a
- * browser that runs nothing posts as the page wrote it, whatever that browser says of where the form comes
- * from.
- */
 final class CsrfProtectionTest extends BrowserTestCase
 {
     private const string PASSWORD = 'correct horse battery staple';
 
-    /**
-     * The login page is served under "Referrer-Policy: no-referrer" (App\Http\InteractionPages), so
-     * a browser that sends no "Sec-Fetch-Site" posts its form with "Origin: null" and no "Referer" (Fetch
-     * Standard, "append a request `Origin` header"). The token the session holds is accepted all the same,
-     * where a stateless one would be left to a double submit that only a script completes.
-     */
     #[Test]
     public function aLoginPostedWithoutOriginOrRefererOpensASession(): void
     {
@@ -34,7 +23,7 @@ final class CsrfProtectionTest extends BrowserTestCase
         $user = self::userWithPassword('alice', self::PASSWORD);
         $this->authorize();
         $form = $this->browser->followRedirect()->filter('form[action^="/login?"]')->form();
-        // the browser of this suite sends the page it is on as the referrer, which this page forbids
+        // The test browser sends the page it is on as the referrer, which this page forbids.
         $this->browser->getHistory()->clear();
 
         // When

@@ -12,14 +12,6 @@ use Beffroi\Oidc\Domain\Token\AddressedAccessToken;
 use Beffroi\Oidc\Domain\Token\AuthorizationInterface;
 use Beffroi\Oidc\Port\AccessTokenShapeIssuerInterface;
 
-/**
- * A third shape of access token, wired into the test kernel under a name no class of the module knows
- * (issue #239): a value of the opaque shape behind a prefix of its own, which is enough to prove that a
- * deployment adds a shape by writing two classes and tagging them, and that nothing in `src` was edited
- * for the token endpoint to mint it or for a resource to read it back.
- *
- * Never leaves the test suite: what it writes is not a format anybody specified.
- */
 final readonly class InventedAccessTokenIssuer implements AccessTokenShapeIssuerInterface
 {
     public const string NAME = 'invented';

@@ -9,9 +9,7 @@ use Beffroi\Oidc\Domain\Authorization\AuthorizationAnswer;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * JARM §2.1: the answer gathered in a document the tenant signs, posted by the page of Form Post
- * Response Mode §2 as one "response" field. The document is minted by the module; the delivery is the
- * ordinary form post mode, so that the page, its policy and its script are written once.
+ * JARM §2.1, OAuth 2.0 Form Post Response Mode §2
  */
 final readonly class SignedFormPostResponseRenderer implements SignsTheAnswerInterface
 {

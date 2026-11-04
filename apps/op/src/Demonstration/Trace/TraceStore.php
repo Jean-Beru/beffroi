@@ -16,31 +16,12 @@ use Psr\Cache\InvalidArgumentException;
 use Psr\Clock\ClockInterface;
 use function sprintf;
 
-/**
- * Where the demonstration keeps what it saw (issue #462): one trace per flow and per client, and, per
- * flow, the clients that played it, the one that played it last first.
- *
- * That second reading is what a hop the provider cannot attribute by itself goes to. A browser typing a
- * device code names no client, and neither does a browser answering a backchannel request: the request
- * says which flow it belongs to, and the trace it joins is the one of the client that last played that
- * flow. One run at a time is what a demonstration is, and that is the reading it is exact for.
- *
- * It is also what tells the five rungs of a ladder apart: five clients playing one flow are five
- * traces, each replayed on its own.
- *
- * Not a store of the provider: it holds what a lab exchanged with itself, it lives in a cache pool of
- * its own, and it is wired in development and in the suite of the application and nowhere else.
- */
 final readonly class TraceStore
 {
-    /**
-     * Long enough for a flow to be played, read and replayed, short enough that a desk left alone
-     * forgets what it was shown.
-     */
     public const int LIFETIME = 3600;
 
     /**
-     * How many clients of one flow are remembered: the rungs of the ladder and a little room.
+     * How many clients of one flow are remembered.
      */
     public const int CLIENTS = 12;
 
@@ -62,11 +43,9 @@ final readonly class TraceStore
     }
 
     /**
-     * The clients that played that flow, the one that played it last first.
-     *
      * @throws InvalidArgumentException
      *
-     * @return list<string>
+     * @return list<string> the one that played it last first
      */
     public function clientsOf(string $grantType): array
     {
@@ -77,8 +56,6 @@ final readonly class TraceStore
     }
 
     /**
-     * The trace a hop naming no client joins: the one of the client that last played the flow.
-     *
      * @throws InvalidArgumentException
      */
     public function lastOf(string $grantType): ?FlowTrace
@@ -97,9 +74,6 @@ final readonly class TraceStore
     }
 
     /**
-     * What a client exchanged in that flow, forgotten: a replay started over shows nothing until the
-     * flow is played again.
-     *
      * @throws InvalidArgumentException
      */
     public function forget(string $grantType, string $clientId): void
@@ -143,8 +117,7 @@ final readonly class TraceStore
     }
 
     /**
-     * A key of the cache carries none of the characters PSR-6 reserves, and a grant type is named by an
-     * absolute URI often enough that a flow is keyed by a digest of its name rather than by it.
+     * A digest: a grant type is often an absolute URI, which carries characters PSR-6 reserves.
      */
     private static function key(string $grantType, string $clientId): string
     {

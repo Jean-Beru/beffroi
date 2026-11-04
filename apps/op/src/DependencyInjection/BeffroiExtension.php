@@ -77,11 +77,6 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\AbstractExtension;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 
-/**
- * The "beffroi:" tree of architecture §5.1, and nothing that decision 0006 forbids: no "insecure_*" key, no
- * compatibility switch. The kernel of the application registers it (BeffroiKernelTrait), and so does the
- * kernel of the suite of the integration.
- */
 final class BeffroiExtension extends AbstractExtension
 {
     public function configure(DefinitionConfigurator $definition): void
@@ -93,9 +88,6 @@ final class BeffroiExtension extends AbstractExtension
         $children->end();
     }
 
-    /**
-     * By the name the mappings use (architecture §5.3).
-     */
     public const array DBAL_TYPES = [
         IssuerType::NAME => IssuerType::class,
         SectorIdentifierType::NAME => SectorIdentifierType::class,
@@ -134,14 +126,7 @@ final class BeffroiExtension extends AbstractExtension
     ];
 
     /**
-     * The passes of the provider, which an extension cannot add itself and a kernel adds for it
-     * (BeffroiKernelTrait). The KMS client it seals with is named in its own configuration and
-     * registered in the framework's, so nothing but a pass can tell a name that answers from one that
-     * does not. The service providers of the tenant are built when the container is compiled, so that a
-     * declaration that does not hold together fails the build and not the first login (spec/saml.md
-     * section 6.2 step 1), which only a pass can do while leaving aside the values of the environment; the
-     * claim of a mapping, which needs the claims providers built, is checked by MappedClaimsWarmer right
-     * after, in the same build.
+     * An extension cannot add compiler passes itself: the kernel adds these (BeffroiKernelTrait).
      */
     public static function addCompilerPasses(ContainerBuilder $container): void
     {
@@ -152,12 +137,8 @@ final class BeffroiExtension extends AbstractExtension
     }
 
     /**
-     * Doctrine gets the mappings, the types and the migrations of the provider (architecture §5.3); the
-     * security component gets the hasher of its users (§5.4); the rate limiter gets the limiter of the
-     * attempts at a code (§3.4), a rule of the core the application does not tune. The firewall is the
-     * application's to declare, and what it names of this extension is a container parameter set here,
-     * before any extension is loaded: the kernel registers this extension after the one of SecurityBundle,
-     * and a firewall resolves the parameters it names when its own extension is loaded (issue #282).
+     * The parameters a firewall names are set here, before any extension loads: SecurityBundle's extension, registered
+     * before this one, resolves them when it loads.
      */
     public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
     {
@@ -225,12 +206,7 @@ final class BeffroiExtension extends AbstractExtension
             ]);
         }
         if ($builder->hasExtension('framework')) {
-            // the keys of the clients, the keys of the issuers a tenant trusts, the assertions of a client,
-            // the assertions of a trusted issuer and
-            // the software statements already seen, each in a pool of its own, the request objects already seen,
-            // what DPoP remembers of a proof and what each budget of a load has been asked for live in
-            // pools of their own, so that a deployment can point them at a shared store without
-            // touching the rest of its cache
+            // Pools of their own: a deployment points them at a shared store without touching the rest of its cache.
             $builder->prependExtensionConfig('framework', [
                 'cache' => [
                     'pools' => [
@@ -262,19 +238,12 @@ final class BeffroiExtension extends AbstractExtension
                 ],
             ]);
         }
-        // The three buses, their middleware and where each marker is sent are the contract of this
-        // provider and not a preference of an operator (issue #456, architecture §5.6): an installation
-        // that wires them itself and turns the default middleware off or gets "doctrine_transaction" wrong
-        // breaks the asynchronous half of the provider, quietly. What is left to an application is its
-        // transports, and the lanes default to the database so that a new installation needs no broker.
         if ($builder->hasExtension('messenger')) {
             if (! $builder->hasParameter('env(' . MessengerContract::DSN_ENVIRONMENT_VARIABLE . ')')) {
                 $builder->setParameter('env(' . MessengerContract::DSN_ENVIRONMENT_VARIABLE . ')', MessengerContract::DEFAULT_DSN);
             }
             $builder->prependExtensionConfig('messenger', MessengerContract::configuration());
         }
-        // The recurring messages of the schedule are routed by their class like every other message, and
-        // not handled inside the worker that ticks: the worker that holds the clock only says when.
         if ($builder->hasExtension('scheduler')) {
             $builder->prependExtensionConfig('scheduler', [
                 'use_messenger_routing' => true,
@@ -289,10 +258,6 @@ final class BeffroiExtension extends AbstractExtension
         }
     }
 
-    /**
-     * Whether the kernel runs in debug. A container built without a kernel, which is what a unit test of
-     * this extension builds, is not one.
-     */
     private static function isDebug(ContainerBuilder $builder): bool
     {
         return $builder->hasParameter('kernel.debug') && $builder->getParameter('kernel.debug') === true;
@@ -304,8 +269,7 @@ final class BeffroiExtension extends AbstractExtension
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
         $container->import('../../config/beffroi/services.php');
-        // the panel of the provider is a debug tool and nothing else: it is wired when the kernel runs
-        // in debug, and a deployment cannot switch it on (issue #152)
+        // The profiler panel follows the debug flag alone: no setting of a deployment switches it on.
         $debug = self::isDebug($builder);
         if ($debug) {
             $container->import('../../config/beffroi/profiler.php');
@@ -322,12 +286,9 @@ final class BeffroiExtension extends AbstractExtension
     }
 
     /**
-     * The capabilities this extension wires, in the order the configuration reference publishes them. It is
-     * a list of classes and it lives here because there is nowhere else it could: a configuration tree is
-     * built before any service exists, so nothing can be asked for the sections the way the provider asks
-     * for its grants or its confirmation kinds.
+     * A list, because a configuration tree is built before any service exists to be collected by tag.
      *
-     * @return list<ConfigurationSectionInterface>
+     * @return list<ConfigurationSectionInterface> in the order the configuration reference publishes them
      */
     private static function sections(): array
     {

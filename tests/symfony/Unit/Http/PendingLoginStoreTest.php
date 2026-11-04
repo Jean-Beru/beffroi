@@ -15,10 +15,7 @@ use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §5.4: the login held between its two steps lives in the HTTP session, one at a time, until
- * a code completes it. What it holds it hands back as it is: whether a held login has run out of time is
- * a refusal of the second step, which the core pronounces for both paths (issue #130), so a store that
- * judged it would be the second place that decides what a login is.
+ * Architecture §5.4
  */
 final class PendingLoginStoreTest extends TestCase
 {
@@ -46,10 +43,6 @@ final class PendingLoginStoreTest extends TestCase
         static::assertSame($login, $this->store->held($this->session));
     }
 
-    /**
-     * The one past its lifetime is handed back too, and the core refuses it: a browser that was late is
-     * answered as the use case answers it, and the act is written in that person's journal.
-     */
     #[Test]
     public function anExpiredLoginIsHandedBackAllTheSame(): void
     {

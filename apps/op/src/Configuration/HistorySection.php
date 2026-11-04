@@ -8,19 +8,8 @@ use Beffroi\Core\Application\Identity\ClaimHistoryRetention;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
-/**
- * How long the history of what a record used to say keeps a change (issue #482). There is nothing here to
- * turn it on: a person who changes a claim of theirs gets the change written down, and what a deployment
- * decides is for how long.
- */
 final readonly class HistorySection extends ConfigurationSection
 {
-    /**
-     * The duration the journal keeps an act, and for a reason of this provider rather than of a text: a
-     * change and the act that announced it are two halves of one answer, so keeping one longer than the
-     * other leaves an act whose change is gone, or a change whose act is gone. A deployment that moves
-     * one moves both.
-     */
     public const int DEFAULT_RETENTION = JournalSection::DEFAULT_RETENTION;
 
     public function name(): string

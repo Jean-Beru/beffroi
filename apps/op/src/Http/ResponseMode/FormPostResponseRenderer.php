@@ -10,10 +10,7 @@ use Beffroi\Oidc\Domain\Authorization\FormPostResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * OAuth 2.0 Form Post Response Mode §2: a page whose form the user agent posts to the redirect URI, so
- * that no parameter of the answer is ever written in a URL. The module says what the page must contain
- * and what its Content-Security-Policy is (FormPostResponse), the provider renders it from a template an
- * application may override and adds the headers every response of the interaction plane carries.
+ * OAuth 2.0 Form Post Response Mode §2
  */
 final readonly class FormPostResponseRenderer implements AuthorizationResponseRendererInterface
 {

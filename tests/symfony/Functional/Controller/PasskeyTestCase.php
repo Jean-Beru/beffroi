@@ -20,31 +20,17 @@ use Symfony\Component\Uid\Uuid;
 use function unserialize;
 
 /**
- * A browser with a software authenticator (architecture §7): the two ceremonies driven over HTTP the way
- * the script of the provider drives them, the options fetched, the authenticator's answer posted as the form.
- * The origin of the authenticator is the issuer of the test kernel, whatever host the browser names.
+ * Architecture §7
  */
 abstract class PasskeyTestCase extends BrowserTestCase
 {
     protected const string ORIGIN = 'https://op.test';
 
-    /**
-     * A hardware key without a PIN, unless the test says otherwise.
-     */
     protected static function device(bool $userVerified = false, bool $synced = false): SoftwareAuthenticator
     {
         return new SoftwareAuthenticator(self::ORIGIN, userVerified: $userVerified, backupEligible: $synced, backedUp: $synced);
     }
 
-    /**
-     * A passkey enrolled through the page of the account, from a session the browser holds; the browser
-     * keeps that session.
-     *
-     * The page asks for a proof given a short while ago (issue #580), so a fixture that wants a session
-     * established earlier is played on the clock of that moment and comes back: what it asked for is one
-     * session that signed in then and holds a passkey, and not a session enrolling one on a proof it no
-     * longer has.
-     */
     protected function enrol(User $user, SoftwareAuthenticator $device, string $name = 'YubiKey 5', ?DateTimeImmutable $signedInAt = null): PasskeyCredential
     {
         $playedAt = self::currentSecond();
@@ -77,9 +63,6 @@ abstract class PasskeyTestCase extends BrowserTestCase
         return $crawler;
     }
 
-    /**
-     * The creation options the page fetches, as JSON.
-     */
     protected function creationOptions(): string
     {
         $this->browser->request('POST', '/account/passkeys/options');
@@ -89,9 +72,6 @@ abstract class PasskeyTestCase extends BrowserTestCase
         return self::string($response->getContent());
     }
 
-    /**
-     * The request options the login page fetches, as JSON.
-     */
     protected function requestOptions(string $interaction): string
     {
         $this->browser->request('POST', '/login/passkey/options?interaction=' . $interaction);
@@ -101,10 +81,6 @@ abstract class PasskeyTestCase extends BrowserTestCase
         return self::string($response->getContent());
     }
 
-    /**
-     * The passkey login as the login page does it: the options fetched, the assertion posted with the
-     * token of the page.
-     */
     protected function loginWithPasskey(string $interaction, SoftwareAuthenticator $device): void
     {
         $token = $this->loginPage($interaction)->filter('form[data-passkey="login"] input[name="_csrf_token"]')->attr('value');
@@ -143,17 +119,11 @@ abstract class PasskeyTestCase extends BrowserTestCase
         return $crawler;
     }
 
-    /**
-     * The browser forgets its cookies: what a sign-out leaves behind on the OP.
-     */
     protected function forgetTheBrowser(): void
     {
         $this->browser->getCookieJar()->clear();
     }
 
-    /**
-     * The passkey of the device in the rows.
-     */
     protected static function passkeyOf(User $user, SoftwareAuthenticator $device): PasskeyCredential
     {
         self::reload();
@@ -164,9 +134,6 @@ abstract class PasskeyTestCase extends BrowserTestCase
         );
     }
 
-    /**
-     * The session of the core the browser is bound to, read from the rows.
-     */
     protected function boundSession(): AuthenticationSession
     {
         $id = $this->readHttpSession()->get(BrowserSession::AUTHENTICATION_SESSION_KEY);
@@ -184,9 +151,6 @@ abstract class PasskeyTestCase extends BrowserTestCase
         return $this->readHttpSession()->has(BrowserSession::AUTHENTICATION_SESSION_KEY);
     }
 
-    /**
-     * The token the firewall stored in the HTTP session of the browser.
-     */
     protected function securityToken(): TokenInterface
     {
         $serialized = $this->readHttpSession()->get('_security_beffroi_interaction');
@@ -198,8 +162,6 @@ abstract class PasskeyTestCase extends BrowserTestCase
     }
 
     /**
-     * The active sessions of a user, from the rows.
-     *
      * @return list<AuthenticationSession>
      */
     protected static function sessionsOf(string $username): array

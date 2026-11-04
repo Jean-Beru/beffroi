@@ -14,17 +14,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * The floor of every login of the tenant, named without a redeploy (issue #327): a tenant that moves to
- * passkeys names the phishing-resistant predicate and its users sign in by passkey and by nothing else,
- * the password, the one-time codes and the backup codes they held being forgotten with it.
- *
- * It is the command the console of the tenant will press the same use case with (TenantHardening, epic
- * #194): everything the console does, a command does, and both call the one use case rather than two
- * copies of a policy. The floor is written on the row and not in the configuration, where the "acr"
- * vocabulary of the tenant lives: hardening is an act with a date, and a deployment that redeployed to
- * get one would have no date to show.
- */
 #[AsCommand(
     name: self::NAME,
     description: 'Name the floor of every login of the tenant, and forget the credentials it forbids.',
@@ -52,8 +41,6 @@ final readonly class TenantLoginFloorCommand
         if ($tenant === null) {
             return Command::FAILURE;
         }
-        // The registry words the refusal, with what this provider does carry: the name of a predicate is
-        // resolved here exactly as it is in the configuration of a tenant and in a stored policy.
         try {
             $named = $this->predicates->named($floor);
         } catch (InvalidArgumentException $exception) {

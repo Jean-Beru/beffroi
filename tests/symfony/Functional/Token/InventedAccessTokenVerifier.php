@@ -14,10 +14,6 @@ use function str_starts_with;
 use function strlen;
 use function substr;
 
-/**
- * The other side of the invented shape (issue #239): it answers to the name its issuer writes, so the
- * wiring holds together, and it recognises what that issuer wrote and nothing else.
- */
 final readonly class InventedAccessTokenVerifier implements AccessTokenVerifierInterface
 {
     public function __construct(

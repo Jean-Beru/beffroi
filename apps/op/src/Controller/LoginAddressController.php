@@ -25,18 +25,9 @@ use Symfony\Component\Routing\Attribute\Route;
 use function trim;
 
 /**
- * The step of the address of the login page, when the tenant federates a domain (beffroi/saml S-61, decision 0029), for
- * an interaction or for the login a page of the provider waits for (LoginTarget): an address of a federated domain is
- * sent to the sign-on of its provider for that interaction or that page, under the one-time reference drawn for that
- * sign-on (S-51), kept in the HTTP session for that sign-on, which carries it to a provider that reads one (S-68); any
- * other address, and a username, go on to the usual page, the field of the username holding what was typed; an address
- * whose domain the rule of the core does not read comes back to the step, which says so. An empty value goes back to
- * the step, for another address.
+ * beffroi/saml S-61
  *
- * **Nothing here reads a person.** Where the browser goes is a function of the domain and of the declarations of the
- * tenant (FederatedDomains), so that the answer, its status, its headers and its body, is the same whether somebody
- * holds the address or not, and waits on no lookup a clock could tell apart. Every answer is a redirection, as every
- * form of these pages answers (InteractionPages::afterTheForm()).
+ * Nothing here reads a person: the answer and its timing are the same whether somebody holds the address or not.
  */
 #[AsController]
 final readonly class LoginAddressController
@@ -47,9 +38,6 @@ final readonly class LoginAddressController
 
     public const string ADDRESS_PARAMETER = '_address';
 
-    /**
-     * The code of an address whose domain the rule does not read, which the page of the address translates.
-     */
     public const string UNREADABLE = 'address_unreadable';
 
     public function __construct(
@@ -72,7 +60,6 @@ final readonly class LoginAddressController
     {
         $tenant = $this->tenants->provide();
         $id = $request->query->getString(AuthorizationResponder::INTERACTION_PARAMETER);
-        // an interaction this browser began, or none for the login a page of the provider waits for (S-61)
         $interaction = $id === '' ? null : $this->browser->pending($request, $tenant, $id);
         if ($interaction === null && ($id !== '' || ! $this->loginTargets->isPending($request->getSession()))) {
             return $this->responder->unknownInteraction();
@@ -103,7 +90,6 @@ final readonly class LoginAddressController
             $now = $this->clock->now();
             $this->addresses->sendOn($request->getSession(), $interaction, $address, $now);
 
-            // S-51: under the one-time reference drawn for that sign-on, which no page of another site reads
             return $this->pages->afterTheForm(ServiceProviderRoutes::UPSTREAM_SIGN_ON, $this->discovery->signOn(
                 $request->getSession(),
                 $interaction,

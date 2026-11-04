@@ -18,12 +18,6 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\KernelInterface;
 use function trim;
 
-/**
- * What the firewall of the application asks the provider is answered by the kernel that serves the provider
- * (issue #282): each request it sends is handled as a request of its own while the request of the browser waits, so
- * that the application signs in at the provider it serves with nothing between the two but HTTP. Nothing of this
- * kernel reaches a host.
- */
 final readonly class RequestsToThisKernel
 {
     public function __construct(
@@ -32,8 +26,7 @@ final readonly class RequestsToThisKernel
     }
 
     /**
-     * @param array<string, mixed> $options what HttpClient made of the request: its headers as lines, its body as a
-     *                                      string
+     * @param array<string, mixed> $options its headers as lines, its body as a string
      */
     public function __invoke(string $method, string $url, array $options): MockResponse
     {
@@ -53,8 +46,7 @@ final readonly class RequestsToThisKernel
     }
 
     /**
-     * The headers of the request as PHP gives them to Symfony: each one under HTTP_ and its name in capitals, save the
-     * two that CGI names without it.
+     * As PHP hands the headers to Symfony: under HTTP_ in capitals, save the two CGI names without it.
      *
      * @return array<string, string>
      */

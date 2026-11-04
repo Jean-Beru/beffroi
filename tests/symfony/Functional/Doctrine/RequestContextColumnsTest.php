@@ -17,38 +17,14 @@ use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
 use Symfony\Component\Messenger\MessageBusInterface;
 
-/**
- * The provenance of a request, one sealed column each, on the three tables that hold one (decisions 0011
- * and 0018).
- *
- * It was an embeddable of five columns mapped four times, and an embeddable cannot seal: it fixes the type
- * of each of its fields once for the whole model, so the same field could not carry the type of each of
- * the three tables, and the family a sealed type belongs to is its table. One column and one JSON document
- * now, which is what this provider already does with every value object a column holds whole.
- *
- * **What this spike had to get right here** is the write path: the enrichment of a provenance is meant to
- * be asynchronous, so a column of it is written from a handler of the bus and not from a request, and a
- * sealed column written with no ambient tenant is refused rather than written under a wrong scope. The
- * enrichment itself does not exist, the port being there with a bridge that locates nothing and nobody
- * calling it, so what is played here is a message of this suite consumed by the bus with no request in
- * sight.
- */
 final class RequestContextColumnsTest extends DatabaseTestCase
 {
-    /**
-     * Read from the shared fixture and declared nowhere else: the test that searches the whole database
-     * searches for these very values, and two lists of the same values are two lists that disagree.
-     */
     private const string IP_ADDRESS = SealedRows::IP_ADDRESS;
 
     private const string USER_AGENT = SealedRows::USER_AGENT;
 
     private const string BINDING_MESSAGE = SealedRows::VALUES['beffroi_backchannel_authentication_request']['binding_message'];
 
-    /**
-     * Read back as the domain wrote it: the provenance comes back as the object it was, the encrypted type
-     * decorating the type of the column and the type holding the whole of it.
-     */
     #[Test]
     public function aSessionIsReadBackWithBothOfItsProvenances(): void
     {
@@ -70,10 +46,6 @@ final class RequestContextColumnsTest extends DatabaseTestCase
         );
     }
 
-    /**
-     * The two provenances of a session are independent columns, as they were two groups of columns: what a
-     * session is seen again from does not touch what it was created from.
-     */
     #[Test]
     public function aSessionSeenAgainKeepsTheProvenanceItWasCreatedFrom(): void
     {
@@ -94,11 +66,6 @@ final class RequestContextColumnsTest extends DatabaseTestCase
         static::assertSame($createdFrom->userAgent, $read->createdFrom->userAgent);
     }
 
-    /**
-     * The write path the enrichment will take, and the reason this issue belongs to this spike: a handler
-     * of the bus, with no request anywhere, writing a sealed column. It is written under the scope of its
-     * tenant, which `TenantProvider` answers from the configuration and not from a request, and read back.
-     */
     #[Test]
     public function anEnrichmentWrittenFromTheBusReachesTheScopeOfItsTenant(): void
     {
@@ -118,10 +85,6 @@ final class RequestContextColumnsTest extends DatabaseTestCase
         static::assertNull($read->createdFrom->location);
     }
 
-    /**
-     * And what the row holds then, which is the point of sealing it: the enrichment a handler wrote is not
-     * in the clear either.
-     */
     #[Test]
     public function theRowHoldsNothingOfTheEnrichmentAHandlerWrote(): void
     {
@@ -138,9 +101,6 @@ final class RequestContextColumnsTest extends DatabaseTestCase
     }
 
     /**
-     * Column by column over the four provenances of the schema: a column that stopped sealing fails on its
-     * own line.
-     *
      * @param list<string> $plaintexts
      */
     #[Test]
@@ -181,9 +141,6 @@ final class RequestContextColumnsTest extends DatabaseTestCase
         ];
     }
 
-    /**
-     * One row of each of the three tables, written through the repositories a request writes them with.
-     */
     private static function rows(): void
     {
         $fixture = self::fixture();
@@ -199,11 +156,6 @@ final class RequestContextColumnsTest extends DatabaseTestCase
         return new SealedRows(self::getContainer(), self::tenant(), self::now());
     }
 
-    /**
-     * One column of the one row of a table as the database holds it, which is what an operator or a dump
-     * would see: a column that holds nothing fails here rather than letting the search below pass for the
-     * wrong reason.
-     */
     private static function column(string $table, string $column): string
     {
         $rows = RawRows::of(self::connection(), $table, [$column]);

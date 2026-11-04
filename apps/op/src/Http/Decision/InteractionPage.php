@@ -13,9 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
- * Sending the browser to a page of the interaction it began: the interaction is remembered in the
- * session of that browser and the page is named by its route, carrying the identifier the page reads
- * back. Every decision answered by a page does this and differs only in which page.
+ * Remembers the interaction in the session of the browser and redirects it to one of its pages.
  */
 final readonly class InteractionPage
 {

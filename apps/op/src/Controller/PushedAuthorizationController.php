@@ -19,9 +19,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The pushed authorization request endpoint (RFC 9126 §2), POST only. A success is a 201 (§2.2); an
- * error is the JSON of the token endpoint (§2.3), never a redirection and never a page, even when the
- * request names a redirect URI the provider would otherwise have answered to.
+ * RFC 9126 §2
  */
 #[AsController]
 final readonly class PushedAuthorizationController

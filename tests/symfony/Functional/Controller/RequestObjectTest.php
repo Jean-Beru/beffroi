@@ -27,20 +27,12 @@ use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * RFC 9101 §6.1 and OIDC Core §6, the request the client signs: the authorization endpoint reads the
- * object and not the query, the object of a client that registered "none" is read unsigned, and a
- * "request_uri" is read back only from a URL the client registered (decision 0006).
- *
- * The same object encrypted to the key the tenant publishes (issue #189) is served the same way, by
- * value and by reference, and opens with that key alone: once it has retired, the object is refused.
- * What the client publishes behind its "request_uri" is answered here by a mock, so that what is seen
- * is the endpoint and nothing of the network.
+ * RFC 9101 §6.1, OIDC Core §6, Decision 0006
  */
 final class RequestObjectTest extends BrowserTestCase
 {
     /**
-     * The private half of the key "jar-app" publishes in the test kernel: the EC key of RFC 7515
-     * appendix A.3, a published test vector that signs nothing outside of this suite.
+     * RFC 7515 appendix A.3
      */
     private const array PRIVATE_KEY = [
         'kty' => 'EC',
@@ -52,8 +44,7 @@ final class RequestObjectTest extends BrowserTestCase
     ];
 
     /**
-     * What the client publishes behind the "request_uri" it registered, which the provider reads back
-     * with one GET (RFC 9101 §5.2).
+     * RFC 9101 §5.2
      */
     private string $published = '';
 
@@ -65,8 +56,7 @@ final class RequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9101 §6.1: a request carried in a JWT starts the flow like any other, the end user being sent
-     * to the login page the request object asked for.
+     * RFC 9101 §6.1
      */
     #[Test]
     public function aRequestSignedByItsClientStartsTheFlow(): void
@@ -84,8 +74,7 @@ final class RequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §6.1: the parameters of the object are the request, so a scope the object names is the
-     * scope of the request and the one of the query is dropped.
+     * OIDC Core §6.1
      */
     #[Test]
     public function theScopeOfTheObjectIsHonouredAgainstTheQuery(): void
@@ -106,9 +95,7 @@ final class RequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §6.1: a parameter of the query the object does not carry is no part of the request; PKCE
-     * is required of this client, and an object that carries no challenge carries none whatever the
-     * query says (RFC 7636 §4.3).
+     * OIDC Core §6.1, RFC 7636 §4.3
      */
     #[Test]
     public function aParameterOfTheQueryTheObjectDoesNotCarryIsIgnored(): void
@@ -131,8 +118,7 @@ final class RequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9101 §6.2: the signature is verified against the keys the client publishes, and an object
-     * signed with another key is refused on a page, the request never having been read.
+     * RFC 9101 §6.2
      */
     #[Test]
     public function anObjectSignedWithAnotherKeyIsRefusedOnAPage(): void
@@ -153,9 +139,7 @@ final class RequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §5.2 and issue #837: a value no authorization request carries is refused on a page under
-     * a name no error description can hold, and the description the page shows names the rule and
-     * nothing the client wrote.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function aValueUnderANameNoDescriptionHoldsIsRefusedOnAPage(): void
@@ -178,16 +162,13 @@ final class RequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9101 §4, RFC 6749 §3.1 and issue #837: a claim named by a number is an extension parameter the
-     * provider does not recognise, and the request it travels in starts the flow without it.
+     * RFC 9101 §4, RFC 6749 §3.1
      */
     #[Test]
     public function aClaimNamedByANumberIsIgnoredAndTheFlowStarts(): void
     {
         // Given
-        // in a PHP array, a member named by a number is an integer key, and the claims signed() takes
-        // are named by strings: the payload is written from an object, as a client in another language
-        // writes it
+        // An array would turn "123" into an integer key, so the claims are written from an object.
         $claims = (object) self::request();
         $claims->{'123'} = 'x';
 
@@ -204,10 +185,7 @@ final class RequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0006 and issue #142: the object of the client that registered "none" is read unsigned and
-     * asked for none of the claims that bound a proof, which is the object
-     * "oidcc-unsigned-request-object-supported-correctly-or-rejected-as-unsupported" sends; the response
-     * mode written inside it is the one the answer uses, the module having been waiting for exactly that.
+     * Decision 0006
      */
     #[Test]
     public function theResponseModeInsideAnUnsignedObjectIsTheOneTheAnswerUses(): void
@@ -236,10 +214,6 @@ final class RequestObjectTest extends BrowserTestCase
         static::assertSame('state-of-the-client', self::postedFields($crawler)['state'] ?? null);
     }
 
-    /**
-     * The same object, with a scope the client is allowed: the flow starts and the end user is sent to
-     * the login page, which is the branch the module of the Form Post plan takes.
-     */
     #[Test]
     public function anUnsignedObjectWithoutRegisteredClaimsStartsTheFlow(): void
     {
@@ -269,7 +243,7 @@ final class RequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0006: an unsigned object is read from the client that registered it and from no other.
+     * Decision 0006
      */
     #[Test]
     public function anUnsignedObjectFromAClientThatRegisteredNothingIsRefused(): void
@@ -287,8 +261,7 @@ final class RequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Discovery §3 "require_request_uri_registration": a URL the client did not register is refused
-     * on a page, and nothing of the provider goes out to read it.
+     * OIDC Discovery §3
      */
     #[Test]
     public function aReferenceTheClientDidNotRegisterIsRefused(): void
@@ -306,7 +279,7 @@ final class RequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §6: the two ways in are two, and never both at once.
+     * OIDC Core §6
      */
     #[Test]
     public function anObjectSentByValueAndByReferenceAtOnceIsRefused(): void
@@ -324,11 +297,6 @@ final class RequestObjectTest extends BrowserTestCase
         static::assertStringContainsString('data-error="invalid_request"', self::string($response->getContent()));
     }
 
-    /**
-     * The acceptance of issue #189: the same request, encrypted to the key the tenant publishes for
-     * encryption, starts the same flow. Nothing of it is readable on the wire, and the signature the
-     * client wrote inside is the one that is verified.
-     */
     #[Test]
     public function aRequestEncryptedToThePublishedKeyStartsTheFlow(): void
     {
@@ -350,8 +318,7 @@ final class RequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §6.2: an encrypted object published behind a registered "request_uri" is read back and
-     * opened exactly as one sent by value.
+     * OIDC Core §6.2
      */
     #[Test]
     public function anEncryptedObjectBehindARegisteredReferenceIsReadBack(): void
@@ -375,9 +342,7 @@ final class RequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §3.3: an encryption key opens what was encrypted to it as long as the JWK Set
-     * publishes it; past its retirement, the object is refused on a page, the request never having been
-     * read.
+     * Architecture §3.3
      */
     #[Test]
     public function anObjectEncryptedToAKeyThatHasRetiredIsRefusedOnAPage(): void
@@ -403,7 +368,7 @@ final class RequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9101 §4: the claims of a request object as a client of this kernel writes them.
+     * RFC 9101 §4
      *
      * @param array<string, string|null> $overrides
      *
@@ -443,8 +408,7 @@ final class RequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7515 §7.1: the claims as the client wrote them, signed with the key it publishes unless the
-     * test names another.
+     * RFC 7515 §7.1
      */
     private function signedPayload(string $payload, ?JWK $key = null): string
     {
@@ -461,7 +425,7 @@ final class RequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7515 §4.1.1, RFC 7518 §3.6: the two segments and the empty signature of an unsecured JWS.
+     * RFC 7515 §4.1.1, RFC 7518 §3.6
      *
      * @param array<string, mixed> $claims
      */
@@ -483,8 +447,6 @@ final class RequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * The hidden fields of the form the page posts.
-     *
      * @return array<string, string>
      */
     private static function postedFields(Crawler $page): array

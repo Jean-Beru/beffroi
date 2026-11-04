@@ -46,11 +46,6 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
 
-/**
- * What the extension hands the services from the configuration, read on the definitions before the
- * container is compiled: the values of "beffroi.tokens" become the DateIntervals of the use cases, the
- * values of "beffroi.keys" and "beffroi.tenant" the arguments of the bridges.
- */
 final class BeffroiExtensionTest extends TestCase
 {
     #[Test]
@@ -104,8 +99,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Architecture §3.3: the staging delay derives from the JWK Set max-age unless the configuration sets
-     * it; the derivation happens at runtime, so that an environment placeholder can stand for either.
+     * Architecture §3.3
      */
     #[Test]
     public function theStagingDelayDerivesFromTheJwksMaxAgeUnlessSet(): void
@@ -149,8 +143,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Decision 0009: what a tenant does with a client that registers itself reaches the bridge that
-     * answers for that tenant, the mode it names and the two durations it keeps a client for.
+     * Decision 0009
      */
     #[Test]
     public function theRegistrationPolicyOfTheConfigurationReachesTheBridge(): void
@@ -174,9 +167,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Decision 0009: closed is the default, and the mode is a value of one tenant's policy: there is no
-     * key here, whatever its name, that opens a registration endpoint for a deployment. What a deployment
-     * that writes nothing hands the bridge is no mode at all, which is no policy and no endpoint.
+     * Decision 0009
      */
     #[Test]
     public function aDeploymentThatWritesNothingHandsTheBridgeNoMode(): void
@@ -207,10 +198,6 @@ final class BeffroiExtensionTest extends TestCase
         static::assertSame(['app'], array_keys($clients));
     }
 
-    /**
-     * Issue #282: the application is a client of a source of its own, a declaration of the
-     * configuration like the clients beside it, built once the router can write the URLs of its routes.
-     */
     #[Test]
     public function theClientOfTheApplicationIsASourceOfItsOwn(): void
     {
@@ -239,10 +226,6 @@ final class BeffroiExtensionTest extends TestCase
         static::assertFalse($container->hasDefinition(SelfClientSection::SOURCE));
     }
 
-    /**
-     * One identifier is one client of the tenant: the application does not take the identifier of a client the
-     * deployment declares beside it, whose source would answer for it first.
-     */
     #[Test]
     public function theApplicationDoesNotTakeTheIdentifierOfADeclaredClient(): void
     {
@@ -266,8 +249,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: the shape is a per-client option. The tree reads the name and nothing else; a
-     * client that names none leaves it to the wiring, which is what knows the shapes and their order.
+     * Architecture §4.6
      */
     #[Test]
     public function theAccessTokenShapeOfAClientIsRead(): void
@@ -297,8 +279,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: one class per shape, tagged, and the shape it writes is the issuer's own
-     * business; the wiring holds an order and no name (issue #239).
+     * Architecture §4.6
      */
     #[Test]
     public function theAccessTokenIssuersAreTaggedAndNothingNamesTheirShape(): void
@@ -316,7 +297,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Architecture §5.2: a process serves both planes unless BEFFROI_PLANE says otherwise.
+     * Architecture §5.2
      */
     #[Test]
     public function theDefaultPlaneIsBoth(): void
@@ -328,9 +309,6 @@ final class BeffroiExtensionTest extends TestCase
         static::assertSame('all', $container->getParameterBag()->all()['env(BEFFROI_PLANE)']);
     }
 
-    /**
-     * The application may set the default plane of its processes itself; the provider does not override it.
-     */
     #[Test]
     public function theApplicationKeepsItsOwnDefaultPlane(): void
     {
@@ -345,12 +323,6 @@ final class BeffroiExtensionTest extends TestCase
         static::assertSame('protocol', $container->getParameterBag()->all()['env(BEFFROI_PLANE)']);
     }
 
-    /**
-     * Decisions 0011 and 0018: what registers the encrypted types runs while the bundles boot, and what it
-     * is handed is the encrypter of the sealed columns, so an encrypter built there would build the store,
-     * the connection and the KMS client of every process that boots. It is lazy, and public because a
-     * private service with one consumer is inlined and an inlined service is not a proxy.
-     */
     #[Test]
     public function theEncrypterOfTheSealedColumnsIsLazySoThatABootReachesNoKms(): void
     {
@@ -364,8 +336,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-64: the key files read past the key of an upstream identity provider nothing wires any more, every
-     * algorithm of that family named "SAML-ENCRYPTION:" and the entity ID of its provider.
+     * spec/saml.md S-64
      */
     #[Test]
     public function theKeyOfAProviderNothingWiresIsDormant(): void
@@ -378,8 +349,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-40, S-41, decision 0030: each SAML role reaches its switch as the configuration writes it, which the
-     * container reads when it builds what the role changes.
+     * spec/saml.md S-40, S-41, Decision 0030
      *
      * @param array<string, mixed> $saml
      * @param array{bool, bool} $on whether the identity provider and the service provider are
@@ -428,9 +398,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-41: what the consumers of a service of a role are handed under the name of its class is what the
-     * role builds, the service while it is on and none while it is off, the route of the role being wired in every
-     * image.
+     * spec/saml.md S-41
      */
     #[Test]
     #[DataProvider('provideServicesOfARole')]
@@ -455,8 +423,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Architecture §5.6: naming a subject is what turns web push on, the subject reaching the role of web push as the
-     * configuration writes it, and none naming none.
+     * Architecture §5.6
      */
     #[Test]
     #[DataProvider('provideWebPushSubjects')]
@@ -486,8 +453,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-38: the entity ID the deployment names for its service provider reaches the locator of its
-     * endpoints, and none leaves it to the URL of the metadata.
+     * spec/saml.md S-38
      */
     #[Test]
     #[DataProvider('provideServiceProviderEntityIds')]
@@ -519,8 +485,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-38: an entity ID of the service provider that is no string is refused when the configuration is
-     * read, rather than read as none and the service provider named by the URL of its metadata.
+     * spec/saml.md S-38
      */
     #[Test]
     #[DataProvider('provideEntityIdsThatAreNoString')]
@@ -553,8 +518,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-12, S-40: the metadata of the service provider are handed the max-age of the keys, and the
-     * cacheDuration and the staging delay of the SAML key, set under nodes of no role.
+     * spec/saml.md S-12, S-40
      */
     #[Test]
     public function theMetadataOfTheServiceProviderAreHandedTheFiguresOfTheSamlKey(): void
@@ -586,9 +550,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md section 5.1: the algorithm of a capability a deployment may turn off is dormant in every image,
-     * whether the configuration turns the capability on or not, the key files asking whether it is dormant only of a
-     * name the registry of its family does not carry, which it carries while the capability is on.
+     * spec/saml.md section 5.1
      *
      * @param array<string, mixed> $config
      * @param class-string $algorithm
@@ -638,8 +600,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-4, section 6.1 steps 4 and 6: WantAuthnRequestsSigned true unless the tenant says otherwise, and
-     * the metadata cacheable for the max-age of its keys.
+     * spec/saml.md S-4, section 6.1 steps 4 and 6
      *
      * @param array<string, mixed> $identityProvider
      */
@@ -682,8 +643,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-5, section 5.2: the service providers the configuration declares reach the declarations of the
-     * tenant whose slug the configuration names, each with what a declaration leaves out filled in.
+     * spec/saml.md S-5, section 5.2
      */
     #[Test]
     public function theServiceProvidersReachTheDeclarationsOfTheTenant(): void
@@ -733,8 +693,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md section 5.2: a tenant that is no identity provider serves no service provider, and a deployment
-     * that declares one for it is refused at boot rather than left with a declaration nothing reads.
+     * spec/saml.md section 5.2
      */
     #[Test]
     public function aServiceProviderOfATenantThatIsNoIdentityProviderIsRefused(): void
@@ -756,8 +715,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-42, section 5.7: the upstream identity providers the configuration declares reach the declarations
-     * of the tenant whose slug the configuration names, each with what a declaration leaves out filled in.
+     * spec/saml.md S-42, section 5.7
      */
     #[Test]
     public function theUpstreamIdentityProvidersReachTheDeclarationsOfTheTenant(): void
@@ -809,8 +767,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-64: each upstream identity provider declared has the algorithm of the key it encrypts for wired in
-     * the family of those keys, named after its entity ID.
+     * spec/saml.md S-64
      */
     #[Test]
     public function eachDeclaredIdentityProviderHasTheAlgorithmOfItsKeyWired(): void
@@ -847,9 +804,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-42, section 5.7: a tenant that is no service provider receives no assertion of an upstream
-     * identity provider, and a deployment that declares one for it is refused at boot rather than left with a
-     * declaration nothing reads.
+     * spec/saml.md S-42, section 5.7
      */
     #[Test]
     public function anUpstreamIdentityProviderOfATenantThatIsNoServiceProviderIsRefused(): void
@@ -874,7 +829,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-44: an upstream identity provider answers for one domain at least, refused at boot otherwise.
+     * spec/saml.md S-44
      */
     #[Test]
     public function anUpstreamIdentityProviderWithoutADomainIsRefused(): void
@@ -899,9 +854,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-12, section 7, issue #738: the SAML signing key is a family of its own, published seven days
-     * before it signs and working a year unless the deployment says otherwise, whether the role is enabled or not,
-     * the registry of its keys being wired in both cases.
+     * spec/saml.md S-12, section 7
      *
      * @param array<string, mixed> $saml
      */
@@ -962,7 +915,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-12: the metadata is handed its cacheDuration and the staging delay it is shorter than.
+     * spec/saml.md S-12
      */
     #[Test]
     public function theMetadataIsHandedItsCacheDurationAndTheStagingDelay(): void
@@ -986,8 +939,7 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-12: a cacheDuration a service provider would still be inside when the next key signs is refused
-     * when the configuration is read.
+     * spec/saml.md S-12
      */
     #[Test]
     public function aCacheDurationAsLongAsTheStagingDelayIsRefused(): void
@@ -1029,11 +981,6 @@ final class BeffroiExtensionTest extends TestCase
         return $container;
     }
 
-    /**
-     * The lifetime a service is handed, as the specification of a DateInterval: the one the definition carries,
-     * or the one its factory builds from the numbers it is given, which is how a lifetime held to a bound or to
-     * a rule reaches its service (BoundedNumber, SlidingRefreshLifetime).
-     */
     private static function interval(ContainerBuilder $container, string $service, int|string $argument): string
     {
         $definition = $container->getDefinition($service)->getArgument($argument);

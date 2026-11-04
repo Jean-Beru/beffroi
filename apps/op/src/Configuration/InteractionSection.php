@@ -8,11 +8,6 @@ use Beffroi\Oidc\Application\Hint\LoginHints;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
-/**
- * What the pages a browser waits on make of the authorization request behind them (architecture §4.3,
- * §5.2). What those pages look like is the integration's and is not here; what they may read of a request
- * is, a hint being worth exactly as much as the provider is wired to read it.
- */
 final readonly class InteractionSection extends ConfigurationSection
 {
     public function name(): string

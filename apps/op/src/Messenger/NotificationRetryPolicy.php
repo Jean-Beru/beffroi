@@ -13,25 +13,15 @@ use Symfony\Component\Messenger\Stamp\RedeliveryStamp;
 use Throwable;
 
 /**
- * How long the provider goes on trying to hand a notification to the third party it is addressed to
- * (architecture §5.6): a send that did not reach its client comes back a fixed number of times, waiting
- * longer at each one up to a ceiling, and a relying party that is restarting is therefore tried again
- * for longer than a write of our own would be. The provider routes its notifications to a lane this policy
- * drives (`MessengerContract`), and the retirement of a signing key reads the same object to know how
- * long a logout token may still be on its way (issue #155): one schedule, two readers, so that the two
- * cannot disagree.
- *
- * The waits are exact, where Symfony's own strategy scatters them by a tenth: a session announces itself
- * to the handful of clients it signed in and not to a fleet, and what a retirement window covers is a
- * number, not a distribution.
+ * Exact waits, without the jitter of Symfony's own strategy: the retirement of a signing key reads this schedule
+ * to know how long a logout token may still be on its way.
  */
 final readonly class NotificationRetryPolicy implements RetryStrategyInterface
 {
     /**
-     * The four numbers are those of "beffroi.back_channel_logout" (BackChannelLogoutSection), held here to the floors
-     * the tree holds them to, which is where a number an environment variable carries is first a number.
+     * The floors of BackChannelLogoutSection, checked again: a value from the environment is only a number here.
      *
-     * @throws InvalidConfigurationException when a number is below the floor of its node
+     * @throws InvalidConfigurationException
      */
     public function __construct(
         public int $retries = 6,
@@ -51,23 +41,20 @@ final readonly class NotificationRetryPolicy implements RetryStrategyInterface
     }
 
     /**
-     * @return int milliseconds, which is what the worker waits in
+     * @return int milliseconds
      */
     public function getWaitingTime(Envelope $message, ?Throwable $throwable = null): int
     {
         return $this->waitBefore(RedeliveryStamp::getRetryCountFromEnvelope($message)) * 1000;
     }
 
-    /**
-     * The first send, then one per retry.
-     */
     public function attempts(): int
     {
         return $this->retries + 1;
     }
 
     /**
-     * The seconds spent waiting between the first send and the last, the whole schedule at once.
+     * Seconds between the first send and the last.
      */
     public function waiting(): int
     {
@@ -80,8 +67,7 @@ final readonly class NotificationRetryPolicy implements RetryStrategyInterface
     }
 
     /**
-     * Seconds. The ceiling is applied at each step rather than at the end, so that a long schedule counts
-     * in seconds instead of overflowing.
+     * Seconds, the ceiling applied at each step so that a long schedule cannot overflow.
      */
     private function waitBefore(int $retry): int
     {

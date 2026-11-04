@@ -11,11 +11,10 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The service worker that receives a push for a browser of a user (Push API §5, architecture §5.6).
+ * Push API §5
  *
- * It is served at the root of the pages of the provider and not beside the page that registers it: a
- * service worker controls the paths under the one it was served from (Service Workers §3.1.1), and the
- * page it opens when a notification is tapped is a page of this provider elsewhere under that root.
+ * Served at the root: a service worker controls only the paths under its own (Service Workers §3.1.1), and the page
+ * a notification opens is elsewhere under that root.
  */
 #[AsController]
 final readonly class PushWorkerController

@@ -12,8 +12,7 @@ use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
 /**
- * Decision 0006 and decision 0035: a revocation list is downloaded without following a redirect, but the one
- * the test service of the FIDO Alliance answers, once, to its own host.
+ * Decision 0006, Decision 0035
  */
 final class RevocationListClientTest extends TestCase
 {

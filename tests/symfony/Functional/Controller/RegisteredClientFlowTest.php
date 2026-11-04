@@ -27,11 +27,6 @@ use function array_map;
 use function base64_encode;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #334: a client this provider registered is a client. It is written through the store, resolved
- * by the identifier it was given like any other, signs in end to end, and is refused everything a client
- * declared in the configuration is refused. Nothing of the flow knows that it came from a row.
- */
 final class RegisteredClientFlowTest extends BrowserTestCase
 {
     private const string CLIENT_ID = 'drawn-identifier';
@@ -57,10 +52,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7591 §2, issue #335: a row is read behind the defaults of the specification and not behind those of
-     * a deployment. A client that registered nothing beyond its redirection URI is registered for the
-     * authorization code grant alone and authenticates with "client_secret_basic", where a declaration that
-     * writes nothing takes the renewal and the first wired method.
+     * RFC 7591 §2
      */
     #[Test]
     public function aClientThatRegisteredNothingTakesTheDefaultsOfTheSpecification(): void
@@ -83,8 +75,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §3.1: the code flow, from the authorization request to the tokens, for a client no line
-     * of configuration names.
+     * OIDC Core §3.1
      */
     #[Test]
     public function aClientWrittenThroughTheStoreSignsAUserInEndToEnd(): void
@@ -107,9 +98,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7591 §2, RFC 3986 §3.2.2, architecture §4.1: a row the reader refuses now, a redirection URI registered
-     * before its host was held to a name or an address, names no client, so that the client is unusable rather
-     * than the pages that load what it was granted.
+     * RFC 7591 §2, RFC 3986 §3.2.2, Architecture §4.1
      */
     #[Test]
     public function aClientWhoseRowNoLongerReadsIsNoClient(): void
@@ -125,8 +114,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §4.1.2.1: the authorization request of that client is the request of a client nobody knows,
-     * answered without a redirection.
+     * RFC 6749 §4.1.2.1
      */
     #[Test]
     public function aClientWhoseRowNoLongerReadsIsRefusedItsAuthorizationRequest(): void
@@ -146,8 +134,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Discovery §3, architecture §4.1: the document of the tenant reads what its clients registered, and is
-     * served whatever a row the reader refuses holds.
+     * OIDC Discovery §3, Architecture §4.1
      */
     #[Test]
     public function aClientWhoseRowNoLongerReadsLeavesTheDocumentOfTheTenantServed(): void
@@ -163,8 +150,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §4.1: the row that names no client says so, at the level an operator is alerted on, with the
-     * rule it breaks.
+     * Architecture §4.1
      */
     #[Test]
     public function aClientWhoseRowNoLongerReadsIsLoggedAsAnError(): void
@@ -193,7 +179,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §3.1.2.3: byte for byte, for a registered client as for a declared one.
+     * RFC 6749 §3.1.2.3
      */
     #[Test]
     public function aRegisteredClientIsHeldToTheRedirectUriItRegistered(): void
@@ -212,7 +198,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §3.3: a scope the client did not register is not its to ask for.
+     * RFC 6749 §3.3
      */
     #[Test]
     public function aRegisteredClientIsHeldToTheScopesItRegistered(): void
@@ -232,8 +218,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §4.1.3: a grant the client did not register is refused at the token endpoint, whichever
-     * source holds that client.
+     * RFC 6749 §4.1.3
      */
     #[Test]
     public function aRegisteredClientIsHeldToTheGrantsItRegistered(): void
@@ -262,8 +247,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8707 §2: a resource outside the list the client registered is "invalid_target", a registered
-     * client being held to its list as a declared one is.
+     * RFC 8707 §2
      */
     #[Test]
     public function aRegisteredClientIsHeldToTheResourcesItRegistered(): void
@@ -283,8 +267,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §2.3.1: the client presents the secret it was handed, and the row holds the digest of it
-     * and never the secret, which is what a method that receives one verifies against.
+     * RFC 6749 §2.3.1
      */
     #[Test]
     public function aClientThatPresentsItsSecretIsAuthenticatedByTheDigestTheRowHolds(): void
@@ -303,7 +286,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §2.3.1: the secret of another client is not this one's, the digest being what is compared.
+     * RFC 6749 §2.3.1
      */
     #[Test]
     public function aClientPresentingAnotherSecretIsRefused(): void
@@ -323,9 +306,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §9, "client_secret_jwt": a client that signs with the secret it was handed is
-     * authenticated by the same MAC the provider computes, which is why the row holds that secret whole
-     * and not a digest of it. The registration says which of the two shapes the row keeps.
+     * OIDC Core §9
      */
     #[Test]
     public function aClientThatSignsWithItsSecretIsAuthenticatedByTheAssertionItSigned(): void
@@ -358,10 +339,6 @@ final class RegisteredClientFlowTest extends BrowserTestCase
         static::assertIsString(self::json($response)['access_token']);
     }
 
-    /**
-     * The client written through the store, with the metadata it registered and the secret the provider
-     * handed it, hashed as the method it registered verifies against.
-     */
     private function register(string $method = 'client_secret_basic', ?ClientSecretInterface $secret = null): void
     {
         $this->registerMembers([
@@ -372,9 +349,6 @@ final class RegisteredClientFlowTest extends BrowserTestCase
         ], $secret);
     }
 
-    /**
-     * A row written before the host of a URI a client registers was held to a name or an address.
-     */
     private function registerAHostThatCarriesADirective(): void
     {
         $this->registerMembers([
@@ -386,8 +360,6 @@ final class RegisteredClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * One row, holding exactly the members given and the secret the provider drew for it.
-     *
      * @param array<string, mixed> $members
      */
     private function registerMembers(array $members, ?ClientSecretInterface $secret = null): void
@@ -407,9 +379,6 @@ final class RegisteredClientFlowTest extends BrowserTestCase
         self::reload();
     }
 
-    /**
-     * What the row holds of the secret, read as the database holds it.
-     */
     private static function storedSecret(): string
     {
         $connection = self::entityManager()->getConnection();
@@ -436,11 +405,6 @@ final class RegisteredClientFlowTest extends BrowserTestCase
         );
     }
 
-    /**
-     * The code the registered client gets once alice signed in and allowed. A client that registered
-     * itself asks for a consent like any other: the exemption of architecture §7 is a member only a
-     * deployment writes, and a registration that sent it would have been refused.
-     */
     private function codeAllowedByAlice(): string
     {
         $this->signIn(self::user('alice'));
@@ -454,8 +418,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * The token request of the registered client, presenting the secret it was handed the way it
-     * registered to present it (RFC 6749 §2.3.1).
+     * RFC 6749 §2.3.1
      */
     private function exchange(string $code, string $secret = self::SECRET): void
     {

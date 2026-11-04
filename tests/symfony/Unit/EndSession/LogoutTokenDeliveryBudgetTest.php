@@ -15,15 +15,10 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * Back-Channel Logout 1.0 §2.5 and issue #155: how long a logout token stays on its way, which is what a
- * signing key is held back for since the token carries no "exp" of its own (RFC 8417 §2.2).
+ * Back-Channel Logout 1.0 §2.5, RFC 8417 §2.2
  */
 final class LogoutTokenDeliveryBudgetTest extends TestCase
 {
-    /**
-     * The waits of the schedule, and the seconds each of the seven sends is given before it is a failure:
-     * 200 plus 35 with the values the provider defaults to.
-     */
     #[Test]
     public function aLogoutTokenLivesTheWaitsOfItsLaneAndTheTimeoutOfEverySend(): void
     {
@@ -42,10 +37,6 @@ final class LogoutTokenDeliveryBudgetTest extends TestCase
         static::assertEquals(new DateInterval('PT235S'), $budget->deliveryBudget());
     }
 
-    /**
-     * A timeout of a fraction of a second is still a second of the window: what holds a key back is
-     * rounded up, never down.
-     */
     #[Test]
     public function aTimeoutOfAFractionOfASecondCountsAsAWholeOne(): void
     {

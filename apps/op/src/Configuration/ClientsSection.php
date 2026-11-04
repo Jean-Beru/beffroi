@@ -11,9 +11,6 @@ use function is_array;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
-/**
- * The clients of the tenant, as a deployment declares them (architecture §5.1). They belong to the tenant this deployment declares, which is why the repository is told its slug.
- */
 final readonly class ClientsSection extends ConfigurationSection
 {
     public function name(): string

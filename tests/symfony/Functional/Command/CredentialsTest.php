@@ -25,8 +25,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §5.5: the console lists the credentials of a user and revokes a passkey, the only
- * administration of spike 3.
+ * Architecture §5.5
  */
 final class CredentialsTest extends ConsoleTestCase
 {
@@ -61,9 +60,6 @@ final class CredentialsTest extends ConsoleTestCase
         );
     }
 
-    /**
-     * Issue #983: the authenticator of a passkey is named as the page of the passkeys names it, with its source.
-     */
     #[Test]
     public function theAuthenticatorOfAPasskeyIsShownWithTheSourceThatNamesIt(): void
     {
@@ -132,10 +128,6 @@ final class CredentialsTest extends ConsoleTestCase
         static::assertStringStartsWith('beffroi-console/beffroi:user:revoke-credential (', $events[0]->context->userAgent ?? '');
     }
 
-    /**
-     * Issue #91: the TOTP is revoked from the console like a passkey, by the identifier beffroi:user:show
-     * lists; the kind has no label, the identifier stands for it.
-     */
     #[Test]
     public function aTotpIsRevokedByItsIdentifier(): void
     {

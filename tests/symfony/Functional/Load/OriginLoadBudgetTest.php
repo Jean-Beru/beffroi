@@ -20,18 +20,10 @@ use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Decision 0014 over HTTP: the budget of the origin of a request is consumed on every route of the two
- * planes (architecture §5.2), before the firewall and before anything the request asks for, and the
- * request that finds the window full is answered `429` in the shape of its plane. The budget of this
- * kernel is one request, named before the kernel boots as a deployment names its own, and the browser
- * keeps its kernel so that the count of a window survives between two requests.
+ * Decision 0014, Architecture §5.2
  */
 final class OriginLoadBudgetTest extends BrowserTestCase
 {
-    /**
-     * The address the budget is spent on. Its own, so that nothing this suite sends from anywhere else
-     * is counted here.
-     */
     private const string ADDRESS = '198.51.100.7';
 
     private const string OTHER_ADDRESS = '198.51.100.8';
@@ -51,12 +43,6 @@ final class OriginLoadBudgetTest extends BrowserTestCase
         unset($_SERVER['BEFFROI_TEST_ORIGIN_BUDGET'], $_ENV['BEFFROI_TEST_ORIGIN_BUDGET']);
     }
 
-    /**
-     * The acceptance of issue #178: a route is covered because it is routed, and the refusal has one
-     * shape. Every route of the two planes is asked for once the budget of this address is spent, and
-     * the test names the one that was served or answered without the delay to wait, the way the events
-     * of the module are covered by being in their directory.
-     */
     #[Test]
     public function everyRouteOfTheTwoPlanesIsRefusedWithTheDelayToWait(): void
     {
@@ -78,8 +64,7 @@ final class OriginLoadBudgetTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0014: the routes of the application are not the provider's, and nothing of what they
-     * cost is this provider's to bound.
+     * Decision 0014
      */
     #[Test]
     public function aRouteOfTheHostApplicationIsNotCounted(): void
@@ -95,8 +80,7 @@ final class OriginLoadBudgetTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0014: the key is the address, and what it bounds is the load one origin makes. Another
-     * address has its own window, whatever the first one spent.
+     * Decision 0014
      */
     #[Test]
     public function theBudgetIsCountedByAddress(): void
@@ -112,9 +96,7 @@ final class OriginLoadBudgetTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0014, RFC 6585 §4 and RFC 9126 §2.3: `429`, the delay to wait, nothing cached, and a body
-     * that explains the condition without an `error` member, none of the registered values saying that a
-     * budget is spent (RFC 6749 §11.4).
+     * Decision 0014, RFC 6585 §4, RFC 9126 §2.3, RFC 6749 §11.4
      */
     #[Test]
     public function theRefusalOfTheProtocolPlaneIsADocumentWithoutAnErrorMember(): void
@@ -137,8 +119,7 @@ final class OriginLoadBudgetTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0014: on the interaction plane a refusal is the error page of the plane with its code, as
-     * the code page names `too_many_attempts`, and with the headers every page of the plane carries.
+     * Decision 0014
      */
     #[Test]
     public function theRefusalOfTheInteractionPlaneIsTheErrorPageOfThePlane(): void
@@ -158,8 +139,7 @@ final class OriginLoadBudgetTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §5.7: a page of the interaction plane is read by somebody, and the budget is consumed
-     * above the listener that chooses the language, so the refusal chooses it itself.
+     * Architecture §5.7
      */
     #[Test]
     public function theRefusedPageIsInTheLanguageTheBrowserAsksFor(): void
@@ -182,8 +162,7 @@ final class OriginLoadBudgetTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0014: the budget is consumed before the firewall opens a session or hashes anything, so a
-     * page that answers "sign in first" answers the refusal instead.
+     * Decision 0014
      */
     #[Test]
     public function thePageOfAnAccountIsRefusedBeforeItAsksForASession(): void
@@ -199,8 +178,7 @@ final class OriginLoadBudgetTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0014: a refusal reaches the audit trail with the budget that refused, the route asked
-     * for, the origin of the request, and no client, no budget of a client having been consumed.
+     * Decision 0014
      */
     #[Test]
     public function aRefusalReachesTheAuditTrail(): void
@@ -220,9 +198,6 @@ final class OriginLoadBudgetTest extends BrowserTestCase
         static::assertSame(self::ADDRESS, $spent[0]->context->ipAddress);
     }
 
-    /**
-     * The one request this address is allowed, which is served and leaves the window full.
-     */
     private function spendTheBudget(): void
     {
         for ($request = 1; $request <= self::BUDGET; ++$request) {
@@ -232,9 +207,6 @@ final class OriginLoadBudgetTest extends BrowserTestCase
     }
 
     /**
-     * Every route of the two planes, with a method it answers, read from the router of the kernel and
-     * from no list of this suite.
-     *
      * @return iterable<string, array{string, string}>
      */
     private static function planeRoutes(): iterable
@@ -249,10 +221,6 @@ final class OriginLoadBudgetTest extends BrowserTestCase
         }
     }
 
-    /**
-     * The path of a route, with a value the requirements of every variable take: a budget is consumed
-     * once a request is matched to a route, so a route with a variable is asked for with one.
-     */
     private static function pathOf(Route $route): string
     {
         $path = $route->getPath();
@@ -260,7 +228,6 @@ final class OriginLoadBudgetTest extends BrowserTestCase
             $requirement = $route->getRequirement(self::string($variable)) ?? '[^/]++';
             $value = Uuid::v7()->toRfc4122();
             if (preg_match('#^(?:' . $requirement . ')$#', $value) !== 1) {
-                // a name, which is what a variable that takes no identifier takes (the claim of the profile page)
                 $value = 'name';
             }
             $path = str_replace(sprintf('{%s}', self::string($variable)), $value, $path);

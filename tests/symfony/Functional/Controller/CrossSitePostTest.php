@@ -14,11 +14,7 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * beffroi/saml, spec/saml.md S-28, the acceptance of issue #739 on the authorization endpoint of OpenID Connect, which
- * a client may post to (OIDC Core §3.1.2.1), and on its end session endpoint (RP-Initiated Logout §2): a request posted
- * from another site reaches the provider without the session cookie, which "SameSite=Lax" keeps from a cross-site post,
- * and is posted again from the origin of the provider, which the cookie accompanies. The browser of these tests is
- * signed in, and a post from another site is played without its cookies (postedFromAnotherSite()).
+ * beffroi/saml S-28, OIDC Core §3.1.2.1, RP-Initiated Logout §2
  */
 final class CrossSitePostTest extends BrowserTestCase
 {
@@ -27,15 +23,10 @@ final class CrossSitePostTest extends BrowserTestCase
     private const string ENGLISH_BROWSER = 'en-US,en;q=0.9';
 
     /**
-     * A logout the client oidc-demo asks for without a hint, which the user is asked to confirm (RP-Initiated Logout
-     * §2).
+     * RP-Initiated Logout §2
      */
     private const string LOGOUT = 'client_id=oidc-demo&post_logout_redirect_uri=https%3A%2F%2Fdemo.test%2F&state=after-logout';
 
-    /**
-     * What the page says in French: its language, its title, the sentence and the button a browser without scripting
-     * is shown.
-     */
     private const array FRENCH_PAGE = [
         'fr',
         'Connexion en cours',
@@ -52,8 +43,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * The acceptance of issue #739, S-28: a signed-in browser whose client posts its request from another site is
-     * answered from the session it holds, without a login, once the page has posted the request again.
+     * S-28
      */
     #[Test]
     public function aRequestPostedFromAnotherSiteIsAnsweredFromTheSession(): void
@@ -72,8 +62,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28: what is posted again is the body as it came, pair by pair, in its order, a repeated name included, to the
-     * endpoint it was posted to, marked in the query of the action.
+     * S-28
      */
     #[Test]
     public function thePagePostsTheBodyAsItCame(): void
@@ -92,7 +81,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28: the page sets no cookie, which would replace the one the browser holds.
+     * S-28
      */
     #[Test]
     public function thePageSetsNoCookie(): void
@@ -105,8 +94,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28, bindings.md section 6.7: the page names its one script by its hash, loads nothing, is never framed and
-     * never cached.
+     * S-28, bindings.md section 6.7
      */
     #[Test]
     public function thePageCarriesItsPolicyAndIsNeverCached(): void
@@ -137,8 +125,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28, architecture §5.7: the page speaks the language the browser asks for ("Accept-Language"), as every page of
-     * the interaction plane does.
+     * S-28, Architecture §5.7
      */
     #[Test]
     public function thePageSpeaksTheLanguageOfTheBrowser(): void
@@ -151,8 +138,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28, OIDC Core §3.1.2.1, architecture §5.7: the "ui_locales" of the posted body comes before the language of
-     * the browser, as it does for the pages of the interaction it opens.
+     * S-28, OIDC Core §3.1.2.1, Architecture §5.7
      */
     #[Test]
     public function theUiLocalesOfThePostedBodyComeBeforeTheBrowser(): void
@@ -169,8 +155,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28: a "ui_locales" the endpoint would refuse leaves the page in the language of the browser, and the refusal
-     * to the second post, which reads the body as it came.
+     * S-28
      */
     #[Test]
     #[DataProvider('provideUiLocalesTheEndpointRefuses')]
@@ -193,8 +178,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28: a post that came from the page is not posted a third time, the page posting from the origin of the
-     * provider: a browser that still sends no cookie is served as it came, here sent to the login.
+     * S-28
      */
     #[Test]
     public function aRequestPostedAgainIsNotPostedAThirdTime(): void
@@ -207,9 +191,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28, "The marker": a post from another site that forges the marker is posted again as one that does not carry
-     * it, so that no post from another site starts an HTTP session, whose cookie would replace the one the browser
-     * holds and sign it out of the provider.
+     * S-28, "The marker"
      */
     #[Test]
     public function aPostFromAnotherSiteThatForgesTheMarkerIsPostedAgainWithoutASession(): void
@@ -222,8 +204,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28: a logout a client posts from another site is answered with the page that posts it again to the end session
-     * endpoint, and no cookie.
+     * S-28
      */
     #[Test]
     public function aLogoutPostedFromAnotherSiteIsPostedAgain(): void
@@ -239,8 +220,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28, RP-Initiated Logout §2: the logout posted again finds the session the browser holds, and asks its user to
-     * confirm, where a browser without one would be told it is signed out already.
+     * S-28, RP-Initiated Logout §2
      */
     #[Test]
     public function aLogoutPostedAgainAsksTheUserOfTheSession(): void
@@ -259,8 +239,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28: a confirmation forged on another site is posted again, and the second post carries no token of the form
-     * the browser was given: the session is not ended.
+     * S-28
      */
     #[Test]
     public function aConfirmationForgedOnAnotherSiteEndsNothing(): void
@@ -278,7 +257,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28: the marker is added after the query the request was posted with, once.
+     * S-28
      */
     #[Test]
     public function theMarkerIsAddedAfterTheQueryOfTheRequest(): void
@@ -291,8 +270,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28: a post the browser does not say came from another site is served as it came: from this site or a sibling,
-     * which the cookie accompanies, and from a browser that sends no "Sec-Fetch-Site" at all.
+     * S-28
      */
     #[Test]
     #[DataProvider('provideSitesThatAreNotAnother')]
@@ -317,8 +295,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28: a form posted from another site that carries the session cookie, its body as the other site encoded it, is
-     * served from the session at once, and not posted again.
+     * S-28
      */
     #[Test]
     public function aPostCarryingTheCookieIsServedDirectly(): void
@@ -334,8 +311,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28: a body a browser would not post back as it came is served as it came, so that nothing the endpoint reads
-     * differs between the first post and the second.
+     * S-28
      */
     #[Test]
     #[DataProvider('provideBodiesThatDoNotComeBack')]
@@ -365,8 +341,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28: a line break written as CR LF, which a browser reads as a line feed and writes back as CR LF (HTML,
-     * "preprocessing the input stream" and "converting an entry list to a list of name-value pairs"), and a tab, which it keeps, are posted again as they came.
+     * S-28, HTML "preprocessing the input stream", "converting an entry list to a list of name-value pairs"
      */
     #[Test]
     public function aLineBreakWrittenAsCrLfIsPostedAgain(): void
@@ -382,7 +357,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28: a pair without "=" is the name with an empty value, as PHP reads it, and an empty pair is nothing.
+     * S-28
      */
     #[Test]
     public function aPairWithoutValueIsPostedAgainEmpty(): void
@@ -395,7 +370,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28: the media type of a form is read as RFC 9110 §8.3.1 writes it, its case and its parameters aside.
+     * S-28, RFC 9110 §8.3.1
      */
     #[Test]
     #[DataProvider('provideMediaTypesOfAForm')]
@@ -418,7 +393,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28: a post whose body is not a form, or is empty, is served as it came.
+     * S-28
      */
     #[Test]
     #[DataProvider('provideBodiesThatAreNotForms')]
@@ -442,8 +417,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * S-28: a request from another site that is not a post is a top-level navigation, which a "Lax" cookie
-     * accompanies, and is served as it came.
+     * S-28
      */
     #[Test]
     public function aGetFromAnotherSiteIsServedAsItCame(): void
@@ -472,8 +446,6 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * The form of the page, as a browser reads it: where it posts, and its fields in their order.
-     *
      * @return array{string, list<array{string, string}>}
      */
     private function page(): array
@@ -489,8 +461,6 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * The words of the page: its language, its title, and what a browser without scripting reads.
-     *
      * @return array{string, string, string, string}
      */
     private function words(): array

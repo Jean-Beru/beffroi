@@ -12,15 +12,7 @@ use Jose\Component\Core\JWK;
 use Jose\Component\KeyManagement\JWKFactory;
 
 /**
- * The SAML signing key of a tenant (beffroi/saml, spec/saml.md section 5.1, S-1): an RSA pair of the size the RSA
- * algorithms of the core share, drawn by the generator of the core, sealed by the KMS and rotated by the key commands
- * under this name, as every other key of the tenant, and published as a certificate in the metadata of its identity
- * provider rather than in its JWK Set.
- *
- * It is the provider's because it is two things at once: an algorithm the generator of the core draws pairs for, which
- * is JOSE's, and a key of the SAML module, which the core does not know; only the provider sees both. It is wired when
- * a deployment enables "beffroi.saml.identity_provider", and by nothing else, so that a deployment that serves no SAML
- * draws no such key.
+ * beffroi/saml S-1
  */
 final readonly class SamlSigning implements JoseKeyAlgorithmInterface, SamlSigningAlgorithmInterface
 {

@@ -47,10 +47,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * beffroi/saml, spec/saml.md S-19 to S-21, the acceptance of issue #733 in the provider: the SimpleSAMLphp service
- * provider of the configuration of the test, declared with encrypt_assertions, its metadata of 30 September 2026
- * accepted and its requests signed with the key of the installation they come from, is answered with an assertion that
- * only that key decrypts, signed by the tenant and addressed to it.
+ * beffroi/saml, spec/saml.md S-19 to S-21
  */
 final class EncryptedAssertionTest extends ConsoleTestCase
 {
@@ -64,9 +61,6 @@ final class EncryptedAssertionTest extends ConsoleTestCase
 
     private const string REQUEST_ID = '_4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b';
 
-    /**
-     * The key of the SimpleSAMLphp installation whose metadata the fixture is, a test key and not a secret.
-     */
     private const string KEY = __DIR__ . '/../../../saml2-bindings/Interop/simplesamlphp/installation/cert/sp.pem';
 
     private User $alice;
@@ -93,8 +87,7 @@ final class EncryptedAssertionTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #733, S-19: the assertion on the wire is encrypted, a saml:EncryptedAssertion and no
-     * saml:Assertion in the response the page posts.
+     * S-19
      */
     #[Test]
     public function theAssertionOnTheWireIsEncrypted(): void
@@ -113,8 +106,7 @@ final class EncryptedAssertionTest extends ConsoleTestCase
     }
 
     /**
-     * S-19, S-21, SAML Core §6.2: decrypted with the key of the service provider, the assertion is signed by the tenant
-     * under the certificate of its metadata, addressed to that service provider and carrying its attribute.
+     * S-19, S-21, SAML Core §6.2
      */
     #[Test]
     public function theDecryptedAssertionIsSignedByTheTenantForTheServiceProvider(): void
@@ -148,9 +140,6 @@ final class EncryptedAssertionTest extends ConsoleTestCase
         $this->browser->request('GET', parse_url($url, PHP_URL_PATH) . '?' . parse_url($url, PHP_URL_QUERY));
     }
 
-    /**
-     * The response the page posts, as the service provider loads it.
-     */
     private function response(): Document
     {
         $response = $this->browser->getResponse();
@@ -160,11 +149,6 @@ final class EncryptedAssertionTest extends ConsoleTestCase
         return SamlLoader::create()->load((string) base64_decode((string) $field->attr('value'), true));
     }
 
-    /**
-     * The response as the service provider reads it once it decrypted its assertion with its key: the plaintext in
-     * place of the saml:EncryptedAssertion, the signature of the response, which covered the ciphertext, taken off,
-     * validated under the certificate the metadata of the tenant publish, the assertion covering itself.
-     */
     private function decrypted(): AcceptedAssertion
     {
         $response = $this->response();

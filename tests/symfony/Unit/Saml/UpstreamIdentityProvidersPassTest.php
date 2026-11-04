@@ -18,10 +18,7 @@ use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 /**
- * Spec/saml.md section 6.10 step 1, S-44, S-45: the upstream identity providers the configuration declares are built
- * when the container is compiled, from what the extension hands their service, so that a declaration that does not
- * hold together, or a domain two of them declare, fails the build of the deployment and not its first refresh or its
- * first sign-in; the claims of the profile are left to the warmer the pass hands them to.
+ * spec/saml.md section 6.10 step 1, S-44, S-45
  */
 final class UpstreamIdentityProvidersPassTest extends TestCase
 {
@@ -30,8 +27,7 @@ final class UpstreamIdentityProvidersPassTest extends TestCase
     private const string OTHER = 'https://idp.other.example/saml';
 
     /**
-     * S-44, the acceptance of issue #779: a domain two identity providers of the tenant declare is refused when the
-     * container is compiled, naming the key of the configuration, the domain and both providers.
+     * S-44
      */
     #[Test]
     public function aDomainDeclaredByTwoIdentityProvidersFailsTheCompilation(): void
@@ -55,8 +51,7 @@ final class UpstreamIdentityProvidersPassTest extends TestCase
     }
 
     /**
-     * S-42, M-6: an identity provider declared under an entity ID that is no URI as the model reads one is refused
-     * when the container is compiled, by the rule the entity ID of the service provider is held to (ModelEntityId).
+     * S-42, M-6
      */
     #[Test]
     public function anEntityIdThatIsNoUriFailsTheCompilation(): void
@@ -75,9 +70,7 @@ final class UpstreamIdentityProvidersPassTest extends TestCase
     }
 
     /**
-     * S-42: an identity provider declared under the entity ID of the identity provider of the tenant, the issuer
-     * followed by the path of its metadata, is refused when the container is compiled, whether that role is enabled
-     * or not.
+     * S-42
      */
     #[Test]
     public function theEntityIdOfTheIdentityProviderOfTheTenantFailsTheCompilation(): void
@@ -96,8 +89,7 @@ final class UpstreamIdentityProvidersPassTest extends TestCase
     }
 
     /**
-     * S-42, S-38: an identity provider declared under the entity ID of the service provider of the tenant, the URL of
-     * its metadata or the one the deployment names, is refused when the container is compiled.
+     * S-42, S-38
      *
      * @param array<string, mixed>|null $serviceProvider
      */
@@ -131,8 +123,7 @@ final class UpstreamIdentityProvidersPassTest extends TestCase
     }
 
     /**
-     * S-42: what an environment variable says is known to the running deployment only, so an entity ID of the service
-     * provider that holds one is compared with nothing when the container is compiled.
+     * S-42
      */
     #[Test]
     public function anEntityIdOfTheServiceProviderOfTheEnvironmentIsComparedWithNothing(): void
@@ -157,9 +148,7 @@ final class UpstreamIdentityProvidersPassTest extends TestCase
     }
 
     /**
-     * Section 6.10 step 1: a declaration that does not hold together is refused when the container is compiled,
-     * naming the key of the configuration and the identity provider, with the message of the constructor that
-     * refused it.
+     * Section 6.10 step 1
      *
      * @param array<array-key, mixed> $declaration
      */
@@ -220,9 +209,7 @@ final class UpstreamIdentityProvidersPassTest extends TestCase
     }
 
     /**
-     * S-45, section 6.10 step 1: the claims the profile holds come from the claims the container builds, so a claim
-     * no profile holds compiles, and its declaration is handed to the warmer, which checks the claim right after the
-     * compilation.
+     * S-45, section 6.10 step 1
      */
     #[Test]
     public function theClaimsOfTheProfileAreLeftToTheWarmer(): void
@@ -244,8 +231,7 @@ final class UpstreamIdentityProvidersPassTest extends TestCase
     }
 
     /**
-     * Section 6.10 step 1: a declaration that holds an environment variable is left to its first use, by the
-     * compilation and by the warmer, which is handed the others; a domain it shares with another is refused then.
+     * Section 6.10 step 1
      */
     #[Test]
     public function aDeclarationThatHoldsAnEnvironmentVariableIsLeftToItsFirstUse(): void
@@ -264,9 +250,6 @@ final class UpstreamIdentityProvidersPassTest extends TestCase
         static::assertSame([self::ENTITY_ID], array_keys(self::warmed($container)));
     }
 
-    /**
-     * A container without the service, which a kernel without this provider's services builds, has nothing to check.
-     */
     #[Test]
     public function aContainerWithoutTheIdentityProvidersHasNothingToCheck(): void
     {
@@ -280,9 +263,6 @@ final class UpstreamIdentityProvidersPassTest extends TestCase
         static::assertFalse($container->hasDefinition(ConfigurationUpstreamIdentityProviders::class));
     }
 
-    /**
-     * The pass is one of the provider's, run by every kernel that builds its container.
-     */
     #[Test]
     public function theProviderRunsThePass(): void
     {
@@ -315,9 +295,6 @@ final class UpstreamIdentityProvidersPassTest extends TestCase
     }
 
     /**
-     * The container the extension builds from a configuration that declares these upstream identity providers, the
-     * service provider of the tenant enabled with what is given.
-     *
      * @param array<array-key, mixed> $identityProviders
      * @param array<string, mixed>|null $serviceProvider
      */
@@ -357,8 +334,6 @@ final class UpstreamIdentityProvidersPassTest extends TestCase
     }
 
     /**
-     * The declarations the pass handed the warmer.
-     *
      * @return array<array-key, mixed>
      */
     private static function warmed(ContainerBuilder $container): array

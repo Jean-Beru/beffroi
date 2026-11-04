@@ -8,10 +8,6 @@ use App\Http\Timeout;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * A call to a third party is given its timeout twice by HttpClient, for a byte and for the whole exchange, so that a
- * party that answers one byte a second holds nobody longer than one that answers none.
- */
 final class TimeoutTest extends TestCase
 {
     #[Test]

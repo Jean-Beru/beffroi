@@ -20,15 +20,6 @@ use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * A flow played hop by hop from a page (issue #462): every advance takes the next hop the demonstration
- * takes itself, and both halves of it are written into the trace, the request as it was sent and the
- * answer as it came back.
- *
- * The suite has no provider at the other end of a hop, so the client the demonstration calls with is
- * one this test hands the answers of (config/services_test.yaml). What is judged is the request the
- * demonstration built and what it made of the answer.
- */
 final class PlayedFlowsTest extends DemonstrationTestCase
 {
     private const string FLOW = 'client_credentials';
@@ -36,8 +27,7 @@ final class PlayedFlowsTest extends DemonstrationTestCase
     private const string CLIENT_ID = 'demo-service';
 
     /**
-     * RFC 6749 §4.4.2: the client asks the token endpoint for itself. The hop drawn is the request that
-     * was sent, down to the fields it carried, and the hop after it is the answer as it came back.
+     * RFC 6749 §4.4.2
      */
     #[Test]
     public function anAdvanceTakesTheHopThePicturePlansAndDrawsBothHalves(): void
@@ -58,10 +48,6 @@ final class PlayedFlowsTest extends DemonstrationTestCase
         static::assertSame('https://op.test/token', $answers[0]->getRequestUrl());
     }
 
-    /**
-     * The call carries the user agent of the demonstration, which is how the recorder of the provider's
-     * side knows to leave that hop to the demonstration rather than record it a second time.
-     */
     #[Test]
     public function theCallSaysItIsTheDemonstrationsOwn(): void
     {
@@ -78,8 +64,7 @@ final class PlayedFlowsTest extends DemonstrationTestCase
     }
 
     /**
-     * RFC 6749 §2.3.1: a client that holds a secret authenticates with it, and that header is not
-     * drawn. A picture of a flow is not a place to read a secret from.
+     * RFC 6749 §2.3.1
      */
     #[Test]
     public function theSecretTheClientAuthenticatesWithIsNotDrawn(): void
@@ -96,8 +81,7 @@ final class PlayedFlowsTest extends DemonstrationTestCase
     }
 
     /**
-     * RFC 7515 §3.1: a compact JWT of an answer is drawn raw and decoded, header and claims, under the
-     * name the payload gave it. Nothing is verified: what the page shows is a reading.
+     * RFC 7515 §3.1
      */
     #[Test]
     public function aCompactJwtOfTheAnswerIsDrawnRawAndDecoded(): void
@@ -116,7 +100,7 @@ final class PlayedFlowsTest extends DemonstrationTestCase
     }
 
     /**
-     * RFC 6749 §5.2: a hop that failed is drawn as it failed, with the reason the provider gave.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function aHopThatFailedIsDrawnAsItFailed(): void
@@ -139,10 +123,6 @@ final class PlayedFlowsTest extends DemonstrationTestCase
         static::assertSame('invalid_scope: The client asked for a scope it does not hold.', $answer->reason);
     }
 
-    /**
-     * A hop the client of the run does not hold what it needs for is said to be, and nothing is sent:
-     * a token that never came back is a token nothing can be introspected with.
-     */
     #[Test]
     public function aHopTheClientHoldsNothingForIsDrawnAsNotTaken(): void
     {
@@ -163,10 +143,6 @@ final class PlayedFlowsTest extends DemonstrationTestCase
         static::assertSame('', $unheld->payload);
     }
 
-    /**
-     * A run started over forgets what the previous one exchanged, which is the only way a flow played
-     * twice is not read as one flow played oddly.
-     */
     #[Test]
     public function aRunStartedOverForgetsWhatThePreviousOneExchanged(): void
     {
@@ -185,7 +161,7 @@ final class PlayedFlowsTest extends DemonstrationTestCase
     /**
      * @param list<MockResponse> $answers
      *
-     * @return list<MockResponse> the same ones, which hold the request they were handed
+     * @return list<MockResponse>
      */
     private function answering(array $answers): array
     {
@@ -195,7 +171,7 @@ final class PlayedFlowsTest extends DemonstrationTestCase
     }
 
     /**
-     * @return array<array-key, mixed> the drawing the advance answered
+     * @return array<array-key, mixed>
      */
     private function advance(): array
     {
@@ -214,8 +190,6 @@ final class PlayedFlowsTest extends DemonstrationTestCase
     }
 
     /**
-     * The compact JWTs the drawing holds for one of its hops, by the name the payload gave them.
-     *
      * @param array<array-key, mixed> $drawing
      *
      * @return array<string, array{header: string, claims: string|null}>
@@ -248,8 +222,7 @@ final class PlayedFlowsTest extends DemonstrationTestCase
     }
 
     /**
-     * An answer of the token endpoint carrying an "at+jwt" (RFC 9068 §2.1), as this provider answers a
-     * client that asks for itself.
+     * RFC 9068 §2.1
      */
     private static function tokenResponse(): MockResponse
     {

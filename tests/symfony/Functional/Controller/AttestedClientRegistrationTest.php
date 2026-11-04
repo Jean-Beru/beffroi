@@ -17,13 +17,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * RFC 7591 §2.3, the fourth mode of decision 0009: a registration authorised by a statement an authority
- * the tenant pinned signed, this provider issuing nothing. It is the mode that crosses the boundary of an
- * organisation, an initial access token being a secret this provider issues, keeps, counts and revokes for
- * every team that integrates.
- *
- * The mode is a value of one tenant's policy and the policy is read from the environment at runtime, as
- * the open mode is, so a tenant that accepts statements is a kernel this test names before it boots one.
+ * RFC 7591 §2.3, Decision 0009
  */
 final class AttestedClientRegistrationTest extends BrowserTestCase
 {
@@ -51,8 +45,7 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7591 §3.2.1: a statement signed by the authority the tenant pinned registers a client, with no
-     * credential of this provider presented and none held for it anywhere.
+     * RFC 7591 §3.2.1
      */
     #[Test]
     public function aStatementOfThePinnedAuthorityRegistersAClient(): void
@@ -68,10 +61,6 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
         static::assertSame([self::REDIRECT_URI], $registered['redirect_uris']);
     }
 
-    /**
-     * The acceptance of the issue: a client nobody here issued a credential to registers on a statement
-     * alone and is a client like any other from that moment, through the whole code flow to a token.
-     */
     #[Test]
     public function aClientRegisteredOnAStatementSignsInEndToEnd(): void
     {
@@ -92,8 +81,7 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7591 §2: what the software calls itself is kept on the client, the same across every
-     * installation of it, so that a product can be counted, limited and taken back across them later.
+     * RFC 7591 §2
      */
     #[Test]
     public function theSoftwareTheStatementNamesIsKeptOnTheClient(): void
@@ -110,9 +98,7 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7591 §3.1.1: "values ... in the software statement MUST take precedence". It is what closes,
-     * for the clients it covers, what the open mode leaves open on the consent page: the name shown is the
-     * one an authority signed and never the one the caller typed.
+     * RFC 7591 §3.1.1
      */
     #[Test]
     public function whatTheStatementSaysOutranksWhatTheClientSent(): void
@@ -128,9 +114,6 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
         static::assertSame('Invoice reader, attested', self::json($response)['client_name']);
     }
 
-    /**
-     * And the page a user sees says the same, which is the whole reason the precedence is worth having.
-     */
     #[Test]
     public function theConsentPageShowsTheNameTheAuthoritySigned(): void
     {
@@ -144,7 +127,6 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
         // When
         $this->browser->request('GET', '/authorize', self::authorizationParameters($clientId, [
             'redirect_uri' => self::REDIRECT_URI,
-            // a client that registers no "scope" is registered with the one every client has
             'scope' => 'openid',
         ]));
         $this->browser->request('GET', '/consent', [
@@ -158,11 +140,9 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7592 §2.2 reads a replacement from what the client sends, and §3 lets the provider replace what it
-     * asks for: what the statement signed outranks it as it outranked the registration (RFC 7591 §3.1.1),
-     * so the name an authority signed is the one the client keeps, whatever the replacement says of it.
+     * RFC 7592 §2.2, §3, RFC 7591 §3.1.1
      *
-     * @param array<string, mixed> $named what the replacement says of the name
+     * @param array<string, mixed> $named
      */
     #[Test]
     #[DataProvider('provideWhatAReplacementSaysOfTheName')]
@@ -193,10 +173,6 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
         yield 'no name at all' => [[]];
     }
 
-    /**
-     * And the page a user sees after it says the same: replacing its registration is no way for a client to
-     * put a name of its own in front of the one an authority signed.
-     */
     #[Test]
     public function theConsentPageShowsTheNameTheAuthoritySignedAfterAReplacement(): void
     {
@@ -211,7 +187,6 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
         // When
         $this->browser->request('GET', '/authorize', self::authorizationParameters(self::string($registered['client_id']), [
             'redirect_uri' => self::REDIRECT_URI,
-            // a client that registers no "scope" is registered with the one every client has
             'scope' => 'openid',
         ]));
         $this->browser->request('GET', '/consent', [
@@ -225,8 +200,7 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0006: every refusal of a statement is the same refusal, under the code RFC 7591 §3.2.2
-     * gives it, so whoever presents one learns that it was not accepted and nothing else.
+     * Decision 0006, RFC 7591 §3.2.2
      *
      * @param array<string, mixed> $overrides
      */
@@ -267,8 +241,7 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7591 §2.3 and §3.1.1: one statement registers one client, whatever it is sent with the second
-     * time.
+     * RFC 7591 §2.3, §3.1.1
      */
     #[Test]
     public function aStatementRegistersOneClient(): void
@@ -286,10 +259,6 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
         static::assertSame('invalid_software_statement', self::json($response)['error']);
     }
 
-    /**
-     * A request that carries no statement at all presents nothing this mode acts on, which is the 401 of
-     * a request carrying no credential and not a statement that failed to verify.
-     */
     #[Test]
     public function aRequestThatCarriesNoStatementIsUnauthorized(): void
     {
@@ -310,9 +279,7 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * What a statement says is what the client **is**; what it **may have** is the policy's. A statement
-     * naming a scope the tenant hands out no token for is refused by the rule that refuses it of a request
-     * body, under that rule's code and not under one of §3.2.2 about statements.
+     * RFC 7591 §3.2.2
      */
     #[Test]
     public function aStatementNamingWhatTheTenantDoesNotOfferIsRefusedAsAnyMemberIs(): void
@@ -333,10 +300,7 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0009: a member of this provider alone is written by whoever declares a client or by the
-     * registration policy of the tenant, and a statement that carries one is refused at the registration as
-     * a request body that carries one is. Registered, the client would be answered 201 and then served as no
-     * client, its row refused at every read.
+     * Decision 0009
      */
     #[Test]
     public function aStatementCarryingAMemberOfTheDeploymentIsRefusedAsAnyMemberIs(): void
@@ -357,7 +321,7 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * @param array<string, mixed> $members what the client sends in the clear beside the statement
+     * @param array<string, mixed> $members
      */
     private function register(array $members = [], ?string $statement = null): void
     {
@@ -379,11 +343,10 @@ final class AttestedClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7592 §2.2: the replacement a client sends to the URI it was handed, with the token it was handed,
-     * naming itself.
+     * RFC 7592 §2.2
      *
-     * @param array<string, mixed> $registered what the registration answered
-     * @param array<string, mixed> $members what the client sends beside its identifier and its redirection URI
+     * @param array<string, mixed> $registered
+     * @param array<string, mixed> $members
      */
     private function replace(array $registered, array $members): void
     {

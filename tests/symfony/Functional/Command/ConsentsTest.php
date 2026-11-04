@@ -21,9 +21,7 @@ use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §4.3, §5.5: the console takes back what a user agreed to let a client obtain, for an
- * administrator asked to do it for somebody. It takes back the same thing as the page of the account,
- * the rule being the use case's and not the command's.
+ * Architecture §4.3, §5.5
  */
 final class ConsentsTest extends ConsoleTestCase
 {

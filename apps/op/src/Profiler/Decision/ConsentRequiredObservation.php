@@ -9,9 +9,6 @@ use Beffroi\Oidc\Domain\Interaction\AuthorizationDecision;
 use Beffroi\Oidc\Domain\Interaction\ConsentRequired;
 use function implode;
 
-/**
- * Why the user is asked to consent, and what the client asked for (architecture §4.3).
- */
 final readonly class ConsentRequiredObservation implements DecisionObservationInterface
 {
     public function decision(): string

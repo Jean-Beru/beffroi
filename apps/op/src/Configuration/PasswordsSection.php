@@ -9,30 +9,8 @@ use App\Security\PwnedPasswords;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
-/**
- * What a password is compared against before it is written (architecture §3.4, issue #552): the list of
- * values known to be compromised NIST SP 800-63B §3.1.1.2 puts first, and how long this provider waits on
- * it.
- *
- * **There is nothing here to turn the list on or off and no floor to lower.** How long a password has to
- * be and how hard to guess are rules of the core (PlainPassword, PasswordLength, PasswordStrength), where
- * an option to lower them would be the option to do it wrong (decision 0006). What is here is the one
- * thing only a deployment knows: the address of a service it is willing to ask, and how long a request to
- * it may take.
- *
- * **A deployment that names no endpoint asks nobody.** It poses passwords and signs people in on the rules
- * of the core alone, as a deployment that names no GeoIP licence key serves every flow with a provenance
- * that says an address and no place. It is empty by default because calling a third party is a deployment's
- * decision and not a default it discovers: PwnedPasswords::RANGE_ENDPOINT is the address to write there,
- * where five characters of a SHA-1 leave, no API key is needed and the comparison is local.
- */
 final readonly class PasswordsSection extends ConfigurationSection
 {
-    /**
-     * Two seconds: a person is waiting on a form, and a list that has not answered by then is a list this
-     * request does not get an answer out of. An unknown is a refusal, so this is also how long a page may
-     * take to refuse.
-     */
     public const float DEFAULT_TIMEOUT = 2.0;
 
     public function name(): string

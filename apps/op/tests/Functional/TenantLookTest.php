@@ -6,17 +6,8 @@ namespace App\Tests\Functional;
 
 use PHPUnit\Framework\Attributes\Test;
 
-/**
- * What the tenant shows of itself on a page of this application when its deployment names nothing (issues
- * #449 and #911): the suite reads .env and .env.test and never .env.local, which is what "composer dump-env
- * prod" compiles into an image, plus the fixtures of the suite, none of which names a look.
- */
 final class TenantLookTest extends BrowserTestCase
 {
-    /**
-     * The placeholder mark the image serves at the origin of its issuer, under the name of the tenant, which is
-     * the host of that issuer while the deployment names none.
-     */
     #[Test]
     public function aPageShowsThePlaceholderMarkOfTheImageUnderTheHostOfTheIssuer(): void
     {

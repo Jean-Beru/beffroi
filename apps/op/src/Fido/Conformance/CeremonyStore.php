@@ -13,16 +13,10 @@ use Webauthn\PublicKeyCredentialCreationOptions;
 use Webauthn\PublicKeyCredentialRequestOptions;
 
 /**
- * The options of a ceremony of the conformance tools between the two requests it takes, found back by
- * the challenge the response carries (WebAuthn Level 3 §7.1 step 8, §7.2 step 12): the tools hold no
- * cookie, a challenge is 32 random bytes and is answered at most once (§13.4.3). Kept in the cache of the
- * application for the time a ceremony may take.
+ * Found back by the challenge the response carries: the conformance tools hold no cookie.
  */
 final readonly class CeremonyStore
 {
-    /**
-     * WebAuthn Level 3 §5.4, "timeout": what a ceremony of the tools may take, generous.
-     */
     public const int LIFETIME = 300;
 
     public function __construct(
@@ -42,8 +36,6 @@ final readonly class CeremonyStore
     }
 
     /**
-     * The creation options drawn with this challenge and the user they were drawn for, once.
-     *
      * @return array{Uuid, PublicKeyCredentialCreationOptions}|null
      */
     public function takeCreation(string $challenge): ?array

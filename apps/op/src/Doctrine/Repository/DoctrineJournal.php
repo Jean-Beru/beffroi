@@ -25,18 +25,10 @@ use DateTimeImmutable;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 
 /**
- * The acts of the provider in beffroi_journal (issue #454): written one at a time, off the request, and
- * forgotten in bounded runs.
- *
  * @extends DoctrineRepository<JournalEntry>
  */
 final readonly class DoctrineJournal extends DoctrineRepository implements JournalInterface, ActsOfAPersonInterface, CanPageActsOfAPersonInterface
 {
-    /**
-     * How many rows one run of the retention forgets. A bound and not a tuning: a tick that deleted
-     * everything past the duration in one statement would hold the table of a deployment that kept years
-     * of it, where the next tick takes what this one left.
-     */
     public const int FORGOTTEN_AT_ONCE = 1000;
 
     public function __construct(
@@ -52,10 +44,7 @@ final readonly class DoctrineJournal extends DoctrineRepository implements Journ
     }
 
     /**
-     * An act reaches the journal off the request, from the lane the events travel, so the tenant it names
-     * is a copy that came back from a queue and not the row of that tenant. The journal names that row and
-     * never writes it again: the reference is what names it without reading it, and an act of a tenant that
-     * has no row is an act of nobody, which is a fault of whatever raised it and not a row to write.
+     * An act comes back from a queue, with a copy of its tenant the manager does not hold.
      */
     private function namingTheRowOfItsTenant(JournalEntry $entry): JournalEntry
     {
@@ -96,9 +85,6 @@ final readonly class DoctrineJournal extends DoctrineRepository implements Journ
     }
 
     /**
-     * Each of the three things the question may name narrows the selection, and each one it does not name
-     * narrows nothing: every act, every application, the whole of the journal (JournalQuestion).
-     *
      * @return Listing<JournalEntry>
      */
     public function pageOfActs(User $user, JournalQuestion $question, Pagination $pagination): Listing
@@ -146,8 +132,7 @@ final readonly class DoctrineJournal extends DoctrineRepository implements Journ
     }
 
     /**
-     * The whole journal of one person, in pages past the last act read: the identifier is a UUIDv7, so
-     * "greater than" is "later than" and a page costs a lookup.
+     * The identifier is a UUIDv7, so "greater than" is "later than".
      */
     public function everyActOf(User $user, int $howMany, ?Uuid $after = null): array
     {

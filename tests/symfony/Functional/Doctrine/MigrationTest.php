@@ -85,16 +85,12 @@ use function substr;
 use function trim;
 
 /**
- * Architecture §5.3: the migrations the provider ships create on PostgreSQL exactly what the mappings
- * describe, no more, no less. The platform is built from a declared server version, so that no
- * PostgreSQL is needed to check it; the application ran them against a real one.
+ * Architecture §5.3
  */
 final class MigrationTest extends DatabaseTestCase
 {
     /**
-     * The migrations, in the order they are applied.
-     *
-     * @return list<class-string<AbstractMigration>>
+     * @var list<class-string<AbstractMigration>> in the order they are applied
      */
     private const array MIGRATIONS = [
         Version20260915171732::class,
@@ -181,13 +177,6 @@ final class MigrationTest extends DatabaseTestCase
         static::assertSame($expected, $actual);
     }
 
-    /**
-     * The directory of the migrations holds version files and nothing else, because it is in the `autoload`
-     * of no package: the provider declares it to Doctrine Migrations, which loads the version files it finds
-     * there, and only the `autoload-dev` of the monorepo maps the namespace. So a class placed there
-     * resolves in this suite and not in a deployment, which is what this refuses. Anything several
-     * migrations share lives under `src/`, where `App\` autoloads it.
-     */
     #[Test]
     public function theDirectoryOfTheMigrationsHoldsVersionFilesAndNothingElse(): void
     {
@@ -226,13 +215,7 @@ final class MigrationTest extends DatabaseTestCase
     }
 
     /**
-     * The second migration adds the one table of the opaque access tokens and nothing else, so that a
-     * deployment of spike 1 upgrades by one table.
-     */
-    /**
-     * The last migration adds the one table of the device authorization requests, and renames what a
-     * refresh token family descends from, there being two kinds of record it can descend from now
-     * (RFC 8628 §3.4).
+     * RFC 8628 §3.4
      */
     #[Test]
     public function theLastMigrationAddsTheDeviceTableAndRenamesTheFamilyOrigin(): void
@@ -272,10 +255,6 @@ final class MigrationTest extends DatabaseTestCase
         static::assertCount(1, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
     }
 
-    /**
-     * The third migration adds the one table of the passkeys and nothing else, so that a deployment of
-     * spike 2 upgrades by one table.
-     */
     #[Test]
     public function theThirdMigrationAddsThePasskeyTableAlone(): void
     {
@@ -296,10 +275,6 @@ final class MigrationTest extends DatabaseTestCase
         static::assertCount(1, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
     }
 
-    /**
-     * The fourth migration adds the policy column to the tenant table and nothing else, with the default
-     * policy as its default, so that the tenant of a deployment of spike 2 keeps the vocabulary it had.
-     */
     #[Test]
     public function theFourthMigrationAddsThePolicyColumnOfTheTenantAlone(): void
     {
@@ -322,10 +297,6 @@ final class MigrationTest extends DatabaseTestCase
         static::assertStringEndsWith('NOT NULL', $statements[0]);
     }
 
-    /**
-     * The fifth migration adds the one table of the TOTP credentials and nothing else, so that a
-     * deployment of the first days of spike 3 upgrades by one table.
-     */
     #[Test]
     public function theFifthMigrationAddsTheTotpTableAlone(): void
     {
@@ -346,10 +317,6 @@ final class MigrationTest extends DatabaseTestCase
         static::assertCount(1, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
     }
 
-    /**
-     * The seventh migration adds the one table of the pushed authorization requests and nothing else, so
-     * that a deployment of the first days of spike 5 upgrades by one table.
-     */
     #[Test]
     public function theSeventhMigrationAddsThePushedAuthorizationRequestTableAlone(): void
     {
@@ -397,12 +364,6 @@ final class MigrationTest extends DatabaseTestCase
         }
     }
 
-    /**
-     * A CREATE TABLE with its column definitions in name order: the schema tool writes the columns of an
-     * embeddable after the identifier, a migration wrote them where the mapping had them, and PostgreSQL
-     * gives the order no meaning. The definitions themselves are compared byte for byte; a comma inside a
-     * quoted default splits nothing.
-     */
     private static function withColumnsSorted(string $statement): string
     {
         if (preg_match('/^(CREATE TABLE \S+ \()(.*)(\))$/', $statement, $matches) !== 1) {
@@ -414,11 +375,6 @@ final class MigrationTest extends DatabaseTestCase
         return $matches[1] . implode(', ', $definitions) . $matches[3];
     }
 
-    /**
-     * The same CREATE TABLE without one of its columns, which is what a migration that replaces a column
-     * leaves behind: the column is dropped and added again with another type, and what the mappings
-     * describe is the one that was added.
-     */
     private static function withoutColumn(string $statement, string $column): string
     {
         if (preg_match('/^(CREATE TABLE \S+ \()(.*)(\))$/', $statement, $matches) !== 1) {
@@ -433,9 +389,6 @@ final class MigrationTest extends DatabaseTestCase
     }
 
     /**
-     * The column definitions of a CREATE TABLE, one per element. A comma inside a quoted default or inside
-     * a type of its own splits nothing.
-     *
      * @return list<string>
      */
     private static function definitions(string $body): array
@@ -466,8 +419,7 @@ final class MigrationTest extends DatabaseTestCase
     }
 
     /**
-     * The statements of every migration, applied in order; a column a later migration adds to a table is
-     * folded into the CREATE TABLE of that table, which is what the schema tool describes.
+     * The statements of every migration, what a later one changes folded into the CREATE TABLE it changes.
      *
      * @return list<string>
      */
@@ -489,8 +441,6 @@ final class MigrationTest extends DatabaseTestCase
 
                     continue;
                 }
-                // a column a later migration renames is the column the mappings describe, wherever an
-                // earlier statement about that table named it
                 if (preg_match('/^ALTER TABLE (\S+) RENAME COLUMN (\S+) TO (\S+)$/', $statement, $matches) === 1) {
                     $statements = array_map(
                         static fn (string $earlier): string => str_contains($earlier, $matches[1])
@@ -501,8 +451,6 @@ final class MigrationTest extends DatabaseTestCase
 
                     continue;
                 }
-                // a table a later migration renames, and the constraint of one, are those the mappings describe,
-                // wherever an earlier statement named them
                 if (
                     preg_match('/^ALTER TABLE (\S+) RENAME TO (\S+)$/', $statement, $matches) === 1
                     || preg_match('/^ALTER TABLE \S+ RENAME CONSTRAINT (\S+) TO (\S+)$/', $statement, $matches) === 1
@@ -522,8 +470,6 @@ final class MigrationTest extends DatabaseTestCase
 
                     continue;
                 }
-                // a column a later migration drops leaves the CREATE TABLE of that table without it, the
-                // schema the mappings describe holding only what is there at the end
                 if (preg_match('/^ALTER TABLE (\S+) DROP (?!CONSTRAINT )(\S+)$/', $statement, $matches) === 1) {
                     $statements = array_map(
                         static fn (string $earlier): string => str_starts_with($earlier, 'CREATE TABLE ' . $matches[1] . ' (')
@@ -534,8 +480,6 @@ final class MigrationTest extends DatabaseTestCase
 
                     continue;
                 }
-                // and an index a later migration drops is an index the mappings no longer declare, so the
-                // statement that created it goes with it
                 if (preg_match('/^DROP INDEX (\S+)$/', $statement, $matches) === 1) {
                     $statements = array_values(array_filter(
                         $statements,
@@ -544,8 +488,6 @@ final class MigrationTest extends DatabaseTestCase
 
                     continue;
                 }
-                // what a migration does to the rows is not what the mappings describe: a column made
-                // mandatory on a table of records that live minutes empties it first
                 if (str_starts_with($statement, 'DELETE FROM ')) {
                     continue;
                 }
@@ -556,9 +498,6 @@ final class MigrationTest extends DatabaseTestCase
         return $statements;
     }
 
-    /**
-     * One identifier for another, on its own and never inside a longer one.
-     */
     private static function renamed(string $statement, string $from, string $to): string
     {
         return (string) preg_replace('/\b' . preg_quote($from, '/') . '\b/', $to, $statement);

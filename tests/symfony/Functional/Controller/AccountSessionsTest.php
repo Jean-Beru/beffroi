@@ -13,10 +13,7 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Issue #450, architecture §5.2: a person sees the sessions open in their name and ends one. What ending
- * one does to the relying parties is the end of a session of the core, said once
- * (AuthenticationSessionEnded), which is what the back-channel logout reads; the command that ends one
- * calls the same use case.
+ * Architecture §5.2
  */
 final class AccountSessionsTest extends BrowserTestCase
 {
@@ -59,11 +56,6 @@ final class AccountSessionsTest extends BrowserTestCase
         static::assertCount(1, self::events(AuthenticationSessionEnded::class));
     }
 
-    /**
-     * Issue #741: the tokens issued under a session a person ends here are revoked with it, as those of a
-     * session the end session endpoint ends are, the revocation being made on the end and not on the request
-     * that asked for it.
-     */
     #[Test]
     public function endingASessionRevokesTheTokensIssuedUnderIt(): void
     {
@@ -147,8 +139,7 @@ final class AccountSessionsTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §5.2: one act for what somebody would otherwise do a line at a time, and the browser
-     * they are reading from stays signed in.
+     * Architecture §5.2
      */
     #[Test]
     public function endingEveryOtherSessionLeavesTheOneBeingReadFrom(): void
@@ -168,9 +159,6 @@ final class AccountSessionsTest extends BrowserTestCase
         static::assertFalse(self::reread($current)->hasEnded());
     }
 
-    /**
-     * Each one leaves the trace every ended session leaves, which is what the back-channel reads.
-     */
     #[Test]
     public function eachSessionEndedThatWayIsSaidOnce(): void
     {
@@ -187,9 +175,6 @@ final class AccountSessionsTest extends BrowserTestCase
         static::assertCount(2, self::events(AuthenticationSessionEnded::class));
     }
 
-    /**
-     * A person signed in nowhere else is offered nothing: there is nothing to end.
-     */
     #[Test]
     public function aPersonSignedInNowhereElseIsOfferedNothing(): void
     {
@@ -220,9 +205,7 @@ final class AccountSessionsTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §3.5: what a person reads of where a session came from is the browser and the system,
-     * not the sixteen tokens their browser sent, which stay in the document for whoever wants them. A
-     * place nothing could put on a map is unknown and never absent.
+     * Architecture §3.5
      */
     #[Test]
     public function theLineSaysTheBrowserAndNotTheWholeUserAgent(): void
@@ -242,8 +225,7 @@ final class AccountSessionsTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §5.2: every table of this plane is read over the stretch of time that was asked for,
-     * and a table that holds nothing of those days keeps its head and says so.
+     * Architecture §5.2
      */
     #[Test]
     public function thePeriodNarrowsTheSessionsToTheDaysItNames(): void
@@ -260,9 +242,6 @@ final class AccountSessionsTest extends BrowserTestCase
         static::assertCount(1, $page->filter('tbody tr[data-empty]'));
     }
 
-    /**
-     * The act is offered at the head of the page, and what it posts is the token that page renders.
-     */
     private function endEveryOther(): void
     {
         $token = self::string(

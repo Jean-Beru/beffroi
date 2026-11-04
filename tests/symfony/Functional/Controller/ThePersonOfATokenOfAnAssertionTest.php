@@ -22,14 +22,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Issue #831 and RFC 7523 §2.1: a token issued on the assertion of an issuer the tenant trusts is the token of
- * a person nobody signed in for here, and the resources of this provider answer for that person all the same,
- * in either shape. Its introspection is a read of that person (issue #589), and once the account is disabled
- * the token is inactive, as every other token that names that person is; so is a token a gateway was given
- * for it in an exchange (RFC 8693 §2.1), which names the same person.
- *
- * The issuer and its two job runners are declared by the test kernel; its keys are the ones of the suite,
- * named before the kernel boots, the way the attested registration names the keys of its authority.
+ * RFC 7523 §2.1, RFC 8693 §2.1
  */
 final class ThePersonOfATokenOfAnAssertionTest extends BrowserTestCase
 {
@@ -37,10 +30,6 @@ final class ThePersonOfATokenOfAnAssertionTest extends BrowserTestCase
 
     private const string CALENDAR = 'https://cal.example.com/';
 
-    /**
-     * The "sub" of the assertions: the name the issuer knows its person by, which a linked identity of its
-     * source turns into a user of this tenant (decision 0002).
-     */
     private const string EMPLOYEE = 'employee-42';
 
     private const string GATEWAY_ID = 'person-gateway-app';
@@ -69,10 +58,6 @@ final class ThePersonOfATokenOfAnAssertionTest extends BrowserTestCase
         unset($_SERVER['BEFFROI_TEST_TRUSTED_ISSUER_JWKS'], $_ENV['BEFFROI_TEST_TRUSTED_ISSUER_JWKS']);
     }
 
-    /**
-     * Issue #589: a read that describes a person is an act of this provider, and the token of an assertion
-     * describes the person the assertion was validated for, so the journal of that person holds it.
-     */
     #[Test]
     #[DataProvider('provideJobRunners')]
     public function theIntrospectionOfATokenOfAnAssertionIsInTheJournalOfItsPerson(string $clientId, string $secret): void
@@ -90,8 +75,7 @@ final class ThePersonOfATokenOfAnAssertionTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7662 §2.2: a person this provider no longer serves is refused wherever a token names them, so the
-     * token of an assertion about them is "active": false from the moment the account is disabled.
+     * RFC 7662 §2.2
      */
     #[Test]
     #[DataProvider('provideJobRunners')]
@@ -123,8 +107,7 @@ final class ThePersonOfATokenOfAnAssertionTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8693 §2.1: what a gateway is given for the token of an assertion names the person that token
-     * names, so the account disabled since makes it inactive as well.
+     * RFC 8693 §2.1
      */
     #[Test]
     public function aTokenExchangedForATokenOfAnAssertionIsInactiveOnceItsPersonIsDisabled(): void
@@ -146,8 +129,7 @@ final class ThePersonOfATokenOfAnAssertionTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7523 §2.1: the job runner presents an assertion of the trusted issuer about the employee, and
-     * receives a token for the user the linked identity names, addressed to the calendar.
+     * RFC 7523 §2.1
      */
     private function tokenOfAnAssertion(string $clientId, string $secret): string
     {
@@ -171,8 +153,7 @@ final class ThePersonOfATokenOfAnAssertionTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8693 §2.1: the gateway registered to act for a user exchanges the token of the job runner for an
-     * opaque token of its own, addressed to the same calendar.
+     * RFC 8693 §2.1
      */
     private function exchanged(string $subjectToken): string
     {
@@ -193,7 +174,7 @@ final class ThePersonOfATokenOfAnAssertionTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7662 §2.1: what a client is told of a token of its own.
+     * RFC 7662 §2.1
      *
      * @return array<string, mixed>
      */

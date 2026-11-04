@@ -47,24 +47,12 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The acceptance of issue #128 (architecture §3.3, §5.4): a KMS that does not answer is a 503 with a
- * Retry-After wherever it stands on the path of a request, the code page, the token endpoint and the
- * enrolment of a TOTP; nothing is counted against the user, nothing is forgotten, the same request is
- * served once the KMS is back, and the audit sees the outage. The KMS of the kernel is taken down
- * between two requests by KmsOutage, and for the data keys of some families of columns alone by
- * DataKeyOutage; the secrets, the keys and the columns were sealed while it was up.
- *
- * The issuer the job runner presents the assertions of is declared by the test kernel, its keys the ones of
- * the suite, named before the kernel boots.
+ * Architecture §3.3, §5.4
  */
 final class KmsOutageTest extends PasskeyTestCase
 {
     private const string PASSWORD = 'correct horse battery staple';
 
-    /**
-     * The name the trusted issuer knows alice by, which a linked identity of its source turns into her
-     * account (decision 0002).
-     */
     private const string EMPLOYEE = 'employee-42';
 
     private const string PAIRWISE_REDIRECT_URI = 'https://pairwise.test/callback';
@@ -129,10 +117,6 @@ final class KmsOutageTest extends PasskeyTestCase
         static::assertSame((string) KmsUnavailableListener::RETRY_AFTER, $response->headers->get('Retry-After'));
     }
 
-    /**
-     * The refusal is the KMS's, not the user's: no failure of the login is announced, no code was used,
-     * nothing is open, and the pending login waits for the code to be typed again.
-     */
     #[Test]
     public function aCodeTheKmsCannotOpenIsNoFailureOfTheLogin(): void
     {
@@ -155,8 +139,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * Architecture §3.5: the audit sees the outage as it happens, with the request it turned away and
-     * the words of the KMS; nothing of the secret is in it.
+     * Architecture §3.5
      */
     #[Test]
     public function theOutageIsAnnouncedWithTheContextOfTheRequestAndTheWordsOfTheKms(): void
@@ -179,10 +162,6 @@ final class KmsOutageTest extends PasskeyTestCase
         static::assertStringNotContainsString(Base32::encodeUpperUnpadded(Totps::SEED), $outages[0]->reason);
     }
 
-    /**
-     * The same pending login and the same code once the KMS is back: the session is established with
-     * both factors, as if nothing had happened.
-     */
     #[Test]
     public function theSameCodePassesOnceTheKmsIsBack(): void
     {
@@ -204,8 +183,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * Decision 0006 and architecture §3.4: the codes the KMS could not open cost the user none of their
-     * five attempts a minute; the sixth code, the first the KMS opens, is the first counted.
+     * Decision 0006, Architecture §3.4
      */
     #[Test]
     public function theCodesPostedDuringTheOutageCostNoAttempt(): void
@@ -229,10 +207,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * The token endpoint on a worker that has opened its signing key already, which is every worker after its first
-     * signature, for a client that sees its users under an identifier of its sector (OIDC Core §8.1, issue #880): the
-     * salt that identifier is computed with is the one thing the KMS is asked for, and a KMS that does not answer is
-     * a 503 the client comes back from.
+     * OIDC Core §8.1
      */
     #[Test]
     public function theTokenEndpointAnswersServiceUnavailableOnAPairwiseSaltTheKmsDoesNotOpen(): void
@@ -255,9 +230,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * RFC 6749 §4.1.2 (issue #880): the salt is unsealed before the code is consumed, so the code a 503 answered is a
-     * code nobody exchanged. The same request, once the KMS is back, is answered with the tokens, which name the
-     * person by the identifier of the sector, and is never taken for a replay that would revoke the grant.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function theSameCodeOfAPairwiseClientIsExchangedOnceTheKmsIsBack(): void
@@ -282,11 +255,6 @@ final class KmsOutageTest extends PasskeyTestCase
         static::assertSame($subject, self::claimsOf(self::string(self::json($response)['id_token'] ?? null))['sub'] ?? null);
     }
 
-    /**
-     * The token endpoint on a worker that has not opened the key yet (the kernel of the browser is cold
-     * on every request): the key sealed while the KMS was up cannot be opened, the client reads a 503
-     * and comes back, the code it holds still unspent.
-     */
     #[Test]
     public function theTokenEndpointAnswersServiceUnavailableOnAKeyTheKmsDoesNotOpen(): void
     {
@@ -308,9 +276,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * RFC 6749 §4.1.2 (issue #870): the key that signs is opened before the code is consumed, so the code a 503
-     * answered is a code nobody exchanged. The same request, once the KMS is back, is answered with the tokens
-     * and is never taken for a replay that would revoke the grant.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function theSameCodeIsExchangedOnceTheKmsIsBack(): void
@@ -335,9 +301,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * RFC 7523 §3 (issue #876): the "jti" of an assertion is remembered once the key its token is signed with is
-     * open, so the assertion a 503 answered is an assertion nobody exchanged. The same request, once the KMS is
-     * back, is answered with a token and is never taken for a replay.
+     * RFC 7523 §3
      */
     #[Test]
     public function theSameAssertionIsExchangedOnceTheKmsIsBack(): void
@@ -360,12 +324,6 @@ final class KmsOutageTest extends PasskeyTestCase
         static::assertArrayHasKey('access_token', self::json($response));
     }
 
-    /**
-     * Issue #876: on a worker whose key is open already, what the KMS is asked at every token of the job runner
-     * is the envelope of the person the token is about, and that envelope is sealed before the "jti" is
-     * remembered too. The assertion the outage turned away is exchanged by the same request once the KMS is
-     * back.
-     */
     #[Test]
     public function theAssertionWhosePersonTheKmsDidNotSealIsExchangedOnceTheKmsIsBack(): void
     {
@@ -392,9 +350,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * Decision 0018 (issue #877): a column sealed under a data key the KMS does not open is an outage like a key
-     * the KMS does not open, a 503 with a Retry-After, announced with the words of the KMS, and not an error of
-     * the server. Here the person a code names, on a worker that opened the keys that sign and nothing else.
+     * Decision 0018
      */
     #[Test]
     public function aDataKeyTheKmsDoesNotOpenAnswersServiceUnavailableWithARetryAfter(): void
@@ -418,9 +374,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * RFC 6749 §4.1.2 (issue #877): the session a code descends from, and the person it names with it, are read
-     * before the code is consumed, so a data key of theirs the KMS does not open leaves the code to the same
-     * request once it does, which is answered with the tokens and never taken for a replay.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     #[DataProvider('provideTheFamiliesOfASession')]
@@ -444,8 +398,6 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * The families a session and the person it names are sealed under, each with a data key of its own.
-     *
      * @return iterable<string, array{string}>
      */
     public static function provideTheFamiliesOfASession(): iterable
@@ -455,9 +407,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * RFC 6749 §4.1.2 (issue #884): a code presented again is refused as a replay, an invalid_grant and not an
-     * outage, while the KMS does not open the data keys its session and its person are sealed under: the person the
-     * replay is announced for is read in the clear, so neither is opened once the grant is revoked.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     #[DataProvider('provideTheFamiliesOfASession')]
@@ -479,8 +429,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * RFC 6749 §4.1.2 (issue #884): the replay is announced with the refresh token it revoked and the person the code
-     * was issued in the name of while the KMS does not open those data keys, so the journal keeps the act whole.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     #[DataProvider('provideTheFamiliesOfASession')]
@@ -504,8 +453,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * RFC 9700 §4.13.2 (issue #884): a rotated refresh token presented again is refused as a reuse, an invalid_grant
-     * and not an outage, while the KMS does not open the data keys its session and its person are sealed under.
+     * RFC 9700 §4.13.2
      */
     #[Test]
     #[DataProvider('provideTheFamiliesOfASession')]
@@ -527,9 +475,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * RFC 9700 §4.13.2 (issue #884): the reuse is announced with the family it revoked and the person the family
-     * descends from while the KMS does not open those data keys: a token of a revoked family is refused before any
-     * reuse is looked for, so this presentation is the only one that can tell it.
+     * RFC 9700 §4.13.2
      */
     #[Test]
     #[DataProvider('provideTheFamiliesOfASession')]
@@ -554,10 +500,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * RFC 7009 §2.2 (issue #888): a refresh token given back is answered 200 while the KMS does not open the data
-     * keys its session and its person are sealed under: the person the revocation is announced for is read in the
-     * clear, so neither is opened once the token is revoked, and the client is not told to retry a revocation that
-     * was done.
+     * RFC 7009 §2.2
      */
     #[Test]
     #[DataProvider('provideTheFamiliesOfASession')]
@@ -578,10 +521,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * RFC 7009 §2.1 (issue #888): the revocation of a refresh token is announced with the person its session names
-     * while the KMS does not open those data keys, so the journal keeps the act: a retry of the client finds the
-     * token revoked already, answered 200 with nothing announced (§2.2), so this request is the only one that can
-     * tell it.
+     * RFC 7009 §2.1, §2.2
      */
     #[Test]
     #[DataProvider('provideTheFamiliesOfASession')]
@@ -604,9 +544,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * RFC 7009 §2.2 (issue #888): an opaque access token given back is answered 200 while the KMS does not open the
-     * data keys of the session it descends from and of the person that session names: the record names its person
-     * by that session, whose subject is read in the clear once the token is removed.
+     * RFC 7009 §2.2
      */
     #[Test]
     #[DataProvider('provideTheFamiliesOfASession')]
@@ -626,9 +564,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * RFC 7009 §2.1 (issue #888): the revocation of an opaque access token is announced with the person it was
-     * issued in the name of while the KMS does not open those data keys: a retry of the client finds the token gone,
-     * an unknown token answered 200 with nothing announced (§2.2), so this request is the only one that can tell it.
+     * RFC 7009 §2.1, §2.2
      */
     #[Test]
     #[DataProvider('provideTheFamiliesOfASession')]
@@ -650,8 +586,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * Architecture §5.2: the provisioning of an enrolment is sealed in the session before it is shown;
-     * without the KMS there is nothing to show, and nothing is kept.
+     * Architecture §5.2
      */
     #[Test]
     public function beginningAnEnrolmentAnswersServiceUnavailable(): void
@@ -671,10 +606,6 @@ final class KmsOutageTest extends PasskeyTestCase
         static::assertFalse($this->readHttpSession()->has(TotpProvisioningStore::KEY));
     }
 
-    /**
-     * The first code of an enrolment while the KMS is down: the provisioning the session holds is not
-     * forgotten, the same form confirms it once the KMS is back, the credential exists then and not before.
-     */
     #[Test]
     public function theFirstCodeOfAnEnrolmentWaitsForTheKmsToBeBack(): void
     {
@@ -703,8 +634,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * A user with a password and a TOTP enrolled an hour ago on the secret of RFC 6238, sealed while the
-     * KMS is up; the backup codes verify nothing.
+     * The TOTP is enrolled on the secret of RFC 6238, sealed while the KMS is up.
      */
     private function userWithTotp(string $username): User
     {
@@ -726,9 +656,6 @@ final class KmsOutageTest extends PasskeyTestCase
         return $user;
     }
 
-    /**
-     * The code oidc-demo is given for alice, signed in and with a key to sign with, while the KMS answers.
-     */
     private function codeOfAlice(): string
     {
         self::signingKey();
@@ -738,10 +665,6 @@ final class KmsOutageTest extends PasskeyTestCase
         return self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client got no code.');
     }
 
-    /**
-     * A worker that opened nothing yet, neither a key nor a data key, behind every request from now on: the
-     * kernel of the browser booted again for each one, as a worker that just started.
-     */
     private function aWorkerThatOpenedNothing(): void
     {
         $this->browser->enableReboot();
@@ -771,9 +694,6 @@ final class KmsOutageTest extends PasskeyTestCase
         $this->browser->submit($form);
     }
 
-    /**
-     * A code of the client of a sector for alice, who is signed in.
-     */
     private function pairwiseCode(): string
     {
         $this->browser->request('GET', '/authorize', self::authorizationParameters('pairwise-app', [
@@ -818,8 +738,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * The refresh token the client that keeps its access offline gets for alice, signed in, while the KMS answers:
-     * a public client, whose refresh token is rotated at every use (RFC 9700 §4.13.2).
+     * RFC 9700 §4.13.2
      */
     private function refreshTokenOfTheOfflineClient(): string
     {
@@ -851,8 +770,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * The opaque access token the client of opaque tokens gets for alice, signed in, while the KMS answers: a token
-     * the provider keeps a record of, which is what it can take back (RFC 7009 §2.1).
+     * RFC 7009 §2.1
      */
     private function opaqueAccessTokenOfAlice(): string
     {
@@ -880,7 +798,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * RFC 7009 §2.1: a client authenticated by its secret gives a token back.
+     * RFC 7009 §2.1
      */
     private function postRevocation(string $token, string $clientId, string $secret): void
     {
@@ -897,8 +815,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * RFC 7523 §2.1: the job runner, registered for tokens in the JWT shape, presents an assertion of the
-     * trusted issuer for a token addressed to the calendar.
+     * RFC 7523 §2.1
      */
     private function postAssertion(string $assertion): void
     {
@@ -918,8 +835,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * RFC 7523 §3: an assertion of the trusted issuer about the employee, addressed to this provider, under a
-     * "jti" of its own.
+     * RFC 7523 §3
      */
     private static function assertion(): string
     {

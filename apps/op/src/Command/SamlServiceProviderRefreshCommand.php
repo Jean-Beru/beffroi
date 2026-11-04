@@ -14,13 +14,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * The metadata of the service providers of the tenant read now (beffroi/saml, spec/saml.md section 6.2): a service
- * provider declared in the configuration is registered the first time, and refreshed every time after. The hourly
- * step of the schedule does the same thing with the same object (`RefreshTheSamlMetadata`); this is how an
- * operator registers a service provider the day it is declared, and reads why its metadata were refused.
- *
- * It registers only what the configuration declares: a service provider is declared in "beffroi.yaml" and nowhere
- * else (S-5), and this command reads its metadata, it does not make one.
+ * beffroi/saml section 6.2, S-5
  */
 #[AsCommand(
     name: self::NAME,
@@ -31,7 +25,7 @@ final readonly class SamlServiceProviderRefreshCommand
     public const string NAME = 'beffroi:saml:service-provider:refresh';
 
     /**
-     * @param MetadataRefresh<ServiceProvider> $refresh the refresh of the service providers
+     * @param MetadataRefresh<ServiceProvider> $refresh
      */
     public function __construct(
         private ConfiguredTenant $tenant,

@@ -14,10 +14,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #449: the one object a page is given of its tenant, flat, so that a template reads it without
- * walking to where each value is kept.
- */
 final class TenantPresentationTest extends TestCase
 {
     #[Test]

@@ -22,17 +22,8 @@ use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #453: the three readings the archive of a person needs of this database, which no page of the
- * account asked for before it. What the chapters do with them is tested on the chapters; what is here is
- * that the store answers the right rows, in the right order, for the right person.
- */
 final class WhatAnArchiveReadsTest extends DatabaseTestCase
 {
-    /**
-     * The whole journal of a person and not a few names: which acts answer a question is the question's,
-     * and the archive asks for all of them.
-     */
     #[Test]
     public function theWholeJournalOfAPersonIsReadWhateverTheActIsCalled(): void
     {
@@ -47,10 +38,6 @@ final class WhatAnArchiveReadsTest extends DatabaseTestCase
         static::assertSame(['first.act', 'second.act', UserAuthenticated::NAME], array_map(static fn (JournalEntry $act): string => $act->act, $acts));
     }
 
-    /**
-     * Read in pages past the last act read, which is what the identifier being a UUIDv7 is for: a page is
-     * a lookup and never a sort of the whole journal.
-     */
     #[Test]
     public function theJournalIsReadInPagesPastTheLastActRead(): void
     {

@@ -17,8 +17,7 @@ use Webauthn\PublicKeyCredentialRpEntity;
 use Webauthn\PublicKeyCredentialUserEntity;
 
 /**
- * Architecture §5.2: the options of a ceremony live in the HTTP session between the two requests it
- * takes, and are read once.
+ * Architecture §5.2
  */
 final class PasskeyOptionsStoreTest extends TestCase
 {

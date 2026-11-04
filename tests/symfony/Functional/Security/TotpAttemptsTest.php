@@ -27,9 +27,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §3.4, decision 0006: the attempts at a code are counted by the rate limiter of Symfony
- * the provider declares, five in a sliding window of a minute, the sixth refused whatever the code; the
- * TOTP enrolled and verified through the services of the kernel, the secret sealed by its KMS.
+ * Architecture §3.4, Decision 0006
  */
 final class TotpAttemptsTest extends DatabaseTestCase
 {
@@ -38,8 +36,7 @@ final class TotpAttemptsTest extends DatabaseTestCase
     private TotpSecret $secret;
 
     /**
-     * A TOTP enrolled an hour ago on the secret of RFC 6238, sealed by the KMS of the kernel; the backup
-     * codes hashed by the hasher of the suite, the tests that verify one enrolling through the kernel.
+     * The secret of the TOTP is the one of RFC 6238.
      */
     protected function setUp(): void
     {
@@ -60,10 +57,6 @@ final class TotpAttemptsTest extends DatabaseTestCase
             );
     }
 
-    /**
-     * The whole enrolment through the services of the kernel: the secret sealed by its KMS, the backup
-     * codes hashed by its hasher, the step of the first code spent.
-     */
     #[Test]
     public function theEnrolmentThroughTheKernelSealsTheSecretUnderItsKmsAndHashesTheCodes(): void
     {
@@ -136,10 +129,6 @@ final class TotpAttemptsTest extends DatabaseTestCase
         static::assertTrue($totp->backupCodes[7]->isSpent());
     }
 
-    /**
-     * Issue #128: the limit read before the secret is opened counts nothing; the five attempts are still
-     * there to be counted.
-     */
     #[Test]
     public function readingTheLimitCountsNoAttempt(): void
     {

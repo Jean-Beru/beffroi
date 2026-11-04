@@ -9,15 +9,7 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * The grant a device authorization request and a backchannel authentication request name, and the instant
- * it was revoked (architecture §4.6). Both flows issue tokens without writing an authorization code, and a
- * resource of this provider asks of every token whether the grant behind it is still alive: the answer is
- * a row of the table the flow writes, under a unique constraint, as it is for a code.
- *
- * The rows the two tables already hold name no grant, and the tokens of those requests are exactly the
- * ones no resource of this provider could answer for. Both records live minutes, so they are deleted and
- * the column is mandatory from the start rather than nullable for ever: a client whose request goes with
- * them starts another one, which is what it does when one expires.
+ * The rows already held name no grant and live minutes, so they are deleted and the column is mandatory.
  */
 final class Version20260926220000 extends AbstractMigration
 {

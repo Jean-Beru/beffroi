@@ -36,16 +36,10 @@ use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
- * beffroi/saml, spec/saml.md S-42, S-6, section 6.10, the acceptance of issue #779: the SimpleSAMLphp identity provider
- * of the judge the configuration of a deployment whose tenant is a service provider declares
- * (tests/symfony/config/config_test_service_provider.yml), registered by "beffroi:saml:identity-provider:refresh" from
- * its metadata, a file of the deployment, at 2026-09-15T10:00:00Z.
+ * beffroi/saml, spec/saml.md S-42, S-6, section 6.10
  */
 final class UpstreamIdentityProvidersTest extends ConsoleTestCase
 {
-    /**
-     * The environment whose configuration enables the service provider and declares the identity provider.
-     */
     private const string SERVICE_PROVIDER = 'test_service_provider';
 
     protected function setUp(): void
@@ -62,8 +56,7 @@ final class UpstreamIdentityProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #779: the SimpleSAMLphp identity provider of the judge is registered by command from its
-     * metadata, the bytes that were read kept in the table of the upstream identity providers (S-8, S-42).
+     * S-8, S-42
      */
     #[Test]
     public function theIdentityProviderOfTheJudgeIsRegisteredByCommandFromItsMetadata(): void
@@ -86,7 +79,7 @@ final class UpstreamIdentityProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * S-42: one identity provider is refreshed by its entity ID.
+     * S-42
      */
     #[Test]
     public function oneIdentityProviderIsRefreshedByItsEntityId(): void
@@ -105,7 +98,7 @@ final class UpstreamIdentityProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * S-42: an entity ID the configuration does not declare is refused as invalid, and nothing is read.
+     * S-42
      */
     #[Test]
     public function anIdentityProviderNobodyDeclaredIsRefused(): void
@@ -124,7 +117,7 @@ final class UpstreamIdentityProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * S-42, S-6: an expired document is refused by the command, which fails, and the accepted one kept.
+     * S-42, S-6
      */
     #[Test]
     public function anExpiredDocumentIsRefusedAndTheAcceptedOneKept(): void
@@ -144,7 +137,7 @@ final class UpstreamIdentityProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * S-42, S-6: the forget command removes the accepted document of an identity provider.
+     * S-42, S-6
      */
     #[Test]
     public function theForgetCommandRemovesTheAcceptedDocument(): void
@@ -164,7 +157,7 @@ final class UpstreamIdentityProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * S-6: an entity ID nothing is accepted for is answered as invalid, and nothing is forgotten.
+     * S-6
      */
     #[Test]
     public function anIdentityProviderWithNothingAcceptedIsNotForgotten(): void
@@ -183,9 +176,7 @@ final class UpstreamIdentityProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * S-65, section 5.7: the list command prints each identity provider the configuration declares, in the order of the
-     * declaration, with the URL of the metadata given to it under the issuer, its last segment the entity ID in
-     * base64url.
+     * S-65, section 5.7
      */
     #[Test]
     public function theListCommandPrintsEachIdentityProviderWithTheUrlOfItsMetadata(): void
@@ -209,8 +200,7 @@ final class UpstreamIdentityProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * Section 6.10: the hourly step of the schedule refreshes the upstream identity providers with the service
-     * providers, by the object the command runs.
+     * Section 6.10
      */
     #[Test]
     public function theStepOfTheScheduleRegistersTheIdentityProvider(): void
@@ -226,8 +216,7 @@ final class UpstreamIdentityProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * S-6, section 6.10: a document the step of the schedule refuses is written to the log as an error, the level an
-     * operator is alerted on.
+     * S-6, section 6.10
      */
     #[Test]
     public function aDocumentTheStepOfTheScheduleRefusesIsLoggedAsAnError(): void
@@ -258,8 +247,7 @@ final class UpstreamIdentityProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * Section 6.10: a role whose declarations are refused when its refresh is built, at the first use of declarations
-     * holding an environment variable, is written to the log as an error, and the next role is read.
+     * Section 6.10
      */
     #[Test]
     public function aRoleRefusedAtItsFirstUseIsLoggedAndTheNextRoleRead(): void
@@ -294,9 +282,6 @@ final class UpstreamIdentityProvidersTest extends ConsoleTestCase
         );
     }
 
-    /**
-     * The file the declaration of the test names, in the cache directory of the kernel of this worker.
-     */
     private static function publish(string $document): void
     {
         $kernel = self::$kernel ?? static::fail('The kernel is not booted.');

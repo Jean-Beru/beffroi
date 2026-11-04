@@ -10,15 +10,6 @@ use Beffroi\Core\Domain\PersonalData\StoredField;
 use function sort;
 use function sprintf;
 
-/**
- * The classification the model declares held against the schema Doctrine builds, column by column.
- *
- * The declaration is the model's own and this reads it (`ClassifiedModel`): a column the model does not
- * classify is a finding, whichever line would have been right for it, and a line the schema gives no
- * column is a finding too, so neither side outlives the other. What each line has to say about the column
- * it was written for is the line's own answer (`FieldClassificationInterface`), the family of a sealed
- * column being its own table.
- */
 final readonly class ClassifiedSchema
 {
     public function __construct(
@@ -27,11 +18,9 @@ final readonly class ClassifiedSchema
     }
 
     /**
-     * @param array<string, array<string, string|null>> $schema table, then column, then the family what
-     *                                                          stores that column seals under, or null when
-     *                                                          it does not seal
+     * @param array<string, array<string, string|null>> $schema table, then column, then its sealing family or null
      *
-     * @return list<string> what the schema and the model disagree on, in alphabetical order, empty when they agree
+     * @return list<string> what the schema and the model disagree on, in alphabetical order
      */
     public function findings(array $schema): array
     {

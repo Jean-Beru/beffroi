@@ -29,15 +29,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * The consent page of an interaction (architecture §4.3, §5.2): GET shows it, POST carries "allow" or
- * "deny" with the CSRF token.
- *
- * What the page says of the client that is asking is the module's (ConsentPage); this renders it from a
- * template an application may override, as the form post response and the front-channel logout page are
- * rendered, and names what the page adds to the policy its answer carries: the origins of the two images
- * it shows and the origin its submission may end at.
- */
 #[AsController]
 final readonly class ConsentController
 {
@@ -89,10 +80,6 @@ final readonly class ConsentController
             return $this->responder->respond($request, $decision);
         }
 
-        // the page shows the logo of the client, so the "img-src" of the policy the answer carries names
-        // where it is served from (ConsentPage, ImageSource), the layout naming the one of the tenant as on
-        // every page (TenantExtension), and allowing ends with the code carried to the client, so its
-        // "form-action" names that client (FormTarget)
         $page = new ConsentPage($interaction->request->client->registration->presentation);
         $this->images->mayLoadFrom($request, $page->imageOrigins);
         $this->formTargets->mayEndAt($request, $interaction->request->redirectUri);

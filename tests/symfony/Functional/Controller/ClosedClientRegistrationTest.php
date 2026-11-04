@@ -10,12 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Decision 0009: closed is the default and closed is what a deployment that writes nothing gets. Such a
- * tenant has no registration endpoint rather than one that reads a request and refuses it: the document
- * says so by announcing none, and the endpoint says so with the 404 an unknown path gets.
- *
- * The mode of the tenant is read from the environment at runtime, the way the load budgets are, so that
- * a closed deployment is a kernel this test names before it boots one.
+ * Decision 0009
  */
 final class ClosedClientRegistrationTest extends BrowserTestCase
 {

@@ -13,16 +13,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * The second factor of the signed-in user (architecture §5.2): the authenticator app the account holds,
- * with its dates and the backup codes left, the button that removes it, or the button that sets one up.
- * A browser without a session of the core is told to sign in first; there is no interaction to send it
- * to, the page belongs to no client.
- *
- * **A session alone does not open it** (AsksForARecentProofInterface): taking the second factor away is
- * taking a factor away and setting one up is adding a way in, so the proof is asked again here and at
- * every form this page posts.
- */
 #[AsController]
 final readonly class AccountTwoFactorController implements AsksForARecentProofInterface
 {
@@ -48,7 +38,6 @@ final readonly class AccountTwoFactorController implements AsksForARecentProofIn
             return $session;
         }
 
-        // what a form of this page was refused, if one was, shown this once (issue #481)
         return $this->page->render($session->user, $this->refusals->take($request)?->code);
     }
 }

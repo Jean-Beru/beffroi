@@ -18,18 +18,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * The first step of the enrolment of an authenticator app (architecture §5.2): the provisioning drawn
- * by the enrolment of the core for the signed-in user, kept sealed in the session of this browser for
- * the code that comes back, and shown as a QR code and as a key. A user who holds an app already is
- * refused, they remove it first; nothing is written until the first code holds.
- *
- * It answers with a redirection whether the step went through or was refused (issue #481), so that a
- * browser reloading does not post it again; what was refused crosses it in the session (WhatWasRefused).
- *
- * **A session alone does not post it** (AsksForARecentProofInterface): what this step draws becomes a way
- * in the moment the first code holds.
- */
 #[AsController]
 final readonly class TotpEnrolmentBeginController implements AsksForARecentProofInterface
 {
@@ -39,9 +27,6 @@ final readonly class TotpEnrolmentBeginController implements AsksForARecentProof
 
     public const string ALREADY_ENROLLED = 'already_enrolled';
 
-    /**
-     * A person of a federated domain, for whom no authenticator app is set up (decision 0029, beffroi/saml S-63).
-     */
     public const string FEDERATED_DOMAIN = 'federated_domain';
 
     public function __construct(
@@ -55,9 +40,6 @@ final readonly class TotpEnrolmentBeginController implements AsksForARecentProof
     ) {
     }
 
-    /**
-     * The page of the second factor, which holds the button this answers.
-     */
     public function comesBackTo(): string
     {
         return AccountTwoFactorController::ROUTE;
@@ -71,8 +53,7 @@ final readonly class TotpEnrolmentBeginController implements AsksForARecentProof
             return $session;
         }
         $user = $session->user;
-        // before a secret is drawn: what the page offers nobody of a federated domain is refused to a post written by
-        // hand, which the enrolment of the core refuses too, and this says why
+        // The core refuses it too; refused here, before a secret is drawn, so that the page can say why.
         if (! $this->federated->admitsLocalCredentials($user)) {
             $this->refusals->keep($request, self::FEDERATED_DOMAIN);
 

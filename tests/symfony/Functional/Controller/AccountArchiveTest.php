@@ -36,19 +36,8 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #453, RGPD articles 15 and 20: a person asks for everything this provider holds about them in one
- * click, the archive is built off that request, and they download it once it is ready.
- *
- * The buses are synchronous in this suite, so what the browser comes back to is a file already built;
- * what a deployment sees between the two is the state the page says it is in, which the tests below play
- * by writing a row and not building it.
- */
 final class AccountArchiveTest extends BrowserTestCase
 {
-    /**
-     * What a person types to have their file leave under it (issue #483), several words as the page asks.
-     */
     private const string PASSPHRASE = 'correct horse battery staple';
 
     #[Test]
@@ -65,10 +54,6 @@ final class AccountArchiveTest extends BrowserTestCase
         static::assertCount(1, $page->filter('form[data-archive-ask]'));
     }
 
-    /**
-     * What the file holds is read from the chapters that are wired, so a kind of fact this provider comes
-     * to hold about a person is named on the page by being wired.
-     */
     #[Test]
     public function thePageNamesWhatTheFileHolds(): void
     {
@@ -86,9 +71,7 @@ final class AccountArchiveTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §5.7: every word a person reads comes from the catalogue of their language, a word the
-     * catalogue lacks failing this kernel. So a chapter wired without a label of its own is red here, in
-     * both languages the provider ships, and never a key shown to a person.
+     * Architecture §5.7
      */
     #[Test]
     public function thePageSpeaksTheLanguageOfTheBrowser(): void
@@ -124,10 +107,6 @@ final class AccountArchiveTest extends BrowserTestCase
         static::assertCount(1, $page->filter('a[data-archive-file]'));
     }
 
-    /**
-     * The archive still being built says so rather than giving nothing, which is the one answer a page
-     * like this may not give.
-     */
     #[Test]
     public function anArchiveStillBeingBuiltSaysSo(): void
     {
@@ -145,10 +124,6 @@ final class AccountArchiveTest extends BrowserTestCase
         static::assertCount(0, $page->filter('form[data-archive-ask]'));
     }
 
-    /**
-     * A request a person can take back while it is being built: one they changed their mind about, and
-     * one whose build never came back, are one row and one thing to say about it.
-     */
     #[Test]
     public function anArchiveStillBeingBuiltOffersToDeleteTheRequest(): void
     {
@@ -164,11 +139,6 @@ final class AccountArchiveTest extends BrowserTestCase
         static::assertCount(1, $page->filter('form[data-archive-cancel]'));
     }
 
-    /**
-     * Nothing comes back to say a build threw, so a row past the delay a build is given is a row this
-     * provider says it is not building: the page says that rather than a week of "being built", and the
-     * button that asks for a file is back.
-     */
     #[Test]
     public function anArchiveWhoseBuildDidNotComeBackSaysSoAndOffersANewOne(): void
     {
@@ -200,10 +170,6 @@ final class AccountArchiveTest extends BrowserTestCase
         static::assertSame(['ready'], $page->filter('p[data-archive]')->extract(['data-archive']));
     }
 
-    /**
-     * The row a build never filled holds nothing and nothing will fill it, so asking again takes it away
-     * rather than leaving a person with two.
-     */
     #[Test]
     public function askingAgainOnceTheBuildDidNotComeBackLeavesOneArchive(): void
     {
@@ -254,10 +220,6 @@ final class AccountArchiveTest extends BrowserTestCase
         );
     }
 
-    /**
-     * The whole point of the file: what every page of the account shows separately, read in one place, the
-     * journal of their own acts included.
-     */
     #[Test]
     public function theFileHoldsTheRecordAndTheJournalOfThePerson(): void
     {
@@ -278,13 +240,7 @@ final class AccountArchiveTest extends BrowserTestCase
     }
 
     /**
-     * The file name travels in a header that proxies and browsers write down, so it names the archive and
-     * never the person.
-     */
-    /**
-     * A credential ID is what the authenticator issued (WebAuthn Level 3 §6.3.2), octets and not text, and
-     * a document is JSON: the file names it in the alphabet the column holding it uses, and a person who
-     * signs in by passkey is not a person whose archive cannot be built.
+     * WebAuthn Level 3 §6.3.2
      */
     #[Test]
     public function theFileNamesAPasskeyByTheIdentifierItsColumnHolds(): void
@@ -324,10 +280,6 @@ final class AccountArchiveTest extends BrowserTestCase
         static::assertStringNotContainsString('alice', $disposition);
     }
 
-    /**
-     * The act that matters most of the three: a file holding everything this provider knows of somebody
-     * left it, and the journal says so.
-     */
     #[Test]
     public function takingTheFileIsWrittenInTheJournal(): void
     {
@@ -345,10 +297,6 @@ final class AccountArchiveTest extends BrowserTestCase
         static::assertCount(1, $acts);
     }
 
-    /**
-     * The route carries no identifier, so the archive of somebody else is not refused here, it is not
-     * reachable from here.
-     */
     #[Test]
     public function theArchiveOfSomebodyElseIsNotReachable(): void
     {
@@ -365,10 +313,6 @@ final class AccountArchiveTest extends BrowserTestCase
         static::assertSame(Response::HTTP_NOT_FOUND, $this->browser->getResponse()->getStatusCode());
     }
 
-    /**
-     * The file of an archive past its date is nothing, whether or not the timed step that forgets the row
-     * has come round yet.
-     */
     #[Test]
     public function theFileOfAnArchiveThatHasExpiredIsNotGiven(): void
     {
@@ -430,10 +374,6 @@ final class AccountArchiveTest extends BrowserTestCase
         static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode());
     }
 
-    /**
-     * Issue #483: a file that is ready leaves in one of two forms, and which container the other one is is
-     * read from what is wired rather than named on the page.
-     */
     #[Test]
     public function aReadyArchiveOffersTheFormThatWrapsIt(): void
     {
@@ -472,10 +412,6 @@ final class AccountArchiveTest extends BrowserTestCase
         );
     }
 
-    /**
-     * The one file where everything this provider knows of somebody stands in clear at once leaves saying
-     * nothing of them to whoever ends up holding it.
-     */
     #[Test]
     public function theWrappedFileCarriesNothingOfThePersonInTheClear(): void
     {
@@ -491,8 +427,7 @@ final class AccountArchiveTest extends BrowserTestCase
     }
 
     /**
-     * The floor is refused and not warned about (decision 0006), and the page says it was refused without
-     * saying what was typed nor how far off it was.
+     * Decision 0006
      */
     #[Test]
     public function aPassphraseShorterThanTheFloorIsRefused(): void
@@ -512,10 +447,6 @@ final class AccountArchiveTest extends BrowserTestCase
         static::assertSame(['passphrase_refused'], $page->filter('p[data-error]')->extract(['data-error']));
     }
 
-    /**
-     * A passphrase that is refused takes nothing with it: it is judged before the archive is asked for, so
-     * nothing left and the journal does not say it did.
-     */
     #[Test]
     public function aPassphraseThatWasRefusedIsNotAnActOfTakingTheFile(): void
     {
@@ -544,8 +475,6 @@ final class AccountArchiveTest extends BrowserTestCase
         $this->signIn($alice);
         $this->ask();
         $token = $this->wrapToken();
-        // the row forgotten the way the timed step forgets it once the file has expired, the form of the
-        // page this person still holds naming a file that is not there any more
         self::archives()->forgetExpired(self::reread($alice)->tenant, self::currentSecond()->modify('+1 year'));
         self::reload();
 
@@ -581,10 +510,6 @@ final class AccountArchiveTest extends BrowserTestCase
         self::reload();
     }
 
-    /**
-     * Issue #453: the file they have is a file this provider stops holding when they say so, before the
-     * date it would have gone away on by itself.
-     */
     #[Test]
     public function theFileIsDroppedWhenThePersonAsksForIt(): void
     {
@@ -600,9 +525,6 @@ final class AccountArchiveTest extends BrowserTestCase
         static::assertNull(self::archives()->latestOf(self::reread($alice)));
     }
 
-    /**
-     * The row is gone, so the page says again what asking for a file would give them.
-     */
     #[Test]
     public function thePageOfAPersonWhoDroppedTheirFileSaysTheyHaveNone(): void
     {
@@ -617,10 +539,6 @@ final class AccountArchiveTest extends BrowserTestCase
         static::assertCount(1, $page->filter('p[data-archive="never"]'));
     }
 
-    /**
-     * The identifier is all that is left of the archive once the row is gone, which is why the act is
-     * written where what became of the request is read.
-     */
     #[Test]
     public function droppingTheFileIsWrittenInTheJournal(): void
     {
@@ -638,10 +556,6 @@ final class AccountArchiveTest extends BrowserTestCase
         static::assertCount(1, $acts);
     }
 
-    /**
-     * A person whose file went away under them, or who clicked twice, is told there was none rather than
-     * shown a page that says nothing happened (issue #481).
-     */
     #[Test]
     public function aPersonWithNoFileToDropIsToldThereWasNone(): void
     {
@@ -658,10 +572,6 @@ final class AccountArchiveTest extends BrowserTestCase
         static::assertCount(1, $page->filter('p[data-error="nothing_to_drop"]'));
     }
 
-    /**
-     * The one state a page may not leave somebody in is a state with no way out: a build that threw would
-     * otherwise hold a person for the week the row is kept.
-     */
     #[Test]
     public function aRequestStillBeingBuiltIsDroppedWhenThePersonAsksForIt(): void
     {
@@ -706,9 +616,6 @@ final class AccountArchiveTest extends BrowserTestCase
         static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode());
     }
 
-    /**
-     * Asking answers with a redirection (issue #481), so what this reads is the page it comes back to.
-     */
     private function ask(): Crawler
     {
         $token = self::string($this->archivePage()->filter('form[data-archive-ask] input[name="_token"]')->attr('value'));
@@ -734,9 +641,6 @@ final class AccountArchiveTest extends BrowserTestCase
     }
 
     /**
-     * One chapter of the document, narrowed where it is read: what comes back from a decoded file is a
-     * shape nothing declares, and a test that asserts on it says what it expected to find.
-     *
      * @param array<string, mixed> $document
      *
      * @return list<array<string, mixed>>
@@ -750,11 +654,6 @@ final class AccountArchiveTest extends BrowserTestCase
         return $chapter;
     }
 
-    /**
-     * Dropping the file answers with a redirection too (issue #481), so what this reads is the page it
-     * comes back to. The token is the one the page renders, and a caller that already holds it says so:
-     * a page offering no file to drop renders no form to read one from.
-     */
     private function drop(?string $token = null): Crawler
     {
         $this->browser->request('POST', '/account/archive/drop', [
@@ -769,10 +668,6 @@ final class AccountArchiveTest extends BrowserTestCase
         return self::string($this->archivePage()->filter('form[data-archive-drop] input[name="_token"]')->attr('value'));
     }
 
-    /**
-     * The same route, reached from the form a request that is not built yet renders: what the person takes
-     * back there is the request and not a file they hold.
-     */
     private function cancel(): Crawler
     {
         $token = self::string($this->archivePage()->filter('form[data-archive-cancel] input[name="_token"]')->attr('value'));
@@ -791,13 +686,6 @@ final class AccountArchiveTest extends BrowserTestCase
         return $page;
     }
 
-    /**
-     * A row written straight into the store, which is how the two states a synchronous suite never sees
-     * are played: the person is reread first, a row hanging off a person the manager does not hold being
-     * a row it would try to write again.
-     *
-     * @param string|null $document what the archive was built with, null for one still being built
-     */
     private static function asked(User $user, ?string $document = null): PersonalArchive
     {
         $archive = PersonalArchive::asked(Uuid::v7(), self::reread($user), self::currentSecond());
@@ -810,11 +698,6 @@ final class AccountArchiveTest extends BrowserTestCase
         return $archive;
     }
 
-    /**
-     * A row asked for past the delay a build is given and never filled, which is what a build that threw
-     * leaves behind. Its date is in the past rather than the clock being moved, for the reason the row
-     * below gives.
-     */
     private static function stalled(User $user): PersonalArchive
     {
         $archive = PersonalArchive::asked(
@@ -828,10 +711,6 @@ final class AccountArchiveTest extends BrowserTestCase
         return $archive;
     }
 
-    /**
-     * A passkey written straight into the store, the credential ID being what this reads the document for:
-     * what a browser enrols is played where enrolment is the subject (AccountPasskeysTest).
-     */
     private static function enrol(User $user, string $credentialId): void
     {
         self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
@@ -852,11 +731,6 @@ final class AccountArchiveTest extends BrowserTestCase
         self::reload();
     }
 
-    /**
-     * An archive built and past the date it goes away on. Its dates are in the past rather than the clock
-     * being moved: a week forward is a week past the session of the browser reading the page, and what
-     * this plays is an archive that expired and not a person who has to sign in again.
-     */
     private static function expired(User $user): PersonalArchive
     {
         $asked = self::currentSecond()->modify(sprintf('-%d days', PersonalArchive::KEPT_FOR_DAYS + 1));
@@ -873,9 +747,6 @@ final class AccountArchiveTest extends BrowserTestCase
         return $archive;
     }
 
-    /**
-     * The wrapped file asked for the way a browser asks for it, by the form of the page.
-     */
     private function wrap(string $passphrase): void
     {
         $this->browser->request('POST', '/account/archive/file', [
@@ -889,10 +760,6 @@ final class AccountArchiveTest extends BrowserTestCase
         return self::string($this->archivePage()->filter('form[data-archive-wrap] input[name="_token"]')->attr('value'));
     }
 
-    /**
-     * The entry read back the way whoever downloaded the file reads it, by a tool that knows the format and
-     * the passphrase.
-     */
     private static function readFromZip(string $wrapped, string $name, string $passphrase): string
     {
         $path = tempnam(sys_get_temp_dir(), 'beffroi-read-');

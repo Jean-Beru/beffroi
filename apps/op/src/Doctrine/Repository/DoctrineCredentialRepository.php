@@ -28,12 +28,6 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 use function usort;
 
-/**
- * Credentials, one table per kind (architecture §3.4, §5.3): the kinds are the entities mapped under
- * Credential, read once from the metadata; a kind asked for is read from its table, every kind from all of
- * them and listed together, oldest first. A kind presented by an identifier of its own maps it as
- * "externalId", the property ExternallyIdentifiedCredentialInterface asks for; nothing here names a kind.
- */
 final class DoctrineCredentialRepository implements CanForgetCredentialsInterface, CanPageCredentialsInterface, CredentialRepositoryInterface
 {
     /**
@@ -47,9 +41,6 @@ final class DoctrineCredentialRepository implements CanForgetCredentialsInterfac
     }
 
     /**
-     * One store per kind answers here and the order is made of their answers, so the page is taken of what
-     * they gave and not of a table: a person holds a handful of credentials of a kind, never a journal.
-     *
      * @param class-string<Credential> $kind
      *
      * @return Listing<Credential>
@@ -136,10 +127,6 @@ final class DoctrineCredentialRepository implements CanForgetCredentialsInterfac
     }
 
     /**
-     * One table of a kind at a time, each one streamed rather than loaded: the walk of a hardening reads
-     * every credential of a tenant, which on a large deployment is every row of every one of those tables
-     * (issue #327).
-     *
      * @return iterable<Credential>
      */
     public function credentialsOf(Tenant $tenant): iterable
@@ -169,11 +156,6 @@ final class DoctrineCredentialRepository implements CanForgetCredentialsInterfac
     }
 
     /**
-     * The entities mapped under Credential, in a fixed order: what has a table of its own, and so a kind
-     * a user may hold. A mapped superclass is not one (RevocableCredential is where a kind that can be
-     * revoked takes its revocation from, not a kind), and asking its repository for rows would name a
-     * table nothing ever created.
-     *
      * @return list<class-string<Credential>>
      */
     private function kinds(): array

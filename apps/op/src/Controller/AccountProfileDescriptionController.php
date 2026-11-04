@@ -25,27 +25,11 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Csrf\CsrfToken;
 
-/**
- * A person says one thing of themselves on the page of this application (issue beffroi-auth/op#17), the
- * claim being the one named in the URL: one form per claim, so nothing is read back out of a body to know
- * which was submitted.
- *
- * **It answers with a redirection whether the use case accepted or refused** (issue
- * beffroi-auth/beffroi#481), so that a browser reloading the page it comes back to does not say the same
- * thing of that person again. What was refused crosses that redirection in the session (WhatWasRefused),
- * and the page puts it back under the field it is about, which is what this application installs a form
- * component for.
- *
- * The rule of what a person may change is not here: the use case of the core reads it, on the server, for
- * every caller (SelfDescription). What this reads of it is which claims the page has a field for, and a
- * name it has none for is answered with nothing at all.
- */
 #[AsController]
 final readonly class AccountProfileDescriptionController implements ReachedOnTheSessionAloneInterface
 {
     /**
-     * The route name of the form of the provider, which this answers in its place, so that every link naming
-     * it lands here (config/routes/profile.yaml).
+     * The route name of the provider's form, which this replaces so that every link naming it lands here.
      */
     public const string ROUTE = 'beffroi_interaction_account_profile_describe';
 
@@ -77,14 +61,11 @@ final readonly class AccountProfileDescriptionController implements ReachedOnThe
         $user = $session->user;
         $named = $this->claims->named($claim);
         if ($named === null || ! $user->tenant->selfServedClaims->opens($named->name())) {
-            // this page offers a field per claim the tenant opens, so a name it offers none for is not a
-            // refusal of the page but a URL that is not one of its own, and there is no page to be
-            // redirected to about it; what writes still reads the policy itself (SelfDescription)
             throw new NotFoundHttpException('No such claim.');
         }
         $form = $this->claimForms->of($named, $user);
         $form->handleRequest($request);
-        // a body that carries nothing of this form was never submitted, and carries no token either
+        // A body that carries nothing of this form carries no token either.
         if (! $form->isSubmitted() || self::theTokenDidNotHold($form)) {
             return $this->pages->error(Response::HTTP_FORBIDDEN, InteractionPages::INVALID_CSRF_TOKEN);
         }
@@ -97,17 +78,7 @@ final readonly class AccountProfileDescriptionController implements ReachedOnThe
     }
 
     /**
-     * What this provider refuses of what was said, a code the page translates, and null once it is written.
-     *
-     * Two things refuse and the page says the same of both, because what a person reads under the line is
-     * that what they typed is not a value for it either way: the component refuses what it cannot read as
-     * the kind of field the claim is offered as, a birthdate that is not a date for one, and the claim
-     * refuses what it does not hold, a name the zoneinfo database does not carry for another. What the use
-     * case refuses for want of the tenant opening the claim does not arrive here, the page having answered
-     * nothing at all for a claim it offers no field for.
-     *
-     * Never the value that was refused: a refusal crosses a redirection in the session of the browser, and
-     * a session is a disk (issue beffroi-auth/beffroi#481).
+     * The code of what was refused, null once written; never the refused value, which would land in the session.
      *
      * @param FormInterface<mixed> $form
      */
@@ -127,14 +98,7 @@ final readonly class AccountProfileDescriptionController implements ReachedOnThe
     }
 
     /**
-     * Whether what came back did not carry the token of the page it was rendered on, which is the one
-     * refusal of this form that keeps its error page instead of crossing a redirection (issue
-     * beffroi-auth/beffroi#481): a request without a token carries no state, so a browser repeating it gets
-     * the same answer and there is nothing for a page after a redirection to show.
-     *
-     * The component checks the token itself (config/packages/csrf.yaml) and says so on the form rather
-     * than under the field, with the token it refused as the cause of the error; that is what this reads,
-     * so a value the field refused is never taken for a token that did not hold.
+     * The form component puts its CSRF error on the form, the refused token as its cause: that is what this reads.
      *
      * @param FormInterface<mixed> $form
      */

@@ -17,8 +17,7 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
- * Architecture §5.2: a plane serves its own routes, "all" serves everything, and a route of neither plane is
- * the application's own.
+ * Architecture §5.2
  */
 final class PlaneTest extends TestCase
 {
@@ -62,8 +61,7 @@ final class PlaneTest extends TestCase
     }
 
     /**
-     * Architecture §5.2: what answers by plane reads the name of the route and holds no list, so a route
-     * the provider gains is covered by being routed (decision 0014).
+     * Architecture §5.2, Decision 0014
      */
     #[Test]
     #[DataProvider('provideRoutesAndTheirPlane')]
@@ -119,9 +117,6 @@ final class PlaneTest extends TestCase
         }
     }
 
-    /**
-     * The route name is what the RouterListener sets: the guard runs after it and before the firewall.
-     */
     #[Test]
     public function theListenerRunsAfterTheRouterAndBeforeTheFirewall(): void
     {

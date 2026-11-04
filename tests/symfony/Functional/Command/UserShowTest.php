@@ -19,8 +19,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §5.5, decision 0002: beffroi:user:show names where a person and each of their memberships
- * come from, the source being what wins over a manual edit.
+ * Architecture §5.5, decision 0002
  */
 final class UserShowTest extends ConsoleTestCase
 {

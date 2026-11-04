@@ -21,9 +21,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Decision 0009: what a tenant manages its clients with until the tenant console. The clients of the
- * deployment and the ones that registered themselves are one list, each saying which it is, and only
- * one of the two can be taken back here.
+ * Decision 0009
  */
 final class ClientsTest extends ConsoleTestCase
 {
@@ -43,10 +41,6 @@ final class ClientsTest extends ConsoleTestCase
         static::assertStringContainsString(ConfigurationClientRepository::SOURCE, self::flattened($tester));
     }
 
-    /**
-     * A client that registered itself is in the same list as one the deployment declared, saying which
-     * source holds it: what is listed is what is wired.
-     */
     #[Test]
     public function theListNamesAClientThatRegisteredItselfAndTheSourceThatHoldsIt(): void
     {
@@ -64,8 +58,7 @@ final class ClientsTest extends ConsoleTestCase
     }
 
     /**
-     * RFC 7592 §2.1: what a client registered is what it reads back at its own endpoint, and it is what
-     * is shown here, as the client sent it.
+     * RFC 7592 §2.1
      */
     #[Test]
     public function aClientThatRegisteredItselfShowsWhatItRegistered(): void
@@ -112,8 +105,7 @@ final class ClientsTest extends ConsoleTestCase
     }
 
     /**
-     * The same removal as the `DELETE` of RFC 7592 §2.3 and as the timed step: the row goes, and the
-     * client resolves nowhere afterwards.
+     * RFC 7592 §2.3
      */
     #[Test]
     public function aClientThatRegisteredItselfIsDeleted(): void
@@ -131,10 +123,6 @@ final class ClientsTest extends ConsoleTestCase
         static::assertNull(self::service('test.beffroi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), $clientId));
     }
 
-    /**
-     * A declaration goes away when its block does: a command that took one out of a running process
-     * would put it back at the next boot, so it is refused and the refusal says where it lives.
-     */
     #[Test]
     public function aDeclaredClientIsRefusedAndStays(): void
     {
@@ -149,10 +137,6 @@ final class ClientsTest extends ConsoleTestCase
         static::assertNotNull(self::service('test.beffroi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), 'oidc-demo'));
     }
 
-    /**
-     * Registers a client through the endpoint, so that what the console lists is what the endpoint wrote
-     * and not a row a test made up.
-     */
     private function register(): string
     {
         self::service('test.beffroi.initial_access_tokens', InitialAccessTokenRepositoryInterface::class)

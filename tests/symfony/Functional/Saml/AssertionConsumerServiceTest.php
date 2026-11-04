@@ -56,11 +56,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * beffroi/saml, spec/saml.md S-52 to S-59, section 6.14, the acceptance of issue #784: in a deployment whose tenant is
- * a service provider (tests/symfony/config/config_test_service_provider.yml), the SimpleSAMLphp identity provider of
- * the judge declared and its document accepted, an interaction sent to it is answered by a response signed by its key,
- * posted to the assertion consumer service, which signs the person in and resumes the interaction; what the response
- * does not answer is refused, and nobody is signed in.
+ * beffroi/saml, spec/saml.md S-52 to S-59, section 6.14
  */
 final class AssertionConsumerServiceTest extends ConsoleTestCase
 {
@@ -76,9 +72,6 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
 
     private const string ADDRESS = 'alice@example.org';
 
-    /**
-     * The single sign-on service of the second provider of the kernel, which requires its assertions encrypted.
-     */
     private const string ENCRYPTING_SINGLE_SIGN_ON = 'https://idp.example.org/saml/sso';
 
     protected static function kernelOptions(): array
@@ -89,8 +82,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #784, S-53, S-59: a signed response for the request of the interaction completes the
-     * interaction with a code for the client.
+     * S-53, S-59
      */
     #[Test]
     public function aSignedResponseCompletesTheInteractionWithACode(): void
@@ -109,8 +101,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #784, S-56, issues #781 and #782: the first sign-in creates the person the provider names,
-     * its address verified, and makes it a member of the group the declaration maps its value to.
+     * S-56
      */
     #[Test]
     public function theFirstSignInCreatesThePersonWithItsGroup(): void
@@ -137,8 +128,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #784, S-55: the client gets the same subject at every sign-in of that person, the person
-     * found again by its linked identity.
+     * S-55
      */
     #[Test]
     public function theClientGetsTheSameSubAtEverySignIn(): void
@@ -156,8 +146,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-57, OIDC Core §2: the AuthnInstant of the assertion is the auth_time the client reads, and the methods are a
-     * federated assertion and the password its class names.
+     * S-57, OIDC Core §2
      */
     #[Test]
     public function theAuthnInstantIsTheAuthTimeOfTheSession(): void
@@ -176,7 +165,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #784, S-53, M-8, Core §2.5.1.4: a response for another audience signs nobody in.
+     * S-53, M-8, SAML Core §2.5.1.4
      */
     #[Test]
     public function aResponseForAnotherAudienceIsRefused(): void
@@ -193,7 +182,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #784, S-53, M-10: a response to a request nobody sent signs nobody in.
+     * S-53, M-10
      */
     #[Test]
     public function aResponseToARequestNobodySentIsRefused(): void
@@ -210,8 +199,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #784, S-53: a form posted a second time finds nothing the browser remembers, its request
-     * forgotten at the first post, and signs nobody in again.
+     * S-53
      */
     #[Test]
     public function aResponsePostedTwiceIsRefused(): void
@@ -230,8 +218,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #784, S-53, M-11: the assertion of a response accepted, presented again under a request
-     * this browser does remember, is refused by the replay store.
+     * S-53, M-11
      */
     #[Test]
     public function anAssertionPresentedAgainIsRefusedByTheReplayStore(): void
@@ -251,8 +238,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #784, S-53, decision 0029: an unsolicited response, which answers no request and carries
-     * no RelayState, signs nobody in.
+     * S-53, Decision 0029
      */
     #[Test]
     public function anUnsolicitedResponseIsRefused(): void
@@ -277,8 +263,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #784, S-53, M-3: a response signed by a key the metadata of the provider do not publish
-     * signs nobody in, whatever key the message names.
+     * S-53, M-3
      */
     #[Test]
     public function aSignatureUnderAKeyOutsideTheMetadataIsRefused(): void
@@ -295,8 +280,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-39, S-52: the assertion consumer service the metadata of the service provider announce is the URL the router
-     * generates for its route.
+     * S-39, S-52
      */
     #[Test]
     public function theMetadataAnnounceTheUrlOfTheRoute(): void
@@ -319,8 +303,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-52, S-28: the response the provider posts from its own site, which comes without the session cookie, is posted
-     * again from the origin of the provider, and that post signs the person in.
+     * S-52, S-28
      */
     #[Test]
     public function aResponsePostedFromAnotherSiteIsPostedAgainAndSignsThePersonIn(): void
@@ -339,8 +322,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-58, S-49, OIDC Core §3.1.2.1: an AuthnInstant older than the max_age of the client opens no session, and the
-     * request is sent once more, with ForceAuthn.
+     * S-58, S-49, OIDC Core §3.1.2.1
      */
     #[Test]
     public function anAssertionOlderThanTheMaxAgeSendsTheRequestOnceMoreWithForceAuthn(): void
@@ -357,8 +339,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-58, OIDC Core §3.1.2.6: an assertion that answers the request sent with ForceAuthn still older than the max_age
-     * is answered with login_required at the redirection URI of the client, and nothing is sent a third time.
+     * S-58, OIDC Core §3.1.2.6
      */
     #[Test]
     public function anAssertionStillOlderThanTheMaxAgeIsAnsweredLoginRequired(): void
@@ -376,8 +357,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-58, S-49: a client that asked for prompt=login sends ForceAuthn from the first request, and an AuthnInstant
-     * before the interaction began is answered with login_required, never sent round again.
+     * S-58, S-49
      */
     #[Test]
     public function anAssertionOlderThanAPromptLoginIsAnsweredLoginRequired(): void
@@ -394,8 +374,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-59: the login a page of the provider waits for comes back to that page, its route and its parameters as the
-     * provider remembered them.
+     * S-59
      */
     #[Test]
     public function theLoginAPageWaitsForComesBackToThatPage(): void
@@ -412,8 +391,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-49, S-58, OIDC Core §3.1.2.1: a client that names bob by an id_token_hint while alice is signed in has the
-     * request force a login at the provider, whose own session would answer for alice.
+     * S-49, S-58, OIDC Core §3.1.2.1
      */
     #[Test]
     public function anIdTokenHintNamingAnotherPersonForcesTheLogin(): void
@@ -434,8 +412,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-58, OIDC Core §3.1.2.6: the provider asserting alice again for a client that names bob, ForceAuthn
-     * notwithstanding, is answered with login_required, and never sent round again.
+     * S-58, OIDC Core §3.1.2.6
      */
     #[Test]
     public function aProviderThatAssertsAnotherPersonThanTheHintIsAnsweredLoginRequired(): void
@@ -456,9 +433,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-59: a page that asks a person signed in for a login sends a request that forces one, and an AuthnInstant
-     * before that request was issued, a provider that did not authenticate the person again, is refused and sent
-     * nowhere again.
+     * S-59
      */
     #[Test]
     public function aPageIsRefusedAnAuthenticationOlderThanItsRequest(): void
@@ -485,8 +460,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-57, S-53: a tenant whose every login must prove two factors refuses a login of the provider that proves one,
-     * with the page of a refusal, before the person is written, and announces it with no identifier.
+     * S-57, S-53
      */
     #[Test]
     public function aLoginUnderTheFloorOfTheTenantIsRefusedAndAnnounced(): void
@@ -512,8 +486,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-53: a response refused, here one signed by a key outside the metadata, leaves its trace in the audit trail: a
-     * federated assertion refused, nothing typed, nobody named.
+     * S-53
      */
     #[Test]
     public function aRefusedResponseIsAnnounced(): void
@@ -531,8 +504,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-53, M-16: the refusal of an address the core refuses carries no exception under it, whose message would hold the
-     * address, since what the firewall logs is the whole chain.
+     * S-53, M-16
      */
     #[Test]
     public function theRefusalOfAnAddressCarriesNoValueInItsChain(): void
@@ -543,7 +515,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
         $refused = new class {
             public ?AuthenticationException $exception = null;
         };
-        // the dispatcher of the firewall, where the security component dispatches what a login of it does
+        // Symfony dispatches the events of a firewall login on the dispatcher of that firewall.
         self::service('security.event_dispatcher.beffroi_interaction', EventDispatcherInterface::class)
             ->addListener(
                 LoginFailureEvent::class,
@@ -563,8 +535,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-55, decision 0029: a persistent NameID an administrator filled with the address of the person is refused, a
-     * mailbox given again naming the newcomer otherwise.
+     * S-55, Decision 0029
      */
     #[Test]
     public function aPersistentNameIdThatIsTheAddressIsRefused(): void
@@ -581,8 +552,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #820, S-56: a valid assertion for a person an administrator disabled writes nothing of
-     * what it says, the address, the username, the profile and the groups of the person being what they were.
+     * S-56
      */
     #[Test]
     public function aValidAssertionForADisabledPersonWritesNothing(): void
@@ -609,9 +579,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #820, S-56, S-53: a valid assertion for a disabled person is refused with the page of
-     * every refusal of the person, which says nothing of the state of the account, and announced as a login refused
-     * for a disabled account, nothing typed.
+     * S-56, S-53
      */
     #[Test]
     public function aValidAssertionForADisabledPersonIsRefusedAndAnnounced(): void
@@ -631,8 +599,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-57, SAML Core §2.7.2, issue #813: the session the login opens expires at the SessionNotOnOrAfter the provider
-     * allows, before the lifetime of the tenant.
+     * S-57, SAML Core §2.7.2
      */
     #[Test]
     public function theSessionExpiresAtTheSessionNotOnOrAfter(): void
@@ -650,8 +617,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-59, decision (b) of the review of #806: another person signing in for a page that waits ends the session the
-     * browser held, opens theirs, and the page is served to them.
+     * S-59
      */
     #[Test]
     public function anotherPersonSigningInForAPageThatWaitsIsServedThatPage(): void
@@ -669,8 +635,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-59: a page that asked for one more proof, a class the login of the provider does not prove, is refused, its
-     * request having carried ForceAuthn already.
+     * S-59
      */
     #[Test]
     public function aPageWhoseStepUpTheLoginDoesNotMeetIsRefused(): void
@@ -689,8 +654,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-53, M-8, Profiles §4.1.4.3: a response for another assertion consumer service than the one the router generates
-     * is refused.
+     * S-53, M-8, SAML Profiles §4.1.4.3
      */
     #[Test]
     public function aResponseToAnotherAssertionConsumerServiceIsRefused(): void
@@ -707,8 +671,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-58, OIDC Core §3.1.2.6: a client that asks for an account to be chosen, answered twice by the session the provider
-     * holds, is answered account_selection_required.
+     * S-58, OIDC Core §3.1.2.6
      */
     #[Test]
     public function anAccountSelectionTheProviderDoesNotOfferIsAnsweredAccountSelectionRequired(): void
@@ -729,8 +692,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #784 as amended, S-54, S-67: a provider declared with require_encrypted_assertions has a
-     * clear assertion it signed refused, whatever signatures held.
+     * S-54, S-67
      */
     #[Test]
     public function aClearAssertionOfAProviderAskedToEncryptIsRefused(): void
@@ -756,8 +718,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-53, M-3, M-8: an assertion the first provider signed, posted for a request sent to the second, is verified under
-     * the metadata of the second, and refused.
+     * S-53, M-3, M-8
      */
     #[Test]
     public function anAssertionOfOneProviderForARequestSentToAnotherIsRefused(): void
@@ -774,9 +735,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-58, OIDC Core §3.1.2.6: a response whose status is not Success, the person having failed at the provider, ends
-     * the interaction with access_denied at the redirection URI of the client, its state given back, and nothing of the
-     * provider in it.
+     * S-58, OIDC Core §3.1.2.6
      */
     #[Test]
     public function aFailedAuthenticationAnswersTheClientAccessDenied(): void
@@ -810,7 +769,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * S-58, S-59: a response whose status is not Success for the login a page waits for is the page of a refusal.
+     * S-58, S-59
      */
     #[Test]
     public function aFailedAuthenticationForAPageIsRefused(): void
@@ -834,10 +793,6 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
         $this->assertRefused('The identity provider authenticated nobody (spec/saml.md S-58).');
     }
 
-    /**
-     * The tenant holds a SAML key, a key that signs its ID tokens, the document of the provider of the judge and the one
-     * of the second provider of the kernel.
-     */
     private static function provisioned(): void
     {
         self::generate();
@@ -883,9 +838,6 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The request the sign-on of the interaction sent the provider, as the provider reads it, the sign-on started from
-     * the login page by an address of a domain of that provider.
-     *
      * @return array{id: string, relay_state: string}
      */
     private function signOn(string $interaction, string $identityProvider = IdentityProviderDocuments::SIMPLESAMLPHP): array
@@ -895,17 +847,12 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
         return $this->sentRequestOfTheAnswer($identityProvider);
     }
 
-    /**
-     * The document of the second provider of the kernel, which requires its assertions encrypted.
-     */
     private static function encryptingDocument(): string
     {
         return self::string(file_get_contents(IdentityProviderDocuments::signedPath()));
     }
 
     /**
-     * The login the home of the account waits for sent to the provider, its address typed as a person types it.
-     *
      * @return array{id: string, relay_state: string}
      */
     private function signOnFromTheAccount(): array
@@ -917,8 +864,6 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The ID and the RelayState of the request the last answer carries to the provider.
-     *
      * @return array{id: string, relay_state: string}
      */
     private function sentRequestOfTheAnswer(string $identityProvider = IdentityProviderDocuments::SIMPLESAMLPHP): array
@@ -933,10 +878,6 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
         ];
     }
 
-    /**
-     * The request the last answer carries to the provider, validated on its side under the metadata the service
-     * provider serves.
-     */
     private function sentRequest(string $identityProvider = IdentityProviderDocuments::SIMPLESAMLPHP): AuthnRequest
     {
         $singleSignOn = $identityProvider === IdentityProviderDocuments::SIGNED ? self::ENCRYPTING_SINGLE_SIGN_ON : self::SINGLE_SIGN_ON;
@@ -963,8 +904,6 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The form the provider posts for the request, signed by its key.
-     *
      * @param array{id: string, relay_state: string} $request
      * @param array<string, list<string>> $attributes
      *
@@ -1008,9 +947,6 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
         $this->browser->request('POST', '/saml/sp/acs', $form);
     }
 
-    /**
-     * The answer of the client once the browser is sent back to the interaction, past a consent the client asks for.
-     */
     private function resumed(): Response
     {
         $response = $this->browser->getResponse();
@@ -1025,8 +961,6 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The login the home of the account waits for, the step-up given, sent to the provider by a browser signed in.
-     *
      * @param array{classes?: list<string>, kinds?: list<string>} $stepUp
      *
      * @return array{id: string, relay_state: string}
@@ -1045,9 +979,6 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
         return $this->sentRequestOfTheAnswer();
     }
 
-    /**
-     * The session the browser is bound to.
-     */
     private function boundSession(): AuthenticationSession
     {
         $id = $this->readHttpSession()->get(BrowserSession::AUTHENTICATION_SESSION_KEY);
@@ -1060,8 +991,7 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * What the audit trail was told of the one login refused since the events were last forgotten: the reason, the
-     * method, the identifier and the person.
+     * The reason, the method, the identifier and the person of the one login refused.
      *
      * @return array{AuthenticationFailureReason, string|null, string|null, string|null}
      */
@@ -1073,9 +1003,6 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
         return [$failures[0]->reason, $failures[0]->method?->value, $failures[0]->identifier, $failures[0]->user?->username];
     }
 
-    /**
-     * A sign-in of that person through the provider, from an interaction to the ID token its code is exchanged for.
-     */
     private function idTokenOf(string $person): string
     {
         $this->post($this->response($this->signOn($this->beginAuthorization()), person: $person));
@@ -1091,8 +1018,6 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
     }
 
     /**
-     * The claims of the ID token the code of the answer is exchanged for.
-     *
      * @return array<string, mixed>
      */
     private function idToken(Response $answer): array
@@ -1110,9 +1035,6 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
         return self::claimsOf(self::string(self::json($this->browser->getResponse())['id_token'] ?? null));
     }
 
-    /**
-     * Refused with the page of a refusal, for the rule given, and nobody signed in.
-     */
     private function assertRefused(string $rule): void
     {
         $response = $this->browser->getResponse();
@@ -1128,10 +1050,6 @@ final class AssertionConsumerServiceTest extends ConsoleTestCase
         );
     }
 
-    /**
-     * Alice signed in once through the provider, a member of the group her value maps to, then disabled by an
-     * administrator, in a browser that holds no session of hers.
-     */
     private function disabledAliceSigningOnAgain(): void
     {
         $members = new Group(Uuid::v7(), self::tenant(), 'Members', GroupSource::Local, self::currentSecond());

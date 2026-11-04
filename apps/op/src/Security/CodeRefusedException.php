@@ -10,11 +10,8 @@ use Symfony\Component\Security\Core\Exception\BadCredentialsException;
 use Throwable;
 
 /**
- * A code the TOTP authenticator of the provider refused, carrying what the code page is allowed to say of
- * it (CodeRefusal) and nothing of the reason the core gave, which belongs to the audit trail alone. The
- * security component keeps the exception in the HTTP session for the page to read once: the refusal is
- * serialized with it, the way AuthenticationException asks a subclass to extend its state, and a
- * serialised form this class did not write is refused, as with SecurityUser.
+ * Carries the CodeRefusal and nothing of the reason of the core: the security component keeps it in the HTTP
+ * session.
  */
 final class CodeRefusedException extends BadCredentialsException
 {
@@ -36,7 +33,7 @@ final class CodeRefusedException extends BadCredentialsException
     /**
      * @param array<array-key, mixed> $data
      *
-     * @throws LogicException when the state is not the one __serialize() wrote
+     * @throws LogicException
      */
     public function __unserialize(array $data): void
     {

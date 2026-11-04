@@ -18,10 +18,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Turns a decision of the AuthorizationHandler into where the browser goes (architecture §4.3, §5.2),
- * and a refusal into an answer to the client when it may hear it (RFC 6749 §4.1.2.1) or a page
- * otherwise. How the answer reaches the client is the response mode of the request, a refusal as well as
- * a code (OIDC Core §3.1.2.6); the renderer of that mode shapes it, this class never does.
+ * RFC 6749 §4.1.2.1, OIDC Core §3.1.2.6
  */
 final readonly class AuthorizationResponder implements AuthorizationResponderInterface
 {
@@ -31,9 +28,6 @@ final readonly class AuthorizationResponder implements AuthorizationResponderInt
 
     public const string UNKNOWN_INTERACTION = 'unknown_interaction';
 
-    /**
-     * The query parameter that carries the interaction identifier to the pages.
-     */
     public const string INTERACTION_PARAMETER = 'interaction';
 
     public function __construct(
@@ -49,9 +43,6 @@ final readonly class AuthorizationResponder implements AuthorizationResponderInt
         return $this->decisions->render($request, $decision);
     }
 
-    /**
-     * Sent back to the redirect URI when the error may be, shown to the user otherwise; the interaction is over either way.
-     */
     public function failure(Request $request, RedirectTarget $target, OAuth2Exception $exception, ?Interaction $interaction = null): Response
     {
         if ($interaction !== null) {
@@ -79,9 +70,6 @@ final readonly class AuthorizationResponder implements AuthorizationResponderInt
         return $this->pages->error(Response::HTTP_BAD_REQUEST, self::INTERACTION_COMPLETED);
     }
 
-    /**
-     * A page reached without an interaction this browser began.
-     */
     public function unknownInteraction(): Response
     {
         return $this->pages->error(Response::HTTP_BAD_REQUEST, self::UNKNOWN_INTERACTION);

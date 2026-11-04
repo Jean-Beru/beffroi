@@ -54,25 +54,12 @@ use Symfony\Component\Uid\Uuid;
 use function unserialize;
 
 /**
- * Decision 0020: what this provider writes to a transport leaves the process sealed. What the suites of
- * the two packages ask of every message, that it survive leaving the process, this asks of the shape it
- * leaves in: a body a broker cannot read, headers that name the class and the scope and nothing of a
- * person, and a message in the failure transport that an operator reads without its body being opened.
+ * Decision 0020
  */
 final class SealedBodySerializerTest extends TestCase
 {
-    /**
-     * The floor of what is searched for in an encoded envelope: a sealed body is bytes indistinguishable
-     * from random, so a short string turns up in one by chance and the run goes red for nothing, as the
-     * search of a dump has it (DumpGivesNothingAwayTest).
-     */
     private const int SEARCHED_FROM = 8;
 
-    /**
-     * What the person of the message below is called and what names them to a client: the values of
-     * provideWhatAMessageOfAPersonCarries(), here because the test and its provider must write the same
-     * ones.
-     */
     private const string USERNAME = 'alice@acme.example';
 
     private const string SUBJECT = 'alice-of-acme-0001';
@@ -92,9 +79,6 @@ final class SealedBodySerializerTest extends TestCase
     }
 
     /**
-     * Every message of the provider: one of each marker the contract routes (MessengerContract::routing())
-     * and every event of the two packages, the suite of each being what holds its list to being whole.
-     *
      * @return iterable<string, array{object}>
      */
     public static function messages(): iterable
@@ -132,12 +116,6 @@ final class SealedBodySerializerTest extends TestCase
         static::assertSame(serialize($message), serialize($decoded->getMessage()));
     }
 
-    /**
-     * What DumpGivesNothingAwayTest asks of a dump, asked of what a broker keeps: the body is a compact
-     * JWE, and none of the strings the message held is in it. A message that carries nothing long enough
-     * to search for, a command that is a word and no data, is held to the first half only; what makes the
-     * search mean something is the test below, which names what it looks for.
-     */
     #[Test]
     #[DataProvider('messages')]
     public function theEncodedBodyCarriesNoneOfTheStringsTheMessageHeld(object $message): void
@@ -155,11 +133,6 @@ final class SealedBodySerializerTest extends TestCase
         }
     }
 
-    /**
-     * What makes the search above mean something: the message the fixture writes carries what decision
-     * 0011 seals in a column, and every one of those values is looked for by name. A green run is a search
-     * that was looking.
-     */
     #[Test]
     #[DataProvider('provideWhatAMessageOfAPersonCarries')]
     public function theEncodedBodyOfAMessageOfAPersonGivesNoneOfTheirValuesAway(string $value): void
@@ -179,9 +152,7 @@ final class SealedBodySerializerTest extends TestCase
     }
 
     /**
-     * The values the session of a person carries, which are columns decision 0011 seals: who signed in,
-     * what names them to a client, and where the request came from. Each one is long enough that finding
-     * it in a sealed body is a leak and never a coincidence (SEARCHED_FROM).
+     * Decision 0011
      *
      * @return iterable<string, array{string}>
      */
@@ -193,20 +164,11 @@ final class SealedBodySerializerTest extends TestCase
         yield 'the user agent of the request' => ['Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0'];
     }
 
-    /**
-     * A session of someone whose every value is long enough to be searched for, which is what makes the
-     * two tests above a search rather than a formality.
-     */
     private static function sessionOfAPerson(): AuthenticationSession
     {
         return Fixtures::session(Fixtures::user(username: self::USERNAME, subject: self::SUBJECT));
     }
 
-    /**
-     * The other half: a header is in the clear, so nothing of a person is in one. What a transport carries
-     * beside the body is the class of the message, which names a failure, and the scope it was written
-     * under, which says which key to ask for.
-     */
     #[Test]
     #[DataProvider('messages')]
     public function noHeaderCarriesAnythingOfTheMessageButItsClass(object $message): void
@@ -241,11 +203,6 @@ final class SealedBodySerializerTest extends TestCase
         }
     }
 
-    /**
-     * The scope travels in a stamp so that a consumer knows which key to ask for before it touches the
-     * body, and the stamp is never what decides: a body sealed elsewhere and carried in with its stamp
-     * rewritten fails to open instead of opening here (the pattern of beffroi#436).
-     */
     #[Test]
     public function aStampThatSaysTheWrongScopeMakesTheOpeningFail(): void
     {
@@ -266,10 +223,6 @@ final class SealedBodySerializerTest extends TestCase
         static::assertStringContainsString('sealed for another scope', self::failureOf($decoded)->getMessage());
     }
 
-    /**
-     * A message written for a tenant this process does not serve is not opened, and the refusal names
-     * both: a worker reads which scope it was asked for.
-     */
     #[Test]
     public function aMessageOfAnotherTenantIsNotOpenedHere(): void
     {
@@ -289,10 +242,6 @@ final class SealedBodySerializerTest extends TestCase
         );
     }
 
-    /**
-     * An envelope with no scope is not a message of this provider: it is refused rather than opened under
-     * whatever the process happens to serve.
-     */
     #[Test]
     public function anEnvelopeThatNamesNoScopeIsRefused(): void
     {
@@ -310,10 +259,6 @@ final class SealedBodySerializerTest extends TestCase
         );
     }
 
-    /**
-     * The body decides what the message is, the header only says it: a type rewritten on a transport is a
-     * refusal and never a message handed to a bus under a name it does not have.
-     */
     #[Test]
     public function theBodyDecidesTheClassOfTheMessageAndNotTheHeader(): void
     {
@@ -328,11 +273,6 @@ final class SealedBodySerializerTest extends TestCase
         static::assertStringContainsString('opens as', self::failureOf($decoded)->getMessage());
     }
 
-    /**
-     * The third thing the decision asks of the failure transport: a message whose body nobody can open any
-     * more is still named, dated and explained. The body goes on as it arrived, and what an operator reads
-     * is read from the headers.
-     */
     #[Test]
     public function aFailedMessageIsNamedDatedAndExplainedWithoutItsBodyBeingOpened(): void
     {
@@ -363,10 +303,6 @@ final class SealedBodySerializerTest extends TestCase
         ));
     }
 
-    /**
-     * A KMS that does not answer is a failure of the process and not of the message: it passes, so the
-     * message is tried again rather than put in a transport nobody replays.
-     */
     #[Test]
     public function aKmsThatDoesNotAnswerIsNotAMessageThrownAway(): void
     {
@@ -387,11 +323,6 @@ final class SealedBodySerializerTest extends TestCase
         $worker->decode($encoded);
     }
 
-    /**
-     * What the decision buys on the path of a request: the half that seals is public, so a process that
-     * writes messages asks the KMS nothing and a KMS that is down does not stop a login from being
-     * recorded.
-     */
     #[Test]
     public function sealingABodyAsksTheKmsNothing(): void
     {
@@ -433,10 +364,6 @@ final class SealedBodySerializerTest extends TestCase
         return $key;
     }
 
-    /**
-     * What a decode that did not open came back with: the component wraps a refusal in an envelope rather
-     * than throwing, so that a worker routes it to the failure transport like any other message.
-     */
     private static function failureOf(Envelope $envelope): MessageDecodingFailedException
     {
         $failure = $envelope->getMessage();
@@ -446,10 +373,6 @@ final class SealedBodySerializerTest extends TestCase
     }
 
     /**
-     * The strings a message holds, read from what the seal is given: every string of its serialization
-     * long enough to be searched for, which is what makes this test grow with the messages rather than
-     * with a list somebody keeps.
-     *
      * @return list<string>
      */
     private static function stringsOf(object $message): array
@@ -466,8 +389,6 @@ final class SealedBodySerializerTest extends TestCase
     }
 
     /**
-     * The stamps a header carries, read back the way the serializer reads them.
-     *
      * @template T of StampInterface
      *
      * @param class-string<T> $class

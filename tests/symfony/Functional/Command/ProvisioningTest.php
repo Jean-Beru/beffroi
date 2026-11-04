@@ -34,17 +34,12 @@ use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Uid\UuidV4;
 
 /**
- * Architecture §5.5: a fresh application is provisioned from the console only, the tenant first, then a
- * key and a user; nothing else writes before the first login.
+ * Architecture §5.5
  */
 final class ProvisioningTest extends ConsoleTestCase
 {
     private const string PASSWORD = 'correct horse battery staple';
 
-    /**
-     * The acceptance criterion of the commands, step 1: after a migration, the tenant of the
-     * configuration becomes a row.
-     */
     #[Test]
     public function theTenantOfTheConfigurationIsSynchronisedAsARow(): void
     {
@@ -58,17 +53,11 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         static::assertStringContainsString('https://op.test', $tester->getDisplay());
         static::assertStringContainsString('The tenant "default" is synchronised', $tester->getDisplay());
-        // what the pages show of it is written with the rest of the row, so the command says it (issue #449);
-        // this deployment declares none, and the two lines are empty rather than absent
         static::assertStringContainsString('Logo', $tester->getDisplay());
         static::assertStringContainsString('Colours', $tester->getDisplay());
-        // and what its people may change of themselves (issue #452), which the same command writes
         static::assertStringContainsString('Changeable', $tester->getDisplay());
     }
 
-    /**
-     * Step 4: the JWK Set publishes the key the console generated.
-     */
     #[Test]
     public function theJwkSetPublishesTheKeyOfTheConsole(): void
     {
@@ -88,9 +77,6 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertArrayNotHasKey('d', $jwks['keys'][0]);
     }
 
-    /**
-     * Step 3: the password typed twice on the terminal is never echoed.
-     */
     #[Test]
     public function thePasswordTypedOnTheTerminalIsNeverEchoed(): void
     {
@@ -113,9 +99,6 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertStringNotContainsString('correct horse', $tester->getDisplay());
     }
 
-    /**
-     * Step 5: the user signs in on the form with the password of the console.
-     */
     #[Test]
     public function theUserOfTheConsoleSignsInOnTheForm(): void
     {
@@ -141,8 +124,7 @@ final class ProvisioningTest extends ConsoleTestCase
     }
 
     /**
-     * Step 5: the flow of OIDC Core §3.1 runs on what the console wrote; the ID token is signed with the
-     * key of the console and its "sub" is the subject the console printed.
+     * OIDC Core §3.1
      */
     #[Test]
     public function theIdTokenIsSignedWithTheKeyOfTheConsoleForTheSubjectItPrinted(): void
@@ -257,7 +239,7 @@ final class ProvisioningTest extends ConsoleTestCase
     }
 
     /**
-     * Architecture §3.3: a generated key is active and said so.
+     * Architecture §3.3
      */
     #[Test]
     public function aGeneratedKeyIsActive(): void
@@ -279,10 +261,6 @@ final class ProvisioningTest extends ConsoleTestCase
         );
     }
 
-    /**
-     * Issue #164: what "castor provision" runs to give the tenant the other half of its JWK Set, a key a
-     * client encrypts to. The same command, the same custody, "use": "enc".
-     */
     #[Test]
     public function aGeneratedEncryptionKeyIsActiveAndPublishedForEncryption(): void
     {
@@ -302,7 +280,7 @@ final class ProvisioningTest extends ConsoleTestCase
     }
 
     /**
-     * Architecture §3.3: the private key is sealed before it is written, never in clear.
+     * Architecture §3.3
      */
     #[Test]
     public function aGeneratedKeyIsSealedBeforeItIsWritten(): void
@@ -315,8 +293,7 @@ final class ProvisioningTest extends ConsoleTestCase
     }
 
     /**
-     * Architecture §3.3: the key is staged then activated at once, both announced, with the context of a
-     * console that names its command and the user of the shell, and has no address.
+     * Architecture §3.3
      */
     #[Test]
     public function aGeneratedKeyIsAnnounced(): void
@@ -424,7 +401,7 @@ final class ProvisioningTest extends ConsoleTestCase
     }
 
     /**
-     * Decision 0002: a person the console creates is local, its source holding nothing of it.
+     * Decision 0002
      */
     #[Test]
     public function aUserOfTheConsoleIsLocal(): void
@@ -442,8 +419,7 @@ final class ProvisioningTest extends ConsoleTestCase
     }
 
     /**
-     * Decision 0002: what the upstream provider that created a person holds, the console does not change,
-     * and it says which provider holds it.
+     * Decision 0002
      */
     #[Test]
     public function aDescriptionOfAClaimAnUpstreamProviderHoldsIsRefusedNamingIt(): void
@@ -475,7 +451,7 @@ final class ProvisioningTest extends ConsoleTestCase
     }
 
     /**
-     * Decision 0002: an imported identity keeps the subject its clients know.
+     * Decision 0002
      */
     #[Test]
     public function anImportedUserKeepsItsSubject(): void
@@ -570,8 +546,7 @@ final class ProvisioningTest extends ConsoleTestCase
     }
 
     /**
-     * OIDC Core §5.1: the attributes of the "profile", "phone" and "address" scopes, under the names of the
-     * specification, on an existing user.
+     * OIDC Core §5.1
      */
     #[Test]
     public function aUserIsDescribedWithTheStandardClaims(): void
@@ -634,9 +609,6 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertSame('United Kingdom', $address->country);
     }
 
-    /**
-     * A run that says nothing is the read the command is not: it writes nothing rather than clearing everything.
-     */
     #[Test]
     public function aDescriptionThatSaysNothingWritesNothing(): void
     {
@@ -662,7 +634,7 @@ final class ProvisioningTest extends ConsoleTestCase
     }
 
     /**
-     * Architecture §5.5: the read, the identity and the claims that are set, nothing written.
+     * Architecture §5.5
      */
     #[Test]
     public function aUserIsShownWithTheirIdentityAndTheClaimsThatAreSet(): void
@@ -703,9 +675,6 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertStringContainsString('There is no user named "nobody"', $tester->getDisplay(true));
     }
 
-    /**
-     * The whole description every time: what the second run does not say is cleared.
-     */
     #[Test]
     public function aSecondDescriptionClearsWhatItDoesNotSay(): void
     {
@@ -816,10 +785,6 @@ final class ProvisioningTest extends ConsoleTestCase
         ];
     }
 
-    /**
-     * What a script does: the password on the standard input, its line ending dropped, nothing on the
-     * command line.
-     */
     #[Test]
     public function thePasswordIsReadFromTheStandardInputForScripts(): void
     {
@@ -885,8 +850,7 @@ final class ProvisioningTest extends ConsoleTestCase
     }
 
     /**
-     * The rule NIST SP 800-63B §3.1.1.2 puts first, on the path an operator writes a password for
-     * somebody: the console gets it by construction and prints it in one flat line.
+     * NIST SP 800-63B §3.1.1.2
      */
     #[Test]
     public function aPasswordAListOfCompromisedPasswordsCountsIsRefused(): void
@@ -912,8 +876,7 @@ final class ProvisioningTest extends ConsoleTestCase
     }
 
     /**
-     * Decision 0006: an unknown is not a clean answer. Nothing is written, and the operator is told to
-     * pose the password again rather than handed one nobody checked.
+     * Decision 0006
      */
     #[Test]
     public function aPasswordNoListCouldBeAskedAboutIsRefused(): void
@@ -938,10 +901,6 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertSame([], self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($user, PasswordCredential::class));
     }
 
-    /**
-     * What the console asked is written on the credential, so that the first login does not ask again
-     * what was just asked.
-     */
     #[Test]
     public function thePasswordTheConsoleWroteIsMarkedAsLookedUp(): void
     {
@@ -967,9 +926,6 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertFalse($credential->isBreached());
     }
 
-    /**
-     * The list of this kernel, armed by the test that wants the rule; it names nothing otherwise.
-     */
     private static function breaches(): BreachedPasswordsOfARecord
     {
         return self::service('test.beffroi.breached_passwords', BreachedPasswordsOfARecord::class);
@@ -1032,8 +988,6 @@ final class ProvisioningTest extends ConsoleTestCase
     }
 
     /**
-     * Steps 1 to 3 of the acceptance criterion: the tenant, a key, alice with a password, from the console.
-     *
      * @return array{kid: string, subject: string}
      */
     private static function provisionAliceFromTheConsole(): array
@@ -1060,9 +1014,6 @@ final class ProvisioningTest extends ConsoleTestCase
         ];
     }
 
-    /**
-     * The code the native client gets once alice signed in on the form and allowed.
-     */
     private function codeOfAliceSignedInOnTheForm(): string
     {
         $this->browser->request('GET', '/authorize', self::authorizationParameters());
@@ -1081,9 +1032,6 @@ final class ProvisioningTest extends ConsoleTestCase
         return self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client got no code.');
     }
 
-    /**
-     * Before the first provisioning: the schema, and no tenant row.
-     */
     private static function dropTenant(): void
     {
         self::entityManager()->getConnection()->executeStatement('DELETE FROM beffroi_tenant');

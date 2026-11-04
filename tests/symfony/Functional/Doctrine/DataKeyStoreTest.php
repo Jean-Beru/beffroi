@@ -14,23 +14,8 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DependencyInjection\ServicesResetter;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\DataKeyStore;
 
-/**
- * Decisions 0011 and 0018, wired: a data key per tenant and per family of columns, wrapped by the master
- * key of that tenant, held in a table of this provider, and a KMS asked once per key and per process rather
- * than once per value.
- *
- * What is played here is the whole chain the deployment has, and not a piece of it: a registered encrypted
- * type, the encrypter that composes the scope with the ambient tenant, the router that sends a write to
- * the store of that tenant, the store, and the table. The tenant is the one the configuration of this
- * kernel names, there being one; a second tenant and a unit of work with none are what the unit test of
- * the encrypter shows, no configuration of one tenant being able to.
- */
 final class DataKeyStoreTest extends DatabaseTestCase
 {
-    /**
-     * A table of this test alone: no mapping of the provider names an encrypted type yet, and what a sealed
-     * column holds is what the assertions below read.
-     */
     private const string TABLE = 'test_sealed_column';
 
     private const string FAMILY = 'user';
@@ -42,11 +27,6 @@ final class DataKeyStoreTest extends DatabaseTestCase
         self::kms()->forget();
     }
 
-    /**
-     * The scope of the row is the family prefixed by the slug of the tenant, which is the only channel
-     * there is between an encrypted type and the store: the store returns the newest key of a scope and
-     * reads no other column, so what is not in the scope is not in the routing.
-     */
     #[Test]
     public function sealingAColumnWritesOneDataKeyForTheTenantAndTheFamily(): void
     {
@@ -59,11 +39,6 @@ final class DataKeyStoreTest extends DatabaseTestCase
         static::assertSame(TenantScopedEncrypter::scope(self::tenant()->slug, self::FAMILY), $rows[0]['scope']);
     }
 
-    /**
-     * The third success criterion of the spike: the KMS is not in the path of every row. One data key is
-     * minted for the family, and the values that follow are sealed under the key the process already
-     * holds.
-     */
     #[Test]
     public function tenValuesOfOneFamilyCostOneCallToTheKms(): void
     {
@@ -78,10 +53,6 @@ final class DataKeyStoreTest extends DatabaseTestCase
         static::assertCount(1, self::dataKeys());
     }
 
-    /**
-     * A second process pays one unwrap for the data key it did not mint, and nothing per value: what it
-     * reads back refers to a key by a reference of sixteen bytes, and the key is what the KMS opens once.
-     */
     #[Test]
     public function aSecondProcessPaysOneUnwrapForTheKeyAndNoneForTheValues(): void
     {
@@ -106,11 +77,7 @@ final class DataKeyStoreTest extends DatabaseTestCase
     }
 
     /**
-     * Decision 0018: the stores of this provider do not carry "kernel.reset". The component tags its own
-     * store with it, and "forget()" releases every retained plaintext between two units of work, which
-     * under FrankenPHP in worker mode would put the KMS back on the path of every request that touches a
-     * column. A thread keeps open what it has opened, as it already keeps an open signing key, so the
-     * reset every unit of work goes through leaves the data key where it is.
+     * Decision 0018
      */
     #[Test]
     public function aResetBetweenTwoUnitsOfWorkDoesNotGiveBackTheDataKey(): void
@@ -128,10 +95,6 @@ final class DataKeyStoreTest extends DatabaseTestCase
         static::assertCount(1, self::dataKeys());
     }
 
-    /**
-     * The row carries the client and the master key that wrapped it, so a read resolves whatever wrote it
-     * and the router sends no read anywhere: that is what keeps one reader in front of every reference.
-     */
     #[Test]
     public function theRowNamesTheClientAndTheMasterKeyThatWrappedIt(): void
     {
@@ -144,10 +107,6 @@ final class DataKeyStoreTest extends DatabaseTestCase
         static::assertNotSame('', $rows[0]['master_key_id']);
     }
 
-    /**
-     * The one store every read goes to is also what declares the table in the schema the ORM assembles,
-     * which is what keeps "doctrine:schema:update" from offering to drop it.
-     */
     #[Test]
     public function theReaderOfTheRouterIsAStoreOfTheBridge(): void
     {

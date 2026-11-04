@@ -24,11 +24,9 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The UserInfo endpoint (OIDC Core §5.3), GET or POST; a GET hands the module no parameter at all
- * (RFC 6750 §2.3).
+ * OIDC Core §5.3
  *
- * It is a protected resource of the provider, the first one: an access token is presented here, and every
- * answer it writes names the exchange it belongs to (`FapiInteractionId`).
+ * A GET hands the module no parameter at all, the query included (RFC 6750 §2.3).
  */
 #[AsController]
 final readonly class UserInfoController implements ServesAProtectedResourceInterface

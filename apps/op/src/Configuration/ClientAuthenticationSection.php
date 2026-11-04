@@ -10,47 +10,18 @@ use Beffroi\Oidc\Application\Client\ClientAssertionValidator;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
-/**
- * What the provider allows of an assertion a client signs (RFC 7523 §3) and of the JWK Set a client publishes (RFC 7591 §2): how long one stands, and what one read of a "jwks_uri" may cost.
- *
- * What a read of a "jwks_uri" costs is a property of the read and not of whoever registered the URL, so the
- * four options below bound the reads of every published set: those of the clients, and those of the issuers a
- * tenant trusts, which TrustedIssuersSection reads here for the same reason it reads the assertion window
- * here (RFC 7523 §3).
- */
 final readonly class ClientAuthenticationSection extends ConfigurationSection
 {
-    /**
-     * RFC 7523 §3: how far ahead of the request the "exp" of a client assertion may be. Five minutes is
-     * what the field sends; an assertion is minted for one request, not kept.
-     */
     public const int DEFAULT_ASSERTION_MAX_LIFETIME = 300;
 
-    /**
-     * What is allowed of the clock of a client, both ways.
-     */
     public const int DEFAULT_ASSERTION_LEEWAY = 30;
 
-    /**
-     * Seconds one read of a "jwks_uri" is given, connection included: an endpoint authenticating a client
-     * is waiting on it.
-     */
     public const float DEFAULT_JWKS_TIMEOUT = 3.0;
 
-    /**
-     * Bytes a "jwks_uri" may answer; a JWK Set of a client holds a handful of public keys.
-     */
     public const int DEFAULT_JWKS_MAX_SIZE = 65536;
 
-    /**
-     * How long the keys read back from a "jwks_uri" are kept.
-     */
     public const int DEFAULT_JWKS_TTL = 86400;
 
-    /**
-     * How often an unknown "kid" may cost a read of a "jwks_uri", the symmetric of the cooldown of
-     * Symfony's own client (spike 2).
-     */
     public const int DEFAULT_JWKS_REFETCH_COOLDOWN = 300;
 
     public function name(): string
@@ -116,9 +87,6 @@ final readonly class ClientAuthenticationSection extends ConfigurationSection
     }
 
     /**
-     * How far ahead the "exp" of an assertion may be, which the assertions of a client and those of a trusted issuer
-     * are both held to (TrustedIssuersSection), as the container builds it from this section.
-     *
      * @param array<array-key, mixed> $clientAuthentication
      */
     public static function assertionLifetime(array $clientAuthentication): object
@@ -127,8 +95,6 @@ final readonly class ClientAuthenticationSection extends ConfigurationSection
     }
 
     /**
-     * What is allowed of the clock of whoever signs an assertion, a client or a trusted issuer.
-     *
      * @param array<array-key, mixed> $clientAuthentication
      */
     public static function assertionLeeway(array $clientAuthentication): object
@@ -137,8 +103,6 @@ final readonly class ClientAuthenticationSection extends ConfigurationSection
     }
 
     /**
-     * How often an unknown "kid" may cost a read of a published set, a client's or a trusted issuer's.
-     *
      * @param array<array-key, mixed> $clientAuthentication
      */
     public static function refetchCooldown(array $clientAuthentication): object
@@ -147,8 +111,6 @@ final readonly class ClientAuthenticationSection extends ConfigurationSection
     }
 
     /**
-     * How long the keys read back from a published set are kept, a client's or a trusted issuer's.
-     *
      * @param array<array-key, mixed> $clientAuthentication
      */
     public static function keptFor(array $clientAuthentication): object

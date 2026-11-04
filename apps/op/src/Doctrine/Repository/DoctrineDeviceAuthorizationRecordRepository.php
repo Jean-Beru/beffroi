@@ -26,9 +26,6 @@ use function is_string;
 use function sprintf;
 
 /**
- * The records of device authorization requests, in beffroi_device_authorization_request (RFC 8628 §3.2). A
- * record of a client no longer registered is not found, as a code of one is not.
- *
  * @extends DoctrineRepository<DeviceAuthorizationRecord>
  */
 final readonly class DoctrineDeviceAuthorizationRecordRepository extends DoctrineRepository implements
@@ -46,12 +43,7 @@ final readonly class DoctrineDeviceAuthorizationRecordRepository extends Doctrin
     }
 
     /**
-     * A record row outlives the ten minutes a user has to read a code off one screen and type it on
-     * another: this flow writes no authorization code, so the record is the grant its tokens descend from,
-     * and a resource server asks this row whether that grant still stands (architecture §4.6,
-     * AccessTokenInspector). It waits what a token still needs, exactly as a code does.
-     *
-     * Counted from the expiry, the column the mapping indexes.
+     * The record is the grant its tokens descend from: it waits what a token still needs, as a code does.
      */
     public function forgetWhatIsDead(Tenant $tenant, DateTimeImmutable $now, int $limit): int
     {
@@ -94,10 +86,6 @@ final readonly class DoctrineDeviceAuthorizationRecordRepository extends Doctrin
     }
 
     /**
-     * The grants a user left to a client on an appliance of theirs, whatever their state. A request nobody
-     * has answered yet names no user, so no consent covers it and the ten minutes it has left run out on
-     * their own.
-     *
      * @return list<DeviceAuthorizationRecord>
      */
     public function revokeByConsent(Consent $consent, DateTimeImmutable $now): array
@@ -124,9 +112,7 @@ final readonly class DoctrineDeviceAuthorizationRecordRepository extends Doctrin
     }
 
     /**
-     * One UPDATE ... WHERE used_at IS NULL through the connection, not the unit of work: the count of
-     * affected rows says who claimed the row. The loser reads the date back so that its copy says what the
-     * winner wrote.
+     * Through the connection, not the unit of work: of two concurrent requests, one only consumes the record.
      */
     public function consume(DeviceAuthorizationRecord $record, DateTimeImmutable $now): bool
     {

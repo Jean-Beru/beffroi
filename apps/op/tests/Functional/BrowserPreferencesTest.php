@@ -12,13 +12,6 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * Issue #573, architecture §5.7 and §6: the preferences of a browser travel on one cookie with a slot per
- * preference, the provider owning the cookie and this application declaring the slot of the theme
- * (App\Theme\ThemePreference). What one slot holds is judged by the suite of the provider; what is here is
- * what only this kernel can answer, two slots being declared on it and one on that one: that each form
- * writes its own and leaves the other as it was.
- */
 final class BrowserPreferencesTest extends BrowserTestCase
 {
     #[Test]
@@ -47,10 +40,6 @@ final class BrowserPreferencesTest extends BrowserTestCase
         static::assertSame('locale=fr&theme=dark', $this->preferences());
     }
 
-    /**
-     * The slot is read where the page is rendered and not in a script, so the document carries the theme it
-     * was asked for and never shows the other one first (App\Twig\ThemeExtension).
-     */
     #[Test]
     public function thePagesAreRenderedInTheThemeTheSlotNames(): void
     {
@@ -64,10 +53,6 @@ final class BrowserPreferencesTest extends BrowserTestCase
         static::assertSame(['dark'], $page->filter('html')->extract(['data-theme']));
     }
 
-    /**
-     * The session of the browser and the preferences of the browser, and no third cookie: a preference
-     * added beside these two is a slot of the second and never a cookie of its own.
-     */
     #[Test]
     public function aPageAndItsFormsSetTheSessionOfTheBrowserAndThePreferencesOfTheBrowserAndNothingElse(): void
     {
@@ -77,8 +62,7 @@ final class BrowserPreferencesTest extends BrowserTestCase
         $this->browser->request('POST', '/theme', ['theme' => 'dark']);
 
         // Then
-        // the name the mock file storage of the test environment gives the session; a deployment names it
-        // "__Host-beffroi_session" (config/packages/framework.yaml), which SecurityHeadersTest reads
+        // The mock session storage of the test environment names the session MOCKSESSID.
         static::assertSame(['MOCKSESSID'], $ofThePage);
         static::assertSame([BrowserPreferences::COOKIE], self::namesOf($this->browser->getResponse()));
     }
@@ -88,10 +72,6 @@ final class BrowserPreferencesTest extends BrowserTestCase
         return $this->browser->request('GET', '/login');
     }
 
-    /**
-     * The language asked for through the form the provider serves, drawn by this application: a token of its
-     * own and the page to come back to, which is how a visitor asks.
-     */
     private function chooseTheLanguage(string $locale): void
     {
         $token = self::string($this->loginPage()->filter('form[data-locale="choice"] input[name="_token"]')->attr('value'));
@@ -99,10 +79,6 @@ final class BrowserPreferencesTest extends BrowserTestCase
         static::assertSame(Response::HTTP_FOUND, $this->browser->getResponse()->getStatusCode());
     }
 
-    /**
-     * What the last response wrote on the cookie of the preferences, whole: a response of either form
-     * rewrites every slot, so what it did not name is what it read back off the request.
-     */
     private function preferences(): string
     {
         foreach ($this->browser->getResponse()->headers->getCookies() as $cookie) {

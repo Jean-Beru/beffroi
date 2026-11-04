@@ -44,10 +44,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * beffroi/saml, spec/saml.md section 6.4, the acceptance of issue #731: the service provider https://sp.example.org/saml
- * of the configuration of the test, its metadata accepted and its requests signed with the test key of a service
- * provider of saml2-model, sends a request in each binding, and the browser posts back a response that saml2-model's
- * validator accepts under the certificate the metadata of the tenant publish.
+ * beffroi/saml, spec/saml.md section 6.4
  */
 final class SingleSignOnTest extends ConsoleTestCase
 {
@@ -84,8 +81,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #731, section 6.4, B-2: a request signed over HTTP-Redirect from a browser signed in is
-     * answered with the page whose form posts a response the model's validator accepts, both signed (S-15).
+     * Section 6.4, B-2, S-15
      */
     #[Test]
     public function aRequestOverHttpRedirectIsAnsweredWithASignedAssertion(): void
@@ -101,8 +97,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #731, section 6.4, M-2: a request signed in its XML over HTTP-POST is answered the same
-     * way.
+     * Section 6.4, M-2
      */
     #[Test]
     public function aRequestOverHttpPostIsAnsweredWithASignedAssertion(): void
@@ -118,9 +113,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #739, S-28: a signed-in browser whose service provider posts its request from its own
-     * site, without the session cookie, is answered from the session it holds once the page of the provider has posted
-     * the request again, without a login, its RelayState given back.
+     * S-28
      */
     #[Test]
     public function aRequestPostedFromAnotherSiteIsAnsweredFromTheSession(): void
@@ -140,8 +133,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * S-28: a request posted from another site with the session cookie, by a browser that sends it all the same, is
-     * answered from the session at once, with a response to the assertion consumer service, and not posted again.
+     * S-28
      */
     #[Test]
     public function aRequestPostedFromAnotherSiteWithTheCookieIsAnsweredDirectly(): void
@@ -157,8 +149,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * S-28, architecture §5.7: the page that posts the request again speaks the language the browser asks for
-     * ("Accept-Language"), a request of SAML naming none of its own.
+     * S-28, Architecture §5.7
      */
     #[Test]
     public function aRequestPostedFromAnotherSiteIsPostedAgainInTheLanguageOfTheBrowser(): void
@@ -185,8 +176,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * S-28: a browser that holds no session gets the page all the same, the provider not knowing it holds none, and is
-     * sent to the login by the second post, which is not posted a third time.
+     * S-28
      */
     #[Test]
     public function aBrowserWithoutASessionIsSentToTheLoginByTheSecondPost(): void
@@ -202,9 +192,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * S-28, "The marker": a request a page of another site posts with the marker forged in its query, to a signed-in
-     * browser whose cookie is kept back, is posted again as one that does not carry it, and starts no HTTP session,
-     * whose cookie would replace the one the browser holds and sign it out of the provider.
+     * S-28, "The marker"
      */
     #[Test]
     public function aRequestPostedFromAnotherSiteThatForgesTheMarkerIsPostedAgainWithoutASession(): void
@@ -223,7 +211,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #731, B-9, section 6.8: the RelayState a request carried comes back byte for byte.
+     * B-9, section 6.8
      */
     #[Test]
     public function theRelayStateComesBackByteForByte(): void
@@ -239,8 +227,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * S-14, S-16: the assertion names the service provider, the endpoint of its metadata and the request, and carries
-     * the attributes its declaration maps from the claims of the user.
+     * S-14, S-16
      */
     #[Test]
     public function theAssertionIsAddressedToTheRequestAndCarriesTheMappedClaims(): void
@@ -273,8 +260,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * S-17: a browser without a session goes to the login of the provider, which every page of the provider that is
-     * not an authorization request signs in through.
+     * S-17
      */
     #[Test]
     public function aBrowserWithoutASessionGoesToTheLogin(): void
@@ -287,8 +273,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * S-17, S-18: once signed in on the form, the browser comes back to the request that waited for it, which is
-     * answered.
+     * S-17, S-18
      */
     #[Test]
     public function aBrowserThatSignsInIsAnswered(): void
@@ -304,8 +289,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * S-17, Core §3.4.1: a request that says ForceAuthn, from a browser whose session was opened before it, does not
-     * rely on that session, and the browser goes to the login of the provider.
+     * S-17, SAML Core §3.4.1
      */
     #[Test]
     public function aForcedRequestSendsABrowserSignedInBeforeItToTheLogin(): void
@@ -322,8 +306,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * S-17, Core §3.4.1, section 6.4 step 7: the browser a forced request sent to the login signs in there again, on
-     * the session it already held, and is answered with the instant of that login, not before the request.
+     * S-17, SAML Core §3.4.1, section 6.4 step 7
      */
     #[Test]
     public function aForcedRequestIsAnsweredWithTheLoginTypedAfterIt(): void
@@ -345,8 +328,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #731, S-17: a user signed in through the authorization endpoint of OpenID Connect is not
-     * asked to sign in again, the SAML user and the OpenID Connect user being one user of the core.
+     * S-17
      */
     #[Test]
     public function aUserSignedInByOpenIdConnectIsNotAskedAgain(): void
@@ -364,7 +346,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #731, S-13: the same NameID at every login to the same service provider.
+     * S-13
      */
     #[Test]
     public function theSameNameIdComesAtEveryLogin(): void
@@ -383,7 +365,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * S-13: the NameID is persistent, qualified by both entities, and is not the "sub".
+     * S-13
      */
     #[Test]
     public function theNameIdIsPersistentAndNotTheSubject(): void
@@ -403,9 +385,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * Section 6.8, S-36, bindings.md section 6.7, SAML Bindings §3.5.5.1: the page names its one script by its hash,
-     * loads nothing, is framed by nothing, names no "form-action", the assertion consumer service sending the browser
-     * on to where its application lives, and is never cached.
+     * Section 6.8, S-36, bindings.md section 6.7, SAML Bindings §3.5.5.1
      */
     #[Test]
     public function thePageCarriesItsPolicyAndTheCachingOfTheBinding(): void
@@ -435,7 +415,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * Section 6.8: a body that is not a form is refused before the package reads it.
+     * Section 6.8
      */
     #[Test]
     public function aBodyThatIsNotAFormIsRefused(): void
@@ -448,7 +428,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * Section 6.3, S-9: an unsigned request of a provider that signs gets the page of a refusal and no SAML answer.
+     * Section 6.3, S-9
      */
     #[Test]
     public function anUnsignedRequestIsRefusedWithoutSamlAnswer(): void
@@ -468,7 +448,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * S-18: a reference this browser does not hold names nothing.
+     * S-18
      */
     #[Test]
     public function aReferenceTheBrowserDoesNotHoldIsRefused(): void
@@ -484,7 +464,7 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * S-18: a request answered is forgotten, and no second assertion is written for it.
+     * S-18
      */
     #[Test]
     public function aRequestAnsweredIsNotAnsweredAgain(): void
@@ -501,10 +481,6 @@ final class SingleSignOnTest extends ConsoleTestCase
         static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
     }
 
-    /**
-     * The request the service provider redirects the browser with, to the path of the single sign-on service on the
-     * host of the browser, which holds its cookies.
-     */
     private function redirected(string $relayState, bool $forceAuthn = false): void
     {
         $this->browser->request('GET', self::pathOf(new RedirectSender()->authnRequest(self::request($forceAuthn), self::signing(), $relayState)));
@@ -521,17 +497,11 @@ final class SingleSignOnTest extends ConsoleTestCase
         $this->browser->request('POST', '/saml/sso', $form->fields, [], ['CONTENT_TYPE' => 'application/x-www-form-urlencoded']);
     }
 
-    /**
-     * The body a page of the service provider posts, as a browser encodes the form PostSender returned.
-     */
     private function postedBody(string $relayState): string
     {
         return http_build_query(new PostSender()->authnRequest(self::request(), self::signing(), $relayState)->fields);
     }
 
-    /**
-     * The browser was sent to the login: it signs in on the form, and follows where the login sends it back.
-     */
     private function logIn(): void
     {
         $this->browser->followRedirect();
@@ -549,8 +519,6 @@ final class SingleSignOnTest extends ConsoleTestCase
     }
 
     /**
-     * The form of the page, as a browser reads it.
-     *
      * @return array{action: string, fields: array<string, string>}
      */
     private function form(): array
@@ -569,10 +537,6 @@ final class SingleSignOnTest extends ConsoleTestCase
         ];
     }
 
-    /**
-     * The response the page posts, as the service provider validates it: under the certificate the metadata of the
-     * tenant publish, at its assertion consumer service, for its entity ID, answering its request.
-     */
     private function accepted(): AcceptedAssertion
     {
         $form = $this->form();

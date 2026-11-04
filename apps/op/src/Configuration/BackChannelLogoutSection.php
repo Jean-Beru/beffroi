@@ -10,22 +10,10 @@ use App\Messenger\NotificationRetryPolicy;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
-/**
- * How long the provider tries to tell a client that a session ended (Back-Channel Logout 1.0 §2.5), and how patiently it comes back to one that did not answer.
- */
 final readonly class BackChannelLogoutSection extends ConfigurationSection
 {
-    /**
-     * Seconds one attempt at delivering a logout token is given (Back-Channel Logout 1.0 §2.5).
-     */
     public const float DEFAULT_BACK_CHANNEL_LOGOUT_TIMEOUT = 5.0;
 
-    /**
-     * How many times a send that did not reach its client comes back, and the schedule of those returns:
-     * two seconds, then three times as long each time, one minute at most, which is 2, 6, 18, 54, 60 and
-     * 60. A little over three minutes of patience for a relying party that is restarting, and beyond it
-     * the client is not restarting but down, which the provider says rather than trying for ever.
-     */
     public const int DEFAULT_BACK_CHANNEL_LOGOUT_RETRIES = 6;
 
     public const int DEFAULT_BACK_CHANNEL_LOGOUT_RETRY_DELAY = 2;

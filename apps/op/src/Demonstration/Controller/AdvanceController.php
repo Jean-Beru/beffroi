@@ -15,13 +15,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * One hop of a live run, taken (issue #462): the demonstration makes the next call of the flow, for
- * real, and answers with the trace as it is once it has. The Next button of the page is one call to
- * this, which is what holds a flow between two hops.
- *
- * The answer carries the whole trace and not only the hop taken, because a hop a browser took while
- * the page was waiting is in it too: that is how the code typed on another screen appears in a run the
- * demonstration never stood in for the user of.
+ * Takes the next hop of a live run and answers with the whole trace, the hops a browser took meanwhile included.
  */
 #[AsController]
 final readonly class AdvanceController

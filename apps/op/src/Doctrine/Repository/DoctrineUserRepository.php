@@ -18,12 +18,6 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Users in beffroi_user (architecture §3.4); a lookup is scoped by the tenant and exact.
- *
- * The username and the address are sealed, so no lookup matches either: the format seals every value under a
- * random initialisation vector, and two writes of one username give two ciphertexts. What a lookup matches
- * is the blind index, in the sibling column the write filled in the same statement (decision 0011).
- *
  * @extends DoctrineRepository<User>
  */
 final readonly class DoctrineUserRepository extends DoctrineRepository implements UserRepositoryInterface
@@ -50,11 +44,6 @@ final readonly class DoctrineUserRepository extends DoctrineRepository implement
         ]);
     }
 
-    /**
-     * The projection the tag is derived under is the one the write used, there being one declaration for
-     * both sides: a lookup that folded what a write did not, or the other way round, would silently match
-     * nothing, which is the failure the whole arrangement exists to avoid.
-     */
     public function findByUsername(Tenant $tenant, string $username): ?User
     {
         $column = BlindIndexedColumns::of(User::class, 'username');
@@ -65,10 +54,6 @@ final readonly class DoctrineUserRepository extends DoctrineRepository implement
         ]);
     }
 
-    /**
-     * On the blind index of the address, as the username is found, under the projection the write used: the
-     * address folded whole. No constraint holds the column unique, so every row that matches is the answer.
-     */
     public function findAllByEmail(Tenant $tenant, EmailAddress $email): array
     {
         $column = BlindIndexedColumns::of(User::class, 'email');
@@ -80,12 +65,9 @@ final readonly class DoctrineUserRepository extends DoctrineRepository implement
     }
 
     /**
-     * The unique constraints on the subject and on the name are what refuse a person another request wrote between the
-     * checks of a use case and this write, a first sign-in through an upstream provider racing another (beffroi/saml
-     * S-56): the violation becomes the exception of the core the unit answers, naming nothing. The failed flush closes
-     * the manager, which the registry replaces (EntityManagers).
+     * beffroi/saml S-56
      *
-     * @throws UserAlreadyExistsException when the table refuses the person at one of its unique constraints
+     * @throws UserAlreadyExistsException
      */
     public function save(User $user): void
     {

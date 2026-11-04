@@ -17,17 +17,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
- * The link that lets one person pose their first passkey without a session (issue #613), for a person a
- * tenant has just created and who has nothing to sign in with: on a tenant that signs its users in by
- * passkey, there is no password to give them (decision 0025).
- *
- * It prints the URL once, the row holding a hash of what it carries: whoever issued it hands it over, and
- * a link lost is a link issued again, which takes the first one away. It is the use case a screen of the
- * console will press (epic #194); what it does, a command does.
- *
- * The URL is the route of the page under the origin of the issuer, as RouterEndpointLocator locates the
- * endpoints: the path the router generates already carries the prefix the routes are mounted under, which
- * is the path of the issuer, so the issuer itself in front of it would say that path twice (issue #841).
+ * The link is the origin of the issuer and the generated path, which already carries the path of the issuer.
  */
 #[AsCommand(
     name: self::NAME,

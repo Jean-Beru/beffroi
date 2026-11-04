@@ -8,16 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * What a request asks for beyond its scopes (RFC 9396 §2): a scope says what kind of thing a client may do,
- * an "authorization_details" says what it may do, to what and how much, so it travels exactly where a scope
- * list travels. The request the interaction parked carries it, the consent the user gave carries what they
- * agreed to, the code carries what the tokens will descend from, and the refresh token and the opaque access
- * token carry what they are good for.
- *
- * The array is stored in the JSON of the wire, which is the same array a token carries and an introspection
- * renders (§7, §9): nothing is rewritten between what was agreed to and what a resource server reads.
- */
 final class Version20260927100000 extends AbstractMigration
 {
     public function getDescription(): string

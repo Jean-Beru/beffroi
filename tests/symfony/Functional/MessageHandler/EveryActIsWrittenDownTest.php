@@ -23,15 +23,6 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #454: every act of the provider is written down, off the request, with who did what, when and
- * from where, and with nothing else at all.
- *
- * That an event is named is a test of each package (EveryEventNamesItsActTest); that the handler reaches
- * every event is the interface it handles, there being no list of events anywhere to fall out of date.
- * What is tested here is what a row ends up holding, in the three shapes an act takes: one that names a
- * person, one that names a client, and one that names neither.
- */
 final class EveryActIsWrittenDownTest extends DatabaseTestCase
 {
     #[Test]
@@ -90,10 +81,6 @@ final class EveryActIsWrittenDownTest extends DatabaseTestCase
         static::assertSame('oidc-demo', $act->client);
     }
 
-    /**
-     * The provenance of an act is what the request carried of a person, and it is read back whole from the
-     * sealed column that holds it.
-     */
     #[Test]
     public function anActSaysWhereItCameFrom(): void
     {
@@ -114,12 +101,6 @@ final class EveryActIsWrittenDownTest extends DatabaseTestCase
         static::assertNull($act->subject, 'an authentication that failed on an identifier no account answers happened to nobody');
     }
 
-    /**
-     * What makes "no secret in the journal" a shape and not a review: the table holds the four facts and
-     * the two names, and no column a caller fills with whatever it has. A column added to it is a column
-     * the classification of the schema refuses until somebody declares it (SchemaClassificationTest), and
-     * this is where what the journal may hold is said.
-     */
     #[Test]
     public function theJournalHoldsTheFourFactsAndTheTwoNamesAndNothingElse(): void
     {
@@ -135,10 +116,6 @@ final class EveryActIsWrittenDownTest extends DatabaseTestCase
         return self::service('doctrine.dbal.default_connection', Connection::class);
     }
 
-    /**
-     * A count read from the database, narrowed where it is read: a driver answers a number as whatever its
-     * platform calls one.
-     */
     private static function counted(string $sql): int
     {
         $value = self::service('doctrine.dbal.default_connection', Connection::class)->fetchOne($sql);

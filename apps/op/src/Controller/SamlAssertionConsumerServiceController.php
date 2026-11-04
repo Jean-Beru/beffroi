@@ -16,13 +16,9 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The route of the assertion consumer service of the service provider of the tenant (beffroi/saml, spec/saml.md S-52),
- * whose URL its metadata and its requests state as the router generates it. What reads a response is the login of the
- * firewall, UpstreamAssertionAuthenticator, which answers the post itself; what reaches this action is the post that
- * login declines: a post from another site that came without the session cookie, posted again from the provider's own
- * origin (S-28), a body that is not a form, refused with 415, or a post from another site the browser would not carry
- * back as it came, which nothing can read the request it answers for. A deployment that does not enable the service
- * provider answers 404, as at the metadata of the role (S-41).
+ * spec/saml.md S-52
+ *
+ * The firewall's UpstreamAssertionAuthenticator reads the response; this action answers the posts it declines.
  */
 #[AsController]
 final readonly class SamlAssertionConsumerServiceController

@@ -28,9 +28,6 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Authorization codes in beffroi_authorization_code (architecture §4.4). A code of a client no longer
- * registered is not found.
- *
  * @extends DoctrineRepository<AuthorizationCode>
  */
 final readonly class DoctrineAuthorizationCodeRepository extends DoctrineRepository implements
@@ -49,13 +46,7 @@ final readonly class DoctrineAuthorizationCodeRepository extends DoctrineReposit
     }
 
     /**
-     * A code row outlives the sixty seconds of the value it was drawn for, and by a long way: the record is
-     * the grant, so a resource server that the token told nothing asks this row whether that grant still
-     * stands (architecture §4.4, AccessTokenInspector). It therefore waits what a token still needs, and
-     * dropping it earlier would turn a token this provider would have answered for into a token it refuses.
-     *
-     * Counted from the expiry and not from the issuance, the expiry being the column the mapping indexes
-     * and the two differing by the sixty seconds the row is not kept for.
+     * Kept for as long as a token may still need it: the code row is the grant AccessTokenInspector checks.
      */
     public function forgetWhatIsDead(Tenant $tenant, DateTimeImmutable $now, int $limit): int
     {
@@ -95,11 +86,7 @@ final readonly class DoctrineAuthorizationCodeRepository extends DoctrineReposit
     }
 
     /**
-     * The grants of the session that were exchanged for tokens, each client once, oldest grant first. A
-     * code still waiting at the token endpoint gave the client no session (Back-Channel Logout 1.0 §2.6),
-     * and a code of a client no longer registered names nobody to tell.
-     *
-     * @return list<Client>
+     * @return list<Client> each once, oldest grant first
      */
     public function ofSession(Uuid $session): array
     {
@@ -120,8 +107,7 @@ final readonly class DoctrineAuthorizationCodeRepository extends DoctrineReposit
     }
 
     /**
-     * The grants a user's browser left to a client, whatever their state: a code still waiting at the
-     * token endpoint issued nothing yet and is revoked all the same, since nothing may come of it now.
+     * A code not yet exchanged is revoked too: nothing may come of it now.
      *
      * @return list<AuthorizationCode>
      */
@@ -161,9 +147,7 @@ final readonly class DoctrineAuthorizationCodeRepository extends DoctrineReposit
     }
 
     /**
-     * One UPDATE ... WHERE used_at IS NULL through the connection, not the unit of work: the count of
-     * affected rows says who claimed the row. The loser reads the date back so that its copy says what
-     * the winner wrote.
+     * One UPDATE ... WHERE used_at IS NULL through the connection: the affected row count says who claimed it.
      */
     public function consume(AuthorizationCode $code, DateTimeImmutable $now): bool
     {

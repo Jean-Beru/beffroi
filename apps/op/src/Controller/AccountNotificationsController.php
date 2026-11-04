@@ -13,11 +13,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * The browsers of the signed-in user this provider may push to (architecture §5.2, §5.6): the list, the
- * button that subscribes the browser showing the page, the button that takes one out. A browser without
- * a session of the core is told to sign in first; the page belongs to no client.
- */
 #[AsController]
 final readonly class AccountNotificationsController implements ReachedOnTheSessionAloneInterface
 {
@@ -38,7 +33,6 @@ final readonly class AccountNotificationsController implements ReachedOnTheSessi
             return $session;
         }
 
-        // what a form of this page was refused, if one was, shown this once (issue #481)
         return $this->page->render($session->user, $this->refusals->take($request)?->code);
     }
 }

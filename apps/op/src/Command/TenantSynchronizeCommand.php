@@ -12,9 +12,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * The first step of a provisioning (architecture §5.3, §5.5): the row of the configured tenant.
- */
 #[AsCommand(
     name: 'beffroi:tenant:synchronize',
     description: 'Write the row of the tenant of the configuration: created, renamed, or left alone.',

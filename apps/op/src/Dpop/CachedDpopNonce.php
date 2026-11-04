@@ -13,15 +13,9 @@ use Beffroi\Oidc\Port\DpopNonceInterface;
 use Psr\Cache\CacheItemPoolInterface;
 
 /**
- * A provider that asks a proof to carry a nonce of its own (RFC 9449 §8): a value drawn the way this
- * provider draws every value it hands out and recognises later, kept in a pool the workers share until
- * it expires. A proof carrying one was
- * made after the provider issued it, which is what a nonce is for: the "iat" of a proof is what its
- * client says, the nonce is what the provider knows.
+ * RFC 9449 §8
  *
- * A nonce stands for its whole lifetime and is not spent by the first proof that carries it: what makes
- * one proof of it is its "jti", which is remembered on its own. The client keeps nothing but the last
- * nonce it was handed, until its next request.
+ * A nonce stands for its whole lifetime: a replay is refused by the "jti" of each proof, remembered on its own.
  */
 final readonly class CachedDpopNonce implements DpopNonceInterface
 {

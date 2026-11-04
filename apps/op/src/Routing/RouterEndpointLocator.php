@@ -22,22 +22,12 @@ use function sprintf;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
- * The paths of the router under the origin of the issuer, never the Host header (architecture §4.8,
- * §5.2). A prefix that disagrees with the path of the issuer (OIDC Discovery §4.1) is refused at the
- * first request.
- *
- * A deployment that serves a host whose TLS listener asks for a client certificate names its origin, and
- * the endpoints are located a second time under it (RFC 8705 §5): the same application, the same paths,
- * another way in. The two sets are built here and not written down twice, so that a route that moves
- * moves in both.
+ * Locates the endpoints under the origin of the issuer, never the Host header of the request.
  */
 final readonly class RouterEndpointLocator implements ClientConfigurationEndpointInterface, EndpointLocatorInterface, MutualTlsEndpointLocatorInterface
 {
     /**
-     * @param string|null $mutualTlsOrigin the scheme and authority of the host that asks for a client
-     *                                     certificate, null or empty for a deployment that serves none,
-     *                                     an empty value being what an environment variable declared
-     *                                     empty gives
+     * @param string|null $mutualTlsOrigin scheme and authority of the mutual TLS host, null or empty for none
      */
     public function __construct(
         private UrlGeneratorInterface $router,
@@ -53,7 +43,7 @@ final readonly class RouterEndpointLocator implements ClientConfigurationEndpoin
     }
 
     /**
-     * @throws LogicException when the routes are not mounted where the issuer makes clients look for them
+     * @throws LogicException
      */
     private function assertTheRoutesAreUnderTheIssuer(Tenant $tenant): void
     {
@@ -71,9 +61,7 @@ final readonly class RouterEndpointLocator implements ClientConfigurationEndpoin
     }
 
     /**
-     * RFC 7592 §3: the URL of one client and not of the tenant, so it is answered on its own rather than
-     * among the endpoints of `ProviderEndpoints`. The path is the router's, as every other is, and the
-     * origin is the issuer's: a client reads itself where it registered itself.
+     * RFC 7592 §3
      */
     public function clientConfigurationFor(Tenant $tenant, string $clientId): string
     {
@@ -92,10 +80,7 @@ final readonly class RouterEndpointLocator implements ClientConfigurationEndpoin
     }
 
     /**
-     * The endpoints of the tenant as a client presenting a certificate reaches them: the paths of the
-     * router, which already carry the prefix the provider is mounted under, on the other origin. The
-     * issuer does not change, and neither does what the document says of itself: an alias is another way
-     * to the same provider, not another provider (RFC 8705 §5).
+     * RFC 8705 §5
      */
     public function locateMutualTls(Tenant $tenant): ?ProviderEndpoints
     {

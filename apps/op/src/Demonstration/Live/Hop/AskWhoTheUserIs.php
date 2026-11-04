@@ -16,9 +16,7 @@ use Beffroi\Oidc\Port\ServedGrantsInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * OIDC Core §5.3.1: the client presents the access token it holds and is told who is behind it. The
- * flows that close this way are the ones that have somebody behind them, which is what the closing of
- * the picture reads too.
+ * OIDC Core §5.3.1
  */
 final readonly class AskWhoTheUserIs implements DrivenHopInterface
 {

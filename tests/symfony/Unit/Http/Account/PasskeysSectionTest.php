@@ -12,9 +12,6 @@ use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * What the home of the account says of the passkeys of a user: how many still sign them in.
- */
 final class PasskeysSectionTest extends TestCase
 {
     #[Test]

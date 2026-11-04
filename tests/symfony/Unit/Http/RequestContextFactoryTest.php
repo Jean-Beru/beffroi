@@ -15,8 +15,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * Architecture §3.5: the context of a request, as received, not enriched; the context of a process that is
- * no request, saying what it is.
+ * Architecture §3.5
  */
 final class RequestContextFactoryTest extends TestCase
 {
@@ -58,9 +57,6 @@ final class RequestContextFactoryTest extends TestCase
         static::assertNull($context->userAgent);
     }
 
-    /**
-     * The console names its command and the user of the shell, so that the trail says who rotated a key.
-     */
     #[Test]
     #[BackupGlobals(true)]
     public function theConsoleNamesItsCommandAndTheUserOfTheShell(): void

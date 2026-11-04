@@ -13,12 +13,6 @@ use Beffroi\Oidc\Exception\OAuth2Exception;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * What the pages of the authorization plane answer with, whatever the decision was (architecture §4.3,
- * §5.2): where the browser goes next, or what goes back to the client. The controllers see this and not
- * the class behind it, so that an integration can watch every decision of the endpoint without any of
- * them knowing it is watched.
- */
 interface AuthorizationResponderInterface
 {
     public function respond(Request $request, AuthorizationDecision $decision): Response;

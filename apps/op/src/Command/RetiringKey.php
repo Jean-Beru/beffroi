@@ -11,11 +11,6 @@ use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use function sprintf;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * What an operator is told about the key another one has just replaced: it stays in the JWK Set until
- * its window closes, because what was bound to it may still arrive (architecture §3.6). Both the command
- * that rotates and the command that activates say it, so it is said the same way and read once.
- */
 final readonly class RetiringKey
 {
     public function __construct(

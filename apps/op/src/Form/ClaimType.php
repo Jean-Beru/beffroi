@@ -14,18 +14,6 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 use LogicException;
 
 /**
- * One claim of a person, edited on its own (issue beffroi-auth/op#17): one field, one button, one line of
- * the page. A form per claim and not one form for all of them, because what this page does is let somebody
- * correct one thing where they read it, and a single form would make them save thirteen others to do it.
- *
- * What kind of field it is, the claim says (beffroi-auth/beffroi#476); what type that is, ClaimFieldTypes
- * maps. Nothing here knows the claims by name.
- *
- * The field comes from ClaimForms and is not read off the claim here, because which field a claim is
- * offered as depends on what is already held: a birthdate held as a year alone is a line of text and not a
- * calendar, a calendar rendering it empty and a save on an empty field erasing it
- * (beffroi-auth/beffroi#479).
- *
  * @extends AbstractType<mixed>
  */
 final class ClaimType extends AbstractType
@@ -35,16 +23,13 @@ final class ClaimType extends AbstractType
         $claim = $options['claim'];
         $field = $options['field'];
         if (! $claim instanceof ClaimInterface || ! $field instanceof ClaimField) {
-            // configureOptions() holds both to their types, so the resolver refuses anything else first
             throw new LogicException('A claim form is built for a claim and the field it is offered as.');
         }
         $builder->add('value', ClaimFieldTypes::of($field), ClaimFieldTypes::optionsOf($field, $claim->name()));
     }
 
     /**
-     * The page renders the suggestions of a set of several hundred beside the field, no type of the
-     * component producing a `<datalist>` (beffroi-auth/beffroi#479), so the view carries the field this form
-     * was built for and the page reads it there rather than being handed a second list beside the forms.
+     * Carries the field to the view, where the page renders its `<datalist>`: symfony/form has no type for one.
      */
     public function buildView(FormView $view, FormInterface $form, array $options): void
     {
@@ -57,7 +42,6 @@ final class ClaimType extends AbstractType
         $resolver->setAllowedTypes('claim', ClaimInterface::class);
         $resolver->setAllowedTypes('field', ClaimField::class);
 
-        // nothing else is set: the token id is the one of config/packages/csrf.yaml, which is the stateless
-        // protection the form component is installed with here
+        // No CSRF option is set: the token id is the stateless one of config/packages/csrf.yaml.
     }
 }

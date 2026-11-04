@@ -36,20 +36,12 @@ use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * beffroi/saml, spec/saml.md S-60 to S-63, decision 0029, the acceptance of issue #785: in a deployment whose tenant is
- * a service provider (tests/symfony/config/config_test_service_provider.yml), the SimpleSAMLphp identity provider of
- * the judge declared for example.org and for bücher.example, written as its A-label, the login page of an interaction
- * asks for the address first, sends an address of a federated domain to the sign-on of that provider, and sends any
- * other address on to the usual page; a person of a federated domain is refused every local credential.
+ * beffroi/saml, spec/saml.md S-60 to S-63, Decision 0029
  */
 final class DomainDiscoveryTest extends PasskeyTestCase
 {
     private const string PASSWORD = 'correct horse battery staple';
 
-    /**
-     * What a deployment writes on the pages of the interaction plane, its "form-action" among them
-     * (apps/op config/packages/nelmio_security.yaml), as FormTargetTest writes it.
-     */
     private const string DEPLOYMENT_POLICY = "default-src 'none'; script-src 'self'; img-src 'self'; form-action 'self'; frame-ancestors 'none'";
 
     protected static function kernelOptions(): array
@@ -82,8 +74,7 @@ final class DomainDiscoveryTest extends PasskeyTestCase
     }
 
     /**
-     * S-61: the login page of an interaction of a tenant that federates a domain asks for the address, and offers no
-     * password and no passkey.
+     * S-61
      */
     #[Test]
     public function theLoginPageAsksForTheAddressAlone(): void
@@ -107,8 +98,7 @@ final class DomainDiscoveryTest extends PasskeyTestCase
     }
 
     /**
-     * The acceptance of issue #785, S-61: an address of a federated domain is sent to the sign-on of its provider for
-     * the interaction, and no password is asked of it.
+     * S-61
      */
     #[Test]
     public function anAddressOfAFederatedDomainIsSentToItsProviderWithoutAPasswordPrompt(): void
@@ -128,8 +118,7 @@ final class DomainDiscoveryTest extends PasskeyTestCase
     }
 
     /**
-     * The acceptance of issue #785, S-60, S-61: an address in capitals, in a U-label or in both is sent to the provider
-     * of its domain as the address in its A-label is.
+     * S-60, S-61
      */
     #[Test]
     #[DataProvider('provideSpellings')]
@@ -158,7 +147,7 @@ final class DomainDiscoveryTest extends PasskeyTestCase
     }
 
     /**
-     * The acceptance of issue #785, S-62: a login_hint that is an address of a federated domain skips the page.
+     * S-62
      */
     #[Test]
     public function aLoginHintOfAFederatedDomainSkipsThePage(): void
@@ -182,8 +171,7 @@ final class DomainDiscoveryTest extends PasskeyTestCase
     }
 
     /**
-     * The acceptance of issue #785, S-61: an address of another domain, and a username, go on to the usual page, the
-     * field of the username holding what was typed.
+     * S-61
      */
     #[Test]
     #[DataProvider('provideOtherIdentifiers')]
@@ -214,8 +202,7 @@ final class DomainDiscoveryTest extends PasskeyTestCase
     }
 
     /**
-     * The acceptance of issue #785, S-61: the answer to an address is the same whether a person holds it or not, of a
-     * federated domain as of another, nothing being read of a person.
+     * S-61
      */
     #[Test]
     #[DataProvider('provideAddresses')]
@@ -245,9 +232,7 @@ final class DomainDiscoveryTest extends PasskeyTestCase
     }
 
     /**
-     * The acceptance of issue #785, S-61: the page of the address is the same whether the login_hint of the request
-     * names a person or not, the field holding the hint as the client wrote it when it is an address, and nothing a
-     * reading of it would find. The form tokens are drawn again at each render (BREACH), and set aside.
+     * S-61
      */
     #[Test]
     #[DataProvider('provideHints')]
@@ -277,8 +262,7 @@ final class DomainDiscoveryTest extends PasskeyTestCase
     }
 
     /**
-     * S-61, S-44: an address whose domain the rule does not read comes back to the step of the address, which says so,
-     * and is never taken for an address of no federated domain.
+     * S-61, S-44
      */
     #[Test]
     public function anAddressWhoseDomainTheRuleRefusesComesBackToTheStep(): void
@@ -302,7 +286,7 @@ final class DomainDiscoveryTest extends PasskeyTestCase
     }
 
     /**
-     * S-61: the usual page goes back to the step of the address, for another one.
+     * S-61
      */
     #[Test]
     public function theUsualPageGoesBackToTheStepOfTheAddress(): void
@@ -320,8 +304,7 @@ final class DomainDiscoveryTest extends PasskeyTestCase
     }
 
     /**
-     * S-61, S-36, CSP Level 3 §6.3.2: the page of the address names in its "form-action" the origin of the single sign-on
-     * service its submission ends at over HTTP-Redirect, beside the client the interaction answers.
+     * S-61, S-36, CSP Level 3 §6.3.2
      */
     #[Test]
     public function thePageOfTheAddressNamesTheSingleSignOnServiceOfTheProvider(): void
@@ -341,8 +324,7 @@ final class DomainDiscoveryTest extends PasskeyTestCase
     }
 
     /**
-     * The acceptance of issue #785, S-63, decision 0029: a password presented for a person of a federated domain is
-     * refused, past the page that offered none, and announced so.
+     * S-63, Decision 0029
      */
     #[Test]
     public function aPasswordPresentedForAPersonOfAFederatedDomainIsRefused(): void
@@ -363,8 +345,7 @@ final class DomainDiscoveryTest extends PasskeyTestCase
     }
 
     /**
-     * The acceptance of issue #785, S-63, decision 0029: a passkey presented for a person of a federated domain is
-     * refused after its signature, and announced so.
+     * S-63, Decision 0029
      */
     #[Test]
     public function aPasskeyPresentedForAPersonOfAFederatedDomainIsRefused(): void
@@ -390,8 +371,7 @@ final class DomainDiscoveryTest extends PasskeyTestCase
     }
 
     /**
-     * The acceptance of issue #785, S-63, decision 0029: the code that completes a password, held before the address of
-     * the person moved into a federated domain, is refused before it is read, and announced so.
+     * S-63, Decision 0029
      */
     #[Test]
     public function aCodePresentedForAPersonOfAFederatedDomainIsRefused(): void
@@ -414,25 +394,19 @@ final class DomainDiscoveryTest extends PasskeyTestCase
         );
     }
 
-    /**
-     * The page with the value of each form token left out, a token being drawn again at each render.
-     */
     private static function withoutTokens(string $html): string
     {
         return (string) preg_replace('/name="(_token|_csrf_token)" value="[^"]*"/', 'name="$1"', $html);
     }
 
     /**
-     * The sign-on of S-51 at the identity provider of the judge, for that interaction, its reference set aside.
+     * The sign-on of S-51 for that interaction, its reference set aside.
      */
     private static function signOn(string $interaction): string
     {
         return '/saml/sp/sign-on?interaction=' . $interaction . '&identity_provider=' . IdentityProviderDocuments::SIMPLESAMLPHP;
     }
 
-    /**
-     * Fills and posts the form of the address, as a person does.
-     */
     private function submitAddress(string $interaction, string $address): void
     {
         $form = $this->loginPage($interaction)->filter('form[data-step="address"]')->form();
@@ -440,9 +414,6 @@ final class DomainDiscoveryTest extends PasskeyTestCase
         $this->browser->submit($form);
     }
 
-    /**
-     * Posts the address without reading the page, with the token the page gave.
-     */
     private function postAddress(string $interaction, string $address, string $token): void
     {
         $this->browser->request('POST', '/login/address?interaction=' . $interaction, [
@@ -451,9 +422,6 @@ final class DomainDiscoveryTest extends PasskeyTestCase
         ]);
     }
 
-    /**
-     * Fills and posts the form of the password of the usual page, as a person does.
-     */
     private function submitLogin(string $interaction, string $username, string $password): void
     {
         $form = $this->loginPage($interaction)->selectButton('Sign in')->form();
@@ -462,9 +430,6 @@ final class DomainDiscoveryTest extends PasskeyTestCase
         $this->browser->submit($form);
     }
 
-    /**
-     * Fills and posts the form of the code page, as a person does.
-     */
     private function submitCode(string $interaction, string $code): void
     {
         $crawler = $this->browser->request('GET', '/login/code', [
@@ -476,9 +441,7 @@ final class DomainDiscoveryTest extends PasskeyTestCase
     }
 
     /**
-     * What a browser reads of an answer: its status, where it goes, and its body.
-     *
-     * @return array{int, string|null, string|false}
+     * @return array{int, string|null, string|false} status, location, body
      */
     private static function answer(Response $response): array
     {
@@ -488,7 +451,7 @@ final class DomainDiscoveryTest extends PasskeyTestCase
     }
 
     /**
-     * Where an answer sends the browser, the one-time reference of a sign-on set aside (S-51).
+     * Sets aside the one-time reference of a sign-on (S-51).
      */
     private static function locationOf(Response $response): ?string
     {
@@ -498,16 +461,13 @@ final class DomainDiscoveryTest extends PasskeyTestCase
     }
 
     /**
-     * What names a sign-on with its one-time reference left out, a reference being drawn again at each answer (S-51).
+     * A reference is drawn again at each answer (S-51).
      */
     private static function withoutReferences(string $text): string
     {
         return (string) preg_replace('/&(amp;)?reference=[A-Za-z0-9_-]{43}/', '', $text);
     }
 
-    /**
-     * A person whose username and mailbox are that address.
-     */
     private static function personOf(string $address): void
     {
         $person = self::user($address, $address . '-subject');
@@ -515,9 +475,6 @@ final class DomainDiscoveryTest extends PasskeyTestCase
         self::service('test.beffroi.users', UserRepositoryInterface::class)->save($person);
     }
 
-    /**
-     * The person given a mailbox of example.org, the domain the provider of the judge answers for.
-     */
     private static function federated(User $user): void
     {
         $users = self::service('test.beffroi.users', UserRepositoryInterface::class);
@@ -527,18 +484,13 @@ final class DomainDiscoveryTest extends PasskeyTestCase
     }
 
     /**
-     * The reasons of the refused logins announced, in their order.
-     *
-     * @return list<AuthenticationFailureReason>
+     * @return list<AuthenticationFailureReason> in the order they were announced
      */
     private static function failures(): array
     {
         return array_map(static fn (AuthenticationFailed $failed): AuthenticationFailureReason => $failed->reason, self::events(AuthenticationFailed::class));
     }
 
-    /**
-     * A person with a password and a TOTP enrolled an hour ago.
-     */
     private function userWithTotp(string $username, TotpSecret $secret): User
     {
         $user = self::userWithPassword($username, self::PASSWORD);
@@ -563,9 +515,6 @@ final class DomainDiscoveryTest extends PasskeyTestCase
             ->codeAt($secret, intdiv($at->getTimestamp(), TotpCredential::PERIOD));
     }
 
-    /**
-     * The document of the identity provider of the judge accepted for the tenant.
-     */
     private static function accept(string $document): void
     {
         self::service('test.beffroi.saml_upstream_accepted_metadata', AcceptedMetadataRepositoryInterface::class)

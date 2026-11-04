@@ -12,10 +12,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
 /**
- * Spec/saml.md S-16, section 6.2 step 1: the claim of each mapping of the declarations the compilation built, checked
- * against the claims the provider serves right after the compilation, in the same build; S-45, section 6.10 step 1:
- * the claim each attribute of the profile of an upstream identity provider fills, checked against the claims the
- * profile holds.
+ * spec/saml.md S-16, section 6.2 step 1, S-45, section 6.10 step 1
  */
 final class MappedClaimsWarmerTest extends TestCase
 {
@@ -24,8 +21,7 @@ final class MappedClaimsWarmerTest extends TestCase
     private const string CACHE_DIRECTORY = '/var/cache/prod';
 
     /**
-     * S-16, section 6.2 step 1: a mapping of a claim the provider does not serve fails the build, naming the key of the
-     * configuration, the service provider, the attribute and the claim.
+     * S-16, section 6.2 step 1
      */
     #[Test]
     public function aMappingOfAClaimTheProviderDoesNotServeFailsTheBuild(): void
@@ -44,8 +40,7 @@ final class MappedClaimsWarmerTest extends TestCase
     }
 
     /**
-     * S-16, section 6.2 step 1: a mapping of a claim the provider serves builds, and the warmer leaves nothing to
-     * preload.
+     * S-16, section 6.2 step 1
      */
     #[Test]
     public function aMappingOfAClaimTheProviderServesBuilds(): void
@@ -58,8 +53,7 @@ final class MappedClaimsWarmerTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 1: the warmer is not optional, the warmers a kernel runs right after it compiled its container
-     * being those that are not.
+     * Section 6.2 step 1
      */
     #[Test]
     public function itIsNotOptional(): void
@@ -72,7 +66,7 @@ final class MappedClaimsWarmerTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 1: a deployment that declares no service provider asks nothing of its claims providers.
+     * Section 6.2 step 1
      */
     #[Test]
     public function noDeclarationAsksNothingOfTheClaims(): void
@@ -90,9 +84,7 @@ final class MappedClaimsWarmerTest extends TestCase
     }
 
     /**
-     * S-45, section 6.10 step 1: an attribute of an upstream identity provider filling a claim the profile of a
-     * person does not hold fails the build, naming the key of the configuration, the identity provider, the attribute
-     * and the claim.
+     * S-45, section 6.10 step 1
      */
     #[Test]
     public function anAttributeFillingAClaimTheProfileDoesNotHoldFailsTheBuild(): void
@@ -110,8 +102,7 @@ final class MappedClaimsWarmerTest extends TestCase
     }
 
     /**
-     * S-45, section 6.10 step 1: an attribute of an upstream identity provider filling a claim the profile holds
-     * builds.
+     * S-45, section 6.10 step 1
      */
     #[Test]
     public function anAttributeFillingAClaimTheProfileHoldsBuilds(): void
@@ -124,8 +115,7 @@ final class MappedClaimsWarmerTest extends TestCase
     }
 
     /**
-     * Section 6.10 step 1: a deployment that declares no upstream identity provider asks nothing of the claims of the
-     * profile.
+     * Section 6.10 step 1
      */
     #[Test]
     public function noUpstreamDeclarationAsksNothingOfTheProfile(): void
@@ -143,8 +133,6 @@ final class MappedClaimsWarmerTest extends TestCase
     }
 
     /**
-     * A declaration of an upstream identity provider whose one attribute fills that claim.
-     *
      * @return array<string, array<string, mixed>>
      */
     private static function filling(string $claim): array
@@ -171,8 +159,6 @@ final class MappedClaimsWarmerTest extends TestCase
     }
 
     /**
-     * A declaration that maps one attribute from that claim.
-     *
      * @return array<string, array<string, mixed>>
      */
     private static function mapping(string $claim): array

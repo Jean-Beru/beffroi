@@ -15,13 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Issue #920: the scope of an API stands for no claim, and a deployment that declares no client declares it for its
- * tenant, which then hands out tokens for it: its document announces it, a client that registers itself may register
- * it (decision 0009), and that client is granted it at the authorization endpoint. A deployment of the image declares
- * no client (decision 0030), so this is how the relying party it serves is given the scope of its API.
- *
- * The scopes of the tenant are read from the environment at runtime, so a tenant that declares some is a kernel this
- * test names them for before it boots one.
+ * Decision 0009
  */
 final class DeclaredScopeRegistrationTest extends BrowserTestCase
 {
@@ -31,7 +25,6 @@ final class DeclaredScopeRegistrationTest extends BrowserTestCase
 
     protected function setUp(): void
     {
-        // two scopes of an API that no claims provider serves and no client of this kernel registers
         $_SERVER['BEFFROI_TEST_TENANT_SCOPES'] = json_encode(['payroll.read', 'payroll.write'], JSON_THROW_ON_ERROR);
         parent::setUp();
     }
@@ -43,9 +36,7 @@ final class DeclaredScopeRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Discovery §3: a client learns from the document which scopes exist, so a scope the deployment declares is
-     * announced before any client registers it, after what the claims providers serve and before what the clients of
-     * the tenant registered.
+     * OIDC Discovery §3
      */
     #[Test]
     public function theDocumentAnnouncesTheScopesTheDeploymentDeclares(): void
@@ -73,8 +64,7 @@ final class DeclaredScopeRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0009: a client that registers itself is held to what its tenant offers, and a scope the deployment
-     * declares is offered, so the registration that names one is written as it was sent (RFC 7591 §3.2.1).
+     * Decision 0009, RFC 7591 §3.2.1
      */
     #[Test]
     public function aClientThatRegistersItselfMayRegisterAScopeTheDeploymentDeclares(): void
@@ -87,8 +77,7 @@ final class DeclaredScopeRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §3.1.2.1: the client so registered asks for the scope at the authorization endpoint, and the request
-     * ends with a code rather than with "invalid_scope".
+     * OIDC Core §3.1.2.1
      */
     #[Test]
     public function suchAClientIsGrantedTheScopeAtTheAuthorizationEndpoint(): void
@@ -112,7 +101,7 @@ final class DeclaredScopeRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * The registration of RFC 7591 §3.1, authorised by an initial access token the tenant issued (§1.2).
+     * RFC 7591 §3.1, §1.2
      *
      * @return array<string, mixed>
      */

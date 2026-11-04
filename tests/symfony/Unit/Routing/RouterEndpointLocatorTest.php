@@ -20,9 +20,7 @@ use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §4.8 and §5.2: the endpoints are the routes of the provider under the origin of the
- * issuer; the host of the request plays no part; the discovery document must sit where OIDC Discovery
- * §4.1 makes clients look for it.
+ * Architecture §4.8, §5.2, OIDC Discovery §4.1
  */
 final class RouterEndpointLocatorTest extends TestCase
 {
@@ -51,9 +49,6 @@ final class RouterEndpointLocatorTest extends TestCase
         static::assertSame('https://op.example/register', $endpoints->clientRegistration);
     }
 
-    /**
-     * The request came in on another host, or on a port the issuer does not name: the issuer wins.
-     */
     #[Test]
     public function theHostOfTheRequestIsIgnored(): void
     {
@@ -68,7 +63,7 @@ final class RouterEndpointLocatorTest extends TestCase
     }
 
     /**
-     * An issuer with a path, the routes mounted under it (OIDC Discovery §4.1).
+     * OIDC Discovery §4.1
      */
     #[Test]
     public function anIssuerWithAPathHasItsRoutesUnderThatPath(): void
@@ -84,10 +79,6 @@ final class RouterEndpointLocatorTest extends TestCase
         static::assertSame('https://op.example/tenant1/token', $endpoints->token);
     }
 
-    /**
-     * The routes are not under the path of the issuer: clients would look for the discovery document
-     * where nothing is served. A configuration fault, refused rather than announced.
-     */
     #[Test]
     public function routesMountedElsewhereThanTheIssuerAreRefused(): void
     {
@@ -106,8 +97,7 @@ final class RouterEndpointLocatorTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.2: the token endpoint must be HTTPS, and the issuer says so; a loopback issuer in
-     * clear (allowed for development) cannot announce one.
+     * RFC 6749 §3.2
      */
     #[Test]
     public function aLoopbackIssuerInClearCannotAnnounceATokenEndpoint(): void
@@ -123,8 +113,7 @@ final class RouterEndpointLocatorTest extends TestCase
     }
 
     /**
-     * RFC 8705 §5: the endpoints located again on the host whose listener asks for a client certificate,
-     * same paths, other origin, so that the two sets cannot say different things.
+     * RFC 8705 §5
      */
     #[Test]
     public function theAliasesAreTheSameRoutesOnTheHostThatAsksForACertificate(): void
@@ -144,10 +133,6 @@ final class RouterEndpointLocatorTest extends TestCase
         static::assertSame('https://mtls.op.example/tenant1/device_authorization', $endpoints->deviceAuthorization);
     }
 
-    /**
-     * A deployment that serves one host names no origin, and an environment variable declared empty is an
-     * empty one: both are "no such host", and the document announces no alias.
-     */
     #[Test]
     #[DataProvider('provideNoMutualTlsHost')]
     public function aDeploymentWithoutSuchAHostLocatesNone(?string $origin): void

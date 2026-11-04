@@ -17,8 +17,7 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 
 /**
- * Decision 0030: a list of the configuration an environment variable may carry whole, declared as an array node is,
- * and normalized by the same tree when the variable is a value.
+ * Decision 0030
  */
 final class EnvironmentListDefinitionTest extends TestCase
 {
@@ -29,11 +28,6 @@ final class EnvironmentListDefinitionTest extends TestCase
         static::assertInstanceOf(EnvironmentListNode::class, self::issuers()->getNode(true));
     }
 
-    /**
-     * The list stays the node Symfony builds: an environment variable, which an array node of symfony/config 8.2
-     * refuses, stands for it whole in a container compiled with it, whatever the type its processor gives it, and the
-     * container reads the list the variable carries.
-     */
     #[Test]
     #[DataProvider('provideVariables')]
     public function aContainerIsCompiledWithAVariableForTheWholeList(string $variable, mixed $list): void
@@ -60,9 +54,6 @@ final class EnvironmentListDefinitionTest extends TestCase
         yield 'a string' => ['%env(BEFFROI_TEST_ISSUERS)%', '{"https://issuer.example":{"clients":["app"]}}'];
     }
 
-    /**
-     * What the environment carries is normalized as a written list is, the defaults of its entries filled in.
-     */
     #[Test]
     public function aListOfTheEnvironmentHasTheDefaultsOfAWrittenOne(): void
     {
@@ -84,10 +75,6 @@ final class EnvironmentListDefinitionTest extends TestCase
         self::issuers()->normalized(['https://issuer.example' => ['clients' => ['app'], 'insecure' => true]], 'trusted_issuers');
     }
 
-    /**
-     * A list that wraps a string, the secrets that bind the data keys, takes one entry from the environment as the
-     * list of that entry.
-     */
     #[Test]
     public function aListThatWrapsAStringIsTheListOfThatOneString(): void
     {
@@ -99,9 +86,6 @@ final class EnvironmentListDefinitionTest extends TestCase
         static::assertSame(['a-secret'], $secrets->normalized('a-secret', 'keys.data_key_secrets'));
     }
 
-    /**
-     * An extension whose configuration is the list of issuers below, which it hands the container as a parameter.
-     */
     private static function extension(): Extension
     {
         return new class extends Extension implements ConfigurationInterface {
@@ -131,7 +115,7 @@ final class EnvironmentListDefinitionTest extends TestCase
              */
             public function load(array $configs, ContainerBuilder $container): void
             {
-                // the placeholder the list is, a string until the container runs
+                // The list is a placeholder of the environment here, a string until the container runs.
                 $issuers = $this->processConfiguration($this, $configs)['issuers'] ?? null;
                 $container->setParameter('list_fixture.issuers', is_string($issuers) ? $issuers : null);
             }

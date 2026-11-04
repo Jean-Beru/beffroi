@@ -26,9 +26,6 @@ use Symfony\Component\Security\Core\User\UserProviderInterface;
 use function trim;
 
 /**
- * The user provider of the firewall (architecture §5.4): a user of the core behind a SecurityUser, never
- * the User of another application (decision 0002). Also where the firewall brings a hash to upgrade.
- *
  * @implements UserProviderInterface<SecurityUser>
  */
 final readonly class IdentityUserProvider implements UserProviderInterface, PasswordUpgraderInterface
@@ -63,7 +60,7 @@ final readonly class IdentityUserProvider implements UserProviderInterface, Pass
     }
 
     /**
-     * By identifier, so that a rename does not sign the user out; a user gone or disabled is signed out.
+     * By identifier, so that a rename does not sign the user out.
      */
     public function refreshUser(UserInterface $user): SecurityUser
     {

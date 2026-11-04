@@ -11,11 +11,6 @@ use function implode;
 use Beffroi\Oidc\Port\ConsentRepositoryInterface;
 use const DATE_ATOM;
 
-/**
- * What the user has agreed to let this client obtain (architecture §4.3): the scopes of the consent the
- * request stood on, and the ones of the consent the request wrote. Between the scopes of the request and
- * the scopes of the tokens, this is what says why the two differ.
- */
 final readonly class ProfilingConsentRepository implements ConsentRepositoryInterface
 {
     public function __construct(

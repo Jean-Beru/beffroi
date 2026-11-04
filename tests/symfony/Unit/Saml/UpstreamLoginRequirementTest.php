@@ -34,8 +34,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * beffroi/saml, spec/saml.md S-49, S-58, S-59: what a login at an upstream identity provider is asked, read from the rule
- * of the login page, AuthenticationRequirement, and from nothing written again beside it.
+ * spec/saml.md S-49, S-58, S-59
  */
 final class UpstreamLoginRequirementTest extends TestCase
 {
@@ -59,7 +58,6 @@ final class UpstreamLoginRequirementTest extends TestCase
         $this->credentials = new InMemoryCredentialRepository();
         $hints = new FakeJwsVerifier();
         $hints->knows($this->tenant, self::BOB_HINT, '{"iss":"https://id.acme.example","sub":"bob-subject","aud":"oidc-demo"}');
-        // the person BOB_HINT names is one of the tenant: a hint that names nobody is refused before any login
         $users = new InMemoryUserRepository();
         $users->save(Fixtures::user($this->tenant, 'bob', 'bob-subject'));
         $this->requirement = new UpstreamLoginRequirement(
@@ -68,8 +66,7 @@ final class UpstreamLoginRequirementTest extends TestCase
     }
 
     /**
-     * S-49, OIDC Core §3.1.2.1: a browser that holds no session forces a login for prompt=login, and for nothing else,
-     * a max_age being measured at the response.
+     * S-49, OIDC Core §3.1.2.1
      */
     #[Test]
     #[DataProvider('provideRequestsOfABrowserWithoutASession')]
@@ -93,8 +90,7 @@ final class UpstreamLoginRequirementTest extends TestCase
     }
 
     /**
-     * S-49: a browser that holds a session forces a login whenever the interaction asks more of that session than it
-     * holds, whatever it asks.
+     * S-49
      */
     #[Test]
     #[DataProvider('provideWhatTheInteractionAsksOfASession')]
@@ -118,8 +114,7 @@ final class UpstreamLoginRequirementTest extends TestCase
     }
 
     /**
-     * S-49, the review of beffroi-auth/beffroi#805: a step-up of a browser signed in forces the login, as a step-up of a
-     * page does, so that the session of the provider never answers for one more proof.
+     * S-49
      */
     #[Test]
     public function aStepUpOfASignedInBrowserForcesALogin(): void
@@ -133,8 +128,7 @@ final class UpstreamLoginRequirementTest extends TestCase
     }
 
     /**
-     * S-49: a page asks a person signed in for a fresh proof or for one more, and forces the login; a page asks a
-     * browser without a session for a first login, which forces none.
+     * S-49
      */
     #[Test]
     public function aPageForcesTheLoginOfABrowserSignedInAlone(): void
@@ -147,8 +141,7 @@ final class UpstreamLoginRequirementTest extends TestCase
     }
 
     /**
-     * S-58, OIDC Core §3.1.2.1: a login during the interaction satisfies prompt=login and a max_age; an AuthnInstant
-     * before the interaction began does not, compared exactly.
+     * S-58, OIDC Core §3.1.2.1
      */
     #[Test]
     #[DataProvider('provideAuthnInstants')]
@@ -186,8 +179,7 @@ final class UpstreamLoginRequirementTest extends TestCase
     }
 
     /**
-     * S-58: an id_token_hint naming another person than the provider asserted asks still, whenever that person signed
-     * in.
+     * S-58
      */
     #[Test]
     public function anotherPersonThanTheHintAsksStill(): void
@@ -208,8 +200,7 @@ final class UpstreamLoginRequirementTest extends TestCase
     }
 
     /**
-     * S-58, S-57: the session the browser holds for that person keeps its proofs, the login adding its own, so that a
-     * max_age the old proofs exceed is answered by the new one.
+     * S-58, S-57
      */
     #[Test]
     public function theSessionOfThePersonIsReadWithTheProofsOfTheLogin(): void
@@ -230,8 +221,7 @@ final class UpstreamLoginRequirementTest extends TestCase
     }
 
     /**
-     * S-59: a step-up a page asked for is met by a login that proves one of its classes, with the proofs the session
-     * of that person already holds.
+     * S-59
      *
      * @param non-empty-list<AuthenticationMethod> $methods
      */

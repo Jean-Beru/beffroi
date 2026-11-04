@@ -35,10 +35,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
- * beffroi/saml, spec/saml.md S-64 to S-66, section 6.12: in a deployment whose tenant is a SAML service provider
- * (config_test_service_provider.yml), two upstream identity providers wired, each given its key by the key commands:
- * the metadata at the URL of the entity ID carry no key for encryption, those given to each provider the certificate
- * of its own key and never the other's, and the key the provider wires opens what was encrypted for that certificate.
+ * beffroi/saml, spec/saml.md S-64 to S-66, section 6.12
  */
 final class UpstreamEncryptionMetadataTest extends ConsoleTestCase
 {
@@ -48,9 +45,6 @@ final class UpstreamEncryptionMetadataTest extends ConsoleTestCase
 
     private const string OTHER_PROVIDER = 'https://idp-b.example/metadata';
 
-    /**
-     * The upstream identity provider config_test_service_provider.yml declares, the SimpleSAMLphp one of the judge.
-     */
     private const string DECLARED_PROVIDER = 'https://saml-idp.localhost/simplesaml/module.php/saml/idp/metadata';
 
     protected static function kernelOptions(): array
@@ -61,8 +55,7 @@ final class UpstreamEncryptionMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-39, S-65: the metadata at the URL of the entity ID carry no key for encryption, whatever keys the providers
-     * hold.
+     * S-39, S-65
      */
     #[Test]
     public function theMetadataOfTheEntityIdCarryNoKeyForEncryption(): void
@@ -80,8 +73,7 @@ final class UpstreamEncryptionMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance, S-65: the metadata given to a provider, at the URL the router writes for its entity ID, carry the
-     * certificate of its key and not the other provider's.
+     * S-65
      */
     #[Test]
     #[DataProvider('provideProviders')]
@@ -114,8 +106,7 @@ final class UpstreamEncryptionMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-64, S-65: the provider the configuration declares has the algorithm of its key wired by the SAML section, the
-     * key commands draw that key, and the metadata given to that provider carry its certificate.
+     * S-64, S-65
      */
     #[Test]
     public function theProviderTheConfigurationDeclaresIsGivenTheCertificateOfItsKey(): void
@@ -135,8 +126,7 @@ final class UpstreamEncryptionMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-65: the URL the list command prints for the provider the configuration declares, the one an operator hands it,
-     * serves the metadata that carry the certificate of its key.
+     * S-65
      */
     #[Test]
     public function theUrlTheListCommandPrintsServesTheCertificateOfTheKeyOfTheProvider(): void
@@ -157,7 +147,7 @@ final class UpstreamEncryptionMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * Section 6.12 step 5: the metadata given to a provider are served as the metadata of the entity ID are.
+     * Section 6.12 step 5
      */
     #[Test]
     public function theyAreServedAsSamlMetadataForTheMaxAgeOfTheKeys(): void
@@ -182,8 +172,7 @@ final class UpstreamEncryptionMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-65: a provider nothing wires, a provider the tenant holds no key of, a segment that is not base64url and one
-     * whose value is no entity ID are given no metadata.
+     * S-65
      */
     #[Test]
     #[DataProvider('provideUrlsOfNoMetadata')]
@@ -212,7 +201,7 @@ final class UpstreamEncryptionMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-64: the key a provider encrypts for is one the tenant keeps, never in its JWK Set.
+     * S-64
      */
     #[Test]
     public function theJwkSetDoesNotCarryTheKeyOfAProvider(): void
@@ -228,8 +217,7 @@ final class UpstreamEncryptionMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-66: the key the provider wires for a provider opens an assertion encrypted for the certificate its metadata
-     * serve, through the KMS of this kernel.
+     * S-66
      */
     #[Test]
     public function theKeyOfAProviderOpensWhatWasEncryptedForTheCertificateServed(): void
@@ -262,9 +250,6 @@ final class UpstreamEncryptionMetadataTest extends ConsoleTestCase
         static::assertEquals($response->assertion, $accepted->assertion);
     }
 
-    /**
-     * The URL the router writes for the metadata given to that provider.
-     */
     private static function metadataOf(string $provider): string
     {
         return self::service('router', UrlGeneratorInterface::class)
@@ -273,9 +258,6 @@ final class UpstreamEncryptionMetadataTest extends ConsoleTestCase
             ]);
     }
 
-    /**
-     * A key of the tenant, drawn by the command an operator runs and active at once.
-     */
     private static function generate(string $algorithm): TenantKey
     {
         $tester = self::console('beffroi:keys:generate', [

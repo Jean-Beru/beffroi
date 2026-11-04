@@ -9,21 +9,8 @@ use App\Geo\GeoLite2Refresh;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
-/**
- * What says where a provenance came from (architecture §3.5, issue #473): the GeoLite2 databases of
- * addresses, where they are kept and the licence key they are downloaded under.
- *
- * There is nothing here to turn the enrichment on. A deployment that names no licence key and holds no
- * database serves every flow with a provenance that says an address and no place, and one that names a
- * key says a place a week later at the latest; an option in between would be an option to hold a database
- * and not read it.
- */
 final readonly class GeoipSection extends ConfigurationSection
 {
-    /**
-     * Where the licence key of the MaxMind account is written in the standalone application, and the name
-     * the other deployments of this maintainer already give it.
-     */
     public const string LICENSE_KEY_ENVIRONMENT_VARIABLE = 'GEOIP_LICENSE_KEY';
 
     public function name(): string

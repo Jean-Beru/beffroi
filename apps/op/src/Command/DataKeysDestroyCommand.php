@@ -15,19 +15,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * The data keys of a tenant erased, which is the only thing that erases one, and what makes every personal
- * datum that tenant had sealed unreadable for good (decisions 0011 and 0018).
- *
- * Nothing in the ordinary life of a tenant removes a key: a rotation mints one beside those that are
- * there, and a rewrap changes how a key is protected and not the key, so a retired key goes on opening
- * what it sealed. **Only this does**, and after it the columns hold their ciphertexts and nothing opens
- * them again, by anybody, which is the erasure this provider promises and not an accident of operation.
- *
- * It asks for the slug to be typed back, as a command that cannot be undone does. There is no `--force`:
- * what would use one is a script, and a script that erases a tenant's data keys is a thing an operator
- * writes knowing what it does, not an option this command offers.
- */
 #[AsCommand(
     name: 'beffroi:data-keys:destroy',
     description: 'Erase the data keys of the tenant, which makes every personal datum it had sealed unreadable for good. Asks for the slug to be typed back. Cannot be undone.',

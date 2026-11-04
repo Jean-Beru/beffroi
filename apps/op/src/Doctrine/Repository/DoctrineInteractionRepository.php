@@ -15,9 +15,6 @@ use Beffroi\Oidc\Port\InteractionRepositoryInterface;
 use function sprintf;
 
 /**
- * Interactions in beffroi_interaction (architecture §4.3). An interaction of a client no longer registered
- * is not found.
- *
  * @extends DoctrineRepository<Interaction>
  */
 final readonly class DoctrineInteractionRepository extends DoctrineRepository implements DeadRecordsInterface, InteractionRepositoryInterface
@@ -29,16 +26,6 @@ final readonly class DoctrineInteractionRepository extends DoctrineRepository im
         parent::__construct($managers, Interaction::class);
     }
 
-    /**
-     * An interaction is the authorization request parked while the user logs in and consents (architecture
-     * §4.3), so it is worth nothing once it cannot be resumed, which is its expiry whether it was completed
-     * before it or abandoned (issue #177). The expiry and not the completion: a request granted seconds
-     * before the page is reloaded is still answered from the row, and one date an index reads is what a
-     * sweep can ask of a table.
-     *
-     * Nothing waits on it: the session and the consent it names are its own columns, dropped to null
-     * rather than cascading, and the authorization code carries what the token endpoint needs of its own.
-     */
     public function forgetWhatIsDead(Tenant $tenant, DateTimeImmutable $now, int $limit): int
     {
         $expiry = $this->sweep->column(Interaction::class, 'expiresAt');

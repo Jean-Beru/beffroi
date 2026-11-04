@@ -14,15 +14,9 @@ use Psr\Clock\ClockInterface;
 use function sprintf;
 
 /**
- * The assertions and the logout messages the model accepted, in beffroi_saml_remembered_message (beffroi/saml,
- * spec/saml.md S-23, S-53, model.md M-11): the store every worker of the deployment shares, written atomically.
+ * beffroi/saml S-23, S-53, model.md M-11
  *
- * Two statements through the connection and not the unit of work: the rows whose window has closed are deleted, then
- * the message is inserted with ON CONFLICT DO NOTHING, the database telling how many rows the insertion wrote. Two
- * workers handed the same message at the same instant race into the primary key, and one only is told it wrote a row,
- * which is the atomicity a pool of cache, which tells a hit from a miss and not an insertion from a replacement, does
- * not give (SeenOnce). A row deleted while its window is open would accept the message again; none is, the deletion
- * reading the clock the validator reads.
+ * Through the connection: an insertion's count names the one worker that accepts a message, as no cache pool can.
  *
  * @extends DoctrineRepository<RememberedMessage>
  */

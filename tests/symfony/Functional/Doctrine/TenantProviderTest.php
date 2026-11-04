@@ -18,8 +18,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
- * Architecture §5.3: the tenant the services receive is the row, checked against the configuration; the
- * synchroniser writes the row from the configuration, once, and refuses to move an issuer.
+ * Architecture §5.3
  */
 final class TenantProviderTest extends DatabaseTestCase
 {
@@ -37,11 +36,6 @@ final class TenantProviderTest extends DatabaseTestCase
         static::assertSame($tenant, self::entityManager()->find(Tenant::class, $tenant->id));
     }
 
-    /**
-     * An entity is not a service: the instance lives as long as the unit of work. Between two requests
-     * or two messages the kernel resets its services, Doctrine's registry among them, and the next
-     * request gets the tenant of its own unit of work; a cleared entity manager forgets it as well.
-     */
     #[Test]
     public function theInstanceIsTheSameWithinAUnitOfWork(): void
     {
@@ -164,10 +158,6 @@ final class TenantProviderTest extends DatabaseTestCase
         static::assertSame('Renamed', $provider->provide()->name);
     }
 
-    /**
-     * The issuer of a tenant does not change: every token issued so far names it. Another issuer is
-     * another tenant, under another slug.
-     */
     #[Test]
     public function theSynchroniserRefusesToMoveTheIssuer(): void
     {
@@ -197,8 +187,7 @@ final class TenantProviderTest extends DatabaseTestCase
     }
 
     /**
-     * Decision 0010: the "acr" policy is the tenant's, stored with it; the row must speak what the
-     * configuration says before requests are served.
+     * Decision 0010
      */
     #[Test]
     public function aTenantWithAnotherPolicyRefusesToServeUntilSynchronised(): void
@@ -233,8 +222,7 @@ final class TenantProviderTest extends DatabaseTestCase
     }
 
     /**
-     * A tenant that configures nothing speaks the default policy of decision 0010, as the row of a
-     * deployment written before the column existed does.
+     * Decision 0010
      */
     #[Test]
     public function aTenantThatConfiguresNothingSpeaksTheDefaultPolicy(): void
@@ -246,10 +234,6 @@ final class TenantProviderTest extends DatabaseTestCase
         static::assertTrue(AuthenticationContextPolicy::default()->equals($tenant->authenticationContextPolicy));
     }
 
-    /**
-     * Issue #449: what the pages show of the tenant is the tenant's too, stored with it, and the row must
-     * speak what the configuration declares before requests are served.
-     */
     #[Test]
     public function aTenantWithAnotherLookRefusesToServeUntilSynchronised(): void
     {
@@ -283,10 +267,6 @@ final class TenantProviderTest extends DatabaseTestCase
         static::assertSame('#ffffff', $stored->primaryContentColor);
     }
 
-    /**
-     * A tenant that declares no look has none, as the row of a deployment written before the column
-     * existed has none: the column defaults to an empty document.
-     */
     #[Test]
     public function aTenantThatDeclaresNoLookHasNone(): void
     {
@@ -311,10 +291,6 @@ final class TenantProviderTest extends DatabaseTestCase
     /**
      * @param array<array-key, string> $authenticationClasses
      * @param array<array-key, mixed> $look
-     */
-    /**
-     * The claims the kernel of these tests opens (config_test.yml), so a factory built here says what the
-     * row says and a test about one thing is not a test about that too.
      */
     private const array SELF_SERVED_CLAIMS = ['nickname', 'zoneinfo', 'locale', 'birthdate'];
 

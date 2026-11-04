@@ -16,9 +16,7 @@ use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Issue #482 and decision 0011: what a claim of a person used to say is a personal datum as much as what
- * it says now, so both are sealed under the data key of the tenant, in a family of their own, and the
- * provenance of the request that changed them with them.
+ * Decision 0011
  */
 final class ClaimChangeColumnsTest extends DatabaseTestCase
 {
@@ -61,8 +59,7 @@ final class ClaimChangeColumnsTest extends DatabaseTestCase
     }
 
     /**
-     * The name of the claim is in the clear: it is a name of OIDC Core §5.1 and never a value, and it is
-     * what a reading of one person's history filters on.
+     * OIDC Core §5.1
      */
     #[Test]
     public function theNameOfTheClaimIsInTheClear(): void

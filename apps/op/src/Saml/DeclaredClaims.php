@@ -11,13 +11,8 @@ use function is_array;
 use function is_string;
 
 /**
- * The claims the declarations of service providers map, served as they are named (beffroi/saml, spec/saml.md S-16,
- * section 6.2 step 1), or the claims the declarations of upstream identity providers fill, held as they are named
- * (S-45, section 6.10 step 1). What the provider serves, and what the profile holds, comes from the services the
- * container builds, which a compiler pass has not built: ServiceProvidersPass and UpstreamIdentityProvidersPass build
- * the declarations with this when the container is compiled, so that every other rule of a declaration fails the
- * compilation, and MappedClaimsWarmer checks those claims against the real ones right after, in the same build. It
- * reads no user and gives no value.
+ * Serves exactly the claims the declarations name, in place of the claims providers a compiler pass cannot
+ * build; MappedClaimsWarmer checks them against the real ones.
  */
 final readonly class DeclaredClaims implements ServedClaimsInterface, ProfileClaimsInterface
 {
@@ -30,9 +25,6 @@ final readonly class DeclaredClaims implements ServedClaimsInterface, ProfileCla
     }
 
     /**
-     * The claim of every attribute mapping the declarations hold; what is not a mapping is left to the constructors of
-     * the declaration, which refuse it.
-     *
      * @param array<array-key, mixed> $declarations
      */
     public static function mappedBy(array $declarations): self
@@ -55,9 +47,6 @@ final readonly class DeclaredClaims implements ServedClaimsInterface, ProfileCla
     }
 
     /**
-     * The claim of every attribute of the profile the declarations of upstream identity providers hold; what is not
-     * one is left to the constructors of the declaration, which refuse it.
-     *
      * @param array<array-key, mixed> $declarations
      */
     public static function filledBy(array $declarations): self

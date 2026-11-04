@@ -27,11 +27,7 @@ use Throwable;
 use Webauthn\MetadataService\CertificateChain\CertificateToolbox;
 
 /**
- * The FIDO metadata the ceremonies check an attestation against (architecture §3.4), refreshed by hand:
- * the Metadata BLOB downloaded (FIDO Metadata Service v3.1.1 §3.1), its signature and its chain verified
- * up to the root this command pins (§3.2), its payload stored. Nothing refreshes it on its own: that is a
- * service of the hosted offer, and a provider that never ran this command knows no authenticator, which
- * its own enrolment does not need (it asks for no attestation).
+ * FIDO Metadata Service v3.1.1 §3.1, §3.2
  */
 #[AsCommand(
     name: 'beffroi:webauthn:mds-refresh',
@@ -40,14 +36,10 @@ use Webauthn\MetadataService\CertificateChain\CertificateToolbox;
 final readonly class WebauthnMdsRefreshCommand
 {
     /**
-     * Where the FIDO Alliance serves its blob (https://fidoalliance.org/metadata/); the "mds3" host of the
-     * documentation answers with a redirect to this one, which no outbound request follows (decision 0006).
+     * Not the "mds3" host of the documentation, which redirects here: no outbound request follows a redirect.
      */
     public const string FIDO_METADATA_SERVICE = 'https://mds.fidoalliance.org/';
 
-    /**
-     * The root the FIDO Alliance names for its blob (https://fidoalliance.org/metadata/), shipped with the provider.
-     */
     public const string FIDO_ROOT_CERTIFICATE = __DIR__ . '/../../config/beffroi/webauthn/globalsign-root-r46.pem';
 
     public function __construct(
@@ -104,9 +96,6 @@ final readonly class WebauthnMdsRefreshCommand
         return $refused === 0 ? Command::SUCCESS : Command::FAILURE;
     }
 
-    /**
-     * The root as PEM, from a file or from an https URL (no redirect followed either).
-     */
     private function rootCertificate(string $root): string
     {
         if (str_starts_with($root, 'https://')) {
@@ -125,9 +114,6 @@ final readonly class WebauthnMdsRefreshCommand
     }
 
     /**
-     * The name a source keeps in the store, so that a refresh replaces the document of the same source:
-     * its host, and a digest of the whole URL.
-     *
      * @return non-empty-string
      */
     private static function name(string $url): string

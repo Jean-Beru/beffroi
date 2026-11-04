@@ -39,17 +39,12 @@ use Symfony\Component\KeyManagement\Local\SodiumKms;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
- * The operator's side of a rotation without an outage (architecture §3.3, §5.5): one command starts it,
- * time does the rest, through the recurring message of the provider; every step can be done by hand.
- * The staging delay of this kernel derives from its JWK Set max-age of two minutes: three minutes.
+ * Architecture §3.3, §5.5
  */
 final class KeyLifecycleTest extends ConsoleTestCase
 {
     private const string STAGING_DELAY = '+3 minutes';
 
-    /**
-     * The first key of a tenant is activated at once: nobody caches an empty JWK Set.
-     */
     #[Test]
     public function theFirstKeyOfATenantIsActiveAtOnce(): void
     {
@@ -64,8 +59,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
     }
 
     /**
-     * A tenant signs with one key per algorithm; the operator names the algorithm, and the key that was
-     * active for another one is left alone (architecture §3.3).
+     * Architecture §3.3
      */
     #[Test]
     public function anOperatorNamesTheAlgorithmTheKeySignsWith(): void
@@ -85,10 +79,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame(KeyStatus::Active, self::key($rs256)->status);
     }
 
-    /**
-     * Issue #164: the same commands for a key a client encrypts to. Naming a JWE key management algorithm
-     * gives a key published with "use": "enc", and the key that signs is left alone.
-     */
     #[Test]
     public function anOperatorNamesAnAlgorithmTheKeyIsEncryptedToWith(): void
     {
@@ -108,8 +98,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #164: the JWK Set publishes the encryption key beside the signing keys, each
-     * one saying what it is published for (RFC 7517 §4.2).
+     * RFC 7517 §4.2
      */
     #[Test]
     public function theJwkSetPublishesTheEncryptionKeyBesideTheSigningOne(): void
@@ -130,10 +119,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame([$encryption], array_map(static fn (TenantKey $key): string => $key->kid, $published->forUse(KeyUse::Encryption)->keys));
     }
 
-    /**
-     * The four states of spike 2 are the four states of an encryption key: staged by a second rotation,
-     * activated by hand, and the one it takes over from starts retiring.
-     */
     #[Test]
     public function aStagedEncryptionKeyIsActivatedByTheSameCommand(): void
     {
@@ -156,9 +141,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame(KeyStatus::Retiring, self::key($first)->status);
     }
 
-    /**
-     * And retired out of the JWK Set, which is what makes a JWE encrypted to it refused from then on.
-     */
     #[Test]
     public function aRetiringEncryptionKeyIsRetiredByTheSameCommand(): void
     {
@@ -184,8 +166,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
     }
 
     /**
-     * Decision 0006: an algorithm the provider is not wired with is refused, and the message says which
-     * ones it signs with.
+     * Decision 0006
      */
     #[Test]
     public function anAlgorithmTheProviderDoesNotSignWithIsRefused(): void
@@ -200,9 +181,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertStringContainsString('does not sign with "HS256"', self::flattened($tester));
     }
 
-    /**
-     * The acceptance criterion: rotate, then the list shows a staged key next to the active one.
-     */
     #[Test]
     public function aRotationStagesAKeyNextToTheActiveOne(): void
     {
@@ -222,10 +200,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame(KeyStatus::Active, self::key($active)->status);
     }
 
-    /**
-     * The staged key says when it activates: its creation plus the staging delay, derived from the JWK Set
-     * max-age of this kernel plus the refetch cooldown of oidc_login.
-     */
     #[Test]
     public function theStagedKeySaysWhenItActivates(): void
     {
@@ -288,9 +262,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         );
     }
 
-    /**
-     * The compromise path: the previous key leaves the JWK Set at once, the trail says why.
-     */
     #[Test]
     public function aRotationForACompromiseRetiresThePreviousKeyAtOnce(): void
     {
@@ -376,9 +347,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         ];
     }
 
-    /**
-     * The acceptance criterion: a key inside its retirement window is refused without --force.
-     */
     #[Test]
     public function retiringAKeyInsideItsWindowIsRefusedWithoutForce(): void
     {
@@ -470,9 +438,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         yield 'neither a key nor --due' => [[], Command::INVALID, 'not both, not neither'];
     }
 
-    /**
-     * The acceptance criterion: --due retires a key past its date and leaves one inside its window.
-     */
     #[Test]
     public function retiringTheDueKeysLeavesTheOneInsideItsWindow(): void
     {
@@ -509,9 +474,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertStringContainsString('No key of "default" is past its retirement date.', self::flattened($tester));
     }
 
-    /**
-     * The list on request shows the retired keys too, with every date of their life.
-     */
     #[Test]
     public function theListShowsARetiredKeyOnRequestOnly(): void
     {
@@ -538,10 +500,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         );
     }
 
-    /**
-     * Issue #58: what "castor provision" asks before it trusts the published key. The active key opens
-     * with the KMS of this kernel, whichever backend the environment named.
-     */
     #[Test]
     public function theCheckSaysTheActiveKeyOpensWithTheKms(): void
     {
@@ -558,10 +516,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame('yes', self::displayed($tester, 'Opens with the KMS'));
     }
 
-    /**
-     * A key sealed under a master key the KMS no longer has (a Vault in dev mode or a LocalStack restarted,
-     * a DSN switched to another backend): the check says which key, why, and what to do; it deletes nothing.
-     */
     #[Test]
     public function theCheckFailsOnAKeyTheKmsCannotOpen(): void
     {
@@ -582,12 +536,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame(KeyStatus::Staged, self::key($dead->kid)->status);
     }
 
-    /**
-     * The case the development tenant is in when its KMS forgets its master key: it publishes one key per
-     * algorithm it serves, so every one of them is dead at once. A rotation reaches one algorithm, so the
-     * message names the algorithm of each dead key and the run that reaches it, as many runs as there are
-     * algorithms, instead of one command that closes a quarter of the problem.
-     */
     #[Test]
     public function everyDeadKeyNamesTheRotationThatReachesIt(): void
     {
@@ -609,9 +557,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertStringContainsString('beffroi:keys:rotate --now --algorithm=ES256', $said);
     }
 
-    /**
-     * Two dead keys of one algorithm are one run and not two: what a rotation reaches is the algorithm.
-     */
     #[Test]
     public function twoDeadKeysOfOneAlgorithmNameOneRotation(): void
     {
@@ -630,7 +575,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
     }
 
     /**
-     * A retiring key is never opened again (architecture §3.3): the check does not ask the KMS about it.
+     * Architecture §3.3
      */
     #[Test]
     public function theCheckLeavesARetiringKeyClosed(): void
@@ -661,9 +606,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         );
     }
 
-    /**
-     * The acceptance criterion: the scheduled message activates the staged key once the delay elapsed.
-     */
     #[Test]
     public function theScheduledStepActivatesAStagedKeyWhoseDelayElapsed(): void
     {
@@ -679,9 +621,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame(KeyStatus::Retiring, self::key($previous)->status);
     }
 
-    /**
-     * The acceptance criterion: and not before.
-     */
     #[Test]
     public function theScheduledStepLeavesAStagedKeyInsideItsWindow(): void
     {
@@ -712,9 +651,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame(KeyStatus::Retiring, self::key($insideItsWindow)->status);
     }
 
-    /**
-     * The trail says the scheduler did it, and from which schedule.
-     */
     #[Test]
     public function theScheduledStepNamesItselfInTheEvents(): void
     {
@@ -731,9 +667,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertStringStartsWith('beffroi-scheduler/beffroi (', $rotated->context->userAgent ?? '');
     }
 
-    /**
-     * Before the first provisioning there is no key to move: the tick does nothing, and fails nothing.
-     */
     #[Test]
     public function theScheduledStepDoesNothingWithoutATenant(): void
     {
@@ -749,8 +682,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
     }
 
     /**
-     * Architecture §5.6: the message recurs every minute on the schedule of the provider, whose transport the
-     * worker consumes next to the buses.
+     * Architecture §5.6
      */
     #[Test]
     public function theScheduleOfTheProviderCarriesTheStepEveryMinute(): void
@@ -766,8 +698,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
     }
 
     /**
-     * Decision 0009: the removal of the clients nobody uses any more is a step of the same schedule, beside
-     * the two of the key lifecycle, on its own period.
+     * Decision 0009
      */
     #[Test]
     public function theScheduleCarriesTheRemovalOfTheClientsNobodyUses(): void
@@ -781,9 +712,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertStringContainsString('every 1 hour', $tester->getDisplay());
     }
 
-    /**
-     * The trail says who typed the command: the console names it and the user of the shell.
-     */
     #[Test]
     public function theConsoleNamesItselfAndTheOperatorInTheEvents(): void
     {
@@ -796,13 +724,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertMatchesRegularExpression('/^beffroi-console\/beffroi:keys:rotate \([^@]+@.+\)$/', $staged->context->userAgent ?? '');
     }
 
-    /**
-     * What the worker does on a tick: the recurring message, handled on the command bus.
-     */
-    /**
-     * Issue #455: the step stages a successor for a key that has worked for the age of a key, and stages
-     * it rather than rotating, so the staging window still happens.
-     */
     #[Test]
     public function theScheduledStepStagesASuccessorForAKeyPastItsAge(): void
     {
@@ -818,10 +739,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame('RS256', self::stagedKeys()[0]->algorithm->name());
     }
 
-    /**
-     * Idempotent: the tick that follows finds the successor and stages nothing, so a worker that ticks
-     * every minute does not publish a key a minute.
-     */
     #[Test]
     public function theScheduledStepStagesOneSuccessorAndNotOnePerTick(): void
     {
@@ -849,10 +766,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame([], self::stagedKeys());
     }
 
-    /**
-     * What a planning that has stopped looks like from outside: an active key past its age with nothing
-     * staged behind it. The check names it, says it is a worker and not a key, and fails.
-     */
     #[Test]
     public function theCheckFailsOnAKeyThatWorkedPastItsAgeWithNothingStaged(): void
     {
@@ -871,10 +784,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertStringContainsString('worker that is not consuming the schedule', self::flattened($tester));
     }
 
-    /**
-     * The same key once the step has run: past its age still, and the successor behind it is what says
-     * the planning is working, so the check passes.
-     */
     #[Test]
     public function theCheckPassesOnAKeyPastItsAgeWhoseSuccessorIsStaged(): void
     {
@@ -897,9 +806,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         self::service('test.beffroi.command_bus', MessageBusInterface::class)->dispatch(new AdvanceKeyLifecycle());
     }
 
-    /**
-     * A key that signed and stopped a moment ago, inside its retirement window of ten minutes.
-     */
     private static function retiringKey(): string
     {
         $kid = self::displayed(self::console('beffroi:keys:rotate'), 'Key identifier');
@@ -910,10 +816,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         return $kid;
     }
 
-    /**
-     * A key written as the files would hold it a day after its rotation: retiring since yesterday, due
-     * yesterday too, what no command of this kernel can write in the present.
-     */
     private static function keyPastItsRetirementDate(): TenantKey
     {
         $yesterday = self::currentSecond()->modify('-1 day');
@@ -925,10 +827,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         return $key;
     }
 
-    /**
-     * A staged key sealed under a sodium master key this kernel does not have: what the files hold once the
-     * KMS lost its key, or once the DSN names another backend.
-     */
     private static function stagedKeySealedUnderAnotherMasterKey(?KeyAlgorithmInterface $algorithm = null): TenantKey
     {
         $algorithm ??= Algorithms::rs256();
@@ -950,10 +848,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         return $key;
     }
 
-    /**
-     * A staged key with the dates given, sealed by the KMS of this kernel and saved: how the files look
-     * once the staging delay elapsed, without waiting for it.
-     */
     private static function stagedKeyDated(DateTimeImmutable $createdAt, DateTimeImmutable $activationDueAt): TenantKey
     {
         $pair = self::service('test.beffroi.key_pair_generator', KeyPairGeneratorInterface::class)->generate(Algorithms::rs256());
@@ -964,11 +858,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         return $key;
     }
 
-    /**
-     * A key written as the files would hold it a quarter after its rotation: active since ninety-one days
-     * ago, which is past the age a key works for in this kernel, and what no command can write in the
-     * present.
-     */
     private static function keyPastItsAge(): TenantKey
     {
         $activated = self::currentSecond()->modify('-91 days');

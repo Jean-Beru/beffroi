@@ -18,13 +18,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The client registration endpoint (RFC 7591 §3.1), POST only: a JSON object in, a 201 carrying what was
- * registered out (§3.2.1), and the refusals of §3.2.2 as JSON.
- *
- * A tenant that registers nobody has no endpoint here rather than one that refuses what it read
- * (decision 0009), which is a 404 and the same thing the absence of "registration_endpoint" says in the
- * discovery document of that tenant. A request that presents nothing authorising a registration is a 401
- * carrying the challenge an endpoint that reads a bearer credential owes (RFC 6750 §3).
+ * RFC 7591 §3.1, §3.2.1, §3.2.2, RFC 6750 §3
  */
 #[AsController]
 final readonly class ClientRegistrationController

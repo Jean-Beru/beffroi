@@ -8,13 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * What a request reserves its code for (RFC 9449 §10) and what a refresh token of a public client is
- * bound to (§5). The authorization request carries the thumbprint of the key that will come and collect
- * the code, the code carries it in turn, and the refresh token carries the same "cnf" an access token
- * carries, because a client with no credentials is told from whoever copied its token by that and by
- * nothing else.
- */
 final class Version20260923090000 extends AbstractMigration
 {
     public function getDescription(): string

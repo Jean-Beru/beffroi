@@ -35,10 +35,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * A kernel on a fresh SQLite schema (architecture §7), the tenant of the configuration synchronised, so
- * that a test starts where an application starts after its first migration and its provisioning. A test
- * that drives a browser gets it from browser(): the kernel is then the one behind the browser, and the
- * rows survive the reboot the browser does between two requests.
+ * Architecture §7
  */
 abstract class DatabaseTestCase extends WebTestCase
 {
@@ -49,12 +46,8 @@ abstract class DatabaseTestCase extends WebTestCase
     }
 
     /**
-     * A browser on a kernel of its own, the schema and the tenant prepared behind it. What configures the
-     * container is applied again after every reboot the browser does between two requests, which is how a
-     * test replaces a service for the life of the browser.
-     *
-     * @param (Closure(ContainerInterface): void)|null $configureContainer
-     * @param array<string, mixed> $options what the kernel behind the browser is booted with
+     * @param (Closure(ContainerInterface): void)|null $configureContainer reapplied at every kernel reboot
+     * @param array<string, mixed> $options
      */
     protected static function browser(?Closure $configureContainer = null, array $options = []): KernelBrowser
     {
@@ -73,33 +66,15 @@ abstract class DatabaseTestCase extends WebTestCase
     }
 
     /**
-     * The database file of the first test of the process in each environment, once its schema is created
-     * and its tenant synchronised, kept beside it as the template every later test of that environment
-     * starts from: a copy of the file, a millisecond, where the schema dropped and created by every test
-     * was 160 ms of its time. The template is rebuilt by every process, never trusted from a previous run.
-     * There is one per database file, which is one per environment, because an environment of its own may
-     * configure its tenant otherwise (config_test_tenant_logo.yml), and the provider refuses a tenant
-     * row synchronised from another configuration.
-     *
      * @var array<string, string> the template of each database file
      */
     private static array $templates = [];
 
-    /**
-     * Where the provider writes the sealed keys of the tenant of the suite, which config_test.yml points at
-     * "%kernel.cache_dir%/keys". Read from the container and not restated, so that the directory is the one
-     * the kernel of this process was given, token of a parallel worker included.
-     */
     protected static function keyStorage(): string
     {
         return self::cacheDirectory() . '/keys';
     }
 
-    /**
-     * Where the provider keeps the FIDO metadata and, in its "community" directory, the list of the community
-     * (issue #983), which config_test.yml points at "%kernel.cache_dir%/webauthn", read from the container as
-     * keyStorage() is.
-     */
     protected static function metadataStorage(): string
     {
         return self::cacheDirectory() . '/webauthn';
@@ -135,10 +110,6 @@ abstract class DatabaseTestCase extends WebTestCase
         self::entityManager()->clear();
     }
 
-    /**
-     * The schema is dropped and created in one transaction: SQLite syncs the file once instead of once per
-     * statement, the difference between 40 ms and 400 ms.
-     */
     private static function createDatabase(): void
     {
         $entityManager = self::entityManager();
@@ -165,19 +136,12 @@ abstract class DatabaseTestCase extends WebTestCase
         return new EntityManagers(self::registry());
     }
 
-    /**
-     * The tenant of the current unit of work; reload() forgets it with the rest.
-     */
     protected static function tenant(): Tenant
     {
         return self::service('test.beffroi.tenant_provider', TenantProvider::class)->provide();
     }
 
     /**
-     * The tenant names the floor of its logins, as an administrator does from the console (issue #327):
-     * the act itself, so that what the tests read is a tenant hardened the one way a tenant hardens, the
-     * credentials it forbids forgotten with it.
-     *
      * @return int how many credentials the floor forbade
      */
     protected static function harden(AuthenticationPredicateInterface $floor): int
@@ -185,9 +149,6 @@ abstract class DatabaseTestCase extends WebTestCase
         return self::service('test.beffroi.tenant_hardening', TenantHardening::class)->adopt(self::tenant(), $floor, self::context());
     }
 
-    /**
-     * A moment with the precision of a datetime column, so that what goes in comes out equal.
-     */
     protected static function now(): DateTimeImmutable
     {
         return new DateTimeImmutable('2026-09-15T10:00:00+00:00');
@@ -198,9 +159,6 @@ abstract class DatabaseTestCase extends WebTestCase
         return new RequestContext($receivedAt ?? self::now(), SealedRows::IP_ADDRESS, SealedRows::USER_AGENT);
     }
 
-    /**
-     * A user of the configured tenant, saved.
-     */
     protected static function user(string $username = 'alice', string $subject = 'alice-subject'): User
     {
         $user = User::create(Uuid::v7(), self::tenant(), new Subject($subject), $username, self::now());
@@ -209,9 +167,6 @@ abstract class DatabaseTestCase extends WebTestCase
         return $user;
     }
 
-    /**
-     * A session of the user opened with a password at the given moment, saved.
-     */
     protected static function session(User $user, ?DateTimeImmutable $establishedAt = null): AuthenticationSession
     {
         $establishedAt ??= self::now();
@@ -229,9 +184,6 @@ abstract class DatabaseTestCase extends WebTestCase
         return $session;
     }
 
-    /**
-     * A client of the configuration of the test kernel.
-     */
     protected static function client(string $clientId = 'oidc-demo'): Client
     {
         return (
@@ -242,10 +194,6 @@ abstract class DatabaseTestCase extends WebTestCase
         );
     }
 
-    /**
-     * Forgets every managed object, the tenant included, so that the next lookup reads the rows and not
-     * the identity map: what was held before is detached and must not be saved again.
-     */
     protected static function reload(): void
     {
         self::entityManager()->clear();

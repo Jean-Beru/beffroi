@@ -16,27 +16,12 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\EncryptedType;
 
-/**
- * The plumbing every sealed column of the spike needs (decisions 0011 and 0018): the encrypted types of
- * the provider are declared in one place, registered while the bundles boot, and each one decorates the type
- * its column would otherwise have carried.
- *
- * What gives them their encrypter is the deployment, because that choice is what decides where the data
- * key of a scope comes from; this kernel gives them a store in the memory of the process
- * (tests/symfony/config/config_test.yml), so that what is measured here is the registration and the round
- * trip and not a table.
- */
 final class EncryptedColumnTypesTest extends DatabaseTestCase
 {
-    /**
-     * A table of this test alone, which no mapping describes: the bytes its column holds are what
-     * theBytesTheColumnHoldsAreNotThePlaintext() reads, with no entity in the way.
-     */
     private const string TABLE = 'test_sealed_column';
 
     /**
-     * Sixteen families of columns, one data key per tenant each (decision 0018), and twenty-seven types
-     * because a type seals one type: the count of keys is the count of families and not of types.
+     * Decision 0018
      */
     #[Test]
     public function theProviderDeclaresOneTypePerFamilyAndPerTypeThatFamilySeals(): void
@@ -46,12 +31,6 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
         static::assertCount(27, EncryptedColumnTypes::declarations());
     }
 
-    /**
-     * Every type the provider declares is the type of a field of the mappings. A type is registered at every
-     * boot, and one that no field names is registered for no column, a declaration left behind by a column
-     * that moved, which the count above goes on counting. The names are read from the declaration and the
-     * types from the metadata of the mappings, so neither can be the only one to know.
-     */
     #[Test]
     public function everyTypeTheProviderDeclaresIsNamedByAMapping(): void
     {
@@ -70,11 +49,6 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
         static::assertSame([], $unnamed, 'A type is declared that no mapping names.');
     }
 
-    /**
-     * The bridge asks for the registration to happen while the container is built, which in a Symfony
-     * application means booting, and never on "loadClassMetadata", which does not fire when the metadata
-     * comes from the cache (README of symfony/doctrine-dbal-key-management, "Where to register the types").
-     */
     #[Test]
     public function everyDeclaredTypeIsRegisteredOnceTheKernelHasBooted(): void
     {
@@ -88,10 +62,6 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
         }
     }
 
-    /**
-     * A type seals the type the column carried, so the domain object a mapping hands over survives the
-     * envelope: an electronic address goes in as one and comes back as one.
-     */
     #[Test]
     public function aValueSealedByAnEncryptedTypeIsReadBackAsTheDomainObjectItWas(): void
     {
@@ -110,8 +80,7 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
     }
 
     /**
-     * What the column holds is the envelope and not the value, which is the whole of what decision 0011
-     * asks of a dump of the database.
+     * Decision 0011
      */
     #[Test]
     public function theBytesTheColumnHoldsAreNotThePlaintext(): void
@@ -141,11 +110,6 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
         static::assertSame('alice@example.com', $read->value);
     }
 
-    /**
-     * The type registry is global and outlives the container, so a rebooted kernel registers names that
-     * are taken and has to replace rather than refuse them; the functional suite reboots between two
-     * requests of a browser (README of the bridge, "Where to register the types").
-     */
     #[Test]
     public function aKernelBootedASecondTimeRegistersTheSameNamesAgain(): void
     {
@@ -167,10 +131,6 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
         );
     }
 
-    /**
-     * The name is derived from the family and the type it seals and never listed beside them, so a mapping
-     * that names anything else names a type no encrypter answers.
-     */
     #[Test]
     #[DataProvider('provideNames')]
     public function theNameOfATypeIsTheFamilyAndTheTypeItSeals(string $family, string $type, string $expected): void
@@ -193,10 +153,6 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
         ];
     }
 
-    /**
-     * A family seals the types its own columns carry and no others: asking for a type it does not seal is
-     * a mapping about to name something nothing registers, and it is refused where it is composed.
-     */
     #[Test]
     public function aTypeAFamilyDoesNotSealIsRefused(): void
     {
@@ -208,11 +164,6 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
         EncryptedColumnTypes::name('interaction', 'beffroi_address');
     }
 
-    /**
-     * What the walk of the schema reads a column's family from is derived from the one declaration of the
-     * types, and covers every one of them: a family read from a second list would be a second thing to be
-     * wrong, and a type missing from it would be a sealed column the walk takes for a readable one.
-     */
     #[Test]
     public function everySealingTypeSaysWhichFamilyItSealsUnder(): void
     {
@@ -229,9 +180,6 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
         return self::entityManager()->getConnection();
     }
 
-    /**
-     * What a dump of the database holds, read without the type that would open it.
-     */
     private static function storedBytes(Connection $connection): string
     {
         $stored = $connection->fetchOne('SELECT value FROM ' . self::TABLE . ' WHERE id = 1');

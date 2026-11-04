@@ -13,15 +13,6 @@ use function implode;
 use function sprintf;
 use const DATE_ATOM;
 
-/**
- * The authorization request the provider parked while the user signs in and consents (architecture
- * §4.3), read whole: a page of the interaction plane carries nothing but the identifier of the
- * interaction in its URL, and everything the client asked for lives in the record behind it.
- *
- * What the request asked is shown as the parser typed it, never as the query spelled it. The
- * "id_token_hint" is a token and is said to be there without being written down; the challenge of PKCE
- * is the public half of the pair and the verifier never reaches this endpoint at all.
- */
 final readonly class ProfilingInteractionRepository implements InteractionRepositoryInterface
 {
     public function __construct(
@@ -89,8 +80,7 @@ final readonly class ProfilingInteractionRepository implements InteractionReposi
     }
 
     /**
-     * OIDC Core §5.5: the names the client asked for, under the document it asked them in; what the
-     * claims hold is the user, and the panel names them rather than showing them.
+     * OIDC Core §5.5
      *
      * @param array<string, mixed> $idToken
      * @param array<string, mixed> $userinfo

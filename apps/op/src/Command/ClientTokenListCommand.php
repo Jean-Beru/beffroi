@@ -14,13 +14,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * The initial access tokens the tenant has issued (RFC 7591 §1.2, decision 0009): what each has served,
- * what it has left, and what it is worth now. Reads, writes nothing.
- *
- * No value is here and none can be: the rows hold digests, so this says which tokens exist and never
- * what any of them is.
- */
 #[AsCommand(
     name: self::NAME,
     description: 'List the initial access tokens of the tenant: what each has served, what it has left and whether it still authorises anything.',
@@ -66,10 +59,6 @@ final readonly class ClientTokenListCommand
         return Command::SUCCESS;
     }
 
-    /**
-     * What a token is worth at this instant, in the order the endpoint stops reading: what a tenant took
-     * back is taken back whatever else was true of it.
-     */
     private static function state(InitialAccessToken $token, DateTimeImmutable $now): string
     {
         return match (true) {

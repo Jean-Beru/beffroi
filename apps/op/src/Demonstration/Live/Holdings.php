@@ -6,12 +6,6 @@ namespace App\Demonstration\Live;
 
 use function is_string;
 
-/**
- * The names a run holds what it was answered under, which are the names the protocol gives them: the
- * code a device flow polls on (RFC 8628 §3.2), the identifier a backchannel flow polls on (CIBA Core
- * §7.3), the tokens every flow ends with (RFC 6749 §5.1). Written once, because the hop that keeps one
- * and the hop that spends it are two classes.
- */
 final readonly class Holdings
 {
     public const string DEVICE_CODE = 'device_code';
@@ -30,7 +24,7 @@ final readonly class Holdings
      * @param array<array-key, mixed> $answer
      * @param list<string>            $names
      *
-     * @return array<string, string> the values of those names the answer carried, and no other
+     * @return array<string, string>
      */
     public static function kept(array $answer, array $names): array
     {

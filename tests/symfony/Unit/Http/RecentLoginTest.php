@@ -20,17 +20,12 @@ use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Twig\Environment;
 
-/**
- * What the page that replaces a password asks of a session before the form (issue #552): that it proved
- * who its person is a short while ago, and not merely that a browser holds it.
- */
 final class RecentLoginTest extends TestCase
 {
     private const string NOW = '2026-10-10T12:00:00+00:00';
 
     /**
-     * "auth_time" is what the window is read against (OIDC Core §2), so a step-up and a re-login both
-     * count and nothing has to be told about them.
+     * OIDC Core §2
      */
     #[Test]
     #[DataProvider('provideMomentsOfTheNewestProof')]
@@ -64,10 +59,6 @@ final class RecentLoginTest extends TestCase
         static::assertNull($this->recentLogin()->orSendToLogin(self::request(), $session, 'a_route'));
     }
 
-    /**
-     * The page is remembered, so the browser comes back to it once the proof is given; it is the login of
-     * the firewall that asks, the same one every other page of the provider uses.
-     */
     #[Test]
     public function aSessionThatProvedNothingRecentlyIsRememberedAndSentToTheLogin(): void
     {

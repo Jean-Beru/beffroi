@@ -14,25 +14,8 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\HttpKernel\KernelInterface;
 
-/**
- * Issue #196: the retirement window of a signing key covers how long a logout token may still be on its
- * way, and that number is true of a deployment only because the lane the notifications are routed to is
- * driven by the policy of the provider. Nothing else sees it: the provider cannot refuse an application's
- * transport, and in a test environment every lane is synchronous, so no functional test of an application
- * covers the wiring. A line of YAML re-opens what #155 closed.
- *
- * So it is judged on containers and not on files: this kernel as the provider wires it, where the contract
- * of Messenger is prepended with the policy on that lane, and the same kernel in an environment that
- * routes the notifications somewhere of its own (config_test_own_notifications_lane.yml).
- *
- * The doctor reads and writes nothing, so neither does this: no schema, no tenant, no row.
- */
 final class DoctorTest extends KernelTestCase
 {
-    /**
-     * The environment whose container routes what the provider carries to a third party to a lane of its
-     * own, ten retries a minute apart.
-     */
     private const string OWN_LANE = 'test_own_notifications_lane';
 
     protected function tearDown(): void
@@ -50,11 +33,6 @@ final class DoctorTest extends KernelTestCase
         static::assertSame(Command::SUCCESS, $doctor->getStatusCode(), $doctor->getDisplay());
     }
 
-    /**
-     * A point that passes says the two lengths of time it read, a point that says nothing but "yes" being
-     * a point nobody can tell from a point that was never looked at: how long a logout token is retried,
-     * and how long one can still be verified.
-     */
     #[Test]
     public function thePassingPointSaysHowLongItTriesAndHowLongWhatItSendsLasts(): void
     {
@@ -81,10 +59,6 @@ final class DoctorTest extends KernelTestCase
         static::assertSame(Command::FAILURE, $doctor->getStatusCode(), $doctor->getDisplay());
     }
 
-    /**
-     * One line, the transport and both lengths of time: ten minutes of retries where what is retried stops
-     * being verifiable after not quite four.
-     */
     #[Test]
     public function theFailingPointNamesTheTransportAndBothLengthsOfTime(): void
     {
@@ -101,10 +75,6 @@ final class DoctorTest extends KernelTestCase
         );
     }
 
-    /**
-     * What a point that fails owes the reader, because what the doctor finds is by construction what
-     * nothing else shows: what it costs, in what somebody would see, then what to do.
-     */
     #[Test]
     public function theFailingPointSaysWhatItCostsAndWhatToDo(): void
     {
@@ -121,10 +91,6 @@ final class DoctorTest extends KernelTestCase
         );
     }
 
-    /**
-     * The command on a kernel booted in the given environment; each environment compiles a container of
-     * its own, into the cache directory named after it.
-     */
     private static function doctor(string $environment): CommandTester
     {
         $application = new Application(self::reboot($environment));

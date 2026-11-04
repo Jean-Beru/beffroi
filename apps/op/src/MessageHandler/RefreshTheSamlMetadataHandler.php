@@ -17,28 +17,15 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Contracts\Service\ServiceProviderInterface;
 
 /**
- * The hourly refresh of the metadata of the SAML peers of the tenant (beffroi/saml, spec/saml.md sections 6.2 and
- * 6.10), every role in the order it is wired, each by the same object its console command calls
- * (`beffroi:saml:service-provider:refresh`, `beffroi:saml:identity-provider:refresh`): what differs is who reads the
- * outcome, a terminal there and a log here. A role is one refresh tagged, and nothing here names one.
- *
- * It fails nothing. A location that cannot be reached and a document refused are written to the log as errors, the
- * level an operator is alerted on, and taken again at the next tick, the document accepted serving meanwhile, until
- * its own validUntil refuses it (spec/saml.md S-6): a refusal nobody reads would keep that document for as long. Each
- * role is read apart from the others, its refresh built when it is read: declarations that hold an environment
- * variable are refused when the service that holds them is built, at its first use, and a role refused so is written
- * to the log as an error, naming its refresh, before the next role is read (section 6.10).
+ * beffroi/saml, spec/saml.md sections 6.2 and 6.10
  */
 #[AsMessageHandler(bus: 'command.bus')]
 final readonly class RefreshTheSamlMetadataHandler
 {
-    /**
-     * The tag of the refresh of each role.
-     */
     public const string TAG = 'beffroi.saml.metadata_refresh';
 
     /**
-     * @param ServiceProviderInterface<MetadataRefresh<covariant PeerInterface>> $refreshes the refresh of every role, by its id
+     * @param ServiceProviderInterface<MetadataRefresh<covariant PeerInterface>> $refreshes
      */
     public function __construct(
         private TenantProvider $tenants,
@@ -52,7 +39,6 @@ final readonly class RefreshTheSamlMetadataHandler
         try {
             $tenant = $this->tenants->provide();
         } catch (TenantNotSynchronizedException) {
-            // before the first provisioning there is no tenant to serve, and a tick is not the place to say so
             return;
         }
         foreach (array_keys($this->refreshes->getProvidedServices()) as $role) {

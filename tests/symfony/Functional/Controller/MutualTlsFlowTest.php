@@ -12,17 +12,12 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * RFC 8705 end to end, through HTTP: a client authenticated by the certificate its connection proved
- * (§2.1), the tokens of that request bound to it (§3), and the provider's own resource refusing them to
- * anybody else (§3.2). The certificate reaches the application the way the edge hands it over
- * (architecture §6, issue #157): a server variable, filled by the listener that carried out the
- * handshake.
+ * RFC 8705 §2.1, §3, §3.2
  */
 final class MutualTlsFlowTest extends BrowserTestCase
 {
     /**
-     * RFC 8705 §2.1.2: the client registered the subject distinguished name of its certificate, and the
-     * certificate presented carries it.
+     * RFC 8705 §2.1.2
      */
     #[Test]
     public function aClientAuthenticatesWithTheCertificateItRegistered(): void
@@ -40,10 +35,6 @@ final class MutualTlsFlowTest extends BrowserTestCase
         static::assertIsString(self::json($response)['access_token']);
     }
 
-    /**
-     * The edge proved the chain; the provider judges the name. A certificate of the very same authority
-     * that names somebody else authenticates nobody.
-     */
     #[Test]
     public function anotherCertificateOfTheSameAuthorityIsRefused(): void
     {
@@ -61,8 +52,7 @@ final class MutualTlsFlowTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0006: a certificate a client wrote in a header is not a certificate, and the request says
-     * so instead of being served as one made without.
+     * Decision 0006
      */
     #[Test]
     public function aCertificateCarriedInAHeaderIsRefused(): void
@@ -84,8 +74,7 @@ final class MutualTlsFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8705 §3.1: the access token of that request carries the thumbprint of the certificate in its
-     * "cnf", which is what a resource server verifying it offline reads.
+     * RFC 8705 §3.1
      */
     #[Test]
     public function theSelfContainedTokenCarriesTheThumbprintOfTheCertificate(): void
@@ -107,8 +96,7 @@ final class MutualTlsFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8705 §3: a bound token is honoured by the client that presents its certificate again, and by
-     * nobody else, whichever shape the token has.
+     * RFC 8705 §3
      */
     #[Test]
     #[DataProvider('provideBoundClients')]
@@ -132,8 +120,7 @@ final class MutualTlsFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8705 §3.2: presented without that certificate, the same token is invalid_token. Whoever steals
-     * a bound token holds bytes that open nothing.
+     * RFC 8705 §3.2
      */
     #[Test]
     #[DataProvider('provideBoundClients')]
@@ -156,8 +143,7 @@ final class MutualTlsFlowTest extends BrowserTestCase
     }
 
     /**
-     * The two shapes of access token of architecture §4.6, each one registered by a client the provider
-     * recognises by its certificate.
+     * Architecture §4.6
      *
      * @return iterable<string, array{string, string}>
      */
@@ -175,10 +161,6 @@ final class MutualTlsFlowTest extends BrowserTestCase
         return self::string(self::json($this->browser->getResponse())['access_token'] ?? null);
     }
 
-    /**
-     * The code flow of a client the provider recognises by its certificate: the authorization request on
-     * the session the browser holds, then the code exchanged on a connection that presented one.
-     */
     private function exchangeTheCode(string $clientId, string $redirectUri, ClientCertificate $certificate): void
     {
         $code = $this->codeOf($clientId, $redirectUri);
@@ -197,8 +179,7 @@ final class MutualTlsFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8705 §2: the client names itself in the body and proves it with the certificate of the
-     * connection, which is the whole of what it sends.
+     * RFC 8705 §2
      *
      * @return array<string, string>
      */

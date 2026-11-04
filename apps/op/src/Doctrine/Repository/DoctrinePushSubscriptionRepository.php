@@ -17,10 +17,6 @@ use Beffroi\Core\Port\PushSubscriptionRepositoryInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The browsers of a user this provider may push to, in beffroi_push_subscription (architecture §3.1). A
- * browser is recognised by the digest of its endpoint, as the unique constraint of the table is: an
- * endpoint is as long as its push service decided, and comparing a digest compares the whole of it.
- *
  * @extends DoctrineRepository<PushSubscription>
  */
 final readonly class DoctrinePushSubscriptionRepository extends DoctrineRepository implements
@@ -33,8 +29,6 @@ final readonly class DoctrinePushSubscriptionRepository extends DoctrineReposito
     }
 
     /**
-     * A person holds a handful of these, so the page is taken of what the list above answers.
-     *
      * @return Listing<PushSubscription>
      */
     public function pageOfActiveSubscriptions(User $user, Pagination $pagination, ?Period $period = null): Listing

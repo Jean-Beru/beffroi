@@ -15,15 +15,6 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Twig\Environment;
 
-/**
- * One flow, drawn with what it exchanged (issue #462): the actors, the hops of the picture, and the
- * trace of the client that played it.
- *
- * Which client that is, is the one asked for, and the one that played the flow last otherwise: five
- * rungs of a ladder are five clients of one flow, each replayed on its own. A flow the demonstration
- * drives itself is played hop by hop from here; a flow that opens in a browser navigating away is
- * replayed from what this provider recorded while it happened.
- */
 #[AsController]
 final readonly class FlowController
 {

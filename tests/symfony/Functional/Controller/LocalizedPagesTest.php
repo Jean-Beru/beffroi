@@ -15,19 +15,12 @@ use Twig\Environment;
 use Twig\Error\RuntimeError;
 
 /**
- * Architecture §5.7: the pages of the interaction plane speak the language of the interaction, chosen
- * once on "/authorize" from "ui_locales" (OIDC Core §3.1.2.1), then "Accept-Language", then the default
- * of the deployment, recorded on the interaction and never put in a URL. Every word a user reads comes
- * from the "beffroi" catalogue, and a word the catalogue of the language lacks fails the test kernel.
+ * Architecture §5.7, OIDC Core §3.1.2.1
  */
 final class LocalizedPagesTest extends BrowserTestCase
 {
     private const string ENGLISH_BROWSER = 'en-US,en;q=0.9';
 
-    /**
-     * The acceptance criterion of #16: the choice of ui_locales=fr is recorded on the interaction, and
-     * the locale is not in the URL.
-     */
     #[Test]
     public function uiLocalesFrIsRecordedOnTheInteraction(): void
     {
@@ -51,10 +44,6 @@ final class LocalizedPagesTest extends BrowserTestCase
         static::assertSame('fr', $this->storedLocale($interaction));
     }
 
-    /**
-     * The acceptance criterion of #16: ui_locales=fr renders the login page in French, whatever the
-     * browser now says.
-     */
     #[Test]
     public function uiLocalesFrRendersTheLoginPageInFrench(): void
     {
@@ -72,9 +61,6 @@ final class LocalizedPagesTest extends BrowserTestCase
         static::assertCount(1, $crawler->selectButton('Se connecter'));
     }
 
-    /**
-     * A refused login is refused in French.
-     */
     #[Test]
     public function aRefusedLoginIsRefusedInTheLanguageOfTheInteraction(): void
     {
@@ -93,9 +79,6 @@ final class LocalizedPagesTest extends BrowserTestCase
         static::assertStringStartsWith('La connexion a échoué.', $crawler->filter('p[data-error]')->text());
     }
 
-    /**
-     * The consent page of the same interaction is French, the browser still asking for English.
-     */
     #[Test]
     public function theConsentPageSpeaksTheLanguageOfTheInteraction(): void
     {
@@ -131,8 +114,7 @@ final class LocalizedPagesTest extends BrowserTestCase
     }
 
     /**
-     * A ui_locales no enabled locale matches is skipped, not refused (§3.1.2.1 "SHOULD NOT" fail): the
-     * browser decides, a regional tag standing for its language.
+     * OIDC Core §3.1.2.1
      */
     #[Test]
     public function acceptLanguageDecidesWhenUiLocalesMatchesNothing(): void
@@ -157,9 +139,6 @@ final class LocalizedPagesTest extends BrowserTestCase
         static::assertSame('Connexion', $crawler->filter('h1')->text());
     }
 
-    /**
-     * Nothing asked, nothing matched: the default locale of the deployment.
-     */
     #[Test]
     public function theDefaultLocaleWhenNothingMatches(): void
     {
@@ -177,10 +156,6 @@ final class LocalizedPagesTest extends BrowserTestCase
         static::assertSame('native-app asks you to sign in.', $crawler->filter('main > p')->first()->text());
     }
 
-    /**
-     * A page shown without an interaction has nothing to record and nothing to read: the error page of
-     * a refused request speaks the language of the browser.
-     */
     #[Test]
     public function anErrorPageWithoutAnInteractionSpeaksTheLanguageOfTheBrowser(): void
     {
@@ -206,8 +181,7 @@ final class LocalizedPagesTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §4.1.2.1: on a refused authorization request the code stays a code and the description
-     * of the protocol stays what the developer of the client reads; the explanation is translated.
+     * RFC 6749 §4.1.2.1
      */
     #[Test]
     public function aRefusedAuthorizationRequestIsExplainedInTheLanguageOfTheBrowser(): void
@@ -236,8 +210,7 @@ final class LocalizedPagesTest extends BrowserTestCase
     }
 
     /**
-     * RP-Initiated Logout §2: the logout page speaks the "ui_locales" of the logout request, which the
-     * confirmation form carries over.
+     * RP-Initiated Logout §2
      */
     #[Test]
     public function theLogoutPageSpeaksTheUiLocalesOfTheLogoutRequest(): void
@@ -256,9 +229,6 @@ final class LocalizedPagesTest extends BrowserTestCase
         static::assertStringContainsString('Demo application demande à vous déconnecter.', $crawler->filter('p[data-reason]')->text());
     }
 
-    /**
-     * The answer to the confirmation form is read in the same language.
-     */
     #[Test]
     public function theAnswerToTheLogoutFormSpeaksTheSameLanguage(): void
     {
@@ -274,9 +244,6 @@ final class LocalizedPagesTest extends BrowserTestCase
         static::assertSame('Session toujours ouverte', $crawler->filter('[data-logged-out="no"]')->text());
     }
 
-    /**
-     * Without ui_locales, the browser says, on every request as a browser does.
-     */
     #[Test]
     public function withoutUiLocalesTheLogoutPagesSpeakTheLanguageOfTheBrowser(): void
     {
@@ -310,10 +277,6 @@ final class LocalizedPagesTest extends BrowserTestCase
         static::assertSame('Session fermée', $crawler->filter('[data-logged-out="yes"]')->text());
     }
 
-    /**
-     * The catalogue of every enabled locale defines the keys of the pages, a regional locale falling
-     * back on its language.
-     */
     #[Test]
     #[DataProvider('provideTranslations')]
     public function theCatalogueTranslatesTheKeysOfThePages(string $locale, string $translation): void
@@ -337,10 +300,6 @@ final class LocalizedPagesTest extends BrowserTestCase
         yield 'fr_CA' => ['fr_CA', 'Connexion'];
     }
 
-    /**
-     * The test kernel fails on a missing translation (the acceptance criterion of #16): a key the
-     * catalogue of the language does not define is an error, even when the default locale defines it.
-     */
     #[Test]
     public function theTestKernelFailsOnAMissingTranslation(): void
     {
@@ -359,9 +318,6 @@ final class LocalizedPagesTest extends BrowserTestCase
         }
     }
 
-    /**
-     * An interaction of the native client asked in French by a browser that speaks English.
-     */
     private function frenchInteraction(): string
     {
         $this->browser->request(
@@ -378,9 +334,6 @@ final class LocalizedPagesTest extends BrowserTestCase
         return self::redirectedInteraction($this->browser->getResponse());
     }
 
-    /**
-     * The logout page asked in French by oidc-demo, from a browser that speaks English.
-     */
     private function frenchLogoutPage(): Crawler
     {
         return $this->browser->request(

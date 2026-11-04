@@ -9,12 +9,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * Issue #907: what a page of the account reads, it reads in an order, and doctrine/orm deprecates an order
- * whose direction its query builder is handed as a string rather than as a \SortDirection. A deployment reads
- * that deprecation on its "deprecation" channel, where a process writes it the first time it orders a query
- * that way. The browser of these tests is signed in.
- */
 final class ThePagesOfTheAccountRaiseNoDeprecationTest extends BrowserTestCase
 {
     protected function setUp(): void

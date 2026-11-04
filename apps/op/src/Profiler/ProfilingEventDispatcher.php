@@ -11,11 +11,6 @@ use function implode;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use const DATE_ATOM;
 
-/**
- * The events the core announced while the request was served (architecture §3.5), on their way to the
- * bus. What the panel shows of one is its name and when it happened: an event carries the tenant, the
- * user and the context of the request, and none of that belongs on a page a developer leaves open.
- */
 final readonly class ProfilingEventDispatcher implements EventDispatcherInterface
 {
     public function __construct(
@@ -34,10 +29,6 @@ final readonly class ProfilingEventDispatcher implements EventDispatcherInterfac
         return $this->events->dispatch($event);
     }
 
-    /**
-     * The class without its namespace, which is what the core calls the event; two events of the same
-     * name in two namespaces would be two rows saying the same thing, and there are none.
-     */
     private static function nameOf(object $event): string
     {
         $parts = explode('\\', $event::class);

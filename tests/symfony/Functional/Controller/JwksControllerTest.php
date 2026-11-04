@@ -8,8 +8,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * RFC 7517 §5 and architecture §4.8: the published keys, cacheable once there is one, never while there
- * is none; across a rotation (OIDC Core §10.1.1, architecture §3.3), the set a relying party sees.
+ * RFC 7517 §5, OIDC Core §10.1.1, Architecture §4.8, §3.3
  */
 final class JwksControllerTest extends BrowserTestCase
 {
@@ -42,8 +41,7 @@ final class JwksControllerTest extends BrowserTestCase
     }
 
     /**
-     * The lifetime is the one configured, "beffroi.keys.jwks_max_age", two minutes in this kernel: the same
-     * value the staging window of a rotation derives from (architecture §3.3).
+     * Architecture §3.3
      */
     #[Test]
     public function thePublishedKeysAreCacheableForTheConfiguredTime(): void
@@ -86,8 +84,7 @@ final class JwksControllerTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §10.1.1: during the retirement window, the key that signed and the one that signs are
-     * both served, in creation order.
+     * OIDC Core §10.1.1
      */
     #[Test]
     public function aRotationPublishesTheRetiringAndTheActiveKeyInCreationOrder(): void
@@ -104,7 +101,7 @@ final class JwksControllerTest extends BrowserTestCase
     }
 
     /**
-     * §10.1.1: the new key is published before it signs, after the ones that came before it.
+     * OIDC Core §10.1.1
      */
     #[Test]
     public function aStagedKeyIsPublishedBeforeItSigns(): void
@@ -121,8 +118,7 @@ final class JwksControllerTest extends BrowserTestCase
     }
 
     /**
-     * Every key of the set says what it is for and with what (RFC 7517 §4.2, §4.4, §4.5), whatever its
-     * place in the lifecycle.
+     * RFC 7517 §4.2, §4.4, §4.5
      */
     #[Test]
     public function everyPublishedKeyCarriesItsKidUseAndAlg(): void
@@ -148,7 +144,7 @@ final class JwksControllerTest extends BrowserTestCase
     }
 
     /**
-     * A retired key leaves the set: a token naming it is refused from then on (architecture §3.3).
+     * Architecture §3.3
      */
     #[Test]
     public function aRetiredKeyLeavesTheSet(): void
@@ -166,7 +162,7 @@ final class JwksControllerTest extends BrowserTestCase
     }
 
     /**
-     * @return list<string> the "kid" of every key served, in the order served
+     * @return list<string> in the order served
      */
     private function publishedKids(): array
     {

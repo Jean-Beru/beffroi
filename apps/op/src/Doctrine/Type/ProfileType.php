@@ -7,13 +7,6 @@ namespace App\Doctrine\Type;
 use Beffroi\Core\Domain\Identity\Profile;
 
 /**
- * What a person says of themselves, the thirteen claims of OIDC Core §5.1 the profile of a user holds, as
- * one JSON column.
- *
- * It names no claim and no field, and neither does the document: the profile writes itself out of its own
- * properties and reads itself back through its constructor (`Profile::toDocument()`), so a claim added to
- * that object is a claim this column carries without a line here.
- *
  * @extends JsonObjectType<Profile>
  */
 final class ProfileType extends JsonObjectType

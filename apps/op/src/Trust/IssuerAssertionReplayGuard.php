@@ -13,13 +13,9 @@ use Beffroi\Oidc\Port\IssuerAssertionReplayGuardInterface;
 use function sprintf;
 
 /**
- * The "jti" of the assertions a trusted issuer has already had exchanged (RFC 7523 §3), so that one assertion
- * is exchanged once. What makes a "jti" unique is all this says; remembering it once is SeenOnce's, with the
- * caveat that goes with a pool.
+ * RFC 7523 §3
  *
- * It has a pool of its own and shares none with the assertions that authenticate a client: an assertion
- * remembered as an authorization must not be able to satisfy the guard of an authentication or the other way
- * round (RFC 7523 §2.1).
+ * Its pool is its own, so that a grant and a client authentication never satisfy each other's guard.
  */
 final readonly class IssuerAssertionReplayGuard implements IssuerAssertionReplayGuardInterface
 {
@@ -34,8 +30,7 @@ final readonly class IssuerAssertionReplayGuard implements IssuerAssertionReplay
     }
 
     /**
-     * Per tenant and per issuer: RFC 7523 §3 makes a "jti" unique to the issuer of the assertion, and two
-     * issuers may use the same one, as may the same issuer for two tenants.
+     * A "jti" is unique per issuer only (RFC 7523 §3), and an issuer may serve two tenants.
      */
     private static function key(Tenant $tenant, TrustedIssuer $issuer, string $jti): string
     {

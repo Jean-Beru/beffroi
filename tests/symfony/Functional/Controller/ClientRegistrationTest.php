@@ -19,9 +19,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 7591, decision 0009: the registration endpoint in the mode built first, a client authorised by an
- * initial access token the tenant issued. A client that registers this way is a client: it signs in end
- * to end and is refused everything a declared one is refused.
+ * RFC 7591, Decision 0009
  */
 final class ClientRegistrationTest extends BrowserTestCase
 {
@@ -30,8 +28,7 @@ final class ClientRegistrationTest extends BrowserTestCase
     private const string REDIRECT_URI = 'https://registered.test/callback';
 
     /**
-     * RFC 7591 §3.2.1: the identifier the provider drew, the date it drew it on, and the metadata it
-     * registered.
+     * RFC 7591 §3.2.1
      */
     #[Test]
     public function aClientThatPresentsATokenOfTheTenantIsRegistered(): void
@@ -52,8 +49,7 @@ final class ClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7591 §3.2.1: the provider assigns a secret when, and only when, the method the client
-     * registered proves one.
+     * RFC 7591 §3.2.1
      */
     #[Test]
     public function aClientWhoseMethodProvesASecretIsHandedOne(): void
@@ -88,9 +84,7 @@ final class ClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7591 §2: a client that registers nothing beyond its redirection URI takes the defaults of the
-     * specification, and the row it was written to is read back through the reader every registration
-     * goes through.
+     * RFC 7591 §2
      */
     #[Test]
     public function theRegisteredClientIsResolvedLikeAnyOther(): void
@@ -114,8 +108,7 @@ final class ClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §3.1: the code flow for a client that existed nowhere a moment earlier, with no restart
-     * and no cache to clear.
+     * OIDC Core §3.1
      */
     #[Test]
     public function aClientThatRegisteredItselfSignsAUserInEndToEnd(): void
@@ -154,8 +147,7 @@ final class ClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0006: whoever does not hold a token of this tenant learns nothing about the one they
-     * presented, so the five refusals are one refusal.
+     * Decision 0006
      */
     #[Test]
     #[DataProvider('provideUnauthorizedRequests')]
@@ -193,7 +185,7 @@ final class ClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7591 §1.2: a token worth one registration registers one.
+     * RFC 7591 §1.2
      */
     #[Test]
     public function aTokenWorthOneRegistrationServesOne(): void
@@ -210,9 +202,8 @@ final class ClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7591 §3.2.2: a member that does not hold is a 400 naming the error the refusal answers for.
-     */
-    /**
+     * RFC 7591 §3.2.2
+     *
      * @param array<string, mixed> $members
      */
     #[Test]
@@ -365,8 +356,7 @@ final class ClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7591 §3.1: the body is a JSON object whose members are the metadata; anything else carries no
-     * metadata at all.
+     * RFC 7591 §3.1
      */
     #[Test]
     public function aBodyThatIsNoJsonObjectCarriesNoMetadata(): void
@@ -395,9 +385,7 @@ final class ClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0009: a client that registered itself gets nothing a declared client does not get, and is
-     * refused what a declared client is refused. The same request is made of both, and the two answers
-     * are the same answer.
+     * Decision 0009
      */
     #[Test]
     public function aRegisteredClientIsRefusedWhatADeclaredClientIsRefused(): void
@@ -417,9 +405,6 @@ final class ClientRegistrationTest extends BrowserTestCase
         static::assertSame('invalid_scope', $registered['error'] ?? null);
     }
 
-    /**
-     * The tenant of the tests announces where a client registers, because its policy registers clients.
-     */
     #[Test]
     public function theDocumentAnnouncesWhereAClientRegisters(): void
     {
@@ -482,8 +467,7 @@ final class ClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §3.3: a scope the client did not register is not its to ask for, and what comes back is a
-     * redirection carrying the refusal.
+     * RFC 6749 §3.3
      *
      * @return array<string, string>
      */

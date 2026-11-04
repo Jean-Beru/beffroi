@@ -12,11 +12,7 @@ use Doctrine\DBAL\Types\Type;
 use function is_string;
 
 /**
- * Raw bytes (a credential ID, a COSE key) in a text column as base64url without padding (RFC 4648 §5):
- * readable in a row, indexable, and never a stream, which is what the binary types of DBAL hand back.
- *
- * The alphabet is the core's (Base64Url), which is also what the document a person downloads writes those
- * same bytes in: what a column holds and what an archive says of it are one encoding.
+ * Bytes as unpadded base64url text (RFC 4648 §5), where the binary types of DBAL would hand back a stream.
  */
 final class BytesType extends Type
 {
@@ -27,9 +23,6 @@ final class BytesType extends Type
         return Base64Url::encode($bytes);
     }
 
-    /**
-     * Null when the text is not base64url.
-     */
     public static function decode(string $encoded): ?string
     {
         return Base64Url::decode($encoded);

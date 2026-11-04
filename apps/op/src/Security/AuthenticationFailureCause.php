@@ -12,10 +12,7 @@ use Symfony\Component\Security\Core\Exception\UserNotFoundException;
 use Throwable;
 
 /**
- * What the firewall refused a login for, read from the chain of causes rather than from the exception
- * it wrapped it in: Symfony reports a refusal under the exception of the authenticator, and what
- * happened is behind it. The reasons named here are the ones every login shares, so every login reads
- * them here and names beside them only what is its own.
+ * Reads the chain of causes: Symfony reports a refusal under the exception of the authenticator.
  */
 final readonly class AuthenticationFailureCause
 {

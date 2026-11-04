@@ -12,14 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * RFC 8693 over HTTP, end to end, and the chain the interoperability of this spike is judged on (issue
- * #228): a service asks the token endpoint for itself (RFC 6749 §4.4), a gateway exchanges that token to
- * act on its behalf, and what a resource server reads of the result is what the introspection endpoint
- * says of it: the subject is still the service, and "act" names the gateway.
- *
- * The walk of the lab (`castor demo --service`) plays the same chain against the running stack with a
- * Symfony resource server at the end of it; this is the provider's own side of it, on the test kernel, so
- * that what the walk drives is already known to answer.
+ * RFC 8693, RFC 6749 §4.4
  */
 final class TokenExchangeFlowTest extends BrowserTestCase
 {
@@ -46,9 +39,7 @@ final class TokenExchangeFlowTest extends BrowserTestCase
     private const string ACCESS_TOKEN_TYPE = 'urn:ietf:params:oauth:token-type:access_token';
 
     /**
-     * RFC 8693 §2.2.1: the new token is about the same subject, and "act" says who holds it for that
-     * subject. The gateway never becomes the subject: that is what tells a delegation from an
-     * impersonation (§1.3).
+     * RFC 8693 §2.2.1, §1.3
      */
     #[Test]
     public function theExchangedTokenNamesTheServiceAndTheGatewayThatActsForIt(): void
@@ -75,7 +66,7 @@ final class TokenExchangeFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8693 §2.2.1: the response says what it issued, and it is an access token of this provider.
+     * RFC 8693 §2.2.1
      */
     #[Test]
     public function theExchangeSaysWhatItIssued(): void
@@ -95,8 +86,7 @@ final class TokenExchangeFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8707 §2.2, RFC 8693 §2.1: nothing widens. The exchanged token is addressed to the resource the
-     * exchange named, which is one of those the presented token was addressed to and no other.
+     * RFC 8707 §2.2, RFC 8693 §2.1
      */
     #[Test]
     public function theExchangeIsRefusedForAResourceThePresentedTokenWasNotAddressedTo(): void
@@ -114,9 +104,7 @@ final class TokenExchangeFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7662 §2.2, RFC 8693 §4.1: the introspection of the exchanged token says the same thing the
-     * self-contained one carries, so a resource server learns through whom it was reached whichever shape
-     * it holds. It is the one place a resource server can read "act" at all when the token is opaque.
+     * RFC 7662 §2.2, RFC 8693 §4.1
      */
     #[Test]
     public function theIntrospectionOfTheExchangedTokenNamesTheActor(): void
@@ -150,9 +138,7 @@ final class TokenExchangeFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8693 §4.4: who may act for the subject of a token is what the registration of the client that
-     * holds it says, and it is written on the token so that a resource server verifying it offline reads
-     * the rule the provider applies.
+     * RFC 8693 §4.4
      */
     #[Test]
     public function theTokenOfTheServiceSaysWhoMayActForIt(): void
@@ -170,8 +156,7 @@ final class TokenExchangeFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8693 §2.1: what a client may present is a closed list on its registration, so a service that
-     * registered no exchange at all cannot exchange the token it holds, whatever that token says.
+     * RFC 8693 §2.1
      */
     #[Test]
     public function aClientThatRegisteredNoExchangeCannotExchangeAToken(): void
@@ -200,10 +185,7 @@ final class TokenExchangeFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §3.3, RFC 8707 §2, RFC 6749 §5.2: what an exchange hands a gateway stays within what that
-     * gateway registered. A presented token may carry more, the client it was issued to having registered
-     * more, and a request that takes it all by naming nothing is answered with the error of the protocol for
-     * what goes beyond, never with a server error.
+     * RFC 6749 §3.3, RFC 8707 §2, RFC 6749 §5.2
      *
      * @param array<string, string> $parameters
      */
@@ -253,8 +235,7 @@ final class TokenExchangeFlowTest extends BrowserTestCase
     }
 
     /**
-     * The token a service holds for itself (RFC 6749 §4.4), addressed to the resource the exchange will
-     * narrow to.
+     * RFC 6749 §4.4
      */
     private function serviceToken(): string
     {
@@ -262,7 +243,7 @@ final class TokenExchangeFlowTest extends BrowserTestCase
     }
 
     /**
-     * The token a client holds for itself (RFC 6749 §4.4), addressed to the resource the exchange narrows to.
+     * RFC 6749 §4.4
      */
     private function clientToken(string $clientId, string $secret): string
     {
@@ -284,9 +265,7 @@ final class TokenExchangeFlowTest extends BrowserTestCase
     }
 
     /**
-     * The token a service holds for itself (RFC 6749 §4.4) for everything it registered, both scopes and both
-     * resources, which is more than the gateway that acts for a person registered: one scope of the two and
-     * one resource of the two.
+     * RFC 6749 §4.4
      */
     private function tokenOfTheWholeRegistrationOfAService(): string
     {
@@ -313,9 +292,7 @@ final class TokenExchangeFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8693 §2.1: the exchange of a delegation presents two tokens, the one it acts for and the one that
-     * says who acts. The second is a token of the gateway itself, which is why it asks for one by
-     * client_credentials before exchanging anything.
+     * RFC 8693 §2.1
      */
     private function exchange(string $subjectToken, string $resource = self::CALENDAR): void
     {
@@ -335,9 +312,6 @@ final class TokenExchangeFlowTest extends BrowserTestCase
         );
     }
 
-    /**
-     * The token the gateway holds for itself, which it presents as the "actor_token" of the exchange.
-     */
     private function gatewayToken(): string
     {
         return $this->clientToken(self::GATEWAY_ID, self::GATEWAY_SECRET);

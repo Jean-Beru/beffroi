@@ -31,8 +31,7 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Sessions in beffroi_authentication_session (architecture §3.2, §3.4). A DQL parameter that is an
- * identifier names its type: the ORM would infer a string from a Uuid.
+ * A DQL parameter that is an identifier names its type: the ORM would infer a string from a Uuid.
  *
  * @extends DoctrineRepository<AuthenticationSession>
  */
@@ -52,23 +51,8 @@ final readonly class DoctrineAuthenticationSessionRepository extends DoctrineRep
     }
 
     /**
-     * A session outlives itself (issue #177). It is not kept because somebody may sign in on it again, a
-     * session that ended or expired being over for good, but because an access token somebody signed in for
-     * names it, and a resource server asks this row whether the session it descends from was ended
-     * (AccessTokenInspector): dropping it turns a token this provider would have answered for into a token
-     * it refuses. So it waits what a token still needs, counted from the instant it stopped being able to
-     * grant anything.
-     *
-     * **The expiry and not the end.** A session that was ended early stopped granting then, but its expiry
-     * is the later of the two and the only one an index reads, and nothing but a longer wait follows from
-     * taking it.
-     *
-     * **What cascades off it is worth nothing by then.** The authorization codes, the refresh tokens and the
-     * access tokens of a login name this row under a foreign key that cascades, so dropping it drops them.
-     * A code of the last minute of a session has its own instant up to a code lifetime after this one, and
-     * the cascade takes it that much early; by then the lineage it granted is over, its own absolute expiry
-     * being counted from an issuance inside the session, and no access token of its grant can be presented
-     * either. So the cascade only ever reaches rows nothing could have read again.
+     * Kept past its expiry for as long as a token may still name it: AccessTokenInspector asks this row whether the
+     * session was ended, and a row dropped earlier refuses a token that still holds.
      */
     public function forgetWhatIsDead(Tenant $tenant, DateTimeImmutable $now, int $limit): int
     {
@@ -97,9 +81,7 @@ final readonly class DoctrineAuthenticationSessionRepository extends DoctrineRep
     }
 
     /**
-     * One column of one row, the subject of the person the session names, which stays in the clear (decision
-     * 0011). A scalar read loads neither the session nor the person, so nothing either of them seals is opened,
-     * where reading the session would open its columns and those of the person it is loaded with.
+     * A scalar read: loading the session would open its sealed columns and those of its person.
      */
     public function of(Uuid $session): Subject
     {
@@ -116,8 +98,7 @@ final readonly class DoctrineAuthenticationSessionRepository extends DoctrineRep
     }
 
     /**
-     * The sessions of this person are a handful: they end and they expire, where a journal grows without
-     * end, so the page is taken of what the query above answers and not of the table.
+     * Paged in memory: the active sessions of one person are a handful.
      *
      * @return Listing<AuthenticationSession>
      */
@@ -144,10 +125,6 @@ final readonly class DoctrineAuthenticationSessionRepository extends DoctrineRep
         return $this->unendedOf($user)->getQuery()->getResult();
     }
 
-    /**
-     * The sessions of one person that nothing has ended, in the order they were opened: an active session is one of
-     * them that has not expired either.
-     */
     private function unendedOf(User $user): QueryBuilder
     {
         return $this->queryBuilder('s')

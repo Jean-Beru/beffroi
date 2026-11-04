@@ -8,14 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * When somebody last used a client this provider registered (decision 0009), and the index the timed step
- * that drops the clients nobody uses any more reads it by.
- *
- * The column is nullable, and null is not a missing value here: it is a client that has never been used,
- * which is not kept for as long as one used long ago. A client registered before the column existed is
- * therefore read as never used, which is what it looks like from the rows: nothing recorded a use of it.
- */
 final class Version20260930120000 extends AbstractMigration
 {
     public function getDescription(): string

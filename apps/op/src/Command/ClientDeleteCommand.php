@@ -13,16 +13,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * A client that registered itself goes away, by hand (decision 0009). It is the same removal as the
- * `DELETE` of RFC 7592 §2.3 and as the timed step that drops a client nobody uses
- * (`RegisteredClientRemoval`), so the row goes the same way and one event says a client is gone
- * whichever way it went.
- *
- * A client the deployment declared is refused rather than removed, and the refusal says where it lives:
- * a declaration goes away when its block does, and a command that took one out of a running process
- * would put it back at the next boot.
- */
 #[AsCommand(
     name: self::NAME,
     description: 'Delete a client that registered itself; a client declared in the configuration is refused.',

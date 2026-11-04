@@ -10,11 +10,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * The script of the password meter (architecture §5.2): what the page where a person poses a password runs
- * to tell them, as they type, how hard it would be to guess. It asks nobody anything and the refusal is
- * the server's.
- */
 #[AsController]
 final readonly class PasswordStrengthScriptController
 {

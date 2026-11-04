@@ -17,8 +17,7 @@ use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
 /**
- * Architecture §5.5: the list of passkey providers the community keeps, downloaded by hand, read as that list
- * and stored; a list refused keeps nothing and leaves the stored one as it was.
+ * Architecture §5.5
  */
 final class WebauthnAaguidsRefreshCommandTest extends TestCase
 {
@@ -80,10 +79,6 @@ final class WebauthnAaguidsRefreshCommandTest extends TestCase
         static::assertSame(['https://mirror.example/aaguid.json'], $requests);
     }
 
-    /**
-     * The README of the list says a retired list becomes an empty object: it is no reason to forget the names
-     * the deployment holds.
-     */
     #[Test]
     public function anEmptyListIsRefusedAndTheStoredOneStays(): void
     {
@@ -120,7 +115,7 @@ final class WebauthnAaguidsRefreshCommandTest extends TestCase
     }
 
     /**
-     * Decision 0006: no outbound request follows a redirect; the URL the service redirects to is named.
+     * Decision 0006
      */
     #[Test]
     public function aServiceThatRedirectsIsRefusedWithTheUrlItNames(): void

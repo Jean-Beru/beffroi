@@ -19,20 +19,14 @@ use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 
 /**
- * beffroi/saml, spec/saml.md S-28, "The plane": the answer to a request of the interaction plane that a browser sent from
- * another site, by a method other than GET or HEAD and without the session cookie, carries no session cookie, and every
- * other cookie it was given; any other request keeps the session cookie its answer was given.
+ * spec/saml.md S-28, "The plane"
  */
 final class CrossSiteSessionCookieTest extends TestCase
 {
-    /**
-     * The name the storage of these tests gives the session.
-     */
     private const string SESSION = 'MOCKSESSID';
 
     /**
-     * S-28, S-32: the session cookie is taken off by its name, the cookie of a chain of logout, "SameSite=None", which
-     * an answer posted from the site of a service provider moves on, left as it was given.
+     * S-28, S-32
      */
     #[Test]
     public function theSessionCookieAloneIsTakenOff(): void
@@ -48,9 +42,7 @@ final class CrossSiteSessionCookieTest extends TestCase
     }
 
     /**
-     * S-28, "The plane": a request a cookie set "SameSite=Lax" accompanies, or that says it does not come from another
-     * site, or that a browser sent with the session cookie, keeps the session cookie of its answer; so does a request
-     * outside the interaction plane.
+     * S-28, "The plane"
      */
     #[Test]
     #[DataProvider('provideRequestsThatKeepTheirSessionCookie')]
@@ -78,8 +70,7 @@ final class CrossSiteSessionCookieTest extends TestCase
     }
 
     /**
-     * S-28: a request of any method but GET and HEAD, from another site, without the session cookie, is one the cookie
-     * did not accompany.
+     * S-28
      */
     #[Test]
     #[DataProvider('provideMethodsLaxKeepsTheCookieFrom')]
@@ -99,9 +90,6 @@ final class CrossSiteSessionCookieTest extends TestCase
         yield 'DELETE' => ['DELETE'];
     }
 
-    /**
-     * A request to the provider, with a session whose cookie it carries when $withTheCookie.
-     */
     private static function request(string $method, ?string $site, bool $withTheCookie = false): Request
     {
         $request = Request::create(
@@ -117,10 +105,6 @@ final class CrossSiteSessionCookieTest extends TestCase
         return $request;
     }
 
-    /**
-     * The answer of $route to $request, given the cookie of a session and the cookie of a chain of logout, once the
-     * listener ran.
-     */
     private static function answered(Request $request, string $route): Response
     {
         $request->attributes->set('_route', $route);

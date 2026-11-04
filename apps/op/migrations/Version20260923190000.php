@@ -8,11 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * Which pushed authorization request an interaction was started from (RFC 9126 §4). The reference is
- * spent when the request it carries is granted and not when the authorization endpoint reads it
- * (FAPI 2.0 Security Profile §5.3.1), so the interaction has to remember which record to spend.
- */
 final class Version20260923190000 extends AbstractMigration
 {
     public function getDescription(): string

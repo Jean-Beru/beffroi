@@ -8,27 +8,16 @@ use Beffroi\Oidc\Domain\Client\Certificate\ClientCertificate;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * The certificate read from what the edge proves (architecture §5.2): a server variable the TLS
- * listener fills from the handshake it carried out itself, never a header.
- *
- * The difference is the whole rule of decision 0006. A client controls every header of its request and
- * no variable of the process that serves it: a client sending "Ssl-Client-Cert" reaches PHP as
- * HTTP_SSL_CLIENT_CERT, which nothing here reads, while SSL_CLIENT_CERT exists only where the
- * configuration of the listener puts it. A request that carries one of those headers all the same is
- * somebody trying, and is refused rather than served without its certificate, so that a deployment put
- * behind a proxy that forwards one says so on the first request instead of trusting it silently.
+ * Reads SSL_CLIENT_CERT, which only the TLS listener sets, never a header: a client's "Ssl-Client-Cert" reaches PHP
+ * as HTTP_SSL_CLIENT_CERT (decision 0006).
  */
 final readonly class EdgeClientCertificateResolver implements ClientCertificateResolverInterface
 {
     /**
-     * The variable the listener fills with the leaf, named after mod_ssl's SSL_CLIENT_CERT and nginx's
-     * $ssl_client_cert, in the PEM envelope both of them use.
+     * The leaf, in the PEM envelope of mod_ssl's SSL_CLIENT_CERT and nginx's $ssl_client_cert.
      */
     public const string VARIABLE = 'SSL_CLIENT_CERT';
 
-    /**
-     * The headers proxies carry a client certificate in. None of them is read; each of them is refused.
-     */
     public const array REFUSED_HEADERS = [
         'ssl-client-cert',
         'x-ssl-client-cert',

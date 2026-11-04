@@ -12,11 +12,7 @@ use function rawurlencode;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * RFC 8707: the "resource" parameter over HTTP, end to end. A client registered for two resources asks
- * its tokens for one of them or for both, at the authorization endpoint and again at the token endpoint,
- * and the access token is addressed to what was asked: in an "at+jwt" for the client registered for one,
- * in the introspection of the opaque token for the client registered for the other. One step per test,
- * on the test kernel, the "resource-app" and "resource-opaque-app" clients of its configuration.
+ * RFC 8707
  */
 final class ResourceIndicatorFlowTest extends BrowserTestCase
 {
@@ -37,8 +33,7 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
     private const string CONTACTS = 'https://contacts.example.com/';
 
     /**
-     * RFC 8707 §2, RFC 9068 §2.2: the token is addressed to the resource it was asked for, and
-     * "client_id" goes on naming the client.
+     * RFC 8707 §2, RFC 9068 §2.2
      */
     #[Test]
     public function theAccessTokenIsAddressedToTheResourceItWasAskedFor(): void
@@ -58,8 +53,7 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8707 §2.1: "resource" may be sent several times, and RFC 7519 §4.1.3 writes several audiences
-     * as a list.
+     * RFC 8707 §2.1, RFC 7519 §4.1.3
      */
     #[Test]
     public function aRequestThatNamesTwoResourcesGetsATokenAddressedToBoth(): void
@@ -76,8 +70,7 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8707 §2: a request that names no resource asks for nothing beyond the provider itself, and
-     * its token is addressed to the client, which is what every client of OpenID Connect gets.
+     * RFC 8707 §2
      */
     #[Test]
     public function aRequestThatNamesNoResourceGetsATokenAddressedToItsClient(): void
@@ -94,8 +87,7 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7662 §2.2, RFC 8707 §2: the introspection of an opaque token says what the "aud" of a
-     * self-contained one would, so that a resource server learns the same thing from either shape.
+     * RFC 7662 §2.2, RFC 8707 §2
      */
     #[Test]
     public function theIntrospectionOfAnOpaqueTokenSaysWhatItIsAddressedTo(): void
@@ -123,8 +115,7 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8707 §2: a resource the client did not register, a relative URI and a URI with a fragment are
-     * each "invalid_target", which reaches the client at its redirect URI.
+     * RFC 8707 §2
      */
     #[Test]
     #[DataProvider('provideRefusedResources')]
@@ -155,7 +146,7 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8707 §2.2: a token request narrows the resources of the authorization it spends.
+     * RFC 8707 §2.2
      */
     #[Test]
     public function aTokenRequestNarrowsTheResourcesOfTheAuthorization(): void
@@ -174,7 +165,7 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8707 §2.2: and never widens them, even towards a resource the client is registered for.
+     * RFC 8707 §2.2
      */
     #[Test]
     public function aTokenRequestThatNamesAResourceTheAuthorizationDoesNotCarryIsRefused(): void
@@ -194,10 +185,7 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8707 §2.1: "resource" may be sent several times, at the token endpoint as at the authorization
-     * endpoint, and both values are read: the token endpoint reads a raw parameter the one way the whole
-     * module reads one. The audience follows the order the token request named them, which is not the
-     * order the authorization carries, so it is the request that was read and not the grant.
+     * RFC 8707 §2.1
      */
     #[Test]
     public function aTokenRequestNamesAResourceTwiceAndBothAreRead(): void
@@ -223,8 +211,7 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §3.1: every other parameter is single, and one the token endpoint receives twice is
-     * "invalid_request" rather than read as whichever occurrence PHP kept.
+     * RFC 6749 §3.1
      */
     #[Test]
     public function aParameterTheSpecificationSaysIsSingleIsRefusedWhenItIsSentTwice(): void
@@ -250,8 +237,7 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8707 §2.2: the refresh token is bound to the full original grant, so a refresh may ask for
-     * the resource the access token beside it was not narrowed to.
+     * RFC 8707 §2.2
      */
     #[Test]
     public function aRefreshAsksForAResourceTheNarrowedAccessTokenDidNotCarry(): void
@@ -283,8 +269,7 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9126 §2, RFC 8707 §2.1: a request pushed to /par is read by the very parser the authorization
-     * endpoint reads with, so the resources it names travel with the record and reach the token.
+     * RFC 9126 §2, RFC 8707 §2.1
      */
     #[Test]
     public function aPushedRequestCarriesTheResourcesItNames(): void
@@ -323,9 +308,7 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8707 §2: a token addressed to a resource opens nothing of the provider itself, the UserInfo
-     * endpoint included; a client that comes for the claims of its user asks for a token naming no
-     * resource.
+     * RFC 8707 §2
      */
     #[Test]
     public function aTokenAddressedToAResourceOpensNothingOfTheProvider(): void
@@ -347,8 +330,7 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9728 §4: the document enumerates the resources the clients of the tenant registered, so that
-     * a client knows which "resource" values exist at all.
+     * RFC 9728 §4
      */
     #[Test]
     public function theDocumentEnumeratesTheResourcesOfTheTenant(): void
@@ -361,9 +343,6 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
     }
 
     /**
-     * The authorization request of the resource client, with the resources named once each; a repeated
-     * parameter is written by hand, an array of query parameters being unable to carry one.
-     *
      * @param list<string> $resources
      */
     private function authorizationUri(array $resources, string $clientId = self::CLIENT_ID, string $redirectUri = self::REDIRECT_URI): string
@@ -379,9 +358,6 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
     }
 
     /**
-     * The code the resource client gets once alice signed in, the request having asked for the
-     * resources given.
-     *
      * @param list<string> $resources
      */
     private function codeAskedFor(array $resources, string $clientId = self::CLIENT_ID, string $redirectUri = self::REDIRECT_URI): string
@@ -417,11 +393,10 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
     }
 
     /**
-     * A form body written by hand, which is the only way to send a name twice over HTTP: PHP keeps the
-     * last occurrence of a repeated name and says nothing of the others.
+     * A body written by hand: an array of parameters cannot repeat a name.
      *
-     * @param array<string, string> $parameters the names the body carries once
-     * @param string $repeated what it carries besides them, already encoded
+     * @param array<string, string> $parameters
+     * @param string $repeated already encoded
      */
     private function post(string $uri, array $parameters, string $repeated): void
     {
@@ -439,9 +414,6 @@ final class ResourceIndicatorFlowTest extends BrowserTestCase
     }
 
     /**
-     * The token request of the resource client, the body written by hand so that a "resource" it names
-     * twice reaches the endpoint as the two values it is.
-     *
      * @param array<string, string|list<string>> $parameters
      */
     private function exchange(string $code, array $parameters = []): void

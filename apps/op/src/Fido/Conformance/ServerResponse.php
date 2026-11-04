@@ -10,10 +10,6 @@ use const JSON_THROW_ON_ERROR;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * The envelope every answer of the FIDO2 server API wears (FIDO Conformance Tools, "ServerResponse"): a
- * status of "ok" or "failed" and an error message, empty on success, next to what the endpoint returns.
- */
 final readonly class ServerResponse
 {
     /**
@@ -28,9 +24,6 @@ final readonly class ServerResponse
         ]);
     }
 
-    /**
-     * The options of a ceremony, as the ceremonies serialise them for a browser, in the envelope.
-     */
     public static function options(string $optionsJson): JsonResponse
     {
         $options = json_decode($optionsJson, true, 16, JSON_THROW_ON_ERROR);

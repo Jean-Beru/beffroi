@@ -32,8 +32,7 @@ use function uniqid;
 use Webauthn\MetadataService\CertificateChain\PhpCertificateChainValidator;
 
 /**
- * Architecture §5.5: the FIDO metadata refreshed by hand from the service and verified under the pinned
- * root, a statement of a manufacturer or of the conformance tools imported as it is.
+ * Architecture §5.5
  */
 final class WebauthnMdsCommandsTest extends TestCase
 {
@@ -130,7 +129,7 @@ final class WebauthnMdsCommandsTest extends TestCase
     }
 
     /**
-     * Decision 0006: no outbound request follows a redirect; the URL the service redirects to is named.
+     * Decision 0006
      */
     #[Test]
     public function aServiceThatRedirectsIsRefusedWithTheUrlItNames(): void
@@ -220,8 +219,7 @@ final class WebauthnMdsCommandsTest extends TestCase
     }
 
     /**
-     * FIDO Metadata Statement v3.1 §4 does not require userVerificationDetails: a statement a manufacturer
-     * publishes without it is imported like any other (issue #910).
+     * FIDO Metadata Statement v3.1 §4
      */
     #[Test]
     public function aStatementThatLeavesOutTheUserVerificationDetailsIsImported(): void

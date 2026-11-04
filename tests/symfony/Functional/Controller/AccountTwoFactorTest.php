@@ -25,10 +25,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 /**
- * The page of the second factor of the signed-in user (architecture §5.2): the enrolment of an
- * authenticator app by QR code through the enrolment of the core, the backup codes shown once, the
- * revocation, and what a login does with it. The authenticator app is the algorithm of the kernel, fed
- * with the key the page shows.
+ * Architecture §5.2
  */
 final class AccountTwoFactorTest extends PasskeyTestCase
 {
@@ -65,10 +62,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         static::assertCount(0, $crawler->filter('form[data-two-factor="revoke"]'));
     }
 
-    /**
-     * The enrolment page: the QR code drawn by the provider as an SVG embedded in the page, the key for a
-     * manual entry, the form of the first code; nothing in the rows yet.
-     */
     #[Test]
     public function beginningShowsTheQrCodeTheKeyAndTheCodeForm(): void
     {
@@ -93,8 +86,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
     }
 
     /**
-     * Architecture §3.3, §5.2: what the session store keeps of an enrolment in progress is sealed by the
-     * KMS; neither the secret nor its base32 is in it.
+     * Architecture §3.3, §5.2
      */
     #[Test]
     public function theProvisioningIsSealedInTheHttpSession(): void
@@ -134,10 +126,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         static::assertSame([], self::events(CredentialEnrolled::class));
     }
 
-    /**
-     * The acceptance of the issue: the first code verified before the credential exists, then the ten
-     * backup codes shown, this once.
-     */
     #[Test]
     public function theRightFirstCodeCreatesTheTotpAndShowsTheBackupCodes(): void
     {
@@ -181,9 +169,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         static::assertCount(1, $crawler->filter('form[data-two-factor="revoke"]'));
     }
 
-    /**
-     * The acceptance of the issue: an enrolment abandoned at the QR code leaves nothing.
-     */
     #[Test]
     public function anEnrolmentAbandonedAtTheQrCodeLeavesNothing(): void
     {
@@ -242,10 +227,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         static::assertSame('no_provisioning', $this->afterTheForm()->filter('p[data-error]')->attr('data-error'));
     }
 
-    /**
-     * The form that begins is gone from the page once an app is active; posted anyway, with the token
-     * the page gave before, it is refused.
-     */
     #[Test]
     public function aSecondAppIsRefusedWhileOneIsActive(): void
     {
@@ -264,11 +245,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         static::assertSame('already_enrolled', $this->afterTheForm()->filter('p[data-error]')->attr('data-error'));
     }
 
-    /**
-     * Issue #481: the step that draws a provisioning redirects to the page of the enrolment in progress,
-     * which reads what was drawn from the session of this browser. A reload of that page is a reload and
-     * not a second secret drawn, which is what a reload of the POST was.
-     */
     #[Test]
     public function theEnrolmentInProgressIsAPageThatCanBeReadAgain(): void
     {
@@ -284,10 +260,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         static::assertSame($key, self::keyOf($again));
     }
 
-    /**
-     * Issue #481: and a browser with nothing drawn, which is what a person reloading that page past the
-     * ten minutes of a provisioning has, is sent back to the page of the second factor saying so.
-     */
     #[Test]
     public function theEnrolmentPageWithNothingDrawnSendsBackSayingSo(): void
     {
@@ -318,7 +290,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
     }
 
     /**
-     * Architecture §5.2: the app is removed from the page; the row stays, revoked, and is announced.
+     * Architecture §5.2
      */
     #[Test]
     public function theAppIsRemovedFromThePage(): void
@@ -343,9 +315,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         static::assertCount(1, $this->twoFactorPage()->filter('p[data-two-factor="none"]'));
     }
 
-    /**
-     * Removed once, the app is not there to be removed again: the row stays revoked.
-     */
     #[Test]
     public function thereIsNothingToRemoveOnceTheAppIsRemoved(): void
     {
@@ -367,10 +336,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         static::assertCount(1, self::totpsOf($alice));
     }
 
-    /**
-     * End to end: the app set up on the page is what the login asks for, and a backup code the page
-     * showed signs the user in.
-     */
     #[Test]
     public function aBackupCodeShownAtTheEnrolmentSignsTheUserInAfterThePassword(): void
     {
@@ -392,9 +357,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         static::assertSame(['pwd', 'otp', 'mfa'], $this->boundSession()->methodReferences());
     }
 
-    /**
-     * Once the app is removed, the password alone signs the user in again.
-     */
     #[Test]
     public function thePasswordAloneSignsInAgainOnceTheAppIsRemoved(): void
     {
@@ -416,8 +378,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
     }
 
     /**
-     * Architecture §5.2: the person who holds a second factor draws another set of backup codes, which is
-     * what they come to this page for once the list they wrote down is spent or lost.
+     * Architecture §5.2
      */
     #[Test]
     public function theBackupCodesAreDrawnAgainAndShownOnce(): void
@@ -437,10 +398,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         static::assertCount(0, $this->twoFactorPage()->filter('ol[data-two-factor="backup-codes"]'));
     }
 
-    /**
-     * The codes they had stop working at that instant, spent or not: what is stored is another set of
-     * hashes.
-     */
     #[Test]
     public function theCodesDrawnAgainReplaceTheOnesThatWereHeld(): void
     {
@@ -457,10 +414,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         static::assertCount(TotpCredential::BACKUP_CODES * 2, array_unique([...$before, ...$after]));
     }
 
-    /**
-     * Somebody who holds no second factor has none to renew, and the page offers them the enrolment
-     * instead.
-     */
     #[Test]
     public function aPersonWithoutASecondFactorHasNoCodesToDraw(): void
     {
@@ -489,8 +442,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
     }
 
     /**
-     * Clipboard API §3: ten codes shown once are ten codes nobody should have to copy by hand, so the
-     * page offers to take them all, and the button waits for a browser that can write a clipboard.
+     * Clipboard API §3
      */
     #[Test]
     public function theCodesAreOfferedToTheClipboardOfABrowserThatCanTakeThem(): void
@@ -510,9 +462,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
     }
 
     /**
-     * Clipboard API §3: the key is the secret an app is given where no camera reads the picture, forty
-     * characters nobody should have to read twice, so the page of the enrolment offers to take it in one
-     * click too, and the button waits for a browser that can write a clipboard.
+     * Clipboard API §3
      */
     #[Test]
     public function theKeyIsOfferedToTheClipboardOfABrowserThatCanTakeIt(): void
@@ -530,10 +480,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         static::assertCount(1, $page->filter('code#two-factor-key[data-two-factor="key"]'));
     }
 
-    /**
-     * The script is served by the provider itself, under the path of its pages, so an application that
-     * allows its own origin and nothing else has nothing to change.
-     */
     #[Test]
     public function theScriptThatCopiesIsServedByTheProvider(): void
     {
@@ -546,9 +492,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         static::assertSame('text/javascript; charset=utf-8', $response->headers->get('Content-Type'));
     }
 
-    /**
-     * The codes are the answer to the form that asked for them, which is why this one does not redirect.
-     */
     private function renewBackupCodes(): Crawler
     {
         return $this->browser->submit($this->twoFactorPage()->selectButton('Draw new backup codes')->form());
@@ -573,10 +516,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         return $crawler;
     }
 
-    /**
-     * Clicks the button of the page that sets up an app: the page of the enrolment in progress comes back,
-     * through the redirection the form answers with (issue #481).
-     */
     private function begin(): Crawler
     {
         $this->browser->submit($this->twoFactorPage()->selectButton('Set up an authenticator app')->form());
@@ -584,11 +523,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         return $this->afterTheForm();
     }
 
-    /**
-     * The first code of an enrolment. A code the provider refuses comes back to the page of the enrolment
-     * by a redirection; one it accepts answers with the backup codes, which is a page shown once and the
-     * one form of these pages that does not redirect (issue #481).
-     */
     private function submitFirstCode(string $code): Crawler
     {
         $form = $this->browser->getCrawler()->selectButton('Confirm')->form();
@@ -628,9 +562,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         return $crawler->filter('code[data-two-factor="key"]')->text();
     }
 
-    /**
-     * The secret the page shows as a key, as an app takes it by hand.
-     */
     private static function secretOf(Crawler $crawler): TotpSecret
     {
         return new TotpSecret(Base32::decodeUpper(str_replace(' ', '', self::keyOf($crawler))));

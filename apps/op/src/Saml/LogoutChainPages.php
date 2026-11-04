@@ -26,13 +26,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Throwable;
 
 /**
- * What the browser is given once it has ended the sessions it held (beffroi/saml, spec/saml.md S-29 to S-36): the page
- * of Front-Channel Logout 1.0 for the clients of OpenID Connect of those sessions first, which resumes the chain of
- * SAML logout at the route of the provider, then each service provider of the sessions told in turn, then where the
- * logout ends. beffroi/saml knows no client of OpenID Connect and beffroi/oidc no service provider (spec/saml.md
- * section 2): the two meet here, in the provider, where the end session endpoint, the page of the account and the single
- * logout service ask for them. Every response that carries the chain on gives the browser the cookie that binds the
- * chain to it (LogoutChainCookie, S-32), and the one that ends the chain clears it.
+ * beffroi/saml S-29 to S-36
  */
 final readonly class LogoutChainPages
 {
@@ -48,15 +42,13 @@ final readonly class LogoutChainPages
     }
 
     /**
-     * After the browser ended $sessions, at the end session endpoint or on the page of the account (S-29): the chain
-     * begun, the page of S-35 first. Null when there is nothing to tell and no page to show, the caller then answering
-     * as it did before the chain existed.
+     * beffroi/saml S-29, S-35
      *
      * @param list<AuthenticationSession> $sessions
      * @param string|null $continueTo where the logout ends, null for the page that says the browser is signed out
      *
      * @throws LogoutRefusedException when another request took the chain first
-     * @throws KeyNotFoundException when the tenant holds no active SAML key
+     * @throws KeyNotFoundException
      * @throws RuntimeException when the salt of the tenant can neither be read nor drawn
      */
     public function begin(Tenant $tenant, array $sessions, ?string $continueTo): ?Response
@@ -70,11 +62,7 @@ final readonly class LogoutChainPages
     }
 
     /**
-     * A chain written (S-35): the page of Front-Channel Logout 1.0 for its sessions, which resumes it at the route of
-     * the provider, or, when no client of them is loaded by such a page, the chain resumed at once. A first step that
-     * meets a KMS that does not answer has written the chain back (S-32): the browser is sent to that route with its
-     * reference, where a request played again plays the step again, and where the outage is a 503. The page and that
-     * redirection give the browser the cookie of the chain, without which the route resumes nothing (S-32).
+     * beffroi/saml S-32, S-35
      *
      * @throws LogoutRefusedException when another request took the chain first
      * @throws KeyNotFoundException
@@ -105,13 +93,7 @@ final readonly class LogoutChainPages
     }
 
     /**
-     * A step of the chain as the browser is given it: a message to a service provider, over HTTP-Redirect a 302 with
-     * the caching headers of the binding (SAML Bindings §3.4.5.1), over HTTP-POST the page that posts it, given the
-     * cookie of $secret again for the ten minutes the chain is open from this step (S-32); the end, the answer to the
-     * service provider that asked, a redirection to where the starter named, or the page that says the browser is
-     * signed out (S-34), clearing that cookie.
-     *
-     * @param LogoutChainSecret|null $secret the secret of the chain the browser holds, null when it holds none
+     * SAML Bindings §3.4.5.1, beffroi/saml S-32, S-34
      */
     public function step(PostedForm|RedirectedMessage|LogoutChainEnded $step, ?LogoutChainSecret $secret): Response
     {
@@ -123,9 +105,6 @@ final readonly class LogoutChainPages
         return $secret === null ? $response : $this->cookie->given($response, $secret);
     }
 
-    /**
-     * A message to a service provider, as the browser carries it.
-     */
     private function message(PostedForm|RedirectedMessage $message): Response
     {
         if ($message instanceof RedirectedMessage) {
@@ -140,7 +119,7 @@ final readonly class LogoutChainPages
     }
 
     /**
-     * Where the chain ends (S-34).
+     * beffroi/saml S-34
      */
     private function ended(LogoutChainEnded $ended): Response
     {
@@ -157,8 +136,10 @@ final readonly class LogoutChainPages
     }
 
     /**
-     * S-36: a page whose form may end $session names, in its "form-action", the origin of each single logout service
-     * the chain of that session would go to, a browser checking the directive over every redirection of the submission.
+     * beffroi/saml S-36
+     *
+     * Names in the "form-action" of the page the origin of each single logout service the chain of $session reaches:
+     * a browser checks the directive over every redirection of the submission.
      */
     public function mayEnd(Request $request, AuthenticationSession $session): void
     {

@@ -34,16 +34,14 @@ use Symfony\Component\Uid\Uuid;
 use Beffroi\Oidc\Tests\Fixture\Shapes;
 
 /**
- * Architecture §4.4, §5.3: a code keyed by its hash, with everything the token endpoint needs, back with
- * the client the configuration registers; a used code stays.
+ * Architecture §4.4, §5.3
  */
 final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
 {
     public const string CHALLENGE = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';
 
     /**
-     * RFC 6749 §4.1.2, RFC 9700 §4.5: the claim is one conditional statement, so a second caller is told
-     * it lost whatever it read before, and it holds the date the first one wrote.
+     * RFC 6749 §4.1.2, RFC 9700 §4.5
      */
     #[Test]
     public function onlyTheFirstCallerConsumesTheCode(): void
@@ -103,9 +101,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Architecture §4.5 (issue #877): the session of a code is read with the person it names, so what the grant
-     * reads of the session before it consumes the code opens the columns of that person too, and leaves nothing
-     * of either for a read made after.
+     * Architecture §4.5
      */
     #[Test]
     public function theSessionOfACodeIsReadWithThePersonItNames(): void
@@ -149,10 +145,6 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         static::assertNull(self::codes()->findByCodeHash(DrawnSecret::digestOf(Secrets::draw())));
     }
 
-    /**
-     * A code of a client removed from the configuration is an unknown code, which is what the grant
-     * refuses.
-     */
     #[Test]
     public function aCodeOfAnUnregisteredClientIsNotFound(): void
     {
@@ -177,8 +169,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Back-Channel Logout 1.0 §2.6: the clients that hold a token of the session, each once; a code still
-     * waiting at the token endpoint names nobody.
+     * Back-Channel Logout 1.0 §2.6
      */
     #[Test]
     public function theClientsOfASessionAreThoseThatExchangedACodeInIt(): void
@@ -199,9 +190,6 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         static::assertSame(['legacy-app', 'oidc-demo'], $clients);
     }
 
-    /**
-     * Another browser of the same user keeps its clients: the question is about one session.
-     */
     #[Test]
     public function theClientsOfAnotherSessionAreNotListed(): void
     {
@@ -215,10 +203,6 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         static::assertSame([], self::loggedInClients()->ofSession($session->id));
     }
 
-    /**
-     * A client removed from the configuration names nobody to tell of a logout, as it names nobody at the
-     * token endpoint.
-     */
     #[Test]
     public function aClientNoLongerRegisteredIsNotListed(): void
     {
@@ -242,9 +226,6 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
         static::assertSame([], self::loggedInClients()->ofSession($session->id));
     }
 
-    /**
-     * A code the client exchanged for tokens.
-     */
     private static function used(AuthenticationSession $session, Client $client, string $code): AuthorizationCode
     {
         $record = self::code($code, $client, $session, null);
@@ -255,8 +236,7 @@ final class DoctrineAuthorizationCodeRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Architecture §4.3: what a user taking back a consent reaches, whatever state the code is in and
-     * whichever session of theirs left it.
+     * Architecture §4.3
      */
     #[Test]
     public function theGrantsRevokedWithAConsentAreThoseOfItsUserAndItsClient(): void

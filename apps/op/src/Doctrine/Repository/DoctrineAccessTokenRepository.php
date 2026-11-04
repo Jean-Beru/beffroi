@@ -30,16 +30,6 @@ use function usort;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Opaque access tokens, one table per kind (architecture §4.6, §5.3): the kinds are the entities mapped
- * under StoredAccessToken, read once from the metadata, as the kinds of credential are. A token somebody
- * signed in for keeps the session it descends from, a token a client holds for itself keeps no such column,
- * and neither row carries a column its kind has nothing to write in.
- *
- * A value says nothing of the kind it was drawn for, so it is looked up in every kind; what revokes by
- * session reaches only the kinds that have one, there being no session to end for the others. A token of a
- * client no longer registered is not found, and removed without being listed.
- */
 final class DoctrineAccessTokenRepository implements
     AccessTokenRepositoryInterface,
     CanRevokeAccessTokenInterface,
@@ -59,16 +49,6 @@ final class DoctrineAccessTokenRepository implements
     ) {
     }
 
-    /**
-     * A revocation removes the row and an expiry does not, so this is what architecture §5.3 means by "une
-     * ligne expirée attend la purge". An expired opaque token is refused by its own date wherever it is
-     * presented, so the row answers nothing after it and is kept for nothing: no grant, no session and no
-     * introspection reads it, each of them being asked of the token's own columns before anything else.
-     *
-     * Every kind is swept, the kinds being read from the mapping as they are everywhere else here, and each
-     * one is a bounded statement of its own: a kind with a backlog is a table of its own, so it cannot keep
-     * the next kind from being swept, and what this run leaves the next one takes.
-     */
     public function forgetWhatIsDead(Tenant $tenant, DateTimeImmutable $now, int $limit): int
     {
         $forgotten = 0;
@@ -124,10 +104,6 @@ final class DoctrineAccessTokenRepository implements
         ]);
     }
 
-    /**
-     * A token a client holds for itself descends from no session, so no logout reaches it: its kind has no
-     * session to match on and is left alone here.
-     */
     public function revokeBySession(Uuid $session): array
     {
         return $this->removeMatching([
@@ -135,10 +111,6 @@ final class DoctrineAccessTokenRepository implements
         ], StoredUserAccessToken::class);
     }
 
-    /**
-     * The user is a column of the session and not of the token, so the kinds that have one are asked by
-     * a join where the others are asked by a criterion.
-     */
     public function revokeByConsent(Consent $consent): array
     {
         $tokens = [];
@@ -164,9 +136,9 @@ final class DoctrineAccessTokenRepository implements
 
     /**
      * @param array<string, mixed> $criteria
-     * @param class-string<StoredAccessToken> $of the kinds this reaches
+     * @param class-string<StoredAccessToken> $of
      *
-     * @return list<StoredAccessToken> the rows removed, oldest first, those of an unregistered client left out
+     * @return list<StoredAccessToken> oldest first, those of an unregistered client left out
      */
     private function removeMatching(array $criteria, string $of = StoredAccessToken::class): array
     {
@@ -187,7 +159,7 @@ final class DoctrineAccessTokenRepository implements
     /**
      * @param list<StoredAccessToken> $tokens
      *
-     * @return list<StoredAccessToken> the rows removed, oldest first, those of an unregistered client left out
+     * @return list<StoredAccessToken> oldest first, those of an unregistered client left out
      */
     private function removeAll(array $tokens): array
     {
@@ -227,10 +199,6 @@ final class DoctrineAccessTokenRepository implements
     }
 
     /**
-     * The entities mapped under StoredAccessToken, in a fixed order: what has a table of its own, and so a
-     * kind of token the provider keeps. The mapped superclass is not one, and asking its repository for
-     * rows would name a table nothing ever created.
-     *
      * @return list<class-string<StoredAccessToken>>
      */
     private function kinds(): array

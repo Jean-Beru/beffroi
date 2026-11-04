@@ -16,9 +16,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * "/assertion/result" of the FIDO2 server API (ServerAuthenticatorAssertionResponse): the assertion of
- * the tools, verified by the authentication of the core against the options drawn for the challenge it
- * carries; a session of the core opens, as after any passkey login, and is left to expire.
+ * FIDO2 server API, ServerAuthenticatorAssertionResponse
  */
 #[AsController]
 final readonly class AssertionResultController

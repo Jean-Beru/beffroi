@@ -16,16 +16,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * The person who has their file asks this provider to drop it (RGPD articles 15 and 20, issue #453): the
- * row goes before the date it would have gone away on by itself, and the page says they hold none again.
- *
- * There is nothing to name in the request: what is dropped is the last archive of the person who asks
- * (ArchiveDisposal), so no identifier travels and somebody else's file is not reachable from here.
- *
- * It answers with a redirection whether there was a file or not (issue #481), and a person whose file went
- * away under them reads why on the page they come back to.
- */
 #[AsController]
 final readonly class AccountArchiveDisposalController implements ReachedOnTheSessionAloneInterface
 {
@@ -50,8 +40,6 @@ final readonly class AccountArchiveDisposalController implements ReachedOnTheSes
             return $session;
         }
         if (! $this->disposal->droppedBy($session->user, $this->contexts->fromRequest($request))) {
-            // the file was taken by the retention, or a second click arrived: the page would say nothing
-            // of the difference, and what somebody asked for and did not get is said once (issue #481)
             $this->refusals->keep($request, ArchivePage::NOTHING_TO_DROP);
         }
 

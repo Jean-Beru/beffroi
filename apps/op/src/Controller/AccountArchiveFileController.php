@@ -16,16 +16,6 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * The archive handed to the person who asked for it (issue #453), and to nobody else.
- *
- * **The route carries no identifier.** What it serves is the archive of whoever is signed in, so there is
- * nothing to guess, nothing to compare and no way to write the comparison wrongly: "it is served to that
- * person and to nobody else" is a property of the route and not a check somebody remembered.
- *
- * Nothing to give is nothing: a person who never asked, one whose file is still being built and one whose
- * file has expired all get a 404 here, and read which of the three it is on the page of the archive.
- */
 #[AsController]
 final readonly class AccountArchiveFileController implements ReachedOnTheSessionAloneInterface
 {

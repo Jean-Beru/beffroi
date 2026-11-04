@@ -9,9 +9,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Console\Command\Command;
 
 /**
- * Decision 0002: the identities a user has at an upstream provider, written from the console. What needs them
- * today is the JWT bearer grant (RFC 7523 §3), whose subjects are users of this tenant through these rows and
- * through nothing else.
+ * Decision 0002
  */
 final class LinkedIdentitiesTest extends ConsoleTestCase
 {
@@ -40,9 +38,6 @@ final class LinkedIdentitiesTest extends ConsoleTestCase
         static::assertSame('alice', $identity->user->username);
     }
 
-    /**
-     * What a second run of a provisioning task does: the row that was there, not a second one.
-     */
     #[Test]
     public function theSameIdentityLinkedAgainKeepsTheRowItAlreadyHas(): void
     {
@@ -67,8 +62,7 @@ final class LinkedIdentitiesTest extends ConsoleTestCase
     }
 
     /**
-     * Decision 0002: a subject names one user of a tenant, or a sign-in at that provider would be worth two
-     * accounts.
+     * Decision 0002
      */
     #[Test]
     public function anIdentityAnotherUserAlreadyIsCannotBeMoved(): void

@@ -20,14 +20,10 @@ use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
 
 /**
- * Decision 0014: the budget of an origin is consumed on the routes of the two planes and on nothing
- * else, keyed by the address of the caller, once the route is named and before the firewall.
+ * Decision 0014
  */
 final class OriginLoadListenerTest extends TestCase
 {
-    /**
-     * One request, so that the second shows whether the first was counted.
-     */
     private const int BUDGET = 1;
 
     /**
@@ -70,9 +66,6 @@ final class OriginLoadListenerTest extends TestCase
         $listener(self::event('beffroi_protocol_token'));
     }
 
-    /**
-     * A sub-request is the request being served, not another one the provider received.
-     */
     #[Test]
     public function aSubRequestIsNotCountedAgain(): void
     {
@@ -88,8 +81,7 @@ final class OriginLoadListenerTest extends TestCase
     }
 
     /**
-     * Decision 0014: the key is the address of the caller, so what one address spends leaves the window
-     * of another untouched.
+     * Decision 0014
      */
     #[Test]
     public function theKeyIsTheAddressOfTheCaller(): void
@@ -105,10 +97,6 @@ final class OriginLoadListenerTest extends TestCase
         $this->expectNotToPerformAssertions();
     }
 
-    /**
-     * The route name is what the RouterListener sets, and nothing of the firewall has run yet: the
-     * budget is consumed before a session is opened or a hash paid.
-     */
     #[Test]
     public function theListenerRunsAfterTheRouterAndBeforeTheFirewall(): void
     {

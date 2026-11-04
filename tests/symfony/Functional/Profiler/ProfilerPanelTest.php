@@ -20,11 +20,6 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Profiler\Profile;
 
-/**
- * The panel of the provider (issue #152): what the collector of the provider says of a request that
- * reached an endpoint, what it says of one that did not, and what it never says. The kernel behind the
- * browser is in debug, which is the one condition the panel is wired under.
- */
 final class ProfilerPanelTest extends BrowserTestCase
 {
     protected static function kernelOptions(): array
@@ -48,8 +43,7 @@ final class ProfilerPanelTest extends BrowserTestCase
     }
 
     /**
-     * The endpoint is named by the route, which is where the planes of the provider are written down
-     * (architecture §5.2), and the connection says what it brought.
+     * Architecture §5.2
      */
     #[Test]
     public function theEndpointSaysWhichRouteWasReachedAndWhatTheConnectionBrought(): void
@@ -74,8 +68,7 @@ final class ProfilerPanelTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §6.1: a request that came in the query came in the query, and the panel says so before
-     * anything else, because from PAR and JAR on it is the one thing a browser stops showing.
+     * OIDC Core §6.1
      */
     #[Test]
     public function theAuthorizationRequestSaysHowItCameIn(): void
@@ -90,10 +83,6 @@ final class ProfilerPanelTest extends BrowserTestCase
         static::assertSame('in the query of the browser', $this->observation('Authorization request')['how it came in']);
     }
 
-    /**
-     * Issue #98: what the panel says of a client is read off the client, the authentication method and
-     * the two requirements included.
-     */
     #[Test]
     public function theClientIsSaidAsItIsRegistered(): void
     {
@@ -112,7 +101,7 @@ final class ProfilerPanelTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §3.1.2.1: the browser is sent to the login page, and the panel says why.
+     * OIDC Core §3.1.2.1
      */
     #[Test]
     public function theDecisionOfTheEndpointIsCollected(): void
@@ -136,8 +125,7 @@ final class ProfilerPanelTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §3.1.2.4, §5.5: the consent page is asked for, and the panel says what for, the claims the
-     * request asks for by name beyond its scopes included.
+     * OIDC Core §3.1.2.4, §5.5
      */
     #[Test]
     public function theDecisionToAskForAConsentSaysTheClaimsAskedForByName(): void
@@ -164,9 +152,6 @@ final class ProfilerPanelTest extends BrowserTestCase
         );
     }
 
-    /**
-     * The toolbar of the application carries an entry on the pages of the provider and on no other.
-     */
     #[Test]
     public function aRequestThatReachedNoEndpointOfTheProviderIsNotCollected(): void
     {
@@ -181,8 +166,7 @@ final class ProfilerPanelTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0006 and decision 0011: nothing a request carried that authenticates or names a person
-     * is written down, whatever the panel shows beside it.
+     * Decision 0006, Decision 0011
      */
     #[Test]
     public function nothingCollectedCarriesAValueThatAuthenticates(): void
@@ -201,9 +185,6 @@ final class ProfilerPanelTest extends BrowserTestCase
         static::assertStringNotContainsString(self::CODE_VERIFIER, $collected);
     }
 
-    /**
-     * The panel renders in the profiler of the application, under its layout.
-     */
     #[Test]
     public function thePanelRendersInTheProfiler(): void
     {
@@ -223,10 +204,6 @@ final class ProfilerPanelTest extends BrowserTestCase
         static::assertStringContainsString('beffroi_interaction_authorize', $crawler->filter('body')->text());
     }
 
-    /**
-     * The debug toolbar is rendered on its own, by a template of its own: a block of the panel that
-     * needed anything of the panel's own context would fail there and nowhere else.
-     */
     #[Test]
     public function theToolbarCarriesTheEntryOfTheProvider(): void
     {
@@ -244,9 +221,6 @@ final class ProfilerPanelTest extends BrowserTestCase
         static::assertStringContainsString('Authorization request', $crawler->filter('body')->text());
     }
 
-    /**
-     * A kernel that is not in debug wires neither the panel nor anything that feeds it.
-     */
     #[Test]
     public function nothingIsWiredWhenTheKernelIsNotInDebug(): void
     {
@@ -260,10 +234,6 @@ final class ProfilerPanelTest extends BrowserTestCase
         static::assertFalse($container->has(OpProfile::class));
     }
 
-    /**
-     * Issue #98 : ce que le fournisseur annonce est ce qui est branché. Le panneau lit le document de
-     * découverte lui-même, donc il ne peut pas annoncer autre chose que l'endpoint de découverte.
-     */
     #[Test]
     public function theProviderTabCarriesTheDiscoveryDocument(): void
     {
@@ -284,8 +254,7 @@ final class ProfilerPanelTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §4.3 : une page du plan d'interaction ne porte que l'identifiant de l'interaction,
-     * et tout ce que le client a demandé vit dans le dossier derrière lui.
+     * Architecture §4.3
      */
     #[Test]
     public function theInteractionOfAPageOfTheInteractionPlaneIsDetailed(): void
@@ -310,7 +279,7 @@ final class ProfilerPanelTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §5.1 : ce que le point de jeton a répondu, membre par membre, sans aucune valeur de jeton.
+     * RFC 6749 §5.1
      */
     #[Test]
     public function theAnswerOfTheTokenEndpointIsShownWithoutItsTokens(): void
@@ -337,9 +306,7 @@ final class ProfilerPanelTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8628 §3.2: the answer of the device authorization endpoint says the two codes are there and writes
-     * neither, nor the verification URI that carries the user code (§3.3.1); the page where the user types
-     * it is written.
+     * RFC 8628 §3.2, §3.3.1
      */
     #[Test]
     public function theAnswerOfTheDeviceAuthorizationEndpointIsShownWithoutItsCodes(): void
@@ -362,8 +329,7 @@ final class ProfilerPanelTest extends BrowserTestCase
     }
 
     /**
-     * CIBA Core §7.3: the acknowledgement of the backchannel authentication endpoint says the identifier the
-     * client comes back with is there and never writes it.
+     * CIBA Core §7.3
      */
     #[Test]
     public function theAnswerOfTheBackchannelAuthenticationEndpointIsShownWithoutItsIdentifier(): void
@@ -392,8 +358,7 @@ final class ProfilerPanelTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9126 §2.2: the answer of the pushed authorization request endpoint says the reference is there and
-     * never writes it, a reference of one use that is worth guessing (§7.1).
+     * RFC 9126 §2.2, §7.1
      */
     #[Test]
     public function theAnswerOfThePushedAuthorizationRequestEndpointIsShownWithoutItsReference(): void
@@ -411,8 +376,7 @@ final class ProfilerPanelTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9126 §4: the query of a request that was pushed carries the client and the reference, and the panel
-     * writes the one and says the other is there.
+     * RFC 9126 §4
      */
     #[Test]
     public function theQueryOfAPushedRequestIsShownWithoutItsReference(): void
@@ -436,8 +400,7 @@ final class ProfilerPanelTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §2 : les claims que le client va lire, les claims de protocole en clair et ceux qui
-     * portent l'utilisateur seulement nommés (décision 0011).
+     * OIDC Core §2, Decision 0011
      */
     #[Test]
     public function theClaimsOfTheIdTokenAreShownAndThePersonalOnesOnlyNamed(): void

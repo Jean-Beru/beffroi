@@ -19,12 +19,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The attestation of a first passkey, posted by the page of an enrolment ticket (issue #613): verified by
- * the enrolment of the core against the options this browser was given for the person the ticket names,
- * then the ticket is spent and the browser is sent to sign in with what it just posed.
- *
- * **The ticket is spent once the passkey is in the rows and never before**: a ceremony the browser could
- * not finish, or one the model refused, leaves the person their link.
+ * The ticket is spent once the passkey is stored and never before: a failed ceremony leaves the person their link.
  */
 #[AsController]
 final readonly class EnrolmentTicketEnrolmentController
@@ -89,8 +84,6 @@ final readonly class EnrolmentTicketEnrolmentController
         }
         $this->redemption->spend($ticket);
 
-        // the account of that person, which sends a browser that holds no session to the login page where
-        // the passkey it has just posed signs them in
         return $this->pages->afterTheForm(AccountController::ROUTE);
     }
 

@@ -18,15 +18,6 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * A browser of the signed-in user named again from the page of the account (architecture §5.2): what tells
- * one of their browsers from another is a name they wrote, so correcting it is their own act. Somebody
- * else's browser is not found.
- *
- * It answers with a redirection whether the name was written or refused (issue #481): a browser reloading
- * the page it comes back to does not say the same thing again, and what was refused crosses the
- * redirection in the session (WhatWasRefused).
- */
 #[AsController]
 final readonly class PushSubscriptionNameController implements ReachedOnTheSessionAloneInterface
 {
@@ -69,8 +60,6 @@ final readonly class PushSubscriptionNameController implements ReachedOnTheSessi
         try {
             $this->naming->rename($subscription, $request->request->getString(self::LABEL_PARAMETER));
         } catch (InvalidArgumentException) {
-            // what a browser may be called is the rule of the row that holds it and it is read on the
-            // server: the page says the same thing for a name nobody typed and for one too long to hold
             $this->refusals->keep($request, self::INVALID_LABEL);
         }
 

@@ -16,13 +16,8 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Exception\LogicException;
 
 /**
- * Checks the KMS client the provider is pointed at against the clients KeyManagementBundle registers.
- *
- * The provider seals with a client it does not build: "beffroi.keys.kms" names an entry of
- * "key_management.clients" and "beffroi.kms" is an alias to it. A name nothing answers to would
- * otherwise fail the build on a service id, which names neither the option that holds the name nor
- * the names that would have worked; a name is what an operator wrote, so a name is what the failure
- * says.
+ * Refuses a "beffroi.keys.kms" that names no client of KeyManagementBundle, saying the name and the ones that would
+ * have worked, where the container would only name a missing service id.
  */
 final class KmsClientPass implements CompilerPassInterface
 {
@@ -51,9 +46,6 @@ final class KmsClientPass implements CompilerPassInterface
         ));
     }
 
-    /**
-     * The clients that would have answered, by the name they carry on their tag.
-     */
     private static function registered(ContainerBuilder $container): string
     {
         $names = [];

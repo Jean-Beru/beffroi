@@ -25,8 +25,7 @@ use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 
 /**
- * Architecture §3.2 and §4.3: the cookie side of a session of the core, and the interactions a browser
- * may resume.
+ * Architecture §3.2, §4.3
  */
 final class BrowserSessionTest extends TestCase
 {
@@ -83,9 +82,6 @@ final class BrowserSessionTest extends TestCase
         static::assertSame($session, $this->browser->authenticationSession($request, $this->tenant));
     }
 
-    /**
-     * An identifier fixed before the login opens nothing after it.
-     */
     #[Test]
     public function bindingRegeneratesTheHttpSessionIdentifier(): void
     {
@@ -254,8 +250,7 @@ final class BrowserSessionTest extends TestCase
     }
 
     /**
-     * beffroi/saml S-68: an interaction that is over takes with it the address the step of the address kept for a
-     * sign-on it never reached, which the HTTP session holds no longer than the interaction.
+     * beffroi/saml S-68
      */
     #[Test]
     public function anInteractionThatIsOverTakesTheAddressKeptForItWithIt(): void
@@ -273,9 +268,6 @@ final class BrowserSessionTest extends TestCase
         static::assertSame([], $request->getSession()->get(LoginAddresses::SENT_SESSION_KEY));
     }
 
-    /**
-     * One tab per interaction, the oldest forgotten first.
-     */
     #[Test]
     public function aBrowserHoldsABoundedNumberOfInteractions(): void
     {
@@ -323,9 +315,6 @@ final class BrowserSessionTest extends TestCase
         static::assertSame($interaction, $this->browser->pending($request, $this->tenant, $interaction->id));
     }
 
-    /**
-     * A request that carries the cookie of the session.
-     */
     private static function request(): Request
     {
         $request = Request::create('/authorize');

@@ -17,13 +17,7 @@ use SensitiveParameter;
 use function sprintf;
 
 /**
- * The argon2id hasher of the test kernel: genuine argon2id hashes, "$argon2id$" strings that the native
- * hasher of the core verifies as well, at the smallest cost the algorithm accepts, a millisecond and a
- * mebibyte instead of the 400 ms and 64 MiB of the defaults of PHP the native hasher refuses to go below
- * (RFC 9106 §4). Tagged ahead of the native hasher, it takes every argon2id hash of the suite: the
- * passwords of the users, the ten backup codes of a TOTP, the secrets of the clients rehashed at every
- * reboot of the kernel, the decoys. The native hasher keeps the hashes of the other algorithms, so that
- * a bcrypt hash is still verified and rehashed on login. Never leaves the test suite.
+ * RFC 9106 §4
  */
 final readonly class CheapArgon2idHasher implements AlgorithmPasswordHasherInterface
 {

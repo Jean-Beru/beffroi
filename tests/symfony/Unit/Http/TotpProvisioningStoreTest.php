@@ -20,8 +20,7 @@ use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 
 /**
- * Architecture §5.2, §3.3: the provisioning of an enrolment lives sealed in the HTTP session, for the
- * user it was drawn for, read again on a wrong code, until it is confirmed or expires.
+ * Architecture §5.2, §3.3
  */
 final class TotpProvisioningStoreTest extends TestCase
 {
@@ -78,8 +77,7 @@ final class TotpProvisioningStoreTest extends TestCase
     }
 
     /**
-     * Architecture §3.3: neither the secret, nor its base32 in the URI, nor the backup codes are in the
-     * session as they are.
+     * Architecture §3.3
      */
     #[Test]
     public function whatTheSessionKeepsIsSealed(): void
@@ -153,9 +151,6 @@ final class TotpProvisioningStoreTest extends TestCase
         static::assertNull($this->store->provisioning($this->session, $this->alice, $this->now));
     }
 
-    /**
-     * Issue #128: a KMS that does not answer is no reason to forget; the outage goes on as it came.
-     */
     #[Test]
     public function anOutageOfTheKmsGoesOnAsItCame(): void
     {

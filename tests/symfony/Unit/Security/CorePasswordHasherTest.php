@@ -21,7 +21,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Architecture §5.4: the hasher of the security component answers with the hasher of the core.
+ * Architecture §5.4
  */
 final class CorePasswordHasherTest extends TestCase
 {
@@ -81,9 +81,6 @@ final class CorePasswordHasherTest extends TestCase
         static::assertFalse($this->hasher->verify($encoded, 'incorrect horse'));
     }
 
-    /**
-     * The policy of the core decides: a bcrypt hash is verified and wants a rehash.
-     */
     #[Test]
     public function aHashOfAnotherAlgorithmIsVerifiedAndNeedsARehash(): void
     {
@@ -98,10 +95,6 @@ final class CorePasswordHasherTest extends TestCase
         static::assertTrue($this->hasher->needsRehash($encoded));
     }
 
-    /**
-     * A string encode() did not write verifies nothing and asks for nothing: the component never guesses
-     * an algorithm from a hash.
-     */
     #[Test]
     #[DataProvider('provideNotAHash')]
     public function aStringThatIsNotAHashOfTheCoreVerifiesNothing(string $encoded): void
@@ -129,9 +122,6 @@ final class CorePasswordHasherTest extends TestCase
         yield 'parameter without a name' => ['{"algorithm":"argon2id","encoded":"x","parameters":["salt"]}'];
     }
 
-    /**
-     * A hash of an algorithm no hasher of the core handles is a wrong password, not an error page.
-     */
     #[Test]
     public function aHashNoHasherHandlesIsAWrongPassword(): void
     {
@@ -145,9 +135,6 @@ final class CorePasswordHasherTest extends TestCase
         static::assertFalse($this->hasher->needsRehash($encoded));
     }
 
-    /**
-     * The wiring of the suite: what the provider accounts for, argon2id first.
-     */
     private static function hasher(): CorePasswordHasher
     {
         return new CorePasswordHasher(

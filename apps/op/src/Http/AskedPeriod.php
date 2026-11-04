@@ -13,18 +13,6 @@ use function is_string;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 
-/**
- * Which stretch of time a table of the account was asked to be read over (architecture §5.2).
- *
- * Two words in the query string, `from` and `to`, for every table that is read over one, as `page` is the
- * one word they are paged by (AskedPage): a reader who has narrowed one table has learned how to narrow
- * the others. A day is read on the clock of the person the page is served to, which is the clock their
- * dates are written on (MomentExtension): a person who asks for yesterday means their yesterday.
- *
- * What is not two days is no stretch of time at all, and the table is read whole: a date that is not a
- * date, and a period that ends before it starts, are a link written by hand, and the page then shows a
- * filter that holds nothing rather than a table that answers nothing.
- */
 final readonly class AskedPeriod
 {
     public const string FROM = 'from';

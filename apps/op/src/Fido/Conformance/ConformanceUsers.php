@@ -10,11 +10,6 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\UserRepositoryInterface;
 
-/**
- * The users the conformance tools name: created on their first ceremony with the display name given,
- * which the product never does (no self-service sign-up, the spike README), found back afterwards. They
- * are users of the tenant like any other, without a password.
- */
 final readonly class ConformanceUsers
 {
     public function __construct(

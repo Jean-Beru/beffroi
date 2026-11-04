@@ -15,14 +15,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * The upstream identity providers the tenant declares, each with the URL of the metadata of the service provider given
- * to it (beffroi/saml, spec/saml.md S-65, section 5.7): the URL an operator hands that provider, its last segment the
- * entity ID in base64url, which nobody has to compute by hand. The URL is the one the router generates for the route,
- * under the origin of the issuer (RouterServiceProviderEndpoints), so that what is handed over is where the route
- * answers.
- *
- * It reads the declarations and writes nothing; "beffroi:saml:identity-provider:refresh" is the command that reads the
- * metadata of a provider. A URL answers once the tenant holds a key in service for that provider (S-64).
+ * beffroi/saml S-65, section 5.7
  */
 #[AsCommand(
     name: self::NAME,

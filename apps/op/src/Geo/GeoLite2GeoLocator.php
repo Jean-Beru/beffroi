@@ -15,23 +15,9 @@ use Psr\Log\LoggerInterface;
 use Throwable;
 
 /**
- * The place of an address, read in the GeoLite2 databases of this deployment (issue #473, docs/09-briques.md):
- * the city edition for the country, the subdivision, the city and the coordinates, the ASN edition for the
- * number of the autonomous system and the organisation that holds it, which are the seven fields of a
- * GeoLocation.
+ * The format's reader, not geoip2/geoip2, whose web service client would send addresses to a third party.
  *
- * **The lookup is local and the address goes nowhere.** It is the reader of the format and not the client
- * of MaxMind: `geoip2/geoip2` adds a web service client that would send this provider's addresses to a
- * third party, and decision 0006 does not leave that as an option. Nothing here holds an HTTP client, which
- * is what makes that true rather than claimed.
- *
- * **It opens the file at every lookup** rather than holding a reader: a worker runs for days, and the
- * database the refresh command replaced under it is the database the next lookup reads. One open per
- * message, on a lane behind a login that has already happened.
- *
- * **Nothing it reads can fail a lookup.** A database that was never downloaded, one that cannot be read,
- * an address no network of it covers and a record that does not say what the edition says it says are all
- * one answer, no place, because what fails is an enrichment and not the act it enriches.
+ * It opens the file at every lookup: a worker runs for days, and the refresh replaces the database under it.
  */
 final readonly class GeoLite2GeoLocator implements GeoLocatorInterface
 {
@@ -70,8 +56,7 @@ final readonly class GeoLite2GeoLocator implements GeoLocatorInterface
                 self::coordinate($coordinates, 'longitude'),
             );
         } catch (Throwable $exception) {
-            // A record of the shape the edition does not describe: the place is lost and the act that
-            // carried the address keeps its address, which is what an enrichment is allowed to cost.
+            // An enrichment never fails the act it enriches: the place is lost and the address kept.
             $this->logger->warning('The databases of addresses answered a record this provider cannot read.', [
                 'exception' => $exception,
             ]);
@@ -81,9 +66,6 @@ final readonly class GeoLite2GeoLocator implements GeoLocatorInterface
     }
 
     /**
-     * What the edition says of that address, and nothing at all when it says nothing: this deployment
-     * holds no such database, the file cannot be read, or no network of it covers the address.
-     *
      * @return array<string, mixed>
      */
     private function record(string $edition, string $ipAddress): array
@@ -110,8 +92,7 @@ final readonly class GeoLite2GeoLocator implements GeoLocatorInterface
     }
 
     /**
-     * The most specific subdivision the city edition carries, which is the region of a place: a country
-     * that nests two of them (a region and its department) says the smaller one last.
+     * The most specific: a country that nests two subdivisions lists the smaller one last.
      *
      * @param array<string, mixed> $city
      *
@@ -134,9 +115,7 @@ final readonly class GeoLite2GeoLocator implements GeoLocatorInterface
     }
 
     /**
-     * The name of a place, in English: the enrichment runs on a lane, where no visitor and no
-     * "Accept-Language" is in sight, and English is the one language every edition carries. What a page
-     * does say in the language of its reader is the country, which ICU names from the code beside it.
+     * In English: no visitor's language is known on the lane, and every edition carries English.
      *
      * @param array<string, mixed> $place
      */
@@ -156,9 +135,6 @@ final readonly class GeoLite2GeoLocator implements GeoLocatorInterface
     }
 
     /**
-     * A document of the database read by name: what the reader gives back is whatever the record holds,
-     * and what this provider takes of it, it takes by the names the edition documents.
-     *
      * @return array<string, mixed>
      */
     private static function named(mixed $document): array

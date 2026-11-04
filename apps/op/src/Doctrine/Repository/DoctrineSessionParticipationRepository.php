@@ -13,7 +13,7 @@ use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Each service provider's part in a session, in beffroi_saml_session_participant (beffroi/saml, spec/saml.md S-26).
+ * beffroi/saml S-26
  *
  * @extends DoctrineRepository<SessionParticipation>
  */
@@ -25,9 +25,7 @@ final readonly class DoctrineSessionParticipationRepository extends DoctrineRepo
     }
 
     /**
-     * One INSERT through the connection and not the unit of work, as a pairwise subject is recorded: the same session
-     * signing in twice to the same service provider, or two workers recording it at once, race into the unique index,
-     * where the second write does nothing and none fails.
+     * Not through the unit of work, whose flush would fail where two writes race into the unique index.
      */
     public function record(SessionParticipation $participation): void
     {

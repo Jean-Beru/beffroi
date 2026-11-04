@@ -17,9 +17,6 @@ use function is_string;
 use function sprintf;
 
 /**
- * The records of pushed authorization requests, in beffroi_pushed_authorization_request (RFC 9126 §2.2).
- * A record of a client no longer registered is not found, as a code of one is not.
- *
  * @extends DoctrineRepository<PushedAuthorizationRecord>
  */
 final readonly class DoctrinePushedAuthorizationRecordRepository extends DoctrineRepository implements
@@ -33,16 +30,6 @@ final readonly class DoctrinePushedAuthorizationRecordRepository extends Doctrin
         parent::__construct($managers, PushedAuthorizationRecord::class);
     }
 
-    /**
-     * A record stays until it expires, so that a second presentation of the reference is told from one
-     * nobody ever issued (RFC 9126 §4); past that it grants nothing whether the store holds it or not, and
-     * nothing else ever reads it. The interaction a push started names it by its hash and not by a key, so
-     * no row waits on this one.
-     *
-     * This is the table the question was asked of (issue #177): it is the first the provider writes to with
-     * no user involved at all, a client authenticating, posting, and leaving behind a row that is worth
-     * nothing sixty seconds later.
-     */
     public function forgetWhatIsDead(Tenant $tenant, DateTimeImmutable $now, int $limit): int
     {
         $expiry = $this->sweep->column(PushedAuthorizationRecord::class, 'expiresAt');
@@ -72,9 +59,7 @@ final readonly class DoctrinePushedAuthorizationRecordRepository extends Doctrin
     }
 
     /**
-     * One UPDATE ... WHERE used_at IS NULL through the connection, not the unit of work: the count of
-     * affected rows says who claimed the row. The loser reads the date back so that its copy says what
-     * the winner wrote.
+     * Through the connection, not the unit of work: of two concurrent requests, one only consumes the record.
      */
     public function consume(PushedAuthorizationRecord $record, DateTimeImmutable $now): bool
     {

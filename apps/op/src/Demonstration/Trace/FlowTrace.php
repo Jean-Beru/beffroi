@@ -7,15 +7,6 @@ namespace App\Demonstration\Trace;
 use function array_key_exists;
 use DateTimeImmutable;
 
-/**
- * What one flow of one client exchanged (issue #462), in the order it exchanged it. The trace belongs
- * to the demonstration and is keyed by the flow it traces and by the client that played it: five rungs
- * of the ladder are five clients playing one flow, and each has its own.
- *
- * Beside the hops it holds what the client of a live run is holding between two of them, the device
- * code it is polling on, the token it is about to introspect. Those are never drawn: they are what lets
- * the next hop be made at all, and what is drawn is the hop they produced.
- */
 final readonly class FlowTrace
 {
     /**
@@ -37,7 +28,7 @@ final readonly class FlowTrace
     }
 
     /**
-     * @param array<string, string> $holdings what the client now holds, merged into what it held
+     * @param array<string, string> $holdings merged into what the client held
      */
     public function holding(array $holdings): self
     {
@@ -60,9 +51,6 @@ final readonly class FlowTrace
         return false;
     }
 
-    /**
-     * How many times a hop was taken, which is what a polled token request is read by.
-     */
     public function times(string $hop): int
     {
         $times = 0;

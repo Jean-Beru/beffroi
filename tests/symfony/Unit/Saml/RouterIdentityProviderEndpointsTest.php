@@ -19,14 +19,12 @@ use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * beffroi/saml, spec/saml.md S-4 and section 6.1 step 3: the endpoints of the SAML identity provider of a tenant are
- * the routes of the provider under the origin of its issuer, never under the request that asked for them.
+ * spec/saml.md S-4, section 6.1 step 3
  */
 final class RouterIdentityProviderEndpointsTest extends TestCase
 {
     /**
-     * S-4, section 6.1 step 3: the request came in on another host, scheme and port than the issuer names; every URL
-     * of the identity provider is still under the origin of the issuer, never under the Host of the request.
+     * S-4, section 6.1 step 3
      */
     #[Test]
     public function theHostOfTheRequestIsIgnored(): void
@@ -45,8 +43,7 @@ final class RouterIdentityProviderEndpointsTest extends TestCase
     }
 
     /**
-     * S-4, section 6.1 step 3: the routes are not mounted under the path of the issuer, so the entity ID it announces
-     * would name a URL where nothing is served; a configuration fault, refused rather than announced.
+     * S-4, section 6.1 step 3
      */
     #[Test]
     public function routesMountedElsewhereThanTheIssuerAreRefused(): void

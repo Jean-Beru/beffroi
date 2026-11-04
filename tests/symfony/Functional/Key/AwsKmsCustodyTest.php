@@ -24,15 +24,6 @@ use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\KeyManagement\Dsn;
 use Symfony\Component\KeyManagement\Envelope;
 
-/**
- * Issue #58, against an AWS KMS (LocalStack on the development stack, the same API): the master key of the
- * tenant is the one docker/localstack/init.sh creates under the alias the DSN names, and the envelope holds
- * the data key as that KMS wrapped it, bound to the tenant. Skipped unless the kernel seals with AWS KMS
- * (BEFFROI_TEST_KMS_DSN), which no job of the CI does and which "castor phpunit" does not pass to its
- * container: it is run by hand, BEFFROI_TEST_KMS_DSN naming the LocalStack of the development stack
- * ("castor start --kms aws") and BEFFROI_TEST_KMS_KEY_ID its alias ("alias/beffroi-{tenant}"), and every
- * other test of that run then seals with that KMS too.
- */
 final class AwsKmsCustodyTest extends DatabaseTestCase
 {
     private const string SCHEME = 'aws-kms://';
@@ -53,11 +44,6 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
         $this->dsn = Dsn::fromString($dsn);
     }
 
-    /**
-     * The envelope of a sealed key names the alias of the tenant and carries a data key the KMS wrapped
-     * under it: what the KMS hands back, with the context the envelope bound, is the 32 bytes of the data
-     * key, never the private JWK, which stayed in the process.
-     */
     #[Test]
     public function theDataKeyOfASealedKeyIsWrappedByTheKeyOfTheTenant(): void
     {
@@ -82,10 +68,6 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
         static::assertStringContainsString(':key/', (string) $unwrapped->getKeyId());
     }
 
-    /**
-     * The binding to the tenant is enforced by the KMS itself: the data key does not unwrap under the
-     * context of another tenant, whoever holds the credential.
-     */
     #[Test]
     public function theKmsRefusesToUnwrapTheDataKeyUnderAnotherTenant(): void
     {
@@ -109,10 +91,6 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
             ->getPlaintext();
     }
 
-    /**
-     * The key docker/localstack/init.sh creates: symmetric, for encryption only, enabled, behind the alias
-     * the OP names, so that a new key behind the same alias changes nothing for it.
-     */
     #[Test]
     public function theKeyOfTheTenantIsSymmetricAndEncryptsOnly(): void
     {
@@ -134,10 +112,6 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
         return Envelope::fromBytes($stored->sealedPrivateJwk);
     }
 
-    /**
-     * A client on the KMS of the DSN, as the bridge builds it: the region from the option, the credentials
-     * from the user information, the host as the endpoint over the scheme of the option.
-     */
     private function kms(): KmsClient
     {
         return new KmsClient(Configuration::create([
@@ -149,8 +123,7 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
     }
 
     /**
-     * DescribeKey, which async-aws/kms does not expose: the JSON protocol of KMS, the target in a header.
-     * The credential of the DSN names the region and the account, which is all LocalStack reads of it.
+     * Sends DescribeKey by hand: async-aws/kms does not expose it.
      *
      * @return array<mixed>
      */

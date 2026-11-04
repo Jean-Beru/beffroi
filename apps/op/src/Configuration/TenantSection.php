@@ -16,9 +16,6 @@ use function is_string;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
-/**
- * The one tenant of this deployment (architecture §5.1): who it says it is, and the "acr" vocabulary it answers in (decision 0010).
- */
 final readonly class TenantSection extends ConfigurationSection
 {
     public function name(): string
@@ -73,16 +70,9 @@ final readonly class TenantSection extends ConfigurationSection
     }
 
     /**
-     * The factory of the tenant at runtime, from the slug, the claims and the classes the configuration or the
-     * environment names, held to the rules of the tree either way (decision 0030); every other argument is the one of
-     * the factory. The slug is held here, where it becomes a tenant: the declarations that name it, the clients, the
-     * service providers, belong to a tenant this factory makes.
-     *
-     * @param mixed $authenticationClasses the classes, as the configuration or the environment carries them
      * @param array<array-key, mixed> $look
-     * @param mixed $selfServedClaims the claims, as the configuration or the environment carries them
      *
-     * @throws InvalidConfigurationException when the slug is empty, or a list is one the tree refuses
+     * @throws InvalidConfigurationException
      */
     public static function tenantFactory(
         string $issuer,
@@ -113,25 +103,17 @@ final readonly class TenantSection extends ConfigurationSection
     }
 
     /**
-     * The scopes the tenant hands out tokens for beyond those of its claims at runtime, from the list the configuration
-     * or the environment declares, held to the rules of the tree either way (decision 0030).
-     *
-     * @param mixed $scopes the list, as the configuration or the environment carries it
-     *
-     * @throws InvalidConfigurationException when the list is one the tree refuses
-     * @throws InvalidArgumentException when a scope is no scope token, or is one the tenant does not offer by declaring it
+     * @throws InvalidConfigurationException
+     * @throws InvalidArgumentException
      */
     public static function declaredScopes(string $tenantSlug, mixed $scopes): ConfigurationDeclaredScopes
     {
-        /** @var list<string> $declared the tree declares each one a string */
+        /** @var list<string> $declared */
         $declared = array_values(self::scopes()->normalized($scopes, 'tenant.scopes'));
 
         return new ConfigurationDeclaredScopes($tenantSlug, $declared);
     }
 
-    /**
-     * The scopes of the APIs of the tenant, as the tree declares them, which the environment may carry whole.
-     */
     private static function scopes(): EnvironmentListDefinition
     {
         $scopes = new EnvironmentListDefinition('scopes');
@@ -144,9 +126,6 @@ final readonly class TenantSection extends ConfigurationSection
         return $scopes;
     }
 
-    /**
-     * The claims a person may change of themselves, as the tree declares them, which the environment may carry whole.
-     */
     private static function selfServedClaims(): EnvironmentListDefinition
     {
         $claims = new EnvironmentListDefinition('self_served_claims');
@@ -159,9 +138,6 @@ final readonly class TenantSection extends ConfigurationSection
         return $claims;
     }
 
-    /**
-     * The "acr" vocabulary of the tenant, as the tree declares it, which the environment may carry whole.
-     */
     private static function authenticationClasses(): EnvironmentListDefinition
     {
         $classes = new EnvironmentListDefinition('authentication_classes');

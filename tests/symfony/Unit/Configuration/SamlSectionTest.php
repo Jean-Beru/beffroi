@@ -13,14 +13,12 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
 /**
- * Decision 0030, issue #912: a list of SAML declarations the environment carries is a value only when the container
- * runs, so what the compilation checks of a written one, the role the tenant has to play and the entity IDs of the
- * tenant itself, the factory of the declarations checks then.
+ * Decision 0030
  */
 final class SamlSectionTest extends TestCase
 {
     /**
-     * Spec/saml.md section 5.2: the service providers of a tenant are served by its identity provider.
+     * spec/saml.md section 5.2
      */
     #[Test]
     public function serviceProvidersOfATenantThatIsNoIdentityProviderAreRefused(): void
@@ -39,8 +37,7 @@ final class SamlSectionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-42: a tenant is never upstream of itself, and an identity provider declared under the URL of the
-     * metadata of its identity provider is refused when the container runs, the issuer being a value then.
+     * spec/saml.md S-42
      */
     #[Test]
     public function anUpstreamIdentityProviderNamedAsTheTenantIsRefused(): void
@@ -67,9 +64,7 @@ final class SamlSectionTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-64, decision 0030: the algorithm of the key of an upstream identity provider is wired while the
-     * service provider of the tenant is on, whatever the list declares while it is off, a role a value of the
-     * environment may turn off once the container runs.
+     * spec/saml.md S-64, Decision 0030
      */
     #[Test]
     public function noUpstreamIdentityProviderHasTheAlgorithmOfAKeyWhileTheServiceProviderIsOff(): void

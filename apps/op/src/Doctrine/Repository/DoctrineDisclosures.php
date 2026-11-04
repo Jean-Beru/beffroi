@@ -19,18 +19,10 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * What a client was given of a person, in beffroi_disclosure (issue #590): written off the request from
- * the lane the events travel, read by the archive, forgotten in bounded runs with the acts it sits beside.
- *
  * @extends DoctrineRepository<Disclosure>
  */
 final readonly class DoctrineDisclosures extends DoctrineRepository implements DisclosuresInterface, DisclosuresOfAPersonInterface
 {
-    /**
-     * How many rows one run of the retention forgets. The bound the journal has, for the same reason: a
-     * tick that deleted everything past the duration in one statement would hold the table of a deployment
-     * that kept years of it, where the next tick takes what this one left.
-     */
     public const int FORGOTTEN_AT_ONCE = 1000;
 
     public function __construct(EntityManagers $managers)
@@ -90,9 +82,7 @@ final readonly class DoctrineDisclosures extends DoctrineRepository implements D
     }
 
     /**
-     * A row reaches this table off the request, from the lane the events travel, so the tenant it names is
-     * a copy that came back from a queue and not the row of that tenant, as an act of the journal is
-     * (DoctrineJournal). The reference names that row without reading it.
+     * A disclosure comes back from a queue, with a copy of its tenant the manager does not hold.
      */
     private function namingTheRowOfItsTenant(Disclosure $disclosure): Disclosure
     {

@@ -41,10 +41,7 @@ use Twig\Environment;
 use Twig\Loader\ArrayLoader;
 
 /**
- * beffroi/saml, spec/saml.md S-32, S-35: a chain whose first step is resumed at once, no client of OpenID Connect of
- * its sessions being loaded by the page of Front-Channel Logout 1.0, and meets a KMS that does not answer sends the
- * browser to the route that resumes it, with its reference and the cookie of the chain, where the step is played
- * again.
+ * spec/saml.md S-32, S-35
  */
 final class LogoutChainPagesTest extends TestCase
 {
@@ -83,8 +80,7 @@ final class LogoutChainPagesTest extends TestCase
     }
 
     /**
-     * S-32, S-35: the first step resumed at once meets a KMS that does not answer: the browser is sent to the route
-     * that resumes the chain, with its reference.
+     * S-32, S-35
      */
     #[Test]
     public function aFirstStepThatMeetsAnOutageSendsTheBrowserToTheRouteThatResumesTheChain(): void
@@ -104,8 +100,7 @@ final class LogoutChainPagesTest extends TestCase
     }
 
     /**
-     * S-32, S-35: the redirection to the route that resumes the chain after an outage gives the browser the cookie of
-     * the chain, without which that route resumes nothing.
+     * S-32, S-35
      */
     #[Test]
     public function aFirstStepThatMeetsAnOutageGivesTheBrowserTheCookieOfTheChain(): void
@@ -125,7 +120,7 @@ final class LogoutChainPagesTest extends TestCase
     }
 
     /**
-     * S-32: a first step resumed at once that fails for another reason than an outage of the KMS fails as it came.
+     * S-32
      */
     #[Test]
     public function aFirstStepThatFailsOtherwiseFailsAsItCame(): void

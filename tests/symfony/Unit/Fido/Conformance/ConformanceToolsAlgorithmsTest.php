@@ -16,9 +16,7 @@ use Webauthn\PublicKeyCredentialParameters;
 final class ConformanceToolsAlgorithmsTest extends TestCase
 {
     /**
-     * Decision 0033: the algorithms of the provider first, then ES384, which the provider neither offers nor
-     * verifies, RS1 and the optional algorithms of the server tests that are not weak (ES512, RS384, RS512,
-     * PS256, PS384, PS512).
+     * Decision 0033
      */
     #[Test]
     public function theOptionsOfTheToolsOfferTheAlgorithmsOfTheProviderThenTheirOwn(): void
@@ -37,8 +35,7 @@ final class ConformanceToolsAlgorithmsTest extends TestCase
     }
 
     /**
-     * Decision 0033: the signatures are verified with every algorithm the options of the tools offer, RS1
-     * included.
+     * Decision 0033
      */
     #[Test]
     public function theSignaturesAreVerifiedWithEveryAlgorithmTheToolsAreOffered(): void
@@ -54,8 +51,7 @@ final class ConformanceToolsAlgorithmsTest extends TestCase
     }
 
     /**
-     * Decision 0033: the tools are given the formats of the library as it gives them, since what signs over
-     * SHA-1 is acknowledged by name for them.
+     * Decision 0033
      */
     #[Test]
     public function anAttestationFormatIsRunAsTheLibraryGivesIt(): void

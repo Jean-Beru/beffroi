@@ -13,21 +13,6 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use function implode;
 use Symfony\Component\HttpFoundation\Request;
 
-/**
- * The authorization request as the provider understood it, beside the query the browser actually
- * carried: which parameters the record of a pushed request (RFC 9126 §4) or a request object
- * (OIDC Core §6.1) put there, which ones the query did, and which ones of the query were dropped because
- * one of those two spoke instead. That difference is the whole of what a browser stops showing once a
- * request is pushed or signed, which is why the panel exists at all.
- *
- * "client_id" is the one parameter both sides carry (RFC 9101 §5), and it is said to be so.
- *
- * The two sets are shown side by side, the query as the browser carried it and the request as the
- * provider read it, because a request that was pushed or signed makes them differ and that difference
- * is what a browser stops showing. A parameter whose value is an assertion, a token, a verifier, a secret
- * or the reference of a pushed request is said to be there and never written down, whether the endpoint
- * reads it or not.
- */
 final readonly class ProfilingAuthorizationRequestReader implements AuthorizationRequestReaderInterface
 {
     public function __construct(

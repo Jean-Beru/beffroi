@@ -12,14 +12,12 @@ use function preg_replace;
 use SensitiveParameter;
 
 /**
- * A QR code as an SVG the page embeds (architecture §5.2): drawn here, by bacon/bacon-qr-code, never by
- * a service that would be handed what it encodes, an otpauth URI carrying a secret. Squares and nothing
- * else, without the XML declaration a document embeds nowhere; the size is a hint an application styles.
+ * Drawn here, never by a service, which would be handed the secret an otpauth URI carries.
  */
 final readonly class QrCode
 {
     /**
-     * In CSS pixels, for a code an authenticator app scans off a screen at arm's length.
+     * In CSS pixels.
      */
     public const int SIZE = 240;
 

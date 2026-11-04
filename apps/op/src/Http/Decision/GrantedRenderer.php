@@ -15,9 +15,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The code is issued: the interaction is over, the browser is no longer holding it, and the answer goes
- * back to the client in the response mode of its request (OIDC Core §3.1.2.5), which the renderer of
- * that mode shapes.
+ * OIDC Core §3.1.2.5
  */
 final readonly class GrantedRenderer implements DecisionRendererInterface
 {

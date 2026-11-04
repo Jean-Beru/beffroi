@@ -25,56 +25,18 @@ use function sort;
 use function str_starts_with;
 
 /**
- * Decision 0027 and the SOLID rule of `AGENTS.md`: a value object a column holds whole writes its own
- * document, and **no mapping of the provider holds a Doctrine embeddable** but one. That one is the
- * authorization request an interaction parks (architecture §5.3), and what keeps it is not a preference.
- *
- * **Its first field is a `Client`**, which the mapping carries no entity for: a registration is read back
- * from wherever registrations are read, at every load (`ClientResolver`, `ResolvesItsClientInterface`). A
- * DBAL type is asked for a complete object and the constructor of a request requires that client, so no
- * type can hand this object back whole. Its seventeen other fields are value objects that already have a
- * type each, and a single column would have to absorb eight of them.
- *
- * **Why a test rather than the comment the mapping already carries.** A second embeddable costs nothing
- * to add and no rule of the mapping refuses it, and the figures the exemption rests on are read nowhere:
- * the day the client of a request stops being resolved after the load, or the day those eight types
- * become one, the reason is gone and the embeddable has to go with it. What the walk of the schema
- * already holds is the other half, the sealing: the two hints of a request are sealed under the family of
- * the one table that carries them, and a second entity embedding this object would seal them under a
- * scope that is not its own (`SchemaClassificationTest`, `ClassifiedSchema`).
+ * Decision 0027
  */
 final class OneEmbeddableRemainsTest extends DatabaseTestCase
 {
-    /**
-     * The fields of the request the mapping carries, which is every field of it but the client.
-     */
     private const int FIELDS = 17;
 
-    /**
-     * How many types of the provider a single column holding this object whole would have to absorb, which
-     * is the count of distinct types over those seventeen fields: the two hints share one.
-     */
     private const int TYPES = 8;
 
-    /**
-     * How many of those eight are handed a registry when the provider boots, Doctrine building a type from a
-     * class name with nothing to give it: the PKCE methods a stored challenge names its own with, and the
-     * detail types an `authorization_details` is read back as. A type that needs the wiring takes it
-     * through the `resolveWith()` of its capability (`NeedsCodeChallengeMethodsInterface`,
-     * `NeedsAuthorizationDetailTypesInterface`), which is what names them here.
-     */
     private const int TYPES_THAT_READ_A_REGISTRY = 2;
 
-    /**
-     * The classes of the packages, which are the mappings of the provider: what the application embeds in
-     * entities of its own is not the provider's to refuse (decision 0002).
-     */
     private const string PACKAGES = 'Beffroi\\';
 
-    /**
-     * The prefix of a type of the provider, a field carrying a type of Doctrine being a field a single
-     * column would absorb nothing of.
-     */
     private const string TYPE_PREFIX = 'beffroi_';
 
     #[Test]
@@ -84,10 +46,6 @@ final class OneEmbeddableRemainsTest extends DatabaseTestCase
         static::assertSame([AuthorizationRequest::class], array_keys(self::embeddedObjects()));
     }
 
-    /**
-     * One entity embeds it, which is what makes the type of its two sealed fields right: a field of an
-     * embeddable carries the family of a table only while a single entity embeds the object.
-     */
     #[Test]
     public function oneEntityEmbedsThatObject(): void
     {
@@ -95,11 +53,6 @@ final class OneEmbeddableRemainsTest extends DatabaseTestCase
         static::assertSame([Interaction::class], self::embeddedObjects()[AuthorizationRequest::class]);
     }
 
-    /**
-     * The reason the exemption rests on: the one property of the request no field of the mapping carries
-     * is its client, and the class it is typed as is no entity of the mapping, so nothing is joined to it
-     * and no type reads it back.
-     */
     #[Test]
     public function theClientOfARequestIsTheOnePropertyNoFieldCarries(): void
     {
@@ -119,11 +72,6 @@ final class OneEmbeddableRemainsTest extends DatabaseTestCase
         static::assertArrayNotHasKey(Client::class, self::mappedClasses());
     }
 
-    /**
-     * And the entity that embeds it is the one that declares the request as where its client is held
-     * (`ResolvesItsClientInterface`): the day an interaction carries its own, the embeddable has nothing
-     * left a type could not do.
-     */
     #[Test]
     public function theEntityThatEmbedsItHoldsItsClientOnIt(): void
     {
@@ -136,10 +84,6 @@ final class OneEmbeddableRemainsTest extends DatabaseTestCase
         static::assertSame($request, $interaction->clientHolder());
     }
 
-    /**
-     * Where the seventeen columns of the exemption are: on the table of the entity that embeds the object,
-     * under no prefix, and on no other table.
-     */
     #[Test]
     public function theSeventeenFieldsOfTheRequestAreColumnsOfTheInteraction(): void
     {
@@ -149,8 +93,7 @@ final class OneEmbeddableRemainsTest extends DatabaseTestCase
     }
 
     /**
-     * What a ninth type would have to absorb: eight types of the provider over those seventeen fields, each
-     * one the type of a value object that writes its own document (decision 0027).
+     * Decision 0027
      */
     #[Test]
     public function aSingleColumnWouldHaveToAbsorbEightTypesOfTheProvider(): void
@@ -159,11 +102,6 @@ final class OneEmbeddableRemainsTest extends DatabaseTestCase
         static::assertCount(self::TYPES, self::typesOfTheProvider());
     }
 
-    /**
-     * Two of those eight are handed a registry, which a type reading one document for the whole object
-     * would have to be handed too, and which is what the SOLID rule of `AGENTS.md` refuses to gather in
-     * one class.
-     */
     #[Test]
     public function twoOfThoseTypesAreHandedARegistryAtBoot(): void
     {
@@ -180,11 +118,7 @@ final class OneEmbeddableRemainsTest extends DatabaseTestCase
     }
 
     /**
-     * The objects the mappings of the provider embed, by the entities that embed each one: an embeddable is
-     * read from the entities, which is where its columns land, and the metadata of an embeddable itself is
-     * skipped so that an object nested in one is named after the entity that carries it.
-     *
-     * @return array<class-string, list<class-string>>
+     * @return array<class-string, list<class-string>> the entities that embed each object
      */
     private static function embeddedObjects(): array
     {
@@ -202,10 +136,7 @@ final class OneEmbeddableRemainsTest extends DatabaseTestCase
     }
 
     /**
-     * The fields of the request the mapping carries, by the column each one lands in, read from the entity
-     * that embeds it, which is what says the column is on that entity's table.
-     *
-     * @return array<string, string>
+     * @return array<string, string> each field of the request, by its column
      */
     private static function fields(): array
     {
@@ -222,8 +153,6 @@ final class OneEmbeddableRemainsTest extends DatabaseTestCase
     }
 
     /**
-     * The distinct types of the provider over the fields of the request.
-     *
      * @return list<string>
      */
     private static function typesOfTheProvider(): array
@@ -242,8 +171,6 @@ final class OneEmbeddableRemainsTest extends DatabaseTestCase
     }
 
     /**
-     * Every class the mappings describe, which is what says a class is not one of them.
-     *
      * @return array<class-string, true>
      */
     private static function mappedClasses(): array

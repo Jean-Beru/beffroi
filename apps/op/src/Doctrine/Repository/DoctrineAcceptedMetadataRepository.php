@@ -14,11 +14,7 @@ use LogicException;
 use function sprintf;
 
 /**
- * The newest metadata document accepted for each peer of one role of a tenant (beffroi/saml, spec/saml.md S-6, S-8,
- * S-42), in the table of that role, the document sealed by its type, and the row an operator forgets (section 6.2):
- * beffroi_saml_service_provider for the service providers, beffroi_saml_upstream_identity_provider for the upstream
- * identity providers, one instance per role, each built with the entity of its role and handed the rows of that role
- * only.
+ * spec/saml.md S-6, S-8, S-42
  *
  * @extends DoctrineRepository<AcceptedMetadata>
  */
@@ -27,8 +23,7 @@ final readonly class DoctrineAcceptedMetadataRepository extends DoctrineReposito
     CanForgetAcceptedMetadataInterface
 {
     /**
-     * @param class-string<AcceptedMetadata> $entity the row of the role, AcceptedServiceProviderMetadata or
-     *                                              AcceptedUpstreamMetadata
+     * @param class-string<AcceptedMetadata> $entity the entity of the role this instance serves
      */
     public function __construct(
         EntityManagers $managers,
@@ -46,13 +41,10 @@ final readonly class DoctrineAcceptedMetadataRepository extends DoctrineReposito
     }
 
     /**
-     * One INSERT through the connection and not the unit of work, as a pairwise subject is recorded: the console and
-     * the hourly step registering the same peer at the same minute both find no row and race into the unique index of
-     * the tenant and the entity ID, where one of them writes nothing and neither fails. A flush could not promise that:
-     * the violation would close the unit of work for every peer read after it. The table, the columns and their types
-     * are read from the mapping of the role, the document sealed by the type it maps to (S-8).
+     * One INSERT through the connection, not the unit of work: two registrations racing into the unique index leave one
+     * row and fail neither, where a violation in a flush would close the unit of work.
      *
-     * @throws LogicException when the row is another role's: a programming error of the wiring
+     * @throws LogicException when the row is another role's
      */
     public function register(AcceptedMetadata $metadata): bool
     {

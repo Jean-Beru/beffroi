@@ -30,33 +30,14 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Where an interaction of the browser starts a sign-on at an upstream identity provider of the SAML service provider of
- * the tenant (beffroi/saml, spec/saml.md S-51, section 6.11): an interaction this browser began and can still resume,
- * or none, for the login a page of the provider waits for (LoginTarget, S-61), the entity ID of a provider the tenant
- * declares, and the one-time reference the login page drew for that login and that provider, nothing else; the request
- * forces a login by the one rule of S-49, read from the rule of the login page (UpstreamLoginRequirement), is
- * remembered in the HTTP session of the browser under its RelayState with the interaction or the page it serves
- * (S-50), and is carried to the provider by a redirection over HTTP-Redirect or by the page that posts it over
- * HTTP-POST, with the address the discovery kept for that interaction or that page, taken from the HTTP session once
- * and never from the query, for a provider that reads one (S-68). Which provider an address goes to is the discovery
- * of the login page (S-61), which sends the browser here.
+ * spec/saml.md S-51, section 6.11
  *
- * **It starts only from the login page.** The reference is drawn in the HTTP session of the browser when the step of
- * the address, posted under its form token, or the "login_hint" that skips it sends the browser here
- * (UpstreamSignOnReferences), and taken once; a sign-on without it, with another, one used already, one drawn for
- * another provider or more than a minute ago is refused before anything is decided, signs no request and remembers
- * nothing, so that a page of another site, which can send the browser here but reads no session, starts no login at
- * a provider that would answer for the session it holds (login CSRF).
- *
- * A deployment that does not enable "beffroi.saml.service_provider" wires no sign-on and answers 404, as the metadata
- * of the role does (S-41); so does a tenant that holds no SAML key.
+ * Starts only under the one-time reference the login page drew in the session: a page of another site can send the
+ * browser here, but starts no login (login CSRF).
  */
 #[AsController]
 final readonly class SamlUpstreamSignOnController
 {
-    /**
-     * The code of the page a sign-on that cannot start is shown, which the template of the error explains.
-     */
     public const string REFUSED = 'saml_upstream_sign_on_refused';
 
     public function __construct(
@@ -88,8 +69,6 @@ final readonly class SamlUpstreamSignOnController
         $reference = $request->query->getString(ServiceProviderRoutes::REFERENCE_PARAMETER);
         $id = $request->query->getString(AuthorizationResponder::INTERACTION_PARAMETER);
         if ($id === '') {
-            // the login a page of the provider waits for (LoginTarget, S-61): it comes back to that page, and a
-            // person signed in already is asked for a fresh proof, which is all such a page asks of one (S-49)
             $for = $this->loginTargets->waiting($request->getSession());
             if ($for === null) {
                 return $this->responder->unknownInteraction();
@@ -131,10 +110,6 @@ final readonly class SamlUpstreamSignOnController
         return $this->answers->of($sent);
     }
 
-    /**
-     * S-51: a sign-on the login page of this browser did not send it to under the reference it drew, which starts
-     * nothing.
-     */
     private function unrequested(): Response
     {
         return $this->pages->error(

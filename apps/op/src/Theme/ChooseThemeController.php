@@ -11,16 +11,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * The theme a visitor asked for, kept for their browser (issue #447): a route of this application and
- * not of the provider, the look of the pages being the decision of the application (architecture §5.2). Its
- * name carries the interaction plane (issue #988): it is a form only a browser posts, which a process that
- * serves the protocol alone answers with a 404, as it answers every page meant for a browser.
- *
- * It answers a form and no script: the choice is a POST that comes back to the page it was made on, so
- * the pages work for a browser that runs nothing, and a theme is never a path (architecture §5.7, the
- * rule the language of the pages already follows).
- */
 #[AsController]
 final readonly class ChooseThemeController
 {
@@ -41,8 +31,7 @@ final readonly class ChooseThemeController
     }
 
     /**
-     * The page the choice was made on, which the form carries, and the root of the application for
-     * anything that is not a path of this origin: a choice of colour does not send a browser elsewhere.
+     * A path of this origin or the root: "//" and "/\" would send the browser to another host.
      */
     private static function backTo(Request $request): string
     {

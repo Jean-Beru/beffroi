@@ -21,13 +21,9 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The authorization endpoint (RFC 6749 §3.1, OIDC Core §3.1.2), GET or POST. An error of the first stage
- * is a page, one of the second goes back to the client (RFC 9700 §4.1). A request the client pushed
- * (RFC 9126 §2) arrives here as a reference, and one the client signed (RFC 9101 §6.1) as a JWT or as
- * the URL where it is published; the reader answers with what either of them carries, in place of the
- * query. The locale of the interaction is chosen here, once (architecture §5.7). A request posted from
- * another site without the session cookie is posted again from the origin of the provider first
- * (CrossSitePost), before anything reads it, so that a pushed request is not spent by the first post.
+ * RFC 6749 §3.1, OIDC Core §3.1.2
+ *
+ * CrossSitePost goes before anything reads the request, so that a pushed request is not spent by the first post.
  */
 #[AsController]
 final readonly class AuthorizationController

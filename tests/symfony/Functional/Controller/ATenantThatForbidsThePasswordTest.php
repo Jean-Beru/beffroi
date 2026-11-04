@@ -15,14 +15,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Issue #327: a tenant signs its users in by passkey and forbids the password. What the tenant names is
- * one predicate of the provider as the floor of its logins (decision 0010), and everything else is read
- * off it: the page offers what the floor admits, the core refuses what it does not, and the credentials it
- * forbids are not left in the store.
- *
- * The page hiding a form is not the refusal, which is why both halves are here: the check path of the
- * firewall stays postable, and a password posted to it is refused by the core as the page not offering it
- * would suggest (decision 0006, one flat message).
+ * Decision 0010, decision 0006
  */
 final class ATenantThatForbidsThePasswordTest extends PasskeyTestCase
 {
@@ -31,8 +24,7 @@ final class ATenantThatForbidsThePasswordTest extends PasskeyTestCase
     private const string PASSWORD = 'correct horse battery staple';
 
     /**
-     * The page of such a tenant has nothing to type: no password, and no username either, a passkey being
-     * signed by a discoverable credential that names its own user (WebAuthn Level 3 §6.3.2.1).
+     * WebAuthn Level 3 §6.3.2.1
      */
     #[Test]
     public function theLoginPageOffersThePasskeyAndNothingToType(): void
@@ -52,10 +44,6 @@ final class ATenantThatForbidsThePasswordTest extends PasskeyTestCase
         static::assertCount(1, $page->filter('p[data-only="passkey"]'));
     }
 
-    /**
-     * A tenant that has not hardened is the tenant this provider always served: both forms, and the
-     * username to type the password against.
-     */
     #[Test]
     public function aTenantThatNamedNoFloorOffersBoth(): void
     {
@@ -73,11 +61,6 @@ final class ATenantThatForbidsThePasswordTest extends PasskeyTestCase
         static::assertCount(0, $page->filter('p[data-only="passkey"]'));
     }
 
-    /**
-     * The same derivation on the page of the account: a tenant that signs its users in by passkey does not
-     * offer a second factor it would refuse to enrol, and the page says why rather than holding a button
-     * that always fails.
-     */
     #[Test]
     public function theAccountOffersNoSecondFactorSuchATenantWouldRefuse(): void
     {
@@ -95,11 +78,6 @@ final class ATenantThatForbidsThePasswordTest extends PasskeyTestCase
         static::assertStringContainsString('needs no authenticator app', self::string($page->filter('p[data-two-factor="none"]')->text()));
     }
 
-    /**
-     * The check path is still there and still reads a form: what refuses is the core, and it refuses
-     * before naming anybody, which is why the reason is the floor and not an account that holds no
-     * password any more.
-     */
     #[Test]
     public function thePasswordThatWasRightIsRefusedByTheFloor(): void
     {
@@ -126,10 +104,6 @@ final class ATenantThatForbidsThePasswordTest extends PasskeyTestCase
         static::assertFalse($this->isBoundToASession());
     }
 
-    /**
-     * What the floor forbids is not left dormant in the store: the row of the password goes, and the act
-     * is written in the journal of that person, which is the only trace that remains of it.
-     */
     #[Test]
     public function thePasswordOfItsUsersIsForgottenWhenTheTenantHardens(): void
     {
@@ -146,10 +120,6 @@ final class ATenantThatForbidsThePasswordTest extends PasskeyTestCase
         static::assertCount(1, self::events(CredentialForgotten::class));
     }
 
-    /**
-     * And the way in the tenant kept still works: the passkey proves the possession of a key, which is
-     * what its floor reads, so the session opens (SessionOpener).
-     */
     #[Test]
     public function thePasskeyStillSignsThePersonIn(): void
     {

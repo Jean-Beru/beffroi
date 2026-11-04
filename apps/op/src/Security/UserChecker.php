@@ -10,8 +10,7 @@ use Symfony\Component\Security\Core\User\UserCheckerInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
- * The state of the account, checked after the password as the core does: a disabled account answers like
- * a wrong password.
+ * Checked after the password, so that a disabled account answers like a wrong password.
  */
 final readonly class UserChecker implements UserCheckerInterface
 {

@@ -9,14 +9,6 @@ use Beffroi\Core\Port\CanPageActiveSessionsInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * The page of where a person is signed in (architecture §5.2): one line per session open in their name,
- * what each one proved, when it was opened, when it was last seen and from where. What is open is what the
- * store answers at this instant, never a list this page keeps.
- *
- * The session of the browser reading the page is named as such, because ending that one is not the same
- * act as ending another: it signs the reader out.
- */
 final readonly class SessionsPage
 {
     public function __construct(

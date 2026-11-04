@@ -11,10 +11,6 @@ use function sprintf;
 use Symfony\Component\HttpFoundation\Request;
 use Throwable;
 
-/**
- * The JSON body of a request of the FIDO2 server API, read member by member: a member of the wrong type
- * is a request refused, as a missing one the API requires.
- */
 final readonly class ServerRequest
 {
     /**
@@ -26,7 +22,7 @@ final readonly class ServerRequest
     }
 
     /**
-     * @throws ServerRequestException when the body is not a JSON object
+     * @throws ServerRequestException
      */
     public static function fromRequest(Request $request): self
     {
@@ -73,8 +69,6 @@ final readonly class ServerRequest
     }
 
     /**
-     * A member that is itself an object, or none.
-     *
      * @throws ServerRequestException
      */
     public function optionalObject(string $name): ?self

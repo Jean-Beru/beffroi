@@ -13,15 +13,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * The identity a user has at an upstream provider (decision 0002): whoever presents that subject at that
- * provider is that user, and this is the one place a deployment says so by hand.
- *
- * What needs it today is the JWT bearer grant (RFC 7523 §3): the subject of an assertion of a trusted issuer
- * is a user of the tenant through a row of this table and through nothing else, so a tenant that trusts an
- * issuer writes the identities of its users before that issuer can name any of them. An import and a
- * federation write the same rows, from their own side.
- */
 #[AsCommand(
     name: 'beffroi:user:link',
     description: 'Say that a user of the tenant is a given subject at an upstream provider; run again to refresh it.',

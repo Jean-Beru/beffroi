@@ -8,12 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * The resources a request asked its tokens for (RFC 8707 §2). They are named at the authorization
- * endpoint, travel with the interaction, the code and the refresh token, and are what the access token
- * is addressed to; a row that names none is a request that named none, whose token is addressed to its
- * own client.
- */
 final class Version20260925120000 extends AbstractMigration
 {
     public function getDescription(): string

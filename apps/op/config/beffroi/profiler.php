@@ -41,14 +41,6 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_iterator;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 
-/**
- * The panel of the provider in the profiler and in the debug toolbar (issue #152), wired only when the
- * kernel runs in debug: the application declares nothing, the panel is there because the provider is.
- *
- * Every observer decorates a service that was already wired and adds nothing to what it does. Which
- * client, which key, which session, which token: each of them is read where the provider itself reads
- * it, so the panel says what the request did and never what a list kept beside it claims.
- */
 return static function (ContainerConfigurator $container): void {
     $services = $container->services();
     $services->defaults()->autowire()->autoconfigure()->private();
@@ -63,17 +55,13 @@ return static function (ContainerConfigurator $container): void {
     ]);
     $services->set(PanelValues::class);
     $services->set(OpEndpointListener::class);
-    // what the endpoint answered, member by member, no credential among them
     $services->set(OpResponseListener::class);
-    // what this provider serves, read from the handler that answers the discovery endpoint
     $services->set(ProviderCapabilitiesListener::class);
 
-    // what the request brought, and what the endpoint made of it
     $services
         ->set(ProfilingAuthorizationRequestReader::class)
         ->decorate(AuthorizationRequestReaderInterface::class)
         ->args([service('.inner')]);
-    // what the panel says about a decision, one class per decision, as the renderers of the decisions are
     $services->set(LoginRequiredObservation::class)->tag('beffroi.profiler.authorization_decision');
     $services->set(ConsentRequiredObservation::class)->tag('beffroi.profiler.authorization_decision');
     $services->set(GrantedObservation::class)->tag('beffroi.profiler.authorization_decision');
@@ -82,7 +70,6 @@ return static function (ContainerConfigurator $container): void {
         ->set(ProfilingAuthorizationResponder::class)
         ->decorate(AuthorizationResponderInterface::class)
         ->args([service('.inner')]);
-    // every JWT a third party sent: the request object, the client assertion, the proof of possession
     $services
         ->set(ProfilingCompactJwtReader::class)
         ->decorate(CompactJwtReaderInterface::class)
@@ -104,7 +91,6 @@ return static function (ContainerConfigurator $container): void {
         ->decorate(AuthenticationSessionRepositoryInterface::class)
         ->args([service('.inner')]);
 
-    // what left, and what opened the keys that wrote it
     $services
         ->set(ProfilingAccessTokenIssuer::class)
         ->decorate(AccessTokenIssuerInterface::class)
@@ -122,13 +108,11 @@ return static function (ContainerConfigurator $container): void {
         ->decorate(DecryptionKeyProviderInterface::class)
         ->args([service('.inner')]);
 
-    // the events the core announced on their way to the bus
     $services
         ->set(ProfilingEventDispatcher::class)
         ->decorate(EventBusDispatcher::class)
         ->args([service('.inner')]);
 
-    // the KMS is named by the scheme of its DSN, which the extension hands over; the rest of a DSN may
-    // carry a credential and never reaches the panel
+    // Only the scheme of the KMS DSN reaches the panel: the rest of a DSN may carry a credential.
     $services->set(KmsClient::class);
 };

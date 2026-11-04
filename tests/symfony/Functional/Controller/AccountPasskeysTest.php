@@ -21,9 +21,7 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The page of the passkeys of the signed-in user (architecture §5.2): the list, the enrolment through the
- * ceremony of the core, the revocation, the script of the provider. The authenticator of the browser is a
- * software one.
+ * Architecture §5.2
  */
 final class AccountPasskeysTest extends PasskeyTestCase
 {
@@ -62,7 +60,7 @@ final class AccountPasskeysTest extends PasskeyTestCase
     }
 
     /**
-     * WebAuthn Level 3 §5.4: the options of a discoverable credential for this user, no attestation asked.
+     * WebAuthn Level 3 §5.4
      */
     #[Test]
     public function theCreationOptionsAreForThisUserAndThisTenant(): void
@@ -119,10 +117,6 @@ final class AccountPasskeysTest extends PasskeyTestCase
         );
     }
 
-    /**
-     * The second criterion of the acceptance on this side: a passkey enrolled from a logged-in session,
-     * named, listed.
-     */
     #[Test]
     public function aPasskeyIsEnrolledFromTheSessionAndListed(): void
     {
@@ -153,12 +147,11 @@ final class AccountPasskeysTest extends PasskeyTestCase
         $row = $this->passkeysPage()->filter('table[data-passkeys="1"] tr[data-passkey="' . $passkey->id . '"]');
         static::assertCount(1, $row);
         static::assertSame('no', $row->attr('data-revoked'));
-        // the name is the field its holder corrects in that line, so it is read as its value
         static::assertSame('YubiKey 5', $row->filter('form[data-passkey="rename"] input[name="name"]')->attr('value'));
     }
 
     /**
-     * §5.4, excludeCredentials: a second passkey is drawn with the first one excluded and the same handle.
+     * WebAuthn Level 3 §5.4
      */
     #[Test]
     public function aSecondPasskeyIsDrawnWithTheFirstExcluded(): void
@@ -281,7 +274,7 @@ final class AccountPasskeysTest extends PasskeyTestCase
     }
 
     /**
-     * WebAuthn Level 3 §7.1, step 26: a credential ID the tenant knows is refused.
+     * WebAuthn Level 3 §7.1, step 26
      */
     #[Test]
     public function aPasskeyEnrolledTwiceIsRefusedTheSecondTime(): void
@@ -325,10 +318,6 @@ final class AccountPasskeysTest extends PasskeyTestCase
         static::assertSame([], self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($alice, PasskeyCredential::class));
     }
 
-    /**
-     * The options are drawn for the user of the session that asked them: another user on the same browser
-     * cannot complete with them.
-     */
     #[Test]
     public function theOptionsOfAnotherUserAreNotUsed(): void
     {
@@ -426,10 +415,6 @@ final class AccountPasskeysTest extends PasskeyTestCase
         static::assertFalse(self::passkeyOf($alice, $device)->isRevoked());
     }
 
-    /**
-     * Issue #446: what tells one passkey from another is a name its holder wrote, so they correct it in
-     * the line where they read it, and the page comes back with the name they gave.
-     */
     #[Test]
     public function aPasskeyIsNamedAgainFromItsOwnLine(): void
     {
@@ -456,10 +441,6 @@ final class AccountPasskeysTest extends PasskeyTestCase
         static::assertSame('YubiKey 5', $renamed[0]->was);
     }
 
-    /**
-     * What a name may be is the rule of the kind and it is read on the server: a name longer than a
-     * passkey holds is refused where it is written and says so once.
-     */
     #[Test]
     public function aNameAPasskeyCannotHoldIsRefused(): void
     {
@@ -512,9 +493,6 @@ final class AccountPasskeysTest extends PasskeyTestCase
         static::assertSame('YubiKey 5', self::passkeyOf($alice, $device)->name);
     }
 
-    /**
-     * A revoked passkey is a record of what was: its name is read and not corrected.
-     */
     #[Test]
     public function aRevokedPasskeyIsNotNamedAgain(): void
     {
@@ -592,7 +570,7 @@ final class AccountPasskeysTest extends PasskeyTestCase
     }
 
     /**
-     * Architecture §5.2: the one script of the provider, served by the provider, cacheable.
+     * Architecture §5.2
      */
     #[Test]
     public function theScriptIsServedByTheProvider(): void
@@ -613,8 +591,6 @@ final class AccountPasskeysTest extends PasskeyTestCase
     }
 
     /**
-     * A JSON object as an array, keys sorted: the order the serializer writes is not the point.
-     *
      * @return array<string, mixed>
      */
     private static function sorted(mixed $object): array

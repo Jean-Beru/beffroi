@@ -23,34 +23,15 @@ use function sort;
 use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * The six columns of `beffroi_user` sealed and read back, and the row underneath (decisions 0011
- * and 0018).
- *
- * What is played here is the deployment's own chain, end to end: the mapping that names an encrypted type
- * per column, the encrypter that composes the scope with the ambient tenant, the listener that writes the
- * blind index in the same statement as the value it indexes, and the repository that looks a user up by
- * that index because the column it used to match on no longer matches anything.
- */
 final class UserColumnsTest extends DatabaseTestCase
 {
     /**
-     * The six personal data of a user, by the column each one lands in: what the fixture writes and
-     * what the row must not hold. One list, so that a column sealed without being written here, or written
-     * without being asserted, is a count that no longer adds up.
-     */
-    /**
-     * Read from the shared fixture and declared nowhere else: the test that searches the whole database
-     * searches for these very values, and two lists of the same values are two lists that disagree.
-     *
      * @var array<string, string>
      */
     private const array PLAINTEXTS = SealedRows::VALUES['beffroi_user'];
 
     /**
-     * The fixture writes every column the classification of the schema declares sealed, and no other: a
-     * column sealed without a value written here would be asserted against nothing, and the walk of the
-     * model is what says which those are (ClassifiedFieldsInterface, decision 0011).
+     * Decision 0011
      */
     #[Test]
     public function theFixtureWritesEveryColumnTheClassificationDeclaresSealed(): void
@@ -72,10 +53,6 @@ final class UserColumnsTest extends DatabaseTestCase
         static::assertSame($sealed, $written);
     }
 
-    /**
-     * The domain does not change because the column seals: what was written as an EmailAddress and an
-     * Address comes back as one, the encrypted type decorating the type the column had.
-     */
     #[Test]
     public function aUserIsReadBackAsTheDomainWroteIt(): void
     {
@@ -99,8 +76,7 @@ final class UserColumnsTest extends DatabaseTestCase
     }
 
     /**
-     * Decision 0002: a local source holds nothing and has nothing to seal, so a person a console created
-     * leaves the column empty.
+     * Decision 0002
      */
     #[Test]
     public function aLocalPersonLeavesTheSourceColumnEmpty(): void
@@ -115,10 +91,6 @@ final class UserColumnsTest extends DatabaseTestCase
         static::assertNull($source);
     }
 
-    /**
-     * The rows the table held before the column came are read as what they are: people a console, a
-     * fixture or an import created.
-     */
     #[Test]
     public function anEmptySourceColumnIsReadBackAsALocalPerson(): void
     {
@@ -135,10 +107,6 @@ final class UserColumnsTest extends DatabaseTestCase
         static::assertTrue($read->source->isLocal());
     }
 
-    /**
-     * Column by column, which is the point of the data provider: a column that stopped sealing would fail
-     * on its own line and not hide behind five others.
-     */
     #[Test]
     #[DataProvider('provideSealedColumns')]
     public function theRowHoldsNoneOfThePlaintexts(string $column, string $plaintext): void
@@ -167,10 +135,6 @@ final class UserColumnsTest extends DatabaseTestCase
         }
     }
 
-    /**
-     * The two tags, written where the row is written: sixty-four hexadecimal characters each, and neither
-     * of them the value it indexes.
-     */
     #[Test]
     public function theRowHoldsTheTagOfTheUsernameAndTheTagOfTheAddress(): void
     {
@@ -186,10 +150,6 @@ final class UserColumnsTest extends DatabaseTestCase
         static::assertNotSame($row['username_index'], $row['email_index']);
     }
 
-    /**
-     * A user who gave no address has no tag to hold, which is why the column is nullable: a tag of the
-     * empty string would make every such user share one.
-     */
     #[Test]
     public function aUserWhoGaveNoAddressHoldsNoTagForIt(): void
     {
@@ -205,10 +165,6 @@ final class UserColumnsTest extends DatabaseTestCase
         static::assertNull($row['email_index']);
     }
 
-    /**
-     * The lookup the login makes, on a column no lookup can match: what it matches is the tag the write
-     * left beside the value.
-     */
     #[Test]
     public function aUserIsReadBackByItsUsername(): void
     {
@@ -224,10 +180,6 @@ final class UserColumnsTest extends DatabaseTestCase
         static::assertTrue($read->id->equals($saved->id));
     }
 
-    /**
-     * A username differing by its case is another username, here as in the index: the identity model trims
-     * a username and folds nothing (`User::normalizeUsername()`).
-     */
     #[Test]
     public function aUsernameDifferingByItsCaseFindsNobody(): void
     {
@@ -243,9 +195,7 @@ final class UserColumnsTest extends DatabaseTestCase
     }
 
     /**
-     * The unicity of a username within a tenant, held on the index column: a sealed column holds a
-     * different ciphertext for every write of the same value, so the constraint had nowhere else to go. Its
-     * violation is the exception of the core, naming nothing (beffroi/saml S-56).
+     * beffroi/saml S-56
      */
     #[Test]
     public function aSecondUserOfTheTenantWithTheSameUsernameIsRefused(): void
@@ -269,12 +219,6 @@ final class UserColumnsTest extends DatabaseTestCase
             ));
     }
 
-    /**
-     * The third success criterion of the spike, on the lookup the login makes: one opening per data key and
-     * per thread, and none at all on a page served by a thread that has already served one (decision
-     * 0018). Two keys are touched here, the index key and the key of the "user" family, and a second
-     * lookup touches neither.
-     */
     #[Test]
     public function aSecondLookupOnTheSameThreadAsksTheKmsNothing(): void
     {
@@ -295,9 +239,6 @@ final class UserColumnsTest extends DatabaseTestCase
         static::assertSame(0, self::kms()->unwrapped);
     }
 
-    /**
-     * The user of the fixture, with every one of the six columns written.
-     */
     private static function ada(): User
     {
         return self::fixture()->user();
@@ -309,10 +250,6 @@ final class UserColumnsTest extends DatabaseTestCase
     }
 
     /**
-     * The one row of the table as the database holds it, the six sealed columns and the two tags: a
-     * column that holds nothing is a column with nothing to assert against, so a null fails here and not
-     * silently in the test that reads it.
-     *
      * @return array<string, string>
      */
     private static function row(): array

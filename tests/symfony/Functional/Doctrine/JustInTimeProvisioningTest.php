@@ -34,19 +34,10 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 use function array_map;
 
-/**
- * Issue #781: a person an upstream provider creates is the person, its source and its linked identity, kept
- * all or none. A person kept without the identity that names it would be a person no sign-in finds, whose
- * address refuses every creation after it.
- */
 final class JustInTimeProvisioningTest extends DatabaseTestCase
 {
     private const string ADDRESS = 'alice@acme.example';
 
-    /**
-     * The store of linked identities finds through Doctrine and refuses every write, counting them: the
-     * failure comes after the person was written, in the same transaction, and must take it back.
-     */
     #[Test]
     public function aPersonWhoseLinkedIdentityFailsToBeWrittenIsNotKept(): void
     {
@@ -107,9 +98,7 @@ final class JustInTimeProvisioningTest extends DatabaseTestCase
     }
 
     /**
-     * beffroi/saml S-56: a first sign-in that loses a race at the table, alice written by another sign-in between the
-     * checks and the unit, which the stores see here as not there yet, is answered by the refusal of the core and not
-     * by the violation of the table, and leaves nothing managed by the entity manager.
+     * beffroi/saml S-56
      */
     #[Test]
     public function aFirstSignInThatLosesARaceAtTheTableIsRefusedAndLeavesNothingManaged(): void
@@ -197,9 +186,7 @@ final class JustInTimeProvisioningTest extends DatabaseTestCase
     }
 
     /**
-     * beffroi/saml S-56: a sign-in that loses a race on a membership, another sign-in of the same person having given it
-     * the group meanwhile, which the memberships read here do not see yet, is answered by the refusal of the core and
-     * not by the violation of the table, and leaves nothing managed by the entity manager.
+     * beffroi/saml S-56
      */
     #[Test]
     public function aSignInThatLosesARaceOnAMembershipIsRefusedAndLeavesNothingManaged(): void

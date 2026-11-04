@@ -8,10 +8,6 @@ use App\Controller\AccountTwoFactorController;
 use Beffroi\Core\Application\Totp\ActiveTotp;
 use Beffroi\Core\Domain\Identity\User;
 
-/**
- * The second factor of the account, on the home page: the authenticator app it holds, or none. How many
- * backup codes are left is on the page of the second factor, where they can be renewed.
- */
 final readonly class TwoFactorSection implements AccountSectionInterface
 {
     public function __construct(

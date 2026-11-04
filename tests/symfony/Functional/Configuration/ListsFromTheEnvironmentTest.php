@@ -20,11 +20,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
 /**
- * Decision 0030, issue #912: a list of the configuration enters by an environment variable of its own, a JSON
- * document of the shape of the list written in the file, and is held to the rules of the tree that list is held to.
- * The kernel of these tests reads every list from a variable (config_test_environment_lists.yml), so each test names
- * the document before it boots one, as a deployment names it before it starts, and reads the service the list
- * reaches.
+ * Decision 0030
  */
 final class ListsFromTheEnvironmentTest extends KernelTestCase
 {
@@ -41,9 +37,6 @@ final class ListsFromTheEnvironmentTest extends KernelTestCase
         'BEFFROI_TEST_TENANT_SCOPES',
     ];
 
-    /**
-     * The public half of a key no test signs anything with, the one config_test.yml pins its authority by.
-     */
     private const array JWKS = [
         'keys' => [
             [
@@ -67,8 +60,7 @@ final class ListsFromTheEnvironmentTest extends KernelTestCase
     }
 
     /**
-     * RFC 7523 §2.1: the issuer a deployment trusts by environment is the one the tenant trusts, for the clients and
-     * the scopes it names.
+     * RFC 7523 §2.1
      */
     #[Test]
     public function aTrustedIssuerTheEnvironmentDeclaresIsTrusted(): void
@@ -93,8 +85,7 @@ final class ListsFromTheEnvironmentTest extends KernelTestCase
     }
 
     /**
-     * Decision 0030: what the tree refuses of a written list it refuses of one the environment carries, here an option
-     * no issuer has, when the service the list reaches is built.
+     * Decision 0030
      */
     #[Test]
     public function aListTheTreeRefusesIsRefusedWhenItsServiceIsBuilt(): void
@@ -119,7 +110,7 @@ final class ListsFromTheEnvironmentTest extends KernelTestCase
     }
 
     /**
-     * RFC 7591 §2.3: the authority a deployment pins by environment is the one whose statements the tenant reads.
+     * RFC 7591 §2.3
      */
     #[Test]
     public function anAuthorityTheEnvironmentPinsIsTrustedForItsStatements(): void
@@ -139,9 +130,6 @@ final class ListsFromTheEnvironmentTest extends KernelTestCase
         static::assertNotNull($policy?->trusts('https://store.example'));
     }
 
-    /**
-     * Issue #452: the claims a person may change of themselves are the ones the deployment opens by environment.
-     */
     #[Test]
     public function theClaimsAPersonChangesAreTheOnesTheEnvironmentOpens(): void
     {
@@ -156,7 +144,7 @@ final class ListsFromTheEnvironmentTest extends KernelTestCase
     }
 
     /**
-     * Decision 0010: the "acr" vocabulary of the tenant is the one the deployment names by environment, in its order.
+     * Decision 0010
      */
     #[Test]
     public function theVocabularyOfTheTenantIsTheOneTheEnvironmentNames(): void
@@ -171,9 +159,6 @@ final class ListsFromTheEnvironmentTest extends KernelTestCase
         static::assertSame(['gold', 'silver'], $policy->names());
     }
 
-    /**
-     * Issue #920: the scopes of the APIs the tenant protects are the ones the deployment declares by environment.
-     */
     #[Test]
     public function theScopesOfTheTenantAreTheOnesTheEnvironmentDeclares(): void
     {
@@ -188,8 +173,7 @@ final class ListsFromTheEnvironmentTest extends KernelTestCase
     }
 
     /**
-     * Decision 0030: what the tree refuses of a written list it refuses of one the environment carries, here a scope
-     * that is no string, when the service the list reaches is built.
+     * Decision 0030
      */
     #[Test]
     public function aScopeTheTreeRefusesIsRefusedWhenItsServiceIsBuilt(): void
@@ -207,8 +191,7 @@ final class ListsFromTheEnvironmentTest extends KernelTestCase
     }
 
     /**
-     * Decision 0018: the secrets that bind the data keys may come from the environment as the list a rotation keeps
-     * two in, the new one first.
+     * Decision 0018
      */
     #[Test]
     public function theSecretsThatBindTheDataKeysMayComeFromTheEnvironment(): void
@@ -225,7 +208,7 @@ final class ListsFromTheEnvironmentTest extends KernelTestCase
     }
 
     /**
-     * Decision 0018: a data key is bound by one secret at least, which the tree holds a written list to.
+     * Decision 0018
      */
     #[Test]
     public function noSecretToBindTheDataKeysIsRefused(): void
@@ -243,8 +226,7 @@ final class ListsFromTheEnvironmentTest extends KernelTestCase
     }
 
     /**
-     * Spec/saml.md S-5: a service provider a deployment declares by environment is served by the identity provider of
-     * the tenant, its options defaulted as those of a written one are.
+     * Spec/saml.md S-5
      */
     #[Test]
     public function aServiceProviderTheEnvironmentDeclaresIsServed(): void
@@ -268,8 +250,7 @@ final class ListsFromTheEnvironmentTest extends KernelTestCase
     }
 
     /**
-     * Spec/saml.md S-42, section 5.7: a tenant that is no service provider receives no assertion of an upstream
-     * identity provider, whether the declaration is written or carried by the environment.
+     * Spec/saml.md S-42, section 5.7
      */
     #[Test]
     public function anUpstreamIdentityProviderOfATenantThatIsNoServiceProviderIsRefused(): void
@@ -292,25 +273,17 @@ final class ListsFromTheEnvironmentTest extends KernelTestCase
         static::getContainer()->get('test.beffroi.environment_lists.identity_providers');
     }
 
-    /**
-     * The JSON document a deployment writes into the variable.
-     */
     private static function carry(string $variable, mixed $list): void
     {
         $_SERVER[$variable] = json_encode($list, JSON_THROW_ON_ERROR);
     }
 
-    /**
-     * The tenant of this kernel, which the lists are declared for.
-     */
     private static function tenant(): Tenant
     {
         return self::service('test.beffroi.environment_lists.tenant_factory', TenantFactory::class)->create();
     }
 
     /**
-     * A service of a kernel booted on the variables the test named, once.
-     *
      * @template T of object
      *
      * @param class-string<T> $class

@@ -12,10 +12,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * What the signed-in person has changed of their own record (issue #482): a page under the page of their
- * information, read in pages and over the stretch of time they ask for.
- */
 #[AsController]
 final readonly class AccountClaimChangesController implements ReachedOnTheSessionAloneInterface
 {

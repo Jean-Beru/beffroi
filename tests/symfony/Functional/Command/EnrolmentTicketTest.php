@@ -15,9 +15,7 @@ use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Issue #613: the command that issues the link letting a person pose their first passkey, for whoever
- * administers the tenant and has no password to give them (decision 0025). It is the use case a screen of
- * the console will press, so what the command prints is what that screen will show once.
+ * Decision 0025
  */
 final class EnrolmentTicketTest extends ConsoleTestCase
 {
@@ -39,9 +37,6 @@ final class EnrolmentTicketTest extends ConsoleTestCase
         static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
     }
 
-    /**
-     * One person holds one usable link at a time: the first opens nothing once a second is issued.
-     */
     #[Test]
     public function aSecondLinkTakesTheFirstAway(): void
     {
@@ -93,10 +88,6 @@ final class EnrolmentTicketTest extends ConsoleTestCase
         static::assertSame([], self::events(EnrolmentTicketIssued::class));
     }
 
-    /**
-     * The path of the link the command printed, the host being that of the issuer of the tenant and the
-     * browser of the test serving the same application on its own.
-     */
     private static function linkOf(CommandTester $tester): string
     {
         static::assertSame(

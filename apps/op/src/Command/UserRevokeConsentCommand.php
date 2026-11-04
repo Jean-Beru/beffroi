@@ -14,15 +14,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * Takes back what a user agreed to let a client obtain (architecture §4.3), for an administrator who is
- * asked to do it for somebody, the page of the account being where that somebody does it themselves. A
- * consent is remembered so that a user who agreed once is not asked again; taking it back is how they
- * change their mind, and the next authorization request of that client asks them afresh.
- *
- * What was issued under that consent goes with it, here as on the page: one consent taken back is one
- * fact however it was asked for, and the rule is ConsentRevocation's, not this command's.
- */
 #[AsCommand(
     name: self::NAME,
     description: 'Take back the consent a user gave a client, and the access it holds; the next authorization request asks again.',

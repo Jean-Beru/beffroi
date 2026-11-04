@@ -20,12 +20,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Throwable;
 
 /**
- * Reads back the JWK Set a client publishes (RFC 7591 §2): one GET, no cookie, no authentication,
- * nothing sent but the request. No redirect is followed (decision 0006): a "jwks_uri" names where the
- * keys are, and the provider does not let a third party move them. The body is read in chunks and the
- * read stops as soon as it is longer than a JWK Set has any reason to be, and the timeout is the
- * fetcher's own, because a client that hangs must not hold a worker: an endpoint authenticating a client
- * is waiting on this.
+ * Follows no redirect, reads the body up to a bound and times out on its own: a hanging client holds no worker.
  */
 final readonly class ClientJwksFetcher implements ClientJwksFetcherInterface
 {

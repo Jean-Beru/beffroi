@@ -17,10 +17,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * What the home of the account says of what a user has agreed to: how many clients may obtain something
- * about them.
- */
 final class ConsentsSectionTest extends TestCase
 {
     #[Test]

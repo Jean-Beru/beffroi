@@ -12,7 +12,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * RFC 7517 §5: the published keys of the tenant.
+ * RFC 7517 §5
  */
 #[AsController]
 final readonly class JwksController

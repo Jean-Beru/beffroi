@@ -12,9 +12,6 @@ use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #781: writes that are one fact, kept all or none in one transaction of the connection.
- */
 final class DoctrineAtomicWritesTest extends DatabaseTestCase
 {
     #[Test]
@@ -51,9 +48,6 @@ final class DoctrineAtomicWritesTest extends DatabaseTestCase
             });
     }
 
-    /**
-     * What was flushed before the write that failed is rolled back with it.
-     */
     #[Test]
     public function aWriteThatFailsTakesTheWritesBeforeItWithIt(): void
     {
@@ -75,10 +69,6 @@ final class DoctrineAtomicWritesTest extends DatabaseTestCase
         static::assertNull(self::users()->findByUsername(self::tenant(), 'alice'));
     }
 
-    /**
-     * The rollback takes the row back and the manager would keep the object it flushed into it, which a later
-     * flush of the same request would write again or point a new row at: it holds nothing after a failure.
-     */
     #[Test]
     public function aWriteThatFailsLeavesNothingManaged(): void
     {
@@ -100,10 +90,6 @@ final class DoctrineAtomicWritesTest extends DatabaseTestCase
         static::assertFalse(self::entityManager()->contains($alice));
     }
 
-    /**
-     * What the request does after a failure is written, the manager forgetting what it held and not the
-     * tenant it reads again.
-     */
     #[Test]
     public function aWriteAfterAFailureIsKept(): void
     {
@@ -127,10 +113,6 @@ final class DoctrineAtomicWritesTest extends DatabaseTestCase
         static::assertNull(self::users()->findByUsername(self::tenant(), 'alice'));
     }
 
-    /**
-     * A refusal raised inside the writes leaves the manager open, as the middleware of the command bus does:
-     * the rest of the request still reads and writes.
-     */
     #[Test]
     public function aFailureLeavesTheManagerOpen(): void
     {

@@ -7,13 +7,7 @@ namespace App\Doctrine\Type;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 
 /**
- * A value object stored as a JSONB document on PostgreSQL, and as the platform declares a JSON document
- * wherever it has no JSONB.
- *
- * The type declares the column, as DBAL's own `JsonbType` does by asking the platform for
- * `getJsonbTypeDeclarationSQL()`, so a mapping names the type and asks the platform for nothing: the "jsonb"
- * column platform option that would say it there is deprecated since doctrine/dbal 4.3.0
- * (doctrine/dbal#6939). Everything else is `JsonObjectType`'s.
+ * Declares the column as DBAL's JsonbType does: doctrine/dbal 4.3 deprecates the "jsonb" platform option.
  *
  * @template T of object
  *

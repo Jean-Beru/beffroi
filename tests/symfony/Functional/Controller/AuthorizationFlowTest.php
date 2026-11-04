@@ -13,17 +13,10 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Architecture §4.3 and §5.2, the acceptance criterion of the controllers: from /authorize to /userinfo
- * through the login and the consent pages, on the test kernel, with the module behind Doctrine. The
- * login itself is the one the firewall will do (#15): here the browser is handed a session the way the
- * firewall will hand it one. The code flow of a public client that requires consent, one step per test
- * (OIDC Core §3.1.2 to §3.1.3 and §5.3, RFC 7636, RFC 9207).
+ * Architecture §4.3, §5.2, OIDC Core §3.1.2 to §3.1.3, §5.3, RFC 7636, RFC 9207
  */
 final class AuthorizationFlowTest extends BrowserTestCase
 {
-    /**
-     * Step 1: the authorization request parks an interaction and sends the browser to the login page.
-     */
     #[Test]
     public function theAuthorizationRequestSendsTheBrowserToTheLoginPage(): void
     {
@@ -37,9 +30,6 @@ final class AuthorizationFlowTest extends BrowserTestCase
         static::assertSame('/login?interaction=' . self::redirectedInteraction($response), $response->headers->get('Location'));
     }
 
-    /**
-     * Step 2: the login page shows the form of the firewall, with its CSRF token.
-     */
     #[Test]
     public function theLoginPageShowsTheFormOfTheFirewall(): void
     {
@@ -61,9 +51,6 @@ final class AuthorizationFlowTest extends BrowserTestCase
         static::assertSame('/login?interaction=' . $interaction, $crawler->filter('form')->attr('action'));
     }
 
-    /**
-     * Step 3: once the browser holds a session, the login page resumes the interaction: consent is required.
-     */
     #[Test]
     public function theLoginPageResumesTheInteractionOnceTheBrowserHoldsASession(): void
     {
@@ -82,9 +69,6 @@ final class AuthorizationFlowTest extends BrowserTestCase
         static::assertSame('/consent?interaction=' . $interaction, $response->headers->get('Location'));
     }
 
-    /**
-     * Step 4: the consent page names the client, the user and every scope of the request.
-     */
     #[Test]
     public function theConsentPageNamesTheUserAndTheScopes(): void
     {
@@ -107,7 +91,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
-     * Step 5: the user allows, the code goes back to the client with "state" and "iss" (RFC 9207 §2).
+     * RFC 9207 §2
      */
     #[Test]
     public function allowingSendsTheCodeBackToTheClientWithStateAndIssuer(): void
@@ -131,7 +115,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
-     * Step 6: the code is exchanged (RFC 6749 §4.1.3, RFC 7636 §4.5).
+     * RFC 6749 §4.1.3, RFC 7636 §4.5
      */
     #[Test]
     public function theCodeIsExchangedForTokens(): void
@@ -155,7 +139,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §5.1: the token response is never cached.
+     * RFC 6749 §5.1
      */
     #[Test]
     public function theTokenResponseIsNotCached(): void
@@ -174,7 +158,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §4.5: a public client without offline_access gets no refresh token.
+     * Architecture §4.5
      */
     #[Test]
     public function aPublicClientWithoutOfflineAccessGetsNoRefreshToken(): void
@@ -191,7 +175,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
-     * Step 7: the access token opens UserInfo (OIDC Core §5.3).
+     * OIDC Core §5.3
      */
     #[Test]
     public function theAccessTokenOpensUserInfo(): void
@@ -215,7 +199,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
-     * Step 8: a second presentation of the code is a replay (RFC 6749 §4.1.2).
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function aSecondPresentationOfTheCodeIsRefused(): void
@@ -235,9 +219,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: the replay revokes what was issued from the code, so the access token handed out
-     * on the first exchange no longer opens UserInfo. This is what the Basic OP profile checks after a
-     * code reuse (oidcc-codereuse-30seconds).
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function theAccessTokenOfAReplayedCodeNoLongerOpensUserInfo(): void
@@ -260,9 +242,6 @@ final class AuthorizationFlowTest extends BrowserTestCase
         static::assertStringContainsString('invalid_token', self::string($response->headers->get('WWW-Authenticate')));
     }
 
-    /**
-     * Step 9: the interaction is over, its pages are not reached again.
-     */
     #[Test]
     public function theInteractionIsOverOnceTheCodeWasIssued(): void
     {
@@ -282,8 +261,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §4.3: a client that does not require consent, with a browser already signed in, gets
-     * its code from the authorization endpoint directly; the request may be a POST (OIDC Core §3.1.2.1).
+     * Architecture §4.3, OIDC Core §3.1.2.1
      */
     #[Test]
     public function aSignedInBrowserAndAFirstPartyClientGetTheCodeAtOnce(): void
@@ -302,7 +280,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §4.1.2.1: the user denied, the client hears access_denied with its state and "iss".
+     * RFC 6749 §4.1.2.1
      */
     #[Test]
     public function aDenialGoesBackToTheClient(): void
@@ -329,8 +307,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9700 §4.1, RFC 6749 §4.1.2.1: an error found before the redirect URI is validated is shown to
-     * the user, never sent anywhere.
+     * RFC 9700 §4.1, RFC 6749 §4.1.2.1
      */
     #[Test]
     public function anUnknownClientIsShownToTheUser(): void
@@ -347,7 +324,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7636 §4.4.1, RFC 9207 §2: an error found once the client is known goes back to it with "iss".
+     * RFC 7636 §4.4.1, RFC 9207 §2
      */
     #[Test]
     public function aMissingCodeChallengeGoesBackToTheClient(): void
@@ -369,7 +346,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §3.1.2.6: prompt=none with no session is login_required, redirected.
+     * OIDC Core §3.1.2.6
      */
     #[Test]
     public function promptNoneWithoutASessionIsLoginRequired(): void
@@ -386,9 +363,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §5.5.1.1 and OIDC Core Error Code unmet_authentication_requirements §1: an essential "acr"
-     * naming classes the provider cannot assert, here a name the policy of the tenant does not declare
-     * (decision 0010), is refused to the client, with the state and the issuer, before any login page.
+     * OIDC Core §5.5.1.1, OIDC Core Error Code unmet_authentication_requirements §1, Decision 0010
      */
     #[Test]
     public function anEssentialAcrTheProviderCannotAssertIsRefusedToTheClient(): void
@@ -408,8 +383,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §4.3: an interaction is resumed only by the browser that began it. Another browser
-     * holding the identifier is told nothing but that no request waits for it.
+     * Architecture §4.3
      */
     #[Test]
     public function anotherBrowserCannotResumeAnInteraction(): void
@@ -430,8 +404,6 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
-     * A login page reached without an interaction, or with one that does not exist.
-     *
      * @param array<string, string> $parameters
      */
     #[Test]
@@ -457,8 +429,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §4.3: an interaction lives ten minutes; after that the user starts again from the
-     * client, nothing is sent to the redirect URI.
+     * Architecture §4.3
      */
     #[Test]
     public function anExpiredInteractionIsShownToTheUser(): void
@@ -479,8 +450,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §3.1.2.1 prompt=login: a session older than the interaction does not satisfy the
-     * request, the login page is shown to the signed-in user rather than looping back to itself.
+     * OIDC Core §3.1.2.1
      */
     #[Test]
     public function promptLoginShowsTheLoginPageToASignedInUser(): void
@@ -504,9 +474,6 @@ final class AuthorizationFlowTest extends BrowserTestCase
         static::assertSame('reauthentication_requested', $crawler->filter('[data-requirement]')->attr('data-requirement'));
     }
 
-    /**
-     * The consent form is protected against cross-site submission.
-     */
     #[Test]
     public function theConsentFormRefusesAForeignSubmission(): void
     {
@@ -548,8 +515,7 @@ final class AuthorizationFlowTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §4.3: a session that ended between the consent page and its answer, from another tab
-     * or by an administrator, sends the user back to the login rather than granting anything.
+     * Architecture §4.3
      */
     #[Test]
     public function aBrowserWhoseSessionEndedGoesBackToTheLogin(): void
@@ -569,9 +535,6 @@ final class AuthorizationFlowTest extends BrowserTestCase
         static::assertSame('/login?interaction=' . $interaction, $response->headers->get('Location'));
     }
 
-    /**
-     * The authorization request of the native client, parked: its interaction identifier.
-     */
     private function beginAuthorization(): string
     {
         $this->browser->request('GET', '/authorize', self::authorizationParameters());
@@ -586,9 +549,6 @@ final class AuthorizationFlowTest extends BrowserTestCase
         ]);
     }
 
-    /**
-     * The code the native client gets once alice signed in and allowed.
-     */
     private function codeAllowedByAlice(): string
     {
         $interaction = $this->beginAuthorization();

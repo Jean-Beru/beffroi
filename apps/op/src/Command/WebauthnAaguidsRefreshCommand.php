@@ -15,13 +15,6 @@ use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * The list of passkey providers the community keeps (architecture §3.4), refreshed by hand as the FIDO metadata
- * are: downloaded, read as that list (AuthenticatorList), stored for the page of the passkeys and the console,
- * which name the model of a passkey from it when the FIDO metadata do not. The list carries no licence, so the
- * provider ships none of it and a deployment that never ran this command names a passkey from the FIDO metadata
- * alone. A list refused, an empty one included, keeps nothing and leaves the stored one as it was.
- */
 #[AsCommand(
     name: 'beffroi:webauthn:aaguids-refresh',
     description: 'Download the list of passkey providers the community keeps (names and logos by AAGUID, unsigned), refuse it unless it is that list and names one, and store it for the pages that name the authenticator of a passkey; --url for a mirror.',
@@ -29,8 +22,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 final readonly class WebauthnAaguidsRefreshCommand
 {
     /**
-     * Where the community publishes its list (github.com/passkeydeveloper/passkey-authenticator-aaguids): the
-     * models it names itself, without the copy of the FIDO metadata its combined list adds.
+     * The models the community names itself, not its combined list, which adds a copy of the FIDO metadata.
      */
     public const string COMMUNITY_LIST = 'https://raw.githubusercontent.com/passkeydeveloper/passkey-authenticator-aaguids/main/aaguid.json';
 

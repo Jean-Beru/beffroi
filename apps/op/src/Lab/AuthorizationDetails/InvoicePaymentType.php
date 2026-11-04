@@ -19,31 +19,14 @@ use function sprintf;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
 /**
- * The one type of authorization detail the development stack serves (RFC 9396 §2), the one of the API of the
- * demonstration, which is what "castor demo --rar" and the forge of oidc-demo ask for. The provider wires none and
- * cannot: a detail says what a client may do, to what and how much in the words of one domain, so a type belongs
- * to a deployment and not to the provider. This one belongs to the lab: wired in development alone
- * (config/packages/lab.yaml), and left out of the image with the rest of src/Lab/, so that a deployment of the
- * image announces no type of detail (issue #922).
- *
- * It is what a scope cannot say. "invoices.read" says a kind of thing; a detail of this type names the invoice,
- * what may be done to it and the most that may be moved, and what a user reads before agreeing is those three
- * and not a category. Nothing here is a permission of the application: the detail travels into the access
- * token (§7) and the introspection (§9), and the resource server is what enforces it.
- *
- * Every member is required and every value is checked, because an unchecked member is a member a page cannot
- * show as it was sent. The members come back in the order this class builds them, so two requests that ask for
- * the same thing produce the same detail whatever order they were written in, which is what lets a consent
- * given for one cover the other (AuthorizationDetail::equals()).
+ * The type of authorization detail of the demonstration API (RFC 9396 §2), wired in development alone. Its members
+ * come back in the order this class builds them, so that one consent covers the same detail written in any order.
  */
 #[AutoconfigureTag('beffroi.oidc.authorization_detail_type')]
 final readonly class InvoicePaymentType implements AuthorizationDetailTypeInterface
 {
     public const string TYPE = 'invoice_payment';
 
-    /**
-     * RFC 9396 §2.2: the common members this type uses, and the one of its own.
-     */
     public const string LOCATIONS = 'locations';
 
     public const string ACTIONS = 'actions';
@@ -56,20 +39,15 @@ final readonly class InvoicePaymentType implements AuthorizationDetailTypeInterf
 
     public const string AMOUNT = 'amount';
 
-    /**
-     * What may be asked of an invoice here, and nothing else: a closed list of this domain, because an action
-     * nobody implements is an action a user would be agreeing to for nothing.
-     */
     private const array KNOWN_ACTIONS = ['read', 'pay'];
 
     /**
-     * ISO 4217: three letters, upper case.
+     * ISO 4217
      */
     private const string CURRENCY_PATTERN = '/^[A-Z]{3}$/D';
 
     /**
-     * The shape RFC 9396 §9.1 writes an amount in: a decimal in a string, so that nothing is read as a float
-     * and nothing rounds on its way into a token.
+     * A decimal in a string, as RFC 9396 §9.1 writes one, so that nothing is read as a float.
      */
     private const string AMOUNT_PATTERN = '/^(0|[1-9][0-9]{0,12})(\.[0-9]{1,2})?$/D';
 
@@ -113,8 +91,7 @@ final readonly class InvoicePaymentType implements AuthorizationDetailTypeInterf
     }
 
     /**
-     * RFC 9396 §2.2 "locations": where the detail is to be used, as absolute URIs. A detail whose locations
-     * name nothing is a detail no resource server can tell is addressed to it.
+     * RFC 9396 §2.2
      *
      * @param array<string, mixed> $members
      *
@@ -148,7 +125,7 @@ final readonly class InvoicePaymentType implements AuthorizationDetailTypeInterf
     }
 
     /**
-     * RFC 9396 §2.2 "actions": what is asked of the invoice, among the ones this domain implements, each once.
+     * RFC 9396 §2.2
      *
      * @param array<string, mixed> $members
      *
@@ -185,15 +162,11 @@ final readonly class InvoicePaymentType implements AuthorizationDetailTypeInterf
     }
 
     /**
-     * How much may be moved at most: the member that makes this a detail and not a scope. A currency of
-     * ISO 4217 and a decimal written as a string, the shape RFC 9396 §9.1 uses, so that nothing rounds and
-     * nothing is read as a float.
-     *
      * @param array<string, mixed> $members
      *
      * @throws InvalidArgumentException
      *
-     * @return array{string, string}
+     * @return array{string, string} the currency and the amount
      */
     private static function maximumAmount(array $members): array
     {

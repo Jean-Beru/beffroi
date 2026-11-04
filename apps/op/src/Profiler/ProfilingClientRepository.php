@@ -10,14 +10,6 @@ use Beffroi\Oidc\Application\Token\GrantNames;
 use Beffroi\Oidc\Port\ClientRepositoryInterface;
 use function implode;
 
-/**
- * The client the request named, as the provider resolved it: who it is, what it registered and what the
- * endpoints therefore hold it to. The authentication method is the one the client registered, which is
- * also the one the authenticator accepted, a request presenting any other being refused before it
- * reaches anything (RFC 6749 §2.3); it is read off the client and never off a list kept beside it.
- *
- * The secret of a client never leaves the client, and nothing of it is read here.
- */
 final readonly class ProfilingClientRepository implements ClientRepositoryInterface
 {
     public function __construct(

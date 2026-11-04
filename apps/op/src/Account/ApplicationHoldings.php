@@ -13,11 +13,6 @@ use Beffroi\Oidc\Port\RefreshTokensOfAConsentInterface;
 use DateTimeImmutable;
 use Psr\Clock\ClockInterface;
 
-/**
- * What applications hold of a person, read from the stores that hold it (issue #451). The page of one
- * application asks for one, the console asks for every one of them, and the question is answered in one
- * place so that the two say the same thing of the same person at the same instant.
- */
 final readonly class ApplicationHoldings
 {
     public function __construct(
@@ -35,9 +30,6 @@ final readonly class ApplicationHoldings
     }
 
     /**
-     * What waits for this person is asked for once, whatever the number of applications: it is a reading of
-     * them and not of one application, and the holding of each keeps the records that name it.
-     *
      * @param list<Consent> $consents
      *
      * @return list<ApplicationHolding> in the order the consents were given

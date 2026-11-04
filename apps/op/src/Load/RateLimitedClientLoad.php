@@ -9,10 +9,8 @@ use Beffroi\Oidc\Port\ClientLoadBudgetInterface;
 use function sprintf;
 
 /**
- * The load budget of a client (decision 0014), counted by tenant and by authenticated client: two
- * tenants may register the same identifier, and one bucket for both would make either pay for the
- * other. The identifier of the tenant is a UUID, so nothing a client is named can reach across the
- * separator into another tenant's count.
+ * Counted by tenant and by client, as two tenants may register the same identifier; the tenant being a UUID, no
+ * client identifier reaches across the separator into another tenant's count.
  */
 final readonly class RateLimitedClientLoad implements ClientLoadBudgetInterface
 {

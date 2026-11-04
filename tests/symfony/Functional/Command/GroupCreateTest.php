@@ -10,8 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Console\Command\Command;
 
 /**
- * Architecture §5.5, decision 0002, issue #782: a group of the tenant is created from the console, as a person
- * is, and the declaration of an upstream provider maps the values it asserts to it.
+ * Architecture §5.5, decision 0002
  */
 final class GroupCreateTest extends ConsoleTestCase
 {

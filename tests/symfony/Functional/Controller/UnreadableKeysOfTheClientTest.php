@@ -16,15 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * OIDC Core §3.1.3.7 (issue #836): a client whose ID tokens are encrypted to a key it publishes behind a
- * "jwks_uri" that cannot be read. The token endpoint answers it the error of the server it is, and what the
- * request presented is not spent: the key is read before the code is, so the same request is served once
- * the set can be read again, and a second presentation of the code is never taken for a replay (RFC 6749
- * §4.1.2).
- *
- * The client registers itself: a declared client that asks for an encrypted document publishes its keys
- * inline, which the boot checks, and nothing of this kernel answers behind a "jwks_uri" but the one the
- * fixture names (ClientKeysBehindAJwksUri), so the one this client registers cannot be read.
+ * OIDC Core §3.1.3.7, RFC 6749 §4.1.2
  */
 final class UnreadableKeysOfTheClientTest extends BrowserTestCase
 {
@@ -33,9 +25,7 @@ final class UnreadableKeysOfTheClientTest extends BrowserTestCase
     private const string REDIRECT_URI = 'https://unreadable.test/callback';
 
     /**
-     * RFC 6749 §4.1.2: a code is spent by the presentation that exchanges it, and one that could not be
-     * answered exchanged nothing. Presented again, it is answered as it was the first time, and nothing
-     * revokes the grant it names.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function aCodeTheProviderCouldNotAnswerIsNotTakenForAReplay(): void
@@ -56,9 +46,6 @@ final class UnreadableKeysOfTheClientTest extends BrowserTestCase
     }
 
     /**
-     * The identifier and the secret the provider drew for a client that authenticates with a secret and
-     * asks for its ID tokens encrypted to a key behind a "jwks_uri" nothing answers.
-     *
      * @return array{string, string}
      */
     private function register(): array

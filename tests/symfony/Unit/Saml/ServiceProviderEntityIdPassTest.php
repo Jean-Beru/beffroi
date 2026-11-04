@@ -14,19 +14,14 @@ use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 /**
- * Spec/saml.md S-38: the entity ID a deployment names for the service provider of its tenant is checked when the
- * container is compiled, a URI of M-6 that is not the entity ID of the identity provider, so that the deployment fails
- * its build and not the first request for its metadata; a value an environment variable holds is left to the locator,
- * which checks it at its first use.
+ * spec/saml.md S-38, M-6
  */
 final class ServiceProviderEntityIdPassTest extends TestCase
 {
     private const string ISSUER = 'https://op.test';
 
     /**
-     * S-38, M-6: an entity ID that is no URI of the model, or that is the entity ID of the identity provider, whether
-     * the identity provider is enabled or not, fails the compilation, naming the key of the configuration and the
-     * rule.
+     * S-38, M-6
      *
      * @param array<string, mixed> $saml
      */
@@ -87,7 +82,7 @@ final class ServiceProviderEntityIdPassTest extends TestCase
     }
 
     /**
-     * S-38: an entity ID that is a URI of its own compiles, and reaches the locator as it was written.
+     * S-38
      */
     #[Test]
     public function anEntityIdOfItsOwnCompiles(): void
@@ -107,8 +102,7 @@ final class ServiceProviderEntityIdPassTest extends TestCase
     }
 
     /**
-     * S-38: an entity ID an environment variable holds is known to the running deployment only, so the container
-     * builds and the value reaches the locator, which checks it at its first use.
+     * S-38
      */
     #[Test]
     public function anEntityIdOfTheEnvironmentIsLeftToTheLocator(): void
@@ -130,8 +124,7 @@ final class ServiceProviderEntityIdPassTest extends TestCase
     }
 
     /**
-     * S-38: an issuer an environment variable holds leaves the comparison with the entity ID of the identity provider
-     * to the locator, the container building with an entity ID that may be that one, which reaches the locator.
+     * S-38
      */
     #[Test]
     public function anIssuerOfTheEnvironmentLeavesTheComparisonToTheLocator(): void
@@ -158,8 +151,7 @@ final class ServiceProviderEntityIdPassTest extends TestCase
     }
 
     /**
-     * S-38: a deployment that names no entity ID goes by the URL of the metadata, a URI that is not the identity
-     * provider's: it compiles, the locator handed none.
+     * S-38
      */
     #[Test]
     public function anEntityIdLeftOutCompiles(): void
@@ -177,8 +169,7 @@ final class ServiceProviderEntityIdPassTest extends TestCase
     }
 
     /**
-     * S-38, decision 0030: an entity ID the deployment names is held to its rules whether its service provider is on or
-     * not, the locator being wired in every image and the role one a value of the environment may turn on.
+     * S-38, Decision 0030
      */
     #[Test]
     public function anEntityIdOfAServiceProviderLeftOffIsHeldToItsRules(): void
@@ -199,9 +190,6 @@ final class ServiceProviderEntityIdPassTest extends TestCase
         new ServiceProviderEntityIdPass()->process($container);
     }
 
-    /**
-     * The pass is one of the provider's, run by every kernel that builds its container.
-     */
     #[Test]
     public function theProviderRunsThePass(): void
     {
@@ -219,8 +207,6 @@ final class ServiceProviderEntityIdPassTest extends TestCase
     }
 
     /**
-     * A container the extension of the provider loaded with this SAML configuration, the tenant under the issuer given.
-     *
      * @param array<string, mixed> $saml
      */
     private static function container(array $saml, ?ContainerBuilder $container = null, string $issuer = self::ISSUER): ContainerBuilder

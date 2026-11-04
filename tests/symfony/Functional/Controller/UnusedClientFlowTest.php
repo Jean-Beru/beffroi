@@ -22,9 +22,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Decision 0009: a client that registered itself carries the date of its last use, and the timed step drops
- * the ones nobody uses any more. Clients that are never cleaned up are a table that only grows and, worse,
- * "redirect_uris" nobody watches any more.
+ * Decision 0009
  */
 final class UnusedClientFlowTest extends BrowserTestCase
 {
@@ -44,10 +42,6 @@ final class UnusedClientFlowTest extends BrowserTestCase
         $this->registered = $this->register();
     }
 
-    /**
-     * A client that has only registered itself has used nothing, which is not the same as one used long ago
-     * and is not kept for as long.
-     */
     #[Test]
     public function aClientThatOnlyRegisteredItselfHasUsedNothing(): void
     {
@@ -58,10 +52,6 @@ final class UnusedClientFlowTest extends BrowserTestCase
         static::assertNull($record?->lastUsedAt);
     }
 
-    /**
-     * The two things that mean somebody is using a client: an authorization granted for it, and a request it
-     * made at the token endpoint. Both are played here through the flow that raises them.
-     */
     #[Test]
     #[DataProvider('provideUses')]
     public function aUseMovesTheDateOfTheLastOne(bool $exchangeTheCode): void
@@ -91,9 +81,6 @@ final class UnusedClientFlowTest extends BrowserTestCase
         yield 'a request the client made at the token endpoint' => [true];
     }
 
-    /**
-     * A request served for another client is not a use of this one.
-     */
     #[Test]
     public function aRequestOfAnotherClientLeavesThisOneAlone(): void
     {
@@ -110,8 +97,7 @@ final class UnusedClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0009: on the clock of the kernel, a client that was never used is there one instant before the
-     * shorter duration its policy names.
+     * Decision 0009
      */
     #[Test]
     public function aClientNobodyEverUsedIsThereUntilTheDurationItsPolicyNames(): void
@@ -140,8 +126,7 @@ final class UnusedClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0009: a client a deployment declared in its configuration is never deleted, whatever the dates
-     * say. It has no row at all, so there is nothing for the step to read and no condition in it about them.
+     * Decision 0009
      */
     #[Test]
     public function aClientTheDeploymentDeclaredIsNeverTouched(): void
@@ -160,9 +145,7 @@ final class UnusedClientFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7592 §2.3 asks that what a client held be invalidated with it, and this is how: a record whose
-     * client no longer resolves is a record nobody finds, so a refresh token of a deleted client is a refresh
-     * token nobody may spend. The row is left where it is, which is the state this issue decides.
+     * RFC 7592 §2.3
      */
     #[Test]
     public function aRefreshTokenOfADeletedClientCannotBeSpent(): void

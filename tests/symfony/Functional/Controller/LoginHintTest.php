@@ -10,10 +10,7 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * OIDC Core §3.1.2.1 and §4: the "login_hint" of an authorization request, read back into the user it
- * names so that the field where a person types their name carries that name. The hint this provider
- * reads is above all the one it writes itself, a login begun at a client naming its user by the "sub"
- * that client holds, which for a client of its own sector is a string no row carries.
+ * OIDC Core §3.1.2.1, §4
  */
 final class LoginHintTest extends BrowserTestCase
 {
@@ -26,8 +23,7 @@ final class LoginHintTest extends BrowserTestCase
     private const string PAIRWISE_REDIRECT_URI = 'https://launched-pairwise.test/callback';
 
     /**
-     * OIDC Core §8 "public": a client that registers no kind holds the identifier the core keeps, and the
-     * page reads it back into the name its user signs in with.
+     * OIDC Core §8 "public"
      */
     #[Test]
     public function aHintThatIsASubjectOfTheClientOffersTheNameOfItsUser(): void
@@ -43,10 +39,7 @@ final class LoginHintTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §4 end to end, which is what the reading is for: the provider begins a login at a client
-     * of its own sector, the client carries the hint it was given into an authorization request once the
-     * session here has ended, and the page that asks for the login again offers the name rather than the
-     * "sub" the client holds (§8.1).
+     * OIDC Core §4, §8.1
      */
     #[Test]
     public function aPairwiseHintThisProviderWroteIsReadBackToTheNameOfItsUser(): void
@@ -67,9 +60,7 @@ final class LoginHintTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §8.1, the property pairwise exists for: a "sub" of one sector carried to a client of
-     * another names nobody there, so the page offers nothing rather than telling the second client that
-     * the string the first one holds is somebody here.
+     * OIDC Core §8.1
      */
     #[Test]
     public function aHintOfAnotherSectorOffersNothing(): void
@@ -89,8 +80,7 @@ final class LoginHintTest extends BrowserTestCase
     }
 
     /**
-     * §3.1.2.1 makes the parameter a hint: one that names nobody leaves the field as a request carrying
-     * none leaves it, and nobody is asked to delete a string they never typed.
+     * OIDC Core §3.1.2.1
      */
     #[Test]
     #[DataProvider('provideHintsNamingNobody')]
@@ -116,10 +106,6 @@ final class LoginHintTest extends BrowserTestCase
         yield 'the name the user signs in with, which this tenant does not read a hint as' => ['alice'];
     }
 
-    /**
-     * What the client sent is read and never echoed: a page that carried the value back would show a
-     * "sub" of one client to whoever is at the browser, and would do it for a value that named nobody.
-     */
     #[Test]
     public function theValueTheClientSentIsNowhereOnThePage(): void
     {
@@ -134,10 +120,6 @@ final class LoginHintTest extends BrowserTestCase
         static::assertStringNotContainsString($hint, self::string($this->browser->getResponse()->getContent()));
     }
 
-    /**
-     * The value of the field a person types their name in, on the login page an authorization request
-     * carrying that hint is sent to.
-     */
     private function nameOffered(string $clientId, string $redirectUri, ?string $hint): string
     {
         $field = $this->loginPage($clientId, $redirectUri, $hint)->filter('input#username')->attr('value');

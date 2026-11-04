@@ -69,11 +69,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * beffroi/saml, spec/saml.md section 6.6, the acceptance of issue #735: the service provider https://sp.example.org/saml
- * of the configuration of the test signs the user in over HTTP-Redirect, then the provider starts the logout, at its
- * end session endpoint, on the page of the account, or for another service provider of the session: the service
- * provider is sent a LogoutRequest saml2-model accepts under the certificate the tenant publishes, the session of the
- * provider having ended before, and its LogoutResponse ends the chain where the starter of the logout said.
+ * beffroi/saml, spec/saml.md section 6.6
  */
 final class ProviderLogoutTest extends ConsoleTestCase
 {
@@ -83,10 +79,6 @@ final class ProviderLogoutTest extends ConsoleTestCase
 
     private const string SINGLE_LOGOUT = ServiceProviderDocuments::SIGNED . '/slo';
 
-    /**
-     * The second service provider of the session, the SimpleSAMLphp one the configuration of the test declares, its
-     * metadata here a document of the test key "idp" of saml2-model, so that its answers can be signed.
-     */
     private const string OTHER = 'https://localhost:8082/simplesaml/module.php/saml/sp/metadata/default-sp';
 
     private const string OTHER_SINGLE_LOGOUT = 'https://default-sp.test/slo';
@@ -100,7 +92,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     private const string AFTER_LOGOUT = 'https://demo.test/?state=after-logout';
 
     /**
-     * The policy of the page that posts a form (spec/saml.md section 6.8), its "form-action" left to the test.
+     * spec/saml.md section 6.8
      */
     private const string POLICY = "default-src 'none'; script-src 'sha256-8lDeP0UDwCO6/RhblgeH/ctdBzjVpJxrXizsnIk3cEQ='; form-action %s; base-uri 'none'; frame-ancestors 'none'";
 
@@ -128,9 +120,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #735, S-29, S-31: a logout at the end session endpoint, confirmed, sends the browser to
-     * the single logout service of the service provider with a LogoutRequest the service provider accepts under the
-     * certificate the tenant publishes, naming the NameID of the assertion and its SessionIndex.
+     * S-29, S-31
      */
     #[Test]
     public function aLogoutAtTheEndSessionEndpointTellsTheServiceProvider(): void
@@ -151,8 +141,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #735, S-29: the session of the provider has ended before the service provider answers,
-     * whatever it answers, or if it never does.
+     * S-29
      */
     #[Test]
     public function theSessionHasEndedBeforeTheServiceProviderAnswers(): void
@@ -171,8 +160,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-33, S-34: the LogoutResponse of the service provider, signed with the key of its metadata, ends the chain at
-     * the post_logout_redirect_uri of the client, with its state.
+     * S-33, S-34
      */
     #[Test]
     public function theAnswerOfTheServiceProviderEndsTheChainWhereTheClientAsked(): void
@@ -191,7 +179,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-32, S-33, M-11: the same answer presented again is refused, with the page of a refusal.
+     * S-32, S-33, M-11
      */
     #[Test]
     public function theSameAnswerIsRefusedTheSecondTime(): void
@@ -210,7 +198,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-33: an answer to a request no chain waits for is refused, with the page of a refusal.
+     * S-33
      */
     #[Test]
     public function anAnswerToNoRequestIsRefused(): void
@@ -234,7 +222,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-29: the end of the session of the browser from the page of the account starts the same chain.
+     * S-29
      */
     #[Test]
     public function aLogoutFromThePageOfTheAccountTellsTheServiceProvider(): void
@@ -256,8 +244,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-35: a client of OpenID Connect of the session that registered a front-channel logout URI is given the page of
-     * Front-Channel Logout 1.0 first, which resumes the chain at the route of the provider.
+     * S-35, Front-Channel Logout 1.0
      */
     #[Test]
     public function aClientWithAFrontChannelLogoutUriIsGivenThePageFirst(): void
@@ -281,7 +268,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-32, S-35: the page resumes the chain once, and the browser is sent on to the service provider.
+     * S-32, S-35
      */
     #[Test]
     public function thePageOfTheFrontChannelResumesTheChainOnce(): void
@@ -302,8 +289,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-30, S-34: a logout the service provider starts tells the other service provider of the session first, then is
-     * answered Success, once that one answered Success.
+     * S-30, S-34
      */
     #[Test]
     public function aLogoutAServiceProviderStartedTellsTheOtherOneBeforeItsAnswer(): void
@@ -321,8 +307,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-34, Core §3.7.3.2: when the other service provider does not answer Success, the one that asked is answered
-     * Success with PartialLogout.
+     * S-34, SAML Core §3.7.3.2
      */
     #[Test]
     public function aServiceProviderThatDidNotLogOutMakesTheAnswerPartial(): void
@@ -343,9 +328,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-36, section 6.8: the other service provider, told over HTTP-POST, is posted its request by the page whose
-     * "form-action" names the origin of its single logout service, of the single logout service of the tenant, where
-     * its answer comes back, and of the single logout service of the service provider that asked, where the chain ends.
+     * S-36, section 6.8
      */
     #[Test]
     public function thePagePostingARequestNamesWhereTheChainGoesInItsPolicy(): void
@@ -364,8 +347,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-36: at the end session endpoint, the other service provider, told over HTTP-POST once the first answered, is
-     * posted its request by the page whose "form-action" names where the client asked the chain to end.
+     * S-36
      */
     #[Test]
     public function thePagePostingARequestNamesWhereTheStarterOfTheLogoutGoes(): void
@@ -385,8 +367,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-30, S-33, S-34: the other service provider, told over HTTP-POST, answers over HTTP-Redirect, and the chain goes
-     * on to the service provider that asked, answered Success.
+     * S-30, S-33, S-34
      */
     #[Test]
     public function aServiceProviderToldOverHttpPostCarriesTheChainOnWithItsAnswer(): void
@@ -404,9 +385,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-32, S-33: the answer of the outstanding request, presented by a client that is not the browser that began the
-     * chain, the server of the service provider itself or a browser holding the cookie of another chain, is refused
-     * with the page of a refusal, before it is read: no request to the next service provider is handed to it.
+     * S-32, S-33
      */
     #[Test]
     #[DataProvider('provideClientsThatDidNotBeginTheChain')]
@@ -436,8 +415,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-32, S-33: an answer refused to another client leaves the chain as it was, the answer unread: the browser that
-     * began the chain, presenting the same answer, is sent on to the next service provider.
+     * S-32, S-33
      */
     #[Test]
     public function anAnswerRefusedToAnotherClientIsLeftToTheBrowserThatBeganTheChain(): void
@@ -456,9 +434,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-32, S-35: the reference of a chain written back after a KMS that did not answer, which the URL of the route
-     * that resumes the chain carries and an access log keeps, resumes nothing for a client that is not the browser that
-     * began the chain: the page of a refusal.
+     * S-32, S-35
      */
     #[Test]
     #[DataProvider('provideClientsThatDidNotBeginTheChain')]
@@ -478,8 +454,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-32, S-35: a reference refused to another client leaves the chain as it was: the browser that began it, at the
-     * same URL, is sent on to the service provider.
+     * S-32, S-35
      */
     #[Test]
     public function aReferenceRefusedToAnotherClientIsLeftToTheBrowserThatBeganTheChain(): void
@@ -497,10 +472,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-32: the browser that begins the chain is given the secret of the chain in a cookie of the provider: its name
-     * "__Host-", Secure, HttpOnly, the path "/" and no domain, so that only the origin of the provider sets it and
-     * reads it; SameSite=None, so that the answer a service provider posts from its site comes with it; open the ten
-     * minutes the chain is; the secret 32 bytes in base64url.
+     * S-32
      */
     #[Test]
     public function theBrowserThatBeginsTheChainIsGivenItsCookie(): void
@@ -531,7 +503,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-32: each step of the chain gives its cookie the ten minutes the chain is open from that step.
+     * S-32
      */
     #[Test]
     public function eachStepGivesTheCookieTheTenMinutesOfTheChainAgain(): void
@@ -553,8 +525,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-32, S-34: the cookie of the chain is cleared where the chain ends, at the end session endpoint as for a service
-     * provider that asked.
+     * S-32, S-34
      */
     #[Test]
     #[DataProvider('provideEnds')]
@@ -595,9 +566,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-32, S-28, section 6.8: the answer a service provider posts from its site over HTTP-POST, which the session cookie
-     * of the provider does not accompany, comes with the cookie of the chain, SameSite=None, and, posted again from the
-     * origin of the provider, carries the chain on.
+     * S-32, S-28, section 6.8
      */
     #[Test]
     public function anAnswerPostedFromTheSiteOfTheServiceProviderCarriesTheChainOn(): void
@@ -617,9 +586,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-28: a LogoutRequest a service provider posts from its site over HTTP-POST, which the session cookie of the
-     * provider does not accompany, is answered with the page that posts it again from the origin of the provider,
-     * before anything of it is read: the session it names is not ended, and the answer sets no cookie.
+     * S-28
      */
     #[Test]
     public function aLogoutRequestPostedFromTheSiteOfTheServiceProviderIsPostedAgain(): void
@@ -643,9 +610,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-28, S-29, S-32: the LogoutRequest posted again from the origin of the provider ends the session it names and
-     * begins the chain, the other service provider of the session told first and the browser given the cookie of the
-     * chain; the first post read nothing of it, which the store of S-23 would otherwise refuse as a replay.
+     * S-28, S-29, S-32, S-23
      */
     #[Test]
     public function aLogoutRequestPostedAgainEndsTheSessionAndBeginsTheChain(): void
@@ -664,9 +629,6 @@ final class ProviderLogoutTest extends ConsoleTestCase
         static::assertSame([true, false], [$this->sessionOf($assertion)->hasEnded(), $cookie->isCleared()]);
     }
 
-    /**
-     * The metadata of a service provider accepted for the tenant.
-     */
     private function accept(string $entityId, string $document): void
     {
         self::service('test.beffroi.saml_accepted_metadata', AcceptedMetadataRepositoryInterface::class)
@@ -674,8 +636,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * The browser signed in, sent by the service provider with a request over HTTP-Redirect, and the assertion the page
-     * of the provider posts back, as the service provider accepts it; its part in the session recorded (S-26).
+     * S-26
      */
     private function signedOn(): AcceptedAssertion
     {
@@ -703,10 +664,6 @@ final class ProviderLogoutTest extends ConsoleTestCase
             );
     }
 
-    /**
-     * signedOn(), and the other service provider signed in to the same session after it, its single logout service on
-     * $binding.
-     */
     private function signedOnAtBoth(Binding $binding = Binding::HttpRedirect): AcceptedAssertion
     {
         $assertion = $this->signedOn();
@@ -717,9 +674,6 @@ final class ProviderLogoutTest extends ConsoleTestCase
         return $assertion;
     }
 
-    /**
-     * A logout at the end session endpoint, by the client of the configuration, confirmed by the browser.
-     */
     private function logOut(): Crawler
     {
         return $this->browser->submit($this->browser->request('GET', '/logout', [
@@ -729,10 +683,6 @@ final class ProviderLogoutTest extends ConsoleTestCase
         ])->selectButton('Sign out')->form());
     }
 
-    /**
-     * The LogoutRequest the provider redirected the browser to $location with, as the service provider $entityId
-     * validates it, at that single logout service, under the certificate the tenant publishes.
-     */
     private function told(string $location, string $entityId = self::SERVICE_PROVIDER): AcceptedLogoutRequest
     {
         $redirected = $this->browser->getResponse()->headers->get('Location') ?? '';
@@ -751,10 +701,6 @@ final class ProviderLogoutTest extends ConsoleTestCase
         );
     }
 
-    /**
-     * The LogoutRequest the page of the provider posts to $location, as the service provider $entityId validates it at
-     * that single logout service, under the certificate the tenant publishes.
-     */
     private function postedTo(string $location, string $entityId): AcceptedLogoutRequest
     {
         $form = $this->browser->getCrawler()->filter('form')->first();
@@ -775,9 +721,6 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * The LogoutResponse of the service provider $entityId to a request it accepted, signed with the test key $key of
-     * its metadata, over HTTP-Redirect to the single logout service of the tenant.
-     *
      * @param 'idp'|'sp' $key
      */
     private function answered(AcceptedLogoutRequest $told, string $entityId, string $key, Status $status = new Status(StatusCode::Success)): string
@@ -785,10 +728,6 @@ final class ProviderLogoutTest extends ConsoleTestCase
         return new RedirectSender()->logoutResponse($this->answer($told, $entityId, $status), self::signing($key));
     }
 
-    /**
-     * The LogoutResponse of the service provider $entityId to a request it accepted, to the single logout service of
-     * the tenant.
-     */
     private function answer(AcceptedLogoutRequest $told, string $entityId, Status $status = new Status(StatusCode::Success)): LogoutResponse
     {
         return new LogoutResponse(
@@ -802,10 +741,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * A logout at the end session endpoint confirmed while the KMS does not answer, a SAML key the process has not
-     * opened yet being the one the first request of the chain is signed with: the session ended, the chain written back
-     * (S-32), and the browser sent to the route that resumes it with its reference (S-35), whose path is returned, once
-     * the KMS answers again.
+     * Returns the path of the route that resumes the chain (S-32, S-35).
      */
     private function loggedOutDuringAnOutage(): string
     {
@@ -830,9 +766,6 @@ final class ProviderLogoutTest extends ConsoleTestCase
         return self::pathOf($continue);
     }
 
-    /**
-     * The cookie of a chain the client holds, the secret of another chain, or none.
-     */
     private function holding(?string $secret): void
     {
         if ($secret !== null) {
@@ -841,9 +774,6 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * What another client does, which holds the cookie of another chain and none of the cookies of the browser: the jar
-     * of the browser emptied for it, and given back.
-     *
      * @param Closure(): mixed $request
      */
     private function fromAnotherClient(Closure $request): void
@@ -860,9 +790,6 @@ final class ProviderLogoutTest extends ConsoleTestCase
         }
     }
 
-    /**
-     * The cookie of the chain the last response sets or clears.
-     */
     private function cookieOfTheChain(): Cookie
     {
         foreach ($this->browser->getResponse()->headers->getCookies() as $cookie) {
@@ -874,18 +801,11 @@ final class ProviderLogoutTest extends ConsoleTestCase
         return static::fail('The response sets no cookie of the chain of logout.');
     }
 
-    /**
-     * The LogoutRequest the first service provider writes from the assertion it holds: its NameID as received and its
-     * SessionIndex, to the single logout service of the tenant.
-     */
     private function logoutUrl(AcceptedAssertion $assertion): string
     {
         return new RedirectSender()->logoutRequest($this->logoutRequest($assertion), self::signing('sp'), 'state-2');
     }
 
-    /**
-     * The LogoutRequest the first service provider writes from the assertion it holds, whatever binding carries it.
-     */
     private function logoutRequest(AcceptedAssertion $assertion): LogoutRequest
     {
         $nameId = $assertion->assertion->nameId;
@@ -901,10 +821,6 @@ final class ProviderLogoutTest extends ConsoleTestCase
         );
     }
 
-    /**
-     * The answer the provider redirected the browser to the single logout service of the first service provider with,
-     * as that service provider validates it.
-     */
     private function answerToTheRequester(): AcceptedLogoutResponse
     {
         $location = $this->browser->getResponse()->headers->get('Location') ?? '';
@@ -951,9 +867,6 @@ final class ProviderLogoutTest extends ConsoleTestCase
         );
     }
 
-    /**
-     * The service provider $entityId as its own validator knows itself, its single logout service at $location.
-     */
     private static function role(string $entityId, string $location): ServiceProvider
     {
         return new ServiceProvider(
@@ -966,7 +879,7 @@ final class ProviderLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * The SessionIndex of the assertion, the ID of the session of the provider (spec/saml.md section 6.4 step 7).
+     * spec/saml.md section 6.4 step 7
      */
     private static function sessionIndex(AcceptedAssertion $assertion): string
     {

@@ -18,9 +18,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The backchannel authentication endpoint (CIBA Core §7), POST only: where a client asks for a user it
- * names, with no browser anywhere in the request. An error is the JSON of §13, never a redirection and
- * never a page, this client having nowhere to be sent.
+ * CIBA Core §7, §13
  */
 #[AsController]
 final readonly class BackchannelAuthenticationController

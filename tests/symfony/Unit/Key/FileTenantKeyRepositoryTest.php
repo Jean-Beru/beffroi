@@ -39,7 +39,7 @@ use function sys_get_temp_dir;
 use function uniqid;
 
 /**
- * Architecture §3.3: the sealed keys as files, one per key, under the tenant's slug.
+ * Architecture §3.3
  */
 final class FileTenantKeyRepositoryTest extends TestCase
 {
@@ -165,10 +165,6 @@ final class FileTenantKeyRepositoryTest extends TestCase
         static::assertEquals(Fixtures::now()->modify('+2 days'), $retired->retiredAt);
     }
 
-    /**
-     * TenantKeyRepositoryInterface::findInService(): staged, active and retiring keys, in creation order;
-     * findActive(): never a staged key.
-     */
     #[Test]
     public function theActiveKeyIsFoundAmongTheOthers(): void
     {
@@ -234,9 +230,6 @@ final class FileTenantKeyRepositoryTest extends TestCase
         static::assertNotNull($this->repository->find($other, Keys::pair()->kid));
     }
 
-    /**
-     * A file under the slug of one tenant that names another is a storage fault, not a key of either.
-     */
     #[Test]
     public function aFileOfAnotherTenantUnderTheSameSlugIsRefused(): void
     {
@@ -252,10 +245,6 @@ final class FileTenantKeyRepositoryTest extends TestCase
         $this->repository->find($tenant, Keys::pair()->kid);
     }
 
-    /**
-     * A key file whose algorithm the provider is no longer wired with is a storage fault, not a missing
-     * key: the provider cannot sign with it and cannot say what its "alg" means (issue #156).
-     */
     #[Test]
     public function aKeyOfAnAlgorithmTheProviderIsNotWiredWithIsRefused(): void
     {
@@ -273,8 +262,7 @@ final class FileTenantKeyRepositoryTest extends TestCase
     }
 
     /**
-     * Spec/saml.md section 5.1: the key of a capability the deployment turned off after the tenant drew it is read
-     * past, and the keys beside it are read as they were.
+     * spec/saml.md section 5.1
      */
     #[Test]
     public function theKeyOfADormantAlgorithmIsReadPast(): void
@@ -292,7 +280,7 @@ final class FileTenantKeyRepositoryTest extends TestCase
     }
 
     /**
-     * Spec/saml.md section 5.1: nothing answers for the key of a dormant algorithm, its kid included.
+     * spec/saml.md section 5.1
      */
     #[Test]
     public function theKeyOfADormantAlgorithmIsNotFoundByItsKid(): void
@@ -306,8 +294,7 @@ final class FileTenantKeyRepositoryTest extends TestCase
     }
 
     /**
-     * Spec/saml.md section 5.1: a key read past while its capability was off is in service again, as it was, once
-     * its algorithm is wired again.
+     * spec/saml.md section 5.1
      */
     #[Test]
     public function aKeyReadPastIsInServiceAgainOnceItsAlgorithmIsWired(): void
@@ -328,8 +315,7 @@ final class FileTenantKeyRepositoryTest extends TestCase
     }
 
     /**
-     * Spec/saml.md section 5.1, issue #156: a name that neither the wiring nor a section that left its capability
-     * off knows is still a fault of the storage.
+     * spec/saml.md section 5.1
      */
     #[Test]
     public function aKeyOfAnAlgorithmNoSectionLeftOffIsStillRefused(): void
@@ -352,8 +338,7 @@ final class FileTenantKeyRepositoryTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-64: the key of an upstream identity provider nothing wires any more, an algorithm of a family named
-     * after its holder, is read past, and the keys beside it are read as they were.
+     * spec/saml.md S-64
      */
     #[Test]
     public function theKeyOfAProviderNothingWiresIsReadPast(): void
@@ -377,8 +362,7 @@ final class FileTenantKeyRepositoryTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-64: one material is the key of one algorithm, so the key of another algorithm under the "kid" a
-     * file holds is refused rather than written over it, and the key that file holds is left as it was.
+     * spec/saml.md S-64
      */
     #[Test]
     public function theKeyOfAnotherAlgorithmUnderAKidHeldAlreadyIsRefused(): void
@@ -399,9 +383,6 @@ final class FileTenantKeyRepositoryTest extends TestCase
         $repository->save(self::providerKey($tenant, 'https://idp-b.example/metadata'));
     }
 
-    /**
-     * The key a file holds is saved again as it changes, under the same algorithm: its status survives.
-     */
     #[Test]
     public function aKeyIsSavedAgainUnderItsOwnAlgorithm(): void
     {
@@ -541,9 +522,7 @@ final class FileTenantKeyRepositoryTest extends TestCase
     }
 
     /**
-     * The proof of custody of issue #57, on the files: whatever the KMS, a key file carries the public JWK
-     * in clear and the private one sealed, so no private member of RFC 7518 §6.3.2 appears in it, nor the
-     * private members themselves as the sealer received them.
+     * RFC 7518 §6.3.2
      */
     #[Test]
     public function noKeyFileCarriesAPrivateMemberInClear(): void
@@ -601,10 +580,6 @@ final class FileTenantKeyRepositoryTest extends TestCase
         $this->repository->save($key);
     }
 
-    /**
-     * Four keys saved out of creation order: the oldest retiring, the middle one retired, the newest active,
-     * one staged after it.
-     */
     private function saveThreeKeys(Tenant $tenant): void
     {
         $oldest = self::activeKey($tenant, 'zzz-oldest', Fixtures::now()->modify('-2 days'));
@@ -621,8 +596,6 @@ final class FileTenantKeyRepositoryTest extends TestCase
     }
 
     /**
-     * The document as written, with what the test wants wrong.
-     *
      * @param array<string, mixed> $overrides
      *
      * @return array<string, mixed>
@@ -662,7 +635,7 @@ final class FileTenantKeyRepositoryTest extends TestCase
     }
 
     /**
-     * The algorithms of the suite and the one of each upstream identity provider given (spec/saml.md S-64).
+     * spec/saml.md S-64
      *
      * @param list<string> $providers
      */
@@ -680,9 +653,6 @@ final class FileTenantKeyRepositoryTest extends TestCase
         ]);
     }
 
-    /**
-     * The key an upstream identity provider encrypts for, on the second RSA pair of the suite.
-     */
     private static function providerKey(Tenant $tenant, string $provider): TenantKey
     {
         $algorithm = new SamlEncryption($provider);
@@ -711,9 +681,6 @@ final class FileTenantKeyRepositoryTest extends TestCase
         return $key;
     }
 
-    /**
-     * The application server key of the tenant, active: the key of a capability a deployment may turn off.
-     */
     private static function applicationServerKey(Tenant $tenant): TenantKey
     {
         $pair = Keys::applicationServerPair();
@@ -723,10 +690,6 @@ final class FileTenantKeyRepositoryTest extends TestCase
         return $key;
     }
 
-    /**
-     * The same storage read by a deployment that reaches nobody by push: the signature algorithms wired, the
-     * application server algorithm dormant.
-     */
     private function withoutApplicationServer(): FileTenantKeyRepository
     {
         return new FileTenantKeyRepository($this->directory, Algorithms::all(), new DormantKeyAlgorithms([Algorithms::vapid()]));

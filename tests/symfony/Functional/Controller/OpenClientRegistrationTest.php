@@ -16,13 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
- * RFC 7591 §1.3, decision 0009: the mode built second. The tenant registers whoever asks, with no
- * credential presented at all, which is what the `dynamic_client` variant of the conformance suite sends.
- *
- * The same request is a 401 on the tenant of the controlled mode (`ClientRegistrationTest`) and a 404 on a
- * closed one (`ClosedClientRegistrationTest`): the mode is a value of one tenant's policy, and the policy
- * of the tenant is read from the environment at runtime, the way the load budgets are, so that a tenant
- * open to strangers is a kernel this test names before it boots one.
+ * RFC 7591 §1.3, Decision 0009
  */
 final class OpenClientRegistrationTest extends BrowserTestCase
 {
@@ -41,8 +35,7 @@ final class OpenClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7591 §3.2.1: what this mode changes is that nothing authorises; what it registers and what it
-     * answers are what any other mode registers and answers.
+     * RFC 7591 §3.2.1
      */
     #[Test]
     public function aClientThatPresentsNothingIsRegistered(): void
@@ -59,8 +52,7 @@ final class OpenClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * Nothing comes before the metadata on this tenant, so a request that carries none is told that and
-     * not something about a credential it was never asked for (RFC 7591 §3.1).
+     * RFC 7591 §3.1
      */
     #[Test]
     public function aBodyThatIsNoJsonObjectIsWhatRefusesFirst(): void
@@ -85,9 +77,7 @@ final class OpenClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0009: a client nobody authorised gets nothing a declared client does not get, and is
-     * refused what a declared client is refused. The same request is made of both, and the two answers
-     * are the same answer.
+     * Decision 0009
      */
     #[Test]
     public function aClientNobodyAuthorisedIsRefusedWhatADeclaredClientIsRefused(): void
@@ -107,9 +97,7 @@ final class OpenClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0009: a client a stranger registered and nobody ever used is on the purge every other
-     * registered client is on, at the duration its tenant's policy names. A conformance run leaves one
-     * behind on every module, and the tenant that carries this mode names a short one for that reason.
+     * Decision 0009
      */
     #[Test]
     public function aClientNobodyAuthorisedIsGoneAfterTheDurationItsPolicyNames(): void
@@ -147,8 +135,7 @@ final class OpenClientRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §3.3: a scope the client did not register is not its to ask for, and what comes back is a
-     * redirection carrying the refusal.
+     * RFC 6749 §3.3
      *
      * @return array<string, string>
      */

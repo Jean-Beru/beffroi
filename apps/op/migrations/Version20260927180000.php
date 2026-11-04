@@ -8,18 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * The browsers of a user this provider may push to (RFC 8030 §2, Push API §3.4, architecture §3.1): one
- * row per browser, several per user, each carrying where its push service takes a message for it, the two
- * keys it gave to encrypt one (RFC 8291 §3.1) and the application server key of the tenant it was made
- * under (RFC 8292 §3.2).
- *
- * The endpoint is text, being as long as its push service decided, and what a browser is recognised by is
- * its digest, which is what carries the unique constraint: a browser that subscribes again hands back the
- * endpoint it already had, and two rows for one browser would be two notifications for one request. A row
- * is revoked and never deleted, as every credential of a user is: it says a browser was reachable and is
- * not any more.
- */
 final class Version20260927180000 extends AbstractMigration
 {
     public function getDescription(): string

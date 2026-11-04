@@ -14,19 +14,6 @@ use Symfony\Component\Form\Extension\Core\Type\UrlType;
 use Symfony\Component\Form\FormTypeInterface;
 use function sprintf;
 
-/**
- * The form type a claim of the provider is edited with (issue beffroi-auth/op#17): the one place the kinds
- * a claim may be are mapped onto the types of symfony/form.
- *
- * The core says what a claim is and never what a form is, so the mapping lives here, beside the one page
- * written with the component, and a kind the core adds is a line here and nothing else.
- *
- * A closed set short enough to read is a choice of its values; a set of several hundred is typed into with
- * the whole set suggested, which is a line of text and a `<datalist>` the page renders beside it, there
- * being no type of the component for one and no script on these pages to grow one; anything else is typed
- * into the type its kind names, with what the browser may check before anything is sent carried on the
- * attributes.
- */
 final readonly class ClaimFieldTypes
 {
     /**
@@ -50,9 +37,6 @@ final readonly class ClaimFieldTypes
     }
 
     /**
-     * @param string $claim the name the claim gives itself, which the label and the identifier of the
-     *                      suggestions are both made of
-     *
      * @return array<string, mixed>
      */
     public static function optionsOf(ClaimField $field, string $claim): array
@@ -74,8 +58,7 @@ final readonly class ClaimFieldTypes
         if ($field->choices !== []) {
             return $options
             + [
-                // a flat list with the label read beside it, and not the labels as keys: two values may
-                // read the same and would be one choice if the label were the key
+                // Not the labels as keys: two values that read the same would otherwise be one choice.
                 'choices' => array_keys($field->choices),
                 'choice_label' => static fn (string $value): string => $field->choices[$value] ?? $value,
                 'placeholder' => 'profile.nothing',
@@ -102,7 +85,6 @@ final readonly class ClaimFieldTypes
         return $options
         + [
             'attr' => $attributes,
-            // the example is a key of the catalogue of the provider, as every word of these pages is
             'help' => $field->example,
             'help_translation_parameters' => [],
         ];

@@ -15,8 +15,7 @@ use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 
 /**
- * beffroi/saml, spec/saml.md S-18, section 6.4 step 3: a request waiting for a login is kept in the HTTP session of the
- * browser that sent it, under a reference this provider drew, for the tenant it was sent to.
+ * spec/saml.md S-18, section 6.4 step 3
  */
 final class WaitingSignOnsTest extends TestCase
 {
@@ -31,7 +30,7 @@ final class WaitingSignOnsTest extends TestCase
     }
 
     /**
-     * S-18: the request is found under its reference, whole.
+     * S-18
      */
     #[Test]
     public function aRequestKeptIsFoundUnderItsReference(): void
@@ -44,7 +43,7 @@ final class WaitingSignOnsTest extends TestCase
     }
 
     /**
-     * S-18: the reference is 32 bytes drawn from random_bytes(), in base64url.
+     * S-18
      */
     #[Test]
     public function aReferenceIsThirtyTwoBytesInBase64Url(): void
@@ -57,7 +56,7 @@ final class WaitingSignOnsTest extends TestCase
     }
 
     /**
-     * S-18: a reference is drawn again for each request.
+     * S-18
      */
     #[Test]
     public function aReferenceIsDrawnForEachRequest(): void
@@ -73,7 +72,7 @@ final class WaitingSignOnsTest extends TestCase
     }
 
     /**
-     * S-18: a request of another tenant is not found, without telling why.
+     * S-18
      */
     #[Test]
     public function aRequestOfAnotherTenantIsNotFound(): void
@@ -86,7 +85,7 @@ final class WaitingSignOnsTest extends TestCase
     }
 
     /**
-     * S-18: a request answered is forgotten, and the others wait.
+     * S-18
      */
     #[Test]
     public function aRequestForgottenIsNotFoundAndTheOthersWait(): void
@@ -108,9 +107,6 @@ final class WaitingSignOnsTest extends TestCase
         );
     }
 
-    /**
-     * The last request forgotten leaves nothing in the session.
-     */
     #[Test]
     public function theLastRequestForgottenLeavesNothing(): void
     {
@@ -125,7 +121,7 @@ final class WaitingSignOnsTest extends TestCase
     }
 
     /**
-     * Section 7: eight requests wait in one browser at most, the oldest forgotten first.
+     * Section 7
      */
     #[Test]
     public function theOldestRequestIsForgottenBeyondEight(): void
@@ -144,7 +140,7 @@ final class WaitingSignOnsTest extends TestCase
     }
 
     /**
-     * S-18: what the session holds that is not a request kept by this provider is nothing.
+     * S-18
      */
     #[Test]
     public function whatIsNotARequestIsNothing(): void

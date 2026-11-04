@@ -8,11 +8,6 @@ use function array_values;
 use Beffroi\Oidc\Domain\EndSession\LogoutChannel;
 use Beffroi\Oidc\Port\ServedLogoutChannelsInterface;
 
-/**
- * The ways of telling a client that a session ended the integration is wired with (architecture §4.9):
- * the single source the discovery document reads, so that a channel the provider announces is a channel
- * something serves (issue #98). An integration that wires neither announces neither.
- */
 final readonly class LogoutChannels implements ServedLogoutChannelsInterface
 {
     /**

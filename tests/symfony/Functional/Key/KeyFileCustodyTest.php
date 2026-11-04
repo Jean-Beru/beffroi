@@ -20,13 +20,6 @@ use Symfony\Component\Filesystem\Path;
 use Symfony\Component\KeyManagement\Dsn;
 use Symfony\Component\KeyManagement\Envelope;
 
-/**
- * Issue #58, the file backend: the same sodium backend as the development default, its key read from a
- * file of its own instead of the environment (FilesystemKeyLoader, "sodium+dir://<directory>?ext=.key"),
- * one file per tenant. Skipped unless the kernel seals with it (BEFFROI_TEST_KMS_DSN), which the CI does in
- * a job of its own with a key written the way "castor provision --kms file" writes it, for this directory,
- * Functional/Security and the dump of the database (DumpGivesNothingAwayTest), and for no other test.
- */
 final class KeyFileCustodyTest extends DatabaseTestCase
 {
     private const string SCHEME = 'sodium+dir://';
@@ -45,9 +38,6 @@ final class KeyFileCustodyTest extends DatabaseTestCase
         $this->dsn = Dsn::fromString($dsn);
     }
 
-    /**
-     * The envelope of a sealed key names the key file of the tenant, not the key of every tenant.
-     */
     #[Test]
     public function aSealedKeyIsWrappedByTheKeyFileOfTheTenant(): void
     {
@@ -63,11 +53,6 @@ final class KeyFileCustodyTest extends DatabaseTestCase
         static::assertSame(self::KEY_ID, Envelope::fromBytes($stored->sealedPrivateJwk)->keyId);
     }
 
-    /**
-     * What the CISO page promises of the file: 32 bytes and nothing else, readable by the process alone,
-     * in a directory of its own that the sealed keys do not share, so that a dump of the sealed keys is not
-     * a dump of what opens them.
-     */
     #[Test]
     public function theKeyFileIsReadableByTheProcessAloneAndLivesApartFromTheSealedKeys(): void
     {
@@ -75,7 +60,6 @@ final class KeyFileCustodyTest extends DatabaseTestCase
         $directory = $this->dsn->path;
         $extension = $this->dsn->getOption('ext', '');
         $file = sprintf('%s/%s%s', $directory, self::KEY_ID, is_string($extension) ? $extension : '');
-        // the storage of this kernel (config_test.yml): "%kernel.cache_dir%/keys"
         $storage = (self::$kernel ?? static::fail('The kernel is booted.'))->getCacheDir() . '/keys';
 
         // When / Then

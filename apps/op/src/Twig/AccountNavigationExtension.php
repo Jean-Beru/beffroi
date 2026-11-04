@@ -8,10 +8,6 @@ use App\Account\AccountNavigation;
 use Beffroi\Core\Domain\Identity\User;
 use Twig\Attribute\AsTwigFunction;
 
-/**
- * What the skeleton of a page of the account reads to draw the navigation beside it (architecture §5.2),
- * and what the home of the account reads to draw a card per page: one arrangement, read twice.
- */
 final readonly class AccountNavigationExtension
 {
     public function __construct(

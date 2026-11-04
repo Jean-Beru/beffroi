@@ -7,9 +7,6 @@ namespace App\Doctrine;
 use RuntimeException;
 use function sprintf;
 
-/**
- * The row of the configured tenant is missing or disagrees with the configuration; nothing is served until it is.
- */
 final class TenantNotSynchronizedException extends RuntimeException
 {
     public static function missing(string $slug): self

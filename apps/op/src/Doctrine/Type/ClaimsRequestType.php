@@ -7,9 +7,6 @@ namespace App\Doctrine\Type;
 use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
 
 /**
- * The "claims" parameter (OIDC Core §5.5) in one JSON column, in the form of the wire, which is the
- * document the request writes itself as (`ClaimsRequest::toDocument()`).
- *
  * @extends JsonbObjectType<ClaimsRequest>
  */
 final class ClaimsRequestType extends JsonbObjectType

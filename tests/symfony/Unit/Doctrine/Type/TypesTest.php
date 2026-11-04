@@ -91,21 +91,10 @@ use function sprintf;
 use function str_repeat;
 
 /**
- * Architecture §5.3: every value object a column holds as one value goes to the database and comes back
- * equal, byte for byte what the column holds today, and what the database holds that is not such a value
- * is a conversion error, never a guess.
- *
- * **It judges the Doctrine half.** What the document of a value looks like, and which document is refused
- * member by member, is tested with the object that writes it, in the suite of the package that owns it,
- * with nothing booted (issue #603); here, one refusal per type says that what that object refuses reaches
- * a caller of Doctrine as a `ConversionException`.
+ * Architecture §5.3
  */
 final class TypesTest extends TestCase
 {
-    /**
-     * The types that read a wiring back are told what the deployment is wired with, as the provider tells
-     * them when it boots; without a kernel here, the test is the deployment.
-     */
     public static function setUpBeforeClass(): void
     {
         $algorithms = new WiredPasswordAlgorithms([
@@ -218,8 +207,7 @@ final class TypesTest extends TestCase
             new TenantLook(new LogoUri('https://acme.example/logo.svg'), '#1b4b8f', '#ffffff'),
             '{"logo_uri":"https://acme.example/logo.svg","primary_color":"#1b4b8f","primary_content_color":"#ffffff"}',
         ];
-        // a tenant that declared nothing is an empty document and not three nulls (issue #449), which PHP
-        // writes as a JSON array; the default of the column is "{}" and both read back as the same look
+        // PHP writes the empty document as "[]"; the column default "{}" reads back as the same look.
         yield 'the look of a tenant that declared none' => [TenantLookType::class, TenantLook::none(), '[]'];
         yield 'backup codes' => [
             BackupCodesType::class,
@@ -454,10 +442,6 @@ final class TypesTest extends TestCase
     }
 
     /**
-     * A document is JSONB on PostgreSQL when its type declares it, as DBAL's own `JsonbType` does, the
-     * mapping asking nothing of the platform (doctrine/dbal#6939), and JSON otherwise; a string is a string
-     * everywhere.
-     *
      * @param class-string<Type> $type
      * @param array<string, mixed> $column
      */
@@ -495,8 +479,6 @@ final class TypesTest extends TestCase
     }
 
     /**
-     * The provider declares every type to Doctrine under the name the mappings use.
-     *
      * @param class-string<Type> $class
      */
     #[Test]

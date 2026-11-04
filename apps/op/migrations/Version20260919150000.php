@@ -8,10 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * The passkeys (architecture §3.1, §5.3), generated from the XML mapping against PostgreSQL 16 and kept
- * equal to it by a test.
- */
 final class Version20260919150000 extends AbstractMigration
 {
     public function getDescription(): string

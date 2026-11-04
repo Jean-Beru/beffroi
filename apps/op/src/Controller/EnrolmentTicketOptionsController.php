@@ -16,13 +16,9 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The options a browser on the page of an enrolment ticket creates a passkey with (WebAuthn Level 3 §7.1,
- * issue #613): the ones the enrolment of the core draws for the person the ticket names, kept in the
- * session of that browser until the attestation comes back.
+ * WebAuthn Level 3 §7.1
  *
- * It is the counterpart of the options of the page of the account, for a browser that holds no session:
- * what stands in for one is the ticket, read at every request of this enrolment and never trusted from
- * the one before.
+ * The ticket stands in for a session: read at every request, never trusted from the one before.
  */
 #[AsController]
 final readonly class EnrolmentTicketOptionsController

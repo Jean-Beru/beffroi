@@ -27,18 +27,12 @@ use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Issues #454 and #571, architecture §5.2: what the journal holds of one person, on the page of their
- * account. Every act of the account is on it and each says what it is by its own name; the refusals are
- * there as much as the successes, because a line somebody does not recognise is what the page is for.
+ * Architecture §5.2
  */
 final class AccountActsTest extends BrowserTestCase
 {
     /**
-     * The acceptance of the issue: a second factor accepted, a session that ended, a credential enrolled
-     * or revoked, a password changed and a set of backup codes renewed were in the table and on no page.
-     * Each is named in the language of the browser (architecture §5.7), and an act one of the catalogues
-     * of the provider does not name fails the kernel of this suite (StrictTranslator), so a page that
-     * renders is a page where every one of them is named in that language.
+     * Architecture §5.7
      */
     #[Test]
     #[DataProvider('provideLanguages')]
@@ -71,11 +65,6 @@ final class AccountActsTest extends BrowserTestCase
         yield 'a browser in French' => ['fr-FR,fr;q=0.9'];
     }
 
-    /**
-     * Issues #588 to #590: the journal of a person holds the protocol as well, a token issued in their
-     * name being an act of theirs. It is read where it means something, beside what that application was
-     * given, and this page is what happened to the account.
-     */
     #[Test]
     public function anActOfTheProtocolIsNotOnThePageOfTheAccount(): void
     {
@@ -124,10 +113,6 @@ final class AccountActsTest extends BrowserTestCase
         static::assertSame([AuthenticationFailed::NAME], $page->filter('tbody tr')->extract(['data-act']));
     }
 
-    /**
-     * An act of somebody else is not on the page of this person: the journal is read by the subject of the
-     * session the browser holds and never by anything the request carries.
-     */
     #[Test]
     public function theActsOfSomebodyElseAreNotOnIt(): void
     {
@@ -157,10 +142,6 @@ final class AccountActsTest extends BrowserTestCase
         static::assertCount(1, $page->filter('table[data-acts="0"] tr[data-empty]'));
     }
 
-    /**
-     * The days asked for and not the whole journal (AskedPeriod): a reader looking for one afternoon in a
-     * journal of a year is reading a stretch of time and not a page number.
-     */
     #[Test]
     public function onlyTheActsOfTheDaysAskedForAreOnIt(): void
     {
@@ -178,10 +159,6 @@ final class AccountActsTest extends BrowserTestCase
         static::assertSame([AuthenticationFailed::NAME], $page->filter('tbody tr')->extract(['data-act']));
     }
 
-    /**
-     * The journal of a person grows without end, so the page reads one page of it and says where the rest
-     * is: as many rows as a page of a table of this plane holds, and the way to the next one.
-     */
     #[Test]
     public function thePageReadsOnePageOfTheJournalAndSaysWhereTheRestIs(): void
     {
@@ -214,10 +191,6 @@ final class AccountActsTest extends BrowserTestCase
         static::assertCount(0, $page->filter('a[data-pager="next"]'));
     }
 
-    /**
-     * A page past the last one is the last one: a link somebody kept, or a number they typed, reads rows
-     * and never an empty table under a count that says there are some.
-     */
     #[Test]
     public function aPagePastTheLastOneIsTheLastOne(): void
     {
@@ -234,9 +207,6 @@ final class AccountActsTest extends BrowserTestCase
         static::assertCount(1, $page->filter('tbody tr[data-act]'));
     }
 
-    /**
-     * A control that can do nothing is a control nobody should have to read.
-     */
     #[Test]
     public function aJournalThatFitsOnOnePageCarriesNoControl(): void
     {
@@ -289,10 +259,6 @@ final class AccountActsTest extends BrowserTestCase
         return $page;
     }
 
-    /**
-     * One act of that person written straight into the journal: every act of an account is one row of four
-     * facts and two names, whatever raised it, and the page reads rows.
-     */
     private static function record(User $user, string $act, ?string $client = null, ?DateTimeImmutable $occurredAt = null): void
     {
         self::service('test.beffroi.journal', JournalInterface::class)
@@ -307,10 +273,6 @@ final class AccountActsTest extends BrowserTestCase
             ));
     }
 
-    /**
-     * A day as the query string of the page carries one, on the clock of the deployment, which is the one
-     * a person with no zone of their own reads (UserTimeZone).
-     */
     private static function day(string $moment): string
     {
         return new DateTimeImmutable($moment)->format('Y-m-d');
@@ -329,9 +291,6 @@ final class AccountActsTest extends BrowserTestCase
         return $sorted;
     }
 
-    /**
-     * That many attempts refused in the name of that person, which is a journal of that many rows.
-     */
     private static function announceRefusals(User $user, int $howMany): void
     {
         $bus = self::service('event.bus', MessageBusInterface::class);

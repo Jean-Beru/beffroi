@@ -10,13 +10,7 @@ use Beffroi\Oidc\Port\CodeChallengeMethodsInterface;
 use LogicException;
 
 /**
- * The PKCE challenge (RFC 7636 §4.3) in one column, because it may be absent (decision 0008) and an
- * embeddable cannot be null. What the column holds, "method:challenge", and the method read back as the
- * class the wiring holds for that name, is the module's own (`StoredCodeChallenge`).
- *
- * The handoff through a static is the Doctrine half: Doctrine builds a type from a class name, so nothing
- * can be injected here; what reads the value takes the wiring as an argument, and this hands it the one
- * the provider gave it when it booted.
+ * One column and not an embeddable: the challenge may be absent, and an embeddable cannot be null.
  *
  * @extends StringObjectType<CodeChallenge>
  */

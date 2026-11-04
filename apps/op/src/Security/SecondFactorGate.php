@@ -15,11 +15,7 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 use Symfony\Component\Security\Http\Event\LoginSuccessEvent;
 
 /**
- * Where a password login stops being a login (architecture §3.2, §5.4): for a user who holds an active
- * second factor (SecondFactorRequirement of the core), the password the firewall verified is held as a
- * PendingLogin in the HTTP session, the token the firewall just set is dropped so that nothing is granted
- * on a first step, and the browser is sent to the code page instead of the login page. A passkey login is
- * a first factor by itself and passes; so does the second step, whose passport carries no password.
+ * Holds the password login of a user with a second factor for the code page, dropping the token the firewall set.
  */
 final readonly class SecondFactorGate
 {
@@ -32,9 +28,7 @@ final readonly class SecondFactorGate
     }
 
     /**
-     * Whether the login was held; the caller then opens no session and binds nothing.
-     *
-     * @param non-empty-list<AuthenticationMethod> $methods what the passport proved
+     * @param non-empty-list<AuthenticationMethod> $methods
      */
     public function holds(LoginSuccessEvent $event, SecurityUser $user, array $methods, DateTimeImmutable $now): bool
     {

@@ -17,13 +17,7 @@ use function str_starts_with;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Whether an answer sent the browser away from this provider: a redirection to another origin, or a
- * page that posts itself to one (OIDC Response Modes §2, "form_post"). An answer that moves the browser
- * to a page of this provider, under an address of its own or a path of it, and a page of this provider
- * that asks the user something, did not.
- *
- * It is what tells the authorization response from everything else this provider answers a browser
- * while it is working on an authorization request.
+ * Whether an answer sends the browser to another origin, by a redirection or by a page that posts itself there.
  */
 final readonly class AnswerThatLeaves
 {
@@ -48,10 +42,6 @@ final readonly class AnswerThatLeaves
         return str_starts_with($url, 'http://') || str_starts_with($url, 'https://');
     }
 
-    /**
-     * The origin of this provider, read from an endpoint of the tenant: scheme, host and port, which is
-     * what an address of its own starts with.
-     */
     private static function origin(string $endpoint): string
     {
         $port = parse_url($endpoint, PHP_URL_PORT);

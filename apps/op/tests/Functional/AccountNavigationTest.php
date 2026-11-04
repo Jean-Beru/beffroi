@@ -8,22 +8,8 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * The skeleton every page of the account is served in, which is this application's and not the provider's
- * (templates/layout/account.html.twig): the column of the pages of the account, the trail at the head of a
- * page, and the bar that carries who the browser is signed in as and the way out.
- *
- * What each page says is judged by the suite of the provider. What is here is what only this kernel can
- * answer: that the pages the provider wires are all reachable from every one of them, and said once.
- */
 final class AccountNavigationTest extends BrowserTestCase
 {
-    /**
-     * The one rule of the arrangement (App\Account\AccountNavigation): the pages are the sections that are
-     * wired, under the headings this application reads them under, and a page no heading names is in the
-     * column all the same, last. A section added to the provider is red here until it is arranged, and never
-     * a page nobody can reach.
-     */
     #[Test]
     public function everyPageOfTheAccountIsInTheColumnOfPages(): void
     {
@@ -81,10 +67,6 @@ final class AccountNavigationTest extends BrowserTestCase
         );
     }
 
-    /**
-     * The way back is the trail at the head of the page and not a link of its own: a page of this plane
-     * hangs from the home of the account, which is where the link the pages of the provider include goes.
-     */
     #[Test]
     public function theHeadOfAPageSaysWhereTheReaderIs(): void
     {
@@ -102,10 +84,6 @@ final class AccountNavigationTest extends BrowserTestCase
         static::assertCount(0, $page->filter('a[data-back]'));
     }
 
-    /**
-     * Issue beffroi-auth/op#17 and what this skeleton adds to it: the identity of the reader and the way out
-     * are true of every page of the plane, so they are in the bar above them and on none of them.
-     */
     #[Test]
     public function whoIsSignedInAndTheWayOutAreInTheBarAndNotOnThePage(): void
     {
@@ -120,11 +98,6 @@ final class AccountNavigationTest extends BrowserTestCase
         static::assertCount(0, $page->filter('main a[href="/logout"]'));
     }
 
-    /**
-     * The controls of the bar share one group of radio buttons and one veil (templates/layout/_control.html
-     * .twig), which is what makes one of them open at a time and a click anywhere else close it: the page
-     * runs no script, so the shape is the behaviour and a page that lost it would look the same.
-     */
     #[Test]
     public function theControlsOfTheBarShareOneGroupAndOneVeil(): void
     {
@@ -142,11 +115,6 @@ final class AccountNavigationTest extends BrowserTestCase
         static::assertCount(1, $page->filter('#layout-topbar label[for="layout-control-none"][data-control="veil"]'));
     }
 
-    /**
-     * The action a page offers is beside its title, wherever the page of the provider writes it: setting up an
-     * authenticator app is what the page of the second factor offers, and it is read there and not under
-     * the two paragraphs that say the account holds none.
-     */
     #[Test]
     public function theActionOfAPageIsReadBesideItsTitle(): void
     {
@@ -160,12 +128,6 @@ final class AccountNavigationTest extends BrowserTestCase
         static::assertCount(1, $page->filter('header[data-page-header] form[data-two-factor="begin"]'));
     }
 
-    /**
-     * A refusal is not a page of this plane, whatever route it was asked on: the page the provider serves
-     * when the request stops there (templates/error.html.twig) says one thing and carries nothing else, so
-     * it is served in the skeleton of an interaction. A browser that holds no session would otherwise read
-     * what it has to do inside the column, the trail and the bar of an account it is not signed in to.
-     */
     #[Test]
     public function aRefusalIsNotServedInTheSkeletonOfTheAccount(): void
     {

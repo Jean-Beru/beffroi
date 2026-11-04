@@ -10,12 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The acceptance of issue #266 (CIBA Core §7.1, decision 0010): a client with no browser anywhere asks
- * for a class, and what that costs is asked of the one person who can pay it, on the page where they
- * answer. A password session of a user who holds a passkey, asked for a class only a passkey proves, is
- * sent to the login of this provider for the missing factor and comes back to answer; the same request
- * from a user who holds no passkey is answered at once with what their session proves, the demand being a
- * request and not a condition (OIDC Core §5.5.1.1). Refusing is offered throughout (§11).
+ * CIBA Core §7.1, §11, OIDC Core §5.5.1.1, Decision 0010
  */
 final class BackchannelStepUpTest extends PasskeyTestCase
 {
@@ -26,8 +21,7 @@ final class BackchannelStepUpTest extends PasskeyTestCase
     private const string PASSWORD = 'correct horse battery staple';
 
     /**
-     * §7.1, decision 0010: the client asked for "phr", the session proves a password, and a passkey of
-     * this user would; the page does not record the approval, it asks for the proof.
+     * CIBA Core §7.1, Decision 0010
      */
     #[Test]
     public function aRequestForAClassTheSessionDoesNotProveSendsTheUserToTheLogin(): void
@@ -48,8 +42,7 @@ final class BackchannelStepUpTest extends PasskeyTestCase
     }
 
     /**
-     * Decision 0010: the login page names the classes that would do and the kinds of credential of this
-     * user that would reach one, and it names no client, serving no request of a browser.
+     * Decision 0010
      */
     #[Test]
     public function theLoginPageNamesWhatIsMissingAndNoClient(): void
@@ -77,8 +70,7 @@ final class BackchannelStepUpTest extends PasskeyTestCase
     }
 
     /**
-     * Decision 0010: the passkey proven on the same session satisfies the request, the browser comes back
-     * to the page it was sent from, and the approval goes through.
+     * Decision 0010
      */
     #[Test]
     public function theProofGivenBringsTheBrowserBackAndTheApprovalGoesThrough(): void
@@ -103,7 +95,7 @@ final class BackchannelStepUpTest extends PasskeyTestCase
     }
 
     /**
-     * OIDC Core §2: the "acr" of the tokens is the requested class the session proved, once it proved it.
+     * OIDC Core §2
      */
     #[Test]
     public function theTokensOfSuchAnApprovalNameTheClassThatWasProven(): void
@@ -132,8 +124,7 @@ final class BackchannelStepUpTest extends PasskeyTestCase
     }
 
     /**
-     * OIDC Core §5.5.1.1: a class no credential of this user could ever reach is asked of nobody; the
-     * approval goes through at once and the tokens say what the session proved.
+     * OIDC Core §5.5.1.1
      */
     #[Test]
     public function aClassNoCredentialOfTheUserCouldReachIsAnsweredWithWhatTheSessionProves(): void
@@ -159,8 +150,7 @@ final class BackchannelStepUpTest extends PasskeyTestCase
     }
 
     /**
-     * §11: refusing is an answer of full right and is never held behind a proof; a user who will not sign
-     * in again ends the request rather than being kept on a page.
+     * CIBA Core §11
      */
     #[Test]
     public function aRefusalIsOfferedWhateverTheSessionProves(): void
@@ -182,10 +172,6 @@ final class BackchannelStepUpTest extends PasskeyTestCase
         static::assertSame('access_denied', self::json($this->browser->getResponse())['error']);
     }
 
-    /**
-     * The passkey login of a page of the provider that is waiting for one: the same two calls the login
-     * page makes, with no interaction to name.
-     */
     private function loginWithPasskeyOnThePendingPage(SoftwareAuthenticator $device): void
     {
         $crawler = $this->browser->request('GET', '/login');

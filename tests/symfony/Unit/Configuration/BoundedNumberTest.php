@@ -12,9 +12,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
 /**
- * Issues #911 and #915: a number the tree bounds is held to the same bounds when the container builds the value it
- * is handed as, which is where a number an environment variable carries is first a number. RFC 6749 §4.1.2 is the
- * bound of a code.
+ * RFC 6749 §4.1.2
  */
 final class BoundedNumberTest extends TestCase
 {
@@ -63,10 +61,6 @@ final class BoundedNumberTest extends TestCase
         yield 'a second past the bound' => [TokensSection::MAX_AUTHORIZATION_CODE_TTL + 1];
     }
 
-    /**
-     * A lifetime the tree bounds below only, the one of an access token for instance, is as long as it is
-     * written.
-     */
     #[Test]
     public function aLifetimeWithNoMaximumIsAsLongAsItIsWritten(): void
     {
@@ -77,9 +71,6 @@ final class BoundedNumberTest extends TestCase
         static::assertSame(7_776_000, $lifetime->s);
     }
 
-    /**
-     * Issue #913: below a second, what such a lifetime dates is expired when it is issued.
-     */
     #[Test]
     #[DataProvider('provideNumbersBelowASecond')]
     public function aLifetimeWithNoMaximumIsRefusedBelowASecond(int $seconds): void
@@ -104,9 +95,6 @@ final class BoundedNumberTest extends TestCase
         yield 'a negative number' => [-1];
     }
 
-    /**
-     * Issue #915: a leeway or a cooldown the tree lets be none is none at its floor, and refused below it.
-     */
     #[Test]
     public function aNumberOfSecondsTheTreeLetsBeNoneIsNoneAtItsFloor(): void
     {
@@ -128,9 +116,6 @@ final class BoundedNumberTest extends TestCase
         BoundedNumber::interval(-1, 'dpop.leeway', minimum: 0);
     }
 
-    /**
-     * Issue #915: a call to a third party is given a tenth of a second at least.
-     */
     #[Test]
     #[DataProvider('provideTimeouts')]
     public function aTimeoutAtItsFloorOrAboveIsTheTimeACallIsGiven(float $seconds): void
@@ -151,10 +136,6 @@ final class BoundedNumberTest extends TestCase
         yield 'five seconds' => [5.0];
     }
 
-    /**
-     * Issue #915: a timeout of nothing would be a call that waits for ever, HttpClient reading a "max_duration" of zero
-     * as no limit at all.
-     */
     #[Test]
     #[DataProvider('provideTimeoutsBelowTheFloor')]
     public function aTimeoutBelowItsFloorIsRefused(float $seconds, string $given): void
@@ -180,9 +161,6 @@ final class BoundedNumberTest extends TestCase
         yield 'a negative number' => [-1.0, '-1'];
     }
 
-    /**
-     * Issue #915: a third party may answer one byte at least.
-     */
     #[Test]
     public function aNumberOfBytesOfOneAtLeastIsWhatAThirdPartyMayAnswer(): void
     {
@@ -204,9 +182,6 @@ final class BoundedNumberTest extends TestCase
         BoundedNumber::bytes(0, 'request_objects.max_size');
     }
 
-    /**
-     * An object a number reaches as it is holds it to the floor of its node (NotificationRetryPolicy, LoadBudget).
-     */
     #[Test]
     public function aNumberBelowTheFloorOfItsNodeIsRefusedInTheWordsOfWhatItCounts(): void
     {

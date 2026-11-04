@@ -16,9 +16,7 @@ use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 
 /**
- * CSP Level 3 §6.1, §6.3.2: the answer of a page that may send the browser to a client names the origin
- * of that client among the targets a form of it may be submitted to, whatever policy the answer carries,
- * and the answer of a page that may answer no client names none.
+ * CSP Level 3 §6.1, §6.3.2
  */
 final class FormTargetTest extends TestCase
 {
@@ -76,8 +74,7 @@ final class FormTargetTest extends TestCase
     }
 
     /**
-     * A policy that names no "form-action" allows every submission: the directive falls back to no other
-     * (CSP Level 3 §6.1), so there is nothing to complete and the policy is the one the page wrote.
+     * CSP Level 3 §6.1
      */
     #[Test]
     public function thePolicyOfAPageThatRestrictsNoSubmissionIsTheOneThePageWrote(): void
@@ -92,10 +89,6 @@ final class FormTargetTest extends TestCase
         static::assertSame($policy, $response->headers->get(self::ENFORCED));
     }
 
-    /**
-     * A page of the account, and a login a page of the provider asked for: no client is answered, and the
-     * policy of the answer says so.
-     */
     #[Test]
     public function thePolicyOfAPageThatAnswersNoClientNamesNoOrigin(): void
     {
@@ -109,10 +102,6 @@ final class FormTargetTest extends TestCase
         static::assertSame($policy, $response->headers->get(self::ENFORCED));
     }
 
-    /**
-     * A deployment that only reports gets the same answer: a report of the one submission this provider
-     * makes on purpose would say nothing to anybody.
-     */
     #[Test]
     public function thePolicyThatOnlyReportsIsCompletedToo(): void
     {
@@ -126,10 +115,6 @@ final class FormTargetTest extends TestCase
         static::assertSame("form-action 'self' " . self::ORIGIN, $response->headers->get(self::REPORTED));
     }
 
-    /**
-     * Two clients are two origins, and the same client named twice is one: a page names what it may
-     * answer, and a policy says what it allows one time.
-     */
     #[Test]
     public function aPageThatMayAnswerTwoClientsNamesBothOfThemOnce(): void
     {
@@ -153,10 +138,7 @@ final class FormTargetTest extends TestCase
     }
 
     /**
-     * beffroi/saml S-36, the security review of 20 October 2026 (finding C-2): what a page names is written into the
-     * header as it is, so a source that is not a scheme, a host and a port is refused where the page names it rather
-     * than pasted into the policy, where a ';' would end the directive and start one of its own, "sandbox" freezing
-     * the page, and a ',' a policy of its own.
+     * beffroi/saml S-36
      */
     #[Test]
     #[DataProvider('provideSourcesThatAreNoOrigin')]
@@ -189,7 +171,7 @@ final class FormTargetTest extends TestCase
     }
 
     /**
-     * CSP Level 3 §2.3.1: an origin on a port, on an IPv4 address or an IPv6 literal, is a source a page may name.
+     * CSP Level 3 §2.3.1
      */
     #[Test]
     #[DataProvider('provideOrigins')]

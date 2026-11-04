@@ -23,12 +23,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * A user as the provider knows them (architecture §5.5): the identity with the source that created it, the
- * standard claims that are set, the credentials with their kind, identifier, name, authenticator and dates,
- * and the groups with the source of each membership (decision 0002). Reads, writes nothing: describing a user
- * is beffroi:user:profile, and that one clears what it is not told.
- */
 #[AsCommand(
     name: 'beffroi:user:show',
     description: 'Show a user: the identity with the source that created it, the standard claims that are set, the credentials with their kind, identifier, name, authenticator and dates, and the groups with the source of each membership.',
@@ -97,10 +91,6 @@ final readonly class UserShowCommand
         return Command::SUCCESS;
     }
 
-    /**
-     * The make and model the authenticator of a credential declared, with the source that names them (issue
-     * #983), or the AAGUID no source names.
-     */
     private function authenticator(ModelDeclaringCredentialInterface $credential): string
     {
         $model = $this->models->of($credential);
@@ -137,10 +127,6 @@ final readonly class UserShowCommand
         ];
     }
 
-    /**
-     * Local, or the upstream provider that created the person with the claims it holds of them, which
-     * beffroi:user:profile refuses to change.
-     */
     private static function source(UserSource $source): string
     {
         $provider = $source->provider;
@@ -155,7 +141,7 @@ final readonly class UserShowCommand
     }
 
     /**
-     * The standard claims of OIDC Core §5.1 the user has, as beffroi:user:profile prints what it wrote.
+     * OIDC Core §5.1
      *
      * @return list<array<string, string>>
      */

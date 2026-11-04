@@ -21,8 +21,7 @@ return [
     SecurityBundle::class => [
         'all' => true,
     ],
-    // the panel of the provider is rendered by the layout of this one; the profiler follows kernel.debug,
-    // so the provider is inert in every test but the one that asks for a kernel in debug
+    // The panel of the provider is rendered in this bundle's layout, inert unless a test boots a kernel in debug.
     WebProfilerBundle::class => [
         'all' => true,
     ],

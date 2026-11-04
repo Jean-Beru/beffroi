@@ -7,11 +7,6 @@ namespace App\Profiler\Decision;
 use App\Profiler\Observation;
 use Beffroi\Oidc\Domain\Interaction\AuthorizationDecision;
 
-/**
- * What the panel says about one decision of the authorization endpoint. A decision the provider gains is
- * a class here and a line in the wiring; a decision nothing describes is still named, never read by its
- * class.
- */
 interface DecisionObservationInterface
 {
     /**

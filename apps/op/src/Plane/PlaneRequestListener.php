@@ -11,8 +11,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
- * Refuses with a 404 the routes of the plane this process does not serve (architecture §5.2), after the
- * router and before the firewall.
+ * Refuses with a 404 the routes of a plane this process does not serve.
  */
 #[AsEventListener(event: KernelEvents::REQUEST, priority: self::PRIORITY)]
 final readonly class PlaneRequestListener

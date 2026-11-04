@@ -7,9 +7,6 @@ namespace App\Doctrine\Type;
 use Beffroi\Core\Domain\Session\GeoLocation;
 
 /**
- * What a GeoIP lookup said (architecture §3.5), as one JSON column. What the document holds is the place's
- * own (`GeoLocation::toDocument()`), which is also what the provenance of a request nests.
- *
  * @extends JsonObjectType<GeoLocation>
  */
 final class GeoLocationType extends JsonObjectType

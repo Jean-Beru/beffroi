@@ -8,11 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * Where an authorization request a client pushed waits for its user (RFC 9126 §2.2). The reference the
- * client holds is never stored, only its SHA-256, as an authorization code is; a used record stays until
- * it expires so that a second presentation is told from a reference nobody ever issued.
- */
 final class Version20260922180000 extends AbstractMigration
 {
     public function getDescription(): string

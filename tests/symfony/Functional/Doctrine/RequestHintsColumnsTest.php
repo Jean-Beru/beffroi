@@ -19,35 +19,13 @@ use PHPUnit\Framework\Attributes\Test;
 use function sort;
 use function sprintf;
 
-/**
- * What a request keeps of the person it asks for, sealed and read back (decisions 0011 and 0018): the two
- * hints a client may send, and the parameters of a request it pushed.
- *
- * **Three columns over two tables, and no index**, nothing looking a row up by a hint: an interaction is
- * found by its identifier and a pushed request by the digest of the reference it was answered with, which
- * is its primary key. That the whole of a parked request still comes back is
- * `DoctrineInteractionRepositoryTest`, which asserts both hints among every other parameter and which runs
- * against this mapping; what is written here is what that test cannot say, which is what the rows hold.
- *
- * The two hints are columns of `beffroi_interaction` and of no other table, `AuthorizationRequest` being an
- * embeddable that one entity embeds with no column prefix. That is also why the walk of the schema now
- * holds a sealed column to its own table: an embeddable fixes the type of each of its fields once for the
- * whole model, so a second entity embedding this object would seal those columns under a scope that is not
- * its table's (`SchemaClassificationTest`).
- */
 final class RequestHintsColumnsTest extends DatabaseTestCase
 {
-    /**
-     * Read from the shared fixture and declared nowhere else: the test that searches the whole database
-     * searches for these very values, and two lists of the same values are two lists that disagree.
-     */
     private const string LOGIN_HINT = SealedRows::VALUES['beffroi_interaction']['login_hint'];
 
     private const string ID_TOKEN_HINT = SealedRows::VALUES['beffroi_interaction']['id_token_hint'];
 
     /**
-     * The personal data a request keeps, by the column each one lands in, over the two tables.
-     *
      * @var array<string, list<string>> table, then the columns the fixture writes
      */
     private const array SEALED = [
@@ -56,9 +34,7 @@ final class RequestHintsColumnsTest extends DatabaseTestCase
     ];
 
     /**
-     * The fixture writes every column the classification of the schema declares sealed on these two
-     * tables, and no other: a column sealed without a value written here would be asserted against
-     * nothing, and the model is what says which those are (ClassifiedFieldsInterface, decision 0011).
+     * Decision 0011
      */
     #[Test]
     #[DataProvider('provideTables')]
@@ -91,10 +67,6 @@ final class RequestHintsColumnsTest extends DatabaseTestCase
         }
     }
 
-    /**
-     * The two hints come back as the client sent them, the encrypted type decorating the type the column
-     * had, and the request they belong to is the embeddable of the interaction that parks it.
-     */
     #[Test]
     public function anInteractionIsReadBackWithBothHints(): void
     {
@@ -111,10 +83,6 @@ final class RequestHintsColumnsTest extends DatabaseTestCase
         static::assertSame(self::ID_TOKEN_HINT, $found->request->idTokenHint);
     }
 
-    /**
-     * A sealed column that accepts a null holds a null and not the envelope of an empty string: a request
-     * that named nobody has no hint, and a hint read back as an empty string would be a hint.
-     */
     #[Test]
     public function aRequestThatNamedNobodyHoldsNoHintAtAll(): void
     {
@@ -135,8 +103,7 @@ final class RequestHintsColumnsTest extends DatabaseTestCase
     }
 
     /**
-     * RFC 9126 §2.2: the parameters are kept as the client wrote them, so the hints are in there word for
-     * word, and they come back as the client wrote them too.
+     * RFC 9126 §2.2
      */
     #[Test]
     public function aPushedRequestIsReadBackWithTheParametersTheClientWrote(): void
@@ -155,10 +122,6 @@ final class RequestHintsColumnsTest extends DatabaseTestCase
         static::assertSame(['openid', 'profile'], $found->parameters['scope'] ?? null);
     }
 
-    /**
-     * Column by column over the two tables, which is the point of the data provider: a column that
-     * stopped sealing fails on its own line.
-     */
     #[Test]
     #[DataProvider('provideSealedColumns')]
     public function theRowHoldsNeitherHint(string $table, string $column): void
@@ -193,11 +156,6 @@ final class RequestHintsColumnsTest extends DatabaseTestCase
         }
     }
 
-    /**
-     * And what else that row stops holding: the parameters are the ciphertext of a JSON document now, so
-     * the column gives away neither the scope the client asked for nor the address it sent it to, where
-     * before it gave away every parameter of the request.
-     */
     #[Test]
     public function theRowOfAPushedRequestGivesAwayNoParameterAtAll(): void
     {

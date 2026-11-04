@@ -7,8 +7,6 @@ namespace App\Doctrine\Type;
 use Beffroi\Core\Domain\Tenant\Issuer;
 
 /**
- * The issuer identifier of a tenant (OIDC Discovery §3), stored as is.
- *
  * @extends StringObjectType<Issuer>
  */
 final class IssuerType extends StringObjectType

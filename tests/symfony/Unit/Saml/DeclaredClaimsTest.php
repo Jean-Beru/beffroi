@@ -11,13 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Spec/saml.md S-16, section 6.2 step 1: the claims the declarations map, served as they are named while the container
- * is compiled, the claims of the provider being known to the running deployment only.
+ * spec/saml.md S-16, section 6.2 step 1
  */
 final class DeclaredClaimsTest extends TestCase
 {
     /**
-     * S-16, section 6.2 step 1: the claim of every attribute mapping of every declaration is served, and nothing else.
+     * S-16, section 6.2 step 1
      *
      * @param array<array-key, mixed> $declarations
      * @param list<string> $expected
@@ -59,8 +58,7 @@ final class DeclaredClaimsTest extends TestCase
     }
 
     /**
-     * S-45, section 6.10 step 1: the claim every attribute of the profile of every declaration of an upstream identity
-     * provider fills is held, and nothing else.
+     * S-45, section 6.10 step 1
      *
      * @param array<array-key, mixed> $declarations
      * @param list<string> $expected
@@ -95,7 +93,7 @@ final class DeclaredClaimsTest extends TestCase
     }
 
     /**
-     * S-16: no value is read through it, a container being compiled holding no user.
+     * S-16
      */
     #[Test]
     public function itGivesNoValue(): void

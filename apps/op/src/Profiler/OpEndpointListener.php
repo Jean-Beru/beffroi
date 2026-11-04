@@ -16,21 +16,11 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
-/**
- * Which endpoint of the provider the request reached, and what the connection brought with it: the
- * certificate the edge handed over (RFC 8705 §2) and whether a DPoP proof was
- * presented (RFC 9449 §4.1). Neither the certificate nor the proof is written down; what the panel shows
- * of a certificate is the thumbprint a token would be bound to, and of a proof, that there was one.
- *
- * A route that is none of the provider's is left alone, which is what makes the toolbar of a host
- * application show an entry on the pages of the provider and on no other.
- */
 #[AsEventListener(event: KernelEvents::REQUEST, priority: self::PRIORITY)]
 final readonly class OpEndpointListener
 {
     /**
-     * Just below the listener of the planes (architecture §5.2), so that a route this process refuses to
-     * serve is never reported as one it served.
+     * Below PlaneRequestListener, so that a route this process refuses is never reported as served.
      */
     public const int PRIORITY = 30;
 
@@ -63,9 +53,7 @@ final readonly class OpEndpointListener
     }
 
     /**
-     * What a token bound to this certificate would carry (RFC 8705 §3.1), which is all a panel needs;
-     * a request the edge handed something unreadable for is said to be so, and refusing it is the
-     * endpoint's business and not this one's.
+     * RFC 8705 §3.1
      */
     private function certificate(Request $request): string
     {

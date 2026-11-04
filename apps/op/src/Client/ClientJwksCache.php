@@ -17,14 +17,7 @@ use Psr\Cache\CacheItemPoolInterface;
 use Throwable;
 
 /**
- * The keys read back from a "jwks_uri", kept in a pool of the application so that the workers of a
- * deployment share one read. What is written is the set and the moment it was read, as plain values and
- * not as objects: a pool outlives a deployment, and what comes back from it is read again as strictly as
- * what comes back from the party itself.
- *
- * The class is wired once per pool, the keys of the clients and the keys of the issuers a tenant trusts
- * living in one each: what tells them apart is the pool and not the key, as it is for the assertions of
- * each.
+ * Stores plain values, not objects, read back as strictly as from the party itself: a pool outlives a deployment.
  */
 final readonly class ClientJwksCache implements ClientJwksCacheInterface
 {
@@ -67,8 +60,7 @@ final readonly class ClientJwksCache implements ClientJwksCacheInterface
     }
 
     /**
-     * By the URL the set was read from, hashed because a pool key takes no arbitrary character
-     * (PSR-6 §Definitions).
+     * Hashed: a PSR-6 key accepts no arbitrary character.
      */
     private static function key(ClientUri $jwksUri): string
     {

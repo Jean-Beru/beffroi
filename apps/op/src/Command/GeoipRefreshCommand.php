@@ -15,12 +15,6 @@ use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * The databases of addresses the enrichment of a provenance reads, brought up to date now rather than
- * next Monday (architecture §3.5, issue #473). The weekly step of the schedule does the same thing with
- * the same object (`RefreshTheAddressDatabases`); this is how an operator installs them the day they
- * subscribe, points the deployment at a mirror, or reads why a refresh was refused.
- */
 #[AsCommand(
     name: 'beffroi:geoip:refresh',
     description: 'Download the GeoLite2 databases of addresses now, refuse what is not one, and store them for the enrichment of a provenance; --url for a mirror or a file already unpacked.',

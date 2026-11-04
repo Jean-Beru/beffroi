@@ -19,11 +19,6 @@ use function json_decode;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
 
-/**
- * A whole provisioning under the seal of the tenant's KMS (SecretSealerInterface, architecture §3.3):
- * the secret, the URI that carries it in base32 and the backup codes, as one JSON document the envelope
- * authenticates, so that what a session store keeps of an enrolment in progress is opaque.
- */
 final readonly class TotpProvisioningSealer
 {
     public function __construct(
@@ -32,8 +27,8 @@ final readonly class TotpProvisioningSealer
     }
 
     /**
-     * @throws KmsUnavailableException when the KMS of the tenant does not answer or refuses to seal
-     * @throws RuntimeException when the envelope cannot be made for another reason
+     * @throws KmsUnavailableException
+     * @throws RuntimeException
      */
     public function seal(User $user, TotpProvisioning $provisioning): string
     {
@@ -45,7 +40,7 @@ final readonly class TotpProvisioningSealer
     }
 
     /**
-     * @throws KmsUnavailableException when the KMS of the tenant does not answer or refuses to open
+     * @throws KmsUnavailableException
      * @throws RuntimeException when the envelope was not sealed for this tenant
      * @throws InvalidArgumentException when what the envelope holds is not a provisioning
      */

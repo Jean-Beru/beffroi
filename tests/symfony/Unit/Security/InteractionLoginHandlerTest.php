@@ -30,9 +30,7 @@ use Twig\Environment;
 use Twig\Loader\ArrayLoader;
 
 /**
- * Architecture §5.4: after the form login, the browser goes back to the login page of its interaction,
- * whether the login succeeded or failed. A login that serves no authorization request is the one a person
- * whose password was found in a breach is asked to replace it on (issue #579).
+ * Architecture §5.4
  */
 final class InteractionLoginHandlerTest extends TestCase
 {
@@ -67,7 +65,7 @@ final class InteractionLoginHandlerTest extends TestCase
     }
 
     /**
-     * Architecture §5.4: every response of the interaction plane carries the headers of the pages.
+     * Architecture §5.4
      */
     #[Test]
     public function theRedirectCarriesTheHeadersOfTheInteractionPages(): void
@@ -84,9 +82,6 @@ final class InteractionLoginHandlerTest extends TestCase
         static::assertTrue($response->headers->hasCacheControlDirective('no-store'));
     }
 
-    /**
-     * The target is the query of the form action, never the body nor a referer.
-     */
     #[Test]
     public function theInteractionIsReadFromTheQueryOnly(): void
     {
@@ -111,8 +106,7 @@ final class InteractionLoginHandlerTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.3: the page a user approves what an appliance asked is not an interaction, and the login
-     * of the same firewall brings the browser back to it with the code it typed.
+     * RFC 8628 §3.3
      */
     #[Test]
     public function aSuccessGoesBackToThePageThatAskedForTheLogin(): void
@@ -132,9 +126,7 @@ final class InteractionLoginHandlerTest extends TestCase
     }
 
     /**
-     * The page that asked stays remembered until it is served: a password verified for a user who holds a
-     * second factor is not a login yet (§5.4), and the page it was waiting for must still be there after the
-     * code.
+     * Architecture §5.4
      */
     #[Test]
     public function thePageThatAskedStaysRememberedUntilItIsServed(): void
@@ -152,10 +144,6 @@ final class InteractionLoginHandlerTest extends TestCase
         static::assertSame('/device', $response->headers->get('Location'));
     }
 
-    /**
-     * An interaction named in the query of the form action is what that login was for: a page remembered from
-     * an abandoned flow does not take a browser away from the client that sent it.
-     */
     #[Test]
     public function anInteractionNamedByTheFormWinsOverThePageThatAsked(): void
     {
@@ -171,10 +159,6 @@ final class InteractionLoginHandlerTest extends TestCase
         static::assertSame('/login?interaction=abc', $response->headers->get('Location'));
     }
 
-    /**
-     * Issue #579: the one step there is between a login and what it was for. The page it was going to stays
-     * remembered, so replacing the password carries the browser on to it.
-     */
     #[Test]
     public function aPasswordThatWasFoundInABreachSendsTheBrowserToThePageOfThePassword(): void
     {
@@ -191,10 +175,6 @@ final class InteractionLoginHandlerTest extends TestCase
         static::assertTrue($this->loginTargets->isPending($request->getSession()));
     }
 
-    /**
-     * Issue #579: a login serving an authorization request is interrupted by nothing, a page between it and
-     * the redirection being what a certification run would see.
-     */
     #[Test]
     public function aPasswordThatWasFoundInABreachInterruptsNoAuthorizationRequest(): void
     {
@@ -209,10 +189,6 @@ final class InteractionLoginHandlerTest extends TestCase
         static::assertSame('/login?interaction=abc', $response->headers->get('Location'));
     }
 
-    /**
-     * A refused login goes back to the login page and never to the page that asked for it: that page would
-     * send the browser here again, and the message would be read by nobody.
-     */
     #[Test]
     public function aRefusedLoginGoesBackToTheLoginPageAndNotToThePageThatAsked(): void
     {
@@ -246,10 +222,6 @@ final class InteractionLoginHandlerTest extends TestCase
         static::assertSame($exception, $request->getSession()->get(SecurityRequestAttributes::AUTHENTICATION_ERROR));
     }
 
-    /**
-     * The token of a login of somebody whose password a list of compromised passwords has found, the mark
-     * being what the lane wrote on the credential before this login (issue #552).
-     */
     private static function aLoginByWhoeverHoldsAPasswordFoundInABreach(): UsernamePasswordToken
     {
         $password = Fixtures::password();

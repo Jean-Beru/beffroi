@@ -17,10 +17,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Where the login of the provider sends back a browser whose SAML request waited for it (beffroi/saml, spec/saml.md
- * S-18, section 6.4 step 3): the request found in the session of that browser under the reference this provider wrote,
- * and answered as the single sign-on service answers it. A reference this browser does not hold, one already answered
- * among them, is the page of a refusal, without telling which.
+ * spec/saml.md S-18, section 6.4 step 3
  */
 #[AsController]
 final readonly class SamlSingleSignOnResumeController
@@ -43,7 +40,6 @@ final readonly class SamlSingleSignOnResumeController
         if ($signOn === null) {
             return $this->pages->error(Response::HTTP_BAD_REQUEST, AuthorizationResponder::UNKNOWN_INTERACTION);
         }
-        // the page that was waiting for the login is this one, and it is served: a next login is somebody else's
         $this->loginTargets->forgetIfItIsWaitingFor($request->getSession(), IdentityProviderRoutes::SINGLE_SIGN_ON_RESUME);
 
         return $this->answers->answer($request, $tenant, $signOn, $reference);

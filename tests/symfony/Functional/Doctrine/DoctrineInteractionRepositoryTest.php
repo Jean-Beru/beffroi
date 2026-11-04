@@ -30,8 +30,7 @@ use Symfony\Component\Uid\Uuid;
 use Beffroi\Oidc\Tests\Fixture\Shapes;
 
 /**
- * Architecture §4.3, §5.3: an interaction parks a validated request, every parameter of it, and comes
- * back with the client the configuration registers under the identifier the row keeps.
+ * Architecture §4.3, §5.3
  */
 final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
 {
@@ -176,10 +175,6 @@ final class DoctrineInteractionRepositoryTest extends DatabaseTestCase
         static::assertTrue($found->isCompleted());
     }
 
-    /**
-     * A client removed from the configuration leaves its interactions without a client: nothing can
-     * resume them, they are not found.
-     */
     #[Test]
     public function anInteractionOfAnUnregisteredClientIsNotFound(): void
     {
