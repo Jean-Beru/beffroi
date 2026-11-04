@@ -154,6 +154,15 @@ Without a TTY (CI, agents), pass `</dev/null` or the Docker flag falls back to `
 - Every session and event carries a `RequestContext` (IP, user agent, later GeoIP and device); enrichment is always asynchronous.
 - A test never sleeps. Time is moved with the mocked clock (`BrowserTestCase::aSecondLater()`), which the Symfony `clock` service reads globally and which survives a kernel reboot.
 
+## Comments
+
+A comment is written where it is needed and nowhere else. The name of a class, a method, a property or a constant says what it is; when it says it, nothing is added.
+
+- **A docblock sits on a class, a property, a constant or a method.** A comment inside a body is the exception: one short sentence for a reason the code cannot show and someone would otherwise undo, such as a workaround for a library, framework or platform behaviour, a security property that hangs on a detail (an order of checks, a constant-time comparison, a refusal that looks redundant) or a constraint of an external system. An inline `/** @var */` that narrows a type is not concerned.
+- **What a docblock carries**: the types PHP cannot express (`@param list<Scope>`, `@return array<string, mixed>`, `@template`, a `@var` of a shape), `@throws` (see "Substitutable" below), `@internal`, `@deprecated` with its reason; the section a class or a method implements, as a bare citation (`OIDC Core §9, RFC 7523 §2.2`); one short sentence for a why the code cannot show, or for what a class does when its name is generic. A tag has a description only when it states a contract its type cannot: what the keys of a map are, a unit, an order callers rely on.
+- **What it never carries**: prose that restates the name, the signature or the code; a tag that repeats the native type; the design and its reasons, which live in `../docs/11-architecture/` and `../docs/decisions/`; history, issue or pull request numbers, "used to", "no longer", the one exception being the upstream fix a workaround waits for; `@see`, `{@inheritdoc}`, `@since`, `@author`.
+- **Tests**: the name of a test says what it verifies, and its docblock carries only the specification section it verifies (`RFC 7636 §4.3`). The SAML and XML suites keep the invariant, corpus row, section and CVE citations their specifications require and their traceability tests read (`D-3, §9.2 rows 1 to 4, CVE-2025-29774`). `// Given`, `// When` and `// Then` are the layout of a test (see "Tests"), not comments.
+
 ## SOLID
 
 A rule of every PR, not a theme of a review. Each form below names the class to imitate.
