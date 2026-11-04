@@ -20,17 +20,14 @@ use function str_repeat;
 use function strlen;
 
 /**
- * Section 6.1 steps 2 to 7, B-1, B-2, B-3, B-9: what the reading of a query string returns, the message parameter and
- * its raw value, RelayState decoded, the detached signature with its algorithm, its decoded value and its octets. What
- * it refuses is asserted through RedirectReceiver, row by row of section 9.2 (RedirectReceiverTest).
+ * Section 6.1 steps 2 to 7, B-1, B-2, B-3, B-9
  */
 final class QueryParametersTest extends TestCase
 {
     private const string SIG_ALG = 'http%3A%2F%2Fwww.w3.org%2F2001%2F04%2Fxmldsig-more%23rsa-sha256';
 
     /**
-     * B-1, B-2, SAML Bindings §3.4.4.1: the message parameter and its value exactly as it arrived, still
-     * percent-encoded, in either case.
+     * B-1, B-2, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itKeepsTheMessageAsItArrived(): void
@@ -43,7 +40,7 @@ final class QueryParametersTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 3, SAML Bindings §3.4.4.1: a SAMLResponse, where the method takes one.
+     * Section 6.1 step 3, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itReadsASamlResponseWhereTheMethodTakesOne(): void
@@ -56,8 +53,7 @@ final class QueryParametersTest extends TestCase
     }
 
     /**
-     * §9.3 row 5, B-3, B-9, SAML Bindings §3.4.4.1: a query string without SigAlg and Signature has no detached
-     * signature, and without RelayState no RelayState.
+     * §9.3 row 5, B-3, B-9, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itReadsAnUnsignedQueryString(): void
@@ -70,8 +66,7 @@ final class QueryParametersTest extends TestCase
     }
 
     /**
-     * §9.3 row 10, B-1, SAML Bindings §3.4.4.1: what is not one of the six parameters is skipped, whatever its name
-     * once decoded, as an empty segment is.
+     * §9.3 row 10, B-1, SAML Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideOtherSegments')]
@@ -111,10 +106,7 @@ final class QueryParametersTest extends TestCase
     }
 
     /**
-     * §9.2 row 6, B-1, section 6.1 step 2: a name is read as PHP's own parser of a query string reads it, the one
-     * behind $_GET, percent-decoded, its leading spaces dropped, cut at its first NUL or "[": the parameter of B-1 it
-     * reads as, or null, is the one that parser reads, so that no name is one of the six for a consumer reading the
-     * query string through it and none for the package.
+     * §9.2 row 6, B-1, section 6.1 step 2
      */
     #[Test]
     #[DataProvider('provideNames')]
@@ -169,8 +161,7 @@ final class QueryParametersTest extends TestCase
     }
 
     /**
-     * §9.2 row 6, B-1, section 6.1 step 2: a "[" no "]" follows, which PHP's parser reads as "_", cuts the name all the
-     * same, so that a name is one of the six for the package whenever it is for that parser, and a little more often.
+     * §9.2 row 6, B-1, section 6.1 step 2
      */
     #[Test]
     #[DataProvider('provideNamesWithAnUnclosedBracket')]
@@ -194,8 +185,7 @@ final class QueryParametersTest extends TestCase
     }
 
     /**
-     * §9.3 row 2, B-8, B-9, SAML Bindings §3.4.3: RelayState decoded under B-8, a + and a %20 a space, an escape of
-     * either case its byte.
+     * §9.3 row 2, B-8, B-9, SAML Bindings §3.4.3
      */
     #[Test]
     #[DataProvider('provideRelayStates')]
@@ -225,8 +215,7 @@ final class QueryParametersTest extends TestCase
     }
 
     /**
-     * §9.3 row 6, section 6.1 step 4, SAML Bindings §3.4.4: SAMLEncoding holding the DEFLATE URI, as it is or
-     * percent-encoded.
+     * §9.3 row 6, section 6.1 step 4, SAML Bindings §3.4.4
      */
     #[Test]
     #[DataProvider('provideDeflateEncodings')]
@@ -249,7 +238,7 @@ final class QueryParametersTest extends TestCase
     }
 
     /**
-     * B-3, D-5, SAML Bindings §3.4.4.1: SigAlg, percent-decoded, read on the closed list, each of its six algorithms.
+     * B-3, D-5, SAML Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideAlgorithms')]
@@ -276,7 +265,7 @@ final class QueryParametersTest extends TestCase
     }
 
     /**
-     * B-8, section 6.1 step 5, SAML Bindings §3.4.4.1: the value of Signature, percent-decoded then decoded as base64.
+     * B-8, section 6.1 step 5, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itDecodesTheSignature(): void
@@ -294,9 +283,7 @@ final class QueryParametersTest extends TestCase
     }
 
     /**
-     * Section 7, section 6.1 step 5, SAML Bindings §3.4.4.1: the text of Signature is bounded once percent-decoded, at
-     * 1 368 characters, the base64 of 1 026 bytes accepted whether it arrives as base64 writes it or escaped, three
-     * times longer.
+     * Section 7, section 6.1 step 5, SAML Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideSignatureTextsOf1368Characters')]
@@ -321,9 +308,7 @@ final class QueryParametersTest extends TestCase
     }
 
     /**
-     * B-2, SAML Bindings §3.4.4.1: the octets of a query string whose parameters arrive in another order, escaped in
-     * lowercase, next to SAMLEncoding and another parameter: the message, RelayState and SigAlg, in that order, each
-     * value exactly as it arrived, and nothing else.
+     * B-2, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itBuildsTheOctetsFromTheValuesAsTheyArrived(): void
@@ -347,8 +332,7 @@ final class QueryParametersTest extends TestCase
     }
 
     /**
-     * B-2, SAML Bindings §3.4.4.1: the octets of a signed SAMLResponse name it, without RelayState when the query
-     * string has none.
+     * B-2, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itBuildsTheOctetsOfASamlResponseWithoutRelayState(): void

@@ -18,17 +18,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.2 step 7, B-5, B-12: a samlp:Response received over HTTP-POST, validated through the model's validate(),
- * which verifies its XML signatures under the identity provider's keys; built from the reception of a response, which
- * a form alone carries. SAML Bindings §3.5.4, SAML Profiles §4.1.2.
+ * Section 6.2 step 7, B-5, B-12, SAML Bindings §3.5.4, SAML Profiles §4.1.2
  */
 final class ReceivedResponseTest extends TestCase
 {
     use ReceptionFixtures;
 
     /**
-     * B-5, section 6.2 step 7, M-2, SAML Profiles §4.1.4.5: the response, its assertion signed by the identity
-     * provider, is verified and accepted by the model, the assertion read from what the signature covered.
+     * B-5, section 6.2 step 7, M-2, SAML Profiles §4.1.4.5
      */
     #[Test]
     public function itValidatesTheResponseThroughTheModel(): void
@@ -47,8 +44,7 @@ final class ReceivedResponseTest extends TestCase
     }
 
     /**
-     * B-4, M-3, section 6.2 step 7: a response whose signature no key of the identity provider's metadata verifies is
-     * the refusal of Dsig, as it is.
+     * B-4, M-3, section 6.2 step 7
      */
     #[Test]
     public function itLetsTheRefusalOfTheSignatureThrough(): void
@@ -66,8 +62,7 @@ final class ReceivedResponseTest extends TestCase
     }
 
     /**
-     * M-10, section 6.2 step 7: a response that answers another request than the one the consumer expects is the
-     * model's refusal, as it is.
+     * M-10, section 6.2 step 7
      */
     #[Test]
     public function itLetsTheRefusalOfTheModelThrough(): void
@@ -84,8 +79,7 @@ final class ReceivedResponseTest extends TestCase
     }
 
     /**
-     * Section 5.2, B-5: a ReceivedResponse is built from the reception of a Response and of no other message, a
-     * programming error otherwise.
+     * Section 5.2, B-5
      */
     #[Test]
     #[DataProvider('provideReceptionsOfOtherMessages')]

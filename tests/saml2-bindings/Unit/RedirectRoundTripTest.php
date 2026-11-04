@@ -16,12 +16,7 @@ use function sprintf;
 use function strlen;
 
 /**
- * Section 9.1 over HTTP-Redirect: every URL RedirectSender writes, its query string received by RedirectReceiver, then
- * validated by the model's validator of the peer's role, the test keys of tests/saml2-bindings/Fixture/keys/ in the metadata and a
- * clock frozen at the message's IssueInstant: an AuthnRequest signed under every algorithm this build has, and
- * unsigned; a LogoutRequest and a LogoutResponse, always signed (B-12); each without RelayState, with one of exactly
- * 80 bytes and with one of 1 024 bytes, the bound of B-9 (section 8), every byte escaped, returned as it was given. Signed, the message is authenticated by the binding (B-5); unsigned, by
- * nothing, and accepted only because neither party's metadata asks for a signed request (M-2). SAML Bindings §3.4.4.1.
+ * Section 9.1, B-5, B-9, B-12, section 8, M-2, SAML Bindings §3.4.4.1
  *
  * @phpstan-import-type Message from SendingFixtures
  */
@@ -30,8 +25,7 @@ final class RedirectRoundTripTest extends TestCase
     use SendingFixtures;
 
     /**
-     * Section 9.1, B-2, B-5, §9.3 row 7: an AuthnRequest the service provider signs under each algorithm of the build,
-     * received at the single sign-on service, is authenticated by the binding and accepted, its RelayState returned.
+     * Section 9.1, B-2, B-5, §9.3 row 7
      */
     #[Test]
     #[DataProvider('provideAlgorithmsAndRelayStates')]
@@ -57,8 +51,7 @@ final class RedirectRoundTripTest extends TestCase
     }
 
     /**
-     * Section 9.1, B-5, §9.3 row 7: an unsigned AuthnRequest, from a service provider whose metadata asks for no
-     * signature, is accepted with no authentication, its RelayState returned.
+     * Section 9.1, B-5, §9.3 row 7
      */
     #[Test]
     #[DataProvider('provideRelayStates')]
@@ -84,9 +77,7 @@ final class RedirectRoundTripTest extends TestCase
     }
 
     /**
-     * Section 9.1, B-2, B-5, B-12, SAML Profiles §4.4.4.1: a LogoutRequest the identity provider signs under each
-     * algorithm of the build, received at the service provider's single logout service, is authenticated by the
-     * binding and accepted, its RelayState returned.
+     * Section 9.1, B-2, B-5, B-12, SAML Profiles §4.4.4.1
      */
     #[Test]
     #[DataProvider('provideAlgorithmsAndRelayStates')]
@@ -113,9 +104,7 @@ final class RedirectRoundTripTest extends TestCase
     }
 
     /**
-     * Section 9.1, B-2, B-5, B-12, SAML Profiles §4.4.4.1: a LogoutResponse the service provider signs under each
-     * algorithm of the build, received at the identity provider's single logout service, is authenticated by the
-     * binding and accepted as the answer to the request it names, its RelayState returned.
+     * Section 9.1, B-2, B-5, B-12, SAML Profiles §4.4.4.1
      */
     #[Test]
     #[DataProvider('provideAlgorithmsAndRelayStates')]
@@ -165,9 +154,7 @@ final class RedirectRoundTripTest extends TestCase
     }
 
     /**
-     * §9.3 row 5, section 7, B-7, B-9: a RelayState of 1 024 bytes, the bound of B-9, every byte escaped, 3 072
-     * characters on the wire, fits the signed query string of each message under the default maxQueryStringBytes, and
-     * the receiver returns it as it was given.
+     * §9.3 row 5, section 7, B-7, B-9
      *
      * @param Message $message
      */
@@ -206,9 +193,7 @@ final class RedirectRoundTripTest extends TestCase
     }
 
     /**
-     * §9.3 row 3, section 6.1 step 2, section 6.3 step 6, M-8: an AuthnRequest whose Destination holds its own query,
-     * as the Location of the identity provider's endpoint may, is received with that query skipped and unsigned, and
-     * accepted at that very URL.
+     * §9.3 row 3, section 6.1 step 2, section 6.3 step 6, M-8
      */
     #[Test]
     public function itAcceptsAnAuthnRequestWhoseDestinationHoldsItsOwnQuery(): void

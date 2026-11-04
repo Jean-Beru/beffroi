@@ -29,18 +29,6 @@ use Beffroi\Saml2\Model\Validation\LogoutResponseValidator;
 use Beffroi\Saml2\Model\Validation\ResponseValidator;
 use DateTimeImmutable;
 
-/**
- * What the tests of HTTP-Redirect and HTTP-POST received share (sections 6.1, 6.2, 9.2, 9.3): the four messages, the
- * two parties and the model's validators with a clock frozen at the messages' IssueInstant. The messages are
- * saml2-model's, copied byte for byte from tests/saml2-bindings/Fixture/behaviour/ of its main at 9c833c5: an AuthnRequest of the
- * service provider to the identity provider, signed with the "sp" test key; a LogoutRequest of the identity provider to
- * the service provider, signed with "idp"; a LogoutResponse of the service provider to the identity provider, signed
- * with "sp"; a samlp:Response of the identity provider to the service provider's assertion consumer service, answering
- * the request _request, its assertion signed with "idp", response-signed-assertion-accepted.xml. The hostile
- * documents of tests/saml2-bindings/Fixture/hostile/ are copies too, renamed for the refusal they exist for: the AuthnRequest signed
- * in XML is the model's behaviour/authn-request-signed.xml, the samlp:Response its
- * behaviour/response-signed-assertion-accepted.xml; the DOCTYPE is the unsigned AuthnRequest with one line added.
- */
 trait ReceptionFixtures
 {
     use CodecFixtures;
@@ -53,14 +41,8 @@ trait ReceptionFixtures
 
     public const string RESPONSE = 'behaviour/response-signed-assertion-accepted.xml';
 
-    /**
-     * The ID of the AuthnRequest the response of RESPONSE answers.
-     */
     public const string RESPONSE_REQUEST_ID = '_request';
 
-    /**
-     * The ID of the LogoutRequest the LogoutResponse answers.
-     */
     public const string LOGOUT_REQUEST_ID = '_5d1a0e7c9b3f4a2e8d6c1b0a9f8e7d6c5b4a3f2e';
 
     public const string SSO = 'https://idp.example.com/saml/sso';
@@ -82,8 +64,7 @@ trait ReceptionFixtures
     }
 
     /**
-     * The fields of a form carrying $message, base64-encoded on one line, in $field, then $relayState when given, as a
-     * browser posts them and PHP's parser gives them to the consumer (section 6.8).
+     * Section 6.8
      *
      * @return array<array-key, mixed>
      */
@@ -99,34 +80,22 @@ trait ReceptionFixtures
         );
     }
 
-    /**
-     * $query read whole for $service under the default bounds of section 7, as RedirectReceiver reads it.
-     */
     private static function reception(RedirectQuery $query, Service $service): Reception
     {
         return Reception::ofQueryString($query->toString(), $service, SamlLoader::create(), 8_192, 65_536);
     }
 
-    /**
-     * The form carrying $message in $field read whole for $service under the default bound of section 7, as
-     * PostReceiver reads it.
-     */
     private static function formReception(string $field, string $message, Service $service): Reception
     {
         return Reception::ofForm(self::form($field, $message), $service, SamlLoader::create(), 1_572_864);
     }
 
-    /**
-     * The service provider, its signing certificate the "sp" test key, its requests unsigned by its metadata.
-     */
     private static function serviceProvider(): ServiceProvider
     {
         return self::serviceProviderOf([TestKeys::certificate('sp')]);
     }
 
     /**
-     * The service provider, its signing certificates $certificates, its requests unsigned by its metadata.
-     *
      * @param list<string> $certificates
      */
     private static function serviceProviderOf(array $certificates): ServiceProvider
@@ -140,9 +109,6 @@ trait ReceptionFixtures
         );
     }
 
-    /**
-     * The service provider whose metadata says AuthnRequestsSigned (SAML Metadata §2.4.4).
-     */
     private static function serviceProviderSigningItsRequests(): ServiceProvider
     {
         return new ServiceProvider(
@@ -156,9 +122,6 @@ trait ReceptionFixtures
         );
     }
 
-    /**
-     * The identity provider, its signing certificate the "idp" test key.
-     */
     private static function identityProvider(): IdentityProvider
     {
         return self::identityProviderOf([TestKeys::certificate('idp')]);
@@ -178,9 +141,6 @@ trait ReceptionFixtures
         );
     }
 
-    /**
-     * The AuthnRequest validator, its clock at the request's IssueInstant.
-     */
     private static function authnRequestValidator(): AuthnRequestValidator
     {
         return new AuthnRequestValidator(
@@ -189,9 +149,6 @@ trait ReceptionFixtures
         );
     }
 
-    /**
-     * The LogoutRequest validator, its clock at the request's IssueInstant.
-     */
     private static function logoutRequestValidator(): LogoutRequestValidator
     {
         return new LogoutRequestValidator(
@@ -201,9 +158,6 @@ trait ReceptionFixtures
         );
     }
 
-    /**
-     * The LogoutResponse validator, its clock at the response's IssueInstant.
-     */
     private static function logoutResponseValidator(): LogoutResponseValidator
     {
         return new LogoutResponseValidator(
@@ -213,10 +167,6 @@ trait ReceptionFixtures
         );
     }
 
-    /**
-     * The response validator of the service provider, its clock at $now, the IssueInstant of the response of RESPONSE
-     * by default, and a replay guard of its own.
-     */
     private static function responseValidator(string $now = '2026-09-30T12:00:00Z'): ResponseValidator
     {
         return new ResponseValidator(
@@ -226,10 +176,6 @@ trait ReceptionFixtures
         );
     }
 
-    /**
-     * What the service provider expects of a response to the AuthnRequest $requestId, received at its assertion
-     * consumer service, for its entity ID.
-     */
     private static function expectedResponse(string $requestId = self::RESPONSE_REQUEST_ID): ExpectedResponse
     {
         return ExpectedResponse::toRequest($requestId, self::ACS, 'https://sp.example.com/saml');

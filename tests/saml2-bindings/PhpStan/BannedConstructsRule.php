@@ -27,15 +27,7 @@ use function sprintf;
 use function strtolower;
 
 /**
- * Section 8 of the specification: the constructs never written, in src/ and in tests/, those of model.md section 8 and
- * the superglobals. A loose comparison, == and != (<> included), and switch, which compares loosely too: a value is
- * compared with === (M-8). A (bool) cast: a boolean of a message is one of its four lexical forms, compared as a string
- * (M-6). A \DateTime or a \DateTimeImmutable built without an explicit time, which reads the clock of the machine: the
- * package needs no time, and the tests read the frozen clock of tests/saml2-bindings/Support. A constant time string is explicit when
- * it names a date, a time and the UTC zone, and nothing relative ("now", "today", "+1 day"); a time string known only at
- * runtime passes. A superglobal, $_GET, $_POST and the others of the configuration, $GLOBALS among them, which reads
- * every other one under another name ($GLOBALS['_GET']): the package takes the raw query string and the form's fields
- * as the consumer received them, never the request itself (B-13, section 6.8).
+ * Section 8, model.md section 8, M-6, M-8, B-13, section 6.8
  *
  * @implements Rule<Node>
  */
@@ -44,7 +36,7 @@ final readonly class BannedConstructsRule implements Rule
     private const array CLOCK_CLASSES = ['datetime', 'datetimeimmutable'];
 
     /**
-     * @param list<string> $variables the names of the banned superglobals, without their $
+     * @param list<string> $variables names without their $
      */
     public function __construct(
         private array $variables,

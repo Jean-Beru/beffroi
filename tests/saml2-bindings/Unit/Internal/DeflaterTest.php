@@ -17,16 +17,14 @@ use function range;
 use function strlen;
 
 /**
- * B-8, section 6.3 step 3: what the package sends over HTTP-Redirect is raw DEFLATE (RFC 1951, SAML Bindings §3.4.4.1
- * step 2), which its own inflater reads back.
+ * B-8, section 6.3 step 3, RFC 1951, SAML Bindings §3.4.4.1 step 2
  */
 final class DeflaterTest extends TestCase
 {
     use CodecFixtures;
 
     /**
-     * §9.3 row 11, B-8, RFC 1951, SAML Bindings §3.4.4.1 step 2: the deflated message is raw DEFLATE, which zlib's own
-     * reader of raw DEFLATE, a reader of neither wrapper, gives back as it was.
+     * §9.3 row 11, B-8, RFC 1951, SAML Bindings §3.4.4.1 step 2
      */
     #[Test]
     #[DataProvider('provideMessages')]
@@ -50,8 +48,7 @@ final class DeflaterTest extends TestCase
     }
 
     /**
-     * B-7, B-8, section 6.1 step 8: what the package deflates, its inflater reads back under a bound of the message's
-     * own length.
+     * B-7, B-8, section 6.1 step 8
      */
     #[Test]
     #[DataProvider('provideMessages')]

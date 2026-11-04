@@ -16,21 +16,14 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * Section 6.2 steps 1 to 3, B-1, B-7, B-8, B-9: the fields of a form, as the consumer's parser decoded them, read before
- * anything decodes the message: the three fields the binding reads, strings, exactly one message field, the one the
- * method takes, bounded and not empty, RelayState bounded and kept as given, no SigAlg and no Signature, any other
- * field skipped. SAML Bindings §3.5.4.
+ * Section 6.2 steps 1 to 3, B-1, B-7, B-8, B-9, SAML Bindings §3.5.4
  */
 final class FormFieldsTest extends TestCase
 {
-    /**
-     * The bound of the message field the tests give, unless a test names another.
-     */
     private const int BOUND = 1_572_864;
 
     /**
-     * Section 6.2 steps 2 and 3, B-9, SAML Bindings §3.5.3: the message field and its value, and RelayState kept as
-     * given, never percent-decoded: the consumer's parser decoded the form.
+     * Section 6.2 steps 2 and 3, B-9, SAML Bindings §3.5.3
      */
     #[Test]
     public function itReadsTheMessageFieldAndRelayStateAsGiven(): void
@@ -50,8 +43,7 @@ final class FormFieldsTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 2, B-1: a SAMLRequest is read where the method takes it, at a single sign-on service and at a
-     * single logout service, without RelayState.
+     * Section 6.2 step 2, B-1
      *
      * @param non-empty-list<'SAMLRequest'|'SAMLResponse'> $accepted
      */
@@ -79,8 +71,7 @@ final class FormFieldsTest extends TestCase
     }
 
     /**
-     * §9.3 row 10, section 6.2 step 1, SAML Bindings §3.5.4: a field other than the three, a submit button, a field of
-     * an integer name or holding an array, is skipped.
+     * §9.3 row 10, section 6.2 step 1, SAML Bindings §3.5.4
      *
      * @param array<array-key, mixed> $form
      */
@@ -111,8 +102,7 @@ final class FormFieldsTest extends TestCase
     }
 
     /**
-     * §9.2 row 2, B-1, section 6.2 step 2, CVE-2025-27773: SAMLRequest and SAMLResponse in one form are refused, whatever
-     * the method, before anything is decoded.
+     * §9.2 row 2, B-1, section 6.2 step 2, CVE-2025-27773
      *
      * @param non-empty-list<'SAMLRequest'|'SAMLResponse'> $accepted
      */
@@ -139,7 +129,7 @@ final class FormFieldsTest extends TestCase
     }
 
     /**
-     * §9.2 row 3, B-1, section 6.2 step 2: a form without SAMLRequest nor SAMLResponse is refused.
+     * §9.2 row 3, B-1, section 6.2 step 2
      *
      * @param array<array-key, mixed> $form
      */
@@ -166,8 +156,7 @@ final class FormFieldsTest extends TestCase
     }
 
     /**
-     * §9.2 row 4, B-1, section 6.2 step 2: a SAMLResponse given to authnRequest(), a SAMLRequest given to response(),
-     * are refused.
+     * §9.2 row 4, B-1, section 6.2 step 2
      *
      * @param array<array-key, mixed>                      $form
      * @param non-empty-list<'SAMLRequest'|'SAMLResponse'> $accepted
@@ -194,8 +183,7 @@ final class FormFieldsTest extends TestCase
     }
 
     /**
-     * §9.2 row 8, B-1, section 6.2 step 1: one of the three fields of the binding holding anything but a string, an
-     * array as PHP's parser makes of a field named "SAMLResponse[]", is refused.
+     * §9.2 row 8, B-1, section 6.2 step 1
      *
      * @param array<array-key, mixed> $form
      */
@@ -224,8 +212,7 @@ final class FormFieldsTest extends TestCase
     }
 
     /**
-     * §9.2 row 29, section 8, section 6.2 step 1, SAML Bindings §3.5.4: SigAlg or Signature in a form, whatever their
-     * value, is refused by name, before the message field is read.
+     * §9.2 row 29, section 8, section 6.2 step 1, SAML Bindings §3.5.4
      *
      * @param array<array-key, mixed> $form
      */
@@ -261,8 +248,7 @@ final class FormFieldsTest extends TestCase
     }
 
     /**
-     * §9.2 row 23, B-7, section 6.2 step 2, section 7: a message field one byte longer than maxFormValueBytes is
-     * refused before anything decodes it, the bound named.
+     * §9.2 row 23, B-7, section 6.2 step 2, section 7
      */
     #[Test]
     public function itRefusesAMessageFieldOverTheBound(): void
@@ -276,7 +262,7 @@ final class FormFieldsTest extends TestCase
     }
 
     /**
-     * B-7, section 6.2 step 2, section 7: a message field of exactly maxFormValueBytes is read.
+     * B-7, section 6.2 step 2, section 7
      */
     #[Test]
     public function itReadsAMessageFieldOfExactlyTheBound(): void
@@ -289,7 +275,7 @@ final class FormFieldsTest extends TestCase
     }
 
     /**
-     * §9.2 row 7, B-8, section 6.2 step 2: an empty SAMLRequest or SAMLResponse is refused.
+     * §9.2 row 7, B-8, section 6.2 step 2
      *
      * @param array<array-key, mixed> $form
      */
@@ -315,8 +301,7 @@ final class FormFieldsTest extends TestCase
     }
 
     /**
-     * §9.3 row 5, B-9, section 6.2 step 3, section 8, SAML Bindings §3.5.3: a RelayState of exactly 1 024 bytes, the
-     * exception section 8 makes to the 80 bytes of the binding, is kept as given.
+     * §9.3 row 5, B-9, section 6.2 step 3, section 8, SAML Bindings §3.5.3
      */
     #[Test]
     public function itKeepsARelayStateOf1024Bytes(): void
@@ -336,8 +321,7 @@ final class FormFieldsTest extends TestCase
     }
 
     /**
-     * §9.2 row 16, B-9, section 6.2 step 3, section 8, SAML Bindings §3.5.3: a RelayState of 1 025 bytes in a form is
-     * refused.
+     * §9.2 row 16, B-9, section 6.2 step 3, section 8, SAML Bindings §3.5.3
      */
     #[Test]
     public function itRefusesARelayStateOver1024Bytes(): void
@@ -355,7 +339,7 @@ final class FormFieldsTest extends TestCase
     }
 
     /**
-     * §9.2 row 16, B-9, section 6.2 step 3, section 12: an empty RelayState in a form is refused.
+     * §9.2 row 16, B-9, section 6.2 step 3, section 12
      */
     #[Test]
     public function itRefusesAnEmptyRelayState(): void

@@ -41,23 +41,7 @@ use PHPUnit\Framework\TestCase;
 use function str_pad;
 
 /**
- * Section 9.4: the query strings and forms SimpleSAMLphp 2.5.3.1 and Keycloak 26.7.4 sent, bytes as received, read by
- * the receivers of this package and validated by the model with a clock frozen at their capture, under the metadata of
- * their sender as it was served (tests/saml2-bindings/Fixture/real/README.md).
- *
- * Three captures. On 30 September 2026, saml2-model's harness: its service provider for-model, under sign.authnrequest
- * and sign.logout, to saml2-model's identity provider. On 1 October 2026, this package's judge (section 9.5,
- * tests/saml2-bindings/Interop/simplesamlphp/README.md): capture.php, a login and a logout between SimpleSAMLphp's own two parties,
- * default-sp and its identity provider, as the installation configures them; and exchange.php, SimpleSAMLphp's two
- * parties and this package's roles, at http://localhost:8093/bindings/, whose metadata the exchange wrote with the test
- * keys: an identity provider, and three service providers which the identity provider answers differently at logout
- * (sp under sign.logout, sp-defaults under its defaults, sp-post over HTTP-POST under sign.logout).
- *
- * Keycloak 26.7.4, on 1 October 2026, by the judge's second target (tests/saml2-bindings/Interop/keycloak/README.md): capture.php, a
- * login and a logout between realm sp's broker "idp" and realm idp, as realms/ configures them; and exchange.php, realm
- * sp's broker "bindings" and realm idp configured by Keycloak's importers from the metadata of this package's roles, at
- * https://idp.saml2-bindings.test/ and https://sp.saml2-bindings.test/, written with the test keys. Realm keys are new
- * at every start of Keycloak: the metadata of the run, kept with its captures, verify them.
+ * Section 9.4
  */
 final class RealDocumentsTest extends TestCase
 {
@@ -71,23 +55,12 @@ final class RealDocumentsTest extends TestCase
 
     private const string BINDINGS = 'http://localhost:8093/bindings/';
 
-    /**
-     * The second at which saml2-model's exchange issued the query strings it kept, 30 September 2026.
-     */
     private const string SEPTEMBER_30 = '2026-09-30T13:07:34Z';
 
-    /**
-     * The seconds at which the run of this package's judge kept on 1 October 2026 issued its captures: the login of
-     * capture.php, then everything else, its logout and the whole exchange.
-     */
     private const string OCTOBER_1_LOGIN = '2026-10-01T11:03:33Z';
 
     private const string OCTOBER_1 = '2026-10-01T11:03:34Z';
 
-    /**
-     * The second at which for-bindings issued its AuthnRequest carrying a ReturnTo of 105 bytes, the measure of the
-     * exchange that followed.
-     */
     private const string OCTOBER_1_LONG_RETURN_TO = '2026-10-01T11:03:37Z';
 
     private const string KEYCLOAK = 'http://localhost:8190/realms/';
@@ -96,20 +69,10 @@ final class RealDocumentsTest extends TestCase
 
     private const string KEYCLOAK_BINDINGS_SP = 'https://sp.saml2-bindings.test/';
 
-    /**
-     * The second within which Keycloak's run kept on 1 October 2026 issued its captures, 11:37:35.702 to 11:37:37.181:
-     * the capture between its two realms, then the exchange.
-     */
     private const string KEYCLOAK_OCTOBER_1 = '2026-10-01T11:37:37Z';
 
     /**
-     * Section 9.4, section 6.1, B-2, B-5, SAML Bindings §3.4.4.1: a signed AuthnRequest of a real service provider, its
-     * signature over SAMLRequest, RelayState and SigAlg as they arrived verified under the key of its metadata, accepted
-     * by the binding's authentication, its RelayState returned as decoded: SimpleSAMLphp's ReturnTo, Keycloak's broker
-     * state of 78 bytes; and, beyond the 80 bytes of SAML Bindings §3.4.3, the exception of section 8 (B-9): a ReturnTo
-     * of 105 bytes (finding F-5 of tests/saml2-bindings/Interop/simplesamlphp/README.md) and the state of 122 bytes the broker writes
-     * for a client whose internal ID is not a UUID (finding K-4 of tests/saml2-bindings/Interop/keycloak/README.md), both refused on 1
-     * October 2026 and accepted since B-9 reads up to 1 024 bytes (section 12).
+     * Section 9.4, section 6.1, section 8, B-2, B-5, B-9, SAML Bindings §3.4.4.1, §3.4.3, findings F-5 and K-4
      */
     #[Test]
     #[DataProvider('provideAuthnRequests')]
@@ -214,10 +177,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, B-5, SAML Profiles §4.1.2: the AuthnRequest of Keycloak's broker as its importer configures it from
-     * an identity provider metadata listing HTTP-Redirect alone, asking for its response over HTTP-Redirect: its
-     * signature verified by the binding, then refused by the model, which answers over HTTP-POST only (model.md section
-     * 8; finding K-2 of tests/saml2-bindings/Interop/keycloak/README.md). The producer is configured so, the rule stands.
+     * Section 9.4, B-5, SAML Profiles §4.1.2, model.md section 8, finding K-2
      */
     #[Test]
     public function itRefusesTheAuthnRequestOfKeycloaksBrokerAskingForItsResponseOverHttpRedirect(): void
@@ -244,10 +204,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, §9.2 row 20, B-5, M-2, M-3: the AuthnRequest of Keycloak's broker under its defaults, to realm idp,
-     * unsigned and from a metadata that publishes no key, while realm idp's metadata wants its requests signed: read by
-     * the receiver and refused by the model's validate() (saml2-model's finding 2), as Keycloak's own realm idp accepts
-     * it only because its client is told not to require a signature (realms/idp.json).
+     * Section 9.4, §9.2 row 20, B-5, M-2, M-3, saml2-model's finding 2
      */
     #[Test]
     public function itRefusesTheUnsignedAuthnRequestOfKeycloaksBrokerUnderItsDefaults(): void
@@ -271,8 +228,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, §9.2 row 20, B-5, M-2, SAML Profiles §4.4.4.1: the LogoutRequest of Keycloak's broker under its
-     * defaults, unsigned over HTTP-Redirect: read by the receiver and refused by the model's validate().
+     * Section 9.4, §9.2 row 20, B-5, M-2, SAML Profiles §4.4.4.1
      */
     #[Test]
     public function itRefusesTheUnsignedLogoutRequestOfKeycloaksBrokerUnderItsDefaults(): void
@@ -299,9 +255,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, section 6.1, B-2, B-5, SAML Profiles §4.4.4.1: a signed LogoutRequest of a real service provider,
-     * verified under the key of its metadata, accepted by the binding's authentication, naming the NameID and the
-     * session its identity provider issued.
+     * Section 9.4, section 6.1, B-2, B-5, SAML Profiles §4.4.4.1
      *
      * @param list<string> $sessionIndexes
      */
@@ -397,11 +351,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, section 6.2, B-5, B-8, SAML Bindings §3.5.4: the response a real identity provider posts, the body a
-     * browser posts from the fields of its form, parsed as PHP parses it, read by PostReceiver and validated by the
-     * model, its RelayState echoed: SimpleSAMLphp's, its response and its assertion signed (saml20.sign.response, its
-     * default), a transient NameID; Keycloak's realm idp's, the response signed and not the assertion (its default), a
-     * persistent NameID, as the request asked.
+     * Section 9.4, section 6.2, B-5, B-8, SAML Bindings §3.5.4
      */
     #[Test]
     #[DataProvider('provideResponseForms')]
@@ -490,10 +440,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, section 6.1, B-2, B-5, B-8, SAML Profiles §4.4.4.1: the LogoutResponse a real identity provider signs
-     * over HTTP-Redirect, verified as it arrived, its RelayState returned as decoded, what this package sent:
-     * SimpleSAMLphp's under sign.logout, its RelayState escaped by PHP's urlencode(), "+" for a space and "%7E" for "~";
-     * Keycloak's realm idp's once its client's "Force POST binding" is off, a space written "+" and "~" left as it is.
+     * Section 9.4, section 6.1, B-2, B-5, B-8, SAML Profiles §4.4.4.1
      */
     #[Test]
     #[DataProvider('provideSignedLogoutResponseQueries')]
@@ -562,10 +509,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, section 6.2, B-5, SAML Bindings §3.5.4, SAML Profiles §4.4.4.2: the LogoutResponse a real identity
-     * provider posts, signed in its XML, read by PostReceiver from the body a browser posts, its RelayState echoed:
-     * SimpleSAMLphp's to a single logout service published for HTTP-POST alone, under sign.logout; Keycloak's realm
-     * idp's under its client's "Force POST binding", its default.
+     * Section 9.4, section 6.2, B-5, SAML Bindings §3.5.4, SAML Profiles §4.4.4.2
      */
     #[Test]
     #[DataProvider('provideLogoutResponseForms')]
@@ -644,9 +588,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, §9.2 row 20, B-5, M-2, SAML Profiles §4.4.4.2: the LogoutResponse SimpleSAMLphp's identity provider
-     * sends over HTTP-Redirect under its defaults, neither its query string nor its XML signed, read by the receiver
-     * and refused by the model's validate() (saml2-model's finding F-1): the producer is wrong, the rule stands.
+     * Section 9.4, §9.2 row 20, B-5, M-2, SAML Profiles §4.4.4.2, saml2-model's finding F-1
      */
     #[Test]
     #[DataProvider('provideUnsignedLogoutResponses')]
@@ -700,9 +642,6 @@ final class RealDocumentsTest extends TestCase
         return new FrozenClock(new DateTimeImmutable($capturedAt));
     }
 
-    /**
-     * Metadata as SimpleSAMLphp served it, read by readTrusted() with a clock at the capture.
-     */
     private static function metadata(string $fixture, string $capturedAt): EntityDescriptor
     {
         return new MetadataReader(SamlLoader::create(), self::clock($capturedAt))->readTrusted(
@@ -710,9 +649,6 @@ final class RealDocumentsTest extends TestCase
         );
     }
 
-    /**
-     * A service provider of SimpleSAMLphp, its metadata as served.
-     */
     private static function serviceProvider(string $fixture, string $capturedAt): ServiceProvider
     {
         $descriptor = self::metadata($fixture, $capturedAt);
@@ -720,10 +656,6 @@ final class RealDocumentsTest extends TestCase
         return $descriptor->serviceProvider ?? throw new LogicException('The metadata holds a service provider.');
     }
 
-    /**
-     * SimpleSAMLphp's identity provider, its metadata as served on 1 October 2026: HTTP-Redirect alone for its single
-     * sign-on and single logout services, its default publication.
-     */
     private static function simpleSamlPhpIdentityProvider(): IdentityProvider
     {
         $descriptor = self::metadata('real/simplesamlphp-2.5.3.1-idp-metadata-2026-10-01.xml', self::OCTOBER_1_LOGIN);
@@ -731,9 +663,6 @@ final class RealDocumentsTest extends TestCase
         return $descriptor->identityProvider ?? throw new LogicException('The metadata holds an identity provider.');
     }
 
-    /**
-     * Keycloak's realm idp, its metadata as served on 1 October 2026, its key generated at the start of the run.
-     */
     private static function keycloakIdentityProvider(): IdentityProvider
     {
         $descriptor = self::metadata('real/keycloak-26.7.4-idp-metadata-2026-10-01.xml', self::KEYCLOAK_OCTOBER_1);
@@ -741,10 +670,6 @@ final class RealDocumentsTest extends TestCase
         return $descriptor->identityProvider ?? throw new LogicException('The metadata holds an identity provider.');
     }
 
-    /**
-     * This package's identity provider as Keycloak's exchange wrote its metadata for the broker's importer: the "idp"
-     * test key, HTTP-Redirect alone for its single sign-on and single logout services, wanting its requests signed.
-     */
     private static function keycloakBindingsIdentityProvider(): IdentityProvider
     {
         return new IdentityProvider(
@@ -758,11 +683,6 @@ final class RealDocumentsTest extends TestCase
         );
     }
 
-    /**
-     * This package's service provider as Keycloak's exchange wrote its metadata for realm idp's converter: the "sp"
-     * test key, its assertion consumer service over HTTP-POST, its single logout service over HTTP-Redirect and
-     * HTTP-POST, signing its requests and not asking for signed assertions.
-     */
     private static function keycloakBindingsServiceProvider(): ServiceProvider
     {
         return new ServiceProvider(
@@ -780,10 +700,6 @@ final class RealDocumentsTest extends TestCase
         );
     }
 
-    /**
-     * The model's identity provider as saml2-model's exchange published it (its
-     * tests/saml2-bindings/Unit/Interop/SimpleSamlPhpDocumentsTest.php).
-     */
     private static function modelIdentityProvider(): IdentityProvider
     {
         return new IdentityProvider(
@@ -797,10 +713,6 @@ final class RealDocumentsTest extends TestCase
         );
     }
 
-    /**
-     * This package's identity provider as the judge's exchange wrote its metadata: the "idp" test key, HTTP-Redirect
-     * for its single sign-on and single logout services, wanting its requests signed.
-     */
     private static function bindingsIdentityProvider(): IdentityProvider
     {
         return new IdentityProvider(
@@ -814,10 +726,6 @@ final class RealDocumentsTest extends TestCase
         );
     }
 
-    /**
-     * A service provider of this package as the judge's exchange wrote its metadata: the "sp" test key, its assertion
-     * consumer service over HTTP-POST, its single logout service over $logout.
-     */
     private static function bindingsServiceProvider(string $name, Binding $logout): ServiceProvider
     {
         return new ServiceProvider(

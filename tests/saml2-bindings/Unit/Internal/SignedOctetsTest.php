@@ -10,16 +10,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * B-2, section 6.1 step 7, SAML Bindings §3.4.4.1: the octets the detached signature covers, the message parameter,
- * RelayState when present and SigAlg, in that order, each value as given, still percent-encoded.
+ * B-2, section 6.1 step 7, SAML Bindings §3.4.4.1
  */
 final class SignedOctetsTest extends TestCase
 {
     private const string SIG_ALG = 'http%3A%2F%2Fwww.w3.org%2F2001%2F04%2Fxmldsig-more%23rsa-sha256';
 
     /**
-     * B-2, SAML Bindings §3.4.4.1: the message parameter and its value, RelayState and its value when present, SigAlg
-     * and its value, joined by & and nothing else.
+     * B-2, SAML Bindings §3.4.4.1
      *
      * @param 'SAMLRequest'|'SAMLResponse' $messageParameter
      */

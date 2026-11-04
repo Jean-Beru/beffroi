@@ -12,13 +12,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 9.7: the frozen clock of the tests, the only time they read, which the model's validators take (model.md
- * section 5.2, M-7).
+ * Section 9.7, model.md section 5.2, M-7
  */
 final class FrozenClockTest extends TestCase
 {
     /**
-     * model.md section 5.2: the instant it was built on, in UTC, whatever zone it was given.
+     * model.md section 5.2
      */
     #[Test]
     public function itReadsTheInstantItIsFrozenAtInUtc(): void
@@ -39,7 +38,7 @@ final class FrozenClockTest extends TestCase
     }
 
     /**
-     * Section 9.7: a test never sleeps, it takes a clock moved by a number of seconds, forward or back.
+     * Section 9.7
      */
     #[Test]
     #[DataProvider('provideMoves')]
@@ -66,7 +65,7 @@ final class FrozenClockTest extends TestCase
     }
 
     /**
-     * Section 9.7: moving gives another clock; the one a validator already holds stays where it was.
+     * Section 9.7
      */
     #[Test]
     public function itDoesNotMoveItself(): void

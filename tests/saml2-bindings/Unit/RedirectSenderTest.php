@@ -35,11 +35,7 @@ use function strlen;
 use Throwable;
 
 /**
- * Section 6.3, B-2, B-6, B-8, B-9, B-10, B-12: what RedirectSender writes, read back from the URL it returns with PHP's
- * own decoders and Dsig's Verifier, and what it refuses before it writes anything a receiver would refuse: the rows of
- * sections 9.2 and 9.3 that are the sender's. That every URL it writes is received, verified and validated is
- * RedirectRoundTripTest's; that an implementation which is not PHP verifies its signatures and inflates its messages
- * is the OpenSSL oracle's (section 9.1). SAML Bindings §3.4.4.1.
+ * Section 6.3, sections 9.2 and 9.3, B-2, B-6, B-8, B-9, B-10, B-12, SAML Bindings §3.4.4.1
  *
  * @phpstan-import-type Message from SendingFixtures
  */
@@ -48,8 +44,7 @@ final class RedirectSenderTest extends TestCase
     use SendingFixtures;
 
     /**
-     * §9.3 row 11, B-2, section 6.3 steps 4 and 5, SAML Bindings §3.4.4.1: the query holds the message parameter, then
-     * RelayState when given, then SigAlg and Signature when signed, in that order and nothing else.
+     * §9.3 row 11, B-2, section 6.3 steps 4 and 5, SAML Bindings §3.4.4.1
      *
      * @param Message      $message
      * @param list<string> $names
@@ -100,9 +95,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * §9.3 row 11, B-6, B-10, section 6.3 steps 2 and 3, SAML Bindings §3.4.4.1 steps 1 and 2: the message is the
-     * document the model's writer wrote with no Signing, serialized once, raw-deflated (RFC 1951): zlib's reader of raw
-     * DEFLATE, a reader of neither wrapper, gives back the writer's very bytes, without any XML signature.
+     * §9.3 row 11, B-6, B-10, section 6.3 steps 2 and 3, SAML Bindings §3.4.4.1 steps 1 and 2, RFC 1951
      *
      * @param Message                      $message
      * @param 'SAMLRequest'|'SAMLResponse' $parameter
@@ -136,9 +129,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * §9.3 row 11, B-8, section 6.3 steps 3 and 5, SAML Bindings §3.4.4.1 step 3: the message and the signature are
-     * base64 on one line, without whitespace, its three characters outside the unreserved ones of RFC 3986, +, / and
-     * =, escaped in uppercase hexadecimal and nothing else escaped.
+     * §9.3 row 11, B-8, section 6.3 steps 3 and 5, SAML Bindings §3.4.4.1 step 3, RFC 3986
      *
      * @param 'SAMLRequest'|'Signature' $parameter
      */
@@ -163,8 +154,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * §9.3 row 11, B-8, B-9, section 6.3 steps 3 and 4, RFC 3986 §2.1 and §2.3: RelayState is written with every byte
-     * outside the unreserved characters escaped in uppercase hexadecimal, as RFC 3986 writes it.
+     * §9.3 row 11, B-8, B-9, section 6.3 steps 3 and 4, RFC 3986 §2.1 and §2.3
      */
     #[Test]
     public function itEscapesRelayStateInUppercase(): void
@@ -182,8 +172,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * §9.3 row 11, B-3, section 6.3 step 4, RFC 3986 §2.1: SigAlg is the URI of the Signing's algorithm, escaped in
-     * uppercase hexadecimal.
+     * §9.3 row 11, B-3, section 6.3 step 4, RFC 3986 §2.1
      */
     #[Test]
     #[DataProvider('provideAlgorithms')]
@@ -207,9 +196,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * B-2, B-3, section 6.3 steps 4 and 5, dsig.md §6.4, SAML Bindings §3.4.4.1: the Signature is the signature, by the
-     * key of the Signing under its algorithm, of the octets of the binding, SAMLRequest, RelayState and SigAlg as the
-     * URL carries them, which Dsig's Verifier verifies under the certificate of that key.
+     * B-2, B-3, section 6.3 steps 4 and 5, dsig.md §6.4, SAML Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideAlgorithms')]
@@ -232,8 +219,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * §9.3 row 3, section 6.3 step 6, SAML Bindings §3.4.4.1: a Destination that holds its own query, as the Location
-     * of an endpoint may, is followed by &, then by the query of the binding.
+     * §9.3 row 3, section 6.3 step 6, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itAppendsTheQueryToTheQueryOfTheDestination(): void
@@ -249,9 +235,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * §9.2 row 33, B-9, section 6.3 step 1, section 8: a RelayState of 1 025 bytes, one over the exception section 8
-     * makes to the 80 bytes of SAML Bindings §3.4.3, given to any method, is a programming error of the caller, refused
-     * before anything is written.
+     * §9.2 row 33, B-9, section 6.3 step 1, section 8, SAML Bindings §3.4.3
      *
      * @param Message $message
      */
@@ -268,8 +252,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * §9.2 row 33, B-9, section 6.3 step 1, section 12: an empty RelayState, given to any method, is a programming
-     * error of the caller: absence says the same.
+     * §9.2 row 33, B-9, section 6.3 step 1, section 12
      *
      * @param Message $message
      */
@@ -286,8 +269,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * §9.2 row 33, section 6.3 step 1, RFC 3986 §3.5: a Destination holding a fragment, which a URL of HTTP-Redirect
-     * does not carry, is a programming error of the caller, whatever the method.
+     * §9.2 row 33, section 6.3 step 1, RFC 3986 §3.5
      *
      * @param Message $message
      */
@@ -314,9 +296,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * §9.2 row 33, section 6.3 step 1, RFC 3986 §3.1: a Destination whose scheme is neither http nor https, which
-     * would be the head of the location the browser is sent to, is a programming error of the caller, whatever the
-     * method, and whatever the case of the letters of the scheme.
+     * §9.2 row 33, section 6.3 step 1, RFC 3986 §3.1
      *
      * @param Message $message
      */
@@ -359,8 +339,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 1, RFC 3986 §3.1: a Destination whose scheme is http or https, in whatever case, is the head of
-     * the URL as it is written, never normalised: the scheme of a URL is case-insensitive, and a browser reads it so.
+     * Section 6.3 step 1, RFC 3986 §3.1
      *
      * @param Message $message
      */
@@ -399,10 +378,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * §9.2 row 33, B-1, section 6.3 step 1: a Destination whose own query holds one of the six parameters of the
-     * binding, under its name or a name PHP's parser reads as it, percent-encoded, after a leading space, followed by a
-     * NUL or a "[", first or not, with or without "=", which the receiver would refuse, is a programming error of the
-     * caller.
+     * §9.2 row 33, B-1, section 6.3 step 1
      */
     #[Test]
     #[DataProvider('provideQueriesHoldingAParameterOfTheBinding')]
@@ -437,8 +413,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * B-8, section 6.3 step 1: a Destination whose own query holds a malformed percent-escape in a name, which the
-     * receiver would refuse, is a programming error of the caller.
+     * B-8, section 6.3 step 1
      */
     #[Test]
     #[DataProvider('provideQueriesWithAMalformedEscapeInAName')]
@@ -463,8 +438,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 2, section 6.3 step 1: a value of the Destination's own query is not decoded, as the receiver
-     * decodes no value of a parameter that is not the binding's, and a malformed escape in it is sent as it is.
+     * Section 6.1 step 2, section 6.3 step 1
      */
     #[Test]
     public function itLeavesTheValuesOfTheQueryOfTheDestinationAsTheyAre(): void
@@ -477,8 +451,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * Section 7, section 6.3 step 6: a query string exactly as long as maxQueryStringBytes, the query of the
-     * Destination and its "&" included, is sent, since the receiver accepts it.
+     * Section 7, section 6.3 step 6
      */
     #[Test]
     #[DataProvider('provideDestinations')]
@@ -499,8 +472,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * §9.2 row 34, B-7, section 6.3 step 6: a query string one byte longer than maxQueryStringBytes, the query of the
-     * Destination and its "&" included, which the receiver would refuse, is refused.
+     * §9.2 row 34, B-7, section 6.3 step 6
      */
     #[Test]
     #[DataProvider('provideDestinations')]
@@ -531,8 +503,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 3, B-7: a message whose serialized bytes are exactly maxInflatedBytes long is sent, and the
-     * package's receiver, under the same bounds, inflates and reads it.
+     * Section 6.3 step 3, B-7
      */
     #[Test]
     public function itSendsAMessageOfExactlyMaxInflatedBytesWhichTheReceiverReads(): void
@@ -549,9 +520,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * §9.2 row 34, B-7, section 6.3 step 3: a message whose serialized bytes are one byte longer than maxInflatedBytes,
-     * which the package's receiver would refuse while inflating it, is refused before it is deflated, whatever the
-     * method.
+     * §9.2 row 34, B-7, section 6.3 step 3
      *
      * @param Message $message
      */
@@ -581,9 +550,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * §9.2 rows 33 and 34, section 6.3 steps 1 and 3: every refusal that needs nothing but the arguments, and the bound
-     * of the serialized message, come before the signature: a key management service is never called for a URL the
-     * sender refuses.
+     * §9.2 rows 33 and 34, section 6.3 steps 1 and 3
      *
      * @param Message                 $message
      * @param class-string<Throwable> $exception
@@ -675,8 +642,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * §9.2 row 33, section 6.3 step 1, M-15: an AuthnRequest without Destination, the URL it is sent to, is a
-     * programming error of the caller, refused before its writer runs and before the key is called.
+     * §9.2 row 33, section 6.3 step 1, M-15
      */
     #[Test]
     public function itRefusesAnAuthnRequestWithoutDestination(): void
@@ -693,9 +659,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * Section 6.3 step 2, M-15: what the model's writer refuses, a LogoutRequest whose NotOnOrAfter is not later than
-     * its IssueInstant, is refused as the writer refuses it, a programming error of the caller, before the key is
-     * called.
+     * Section 6.3 step 2, M-15
      */
     #[Test]
     public function itLetsTheRefusalOfTheWriterThrough(): void
@@ -721,8 +685,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * §9.3 row 13, B-3, dsig.md §5.1: RSASSA-PSS on a build without PHP 8.5 and OpenSSL 3.1, PHP 8.4 among them, is
-     * the signing key's AlgorithmUnavailable, as Dsig refuses it.
+     * §9.3 row 13, B-3, dsig.md §5.1
      */
     #[Test]
     public function itLetsTheRefusalOfTheSigningKeyThrough(): void
@@ -741,8 +704,7 @@ final class RedirectSenderTest extends TestCase
     }
 
     /**
-     * B-12, SAML Profiles §4.1.2: the sender sends an AuthnRequest, a LogoutRequest and a LogoutResponse, and has no
-     * method for a Response, which HTTP-Redirect must not carry.
+     * B-12, SAML Profiles §4.1.2
      */
     #[Test]
     public function itHasNoMethodForAResponse(): void
@@ -754,9 +716,6 @@ final class RedirectSenderTest extends TestCase
         static::assertSame(['__construct', 'authnRequest', 'logoutRequest', 'logoutResponse'], $methods);
     }
 
-    /**
-     * A Signing whose key fails the test if the sender calls it.
-     */
     private function uncalledSigning(): Signing
     {
         $key = $this->createMock(SigningKeyInterface::class);

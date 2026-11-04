@@ -40,17 +40,12 @@ use const T_STRING;
 use const T_VARIABLE;
 
 /**
- * Section 8 of spec/bindings.md, read on the source of src/ itself, next to the PHPStan rules of
- * .ci-tools/phpstan-saml2-bindings.neon, as saml2-model reads its own: what PHPStan cannot see. The property reads Core's Text::of()
- * replaces (textContent, nodeValue, innerHTML), and the comparison <=>; and, next to Deptrac, what would reach HTTP.
- * Comments and string literals are not code and are not scanned: a refusal message may name what it refuses.
- *
- * Section 8, I-12, B-13.
+ * Section 8, I-12, B-13
  */
 final class SourceGuardTest extends TestCase
 {
     /**
-     * Section 8, I-12: never written in src/, whatever the case.
+     * Section 8, I-12
      */
     #[Test]
     #[DataProvider('provideBannedTokens')]
@@ -68,15 +63,14 @@ final class SourceGuardTest extends TestCase
      */
     public static function provideBannedTokens(): iterable
     {
-        // the property reads Text::of() replaces (I-12): the package reads no SAML element, and looks for one node
-        // only, with Children::optional() (B-6)
+        // The property reads Text::of() replaces (I-12); one node is found with Children::optional() (B-6).
         yield 'textContent' => ['textContent'];
         yield 'nodeValue' => ['nodeValue'];
         yield 'innerHTML' => ['innerHTML'];
     }
 
     /**
-     * Section 8: no comparison <=>, which orders values of any type with PHP's own rules.
+     * Section 8
      */
     #[Test]
     public function itNeverComparesWithTheSpaceship(): void
@@ -88,9 +82,6 @@ final class SourceGuardTest extends TestCase
         static::assertSame([], $files);
     }
 
-    /**
-     * The scans find what they look for in the code, and nothing in a comment or a string literal.
-     */
     #[Test]
     #[TestWith(['<?php return $a <=> $b;', true, false], 'a spaceship')]
     #[TestWith(["<?php return '\$a <=> \$b';", false, false], 'a spaceship in a string')]
@@ -109,10 +100,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * B-13, section 8, decisions 0007 and 0013: src/ names no class of HttpFoundation or of PSR-7, reads no superglobal,
-     * sends no header and no cookie, and writes no output and no HTML, so that the package takes strings and arrays and
-     * gives back strings and value objects; read on the tokens of the source, next to what Deptrac and the PHPStan
-     * rules hold.
+     * B-13, section 8, decisions 0007 and 0013
      */
     #[Test]
     public function itNeverReachesHttp(): void
@@ -125,8 +113,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * B-13: the scan of HTTP finds it in the code, and nothing in a comment, a string literal or a name it only
-     * resembles.
+     * B-13
      */
     #[Test]
     #[TestWith(['<?php return $_GET;', true], 'a superglobal')]
@@ -203,9 +190,6 @@ final class SourceGuardTest extends TestCase
         ): bool => $token->is(T_SPACESHIP));
     }
 
-    /**
-     * The code of $source, lowercased, its comments, whitespace and string literals each replaced by a space.
-     */
     private function code(string $source): string
     {
         $code = '';
@@ -219,9 +203,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * The files of src/ holding $banned in their code, comments and string literals left aside, each with its count.
-     *
-     * @return array<string, int>
+     * @return array<string, int> count by file of src/, comments and string literals left aside
      */
     private function occurrences(string $banned): array
     {
@@ -238,7 +220,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * @return array<string, string> the source of every PHP file of src/, keyed by its path relative to src/
+     * @return array<string, string> source by path relative to src/
      */
     private function sources(): array
     {

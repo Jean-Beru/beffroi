@@ -52,14 +52,7 @@ use const T_STRING;
 use const T_USE;
 
 /**
- * B-5, section 5.2: the message a received message validates and the octets of its signature come from one decoding of
- * one input, whoever builds the object. Read on the source of src/, no function takes a message next to a signature but
- * the private constructor of Reception, whose factories take the raw input alone, and each Received* class is built
- * from a Reception and from nothing else; tried through every path a consumer can reach, the public constructors and
- * the factories with any argument their types allow, a message never travels with the octets another message's
- * signature covers, and a form, which carries no detached signature, never brings one. PHP closes the paths around the
- * types: a readonly property is not modified by a clone from outside its class, and a document, whose DOM refuses
- * serialization, never travels as bytes. SAML Bindings §3.4.4.1, §3.5.4.
+ * B-5, section 5.2, SAML Bindings §3.4.4.1, §3.5.4
  *
  * @phpstan-type Path 'receiver, authnRequest()'|'by hand, ReceivedAuthnRequest'|'receiver, logoutMessage()'|'by hand, ReceivedLogoutResponse'
  */
@@ -67,9 +60,6 @@ final class PairingTest extends TestCase
 {
     use ReceptionFixtures;
 
-    /**
-     * The types that hold a message.
-     */
     private const array MESSAGES = [
         'Document',
         'UnverifiedAuthnRequest',
@@ -78,16 +68,12 @@ final class PairingTest extends TestCase
         'UnverifiedResponse',
     ];
 
-    /**
-     * The types that hold a detached signature, its octets or what they are built from.
-     */
     private const array SIGNATURES = ['DetachedSignature', 'SignedOctets', 'QueryParameters'];
 
     private const array MODIFIERS = [T_PUBLIC, T_PROTECTED, T_PRIVATE, T_STATIC, T_FINAL, T_ABSTRACT, T_READONLY];
 
     /**
-     * B-5, section 5.2: no function of src/ takes a message next to a signature, but the private constructor of
-     * Reception, which its factories alone call.
+     * B-5, section 5.2
      */
     #[Test]
     public function itPairsAMessageWithASignatureInTheReceptionAlone(): void
@@ -114,8 +100,7 @@ final class PairingTest extends TestCase
     }
 
     /**
-     * B-5, section 5.2: the factories of Reception, one per binding, take the raw input, neither a message nor a
-     * signature.
+     * B-5, section 5.2
      */
     #[Test]
     public function itBuildsAReceptionFromTheRawInputAlone(): void
@@ -141,7 +126,7 @@ final class PairingTest extends TestCase
     }
 
     /**
-     * B-5, section 5.2: each Received* class is built from a Reception and from nothing else.
+     * B-5, section 5.2
      */
     #[Test]
     #[TestWith(['ReceivedAuthnRequest.php'], 'ReceivedAuthnRequest')]
@@ -164,9 +149,7 @@ final class PairingTest extends TestCase
     }
 
     /**
-     * B-1, B-2, B-5, §9.2 row 14, SAML Bindings §3.4.4.1: the message of one query string with the signature of another
-     * of the same service provider, through every path a consumer can reach, the receiver or a received message built
-     * by hand from a reception, is refused: the octets verified are those of the message validated.
+     * B-1, B-2, B-5, §9.2 row 14, SAML Bindings §3.4.4.1
      *
      * @param Path $path
      */
@@ -227,10 +210,7 @@ final class PairingTest extends TestCase
     }
 
     /**
-     * B-5, section 6.2 step 1, section 8, SAML Bindings §3.5.4: a form never pairs a message with a detached
-     * signature: the SigAlg and the Signature of a query string the peer signed, posted next to a message, through every
-     * path a consumer can reach, the receiver or a received message built by hand from the reception of the form, are
-     * refused before the message is read.
+     * B-5, section 6.2 step 1, section 8, SAML Bindings §3.5.4
      *
      * @param 'receiver, authnRequest()'|'by hand, ReceivedAuthnRequest'|'receiver, logoutMessage()'|'by hand, ReceivedLogoutResponse'|'receiver, response()'|'by hand, ReceivedResponse' $path
      * @param array<array-key, mixed> $form
@@ -296,8 +276,6 @@ final class PairingTest extends TestCase
     }
 
     /**
-     * The scan of the source: the name, the visibility and the types of the parameters of each function.
-     *
      * @param list<string> $types
      */
     #[Test]
@@ -335,8 +313,6 @@ final class PairingTest extends TestCase
     }
 
     /**
-     * $query received and validated through $path, a path a consumer can reach.
-     *
      * @param Path $path
      */
     private function validate(string $path, RedirectQuery $query): mixed
@@ -385,8 +361,6 @@ final class PairingTest extends TestCase
     }
 
     /**
-     * $form read whole for $service under the default bound of section 7, as PostReceiver reads it.
-     *
      * @param array<array-key, mixed> $form
      */
     private function formOf(array $form, Service $service): Reception
@@ -404,8 +378,6 @@ final class PairingTest extends TestCase
     }
 
     /**
-     * The functions of every PHP file of src/.
-     *
      * @return list<array{file: string, name: string, private: bool, types: list<string>}>
      */
     private function functions(): array
@@ -432,9 +404,6 @@ final class PairingTest extends TestCase
     }
 
     /**
-     * The functions $source declares, an import "use function" aside: the name after "function", whether a private modifier precedes it, and the
-     * names the parameter list holds, a type or a default, each by its last segment.
-     *
      * @return list<array{file: string, name: string, private: bool, types: list<string>}>
      */
     private function functionsOf(string $file, string $source): array

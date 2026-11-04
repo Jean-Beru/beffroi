@@ -13,10 +13,7 @@ use PHPStan\Rules\IdentifierRuleError;
 use PHPStan\Rules\Rule;
 
 /**
- * Section 8 of the specification: a first-class callable of a banned or a confined call, base64_decode(...) handed to
- * array_map() or time(...) kept for later, is the call it is made of. PHPStan visits it as a node of its own and never
- * as that call, so BannedCallsRule would not see it: this rule hands it the call. One service per kind of callable, the
- * function, the method and the static method, each named by its node type in .ci-tools/phpstan-saml2-bindings.neon.
+ * Section 8
  *
  * @template TNode of FunctionCallableNode|MethodCallableNode|StaticMethodCallableNode
  *

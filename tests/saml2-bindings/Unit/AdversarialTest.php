@@ -59,17 +59,7 @@ use TypeError;
 use function unserialize;
 
 /**
- * Section 9.8, the adversarial pass of 1 October 2026 (story #10): each row of section 3 attacked with query strings and
- * forms the corpus of 9.2 and 9.3 does not list, every attempt a fixture of tests/saml2-bindings/Support/AdversarialQueryBuilder
- * whatever its outcome, asserted with the exception and the message it got, or accepted with what validation returned;
- * and, where the attempt is a call and not an input, a named case of a data provider, named after its outcome as a
- * fixture would be. An attempt accepted is the consumer's one path, received then validated: over a signed query
- * string, Authentication::Binding and the ID of the message the signature covers, never the forged one slipped next
- * to it. None bypassed a rule of section 4. Two classes of attempt were accepted by the rules as they stood, each
- * decided by the maintainer on 1 October 2026 (section 12): names PHP's own parser of a query string reads as one of
- * the six of B-1 while the package did not, refused by B-1 since, their attempts named after their new outcome; and a
- * received message assembled by code that leaves the scope PHP gives it (Closure::bind), still accepted here and
- * banned in beffroi/saml (section 6.8). SAML Bindings §3.4.4.1, §3.5.4.
+ * Section 9.8, B-1, SAML Bindings §3.4.4.1, §3.5.4
  *
  * @phpstan-type Message 'an AuthnRequest'|'a LogoutRequest'|'a LogoutResponse'
  */
@@ -77,10 +67,6 @@ final class AdversarialTest extends TestCase
 {
     use SendingFixtures;
 
-    /**
-     * The base64 of the response of ReceptionFixtures on one line, in bytes, the bound of the form attempts at
-     * maxFormValueBytes.
-     */
     private const int RESPONSE_BASE64_BYTES = 3_892;
 
     private const string NEITHER = 'The query string carries neither SAMLRequest nor SAMLResponse (B-1).';
@@ -114,8 +100,7 @@ final class AdversarialTest extends TestCase
     private const string SIGNATURE_REQUIRED = 'The message carries no ds:Signature, which the profile requires (M-2).';
 
     /**
-     * Section 9.8, section 9.7: every attempt on disk is what the builder writes, byte for byte, so that the command of
-     * tests/saml2-bindings/Fixture/hostile/adversarial-README.md writes them again.
+     * Section 9.8, section 9.7
      */
     #[Test]
     public function itBuildsTheCommittedFixtures(): void
@@ -130,8 +115,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8: every attempt of the builder is asserted by one case of this class, none left unread, none asserted
-     * under the other outcome.
+     * Section 9.8
      */
     #[Test]
     public function itAssertsEveryAttempt(): void
@@ -170,8 +154,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, section 3 rows 1 to 4, 7, 8 and 10, B-1 to B-3, B-7 to B-9: every query string attempt that is
-     * refused, received then validated as the consumer does, with the exception and the message it got.
+     * Section 9.8, section 3 rows 1 to 4, 7, 8 and 10, B-1 to B-3, B-7 to B-9
      *
      * @param class-string<Throwable> $exception
      * @param Message                 $message
@@ -202,7 +185,7 @@ final class AdversarialTest extends TestCase
      */
     public static function provideRefusedQueryStrings(): iterable
     {
-        // Section 3 rows 1 and 2, B-1: names other than the six as written; those PHP's parser reads as one of them among them.
+        // Section 3 rows 1 and 2, B-1.
         yield 'name double percent encoded saml request alone' => [
             'name-double-percent-encoded-saml-request-alone',
             MalformedParameters::class,
@@ -285,7 +268,7 @@ final class AdversarialTest extends TestCase
             self::READ_AS_A_PARAMETER,
         ];
 
-        // Section 3 rows 1 to 3, B-1, B-2: separators, and characters of a URL in values.
+        // Section 3 rows 1 to 3, B-1, B-2.
         yield 'separator semicolon before relay state' => [
             'separator-semicolon-before-relay-state',
             MalformedEncoding::class,
@@ -323,7 +306,7 @@ final class AdversarialTest extends TestCase
             self::NO_KEY_VERIFIES,
         ];
 
-        // B-8: whitespace, NUL and a second percent-encoding in each value.
+        // B-8.
         yield 'value space before the message' => [
             'value-space-before-the-message',
             MalformedEncoding::class,
@@ -375,7 +358,7 @@ final class AdversarialTest extends TestCase
             self::ANOTHER_ENCODING,
         ];
 
-        // Section 3 rows 1 and 3, B-1, B-2, B-5: signature confusion beyond CVE-2025-27773.
+        // Section 3 rows 1 and 3, B-1, B-2, B-5, CVE-2025-27773.
         yield 'confusion signed logout response and a logout request under a space' => [
             'confusion-signed-logout-response-and-a-logout-request-under-a-space',
             MalformedParameters::class,
@@ -425,7 +408,7 @@ final class AdversarialTest extends TestCase
             self::NO_KEY_VERIFIES,
         ];
 
-        // Section 8: SAMLEncoding.
+        // Section 8.
         yield 'encoding deflate over a message not deflated' => [
             'encoding-deflate-over-a-message-not-deflated',
             MalformedEncoding::class,
@@ -442,7 +425,7 @@ final class AdversarialTest extends TestCase
             self::ANOTHER_ENCODING,
         ];
 
-        // Section 3 row 4, B-3, D-5: SigAlg.
+        // Section 3 row 4, B-3, D-5.
         yield 'sig alg fragment in upper case' => [
             'sig-alg-fragment-in-upper-case',
             UnknownSignatureAlgorithm::class,
@@ -495,7 +478,7 @@ final class AdversarialTest extends TestCase
             self::OFF_THE_LIST,
         ];
 
-        // B-8: base64.
+        // B-8.
         yield 'base64 padding in the middle of the message' => [
             'base64-padding-in-the-middle-of-the-message',
             MalformedEncoding::class,
@@ -522,7 +505,7 @@ final class AdversarialTest extends TestCase
             self::NOT_BASE64,
         ];
 
-        // Section 3 rows 7 and 8, B-7, B-8, RFC 1951: DEFLATE.
+        // Section 3 rows 7 and 8, B-7, B-8, RFC 1951.
         yield 'deflate two final blocks' => [
             'deflate-two-final-blocks',
             MalformedEncoding::class,
@@ -560,9 +543,9 @@ final class AdversarialTest extends TestCase
         ];
         yield 'deflate empty stream' => ['deflate-empty-stream', MalformedXml::class, 'The input is empty (I-3).'];
 
-        // Section 3 row 10, B-9: RelayState.
+        // Section 3 row 10, B-9.
 
-        // Section 7, B-7, D-14: the bounds at and one over their value.
+        // Section 7, B-7, D-14.
         yield 'bound query string one byte over the ceiling' => [
             'bound-query-string-one-byte-over-the-ceiling',
             LimitExceeded::class,
@@ -588,9 +571,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, section 3 rows 1 to 4, 7, 8 and 10, B-1 to B-3, B-5, B-8, B-9: every query string attempt that is
-     * accepted, received then validated as the consumer does: the authentication validation returned, the ID of the
-     * message it validated, the one the signature covers, and the RelayState returned.
+     * Section 9.8, section 3 rows 1 to 4, 7, 8 and 10, B-1 to B-3, B-5, B-8, B-9
      *
      * @param Message $message
      */
@@ -620,7 +601,7 @@ final class AdversarialTest extends TestCase
      */
     public static function provideAcceptedQueryStrings(): iterable
     {
-        // Section 3 rows 1 and 2, B-1: names other than the six as written; those PHP's parser reads as one of them among them.
+        // Section 3 rows 1 and 2, B-1.
         yield 'name double percent encoded saml request' => [
             'name-double-percent-encoded-saml-request',
             Authentication::Binding,
@@ -719,7 +700,7 @@ final class AdversarialTest extends TestCase
             'state',
         ];
 
-        // Section 3 rows 1 to 3, B-1, B-2: separators, and characters of a URL in values.
+        // Section 3 rows 1 to 3, B-1, B-2.
         yield 'separator semicolon and a message in relay state' => [
             'separator-semicolon-and-a-message-in-relay-state',
             Authentication::Binding,
@@ -777,7 +758,7 @@ final class AdversarialTest extends TestCase
             'state',
         ];
 
-        // Section 3 rows 1 and 3, B-1, B-2, B-5: signature confusion beyond CVE-2025-27773.
+        // Section 3 rows 1 and 3, B-1, B-2, B-5, CVE-2025-27773.
         yield 'confusion forged message under a longer name first' => [
             'confusion-forged-message-under-a-longer-name-first',
             Authentication::Binding,
@@ -803,7 +784,7 @@ final class AdversarialTest extends TestCase
             'state',
         ];
 
-        // Section 8: SAMLEncoding.
+        // Section 8.
         yield 'encoding deflate every byte escaped' => [
             'encoding-deflate-every-byte-escaped',
             Authentication::Binding,
@@ -835,7 +816,7 @@ final class AdversarialTest extends TestCase
             'state',
         ];
 
-        // Section 3 row 4, B-3, D-5: SigAlg.
+        // Section 3 row 4, B-3, D-5.
         yield 'sig alg in lower case hexadecimal signed as sent' => [
             'sig-alg-in-lower-case-hexadecimal-signed-as-sent',
             Authentication::Binding,
@@ -855,7 +836,7 @@ final class AdversarialTest extends TestCase
             'state',
         ];
 
-        // B-8: base64.
+        // B-8.
         yield 'base64 slash and padding unescaped signed as sent' => [
             'base64-slash-and-padding-unescaped-signed-as-sent',
             Authentication::Binding,
@@ -869,7 +850,7 @@ final class AdversarialTest extends TestCase
             'state',
         ];
 
-        // Section 3 rows 7 and 8, B-7, B-8, RFC 1951: DEFLATE.
+        // Section 3 rows 7 and 8, B-7, B-8, RFC 1951.
         yield 'deflate stored blocks' => [
             'deflate-stored-blocks',
             Authentication::Binding,
@@ -909,7 +890,7 @@ final class AdversarialTest extends TestCase
             'state',
         ];
 
-        // Section 3 row 10, B-9: RelayState.
+        // Section 3 row 10, B-9.
         yield 'relay state carriage return and line feed' => [
             'relay-state-carriage-return-and-line-feed',
             Authentication::Binding,
@@ -1002,7 +983,7 @@ final class AdversarialTest extends TestCase
             str_repeat('a', 79) . "\u{e9}",
         ];
 
-        // Section 7, B-7, D-14: the bounds at and one over their value.
+        // Section 7, B-7, D-14.
         yield 'bound query string of exactly the ceiling' => [
             'bound-query-string-of-exactly-the-ceiling',
             Authentication::Binding,
@@ -1014,8 +995,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, section 3 rows 1, 7, 8 and 10, B-1, B-7 to B-9, section 6.2: every form attempt that is refused, the
-     * body a browser posts parsed by PHP's parser, given to PostReceiver::response(), then validated.
+     * Section 9.8, section 3 rows 1, 7, 8 and 10, B-1, B-7 to B-9, section 6.2
      *
      * @param class-string<Throwable> $exception
      */
@@ -1122,8 +1102,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, section 3 rows 1, 8 and 10, B-1, B-8, B-9, section 6.2: every form attempt that is accepted, the
-     * response read and validated, its RelayState returned as the parser decoded it.
+     * Section 9.8, section 3 rows 1, 8 and 10, B-1, B-8, B-9, section 6.2
      */
     #[Test]
     #[DataProvider('provideAcceptedForms')]
@@ -1182,11 +1161,10 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, section 9.4, B-2, B-3, B-8: the signed query strings and the response forms of SimpleSAMLphp and
-     * Keycloak, one part changed, refused, each validated as RealDocumentsTest validates the capture it comes from.
+     * Section 9.8, section 9.4, B-2, B-3, B-8
      *
      * @param key-of<AdversarialQueryBuilder::REAL_CAPTURES> $capture
-     * @param class-string<Throwable>                                                                     $exception
+     * @param class-string<Throwable>                        $exception
      */
     #[Test]
     #[DataProvider('provideRefusedRealCaptures')]
@@ -1392,9 +1370,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, section 9.4, B-2, B-9: the real captures changed where nothing verifies the change, accepted: the
-     * spelling of Signature, which the octets do not hold; the order of the parameters; SAMLEncoding, which nothing
-     * signs; and the RelayState of a form, whose integrity over HTTP-POST is the consumer's (B-9, section 6.8).
+     * Section 9.8, section 9.4, B-2, B-9
      *
      * @param key-of<AdversarialQueryBuilder::REAL_CAPTURES> $capture
      */
@@ -1520,11 +1496,9 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, B-1, section 6.2 step 1, section 6.8: fields no parser of a form gives, which a consumer could pass
-     * all the same: a value of another type than a string, a list without names, a field of the detached signature
-     * holding null. Each refused before anything is decoded.
+     * Section 9.8, B-1, section 6.2 step 1, section 6.8
      *
-     * @param array<array-key, mixed>  $fields
+     * @param array<array-key, mixed> $fields
      * @param class-string<Throwable> $exception
      */
     #[Test]
@@ -1589,8 +1563,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, section 6.2 step 1: fields named by integers next to the message field, which a consumer's array
-     * may hold, are skipped as any other field is.
+     * Section 9.8, section 6.2 step 1
      *
      * @param array<array-key, mixed> $fields
      */
@@ -1618,14 +1591,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, B-5, section 5.2: a received message assembled by a closure bound to the scope of Reception, which
-     * calls its private constructor with the message of one query string and the signature of another, is validated
-     * through the binding's authentication: PHP lets code that leaves the scope it was given build what no path of the
-     * package builds. The package cannot close it, as it cannot close a call of validateAuthenticatedByBinding() by the
-     * consumer; both are the consumer's word, which section 6.8 bans in beffroi/saml. Reflection reaches the same
-     * (ReflectionProperty::setValue() on a Reception made without its constructor, a lazy ghost), measured outside the
-     * suite, whose PHPStan rules ban the Reflection classes in tests/ as in src/ (section 8). Section 12 records the
-     * question.
+     * Section 9.8, B-5, section 5.2, section 12
      *
      * @param Closure(Reception, Reception): Reception $assemble
      */
@@ -1689,8 +1655,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, B-5, section 5.2: a received message never travels as bytes: its serialization is refused by the
-     * DOM it holds, and one unserialized from crafted bytes is refused by the type of its reception.
+     * Section 9.8, B-5, section 5.2
      *
      * @param Closure(): mixed        $attempt
      * @param class-string<Throwable> $exception
@@ -1737,9 +1702,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, B-1, B-8, section 6.3 steps 1 and 6: a Destination whose own query holds names the receiver skips,
-     * values it never decodes, and hosts it never reads, is sent, and the URL the sender writes is read by the package's
-     * receiver and validated against that very URL: what the sender writes, the receiver reads.
+     * Section 9.8, B-1, B-8, section 6.3 steps 1 and 6
      */
     #[Test]
     #[DataProvider('provideDestinationsSent')]
@@ -1831,9 +1794,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, B-1, section 6.3 step 1: a Destination whose own query names a parameter of the binding in a
-     * spelling the corpus does not list, a lowercase percent-escape, or twice, or under a name PHP's parser reads as
-     * one of the six, a NUL or brackets after it or a space before it, is refused before the key is called.
+     * Section 9.8, B-1, section 6.3 step 1
      */
     #[Test]
     #[DataProvider('provideDestinationsRefused')]
@@ -1870,9 +1831,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * Section 9.8, section 6.4 step 1: over HTTP-POST the Destination is the form's action as it is, its query holding
-     * SAMLRequest included, since the receiver reads the body and never the action's query; the form is read and
-     * validated.
+     * Section 9.8, section 6.4 step 1
      */
     #[Test]
     #[DataProvider('provideDestinationsPosted')]
@@ -1906,13 +1865,9 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * $queryString received by the method of $message under maxQueryStringBytes, then validated as the consumer does
-     * with the parties of ReceptionFixtures: the authentication validation returned, the ID of the message validated,
-     * and the RelayState returned.
-     *
      * @param Message $message
      *
-     * @return array{Authentication, string, ?string}
+     * @return array{Authentication, string, ?string} authentication, message ID, RelayState
      */
     private function receiveAndValidate(string $message, string $queryString, int $maxQueryStringBytes): array
     {
@@ -1955,10 +1910,7 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * $body parsed by PHP's parser, given to PostReceiver::response() under maxFormValueBytes, then validated as the
-     * service provider of ReceptionFixtures does: the ID of the response and the RelayState returned.
-     *
-     * @return array{string, ?string}
+     * @return array{string, ?string} response ID, RelayState
      */
     private function postAndValidate(string $body, int $maxFormValueBytes): array
     {
@@ -1972,13 +1924,9 @@ final class AdversarialTest extends TestCase
     }
 
     /**
-     * $bytes, a real capture changed, received and validated as RealDocumentsTest validates the capture it comes from,
-     * with the parties, the clock and the URL of that test's case: the authentication validation returned, null for a
-     * response, which carries none; the ID of the message validated; and the RelayState returned.
-     *
      * @param key-of<AdversarialQueryBuilder::REAL_CAPTURES> $capture
      *
-     * @return array{?Authentication, string, ?string}
+     * @return array{?Authentication, string, ?string} authentication (null for a response), message ID, RelayState
      */
     private function receiveRealCapture(string $capture, string $bytes): array
     {
@@ -2032,9 +1980,6 @@ final class AdversarialTest extends TestCase
         throw new LogicException(sprintf('RealDocumentsTest has no case for %s.', $path));
     }
 
-    /**
-     * A service provider of a real capture, its metadata as served, read by readTrusted() at the capture.
-     */
     private function realServiceProvider(string $fixture, string $capturedAt): ServiceProvider
     {
         $descriptor = new MetadataReader(SamlLoader::create(), $this->clockAt($capturedAt))->readTrusted(

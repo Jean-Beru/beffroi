@@ -20,22 +20,14 @@ use PHPUnit\Framework\TestCase;
 use function sprintf;
 
 /**
- * Section 9.1 over HTTP-POST: every form PostSender writes, its fields posted by a browser and parsed by PHP as the
- * consumer receives them (sections 6.7, 6.8), received by PostReceiver, then validated by the model's validator of the
- * peer's role, the test keys of tests/saml2-bindings/Fixture/keys/ in the metadata and a clock frozen at the message's IssueInstant:
- * an AuthnRequest signed in XML under every algorithm this build has, and unsigned; a LogoutRequest and a
- * LogoutResponse, always signed (B-12); a response with its assertion signed, with the response signed too, and a
- * failure, signed and unsigned; each without RelayState, with one of exactly 80 bytes and with one of 1 024 bytes, the
- * bound of B-9 (section 8), returned as it was given. The message carries its XML signatures, which the model verifies (B-5, M-2). SAML Bindings §3.5.4.
+ * Section 9.1, B-5, B-9, B-12, M-2, SAML Bindings §3.5.4
  */
 final class PostRoundTripTest extends TestCase
 {
     use SendingFixtures;
 
     /**
-     * Section 9.1, B-5, M-2: an AuthnRequest the service provider signs in XML under each algorithm of the build,
-     * posted to the single sign-on service, is authenticated by its XML signature and accepted, its RelayState
-     * returned.
+     * Section 9.1, B-5, M-2
      */
     #[Test]
     #[DataProvider('provideAlgorithmsAndRelayStates')]
@@ -61,8 +53,7 @@ final class PostRoundTripTest extends TestCase
     }
 
     /**
-     * Section 9.1, B-5, §9.3 row 7: an unsigned AuthnRequest, from a service provider whose metadata asks for no
-     * signature, posted to the single sign-on service, is accepted with no authentication, its RelayState returned.
+     * Section 9.1, B-5, §9.3 row 7
      */
     #[Test]
     #[DataProvider('provideRelayStates')]
@@ -88,9 +79,7 @@ final class PostRoundTripTest extends TestCase
     }
 
     /**
-     * Section 9.1, B-5, B-12, SAML Profiles §4.4.4.1: a LogoutRequest the identity provider signs in XML under each
-     * algorithm of the build, posted to the service provider's single logout service, is authenticated by its XML
-     * signature and accepted, its RelayState returned.
+     * Section 9.1, B-5, B-12, SAML Profiles §4.4.4.1
      */
     #[Test]
     #[DataProvider('provideAlgorithmsAndRelayStates')]
@@ -117,9 +106,7 @@ final class PostRoundTripTest extends TestCase
     }
 
     /**
-     * Section 9.1, B-5, B-12, SAML Profiles §4.4.4.1: a LogoutResponse the service provider signs in XML under each
-     * algorithm of the build, posted to the identity provider's single logout service, is authenticated by its XML
-     * signature and accepted as the answer to the request it names, its RelayState returned.
+     * Section 9.1, B-5, B-12, SAML Profiles §4.4.4.1
      */
     #[Test]
     #[DataProvider('provideAlgorithmsAndRelayStates')]
@@ -147,9 +134,7 @@ final class PostRoundTripTest extends TestCase
     }
 
     /**
-     * Section 9.1, B-5, M-2, SAML Profiles §4.1.4.5: a response the identity provider signs under each algorithm of
-     * the build, its assertion alone or the response too, posted to the service provider's assertion consumer service,
-     * is verified and accepted under the coverage asked, the assertion as it was written, its RelayState returned.
+     * Section 9.1, B-5, M-2, SAML Profiles §4.1.4.5
      *
      * @param 'a Response'|'a Response signed whole' $message
      */
@@ -200,9 +185,7 @@ final class PostRoundTripTest extends TestCase
     }
 
     /**
-     * Section 9.1, M-13, SAML Profiles §4.1.4.2: a failure, signed by the identity provider or not, posted to the
-     * service provider's assertion consumer service, is read and refused by the model as unsuccessful, its status
-     * carried as it was written, its RelayState returned.
+     * Section 9.1, M-13, SAML Profiles §4.1.4.2
      *
      * @param 'an unsigned failure'|'a failure' $message
      */

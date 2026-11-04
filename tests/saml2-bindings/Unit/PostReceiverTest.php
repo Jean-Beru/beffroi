@@ -38,12 +38,7 @@ use function substr_replace;
 use const ZLIB_ENCODING_RAW;
 
 /**
- * Section 6.2 steps 1 to 6, the HTTP-POST rows of sections 9.2 and 9.3 that refuse or accept a form before the consumer
- * validates what it carries: the fields (B-1), no detached signature (section 8), the bound (B-7), RelayState (B-9),
- * base64 with its line breaks (B-8), never inflated, the document (B-10), the message the method expects (M-1). Each
- * form is the body a browser posts, parsed by PHP's own parser, as the consumer gives it (section 6.8); those whose
- * acceptance means the message's XML signatures verified are asserted through validate(), the consumer's one path.
- * SAML Bindings §3.5.4.
+ * Section 6.2 steps 1 to 6, sections 9.2 and 9.3, B-1, B-7, B-8, B-9, B-10, M-1, section 8, SAML Bindings §3.5.4
  *
  * @phpstan-type Method 'response'|'authnRequest'|'logoutMessage'
  */
@@ -51,15 +46,10 @@ final class PostReceiverTest extends TestCase
 {
     use ReceptionFixtures;
 
-    /**
-     * A RelayState of exactly 80 bytes: twenty-four euro signs, three bytes each, then the characters a form body
-     * escapes or reads, a space, &, =, +, % and ;, and two letters.
-     */
     private const string RELAY_STATE = '€€€€€€€€€€€€€€€€€€€€€€€€ &=+%;ab';
 
     /**
-     * Section 6.2 step 6, M-1, SAML Bindings §3.5.4: a SAMLResponse given to response() is the model's unverified
-     * Response, its Issuer and InResponseTo read, carried over HTTP-POST, without RelayState.
+     * Section 6.2 step 6, M-1, SAML Bindings §3.5.4
      */
     #[Test]
     public function itReceivesAResponse(): void
@@ -80,8 +70,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 6, M-1, SAML Bindings §3.5.4: a SAMLRequest given to authnRequest() is the model's unverified
-     * AuthnRequest, carried over HTTP-POST.
+     * Section 6.2 step 6, M-1, SAML Bindings §3.5.4
      */
     #[Test]
     public function itReceivesAnAuthnRequest(): void
@@ -97,8 +86,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 6, M-1, SAML Bindings §3.5.4: a SAMLRequest given to logoutMessage() is the model's unverified
-     * LogoutRequest, carried over HTTP-POST.
+     * Section 6.2 step 6, M-1, SAML Bindings §3.5.4
      */
     #[Test]
     public function itReceivesALogoutRequest(): void
@@ -115,8 +103,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 6, M-1, SAML Bindings §3.5.4: a SAMLResponse given to logoutMessage() is the model's unverified
-     * LogoutResponse, its Issuer and InResponseTo read, carried over HTTP-POST.
+     * Section 6.2 step 6, M-1, SAML Bindings §3.5.4
      */
     #[Test]
     public function itReceivesALogoutResponse(): void
@@ -133,8 +120,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * §9.3 row 5, B-9, section 8, SAML Bindings §3.5.3: RelayState is returned as the browser posted it, at the 80
-     * bytes of the binding and at exactly 1 024 bytes, the exception of section 8, and null when the form has none.
+     * §9.3 row 5, B-9, section 8, SAML Bindings §3.5.3
      *
      * @param Method $method
      */
@@ -187,8 +173,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 2, B-1, CVE-2025-27773: SAMLRequest and SAMLResponse in one form, in either order, given to any method,
-     * are refused before anything is decoded.
+     * §9.2 row 2, B-1, CVE-2025-27773
      *
      * @param Method $method
      * @param list<array{string, string}> $fields
@@ -238,7 +223,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 3, B-1: a form carrying neither SAMLRequest nor SAMLResponse is refused, whatever the method.
+     * §9.2 row 3, B-1
      *
      * @param Method $method
      */
@@ -268,8 +253,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 4, B-1: a SAMLResponse given to authnRequest(), a SAMLRequest given to response(), are refused before
-     * anything is decoded.
+     * §9.2 row 4, B-1
      *
      * @param Method $method
      */
@@ -295,7 +279,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 8, B-1: a field posted as SAMLResponse[] or RelayState[], which PHP's parser makes an array, is refused.
+     * §9.2 row 8, B-1
      *
      * @param Method $method
      * @param list<array{string, string}> $fields
@@ -335,8 +319,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 29, section 8, SAML Bindings §3.5.4: the SigAlg and the Signature of a signed query string, or either,
-     * posted in a form with a genuine message, are refused by name.
+     * §9.2 row 29, section 8, SAML Bindings §3.5.4
      *
      * @param Method $method
      * @param list<array{string, string}> $fields
@@ -382,8 +365,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 23, B-7, section 6.2 step 2: a message field one byte longer than maxFormValueBytes is refused before
-     * it is decoded, the bound named.
+     * §9.2 row 23, B-7, section 6.2 step 2
      */
     #[Test]
     public function itRefusesAMessageFieldOverTheBound(): void
@@ -401,7 +383,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * B-7, section 6.2 step 2, section 7: a message field of exactly maxFormValueBytes is received.
+     * B-7, section 6.2 step 2, section 7
      */
     #[Test]
     public function itReceivesAMessageFieldOfExactlyTheBound(): void
@@ -421,7 +403,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 7, B-8, section 6.2 step 2: an empty SAMLRequest or SAMLResponse is refused.
+     * §9.2 row 7, B-8, section 6.2 step 2
      *
      * @param Method $method
      */
@@ -447,8 +429,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 16, B-9, section 8, SAML Bindings §3.5.3: a RelayState of 1 025 bytes, one over the exception section 8
-     * makes to the binding, or an empty one, posted in a form is refused.
+     * §9.2 row 16, B-9, section 8, SAML Bindings §3.5.3
      */
     #[Test]
     #[DataProvider('provideRelayStatesOutsideTheBounds')]
@@ -472,8 +453,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 25, B-8, section 6.2 step 4, RFC 2045 §6.8: a form value whose base64 holds a space or a tab, the only
-     * line breaks being carriage returns and line feeds, is refused.
+     * §9.2 row 25, B-8, section 6.2 step 4, RFC 2045 §6.8
      */
     #[Test]
     #[DataProvider('provideWhitespaceOtherThanLineBreaks')]
@@ -509,8 +489,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * §9.3 row 9, B-8, section 6.2 step 4, RFC 2045 §6.8: a form value wrapped at 76 characters by CR LF, and by LF
-     * alone, is received, and the response it carries verified and accepted.
+     * §9.3 row 9, B-8, section 6.2 step 4, RFC 2045 §6.8
      */
     #[Test]
     #[DataProvider('provideLineBreaks')]
@@ -544,8 +523,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * §9.3 row 10, section 6.2 step 1, SAML Bindings §3.5.4: the fields of a form other than the three, a submit button
-     * before or after them, are skipped.
+     * §9.3 row 10, section 6.2 step 1, SAML Bindings §3.5.4
      */
     #[Test]
     public function itSkipsTheOtherFields(): void
@@ -569,8 +547,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 30, B-8, section 6.2 step 4, SAML Bindings §3.5.4: a message deflated as HTTP-Redirect carries it, then
-     * posted in a form, is never inflated: its bytes are given to Core, which refuses them as it does.
+     * §9.2 row 30, B-8, section 6.2 step 4, SAML Bindings §3.5.4
      */
     #[Test]
     public function itNeverInflatesAPostedMessage(): void
@@ -590,9 +567,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 31, section 6.2 step 6, M-1, SAML Bindings §3.5.4: a message of another root than the method and the
-     * field expect, a samlp:Response given to logoutMessage() or a request given to response() among them, is the
-     * model's MalformedMessage.
+     * §9.2 row 31, section 6.2 step 6, M-1, SAML Bindings §3.5.4
      *
      * @param Method $method
      */
@@ -650,7 +625,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 32, B-10, I-1, SAML Bindings §3.5.4: a DOCTYPE among the decoded bytes is Core's refusal, as it is.
+     * §9.2 row 32, B-10, I-1, SAML Bindings §3.5.4
      */
     #[Test]
     public function itLetsCoreRefuseADoctype(): void
@@ -667,7 +642,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 3, B-1: the fields of a form a browser posts with nothing in them, an empty body, carry no message.
+     * §9.2 row 3, B-1
      */
     #[Test]
     public function itRefusesAnEmptyBody(): void
@@ -681,8 +656,6 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * $fields received by $method.
-     *
      * @param Method                  $method
      * @param array<array-key, mixed> $fields
      */
@@ -698,8 +671,7 @@ final class PostReceiverTest extends TestCase
     }
 
     /**
-     * A RelayState of exactly 1 024 bytes, the bound of B-9: RELAY_STATE twelve times, then twenty-one euro signs and a
-     * letter.
+     * B-9
      */
     private static function relayStateOf1024Bytes(): string
     {
