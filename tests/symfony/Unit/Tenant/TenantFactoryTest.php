@@ -28,13 +28,13 @@ final class TenantFactoryTest extends TestCase
     public function theTenantIsBuiltFromTheConfiguration(): void
     {
         // Given
-        $factory = new TenantFactory('https://op.test/idp', 'main', 'Main tenant', new MockClock(Fixtures::now()), Predicates::wired());
+        $factory = new TenantFactory('https://op.test', 'main', 'Main tenant', new MockClock(Fixtures::now()), Predicates::wired());
 
         // When
         $tenant = $factory->create();
 
         // Then
-        static::assertSame('https://op.test/idp', (string) $tenant->issuer);
+        static::assertSame('https://op.test', (string) $tenant->issuer);
         static::assertSame('main', $tenant->slug);
         static::assertSame('Main tenant', $tenant->name);
         static::assertEquals(Fixtures::now(), $tenant->createdAt);
@@ -222,7 +222,7 @@ final class TenantFactoryTest extends TestCase
         $clock = new MockClock(Fixtures::now());
 
         // When
-        $tenant = new TenantFactory('https://op.test/idp', 'main', 'Main tenant', $clock, Predicates::wired())->create();
+        $tenant = new TenantFactory('https://op.test', 'main', 'Main tenant', $clock, Predicates::wired())->create();
         $again = new TenantFactory('https://other.test', 'main', null, $clock, Predicates::wired())->create();
 
         // Then
@@ -252,6 +252,25 @@ final class TenantFactoryTest extends TestCase
 
         // Then
         $this->expectException(InvalidArgumentException::class);
+
+        // When
+        $factory->create();
+    }
+
+    /**
+     * Issue #992: the issuer of a tenant is an origin, the routes of the provider being served at its root. An
+     * issuer that carries a path refuses the start, wherever that path would come from: RFC 8414 §3 places the
+     * metadata of such an issuer at the origin, where no route of the provider is.
+     */
+    #[Test]
+    public function anIssuerThatCarriesAPathRefusesTheStart(): void
+    {
+        // Given
+        $factory = new TenantFactory('https://op.test/idp', 'main', null, new MockClock(), Predicates::wired());
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The issuer "https://op.test/idp" carries a path: the issuer of a tenant is an origin, the routes of the provider being served at its root.');
 
         // When
         $factory->create();
