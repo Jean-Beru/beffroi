@@ -12,14 +12,10 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * The one shape of a password that may leave this process: the SHA-1 a list of compromised passwords is
- * searched by, split where the search splits it (Pwned Passwords, range API).
+ * Pwned Passwords, range API
  */
 final class PasswordDigestTest extends TestCase
 {
-    /**
-     * The known SHA-1 of "password", upper case, which is what the endpoint answers in.
-     */
     private const string PASSWORD_DIGEST = '5BAA61E4C9B93F3F0682250B6CF8331B7EE68FD8';
 
     #[Test]
@@ -29,10 +25,6 @@ final class PasswordDigestTest extends TestCase
         static::assertSame(self::PASSWORD_DIGEST, PasswordDigest::of('password')->value);
     }
 
-    /**
-     * Five characters of forty go out, which is the bucket of about a million passwords the endpoint is
-     * addressed by.
-     */
     #[Test]
     public function fiveCharactersAreWhatLeaves(): void
     {
@@ -40,9 +32,6 @@ final class PasswordDigestTest extends TestCase
         static::assertSame('5BAA6', PasswordDigest::of('password')->prefix());
     }
 
-    /**
-     * The thirty-five that are left never leave: they are compared against what the bucket answered.
-     */
     #[Test]
     public function thirtyFiveCharactersAreWhatIsComparedHere(): void
     {

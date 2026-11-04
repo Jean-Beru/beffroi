@@ -29,9 +29,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * One class per algorithm behind SignatureAlgorithmInterface, and the wired set over them. FAPI 2.0
- * Security Profile §5.4.1 does not take RS256, so the provider signs with PS256 (RFC 7518 §3.5), ES256
- * (§3.4) and EdDSA over Ed25519 (RFC 8037 §3.1) beside it; no HMAC (RFC 8725 §3.1), no "none".
+ * FAPI 2.0 Security Profile §5.4.1, RFC 7518 §3.4, §3.5, RFC 8037 §3.1, RFC 8725 §3.1
  */
 final class SignatureAlgorithmsTest extends TestCase
 {
@@ -43,10 +41,9 @@ final class SignatureAlgorithmsTest extends TestCase
     }
 
     /**
-     * RFC 7517 §4: a generated key names its algorithm, its kind and its use, and the public half of an
-     * elliptic curve key names its curve (RFC 7518 §6.2.1.1, RFC 8037 §2).
+     * RFC 7517 §4, RFC 7518 §6.2.1.1, RFC 8037 §2
      *
-     * @param array<string, string> $expected the members the published JWK must carry
+     * @param array<string, string> $expected
      */
     #[Test]
     #[DataProvider('provideWiredAlgorithms')]
@@ -66,10 +63,9 @@ final class SignatureAlgorithmsTest extends TestCase
     }
 
     /**
-     * RFC 7515 §5.2: what the provider signs with one of its algorithms, a relying party verifies against
-     * the published JWK Set with that same algorithm.
+     * RFC 7515 §5.2
      *
-     * @param array<string, string> $ignoredMembers the members the generation test reads, unused here
+     * @param array<string, string> $ignoredMembers
      */
     #[Test]
     #[DataProvider('provideWiredAlgorithms')]
@@ -92,8 +88,7 @@ final class SignatureAlgorithmsTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.3.6 reads the hash of "at_hash" from the "alg"; Ed25519 signs over SHA-512 (RFC 8032
-     * §5.1).
+     * OIDC Core §3.1.3.6, RFC 8032 §5.1
      */
     #[Test]
     #[DataProvider('provideDigests')]
@@ -156,7 +151,7 @@ final class SignatureAlgorithmsTest extends TestCase
     }
 
     /**
-     * OIDC Registration §2: what signs when nobody named an algorithm is the first wired one.
+     * OIDC Registration §2
      */
     #[Test]
     public function theDefaultIsTheFirstWiredAlgorithm(): void
@@ -211,11 +206,6 @@ final class SignatureAlgorithmsTest extends TestCase
         new JoseSignatureAlgorithms([]);
     }
 
-    /**
-     * Issue #98: a name no registry carries is refused with what each of them had to say about it, so
-     * that an operator who typed one reads what this provider does sign with, is encrypted to with, hands
-     * out and seals its own messages to.
-     */
     #[Test]
     public function aNameNoRegistryCarriesIsRefusedWithWhatEachOfThemServes(): void
     {
@@ -230,10 +220,6 @@ final class SignatureAlgorithmsTest extends TestCase
         Algorithms::everyUse()->named('HS256');
     }
 
-    /**
-     * The same reading of a deployment nobody encrypts to, that reaches nobody by push and that seals
-     * nothing: a registry wired with nothing says so rather than listing nothing.
-     */
     #[Test]
     public function aNameNoRegistryCarriesIsRefusedWithWhatEachOfThemHoldsNothingOf(): void
     {
@@ -256,10 +242,6 @@ final class SignatureAlgorithmsTest extends TestCase
         $algorithms->named('HS256');
     }
 
-    /**
-     * The first refusal is the trail: what the registry a name would most likely have belonged to said
-     * about it is what a reader of the exception follows.
-     */
     #[Test]
     public function theRefusalOfTheFirstRegistryIsTheTrail(): void
     {
@@ -276,10 +258,6 @@ final class SignatureAlgorithmsTest extends TestCase
         }
     }
 
-    /**
-     * Open by addition: an algorithm the core, the module and the provider have never heard of is generated,
-     * signed with and published because it was wired, and for no other reason.
-     */
     #[Test]
     public function anAlgorithmNoLineOfTheProviderKnowsAboutSignsAndIsPublished(): void
     {

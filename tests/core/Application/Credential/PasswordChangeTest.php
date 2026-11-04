@@ -31,8 +31,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §3.1: a person replaces their own password, from a session they already hold, by typing
- * the one in use first.
+ * Architecture §3.1
  */
 final class PasswordChangeTest extends TestCase
 {
@@ -84,10 +83,6 @@ final class PasswordChangeTest extends TestCase
         static::assertEquals($this->clock->now(), $credential->hashChangedAt);
     }
 
-    /**
-     * The journal of a person is read to recognise what they did, and replacing their password is one of
-     * the things they did.
-     */
     #[Test]
     public function changingThePasswordAnnouncesTheAct(): void
     {
@@ -103,9 +98,6 @@ final class PasswordChangeTest extends TestCase
         static::assertSame($credential, $announced[0]->credential);
     }
 
-    /**
-     * A session somebody else took over does not get to replace the password it signed in with.
-     */
     #[Test]
     public function aPasswordInUseThatWasNotTypedIsRefused(): void
     {
@@ -137,10 +129,6 @@ final class PasswordChangeTest extends TestCase
         static::assertSame([], $this->events->events);
     }
 
-    /**
-     * The page reads which refusal it was, every one of them being the same answer otherwise: the
-     * password did not change.
-     */
     #[Test]
     public function thePasswordPosedBeingTheOneHeldIsRefusedAsSuch(): void
     {
@@ -157,9 +145,6 @@ final class PasswordChangeTest extends TestCase
         }
     }
 
-    /**
-     * Somebody who signs in by another means holds no password, and there is nothing to replace.
-     */
     #[Test]
     public function aPersonWhoHoldsNoPasswordIsRefusedAsSuch(): void
     {
@@ -174,8 +159,7 @@ final class PasswordChangeTest extends TestCase
     }
 
     /**
-     * The rule NIST SP 800-63B §3.1.1.2 puts first, on the page a person replaces their own password: it
-     * refuses the two the console refuses, and says which.
+     * NIST SP 800-63B §3.1.1.2
      */
     #[Test]
     public function aPasswordAListCountsIsRefused(): void
@@ -211,8 +195,7 @@ final class PasswordChangeTest extends TestCase
     }
 
     /**
-     * Decision 0006: a list that could not be asked refuses the password rather than writing one nobody
-     * checked.
+     * Decision 0006
      */
     #[Test]
     public function aPasswordNoListCouldBeAskedAboutIsRefused(): void
@@ -231,10 +214,6 @@ final class PasswordChangeTest extends TestCase
         }
     }
 
-    /**
-     * A password the page refuses on its own is refused without a prefix of anything leaving: the list is
-     * asked last.
-     */
     #[Test]
     public function aPasswordInUseThatWasNotTypedAsksNoList(): void
     {
@@ -251,10 +230,6 @@ final class PasswordChangeTest extends TestCase
         static::assertSame([], $this->breaches->asked);
     }
 
-    /**
-     * The answer is written on the credential, so that the first login does not ask again what was just
-     * asked.
-     */
     #[Test]
     public function thePasswordPosedIsMarkedAsLookedUp(): void
     {
@@ -269,10 +244,6 @@ final class PasswordChangeTest extends TestCase
         static::assertNull($credential->breachFoundAt);
     }
 
-    /**
-     * What a list said of the password that is gone is forgotten with it: a credential found in a breach
-     * and then replaced is not a credential found in a breach.
-     */
     #[Test]
     public function thePasswordPosedCarriesNoneOfWhatWasSaidOfTheOneBefore(): void
     {
@@ -287,10 +258,6 @@ final class PasswordChangeTest extends TestCase
         static::assertFalse($credential->isBreached());
     }
 
-    /**
-     * Issue #327: a tenant that hardened holds none of its users' passwords any more, so a change answers
-     * the one a store left behind rather than replacing it.
-     */
     #[Test]
     public function aTenantThatAdmitsNoPasswordReplacesNone(): void
     {
@@ -312,8 +279,7 @@ final class PasswordChangeTest extends TestCase
     }
 
     /**
-     * Decision 0029, spec/saml.md S-63: a password a person held before their e-mail domain was federated is replaced
-     * by nobody, posing a new one being posing a local credential for them.
+     * Decision 0029, spec/saml.md S-63
      */
     #[Test]
     public function aPasswordOfAPersonOfAFederatedDomainIsReplacedByNobody(): void

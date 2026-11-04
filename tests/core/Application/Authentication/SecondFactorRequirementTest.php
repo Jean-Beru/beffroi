@@ -19,7 +19,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §3.2: a password alone does not sign in a user who holds an active second factor.
+ * Architecture §3.2
  */
 final class SecondFactorRequirementTest extends TestCase
 {

@@ -27,8 +27,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * The first step of the life of a key (OIDC Core §10.1.1, architecture §3.3): the key is generated, sealed
- * and published before anything is signed with it, which is what makes a rotation without an outage.
+ * OIDC Core §10.1.1, Architecture §3.3
  */
 final class KeyStagingTest extends TestCase
 {
@@ -58,9 +57,6 @@ final class KeyStagingTest extends TestCase
         $this->takeOver = $lifecycle->takeOver;
     }
 
-    /**
-     * The staging window: the key is in the JWK Set, and the one that was active still signs.
-     */
     #[Test]
     public function stagingPublishesAKeyThatDoesNotSign(): void
     {
@@ -78,9 +74,6 @@ final class KeyStagingTest extends TestCase
         static::assertSame($first, $this->repository->findActive($this->tenant, Algorithms::rs256()));
     }
 
-    /**
-     * The staging window ends after the configured delay: the date is written on the key.
-     */
     #[Test]
     public function stagingDatesTheActivationAfterTheStagingDelay(): void
     {
@@ -92,8 +85,7 @@ final class KeyStagingTest extends TestCase
     }
 
     /**
-     * Issue #738, architecture §3.3: the staging window is the one of the family the algorithm belongs to, a
-     * week for a family that declares one, the delay of every other key for the rest.
+     * Architecture §3.3
      */
     #[Test]
     #[DataProvider('provideFamilies')]
@@ -144,10 +136,6 @@ final class KeyStagingTest extends TestCase
         static::assertSame([], $this->events->of(TenantKeyRotated::class));
     }
 
-    /**
-     * Nothing to wait for when the key is to take over the moment it is published: the first key of a
-     * tenant, nobody caching an empty JWK Set, and the rotation an operator asks for now.
-     */
     #[Test]
     public function aKeyStagedToTakeOverAtOnceIsDueAtOnce(): void
     {
@@ -158,10 +146,6 @@ final class KeyStagingTest extends TestCase
         static::assertEquals($this->clock->now(), $staged->activationDueAt);
     }
 
-    /**
-     * It is published and announced like any other staged key: when it takes over is the whole difference,
-     * and taking over is another step.
-     */
     #[Test]
     public function aKeyStagedToTakeOverAtOnceIsPublishedDoingNothing(): void
     {

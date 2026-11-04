@@ -19,7 +19,7 @@ use function str_repeat;
 final class AuthenticationProofsTest extends TestCase
 {
     /**
-     * RFC 8176 §2: "amr" is the list of methods, each once, in the order they were first proven.
+     * RFC 8176 §2
      */
     #[Test]
     public function itListsEachMethodOnceInTheOrderOfTheirFirstProof(): void
@@ -40,8 +40,7 @@ final class AuthenticationProofsTest extends TestCase
     }
 
     /**
-     * RFC 8176 §2: "mfa" says several factors were used, next to the methods; the proofs say it when two
-     * factors of different kinds were proven, once, even when an authenticator asserted it itself.
+     * RFC 8176 §2
      *
      * @param non-empty-list<string> $methods
      * @param non-empty-list<string> $references
@@ -80,7 +79,7 @@ final class AuthenticationProofsTest extends TestCase
     }
 
     /**
-     * OIDC Core §2: the most recent proof is auth_time.
+     * OIDC Core §2
      */
     #[Test]
     public function theMostRecentProofIsTheLatest(): void
@@ -120,8 +119,6 @@ final class AuthenticationProofsTest extends TestCase
     }
 
     /**
-     * Two methods of the same kind are one factor; a method of another kind is a second one.
-     *
      * @param list<AuthenticationFactor> $factors
      */
     #[Test]
@@ -154,9 +151,6 @@ final class AuthenticationProofsTest extends TestCase
         yield 'a presence check alone' => [AuthenticationProofs::of(new AuthenticationMethod('user'), $now), []];
     }
 
-    /**
-     * An assertion of a passkey proves several methods at once, all dated the same.
-     */
     #[Test]
     public function severalMethodsProvenAtOnceAreAllDatedTheSame(): void
     {
@@ -243,8 +237,7 @@ final class AuthenticationProofsTest extends TestCase
     }
 
     /**
-     * RFC 8176 §3: the registry is extensible; an upstream provider may send values Symfony and Beffroi do not
-     * know, and they are carried as received.
+     * RFC 8176 §3
      */
     #[Test]
     #[DataProvider('provideWellFormedMethods')]
@@ -301,10 +294,6 @@ final class AuthenticationProofsTest extends TestCase
     }
 
     /**
-     * The document a column holds the proofs as, which is the shape of
-     * TokenInterface::getAuthenticationProofs(): a method reference on the Unix timestamp it was last
-     * proven at.
-     *
      * @param array<string, int> $document
      */
     #[Test]

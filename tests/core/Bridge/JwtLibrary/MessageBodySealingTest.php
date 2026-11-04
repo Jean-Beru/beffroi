@@ -35,14 +35,12 @@ use PHPUnit\Framework\TestCase;
 use function strtr;
 
 /**
- * Decision 0020: what this provider writes to a transport leaves the process sealed, so that what a broker
- * keeps on its disk, and what the table of a transport holds, is worth nothing without the KMS.
+ * Decision 0020
  */
 final class MessageBodySealingTest extends TestCase
 {
     /**
-     * A body of the shape a message of this provider carries: an address and a user agent, which every
-     * event of the two packages holds by contract, and the two values decision 0011 seals in a column.
+     * Decision 0011
      */
     private const string BODY = 'a:2:{s:9:"ipAddress";s:12:"203.0.113.42";s:5:"email";s:17:"alice@acme.example";}';
 
@@ -76,10 +74,6 @@ final class MessageBodySealingTest extends TestCase
         static::assertSame(self::BODY, $this->opener->open($this->tenant, $sealed));
     }
 
-    /**
-     * What DumpGivesNothingAwayTest asks of a column, asked of what leaves the process: none of the values
-     * the body carried is in what the transport would carry.
-     */
     #[Test]
     #[DataProvider('provideValuesOfTheBody')]
     public function aSealedBodyCarriesNoneOfTheValuesItHeld(string $value): void
@@ -102,9 +96,7 @@ final class MessageBodySealingTest extends TestCase
     }
 
     /**
-     * RFC 7516 §4.1.6: the body names the key it was sealed to, and the scope it was sealed under, and
-     * nothing else of its own. The scope is in the protected header because that header is what the
-     * sealing authenticates.
+     * RFC 7516 §4.1.6
      */
     #[Test]
     public function theProtectedHeaderNamesTheKeyTheAlgorithmsAndTheScope(): void
@@ -129,10 +121,6 @@ final class MessageBodySealingTest extends TestCase
         ]);
     }
 
-    /**
-     * The pattern of beffroi#436: the scope is the authenticated data of the seal, so a body carried to
-     * another scope fails to open instead of opening there.
-     */
     #[Test]
     public function aBodyIsNotOpenedUnderAnotherScope(): void
     {
@@ -147,10 +135,6 @@ final class MessageBodySealingTest extends TestCase
         $this->opener->open(Fixtures::tenant('other'), $sealed);
     }
 
-    /**
-     * The one key that opens a body is the one its header names, and it is named among the keys the tenant
-     * seals to: a set of keys is not a set of keys to try.
-     */
     #[Test]
     public function aBodySealedToAKeyTheTenantNoLongerHoldsIsNotOpened(): void
     {
@@ -170,8 +154,7 @@ final class MessageBodySealingTest extends TestCase
     }
 
     /**
-     * RFC 7516 §4.1.6 again, from the other side: a body that names no key is refused rather than tried
-     * against the keys the tenant holds.
+     * RFC 7516 §4.1.6
      *
      * @param array<string, string> $header
      */
@@ -204,11 +187,6 @@ final class MessageBodySealingTest extends TestCase
         yield 'an empty "kid"' => [['kid' => '']];
     }
 
-    /**
-     * What a body was sealed under is asserted against what the key it names is held for, and not read as
-     * what to open it with: a body sealed under something else is refused, whatever this provider is wired
-     * to open elsewhere.
-     */
     #[Test]
     public function aBodySealedUnderAnotherAlgorithmThanTheKeyIsHeldForIsNotOpened(): void
     {
@@ -243,10 +221,6 @@ final class MessageBodySealingTest extends TestCase
         $this->opener->open($this->tenant, self::BODY);
     }
 
-    /**
-     * A tenant that has no key to seal to writes nothing: the refusal comes from the key provider and is
-     * not turned into a body in the clear.
-     */
     #[Test]
     public function nothingIsSealedForATenantWithoutAKey(): void
     {
@@ -259,9 +233,6 @@ final class MessageBodySealingTest extends TestCase
     }
 
     /**
-     * A body sealed by hand, under a protected header nothing of this provider writes: what the opener
-     * does with such a header is the rule, and a sealer that cannot write one cannot be asked.
-     *
      * @param array<string, string> $header
      */
     private function sealedWith(array $header, ?ContentEncryptionAlgorithm $contentEncryption = null): string

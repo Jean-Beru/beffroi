@@ -18,8 +18,7 @@ use Webauthn\MetadataService\CertificateChain\PhpCertificateChainValidator;
 use Webauthn\MetadataService\Statement\AuthenticatorStatus;
 
 /**
- * FIDO Metadata Service v3.1.1 §3.1.7 and §3.2: a blob is a JWS whose chain leads to the root the relying
- * party pins; anything short of that is refused, whatever it claims.
+ * FIDO Metadata Service v3.1.1 §3.1.7, §3.2
  */
 final class MetadataBlobVerifierTest extends TestCase
 {
@@ -59,9 +58,7 @@ final class MetadataBlobVerifierTest extends TestCase
     }
 
     /**
-     * FIDO Metadata Statement v3.1 §4 does not require userVerificationDetails, its absence meaning that any
-     * method of user verification could be implemented: a statement that leaves it out is read like any
-     * other, and the blob that carries it is not refused whole for it (issue #910).
+     * FIDO Metadata Statement v3.1 §4
      */
     #[Test]
     public function aBlobWhoseStatementLeavesOutTheUserVerificationDetailsIsVerifiedAndRead(): void
@@ -95,9 +92,7 @@ final class MetadataBlobVerifierTest extends TestCase
     }
 
     /**
-     * RFC 5280 §6.1.1 (d), a trust anchor is a name and a key: a chain that ends with the pinned root issued by
-     * another root, as the chain of the FIDO Alliance ends with GlobalSign Root R46 issued by GlobalSign Root
-     * CA - R3, verifies under the pinned root.
+     * RFC 5280 §6.1.1 (d)
      */
     #[Test]
     public function aChainThatEndsWithThePinnedRootIssuedByAnotherRootIsVerifiedUnderThePinnedRoot(): void
@@ -114,10 +109,6 @@ final class MetadataBlobVerifierTest extends TestCase
         static::assertSame($payload, $blob->payload);
     }
 
-    /**
-     * The same chain leads to the root that issued its last certificate, as GlobalSign Root CA - R3 verifies the
-     * chain of the FIDO Alliance.
-     */
     #[Test]
     public function aChainThatEndsWithACrossCertificateIsVerifiedUnderTheRootThatIssuedIt(): void
     {
@@ -133,10 +124,6 @@ final class MetadataBlobVerifierTest extends TestCase
         static::assertSame($payload, $blob->payload);
     }
 
-    /**
-     * A certificate that carries the name of the pinned root on another key is not that root: the chain does not
-     * stop at it, and does not lead to the pinned root.
-     */
     #[Test]
     public function aChainThatEndsWithTheNameOfThePinnedRootOnAnotherKeyIsRefused(): void
     {
@@ -155,10 +142,6 @@ final class MetadataBlobVerifierTest extends TestCase
         $this->verifier->verify($token, $this->service->rootCertificate());
     }
 
-    /**
-     * A chain that leads to the root but is not the signer's: the signature is checked with the key of the
-     * certificate named, and does not hold.
-     */
     #[Test]
     public function aBlobWhoseSignatureDoesNotHoldUnderTheCertificateNamedIsRefused(): void
     {
@@ -218,10 +201,6 @@ final class MetadataBlobVerifierTest extends TestCase
         $this->verifier->verify($token, $this->service->rootCertificate());
     }
 
-    /**
-     * The chain is checked whole: the signer alone, without the intermediate that leads to the root, is
-     * not enough.
-     */
     #[Test]
     public function aBlobWhoseChainLacksTheIntermediateIsRefused(): void
     {

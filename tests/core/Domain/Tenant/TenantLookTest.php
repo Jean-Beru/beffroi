@@ -11,9 +11,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Issue #449: what a tenant gives the pages of its provider besides its name.
- */
 final class TenantLookTest extends TestCase
 {
     #[Test]
@@ -38,9 +35,7 @@ final class TenantLookTest extends TestCase
     }
 
     /**
-     * The value reaches a browser inside a style attribute, so what it may hold is hexadecimal digits and
-     * nothing else: a named colour, a function, a variable and anything carrying a semicolon are refused
-     * rather than escaped (decision 0006).
+     * Decision 0006
      */
     #[Test]
     #[DataProvider('provideRefusedColors')]
@@ -151,9 +146,6 @@ final class TenantLookTest extends TestCase
     }
 
     /**
-     * The document a column holds a look as: what the tenant declared, and nothing where it declared
-     * nothing, so that a look that says nothing is an empty document and not three nulls.
-     *
      * @param array<string, string> $document
      */
     #[Test]

@@ -22,7 +22,7 @@ use function str_pad;
 use const STR_PAD_LEFT;
 
 /**
- * A P-384 key signing in ES384 (RFC 9053 §2.1), the strongest of the algorithms the provider offers.
+ * RFC 9053 §2.1
  */
 final readonly class Es384SoftwareKey implements SoftwareCredentialKey
 {
@@ -55,7 +55,7 @@ final readonly class Es384SoftwareKey implements SoftwareCredentialKey
             throw new LogicException('OpenSSL could not describe the key.');
         }
 
-        // RFC 9053 §7.1.1: kty EC2 (1: 2), alg ES384 (3: -35), crv P-384 (-1: 2), x (-2), y (-3)
+        // RFC 9053 §7.1.1: kty EC2 (1: 2), alg ES384 (3: -35), crv P-384 (-1: 2), x (-2), y (-3).
         return (string) MapObject::create([
             MapItem::create(UnsignedIntegerObject::create(1), UnsignedIntegerObject::create(2)),
             MapItem::create(UnsignedIntegerObject::create(3), NegativeIntegerObject::create($this->algorithm())),

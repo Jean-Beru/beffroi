@@ -17,18 +17,15 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The predicates of decision 0010, each a class the provider is wired with (issue #607): what every one
- * of them answers of the same proofs, read off the wiring and never off an enumeration of kinds.
+ * Decision 0010
  */
 final class AuthenticationPredicateTest extends TestCase
 {
     /**
-     * OIDC Core §5.5.1.1, architecture §3.2, decision 0010: a predicate reads which methods were proven,
-     * every predicate that holds holds, not only the strongest; a factor is the kind RFC 8176 §2 gives a
-     * method. When a method was proven is no business of a predicate, so none of these cases dates one.
+     * OIDC Core §5.5.1.1, Architecture §3.2, Decision 0010, RFC 8176 §2
      *
      * @param list<AuthenticationMethod> $methods
-     * @param list<string> $satisfied the predicates that hold, by the name each gives itself
+     * @param list<string> $satisfied
      */
     #[Test]
     #[DataProvider('provideMethodsAndThePredicatesTheySatisfy')]
@@ -41,13 +38,10 @@ final class AuthenticationPredicateTest extends TestCase
     }
 
     /**
-     * Decision 0025: a tenant names a predicate as the floor of its logins, and what may be enrolled there
-     * is read off it, kind by kind, from what one authentication with that kind would prove. A floor admits
-     * a credential when it reads one of those methods: under the two factors a password is half of what
-     * meets it, where under a phishing-resistant floor it is never part of anything that does.
+     * Decision 0025
      *
      * @param list<AuthenticationMethod> $methods
-     * @param list<string> $admitting the floors that admit the credential, by the name each gives itself
+     * @param list<string> $admitting
      */
     #[Test]
     #[DataProvider('provideCredentialsAndTheFloorsThatAdmitThem')]
@@ -60,9 +54,7 @@ final class AuthenticationPredicateTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: every session has an "acr", so a policy is built on a predicate that holds as
-     * soon as anything at all was proven, and the provider knows which of its predicates are one without
-     * reading their names (AuthenticationContextPolicy). Of the four wired, the single factor is the one.
+     * Architecture §4.6
      */
     #[Test]
     public function theSingleFactorIsTheOnePredicateThatHoldsOnEveryLogin(): void
@@ -73,10 +65,6 @@ final class AuthenticationPredicateTest extends TestCase
         }
     }
 
-    /**
-     * A predicate is resolved by the name it gives itself, here and in the configuration of a tenant, in a
-     * stored policy and in a stored floor (WiredAuthenticationPredicates).
-     */
     #[Test]
     #[DataProvider('providePredicatesAndTheirNames')]
     public function aPredicateNamesItself(AuthenticationPredicateInterface $predicate, string $name): void

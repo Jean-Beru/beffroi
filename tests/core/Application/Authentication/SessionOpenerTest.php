@@ -85,9 +85,7 @@ final class SessionOpenerTest extends TestCase
     }
 
     /**
-     * beffroi/saml S-57, OIDC Core §2: what an upstream identity provider proved is dated by the instant it says the
-     * person authenticated, its AuthnInstant, which is the auth_time of the session, and not by the instant the
-     * session is opened.
+     * beffroi/saml S-57, OIDC Core §2
      */
     #[Test]
     public function itDatesTheProofsWhenWhatProvedThemSaysTheyWereGiven(): void
@@ -103,8 +101,7 @@ final class SessionOpenerTest extends TestCase
     }
 
     /**
-     * beffroi/saml S-57, saml2-model M-7: an instant ahead of the clock, which the model admits within its skew, is
-     * dated by the clock, no proof being later than the session that holds it.
+     * beffroi/saml S-57, saml2-model M-7
      */
     #[Test]
     public function aProofDatedAheadOfTheClockIsDatedByTheClock(): void
@@ -123,8 +120,7 @@ final class SessionOpenerTest extends TestCase
     }
 
     /**
-     * beffroi/saml S-57, SAML Core §2.7.2: a session an upstream identity provider allows until an instant before the
-     * end of its lifetime expires then; one it allows longer expires with its lifetime.
+     * beffroi/saml S-57, SAML Core §2.7.2
      */
     #[Test]
     #[DataProvider('provideBounds')]
@@ -178,11 +174,6 @@ final class SessionOpenerTest extends TestCase
         static::assertEquals($this->clock->now()->modify('+8 hours'), $session->expiresAt);
     }
 
-    /**
-     * Issue #327: the floor of the tenant holds here, because every login of this provider ends here. A
-     * password proves nothing of a tenant that signs its users in by passkey, so the session is not opened,
-     * and the refusal is announced like any other (AuthenticationRefusal).
-     */
     #[Test]
     public function aLoginUnderTheFloorOfItsTenantOpensNoSession(): void
     {
@@ -201,10 +192,6 @@ final class SessionOpenerTest extends TestCase
         }
     }
 
-    /**
-     * Issue #327: what the floor reads opens its session as it always did, a synced passkey proving the
-     * possession of a key.
-     */
     #[Test]
     public function aLoginThatMeetsTheFloorOpensItsSession(): void
     {

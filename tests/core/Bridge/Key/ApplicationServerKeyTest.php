@@ -20,8 +20,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 8292 §2, architecture §3.3: a key the tenant hands out itself is a key of the tenant in every way
- * but one, and that one is that its issuer does not publish it.
+ * RFC 8292 §2, Architecture §3.3
  */
 final class ApplicationServerKeyTest extends TestCase
 {
@@ -42,8 +41,7 @@ final class ApplicationServerKeyTest extends TestCase
     }
 
     /**
-     * RFC 7517 §5: the JWK Set is what the tenant publishes to whoever reads its issuer, and a key it
-     * hands to a browser itself is not part of that.
+     * RFC 7517 §5
      */
     #[Test]
     public function theJwkSetDoesNotCarryAKeyTheTenantHandsOut(): void
@@ -63,7 +61,7 @@ final class ApplicationServerKeyTest extends TestCase
     }
 
     /**
-     * §3.2: what a browser is handed to subscribe under is the active key of that algorithm.
+     * §3.2
      */
     #[Test]
     public function theActiveKeyIsWhatABrowserIsHanded(): void
@@ -76,8 +74,7 @@ final class ApplicationServerKeyTest extends TestCase
     }
 
     /**
-     * §4.2: a push is signed by the key its subscription was made under, so a key that has retired is
-     * one no subscription of it can be pushed to any more.
+     * §4.2
      */
     #[Test]
     public function aKeyThatHasRetiredOpensNothing(): void
@@ -96,10 +93,6 @@ final class ApplicationServerKeyTest extends TestCase
         $this->provider->applicationServerKey($this->tenant, $key->kid);
     }
 
-    /**
-     * And what the process had open of that key goes with the refusal: the subscriptions made under it
-     * are worth nothing, so its private half has nothing left to sign.
-     */
     #[Test]
     public function theMaterialOfAKeyThatHasRetiredLeavesTheProcess(): void
     {
@@ -120,10 +113,6 @@ final class ApplicationServerKeyTest extends TestCase
         static::assertNotSame($opened, $this->opened->open($this->tenant, $key));
     }
 
-    /**
-     * The use is asserted and not deduced from the caller: a key the issuer publishes is not one it
-     * hands to a browser, whoever asks for it under that name.
-     */
     #[Test]
     public function aKeyOfTheJwkSetIsNotHandedOut(): void
     {

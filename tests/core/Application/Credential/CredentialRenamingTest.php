@@ -15,8 +15,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Architecture §3.1: what tells one credential of a person from another is a name they wrote, so naming it
- * again is their own act.
+ * Architecture §3.1
  */
 final class CredentialRenamingTest extends TestCase
 {
@@ -58,10 +57,6 @@ final class CredentialRenamingTest extends TestCase
         static::assertSame($context, $events[0]->context);
     }
 
-    /**
-     * The name it already holds is not a change, and the journal of a person does not hold a line saying
-     * they changed nothing.
-     */
     #[Test]
     public function theNameItAlreadyHoldsAnnouncesNothing(): void
     {
@@ -77,9 +72,6 @@ final class CredentialRenamingTest extends TestCase
         static::assertSame([], $this->events->of(CredentialRenamed::class));
     }
 
-    /**
-     * A name is read on the server under the rule of the kind, whatever a page let somebody type.
-     */
     #[Test]
     public function aNameThePasskeyCannotHoldIsRefused(): void
     {

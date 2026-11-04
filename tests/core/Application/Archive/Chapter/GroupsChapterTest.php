@@ -17,9 +17,7 @@ use function array_column;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Issue #453: the groups a person belongs to, in the archive they ask for. The source is on the line
- * because it is the answer to what a person does about it (decision 0002): a membership a directory
- * declared is not one this provider decided, and a person reading their file learns which door to knock on.
+ * Decision 0002
  */
 final class GroupsChapterTest extends TestCase
 {
@@ -47,10 +45,6 @@ final class GroupsChapterTest extends TestCase
         );
     }
 
-    /**
-     * The source of the membership and not the source of the group: a group a directory owns may hold
-     * somebody a hand added, and what a person asks about is their own membership.
-     */
     #[Test]
     public function theSourceIsTheOneOfTheMembership(): void
     {
@@ -67,9 +61,6 @@ final class GroupsChapterTest extends TestCase
         static::assertSame('local', $lines[0]['source']);
     }
 
-    /**
-     * By the name of the group, so that two files of the same person read alike.
-     */
     #[Test]
     public function theGroupsAreInTheOrderOfTheirNames(): void
     {

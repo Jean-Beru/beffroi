@@ -14,8 +14,7 @@ use Symfony\Component\Uid\NilUuid;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * WebAuthn Level 3 §6: the make and model of the authenticator of a credential, as the first of the sources that
- * knows its AAGUID names them.
+ * WebAuthn Level 3 §6
  */
 final class AuthenticatorModelsTest extends TestCase
 {
@@ -64,7 +63,7 @@ final class AuthenticatorModelsTest extends TestCase
     }
 
     /**
-     * §18.1.1: an AAGUID of zeros is what a client of Level 2 sent for no attestation, and names no model.
+     * §18.1.1
      */
     #[Test]
     public function anAaguidOfZerosNamesNoModelWhateverASourceSays(): void

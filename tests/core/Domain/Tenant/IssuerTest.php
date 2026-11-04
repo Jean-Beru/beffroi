@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 final class IssuerTest extends TestCase
 {
     /**
-     * OIDC Discovery §3: the issuer is a URL using the https scheme.
+     * OIDC Discovery §3
      */
     #[Test]
     public function itAcceptsAnHttpsIssuer(): void
@@ -23,7 +23,7 @@ final class IssuerTest extends TestCase
     }
 
     /**
-     * OIDC Discovery §3: the issuer may have a path.
+     * OIDC Discovery §3
      */
     #[Test]
     public function itAcceptsAnHttpsIssuerWithAPath(): void
@@ -36,7 +36,7 @@ final class IssuerTest extends TestCase
     }
 
     /**
-     * RFC 6761 §6.3: names under "localhost" resolve to loopback; plain HTTP is accepted there and only there.
+     * RFC 6761 §6.3
      */
     #[Test]
     #[DataProvider('provideLoopbackIssuers')]
@@ -57,11 +57,6 @@ final class IssuerTest extends TestCase
         yield 'IPv6 loopback' => ['http://[::1]:8080'];
     }
 
-    /**
-     * A loopback address is the four numbers of 127.0.0.0/8 and nothing behind them. Every caller hands
-     * this method a host parse_url() gave, which writes a control character of a host as an underscore,
-     * so the line feed is refused here for the sake of the method itself.
-     */
     #[Test]
     public function aLoopbackAddressWithALineFeedBehindItIsNoLoopbackHost(): void
     {
@@ -143,9 +138,7 @@ final class IssuerTest extends TestCase
     }
 
     /**
-     * RFC 6454 §3.2: the scheme, the host and the port, without the path. What a WebAuthn ceremony
-     * accepts as an origin, what RFC 8414 §3 hangs its path under, and what a router builds an absolute
-     * URL from, all read here so that the three cannot disagree.
+     * RFC 6454 §3.2
      */
     #[Test]
     #[DataProvider('provideOrigins')]

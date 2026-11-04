@@ -10,14 +10,9 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Issue #452: what a person may change of themselves in a tenant, and the document a column holds it as.
- */
 final class SelfServedClaimsTest extends TestCase
 {
     /**
-     * A list and not an object: what it holds is a set of names in the order they were declared.
-     *
      * @param list<string> $document
      */
     #[Test]

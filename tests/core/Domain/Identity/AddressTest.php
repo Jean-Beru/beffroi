@@ -20,7 +20,7 @@ final class AddressTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.1.1: every member of the address claim is optional; any one of them makes an address.
+     * OIDC Core §5.1.1
      */
     #[Test]
     #[DataProvider('provideSingleFieldAddresses')]
@@ -44,7 +44,7 @@ final class AddressTest extends TestCase
     }
 
     /**
-     * The six members of §5.1.1 under their own names, written whether they are there or not.
+     * OIDC Core §5.1.1
      *
      * @param array<string, string|null> $document
      */

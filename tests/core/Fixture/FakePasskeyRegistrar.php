@@ -21,10 +21,6 @@ use Webauthn\PublicKeyCredentialRpEntity;
 use Webauthn\PublicKeyCredentialUserEntity;
 use Webauthn\TrustPath\EmptyTrustPath;
 
-/**
- * A registration ceremony that trusts the test: the options carry what the core gave, the record comes
- * back as prepared, or the ceremony fails as told.
- */
 final class FakePasskeyRegistrar implements PasskeyRegistrarInterface
 {
     /**
@@ -47,7 +43,7 @@ final class FakePasskeyRegistrar implements PasskeyRegistrarInterface
     }
 
     /**
-     * A record as the ceremony builds it (WebAuthn Level 3 §7.1, step 26), the handle of the options.
+     * WebAuthn Level 3 §7.1, step 26
      */
     public static function record(
         PublicKeyCredentialCreationOptions $options,

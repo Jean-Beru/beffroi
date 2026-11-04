@@ -16,10 +16,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
-/**
- * Issue #453: a person asks for everything this provider holds about them, and the request that asks
- * builds nothing. It writes a row, says the act happened, and the archive is assembled off the request.
- */
 final class ArchiveRequestTest extends TestCase
 {
     #[Test]
@@ -37,10 +33,6 @@ final class ArchiveRequestTest extends TestCase
         static::assertSame($archive, $archives->latestOf($user));
     }
 
-    /**
-     * The act is what builds the archive: a handler of the integration listens for it, so the page that
-     * was clicked dispatches nothing of its own.
-     */
     #[Test]
     public function askingAnnouncesTheActWithTheIdentifierOfTheArchive(): void
     {
@@ -58,9 +50,6 @@ final class ArchiveRequestTest extends TestCase
         static::assertSame($user->subject->value, $announced[0]->person->value);
     }
 
-    /**
-     * A second click is not a second build, and nobody fills a queue by holding a button.
-     */
     #[Test]
     public function askingAgainWhileOneIsBeingBuiltGivesThatOneBack(): void
     {
@@ -93,9 +82,6 @@ final class ArchiveRequestTest extends TestCase
         static::assertSame([], $events->of(PersonAskedForTheirArchive::class));
     }
 
-    /**
-     * What a person asks for is what this provider holds now, and a file built last Tuesday is not that.
-     */
     #[Test]
     public function askingOnceOneIsReadyStartsANewOne(): void
     {
@@ -113,10 +99,6 @@ final class ArchiveRequestTest extends TestCase
         static::assertFalse($again->isReady());
     }
 
-    /**
-     * The row a build never filled holds nothing and nothing will fill it, so a person whose build threw
-     * is a person asking for their data again and not a person waiting out the week it was kept for.
-     */
     #[Test]
     public function askingAgainOnceTheBuildDidNotComeBackStartsANewOne(): void
     {
@@ -181,10 +163,6 @@ final class ArchiveRequestTest extends TestCase
         static::assertFalse($again->id->equals($first->id));
     }
 
-    /**
-     * What a person is offered is their last archive, so a second one asked for later is the one that
-     * answers: a row of last Tuesday is not what they clicked for today.
-     */
     #[Test]
     public function theLastArchiveIsTheOneAskedForLast(): void
     {
@@ -202,9 +180,6 @@ final class ArchiveRequestTest extends TestCase
         static::assertSame($again, $archives->latestOf($user));
     }
 
-    /**
-     * The archive of one person is theirs: what a second person asks for is a row of their own.
-     */
     #[Test]
     public function theArchiveOfOnePersonIsNotTheArchiveOfAnother(): void
     {

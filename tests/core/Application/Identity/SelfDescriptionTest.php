@@ -24,11 +24,6 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #452: a person says something of themselves, when the tenant lets them. The policy is read here
- * and not by the page, because a page that only hides a field it must not offer is a page whose form can
- * be sent anyway.
- */
 final class SelfDescriptionTest extends TestCase
 {
     #[Test]
@@ -73,7 +68,7 @@ final class SelfDescriptionTest extends TestCase
     }
 
     /**
-     * Decision 0002: what the source of the person holds is not theirs to say, the tenant opening it or not.
+     * Decision 0002
      */
     #[Test]
     public function aClaimTheSourceOfThePersonHoldsIsNotTheirsToSay(): void
@@ -98,10 +93,6 @@ final class SelfDescriptionTest extends TestCase
         self::describing()->describe($user, new Nickname(), 'Ada', Fixtures::context());
     }
 
-    /**
-     * The refusal comes before anything is said: the record is as it was, no history is written and no
-     * act is announced.
-     */
     #[Test]
     public function aClaimRefusedForItsSourceWritesNothingAndAnnouncesNothing(): void
     {
@@ -145,9 +136,6 @@ final class SelfDescriptionTest extends TestCase
         self::describing()->describe($user, new Nickname(), 'Ada', Fixtures::context());
     }
 
-    /**
-     * A value the claim does not hold is refused by the model that holds it, wherever it came from.
-     */
     #[Test]
     public function aValueTheClaimDoesNotHoldIsRefused(): void
     {
@@ -161,10 +149,6 @@ final class SelfDescriptionTest extends TestCase
         self::describing()->describe($user, new Birthdate(), 'the first of May', Fixtures::context());
     }
 
-    /**
-     * Saying a telephone number takes the verification back: what was proved was proved of the number
-     * that is gone.
-     */
     #[Test]
     public function sayingATelephoneNumberTakesItsVerificationBack(): void
     {
@@ -180,10 +164,6 @@ final class SelfDescriptionTest extends TestCase
         static::assertFalse($user->phoneNumberVerified);
     }
 
-    /**
-     * The act is announced and the value is not: the journal writes the act down (issue #454), and what a
-     * person said of themselves lives in the row of that person and nowhere else.
-     */
     #[Test]
     public function theActIsAnnouncedAndTheValueIsNot(): void
     {
@@ -201,11 +181,6 @@ final class SelfDescriptionTest extends TestCase
         static::assertFalse($announced[0]->takenBack);
     }
 
-    /**
-     * Issue #482: what the claim used to say and what it says now are written down, in the unit of work
-     * that changed the record, because a record changed whose history was not is a hole in the one thing
-     * a history is for.
-     */
     #[Test]
     public function whatTheClaimUsedToSayIsWrittenDownWithWhatItSaysNow(): void
     {
@@ -254,9 +229,6 @@ final class SelfDescriptionTest extends TestCase
         static::assertNull($history->lastOf($user, 10)[0]->became);
     }
 
-    /**
-     * Saying again what a claim already said is an act, which the journal has, and not a change.
-     */
     #[Test]
     public function sayingAgainWhatAClaimAlreadySaidIsNoChange(): void
     {
@@ -272,10 +244,6 @@ final class SelfDescriptionTest extends TestCase
         static::assertSame([], $history->lastOf($user, 10));
     }
 
-    /**
-     * Issue #482: the phone number is in it, which is not a claim of the profile and is written its own
-     * way, the use case reading every claim through the same interface.
-     */
     #[Test]
     public function theTelephoneNumberIsInTheHistoryToo(): void
     {

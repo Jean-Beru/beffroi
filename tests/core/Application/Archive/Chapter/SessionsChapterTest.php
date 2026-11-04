@@ -13,11 +13,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
-/**
- * Issue #453: where a person is signed in, in the archive they ask for. The sessions open and not every
- * session there ever was: a session that has ended is never a place a person is signed in, and what the
- * acts of their history were is the journal, which is its own chapter.
- */
 final class SessionsChapterTest extends TestCase
 {
     #[Test]

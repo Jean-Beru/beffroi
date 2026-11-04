@@ -31,8 +31,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Architecture §3.1: another set of backup codes for the second factor a person already holds, the ones
- * they had stopping at that instant.
+ * Architecture §3.1
  */
 final class BackupCodesRenewalTest extends TestCase
 {
@@ -78,10 +77,6 @@ final class BackupCodesRenewalTest extends TestCase
         static::assertCount(TotpCredential::BACKUP_CODES, array_unique($spelled));
     }
 
-    /**
-     * What is stored is the hash of each one, as a password is, and the codes they had stop working at
-     * that instant, spent or not.
-     */
     #[Test]
     public function theCodesItGivesBackAreTheOnesTheCredentialHoldsAndTheOldOnesAreGone(): void
     {
@@ -101,10 +96,6 @@ final class BackupCodesRenewalTest extends TestCase
         static::assertCount(TotpCredential::BACKUP_CODES * 2, array_unique([...$before, ...$after]));
     }
 
-    /**
-     * A code that was spent is replaced like the others: what asking for new ones means is that the list
-     * somebody held is worth nothing now.
-     */
     #[Test]
     public function aSpentCodeIsReplacedLikeTheOthers(): void
     {
@@ -119,10 +110,6 @@ final class BackupCodesRenewalTest extends TestCase
         static::assertCount(0, array_filter($totp->backupCodes, static fn (BackupCode $code): bool => $code->isSpent()));
     }
 
-    /**
-     * Somebody who finds an old list on paper is reading the one line of their journal that tells them
-     * why it is refused.
-     */
     #[Test]
     public function renewingAnnouncesTheAct(): void
     {
@@ -153,8 +140,7 @@ final class BackupCodesRenewalTest extends TestCase
     }
 
     /**
-     * Decision 0029, spec/saml.md S-63: a person whose e-mail domain the tenant federated since they enrolled a TOTP is
-     * drawn no backup code, which would be a way in posed for them.
+     * Decision 0029, spec/saml.md S-63
      */
     #[Test]
     public function noBackupCodeIsDrawnForAPersonOfAFederatedDomain(): void

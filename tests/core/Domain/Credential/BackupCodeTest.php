@@ -17,7 +17,7 @@ use function str_repeat;
 use function str_split;
 
 /**
- * Architecture §3.1: a backup code is a hash and the instant it was spent, each one accepted once.
+ * Architecture §3.1
  */
 final class BackupCodeTest extends TestCase
 {
@@ -31,9 +31,6 @@ final class BackupCodeTest extends TestCase
         static::assertMatchesRegularExpression('/^[A-Z2-7]{5}-[A-Z2-7]{5}$/', $code);
     }
 
-    /**
-     * Two thousand characters spelled: each of the thirty-two appears, none of them is skipped.
-     */
     #[Test]
     public function everyCharacterOfTheAlphabetIsSpelled(): void
     {
@@ -49,9 +46,6 @@ final class BackupCodeTest extends TestCase
         }
     }
 
-    /**
-     * The five low bits of each byte pick the character, and nothing above them is read.
-     */
     #[Test]
     public function theBytesGivenSpellTheCode(): void
     {

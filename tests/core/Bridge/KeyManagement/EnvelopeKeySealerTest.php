@@ -31,8 +31,7 @@ final class EnvelopeKeySealerTest extends TestCase
     }
 
     /**
-     * Architecture §3.3: the private key is stored sealed, exists in clear in memory only, and the KMS never
-     * sees it (envelope mode wraps a data key).
+     * Architecture §3.3
      */
     #[Test]
     public function itSealsAPrivateJwkIntoOpaqueBytes(): void
@@ -69,9 +68,6 @@ final class EnvelopeKeySealerTest extends TestCase
         static::assertNotSame(Keys::sealer()->seal($this->tenant, Keys::pair()->privateJwk), Keys::sealer()->seal($this->tenant, Keys::pair()->privateJwk));
     }
 
-    /**
-     * The envelope is bound to its tenant: under the same KMS key, it does not open for another one.
-     */
     #[Test]
     public function aKeySealedForOneTenantDoesNotOpenForAnother(): void
     {
@@ -85,10 +81,6 @@ final class EnvelopeKeySealerTest extends TestCase
         Keys::sealer()->unseal(Fixtures::tenant('globex', 'https://id.globex.example'), $sealed);
     }
 
-    /**
-     * "{tenant}" in the KMS key identifier names one master key per tenant: the envelope of a tenant is
-     * sealed under the key that carries its slug, and no other.
-     */
     #[Test]
     public function theKmsKeyIsNamedFromTheTenant(): void
     {
@@ -104,10 +96,6 @@ final class EnvelopeKeySealerTest extends TestCase
         static::assertSame(Keys::pair()->privateJwk, $sealer->unseal($this->tenant, $sealed));
     }
 
-    /**
-     * A KMS that holds no master key for the tenant serves nothing of it: an outage of the tenant, until an
-     * operator gives the KMS its key, not a wrong input.
-     */
     #[Test]
     public function aTenantWithoutItsKmsKeyCannotSeal(): void
     {
@@ -148,10 +136,6 @@ final class EnvelopeKeySealerTest extends TestCase
         Keys::sealer()->unseal($this->tenant, 'not an envelope');
     }
 
-    /**
-     * Issue #128: the same rule as for the secrets (KeyManagementFailure), a KMS that does not answer told
-     * from an envelope it refuses.
-     */
     #[Test]
     public function aKmsThatDoesNotAnswerAtOpeningIsAnOutage(): void
     {

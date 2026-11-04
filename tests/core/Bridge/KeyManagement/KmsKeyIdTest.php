@@ -10,7 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Architecture §5.1: "{tenant}" in the KMS key identifier stands for the slug of the tenant.
+ * Architecture §5.1
  */
 final class KmsKeyIdTest extends TestCase
 {
@@ -29,9 +29,7 @@ final class KmsKeyIdTest extends TestCase
     }
 
     /**
-     * The same identifier from the slug alone, for the caller that has no tenant to hand over: a data key
-     * store is built for the tenant a scope names, and a scope carries a slug and not a row
-     * (decision 0018).
+     * Decision 0018
      */
     #[Test]
     public function theSlugAloneResolvesTheSameIdentifier(): void

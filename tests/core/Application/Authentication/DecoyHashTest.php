@@ -23,7 +23,7 @@ final class DecoyHashTest extends TestCase
     }
 
     /**
-     * Decision 0006: what is paid is a verification, the cost of a wrong password.
+     * Decision 0006
      */
     #[Test]
     public function itPaysOneVerificationAgainstAHashOfTheHasher(): void
@@ -36,9 +36,6 @@ final class DecoyHashTest extends TestCase
         static::assertStringStartsWith('fake:', $this->hasher->verifiedAgainst[0]);
     }
 
-    /**
-     * The decoy is drawn from a value nobody knows: no password matches it.
-     */
     #[Test]
     public function theDecoyIsNotTheHashOfThePassword(): void
     {
@@ -49,9 +46,6 @@ final class DecoyHashTest extends TestCase
         static::assertNotSame($this->hasher->hash('whatever')->encoded, $this->hasher->verifiedAgainst[0]);
     }
 
-    /**
-     * A costly hash is computed once per process, then verified against as many times as needed.
-     */
     #[Test]
     public function theSameDecoyServesEveryVerification(): void
     {

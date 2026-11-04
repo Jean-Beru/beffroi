@@ -91,12 +91,6 @@ final class PasswordAuthenticatorTest extends TestCase
         $this->authenticator = $this->authenticatorOn($hasher);
     }
 
-    /**
-     * The authenticator on a hasher the test names. What belongs to the authenticator takes the cheap
-     * hasher of the fixtures: Argon2id at the cost RFC 9106 §4 asks for is paid for the stored
-     * credential and once more for the decoy hash of every refusal, and what it proves of that cost is
-     * NativePasswordHasherTest's. The two tests whose subject is the stored hash take the native one.
-     */
     private function authenticatorOn(
         PasswordHasherInterface $hasher,
         ?FakeAttemptLimiter $attempts = null,
@@ -185,10 +179,6 @@ final class PasswordAuthenticatorTest extends TestCase
         static::assertSame($session, $this->events->of(UserAuthenticated::class)[0]->session);
     }
 
-    /**
-     * Issue #571: every proof is an act of its own, so the journal of a person says how somebody got in
-     * and not only that they did. It is announced before the session, which is what the password led to.
-     */
     #[Test]
     public function aRightPasswordAnnouncesThePasswordItAccepted(): void
     {
@@ -316,10 +306,6 @@ final class PasswordAuthenticatorTest extends TestCase
         static::assertSame($bob, $failure->user);
     }
 
-    /**
-     * The account state is checked after the password: whoever does not know the password cannot tell a
-     * disabled account from a wrong password.
-     */
     #[Test]
     public function aDisabledUserWithAWrongPasswordFailsLikeAnyWrongPassword(): void
     {
@@ -353,10 +339,7 @@ final class PasswordAuthenticatorTest extends TestCase
     }
 
     /**
-     * Decision 0029, spec/saml.md S-63: a person of a domain the tenant federates to an upstream provider signs in
-     * through it and through nothing else, whether their mailbox or their username is of that domain, and an address
-     * of theirs the rule of the domain does not read counts as one; refused after the password, as a disabled account
-     * is, so that the answer is the one of a wrong password.
+     * Decision 0029, spec/saml.md S-63
      */
     #[Test]
     #[DataProvider('provideFederatedPersons')]
@@ -387,8 +370,7 @@ final class PasswordAuthenticatorTest extends TestCase
     }
 
     /**
-     * Decision 0029: the federated domain is read after the password, so that whoever does not know it cannot tell a
-     * person of a federated domain from a wrong password.
+     * Decision 0029
      */
     #[Test]
     public function aPersonOfAFederatedDomainWithAWrongPasswordFailsLikeAnyWrongPassword(): void
@@ -405,7 +387,7 @@ final class PasswordAuthenticatorTest extends TestCase
     }
 
     /**
-     * Decision 0029: a person of another domain than the ones the tenant federates signs in with their password.
+     * Decision 0029
      */
     #[Test]
     public function aPersonOfAnotherDomainSignsInWithTheirPassword(): void
@@ -421,12 +403,6 @@ final class PasswordAuthenticatorTest extends TestCase
         static::assertInstanceOf(AuthenticationSession::class, $session);
     }
 
-    /**
-     * Issue #327: a password proves no login of a tenant that signs its users in by passkey, and the
-     * refusal is the first step of the order. It is pronounced before anybody is named, so it says nothing
-     * of any account and counts no attempt against one; it pays no hash either, where every other early
-     * refusal pays one (DecoyHash), the answer being the same for every request whoever asked.
-     */
     #[Test]
     public function aTenantThatAdmitsNoPasswordRefusesBeforeNamingAnybody(): void
     {
@@ -526,8 +502,7 @@ final class PasswordAuthenticatorTest extends TestCase
     }
 
     /**
-     * Decision 0006: five attempts a minute on a user, the sixth refused before anything is verified, the
-     * right password included.
+     * Decision 0006
      */
     #[Test]
     public function theSixthAttemptIsRefusedWhateverThePassword(): void
@@ -578,8 +553,7 @@ final class PasswordAuthenticatorTest extends TestCase
     }
 
     /**
-     * Decision 0006: a refusal before the hash, the user unknown, without a password or past the limit,
-     * still pays a hash, the decoy, so that its time does not tell a known user from an unknown one.
+     * Decision 0006
      */
     #[Test]
     #[DataProvider('provideRefusalsBeforeTheHash')]
@@ -612,9 +586,6 @@ final class PasswordAuthenticatorTest extends TestCase
         yield 'an attempt too many' => ['alice', 0];
     }
 
-    /**
-     * The attempt is counted before the password is verified, on the user that was named.
-     */
     #[Test]
     public function anAttemptIsCountedBeforeThePasswordIsVerified(): void
     {
@@ -625,10 +596,6 @@ final class PasswordAuthenticatorTest extends TestCase
         static::assertSame([$this->alice->id->toRfc4122()], $this->attempts->attempts);
     }
 
-    /**
-     * A limit per user cannot count a user who does not exist; the decoy hash makes the attempt cost the
-     * same all the same.
-     */
     #[Test]
     public function anUnknownUserIsNotCounted(): void
     {
@@ -653,9 +620,6 @@ final class PasswordAuthenticatorTest extends TestCase
         static::assertSame([$bob->id->toRfc4122()], $this->attempts->attempts);
     }
 
-    /**
-     * A correct password empties the count: whoever tried before did not have it.
-     */
     #[Test]
     public function aSuccessfulLoginEmptiesTheCountOfTheUser(): void
     {
@@ -677,9 +641,6 @@ final class PasswordAuthenticatorTest extends TestCase
         static::assertSame([], $this->attempts->attempts);
     }
 
-    /**
-     * A disabled user with the right password is not a login: the count stays.
-     */
     #[Test]
     public function aDisabledUserWithTheRightPasswordKeepsTheCount(): void
     {
@@ -694,8 +655,7 @@ final class PasswordAuthenticatorTest extends TestCase
     }
 
     /**
-     * Architecture §3.2: a password alone signs nobody in who holds an active second factor; the login is
-     * held until the code, and LoginCompletion opens the session on both.
+     * Architecture §3.2
      */
     #[Test]
     public function aRightPasswordOfAUserWhoHoldsASecondFactorHoldsTheLoginInsteadOfOpeningASession(): void
@@ -727,10 +687,6 @@ final class PasswordAuthenticatorTest extends TestCase
         static::assertSame([], $this->sessions->findActiveByUser($this->alice, $this->clock->now()));
     }
 
-    /**
-     * The password was accepted and says so (issue #571); what has not happened yet is the outcome of the
-     * login, which the second step announces, accepted or refused.
-     */
     #[Test]
     public function aHeldLoginAnnouncesThePasswordAndNoOutcome(): void
     {
@@ -745,10 +701,6 @@ final class PasswordAuthenticatorTest extends TestCase
         static::assertCount(1, $this->events->of(PasswordUsed::class));
     }
 
-    /**
-     * The password was the right one, whoever tried before did not have it: the count is emptied whether
-     * the login is held or not, as on the firewall of the provider.
-     */
     #[Test]
     public function aHeldLoginEmptiesTheCountOfTheUser(): void
     {
@@ -765,9 +717,6 @@ final class PasswordAuthenticatorTest extends TestCase
         static::assertSame([], $this->attempts->attempts);
     }
 
-    /**
-     * The password was used, and rehashed when needed, at the one step that has it in clear.
-     */
     #[Test]
     public function aHeldLoginDatesTheUseOfThePassword(): void
     {

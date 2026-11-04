@@ -22,10 +22,6 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #613: what a ticket presented opens, and the whole order of reading it. Every refusal is the same
- * sentence and costs one hash, so neither the answer nor the time says which of the reasons it was.
- */
 final class EnrolmentTicketRedemptionTest extends TestCase
 {
     private const string REFUSED = 'This enrolment ticket opens nothing.';
@@ -89,8 +85,7 @@ final class EnrolmentTicketRedemptionTest extends TestCase
     }
 
     /**
-     * Decision 0006: a refusal reached before the hash of a ticket could be verified pays for one
-     * (`DecoyHash`), so the time does not say whether a ticket of that identifier exists.
+     * Decision 0006
      */
     #[Test]
     public function anIdentifierNothingAnswersPaysForAHashAllTheSame(): void
@@ -99,7 +94,6 @@ final class EnrolmentTicketRedemptionTest extends TestCase
         try {
             $this->redemption->redeem($this->tenant, Uuid::v7(), $this->issued->value);
         } catch (EnrolmentTicketRefusedException) {
-            // the refusal is read by the test above
         }
 
         // Then
@@ -175,10 +169,6 @@ final class EnrolmentTicketRedemptionTest extends TestCase
         $this->redemption->redeem($this->tenant, $this->issued->ticket->id, $this->issued->value);
     }
 
-    /**
-     * The state of the ticket is read after the value on purpose: a ticket already spent answers like a
-     * wrong value, and costs the same.
-     */
     #[Test]
     public function aTicketSpentCostsWhatAWrongValueCosts(): void
     {
@@ -189,7 +179,6 @@ final class EnrolmentTicketRedemptionTest extends TestCase
         try {
             $this->redemption->redeem($this->tenant, $this->issued->ticket->id, $this->issued->value);
         } catch (EnrolmentTicketRefusedException) {
-            // the refusal is read by the test above
         }
 
         // Then

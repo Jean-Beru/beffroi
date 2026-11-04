@@ -21,9 +21,7 @@ use PHPUnit\Framework\TestCase;
 use function sprintf;
 
 /**
- * Architecture §3.3, decisions 0018 and 0020, beffroi/saml S-64 and S-66: a key the tenant keeps out of its JWK Set
- * and is encrypted to, the key a SAML identity provider encrypts for, is answered to a caller that names its algorithm
- * and its "kid", opened by the KMS once per process, and never answered to a caller asking for another algorithm.
+ * Architecture §3.3, Decisions 0018 and 0020, beffroi/saml S-64 and S-66
  */
 final class KeptDecryptionKeyTest extends TestCase
 {
@@ -43,9 +41,6 @@ final class KeptDecryptionKeyTest extends TestCase
         $this->provider = new SealedKeyProvider($this->keys, $this->opened);
     }
 
-    /**
-     * A key in service of the algorithm asked, a staged one included, is opened: what was encrypted to it is opened.
-     */
     #[Test]
     public function aKeyInServiceOfTheAlgorithmIsOpened(): void
     {
@@ -60,7 +55,7 @@ final class KeptDecryptionKeyTest extends TestCase
     }
 
     /**
-     * Decision 0018: the KMS is asked once per key and per process, never at every message opened.
+     * Decision 0018
      */
     #[Test]
     public function theKeyIsOpenedOncePerProcess(): void
@@ -77,8 +72,7 @@ final class KeptDecryptionKeyTest extends TestCase
     }
 
     /**
-     * beffroi/saml S-64: the algorithm names whom a key belongs to, and the key of another holder is never answered,
-     * whatever "kid" the caller names.
+     * beffroi/saml S-64
      */
     #[Test]
     public function theKeyOfAnotherAlgorithmIsNotAnswered(): void
@@ -94,9 +88,6 @@ final class KeptDecryptionKeyTest extends TestCase
         $this->provider->keptDecryptionKeys($this->tenant, new KeptEncryption('a'), [$key->kid]);
     }
 
-    /**
-     * A "kid" the tenant does not hold opens nothing.
-     */
     #[Test]
     public function aKeyNobodyHoldsIsNotAnswered(): void
     {
@@ -108,9 +99,6 @@ final class KeptDecryptionKeyTest extends TestCase
         $this->provider->keptDecryptionKeys($this->tenant, new KeptEncryption(), ['unknown']);
     }
 
-    /**
-     * A key that has retired is not opened any more, whatever was encrypted to it.
-     */
     #[Test]
     public function aRetiredKeyIsNotAnswered(): void
     {
@@ -125,9 +113,6 @@ final class KeptDecryptionKeyTest extends TestCase
         $this->provider->keptDecryptionKeys($this->tenant, new KeptEncryption(), [$key->kid]);
     }
 
-    /**
-     * What the process held open of a key that has retired leaves it.
-     */
     #[Test]
     public function aRetiredKeyLeavesTheProcess(): void
     {
@@ -146,9 +131,6 @@ final class KeptDecryptionKeyTest extends TestCase
         static::assertNotSame($opened, $this->opened->open($this->tenant, $key));
     }
 
-    /**
-     * The keys are answered in the order the caller names them, which is the order it tries them in.
-     */
     #[Test]
     public function theKeysAreAnsweredInTheOrderNamed(): void
     {
@@ -163,10 +145,6 @@ final class KeptDecryptionKeyTest extends TestCase
         static::assertSame([$second, $first], [$opened[0]->key, $opened[1]->key]);
     }
 
-    /**
-     * A key of the algorithm the caller no longer names, one that left the service since its last call, leaves the
-     * process; the one it names stays open.
-     */
     #[Test]
     public function aKeyNoLongerNamedLeavesTheProcess(): void
     {
@@ -185,9 +163,6 @@ final class KeptDecryptionKeyTest extends TestCase
         ]);
     }
 
-    /**
-     * What another algorithm holds open is not the business of a caller of this one: the keys of another holder stay.
-     */
     #[Test]
     public function theKeysOfAnotherAlgorithmStayOpen(): void
     {
@@ -203,7 +178,7 @@ final class KeptDecryptionKeyTest extends TestCase
     }
 
     /**
-     * RFC 7517 §4.2: the use is asserted and not deduced from the caller, a key of another use opens nothing.
+     * RFC 7517 §4.2
      */
     #[Test]
     public function aKeyOfAnotherUseIsNotAnswered(): void
@@ -219,9 +194,6 @@ final class KeptDecryptionKeyTest extends TestCase
         $this->provider->keptDecryptionKeys($this->tenant, new KeptEncryption('a', KeyUse::Signature), [$key->kid]);
     }
 
-    /**
-     * The material of a pair of the suite under the algorithm a test names, its public JWK saying so, staged.
-     */
     private function key(KeyAlgorithmInterface $algorithm, GeneratedKeyPair $pair): TenantKey
     {
         $key = new TenantKey(

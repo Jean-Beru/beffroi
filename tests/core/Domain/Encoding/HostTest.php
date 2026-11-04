@@ -12,7 +12,7 @@ use PHPUnit\Framework\TestCase;
 final class HostTest extends TestCase
 {
     /**
-     * RFC 3986 §3.2.2, RFC 1123 §2.1: a name for the DNS, an IPv4 address or an IPv6 literal between brackets.
+     * RFC 3986 §3.2.2, RFC 1123 §2.1
      */
     #[Test]
     #[DataProvider('provideHosts')]
@@ -37,8 +37,7 @@ final class HostTest extends TestCase
     }
 
     /**
-     * RFC 3986 §3.2.2 admits these in a reg-name, and a Content-Security-Policy that names them is split or
-     * misread: a ";" ends a directive, a "," a policy, whitespace a source (CSP Level 3 §2.2.1).
+     * RFC 3986 §3.2.2, CSP Level 3 §2.2.1
      */
     #[Test]
     #[DataProvider('provideWhatIsNoHost')]

@@ -198,9 +198,6 @@ final class UserTest extends TestCase
         static::assertSame($later, $user->updatedAt);
     }
 
-    /**
-     * A verified flag never survives a change of address: a new address is unverified until proven otherwise.
-     */
     #[Test]
     public function aNewEmailDoesNotInheritTheVerificationOfThePreviousOne(): void
     {
@@ -346,8 +343,7 @@ final class UserTest extends TestCase
     }
 
     /**
-     * Issue #452 and decision 0002: a person may say a claim of themselves when their tenant opens it and
-     * the source that created them does not hold it.
+     * Decision 0002
      *
      * @param list<string> $opened
      */
@@ -375,10 +371,6 @@ final class UserTest extends TestCase
         yield 'not opened' => [['zoneinfo'], UserSource::local(), false];
     }
 
-    /**
-     * Issue #781: what the provider that created a person holds of them is what it fills and says at its
-     * last sign-in, so no claim is held for ever.
-     */
     #[Test]
     public function whatItsSourceHoldsChanges(): void
     {
@@ -401,10 +393,6 @@ final class UserTest extends TestCase
         static::assertSame($now, $user->updatedAt);
     }
 
-    /**
-     * The person stays the one the provider created: a source of another provider, or none, is a link or a
-     * move, and no sign-in makes either.
-     */
     #[Test]
     #[DataProvider('provideSourcesOfAnotherProvider')]
     public function theProviderThatCreatedThePersonDoesNotChange(UserSource $was, UserSource $other): void

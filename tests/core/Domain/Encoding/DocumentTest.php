@@ -10,10 +10,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Issue #603: the document a value object was written as, read member by member. Every reading says what
- * it expected, and a member that is not that is refused instead of coerced.
- */
 final class DocumentTest extends TestCase
 {
     #[Test]
@@ -56,9 +52,6 @@ final class DocumentTest extends TestCase
         ])->nullableBool('is_passive'));
     }
 
-    /**
-     * A whole JSON number decodes as an integer, and a number is what the member asked for.
-     */
     #[Test]
     public function aWholeNumberIsReadAsAFloat(): void
     {

@@ -16,10 +16,6 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #453: the person who has their file has this provider drop it, before the date it would have gone
- * away on by itself. The row goes and leaves nothing behind.
- */
 final class ArchiveDisposalTest extends TestCase
 {
     private const string DOCUMENT = '{"profile":[]}';
@@ -39,10 +35,6 @@ final class ArchiveDisposalTest extends TestCase
         static::assertSame(0, $archives->count());
     }
 
-    /**
-     * The act is written to the journal, where it says what became of the request: the identifier is all
-     * that is left of the archive once the row is gone.
-     */
     #[Test]
     public function droppingTheFileAnnouncesTheAct(): void
     {
@@ -61,10 +53,6 @@ final class ArchiveDisposalTest extends TestCase
         static::assertTrue($announced[0]->archiveId->equals($archive->id));
     }
 
-    /**
-     * Nothing to drop is not an act: a person who clicked twice is told there is no file and the journal
-     * holds one line.
-     */
     #[Test]
     public function nothingToDropAnnouncesNothing(): void
     {
@@ -79,10 +67,6 @@ final class ArchiveDisposalTest extends TestCase
         static::assertSame([], $events->events);
     }
 
-    /**
-     * What is dropped is the request and not a file: a build on its way to a row that went away under it
-     * finds none and writes nothing, which is what makes a request something a person can take back.
-     */
     #[Test]
     public function aRequestStillBeingBuiltIsDropped(): void
     {
@@ -118,10 +102,6 @@ final class ArchiveDisposalTest extends TestCase
         static::assertTrue($announced[0]->archiveId->equals($archive->id));
     }
 
-    /**
-     * The archive of another person is not refused here, it is not reachable from here: what is dropped is
-     * the last archive of the person who asks.
-     */
     #[Test]
     public function thePersonDropsTheirOwnFileAndNotAnother(): void
     {

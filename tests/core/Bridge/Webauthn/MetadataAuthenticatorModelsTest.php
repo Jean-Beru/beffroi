@@ -16,8 +16,7 @@ use Symfony\Component\Uid\Uuid;
 use Webauthn\MetadataService\Statement\AuthenticatorStatus;
 
 /**
- * The models the FIDO metadata of the store name: the description and the icon of the statement (FIDO Metadata
- * Statement v3.1.1 §4), and the certification of the status reports (FIDO Metadata Service v3.1.1 §3.1.4.1).
+ * FIDO Metadata Statement v3.1.1 §4, FIDO Metadata Service v3.1.1 §3.1.4.1
  */
 final class MetadataAuthenticatorModelsTest extends TestCase
 {
@@ -81,9 +80,6 @@ final class MetadataAuthenticatorModelsTest extends TestCase
         static::assertNull($model->logo);
     }
 
-    /**
-     * Only an image of a data: URL is shown, so that the page fetches nothing: the name stands without it.
-     */
     #[Test]
     public function anIconThatIsNotAnImageOfADataUrlIsNoLogo(): void
     {

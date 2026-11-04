@@ -15,7 +15,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Architecture §3.4: a credential of any revocable kind leaves use without leaving its row.
+ * Architecture §3.4
  */
 final class CredentialRevocationTest extends TestCase
 {

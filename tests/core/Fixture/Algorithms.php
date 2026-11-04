@@ -28,9 +28,7 @@ use Beffroi\Core\Bridge\JwtLibrary\JoseMessageSealingAlgorithms;
 use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
 
 /**
- * The algorithms of the suite, wired as the provider wires them, RS256 first and the two a client encrypts
- * to beside them. RSA keys are 2048 bits here: generation is what makes a test slow, and 2048 is what
- * RFC 7518 §3.3 asks for.
+ * RSA keys are 2048 bits, the size RFC 7518 §3.3 asks for: generating larger ones slows the suite.
  */
 final class Algorithms
 {
@@ -116,9 +114,6 @@ final class Algorithms
         return self::$contentEncryption ??= new JoseContentEncryptionAlgorithms([self::a256Gcm()]);
     }
 
-    /**
-     * A deployment nobody encrypts to: the lists the wiring leaves empty.
-     */
     public static function noKeyEncryption(): JoseKeyEncryptionAlgorithms
     {
         return new JoseKeyEncryptionAlgorithms([]);
@@ -129,9 +124,6 @@ final class Algorithms
         return new JoseContentEncryptionAlgorithms([]);
     }
 
-    /**
-     * What a JWE is made and opened with, the two lists of one use read as one.
-     */
     public static function encryption(): JoseEncryptionAlgorithms
     {
         return self::$encryption ??= new JoseEncryptionAlgorithms(self::keyEncryption(), self::contentEncryption());
@@ -142,16 +134,13 @@ final class Algorithms
         return self::$vapid ??= new Vapid();
     }
 
-    /**
-     * A deployment that hands out no key of its own, which is the default (§5.6).
-     */
     public static function noApplicationServer(): JoseApplicationServerAlgorithms
     {
         return new JoseApplicationServerAlgorithms([]);
     }
 
     /**
-     * The algorithms of the keys a tenant hands out itself (RFC 8292 §2).
+     * RFC 8292 §2
      */
     public static function applicationServer(): JoseApplicationServerAlgorithms
     {
@@ -159,7 +148,7 @@ final class Algorithms
     }
 
     /**
-     * The algorithm of the key a tenant seals what leaves the process to (decision 0020).
+     * Decision 0020
      */
     public static function messageSeal(): MessageSeal
     {
@@ -171,17 +160,11 @@ final class Algorithms
         return self::$messageSealing ??= new JoseMessageSealingAlgorithms([self::messageSeal()]);
     }
 
-    /**
-     * A deployment wired with nothing to seal a message body to, which writes no message.
-     */
     public static function noMessageSealing(): JoseMessageSealingAlgorithms
     {
         return new JoseMessageSealingAlgorithms([]);
     }
 
-    /**
-     * Every algorithm a key may be generated for, the lists of one use read as one.
-     */
     public static function everyUse(): JoseKeyAlgorithms
     {
         return self::$everyUse ??= self::readAsOne([
@@ -193,9 +176,6 @@ final class Algorithms
     }
 
     /**
-     * The registries given read as one, each a family of keys rotating by the staging delay and the age of
-     * KeyLifecycle.
-     *
      * @param non-empty-list<JoseAlgorithmRegistryInterface> $registries
      */
     public static function readAsOne(array $registries): JoseKeyAlgorithms

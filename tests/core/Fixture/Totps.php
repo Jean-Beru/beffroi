@@ -18,13 +18,12 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * TOTP credentials on the secret of RFC 6238 Appendix B, whose codes are known, sealed under the KMS of
- * the suite, with backup codes hashed by the hasher the test chooses.
+ * RFC 6238 Appendix B
  */
 final class Totps
 {
     /**
-     * The seed of RFC 6238 Appendix B: the ASCII string "12345678901234567890", twenty bytes.
+     * RFC 6238 Appendix B
      */
     public const string SEED = '12345678901234567890';
 
@@ -63,16 +62,13 @@ final class Totps
         return intdiv($at->getTimestamp(), TotpCredential::PERIOD);
     }
 
-    /**
-     * The code of the secret at the step of that instant.
-     */
     public static function codeAt(DateTimeImmutable $at, ?TotpSecret $secret = null): string
     {
         return self::algorithm()->codeAt($secret ?? self::secret(), self::stepAt($at));
     }
 
     /**
-     * @param list<string> $backupCodes in clear, hashed here
+     * @param list<string> $backupCodes in clear
      */
     public static function credential(
         User $user,

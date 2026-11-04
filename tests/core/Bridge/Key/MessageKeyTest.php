@@ -21,9 +21,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Decision 0020, architecture §3.3: the key a tenant seals what leaves the process to is a key of the
- * tenant in every way but one, and that one is that its issuer never publishes it. A key in the JWK Set
- * would make a message body forgeable by any reader of the discovery document.
+ * Decision 0020, Architecture §3.3
  */
 final class MessageKeyTest extends TestCase
 {
@@ -44,8 +42,7 @@ final class MessageKeyTest extends TestCase
     }
 
     /**
-     * RFC 7517 §5: the JWK Set is what the tenant answers to whoever reads its issuer, and nothing a
-     * message body is sealed to is addressed to such a reader.
+     * RFC 7517 §5
      */
     #[Test]
     public function theJwkSetDoesNotCarryTheKeyMessagesAreSealedTo(): void
@@ -64,10 +61,6 @@ final class MessageKeyTest extends TestCase
         );
     }
 
-    /**
-     * What seals is the key of that algorithm, and asking for it asks the KMS nothing: what is answered is
-     * the key with its public half in the clear and its private half still sealed.
-     */
     #[Test]
     public function theKeyThatSealsCarriesItsPublicHalfAndItsPrivateHalfStaysSealed(): void
     {
@@ -82,11 +75,6 @@ final class MessageKeyTest extends TestCase
         static::assertSame(Keys::messagePair()->publicJwk, $sealing->publicJwk);
     }
 
-    /**
-     * Issue #548: a rotation saves the new key and then announces it, so the key a body is sealed to is the
-     * newest in service and never the active one. A key that could only be sealed to once active could not
-     * seal the event that announces it, and no tenant could be given a first one.
-     */
     #[Test]
     public function aKeyThatIsStillStagedIsWhatSeals(): void
     {
@@ -97,10 +85,6 @@ final class MessageKeyTest extends TestCase
         static::assertSame($staged, $this->provider->sealingKey($this->tenant, Algorithms::messageSeal()));
     }
 
-    /**
-     * And the successor of a rotation takes the sealing over from the key that is active, the staging
-     * window of such a key having nobody to wait for.
-     */
     #[Test]
     public function aSuccessorStagedForTheKeyTakesTheSealingOver(): void
     {
@@ -112,10 +96,6 @@ final class MessageKeyTest extends TestCase
         static::assertSame($successor, $this->provider->sealingKey($this->tenant, Algorithms::messageSeal()));
     }
 
-    /**
-     * A key that has retired seals nothing, and a tenant left with only that one is a tenant that writes
-     * nothing to a transport.
-     */
     #[Test]
     public function aKeyThatHasRetiredSealsNothing(): void
     {
@@ -133,10 +113,6 @@ final class MessageKeyTest extends TestCase
         $this->provider->sealingKey($this->tenant, Algorithms::messageSeal());
     }
 
-    /**
-     * A tenant whose keys have not been generated seals nothing, and is told which key comes first: a body
-     * is not written at all rather than written in the clear.
-     */
     #[Test]
     public function aTenantWithNoKeySealsNothingAndIsToldWhichComesFirst(): void
     {
@@ -148,10 +124,6 @@ final class MessageKeyTest extends TestCase
         $this->provider->sealingKey($this->tenant, Algorithms::messageSeal());
     }
 
-    /**
-     * A retirement is what bounds how long a body of that vintage may wait: past it, the key opens
-     * nothing, as it does for a key a client encrypted to.
-     */
     #[Test]
     public function aKeyThatHasRetiredOpensNothing(): void
     {
@@ -169,10 +141,6 @@ final class MessageKeyTest extends TestCase
         $this->provider->messageKey($this->tenant, $key->kid);
     }
 
-    /**
-     * And what the process had open of that key goes with the refusal: a private half that opens nothing
-     * any more has no reason to stay, so asking for it again is asking the KMS again.
-     */
     #[Test]
     public function theMaterialOfAKeyThatHasRetiredLeavesTheProcess(): void
     {
@@ -193,10 +161,6 @@ final class MessageKeyTest extends TestCase
         static::assertNotSame($opened, $this->opened->open($this->tenant, $key));
     }
 
-    /**
-     * The family is asserted and not deduced from the caller: the key a client encrypts to never opens a
-     * message of this provider, whoever asks for it under that name.
-     */
     #[Test]
     public function aKeyOfTheJwkSetDoesNotOpenAMessage(): void
     {
@@ -211,10 +175,6 @@ final class MessageKeyTest extends TestCase
         $this->provider->messageKey($this->tenant, $encryption->kid);
     }
 
-    /**
-     * And the other way round: a client that named the "kid" of the key this tenant keeps is answered that
-     * the tenant publishes nothing of the sort, rather than handed it.
-     */
     #[Test]
     public function theKeyMessagesAreSealedToIsNotAKeyAClientEncryptsTo(): void
     {
@@ -230,8 +190,7 @@ final class MessageKeyTest extends TestCase
     }
 
     /**
-     * Decision 0018: the KMS is asked once for a key and the private half stays on the thread that opened
-     * it, which is what makes a worker pay one opening for every message of that vintage.
+     * Decision 0018
      */
     #[Test]
     public function theKeyIsOpenedOnceAndKept(): void
@@ -255,10 +214,6 @@ final class MessageKeyTest extends TestCase
         return $key;
     }
 
-    /**
-     * A key saved and left staged, as a rotation leaves it between the moment it is written and the moment
-     * it takes over.
-     */
     private function key(KeyAlgorithmInterface $algorithm, GeneratedKeyPair $pair, ?DateTimeImmutable $createdAt = null): TenantKey
     {
         $createdAt ??= Fixtures::now();

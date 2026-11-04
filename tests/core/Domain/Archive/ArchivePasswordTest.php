@@ -12,9 +12,7 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * Issue #483: the passphrase a person chose to have their archive leave under it. The floor is refused and
- * never warned about (decision 0006), because the container fixes its own derivation and what is left is
- * the length of what was typed.
+ * Decision 0006
  */
 final class ArchivePasswordTest extends TestCase
 {
@@ -50,10 +48,6 @@ final class ArchivePasswordTest extends TestCase
         yield 'one character short' => [str_repeat('a', ArchivePassword::MINIMUM_LENGTH - 1)];
     }
 
-    /**
-     * Counted in characters and not in bytes, because that is what a person typed: four words of accented
-     * letters are shorter in characters than the bytes they take.
-     */
     #[Test]
     public function theFloorCountsCharactersAndNotBytes(): void
     {
@@ -68,10 +62,6 @@ final class ArchivePasswordTest extends TestCase
         new ArchivePassword($typed);
     }
 
-    /**
-     * The upper bound bounds a field of a request and nothing cryptographic: a megabyte pasted into it is
-     * not a passphrase.
-     */
     #[Test]
     public function aPassphrasePastTheUpperBoundIsRefused(): void
     {

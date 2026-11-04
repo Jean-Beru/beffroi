@@ -27,12 +27,7 @@ use SpomkyLabs\Pki\X509\Certificate\TBSCertificate;
 use SpomkyLabs\Pki\X509\Certificate\Validity;
 
 /**
- * A metadata service of the tests (FIDO Metadata Service v3.1.1 §3.1.7): a root of its own, an
- * intermediate it issued, a signing certificate the intermediate issued, and the blobs it signs with
- * ES256, the chain
- * in the protected header (RFC 7515 §4.1.6), the shape of the chain of the FIDO Alliance, whose blob names
- * the signer and the intermediates and leaves the root to the relying party. Generated at each run on
- * pki-framework, nothing committed.
+ * FIDO Metadata Service v3.1.1 §3.1.7, RFC 7515 §4.1.6
  */
 final readonly class MetadataSigner
 {
@@ -71,18 +66,13 @@ final readonly class MetadataSigner
         return new self($root, $rootKey, $intermediate, $signer, $signerKey);
     }
 
-    /**
-     * The root a relying party pins, PEM.
-     */
     public function rootCertificate(): string
     {
         return $this->root->toPEM()->string();
     }
 
     /**
-     * A blob signed by this service: its chain in "x5c", the payload as given.
-     *
-     * @param list<mixed>|null $chain the "x5c" to write instead of the chain of the service
+     * @param list<mixed>|null $chain
      */
     public function sign(string $payload, ?array $chain = null): string
     {
@@ -99,8 +89,7 @@ final readonly class MetadataSigner
     }
 
     /**
-     * The chain as "x5c" carries it (RFC 7515 §4.1.6): the signer first, then the intermediate, DER in
-     * base64, the root left out.
+     * RFC 7515 §4.1.6
      *
      * @return list<string>
      */
@@ -109,28 +98,16 @@ final readonly class MetadataSigner
         return [base64_encode($this->signer->toDER()), base64_encode($this->intermediate->toDER())];
     }
 
-    /**
-     * The root of this service issued by the root of another one, a cross-certificate, the shape of GlobalSign
-     * Root R46 issued by GlobalSign Root CA - R3 at the end of the chain of the FIDO Alliance: the name and the
-     * key of this root, the other root as issuer, DER in base64 as "x5c" carries it.
-     */
     public function rootIssuedBy(self $other): string
     {
         return $other->issue($this->root->tbsCertificate()->subject(), $this->rootKey->publicKey()->publicKeyInfo());
     }
 
-    /**
-     * The name of the root of this service on another key, issued by the root of another one: what a chain that
-     * only borrows the name of the pinned root ends with.
-     */
     public function rootNameOnAnotherKeyIssuedBy(self $other): string
     {
         return $other->issue($this->root->tbsCertificate()->subject(), self::key()->publicKey()->publicKeyInfo());
     }
 
-    /**
-     * A certificate authority this root issues, DER in base64.
-     */
     private function issue(Name $subject, PublicKeyInfo $key): string
     {
         $certificate = TBSCertificate::create($subject, $key, $this->root->tbsCertificate()->subject(), self::validity())

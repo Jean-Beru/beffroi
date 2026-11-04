@@ -27,9 +27,7 @@ use function sprintf;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * The last step of the life of a key (architecture §3.3): a retiring key leaves the JWK Set once its
- * retirement date has passed, or before it when an operator says so, and the trail says which decision
- * was taken.
+ * Architecture §3.3
  */
 final class KeyRetirementTest extends TestCase
 {
@@ -62,9 +60,6 @@ final class KeyRetirementTest extends TestCase
         $this->retirement = $lifecycle->retirement;
     }
 
-    /**
-     * The timed step: a key past its retirement date is retired, and not before.
-     */
     #[Test]
     public function retireDueRetiresAKeyPastItsRetirementDate(): void
     {
@@ -196,10 +191,6 @@ final class KeyRetirementTest extends TestCase
         static::assertSame([$second], $this->repository->findInService($this->tenant));
     }
 
-    /**
-     * The trail says what was the case and not what was asked: a key an operator forced out after its
-     * date was due, and the journal of the tenant reads it as time having done it.
-     */
     #[Test]
     public function retiringADueKeyBeforeItsDateStillSaysTimeDidIt(): void
     {

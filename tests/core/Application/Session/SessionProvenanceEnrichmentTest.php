@@ -17,10 +17,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #473: where a session was opened and where it was last seen, written after the request that
- * wrote the row.
- */
 final class SessionProvenanceEnrichmentTest extends TestCase
 {
     private InMemoryAuthenticationSessionRepository $sessions;
@@ -44,10 +40,6 @@ final class SessionProvenanceEnrichmentTest extends TestCase
         static::assertSame('Oxford', $session->lastSeenFrom->location?->city);
     }
 
-    /**
-     * The enrichment adds a place and rewrites nothing: what a request carried is what reached this
-     * provider.
-     */
     #[Test]
     public function whatTheRequestCarriedIsLeftAsItReachedTheProvider(): void
     {
@@ -64,10 +56,6 @@ final class SessionProvenanceEnrichmentTest extends TestCase
         static::assertSame($carried->receivedAt, $session->createdFrom->receivedAt);
     }
 
-    /**
-     * Both provenances of a new session carry the one address the login came from: a second lookup would
-     * read a database for an answer already in hand.
-     */
     #[Test]
     public function oneAddressIsLookedUpOnce(): void
     {
@@ -82,10 +70,6 @@ final class SessionProvenanceEnrichmentTest extends TestCase
         static::assertSame([Fixtures::IP_ADDRESS], $locator->asked);
     }
 
-    /**
-     * A step-up records the address it came from, which is not the one the session was opened from: both
-     * are looked up, and each provenance says its own place.
-     */
     #[Test]
     public function aSecondAddressIsLookedUpToo(): void
     {
@@ -101,10 +85,6 @@ final class SessionProvenanceEnrichmentTest extends TestCase
         static::assertSame([Fixtures::IP_ADDRESS, '198.51.100.7'], $locator->asked);
     }
 
-    /**
-     * The row is written, which is the point of all of it: the session a request wrote says a place it did
-     * not say when the request ended.
-     */
     #[Test]
     public function theSessionIsWrittenBack(): void
     {
@@ -119,10 +99,6 @@ final class SessionProvenanceEnrichmentTest extends TestCase
         static::assertSame($saves + 1, $this->sessions->saves);
     }
 
-    /**
-     * One provenance located and the other not, which is a step-up from a network no database covers: the
-     * place that was found is written and the one that was not is not invented.
-     */
     #[Test]
     public function aSessionOneOfWhoseProvenancesHasAPlaceIsWrittenAllTheSame(): void
     {
@@ -138,10 +114,6 @@ final class SessionProvenanceEnrichmentTest extends TestCase
         static::assertNull($session->lastSeenFrom->location);
     }
 
-    /**
-     * A deployment that holds no database writes nothing at all: the row would not change, and a row that
-     * would not change is a row this never touches.
-     */
     #[Test]
     public function aSessionNoPlaceWasFoundForIsNotWritten(): void
     {
@@ -157,10 +129,6 @@ final class SessionProvenanceEnrichmentTest extends TestCase
         static::assertFalse($session->createdFrom->isEnriched());
     }
 
-    /**
-     * The message arrives on a lane, where a session may have been forgotten since. That is late, not
-     * wrong, and nothing of it fails.
-     */
     #[Test]
     public function aSessionThatIsGoneIsNotAnError(): void
     {

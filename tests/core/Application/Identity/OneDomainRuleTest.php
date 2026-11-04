@@ -37,38 +37,18 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Decision 0029, spec/saml.md S-60: the three places that ask which provider a domain is federated to read it by
- * one rule, so that none of them takes an address for one of no federated domain while another sends it to its
- * provider: the discovery of the login page (FederatedDomains::providerOf()), the first sign-in through the provider
- * (JustInTimeProvisioning::personNamedBy()), and the refusal of a local credential
- * (FederatedDomains::admitsLocalCredentials()).
- *
- * The first sign-in is handed an EmailAddress, whose domain is in ASCII: an address in a U-label, or with a final
- * dot, is no address it is ever handed, the assertion consumer service writing the domain of an address a provider
- * asserts as its A-label before it is one (issue #784).
+ * Decision 0029, spec/saml.md S-60
  */
 final class OneDomainRuleTest extends TestCase
 {
     private const string PROVIDER = 'https://idp.acme.example/saml';
 
-    /**
-     * The discovery refuses the address, whose domain the rule does not read.
-     */
     private const string REFUSED = 'refused';
 
-    /**
-     * The first sign-in creates the person.
-     */
     private const string CREATED = 'created';
 
-    /**
-     * The first sign-in refuses the person, of no domain the provider answers for.
-     */
     private const string OUTSIDE = 'outside its domains';
 
-    /**
-     * The spelling is no EmailAddress, which the first sign-in is never handed.
-     */
     private const string NO_ADDRESS = 'no address';
 
     private Tenant $tenant;
@@ -113,11 +93,6 @@ final class OneDomainRuleTest extends TestCase
         );
     }
 
-    /**
-     * @param string|null $discovered the provider the login page sends the address to, none, or a refusal
-     * @param string $provisioned what the first sign-in through the provider does with a person of that address
-     * @param bool $admitted whether a local credential signs a person named by that address in
-     */
     #[Test]
     #[DataProvider('provideSpellings')]
     public function theThreePlacesReadTheDomainOfAnAddressAlike(string $address, ?string $discovered, string $provisioned, bool $admitted): void

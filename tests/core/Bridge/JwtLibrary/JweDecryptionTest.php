@@ -40,9 +40,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\KeyManagement\Exception\RuntimeException as KeyManagementFailure;
 
 /**
- * What a client encrypts to the provider (RFC 7516): the key is the published encryption key its "kid"
- * names, opened by the KMS the way a signing key is. The two uses of a JWK Set never cross: what signs is
- * not offered to open a JWE, and what a client encrypts to is not offered to verify a signature.
+ * RFC 7516
  */
 final class JweDecryptionTest extends TestCase
 {
@@ -68,9 +66,6 @@ final class JweDecryptionTest extends TestCase
         $this->provider = new SealedKeyProvider($this->repository, $this->opened);
     }
 
-    /**
-     * The acceptance criterion: a JWE made against the key the JWK Set publishes opens.
-     */
     #[Test]
     public function aJweMadeAgainstThePublishedKeyOpens(): void
     {
@@ -84,10 +79,6 @@ final class JweDecryptionTest extends TestCase
         static::assertSame('{"iss":"acme-console"}', $payload);
     }
 
-    /**
-     * The retirement window of an encryption key is what bounds it: past it, the key is out of the JWK Set
-     * and what was encrypted to it is not opened any more, and the refusal says so.
-     */
     #[Test]
     public function theSameJweIsRefusedOnceTheKeyHasRetired(): void
     {
@@ -105,10 +96,6 @@ final class JweDecryptionTest extends TestCase
         $this->decrypter()->decrypt($this->tenant, $jwe);
     }
 
-    /**
-     * And what the process had open of that key goes with the refusal: a key out of the JWK Set opens
-     * nothing any more, so its private half has no reason to stay.
-     */
     #[Test]
     public function theMaterialOfAKeyThatHasRetiredLeavesTheProcess(): void
     {
@@ -130,8 +117,7 @@ final class JweDecryptionTest extends TestCase
     }
 
     /**
-     * RFC 7517 §4.2: a key published to sign is never handed out to open a JWE, although the tenant
-     * publishes it and the "kid" names it.
+     * RFC 7517 §4.2
      */
     #[Test]
     public function aKeyPublishedToSignDoesNotOpenAJwe(): void
@@ -144,10 +130,6 @@ final class JweDecryptionTest extends TestCase
         $this->provider->decryptionKey($this->tenant, $this->signing->kid);
     }
 
-    /**
-     * The other way round: a key published to be encrypted to is not among the candidates when a signature
-     * is verified, so a JWS naming it is refused although the tenant publishes that "kid".
-     */
     #[Test]
     public function aKeyPublishedToBeEncryptedToDoesNotVerifyASignature(): void
     {
@@ -173,8 +155,7 @@ final class JweDecryptionTest extends TestCase
     }
 
     /**
-     * The tenant publishes several keys, so the one to open with is named and not guessed (RFC 7516
-     * §4.1.6): a set of keys is not a set of keys to try.
+     * RFC 7516 §4.1.6
      */
     #[Test]
     public function aJweThatNamesNoKeyIsRefused(): void
@@ -191,7 +172,7 @@ final class JweDecryptionTest extends TestCase
     }
 
     /**
-     * RFC 8725 §3.1: the "alg" is one of those the provider is wired with, and RSA-OAEP is not one of them.
+     * RFC 8725 §3.1
      */
     #[Test]
     public function anAlgorithmTheProviderIsNotWiredWithIsRefused(): void
@@ -223,7 +204,7 @@ final class JweDecryptionTest extends TestCase
     }
 
     /**
-     * RFC 7516 §4.1.2: so is the "enc", and A128GCM is not wired either.
+     * RFC 7516 §4.1.2
      */
     #[Test]
     public function aContentEncryptionTheProviderIsNotWiredWithIsRefused(): void
@@ -250,10 +231,6 @@ final class JweDecryptionTest extends TestCase
         $this->decrypter()->decrypt($this->tenant, $jwe);
     }
 
-    /**
-     * Issue #128: a KMS that does not answer is an outage and not a bad token, so it crosses the decrypter
-     * as it came and the integration turns it into a 503 on the path that needed it.
-     */
     #[Test]
     public function aKmsThatDoesNotAnswerIsAnOutageAndNotARefusal(): void
     {
@@ -274,9 +251,6 @@ final class JweDecryptionTest extends TestCase
         $decrypter->decrypt($this->tenant, $jwe);
     }
 
-    /**
-     * A tenant publishes one active key per algorithm and per use, so the two live side by side.
-     */
     #[Test]
     public function theJwkSetCarriesTheTwoUsesSideBySide(): void
     {
@@ -315,9 +289,6 @@ final class JweDecryptionTest extends TestCase
         return $key;
     }
 
-    /**
-     * A JWE as a client makes one against the JWK Set of the tenant.
-     */
     private static function encryptedTo(TenantKey $key, string $payload, bool $named = true): string
     {
         $header = [

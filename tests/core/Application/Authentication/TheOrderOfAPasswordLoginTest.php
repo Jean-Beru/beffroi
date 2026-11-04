@@ -38,15 +38,6 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #130: the order of a login by password, played by the use case of the core. The firewall of the
- * provider asks the same of itself (TheOrderOfAPasswordLoginTest of the functional suite), and the two read
- * the same named steps (TheOrderOfAPasswordLogin), so a step this path gains and the other does not is a
- * case the other answers differently.
- *
- * This is the path that can be asked what a refusal cost, the hasher of the fixtures recording every
- * verification: what the firewall can be asked is what was announced.
- */
 final class TheOrderOfAPasswordLoginTest extends TestCase
 {
     private Tenant $tenant;
@@ -69,7 +60,6 @@ final class TheOrderOfAPasswordLoginTest extends TestCase
         $alice = Fixtures::user($this->tenant, TheOrderOfAPasswordLogin::USERNAME, 'alice-subject');
         $users->save($alice);
         $credentials->save(new PasswordCredential(Uuid::v7(), $alice, $this->hasher->hash(TheOrderOfAPasswordLogin::PASSWORD), Fixtures::now()));
-        // a person of the same tenant who holds no password at all
         $users->save(Fixtures::user($this->tenant, TheOrderOfAPasswordLogin::WITHOUT_A_PASSWORD, 'bob-subject'));
         $disabled = Fixtures::user($this->tenant, TheOrderOfAPasswordLogin::DISABLED, 'carol-subject');
         $disabled->disable(Fixtures::now());
@@ -127,10 +117,6 @@ final class TheOrderOfAPasswordLoginTest extends TestCase
         );
     }
 
-    /**
-     * The last step of the order, read on its own because what it leaves behind is a session and not a
-     * refusal: the password is announced as the act it is, and the session as the outcome.
-     */
     #[Test]
     public function theRightPasswordOpensASessionAndSaysWhatProvedIt(): void
     {

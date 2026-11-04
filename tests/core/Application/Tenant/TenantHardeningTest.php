@@ -28,10 +28,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
-/**
- * Issue #327: a tenant names the floor of its logins, and what the floor forbids leaves the model. The
- * act is the one an administrator presses from a command or from the console, and both press this.
- */
 final class TenantHardeningTest extends TestCase
 {
     private Tenant $tenant;
@@ -71,10 +67,6 @@ final class TenantHardeningTest extends TestCase
         static::assertSame([$this->tenant->id->toRfc4122() => $this->tenant], $this->tenants->tenants);
     }
 
-    /**
-     * The password, the TOTP and the backup codes it holds go together: none of them proves anything a
-     * phishing-resistant floor reads, so none of them is left in the store (CredentialForgotten).
-     */
     #[Test]
     public function whatTheFloorForbidsIsForgottenAndTheActIsAnnounced(): void
     {
@@ -98,10 +90,6 @@ final class TenantHardeningTest extends TestCase
         );
     }
 
-    /**
-     * A key bound to its authenticator stays under a floor that asks for one, and a synced passkey does
-     * not: what the floor reads is what the attestation said of the key, never the kind.
-     */
     #[Test]
     public function aFloorThatAsksForHardwareForgetsASyncedPasskey(): void
     {
@@ -121,11 +109,7 @@ final class TenantHardeningTest extends TestCase
     }
 
     /**
-     * Issue #625: a floor that stops reading a second factor asks fifteen characters of a password where
-     * the floor before it asked eight (PasswordLength, NIST SP 800-63B §3.1.1.2), and the sweep takes
-     * nothing for that. A hash says nothing of the length of the password behind it, and the same section
-     * asks a verifier not to require a change without evidence of compromise: the length is a rule of what
-     * is posed, and a password this provider accepted is not one it refuses at the next login.
+     * NIST SP 800-63B §3.1.1.2
      */
     #[Test]
     public function aPasswordIsKeptUnderAFloorThatNowAsksForMoreLength(): void
@@ -144,10 +128,6 @@ final class TenantHardeningTest extends TestCase
         static::assertSame([], $this->events->of(CredentialForgotten::class));
     }
 
-    /**
-     * A revoked credential proves nothing already, so the floor forbids nothing about it and the page of
-     * that person keeps naming it.
-     */
     #[Test]
     public function aRevokedCredentialIsLeftWhereItIs(): void
     {
@@ -164,9 +144,6 @@ final class TenantHardeningTest extends TestCase
         static::assertSame([$totp], $this->credentials->findByUser($this->alice));
     }
 
-    /**
-     * The credentials of another tenant are another tenant's business, the walk reading one tenant.
-     */
     #[Test]
     public function thePasswordOfAnotherTenantIsNotTouched(): void
     {
@@ -184,9 +161,6 @@ final class TenantHardeningTest extends TestCase
         static::assertSame([$elsewhere], iterator_to_array($this->credentials->credentialsOf($other), false));
     }
 
-    /**
-     * Named twice, it forgets nothing twice: the sweep is the one an interruption is run through again.
-     */
     #[Test]
     public function theSameFloorNamedAgainForgetsNothingMore(): void
     {
@@ -202,10 +176,6 @@ final class TenantHardeningTest extends TestCase
         static::assertCount(1, $this->events->of(CredentialForgotten::class));
     }
 
-    /**
-     * A tenant that lowers its floor again holds no password of anybody: what was forgotten is gone, and
-     * the single factor admits what it always did for whoever poses one.
-     */
     #[Test]
     public function loweringTheFloorGivesNobodyBackWhatWasForgotten(): void
     {

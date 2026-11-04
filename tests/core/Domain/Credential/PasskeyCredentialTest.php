@@ -31,8 +31,7 @@ use Webauthn\PublicKeyCredentialDescriptor;
 use Webauthn\TrustPath\EmptyTrustPath;
 
 /**
- * Architecture §3.1: the passkey next to the password in the identity model of decision 0002, and what
- * an assertion proves (§3.2).
+ * Architecture §3.1, §3.2, Decision 0002
  */
 final class PasskeyCredentialTest extends TestCase
 {
@@ -75,7 +74,7 @@ final class PasskeyCredentialTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §6.3.2: the credential ID is what a party presents a passkey by.
+     * WebAuthn Level 3 §6.3.2
      */
     #[Test]
     public function itIsPresentedByItsCredentialId(): void
@@ -89,8 +88,7 @@ final class PasskeyCredentialTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §5.8.4: how the passkey is reached is what its authenticator declared, in the order it
-     * declared it, of the transports the specification defines; another value stays in the record (§5.2.1).
+     * WebAuthn Level 3 §5.8.4, §5.2.1
      */
     #[Test]
     public function itIsReachedThroughTheTransportsTheSpecificationDefines(): void
@@ -106,9 +104,6 @@ final class PasskeyCredentialTest extends TestCase
         static::assertSame(['hybrid', 'cable', 'internal', 'usb'], $passkey->transports);
     }
 
-    /**
-     * The public key is the only key material: no property of the class, public or not, holds anything else.
-     */
     #[Test]
     public function itHoldsThePublicKeyAndNoPrivateMember(): void
     {
@@ -145,9 +140,7 @@ final class PasskeyCredentialTest extends TestCase
     }
 
     /**
-     * RFC 8176 §2 against the flags of WebAuthn Level 3 §6.1: the backup eligibility of the enrolment
-     * tells a synced passkey from a device-bound key (§6.1.3, the flag of a credential never changing),
-     * the user presence flag of the assertion says a user was there.
+     * RFC 8176 §2, WebAuthn Level 3 §6.1, §6.1.3
      *
      * @return iterable<string, array{bool, AuthenticatorData, list<string>}>
      */
@@ -160,7 +153,7 @@ final class PasskeyCredentialTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §6.2.3, NIST SP 800-63B §3.1.7.1: a verified user unlocked the key with a second factor.
+     * WebAuthn Level 3 §6.2.3, NIST SP 800-63B §3.1.7.1
      */
     #[Test]
     public function aVerifiedUserAddsTheMultipleFactorsMethod(): void
@@ -176,9 +169,7 @@ final class PasskeyCredentialTest extends TestCase
     }
 
     /**
-     * Architecture §4.3: before any ceremony, a passkey may prove the key as its backup eligibility says
-     * and the presence of the user, which WebAuthn Level 3 §7.2 (step 16) requires of every assertion;
-     * not "mfa", which the authenticator decides at each assertion.
+     * Architecture §4.3, WebAuthn Level 3 §7.2 step 16
      */
     #[Test]
     #[DataProvider('provideBackupEligibility')]
@@ -200,9 +191,6 @@ final class PasskeyCredentialTest extends TestCase
         yield 'synced passkey' => [true, 'swk'];
     }
 
-    /**
-     * A revoked passkey authenticates nobody: it may prove nothing, and a step-up does not count on it.
-     */
     #[Test]
     public function aRevokedOneMayProveNothing(): void
     {
@@ -239,7 +227,7 @@ final class PasskeyCredentialTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §6.1.1; the CheckCounter step of webauthn-lib skips the check when both are zero.
+     * WebAuthn Level 3 §6.1.1
      *
      * @return iterable<string, array{int, int, bool}>
      */
@@ -254,8 +242,7 @@ final class PasskeyCredentialTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §7.2 (step 26) and §6.1.4: the backup state is the latest value of the BS flag,
-     * the backup eligibility the one of the creation, which the use leaves where it is.
+     * WebAuthn Level 3 §7.2 step 26, §6.1.4
      */
     #[Test]
     public function aUseRecordsTheCountTheBackupStateAndTheDate(): void
@@ -275,9 +262,7 @@ final class PasskeyCredentialTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §6.1.3: "The value of the BE flag is set during authenticatorMakeCredential
-     * operation and MUST NOT change", so an assertion that carries another one is refused and the stored
-     * flag, which says what the key is, is never written over.
+     * WebAuthn Level 3 §6.1.3
      */
     #[Test]
     #[DataProvider('provideFlippedBackupEligibility')]

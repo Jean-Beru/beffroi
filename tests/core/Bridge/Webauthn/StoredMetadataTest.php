@@ -15,10 +15,6 @@ use function strtoupper;
 use Webauthn\MetadataService\Statement\AuthenticatorStatus;
 use Webauthn\MetadataService\Statement\StatusReport;
 
-/**
- * The metadata of the store as the ceremonies read it: by AAGUID, with the status reports in the order
- * the service issued them.
- */
 final class StoredMetadataTest extends TestCase
 {
     private const string AAGUID = '2fc0579f-8113-47ea-b116-bb5a8db9202a';
@@ -66,8 +62,7 @@ final class StoredMetadataTest extends TestCase
     }
 
     /**
-     * FIDO Metadata Statement v3.1 §4 does not require userVerificationDetails: a statement that leaves it
-     * out describes its authenticator all the same, and the ceremonies find it by its AAGUID (issue #910).
+     * FIDO Metadata Statement v3.1 §4
      */
     #[Test]
     public function aStatementThatLeavesOutTheUserVerificationDetailsIsFoundByItsAaguid(): void
@@ -84,10 +79,6 @@ final class StoredMetadataTest extends TestCase
         static::assertSame('Passkey provider', $statement?->description);
     }
 
-    /**
-     * The other way round: a document that spells an AAGUID in upper case describes the authenticator
-     * whose data spell it in lower case, as webauthn-lib reads them.
-     */
     #[Test]
     public function aDocumentSpellingAnAaguidInUpperCaseIsFoundByTheLowerCaseSpelling(): void
     {
@@ -156,8 +147,7 @@ final class StoredMetadataTest extends TestCase
     }
 
     /**
-     * An entry that names its authenticator by attestation certificate key identifiers and not by AAGUID
-     * (FIDO Metadata Service v3.1.1 §3.1.1, a U2F authenticator): nothing to find it by here.
+     * FIDO Metadata Service v3.1.1 §3.1.1
      */
     #[Test]
     public function anEntryWithoutAaguidIsIgnored(): void
@@ -175,9 +165,6 @@ final class StoredMetadataTest extends TestCase
         static::assertNull($statement);
     }
 
-    /**
-     * Read once and kept for the life of the process: what the store gets afterwards waits for the next.
-     */
     #[Test]
     public function theStoreIsReadOnce(): void
     {

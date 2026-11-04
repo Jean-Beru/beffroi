@@ -17,10 +17,6 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * The password already posed, looked up and marked (issue #552): what the lane does with the digest the
- * login handed it, off the login path.
- */
 final class BreachedPasswordLookupTest extends TestCase
 {
     private const string A_PASSWORD = 'correct horse battery staple';
@@ -69,10 +65,6 @@ final class BreachedPasswordLookupTest extends TestCase
         static::assertEquals($this->clock->now(), $this->credential->breachCheckedAt);
     }
 
-    /**
-     * It is the prefix of the digest it was handed that goes out, and nothing of the password: the lane
-     * never held one.
-     */
     #[Test]
     public function theDigestItWasHandedIsWhatTheListIsAskedAbout(): void
     {
@@ -86,10 +78,6 @@ final class BreachedPasswordLookupTest extends TestCase
         static::assertSame([PasswordDigest::of(self::A_PASSWORD)->value], $breaches->asked);
     }
 
-    /**
-     * A deployment that names no list marks nothing, not even as checked: the credential stays due, so
-     * the day a list is named it is asked about.
-     */
     #[Test]
     public function aDeploymentThatNamesNoListMarksNothing(): void
     {
@@ -102,8 +90,7 @@ final class BreachedPasswordLookupTest extends TestCase
     }
 
     /**
-     * An unknown leaves the credential alone and is the lane's to try again: it is not a count of zero
-     * (decision 0006).
+     * Decision 0006
      */
     #[Test]
     public function aListThatCouldNotBeAskedLeavesTheCredentialAlone(): void

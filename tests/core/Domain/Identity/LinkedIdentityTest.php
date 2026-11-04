@@ -16,8 +16,7 @@ use Symfony\Component\Uid\Uuid;
 final class LinkedIdentityTest extends TestCase
 {
     /**
-     * Decision 0002: the pair (provider, subject) is what the user is recognised by; the claims are the
-     * last snapshot received.
+     * Decision 0002
      */
     #[Test]
     public function itRecordsTheUpstreamIdentityOfAUser(): void

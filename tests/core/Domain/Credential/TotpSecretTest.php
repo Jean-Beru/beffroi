@@ -13,7 +13,7 @@ use function str_repeat;
 use function strlen;
 
 /**
- * RFC 4226 §4: the shared secret of a TOTP, 160 bits drawn at random, at least 128.
+ * RFC 4226 §4
  */
 final class TotpSecretTest extends TestCase
 {

@@ -19,11 +19,6 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #453: the archive is assembled off the request, from the chapters that are wired and from no table
- * this use case knows. It is built once, because an archive answers the question asked at the moment it
- * was asked.
- */
 final class ArchiveAssemblyTest extends TestCase
 {
     #[Test]
@@ -40,10 +35,6 @@ final class ArchiveAssemblyTest extends TestCase
         static::assertSame([['name' => 'engineering']], self::read($archive)['groups']);
     }
 
-    /**
-     * What the document says of itself, which no chapter may take: the archive, its tenant, the person it
-     * is of, and the three dates of its life.
-     */
     #[Test]
     public function theDocumentSaysWhatItIsAndWhoItIsOf(): void
     {
@@ -68,10 +59,6 @@ final class ArchiveAssemblyTest extends TestCase
         );
     }
 
-    /**
-     * A chapter is a key of the document, in the order the chapters are wired, so a reader of the file
-     * finds the same shape whatever the deployment wired.
-     */
     #[Test]
     public function theDocumentHoldsTheChaptersInTheOrderTheyAreWired(): void
     {
@@ -86,9 +73,6 @@ final class ArchiveAssemblyTest extends TestCase
         static::assertSame([ArchiveAssembly::ABOUT, 'profile', 'journal'], array_keys(self::read($archive)));
     }
 
-    /**
-     * A retry of the message that builds an archive finds the row done, and does not build it again.
-     */
     #[Test]
     public function anArchiveAlreadyBuiltIsLeftAlone(): void
     {
@@ -104,10 +88,6 @@ final class ArchiveAssemblyTest extends TestCase
         static::assertSame('{"was":"here"}', $archive->content);
     }
 
-    /**
-     * A row that expired while its message waited is not built: what it would hold is a file nobody may
-     * download any more.
-     */
     #[Test]
     public function anArchiveThatExpiredBeforeItsTurnIsNotBuilt(): void
     {
@@ -135,9 +115,6 @@ final class ArchiveAssemblyTest extends TestCase
         static::assertSame(0, $archives->count());
     }
 
-    /**
-     * An archive of another tenant is nothing here, as a row of another tenant is everywhere else.
-     */
     #[Test]
     public function anArchiveOfAnotherTenantIsNotBuilt(): void
     {

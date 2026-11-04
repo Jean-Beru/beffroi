@@ -15,9 +15,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * How long a key of a use holds the JWK Set open once another key has taken over (architecture §3.3): the
- * one reading of the kinds of artifact the tenant binds to a key, which the take-over and the succession
- * both ask for.
+ * Architecture §3.3
  */
 final class RetirementWindowTest extends TestCase
 {
@@ -48,9 +46,6 @@ final class RetirementWindowTest extends TestCase
         );
     }
 
-    /**
-     * A kind the tenant neither issues nor reads holds nothing back.
-     */
     #[Test]
     public function aKindTheTenantDoesNotIssueIsIgnored(): void
     {
@@ -64,10 +59,6 @@ final class RetirementWindowTest extends TestCase
         );
     }
 
-    /**
-     * A tenant with nothing bound to a key of that use has no window at all: the key is due the moment it
-     * stops working.
-     */
     #[Test]
     public function aTenantWithNothingBoundToAKeyOfThatUseGetsNoWindow(): void
     {
@@ -78,10 +69,6 @@ final class RetirementWindowTest extends TestCase
         static::assertEquals($this->retiringAt, $window->dueAt($this->tenant, KeyUse::Signature, $this->retiringAt));
     }
 
-    /**
-     * Issue #164: the two uses do not share a window. A key that signs retires on what the provider
-     * signed, and never on what a client may still be encrypting to another key.
-     */
     #[Test]
     public function aKindOfTheOtherUseIsIgnored(): void
     {

@@ -16,16 +16,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The provider keeps the material it opened for the life of the process (architecture §3.3). What the KMS
- * binds to a tenant, through the additional authenticated data of the envelope, the memory of the
- * provider binds too: a "kid" is the RFC 7638 thumbprint of the public key, so two tenants that hold the
- * same material name it the same, and the name alone does not say whose key it is.
+ * Architecture §3.3, RFC 7638
  */
 final class SealedKeyProviderTest extends TestCase
 {
     /**
-     * RFC 7517 §4.5: the "kid" names a key, it does not say whose. Two tenants holding the same material
-     * have the same one, and each is answered with its own key, opened under its own envelope.
+     * RFC 7517 §4.5
      */
     #[Test]
     public function aKeyOpenedForOneTenantIsNeverTheAnswerForAnother(): void
@@ -46,9 +42,6 @@ final class SealedKeyProviderTest extends TestCase
         static::assertTrue($answer->key->tenant->equals($globex));
     }
 
-    /**
-     * The same material sealed for that tenant, active, as a rotation leaves it.
-     */
     private static function activeKey(Tenant $tenant, GeneratedKeyPair $pair): TenantKey
     {
         $now = Fixtures::now();

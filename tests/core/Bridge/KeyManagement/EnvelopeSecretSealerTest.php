@@ -31,8 +31,7 @@ use Symfony\Component\KeyManagement\Local\SodiumKms;
 use Throwable;
 
 /**
- * Architecture §3.3: the shared secrets of the users sealed under the KMS of the tenant like the signing
- * keys, in an envelope of their own use.
+ * Architecture §3.3
  */
 final class EnvelopeSecretSealerTest extends TestCase
 {
@@ -72,9 +71,6 @@ final class EnvelopeSecretSealerTest extends TestCase
         static::assertNotSame(Totps::sealer()->seal($this->tenant, Totps::SEED), Totps::sealer()->seal($this->tenant, Totps::SEED));
     }
 
-    /**
-     * The envelope is bound to its tenant: under the same KMS key, it does not open for another one.
-     */
     #[Test]
     public function aSecretSealedForOneTenantDoesNotOpenForAnother(): void
     {
@@ -89,10 +85,6 @@ final class EnvelopeSecretSealerTest extends TestCase
         Totps::sealer()->unseal(Fixtures::tenant('globex', 'https://id.globex.example'), $sealed);
     }
 
-    /**
-     * The envelope is bound to its use: under the same KMS key and for the same tenant, the envelope of a
-     * signing key is not a secret, and a secret is not a signing key.
-     */
     #[Test]
     public function theEnvelopeOfATenantKeyDoesNotOpenAsASecret(): void
     {
@@ -106,10 +98,6 @@ final class EnvelopeSecretSealerTest extends TestCase
         Totps::sealer()->unseal($this->tenant, $sealedKey);
     }
 
-    /**
-     * The use is in the authenticated data, not the tenant alone: an envelope bound to the slug only,
-     * whatever wrote it, is not a secret of the provider.
-     */
     #[Test]
     public function anEnvelopeBoundToTheTenantAloneDoesNotOpenAsASecret(): void
     {
@@ -136,9 +124,6 @@ final class EnvelopeSecretSealerTest extends TestCase
         Keys::sealer()->unseal($this->tenant, $sealedSecret);
     }
 
-    /**
-     * "{tenant}" in the KMS key identifier names one master key per tenant, as for the signing keys.
-     */
     #[Test]
     public function theKmsKeyIsNamedFromTheTenant(): void
     {
@@ -155,10 +140,6 @@ final class EnvelopeSecretSealerTest extends TestCase
         static::assertSame(Totps::SEED, $sealer->unseal($this->tenant, $sealed));
     }
 
-    /**
-     * A KMS that holds no master key for the tenant serves nothing of it: an outage of the tenant, until an
-     * operator gives the KMS its key, not a wrong input.
-     */
     #[Test]
     public function aTenantWithoutItsKmsKeyCannotSeal(): void
     {
@@ -186,11 +167,6 @@ final class EnvelopeSecretSealerTest extends TestCase
         Totps::sealer()->unseal($this->tenant, 'not an envelope');
     }
 
-    /**
-     * Issue #128: a KMS that does not answer or refuses to serve is an outage, told from an envelope it
-     * refuses; what the bridges of symfony/key-management throw when they cannot reach the KMS, when it
-     * answers an error, or when it does not hold the master key.
-     */
     #[Test]
     #[DataProvider('provideOutagesOfTheKms')]
     public function aKmsThatDoesNotAnswerAtOpeningIsAnOutage(Throwable $whatTheKmsThrew): void
@@ -237,10 +213,6 @@ final class EnvelopeSecretSealerTest extends TestCase
         }
     }
 
-    /**
-     * What the component refuses as an envelope, or cannot do by configuration, is no outage: a bug or an
-     * attack, as before issue #128; so is a failure that is not the component's.
-     */
     #[Test]
     #[DataProvider('provideRefusalsThatAreNoOutage')]
     public function whatTheKmsRefusesAsAnEnvelopeIsNoOutage(Throwable $whatTheKmsThrew): void

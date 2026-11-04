@@ -12,8 +12,7 @@ use PHPUnit\Framework\TestCase;
 final class Base64UrlTest extends TestCase
 {
     /**
-     * RFC 4648 §10 test vectors, with the padding of §5 removed, and RFC 7515 appendix C: the alphabet
-     * uses "-" and "_" where base64 uses "+" and "/".
+     * RFC 4648 §10, §5, RFC 7515 appendix C
      */
     #[Test]
     #[DataProvider('provideVectors')]
@@ -48,9 +47,7 @@ final class Base64UrlTest extends TestCase
     }
 
     /**
-     * What a store reads out of a column it did not write is a text somebody else may have written. The
-     * alphabet is the one of §5: the standard one of §4 and the padding it defines are another text, and
-     * a text that is not base64url is not read as if it were.
+     * RFC 4648 §4, §5
      */
     #[Test]
     #[DataProvider('provideTextsThatAreNotBase64Url')]

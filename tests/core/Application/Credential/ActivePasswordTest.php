@@ -12,8 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Architecture §3.1: a person holds one password, replaced and never revoked, and this is the one place
- * that says which row it is.
+ * Architecture §3.1
  */
 final class ActivePasswordTest extends TestCase
 {
@@ -39,11 +38,6 @@ final class ActivePasswordTest extends TestCase
         static::assertSame($password, $this->activePassword->of($alice));
     }
 
-    /**
-     * Somebody who signs in by passkey alone holds no password, which is what every caller asks this for:
-     * the page of the account says they hold none, a login refuses, and an operator writing one for them
-     * writes a first one.
-     */
     #[Test]
     public function aPersonWhoSignsInByAnotherMeansHoldsNone(): void
     {

@@ -16,8 +16,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §5.2: the person whose browsers may be pushed to names one of them from the page of their
- * account, and names it again.
+ * Architecture §5.2
  */
 final class PushSubscriptionNamingTest extends TestCase
 {
@@ -48,10 +47,6 @@ final class PushSubscriptionNamingTest extends TestCase
         static::assertSame('Alice at home', $subscriptions->find($subscription->id)?->label);
     }
 
-    /**
-     * A name that is the one it already holds changes nothing and writes nothing: a line somebody tabbed
-     * out of is not a row to save.
-     */
     #[Test]
     public function aNameItAlreadyHoldsWritesNothing(): void
     {
@@ -63,10 +58,6 @@ final class PushSubscriptionNamingTest extends TestCase
         new PushSubscriptionNaming($subscriptions)->rename($this->subscription(), 'Alice at the counter');
     }
 
-    /**
-     * What a browser may be called is the rule of the row that holds it, and a name it would refuse is
-     * never written.
-     */
     #[Test]
     public function aNameABrowserDoesNotHoldIsRefusedAndWritesNothing(): void
     {

@@ -12,8 +12,7 @@ use Beffroi\Core\Domain\Session\SingleFactor;
 use Beffroi\Core\Domain\Session\TwoFactors;
 
 /**
- * The authentication predicates the tests wire (decision 0010): the four the provider wires, in the order
- * it wires them, strongest first, which is the order the default policy of the core answers in.
+ * Decision 0010
  */
 final readonly class Predicates
 {

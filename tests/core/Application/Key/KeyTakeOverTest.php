@@ -30,9 +30,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * The second step of the life of a key (OIDC Core §10.1.1, architecture §3.3): the staged key signs from
- * now on, the one it takes over from stays published while a JWS it signed can be alive, and a compromised
- * key leaves the JWK Set in the same call.
+ * OIDC Core §10.1.1, Architecture §3.3
  */
 final class KeyTakeOverTest extends TestCase
 {
@@ -98,9 +96,6 @@ final class KeyTakeOverTest extends TestCase
         );
     }
 
-    /**
-     * The timed step of the staging window: a key past its activation date is activated, and not before.
-     */
     #[Test]
     public function activateDueActivatesAKeyPastItsActivationDate(): void
     {
@@ -139,9 +134,6 @@ final class KeyTakeOverTest extends TestCase
         static::assertSame($first, $this->repository->findActive($this->tenant, Algorithms::rs256()));
     }
 
-    /**
-     * Two keys due in the same tick: both are activated in creation order, the last one signs.
-     */
     #[Test]
     public function activateDueActivatesEveryDueKeyTheLastOneSigning(): void
     {
@@ -194,10 +186,6 @@ final class KeyTakeOverTest extends TestCase
         static::assertCount(1, $this->events->of(TenantKeyRotated::class));
     }
 
-    /**
-     * The retirement window opens: the previous key is due once the longest JWS the tenant issues, signed
-     * a moment before the activation, has expired (RetirementWindow).
-     */
     #[Test]
     public function activatingAStagedKeyStartsRetiringTheActiveOne(): void
     {
@@ -315,9 +303,6 @@ final class KeyTakeOverTest extends TestCase
         static::assertSame(Keys::otherPair()->privateJwk, $active->privateJwk);
     }
 
-    /**
-     * The compromise path: no window, the previous key is out of the JWK Set at once.
-     */
     #[Test]
     public function aRotationForACompromiseRetiresThePreviousKeyAtOnce(): void
     {
@@ -363,10 +348,6 @@ final class KeyTakeOverTest extends TestCase
         static::assertSame([], $this->events->of(TenantKeyRetired::class));
     }
 
-    /**
-     * Every state of the lifecycle is the same whatever the algorithm: a tenant that signs EdDSA rotates
-     * its Ed25519 keys the way it rotates its RSA ones, and the keys of one algorithm ignore the other.
-     */
     #[Test]
     public function aKeyOfAnotherAlgorithmRotatesTheSameWay(): void
     {

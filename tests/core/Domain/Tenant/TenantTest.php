@@ -50,9 +50,6 @@ final class TenantTest extends TestCase
         static::assertFalse(Fixtures::tenant()->look->isDeclared());
     }
 
-    /**
-     * Issue #449: what the pages show of the tenant is replaced whole, as its "acr" vocabulary is.
-     */
     #[Test]
     public function itAdoptsTheLookOfItsPages(): void
     {

@@ -14,11 +14,6 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #453: an archive expires, and what forgets it reads no duration. Every row carries the date it
- * goes away on, set when the person asked for it, so there is nothing for a deployment to say about how
- * long the one file where every sealed column stands in clear at once is kept.
- */
 final class ArchiveRetentionTest extends TestCase
 {
     #[Test]
@@ -51,9 +46,6 @@ final class ArchiveRetentionTest extends TestCase
         static::assertSame(1, $archives->count());
     }
 
-    /**
-     * An archive of another tenant is not this tenant's to forget, as it is not its to read.
-     */
     #[Test]
     public function anArchiveOfAnotherTenantIsNotForgotten(): void
     {

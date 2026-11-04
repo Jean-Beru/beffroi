@@ -9,10 +9,6 @@ use Webauthn\AttestationStatement\AttestationStatementSupport;
 use Webauthn\AuthenticatorData;
 use Webauthn\TrustPath\EmptyTrustPath;
 
-/**
- * A format that gives the answer it is built with, loads one statement whatever it is handed, and counts the
- * statements it is asked to verify.
- */
 final class RecordingAttestationStatementSupport implements AttestationStatementSupport
 {
     public readonly AttestationStatement $loaded;

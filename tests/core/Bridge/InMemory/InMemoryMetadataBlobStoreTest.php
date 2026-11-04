@@ -10,10 +10,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * The port of the metadata store as the tests of the core see it: by name, in the order of the names,
- * the alphabet of a name the one of the file store.
- */
 final class InMemoryMetadataBlobStoreTest extends TestCase
 {
     #[Test]

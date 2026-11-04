@@ -20,10 +20,6 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Clock\MockClock;
 
-/**
- * Issue #613: the ticket an administrator issues so that a person with nothing to sign in with reaches
- * one enrolment. The value is drawn here and read nowhere again; the row holds its hash.
- */
 final class EnrolmentTicketIssueTest extends TestCase
 {
     private User $alice;
@@ -66,10 +62,6 @@ final class EnrolmentTicketIssueTest extends TestCase
         static::assertSame($issued->ticket, $this->tickets->find($issued->ticket->id));
     }
 
-    /**
-     * Seventy-two hours, which covers a weekend between the day a ticket is issued and the day somebody
-     * starts.
-     */
     #[Test]
     public function aTicketOpensItsEnrolmentForSeventyTwoHours(): void
     {
@@ -93,10 +85,6 @@ final class EnrolmentTicketIssueTest extends TestCase
         static::assertSame($this->alice->subject, $acts[0]->subject());
     }
 
-    /**
-     * One person holds one usable ticket at a time: a link handed over twice is one link, and a link
-     * forgotten in a mailbox stops opening anything the day another is issued.
-     */
     #[Test]
     public function aSecondTicketTakesTheFirstAway(): void
     {
@@ -111,10 +99,6 @@ final class EnrolmentTicketIssueTest extends TestCase
         static::assertSame([$second->ticket], $this->tickets->unspentOf($this->alice));
     }
 
-    /**
-     * Every unspent ticket of that person goes and not only the newest: a run interrupted between the
-     * forgetting and the saving leaves two, and the next issuing takes them all.
-     */
     #[Test]
     public function everyUnspentTicketOfThatPersonGoes(): void
     {
@@ -138,9 +122,6 @@ final class EnrolmentTicketIssueTest extends TestCase
         static::assertNull($this->tickets->find($second->id));
     }
 
-    /**
-     * A ticket of somebody else is not taken away: the walk reads one person.
-     */
     #[Test]
     public function theTicketOfAnotherPersonIsLeftWhereItIs(): void
     {
@@ -155,9 +136,6 @@ final class EnrolmentTicketIssueTest extends TestCase
         static::assertSame($theirs->ticket, $this->tickets->find($theirs->ticket->id));
     }
 
-    /**
-     * A ticket already spent is a trace of what happened and not a link: issuing another leaves it.
-     */
     #[Test]
     public function aTicketAlreadySpentIsLeftWhereItIs(): void
     {
@@ -197,7 +175,6 @@ final class EnrolmentTicketIssueTest extends TestCase
         try {
             $this->issue->issue($this->alice, Fixtures::context($this->clock->now()));
         } catch (EnrolmentTicketRefusedException) {
-            // the refusal is read by the test above
         }
 
         // Then

@@ -11,9 +11,6 @@ use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Uid\UuidV4;
 use Symfony\Component\Uid\UuidV7;
 
-/**
- * The identifiers a test writes down: what it wrote first, then a sequence that repeats nothing.
- */
 final class FixedUuidGeneratorTest extends TestCase
 {
     #[Test]
@@ -37,9 +34,6 @@ final class FixedUuidGeneratorTest extends TestCase
         static::assertFalse($uuids->timeOrdered()->equals($uuids->timeOrdered()));
     }
 
-    /**
-     * What it draws on its own is ordered in time, as the port asks of the identifier of a row.
-     */
     #[Test]
     public function whatItDrawsAsTimeOrderedIsAVersionSevenUuid(): void
     {
@@ -47,9 +41,6 @@ final class FixedUuidGeneratorTest extends TestCase
         static::assertInstanceOf(UuidV7::class, new FixedUuidGenerator()->timeOrdered());
     }
 
-    /**
-     * What it draws on its own says nothing of when it was drawn, as the port asks of an opaque one.
-     */
     #[Test]
     public function whatItDrawsAsOpaqueIsAVersionFourUuid(): void
     {

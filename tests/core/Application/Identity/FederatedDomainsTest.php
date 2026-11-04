@@ -17,8 +17,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Decision 0029, spec/saml.md S-60 to S-63: the domains of a tenant federated to an upstream provider, where the
- * login page sends an address of one, and whom no local credential signs in.
+ * Decision 0029, spec/saml.md S-60 to S-63
  */
 final class FederatedDomainsTest extends TestCase
 {
@@ -40,7 +39,7 @@ final class FederatedDomainsTest extends TestCase
     }
 
     /**
-     * S-61: the login page asks for an address first when the tenant declares an upstream provider.
+     * S-61
      */
     #[Test]
     public function aTenantThatDeclaresAnUpstreamProviderFederates(): void
@@ -50,7 +49,7 @@ final class FederatedDomainsTest extends TestCase
     }
 
     /**
-     * S-61: a tenant that declares none shows the usual login page.
+     * S-61
      */
     #[Test]
     public function aTenantThatDeclaresNoUpstreamProviderFederatesNothing(): void
@@ -60,8 +59,7 @@ final class FederatedDomainsTest extends TestCase
     }
 
     /**
-     * S-61: an address is sent to the one provider of its domain, and nowhere when no provider answers for it; a
-     * value without an "@" is a username, of no domain.
+     * S-61
      */
     #[Test]
     #[DataProvider('provideIdentifiers')]
@@ -83,8 +81,7 @@ final class FederatedDomainsTest extends TestCase
     }
 
     /**
-     * S-61, S-44: an address whose domain the rule does not read is refused, and never taken for an address of a
-     * domain nobody federates.
+     * S-61, S-44
      */
     #[Test]
     public function anAddressWhoseDomainTheRuleDoesNotReadIsRefused(): void
@@ -98,8 +95,7 @@ final class FederatedDomainsTest extends TestCase
     }
 
     /**
-     * S-63: a person whose mailbox or username is of a federated domain is admitted no local credential, nor one an
-     * address of whom the rule does not read on a tenant that federates; anybody else is.
+     * S-63
      */
     #[Test]
     #[DataProvider('providePersons')]
@@ -129,7 +125,7 @@ final class FederatedDomainsTest extends TestCase
     }
 
     /**
-     * S-63: a tenant that federates nothing admits every local credential, whatever the addresses of a person.
+     * S-63
      */
     #[Test]
     public function aTenantThatFederatesNothingAdmitsEveryLocalCredential(): void

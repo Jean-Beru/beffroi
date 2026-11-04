@@ -22,7 +22,7 @@ use function str_pad;
 use const STR_PAD_LEFT;
 
 /**
- * A P-256 key signing in ES256 (RFC 9053 §2.1), what a platform authenticator and a hardware key create first.
+ * RFC 9053 §2.1
  */
 final readonly class Es256SoftwareKey implements SoftwareCredentialKey
 {
@@ -55,7 +55,7 @@ final readonly class Es256SoftwareKey implements SoftwareCredentialKey
             throw new LogicException('OpenSSL could not describe the key.');
         }
 
-        // RFC 9053 §7.1.1: kty EC2 (1: 2), alg ES256 (3: -7), crv P-256 (-1: 1), x (-2), y (-3)
+        // RFC 9053 §7.1.1: kty EC2 (1: 2), alg ES256 (3: -7), crv P-256 (-1: 1), x (-2), y (-3).
         return (string) MapObject::create([
             MapItem::create(UnsignedIntegerObject::create(1), UnsignedIntegerObject::create(2)),
             MapItem::create(UnsignedIntegerObject::create(3), NegativeIntegerObject::create($this->algorithm())),

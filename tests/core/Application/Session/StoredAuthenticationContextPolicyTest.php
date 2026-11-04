@@ -15,9 +15,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Decision 0010: the document the "acr" policy of a tenant is kept as, read back without a connection. A
- * predicate is written under the name it gives itself and read back as the class the wiring holds for that
- * name, so the wiring is an argument and a name nothing wired carries is refused rather than guessed.
+ * Decision 0010
  */
 final class StoredAuthenticationContextPolicyTest extends TestCase
 {
@@ -29,9 +27,6 @@ final class StoredAuthenticationContextPolicyTest extends TestCase
     }
 
     /**
-     * A list and not an object keyed by name: "1" and "2" are names, and a JSON object key that looks
-     * like a number comes back as an integer.
-     *
      * @param array<string, mixed> $document
      */
     #[Test]

@@ -9,9 +9,7 @@ use const JSON_THROW_ON_ERROR;
 use Webauthn\MetadataService\Statement\AuthenticatorStatus;
 
 /**
- * Payloads of a Metadata BLOB (FIDO Metadata Service v3.1.1 §3.1.6) for the tests: one entry per
- * authenticator, with the statement an authenticator of the tests would have and the status reports the
- * test chooses.
+ * FIDO Metadata Service v3.1.1 §3.1.6
  */
 final class MetadataBlobs
 {
@@ -29,11 +27,10 @@ final class MetadataBlobs
     }
 
     /**
-     * @param list<string> $statuses the status reports, in the order the service issued them
+     * @param list<string> $statuses in the order the service issued them
      * @param list<string> $attestationRootCertificates DER in base64
-     * @param list<string> $omitting the members of the statement it leaves out, those FIDO Metadata Statement
-     *                               v3.1 §4 does not require
-     * @param string|null $icon the icon of the statement (§4), a data: URL, or none
+     * @param list<string> $omitting
+     * @param string|null $icon a data: URL
      *
      * @return array<string, mixed>
      */

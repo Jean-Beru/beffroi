@@ -45,8 +45,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §3.2: the login the password held is completed by a code, and the session is opened on
- * both methods at once, dated when the login ended.
+ * Architecture §3.2
  */
 final class LoginCompletionTest extends TestCase
 {
@@ -82,14 +81,12 @@ final class LoginCompletionTest extends TestCase
         $this->attempts = new FakeAttemptLimiter(5);
         $this->clock = new MockClock('2026-09-20T12:00:15+00:00');
         $this->upstreamProviders = new InMemoryUpstreamProviders();
-        // enrolled an hour ago: the step of its first code is long past
         $credentials->save(Totps::credential(
             $this->alice,
             $hasher,
             Totps::stepAt($this->clock->now()->modify('-1 hour')),
             createdAt: $this->clock->now()->modify('-1 hour'),
         ));
-        // the password was typed a minute ago
         $this->login = PendingLogin::provenAt($this->alice->id, [AuthenticationMethod::password()], $this->clock->now()->modify('-1 minute'));
         $this->completion = new LoginCompletion(
             new PendingLoginVerification(
@@ -137,10 +134,6 @@ final class LoginCompletionTest extends TestCase
         static::assertEquals($this->clock->now()->modify('+8 hours'), $session->expiresAt);
     }
 
-    /**
-     * The authentication took place when the code passed, in the sense of auth_time: the password of the
-     * first step is dated then too, not a minute earlier.
-     */
     #[Test]
     public function bothMethodsAreDatedWhenTheLoginEnds(): void
     {
@@ -159,10 +152,6 @@ final class LoginCompletionTest extends TestCase
         static::assertEquals($this->clock->now(), $session->authenticatedAt());
     }
 
-    /**
-     * The first step may have proven more than one method (a PIN and a smart card, say): all of them are
-     * carried onto the session, not the first one.
-     */
     #[Test]
     public function everythingTheFirstStepProvedIsCarriedOntoTheSession(): void
     {
@@ -228,9 +217,6 @@ final class LoginCompletionTest extends TestCase
         static::assertSame([], $this->sessions->findActiveByUser($this->alice, $this->clock->now()));
     }
 
-    /**
-     * Five minutes to type a code: past that, the first factor is proven again, and the code is not read.
-     */
     #[Test]
     public function anExpiredLoginIsRefusedBeforeTheCodeIsRead(): void
     {
@@ -250,8 +236,7 @@ final class LoginCompletionTest extends TestCase
     }
 
     /**
-     * Decision 0029, spec/saml.md S-63: a login held for a person whose domain the tenant has federated since, or
-     * whose address has moved into one, completes nothing, and the code is not read.
+     * Decision 0029, spec/saml.md S-63
      */
     #[Test]
     public function aLoginOfAPersonOfAFederatedDomainIsRefusedBeforeTheCodeIsRead(): void

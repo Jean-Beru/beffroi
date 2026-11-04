@@ -13,8 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * One page of a list and how long the list is (architecture §5.2): what a table shows, and what the control
- * under it says of where the reader is.
+ * Architecture §5.2
  */
 final class ListingTest extends TestCase
 {
@@ -105,9 +104,6 @@ final class ListingTest extends TestCase
     }
 
     /**
-     * What the control under a table offers: the first two pages, the one being read with its neighbours,
-     * the last two, and null where it skips some.
-     *
      * @param list<int|null> $offered
      */
     #[Test]

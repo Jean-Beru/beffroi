@@ -10,11 +10,6 @@ use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Issue #177: a grant and the login it was given on are kept for as long as an access token of that grant
- * can be presented, which is the absolute lifetime of a refresh token family and then the lifetime of the
- * last token that family can mint.
- */
 final class WhatATokenStillNeedsTest extends TestCase
 {
     #[Test]

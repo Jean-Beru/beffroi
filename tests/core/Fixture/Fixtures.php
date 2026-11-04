@@ -39,15 +39,8 @@ use Webauthn\MetadataService\CertificateChain\PhpCertificateChainValidator;
 
 final class Fixtures
 {
-    /**
-     * The address every provenance of the fixtures came from, read from here by whatever answers something
-     * of that address (GeoLocatorOfPlaces): two lists of the same address are two lists that disagree.
-     */
     public const string IP_ADDRESS = '203.0.113.10';
 
-    /**
-     * A handle of the shape an authenticator stores, for a test that does not care which.
-     */
     public static function userHandle(): PasskeyUserHandle
     {
         return new PasskeyUserHandle(new PlatformRandomness()->bytes(PasskeyUserHandle::LENGTH));
@@ -66,9 +59,6 @@ final class Fixtures
         return new Tenant(Uuid::v7(), $slug, new Issuer($issuer), 'Acme', self::now(), loginFloor: $loginFloor);
     }
 
-    /**
-     * A tenant that signs its users in by passkey and forbids the password (issue #327).
-     */
     public static function hardenedTenant(string $slug = 'acme'): Tenant
     {
         return self::tenant($slug, loginFloor: new PhishingResistant());
@@ -82,9 +72,6 @@ final class Fixtures
         return new RequestContext($receivedAt ?? self::now(), $ipAddress, $userAgent);
     }
 
-    /**
-     * @param AuthenticationProofs|null $proofs a password proven at the authentication instant when null
-     */
     public static function session(?User $user = null, ?DateTimeImmutable $authenticatedAt = null, ?AuthenticationProofs $proofs = null): AuthenticationSession
     {
         $user ??= self::user();
@@ -101,12 +88,6 @@ final class Fixtures
         );
     }
 
-    /**
-     * A password as somebody typed it, held to the length the floor of the logins of a tenant asks of it
-     * (PasswordLength): the floor of a tenant of these fixtures when none is given, which is the one a
-     * tenant that names none stands on and asks the longer of the two numbers of NIST SP 800-63B
-     * §3.1.1.2.
-     */
     public static function plainPassword(
         #[SensitiveParameter]
         string $value,
@@ -115,9 +96,6 @@ final class Fixtures
         return new PlainPassword($value, PasswordLength::under($floor ?? self::tenant()->loginFloor));
     }
 
-    /**
-     * A password, hashed by the fake hasher.
-     */
     public static function password(?User $user = null, ?DateTimeImmutable $createdAt = null): PasswordCredential
     {
         return new PasswordCredential(
@@ -129,10 +107,7 @@ final class Fixtures
     }
 
     /**
-     * A device-bound passkey, unused, with a handle of its own unless one is given.
-     *
-     * @param list<string> $transports what its authenticator declared (WebAuthn Level 3 §5.8.4)
-     * @param Uuid|null $aaguid the model its authenticator declared (§6), one drawn at random unless given
+     * @param list<string> $transports
      */
     public static function passkey(
         ?User $user = null,
@@ -162,7 +137,7 @@ final class Fixtures
     }
 
     /**
-     * The authenticator data of an assertion (WebAuthn Level 3 §6.1), its flags chosen by the test.
+     * WebAuthn Level 3 §6.1
      */
     public static function authenticatorData(
         bool $userPresent = true,
@@ -185,11 +160,6 @@ final class Fixtures
         return User::create(Uuid::v7(), $tenant ?? self::tenant(), new Subject($subject), $username, self::now());
     }
 
-    /**
-     * The ceremonies on the algorithms of the provider unless others are given, and on the metadata of a
-     * store, empty unless one is given; the chains are checked without a CRL fetched, as the library does
-     * when none can be.
-     */
     public static function ceremonies(
         ?MetadataBlobStoreInterface $metadata = null,
         ?ClockInterface $clock = null,

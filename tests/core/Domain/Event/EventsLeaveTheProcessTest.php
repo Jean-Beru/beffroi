@@ -63,17 +63,7 @@ use function unserialize;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §5.6: the events of the provider are handled asynchronously, so every one of them is
- * written to a queue, and an event that cannot be written is an event no broker can take. This is the
- * counterpart, for the events of the core, of what the module of the protocol has for its own.
- *
- * What it asks of each is the one thing a queue asks: that it survive leaving the process. An event of
- * this package carries a domain object only when that object leaves whole, which is why a credential is in
- * `CredentialEnrolled` and a tenant in every one of them, and why the two events of the data keys carry
- * the clients by the name the configuration gives them and never a client.
- *
- * Each case is built the way the thing that raises it builds it, which is the only way there is: an event
- * has no named constructor, so what a queue is asked to carry is what a call site wrote.
+ * Architecture §5.6
  */
 final class EventsLeaveTheProcessTest extends TestCase
 {
@@ -90,8 +80,6 @@ final class EventsLeaveTheProcessTest extends TestCase
         $password = Fixtures::password($user);
         $passkey = Fixtures::passkey($user);
         $totp = Totps::credential($user, new FakePasswordHasher());
-        // The event refuses a session that has not ended, so the case is built the way the use case that
-        // raises it builds it: after the end.
         $ended = Fixtures::session();
         $ended->end(SessionEnd::RelyingParty, $now);
 
@@ -106,19 +94,14 @@ final class EventsLeaveTheProcessTest extends TestCase
             'alice',
             $user,
         )];
-        // the subject of the person and the name of the provider, and never what that provider said of them
         yield 'a person an upstream provider created' => [new PersonProvisioned($now, $tenant, $user->subject, 'https://idp.acme.example/saml', $context)];
         yield 'a person who said something of themselves' => [new PersonDescribedThemselves($user, 'nickname', false, $now, $context)];
         yield 'a person who took something back' => [new PersonDescribedThemselves($user, 'nickname', true, $now, $context)];
-        // the identifier of the archive and never the archive, which holds in the clear everything this
-        // provider knows of a person (issue #453)
         yield 'a person who asked for their archive' => [new PersonAskedForTheirArchive($now, $tenant, Uuid::v7(), $user->subject, $context)];
         yield 'a person who took their archive' => [new PersonTookTheirArchive($now, $tenant, Uuid::v7(), $user->subject, $context)];
         yield 'a person who dropped their archive' => [new PersonDroppedTheirArchive($now, $tenant, Uuid::v7(), $user->subject, $context)];
         yield 'a credential enrolled' => [new CredentialEnrolled($passkey, $now, $context)];
         yield 'a credential revoked' => [new CredentialRevoked($passkey, $now, $context)];
-        // the row of this one is gone by the time the queue is read, which is why the act carries what it
-        // says of it (issue #327)
         yield 'a credential forgotten' => [new CredentialForgotten($password, $now, $context)];
         yield 'an enrolment ticket issued' => [new EnrolmentTicketIssued(
             new EnrolmentTicket(Uuid::v7(), $user, $password->hash, $now, $now->modify('+72 hours')),
@@ -162,10 +145,6 @@ final class EventsLeaveTheProcessTest extends TestCase
         static::assertInstanceOf($event::class, unserialize($written));
     }
 
-    /**
-     * An event this test does not carry to the queue is an event nothing says a broker can take, so the
-     * cases above are the events of the package and not a selection of them.
-     */
     #[Test]
     public function everyEventOfThePackageIsWrittenToTheQueue(): void
     {
@@ -180,10 +159,6 @@ final class EventsLeaveTheProcessTest extends TestCase
         static::assertSame($declared, $covered);
     }
 
-    /**
-     * A key of the tenant as a rotation leaves it: sealed, so that what goes to the queue carries an
-     * envelope and never a private half.
-     */
     private static function key(Tenant $tenant, DateTimeImmutable $now): TenantKey
     {
         $pair = Keys::pair();
@@ -217,8 +192,6 @@ final class EventsLeaveTheProcessTest extends TestCase
         foreach ($files as $candidate) {
             /** @var class-string $class */
             $class = $reflection->getNamespaceName() . '\\' . basename($candidate, '.php');
-            // an event is a class: an interface that says something of several of them is not one, and an
-            // enumeration a case of one carries is not one either
             if (class_exists($class) && is_a($class, DomainEventInterface::class, true)) {
                 $declared[] = $class;
             }

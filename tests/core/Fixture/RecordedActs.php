@@ -12,11 +12,6 @@ use function in_array;
 use function usort;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * The journal of the acts, as a test reads it (issue #454): a double of the reading port and not an
- * adapter of the Bridge, the writing side of the journal having one caller and that caller being the
- * integration.
- */
 final class RecordedActs implements ActsOfAPersonInterface
 {
     /**
@@ -57,7 +52,7 @@ final class RecordedActs implements ActsOfAPersonInterface
     }
 
     /**
-     * @param list<string>|null $named the names to keep, null for every act of that person
+     * @param list<string>|null $named
      *
      * @return list<JournalEntry>
      */

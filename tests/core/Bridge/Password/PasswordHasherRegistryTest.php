@@ -51,10 +51,6 @@ final class PasswordHasherRegistryTest extends TestCase
         static::assertFalse($registry->verify($imported, 'other'));
     }
 
-    /**
-     * An imported hash is re-hashed with the default algorithm after its first successful verification,
-     * whatever its own hasher thinks of its parameters.
-     */
     #[Test]
     public function aHashOfAnotherAlgorithmThanTheDefaultAlwaysNeedsARehash(): void
     {
@@ -88,9 +84,6 @@ final class PasswordHasherRegistryTest extends TestCase
         new PasswordHasherRegistry([new FakePbkdf2Hasher()], self::algorithms());
     }
 
-    /**
-     * The wiring of the suite: argon2id first, so it is what a new hash is made with.
-     */
     private static function algorithms(): WiredPasswordAlgorithms
     {
         return new WiredPasswordAlgorithms([new Argon2id(), new Argon2i(), new Bcrypt(), new Pbkdf2Sha256()]);
@@ -107,9 +100,6 @@ final class PasswordHasherRegistryTest extends TestCase
     }
 }
 
-/**
- * Stands for an import hasher: "verifies" by comparing the plain password with the digest prefix.
- */
 final class FakePbkdf2Hasher implements AlgorithmPasswordHasherInterface
 {
     public function supports(PasswordAlgorithmInterface $algorithm): bool

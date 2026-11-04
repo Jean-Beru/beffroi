@@ -16,8 +16,7 @@ use Webauthn\TrustPath\EmptyTrustPath;
 final class Rs1RefusingAttestationStatementSupportTest extends TestCase
 {
     /**
-     * Decision 0033, RFC 8812 §2: a statement signed with RS1 (COSE -65535) is refused before the format reads
-     * it, so the library never asks web-auth/cose-lib for SHA-1.
+     * Decision 0033, RFC 8812 §2
      */
     #[Test]
     #[DataProvider('provideTheIdentifierOfRs1')]
@@ -46,9 +45,6 @@ final class Rs1RefusingAttestationStatementSupportTest extends TestCase
     }
 
     /**
-     * A statement signed with another algorithm, or that names none, is the format's to verify, and its answer
-     * is the answer.
-     *
      * @param array<string, mixed> $statement
      */
     #[Test]

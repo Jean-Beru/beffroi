@@ -21,23 +21,8 @@ use ReflectionClass;
 use function sort;
 use function sprintf;
 
-/**
- * Issue #571: which acts of the journal are what happened to an account, the question the page of a person
- * asks of their own journal.
- *
- * An act of this package that names a person is read by that person on that page, so the list is held to
- * the events by a walk of them and not by a comment: an act added here is on the page, or is named below
- * as one that is not theirs to read, and the mapping that would be wrong is the one nobody edited.
- */
 final class ActsOfAnAccountTest extends TestCase
 {
-    /**
-     * The one act of this package that names a person and is not what happened to their account: this
-     * provider storing the same password under a stronger hash, which is a decision of the deployment
-     * about its own hashing and nothing the person did or would recognise (PasswordChanged is the act of
-     * the person). It is in the journal and in the archive all the same, where it answers a question an
-     * operator asks.
-     */
     private const array NOT_THEIRS = [
         PasswordRehashed::NAME => 'the provider rewriting a hash it had already accepted',
     ];
@@ -57,9 +42,6 @@ final class ActsOfAnAccountTest extends TestCase
     }
 
     /**
-     * The name of an act is the one the event gives itself, which is what the journal writes down: a list
-     * holding a name no event answers to is a filter that reads nothing.
-     *
      * @return list<string>
      */
     private static function actsNamingAPerson(): array
@@ -77,7 +59,6 @@ final class ActsOfAnAccountTest extends TestCase
         foreach ($files as $candidate) {
             /** @var class-string $class */
             $class = $reflection->getNamespaceName() . '\\' . basename($candidate, '.php');
-            // an act is a class: the interface that says a person is named is not one of them
             if (! class_exists($class) || ! is_a($class, ConcernsAPersonInterface::class, true)) {
                 continue;
             }
