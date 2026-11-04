@@ -33,6 +33,7 @@ final class SettingsFromTheEnvironmentTest extends KernelTestCase
         'BEFFROI_TEST_REFRESH_TOKEN_TTL',
         'BEFFROI_TEST_REFRESH_TOKEN_ABSOLUTE_TTL',
         'BEFFROI_TEST_STAGING_DELAY',
+        'BEFFROI_TEST_KEY_AGE',
         'BEFFROI_TEST_DPOP_NONCE_REQUIRED',
         'BEFFROI_TEST_DEVICE_CODE_INTERVAL',
         'BEFFROI_TEST_BACKCHANNEL_AUTHENTICATION_INTERVAL',
@@ -125,7 +126,7 @@ final class SettingsFromTheEnvironmentTest extends KernelTestCase
     }
 
     /**
-     * Issues #913 and #915: a value the tree refuses written, carried by the environment, refuses the build of
+     * Issues #913, #915 and #928: a value the tree refuses written, carried by the environment, refuses the build of
      * the service it reaches, whichever object holds the rule: the number (BoundedNumber), the record of a flow
      * that polls, the budget, the retry policy, the factory of the tenant, the handler of the SAML metadata, the
      * readings of a hint, the sender.
@@ -241,6 +242,20 @@ final class SettingsFromTheEnvironmentTest extends KernelTestCase
             'test.beffroi.tenant_factory',
             InvalidConfigurationException::class,
             'The "beffroi" configuration key "tenant.slug" is the stable name of the tenant, and it is empty.',
+        ];
+        yield 'a key that works no time' => [
+            'BEFFROI_TEST_KEY_AGE',
+            '0',
+            'test.beffroi.rotation_schedule',
+            InvalidConfigurationException::class,
+            'The "beffroi" configuration key "keys.age" is a number of seconds of at least 1, 0 given.',
+        ];
+        yield 'a key that works less than no time' => [
+            'BEFFROI_TEST_KEY_AGE',
+            '-5',
+            'test.beffroi.rotation_schedule',
+            InvalidConfigurationException::class,
+            'The "beffroi" configuration key "keys.age" is a number of seconds of at least 1, -5 given.',
         ];
         yield 'a SAML key staged for less than no time' => [
             'BEFFROI_TEST_SAML_STAGING_DELAY',
@@ -516,6 +531,25 @@ final class SettingsFromTheEnvironmentTest extends KernelTestCase
     {
         yield 'nothing' => ['', 180];
         yield 'a week' => ['604800', 604800];
+    }
+
+    /**
+     * Architecture §3.3: a key of the JOSE families works for the age the environment names before the planning
+     * stages a successor for it.
+     */
+    #[Test]
+    public function theAgeOfTheJoseKeysIsTheOneTheEnvironmentNames(): void
+    {
+        // Given
+        $_SERVER['BEFFROI_TEST_KEY_AGE'] = '86400';
+        self::bootKernel();
+
+        // When
+        $schedule = static::getContainer()->get('test.beffroi.rotation_schedule');
+
+        // Then
+        static::assertInstanceOf(RotationSchedule::class, $schedule);
+        static::assertSame(86_400, $schedule->age->s);
     }
 
     /**

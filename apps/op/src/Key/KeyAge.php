@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Key;
 
-use DateInterval;
-
 /**
  * How long a key works before the planning stages a successor for it (issue #455, architecture §3.3),
  * counted from its activation.
@@ -27,9 +25,4 @@ use DateInterval;
 final readonly class KeyAge
 {
     public const int DEFAULT_SECONDS = 7_776_000;
-
-    public static function interval(int $seconds): DateInterval
-    {
-        return new DateInterval('PT' . $seconds . 'S');
-    }
 }

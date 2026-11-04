@@ -274,12 +274,12 @@ final readonly class KeysSection extends ConfigurationSection
         // The schedule of the JOSE families, the keys of the JWK Set and the keys the tenant keeps
         // (issue #738): one service the four families of JoseKeyAlgorithms share, the SAML key having a
         // schedule of its own (SamlSection). The staging delay is derived at runtime, once the environment
-        // placeholders are numbers.
+        // placeholders are numbers, and the age is held to the floor of the tree when it is built.
         $services->set('beffroi.keys.rotation_schedule', RotationSchedule::class)->args([
             inline_service(DateInterval::class)
                 ->factory(StagingDelay::interval(...))
                 ->args([isset($keys['staging_delay']) ? self::integer($keys, 'staging_delay') : null, self::integer($keys, 'jwks_max_age')]),
-            inline_service(DateInterval::class)->factory(KeyAge::interval(...))->args([self::integer($keys, 'age')]),
+            self::bounded($keys, 'age', named: 'keys.age'),
         ]);
     }
 

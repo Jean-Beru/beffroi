@@ -165,14 +165,16 @@ parameters:
     # it when a service is built, and a test that plays one out of them names it before it boots a kernel.
     # Left alone, they are the defaults of the provider: sixty seconds for a code, ten minutes for an access
     # token and an ID token, thirty days for a refresh token and ninety for its family, a staging delay
-    # derived from the max-age, no nonce asked of a DPoP proof, five seconds between two polls of either flow,
-    # a minute for the window of either budget, and the subject web push is wired with.
+    # derived from the max-age, ninety days for a key to work, no nonce asked of a DPoP proof, five seconds
+    # between two polls of either flow, a minute for the window of either budget, and the subject web push is
+    # wired with.
     env(BEFFROI_TEST_AUTHORIZATION_CODE_TTL): 60
     env(BEFFROI_TEST_ACCESS_TOKEN_TTL): 600
     env(BEFFROI_TEST_ID_TOKEN_TTL): 600
     env(BEFFROI_TEST_REFRESH_TOKEN_TTL): 2592000
     env(BEFFROI_TEST_REFRESH_TOKEN_ABSOLUTE_TTL): 7776000
     env(BEFFROI_TEST_STAGING_DELAY): ''
+    env(BEFFROI_TEST_KEY_AGE): 7776000
     env(BEFFROI_TEST_DPOP_NONCE_REQUIRED): 'false'
     env(BEFFROI_TEST_DEVICE_CODE_INTERVAL): 5
     env(BEFFROI_TEST_BACKCHANNEL_AUTHENTICATION_INTERVAL): 5
@@ -287,6 +289,7 @@ beffroi:
         storage: '%kernel.cache_dir%/keys'
         jwks_max_age: 120
         staging_delay: '%env(BEFFROI_TEST_STAGING_DELAY)%'
+        age: '%env(int:BEFFROI_TEST_KEY_AGE)%'
     tokens:
         authorization_code_ttl: '%env(int:BEFFROI_TEST_AUTHORIZATION_CODE_TTL)%'
         access_token_ttl: '%env(int:BEFFROI_TEST_ACCESS_TOKEN_TTL)%'
