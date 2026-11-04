@@ -16,7 +16,7 @@ php-version = "8.4"
 
 [source]
 # The paths ECS covered, the configurations of the other tools included.
-paths = ["src", "apps/op/src", "apps/op/config/beffroi", "apps/op/migrations", "tests", "castor.php", ".castor", ".ci-tools/rector.php"]
+paths = ["src", "apps/op/src", "apps/op/config/beffroi", "apps/op/migrations", "apps/tui/src", "tests", "castor.php", ".castor", ".ci-tools/rector.php"]
 # The fixtures of the SAML packages are data, byte-exact, and their interoperability projects are
 # throwaway Composer projects run in their own containers against libraries that are not dependencies
 # here (tests/xml-security/*/Fixture/real, tests/saml2-model/Interop, tests/saml2-bindings/Interop, tests/saml/Interop).

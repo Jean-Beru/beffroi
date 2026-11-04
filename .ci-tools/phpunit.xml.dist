@@ -42,6 +42,9 @@
         <testsuite name="saml">
             <directory>../tests/saml/Unit</directory>
         </testsuite>
+        <testsuite name="tui">
+            <directory>../tests/tui</directory>
+        </testsuite>
     </testsuites>
     <php>
         <ini name="display_errors" value="1"/>
@@ -58,6 +61,7 @@
             <directory>../src</directory>
             <directory>../apps/op/src</directory>
             <directory>../apps/op/migrations</directory>
+            <directory>../apps/tui/src</directory>
         </include>
         <exclude>
             <directory>../apps/op/src/Demonstration</directory>
