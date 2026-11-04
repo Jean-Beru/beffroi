@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Saml;
 
-use Beffroi\Core\Exception\ExceptionTrail;
+use App\Http\BoundedRead;
+use App\Http\ByteLimit;
+use App\Http\ReadRefusedException;
+use App\Http\ReadWords;
+use App\Http\Timeout;
 use Beffroi\Saml\Domain\Metadata\MetadataLocation;
 use Beffroi\Saml\Exception\MetadataRefusedException;
 use Beffroi\Saml\Port\MetadataFetcherInterface;
@@ -14,9 +18,7 @@ use function is_file;
 use function sprintf;
 use function str_starts_with;
 use function stream_get_contents;
-use function strlen;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
-use Throwable;
 
 /**
  * The bytes of the metadata of a peer at the location its declaration names, a service provider or an upstream
@@ -69,34 +71,13 @@ final readonly class MetadataFetcher implements MetadataFetcherInterface
     private function download(string $url): string
     {
         try {
-            $response = $this->http->request('GET', $url, [
-                'headers' => [
-                    'Accept' => 'application/samlmetadata+xml',
-                ],
-                'max_redirects' => 0,
-                'timeout' => $this->timeout,
-                'max_duration' => $this->timeout,
-            ]);
-            $status = $response->getStatusCode();
-            if ($status >= 300 && $status < 400) {
-                throw new MetadataRefusedException(sprintf(
-                    '%s redirects, and no outbound request follows a redirect; declare the URL the metadata are published at.',
-                    $url,
-                ));
-            }
-            if ($status < 200 || $status >= 300) {
-                throw new MetadataRefusedException(sprintf('%s answered %d.', $url, $status));
-            }
-            $body = '';
-            foreach ($this->http->stream($response) as $chunk) {
-                $body = self::bounded($body . $chunk->getContent(), $url);
-            }
-
-            return $body;
-        } catch (MetadataRefusedException $exception) {
-            throw $exception;
-        } catch (Throwable $exception) {
-            throw new MetadataRefusedException(sprintf('%s cannot be reached: %s', $url, ExceptionTrail::of($exception)), 0, $exception);
+            return new BoundedRead($this->http, new Timeout($this->timeout), new ByteLimit(self::MAX_BYTES))->read(
+                $url,
+                'application/samlmetadata+xml',
+                self::words(),
+            );
+        } catch (ReadRefusedException $exception) {
+            throw new MetadataRefusedException($exception->getMessage(), 0, $exception->getPrevious());
         }
     }
 
@@ -105,14 +86,19 @@ final readonly class MetadataFetcher implements MetadataFetcherInterface
      */
     private static function bounded(string $bytes, string $location): string
     {
-        if (strlen($bytes) > self::MAX_BYTES) {
-            throw new MetadataRefusedException(sprintf(
-                '%s holds more than %d bytes, which no metadata the loader accepts holds (spec/saml.md section 7).',
-                $location,
-                self::MAX_BYTES,
-            ));
+        $limit = new ByteLimit(self::MAX_BYTES);
+        if ($limit->isExceededBy($bytes)) {
+            throw new MetadataRefusedException(self::words()->exceeded($location, $limit));
         }
 
         return $bytes;
+    }
+
+    private static function words(): ReadWords
+    {
+        return new ReadWords(
+            'declare the URL the metadata are published at.',
+            '%s holds more than %d bytes, which no metadata the loader accepts holds (spec/saml.md section 7).',
+        );
     }
 }
