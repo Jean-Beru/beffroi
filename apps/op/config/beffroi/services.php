@@ -1058,9 +1058,10 @@ return static function (ContainerConfigurator $container): void {
 
     // The provider: the endpoints of the FIDO2 server API for the FIDO Conformance Tools (architecture §7); their
     // routes are a file of their own (config/beffroi/routes/fido-conformance.php) the application imports in
-    // development only, and a controller no route names is dropped from the container. They run the ceremonies of the core
-    // on the algorithms of the tools (decision 0033), through ceremonies, a registrar, an authenticator and use
-    // cases of their own, which nothing of the product reaches
+    // development only and the image leaves out. The controllers stay in the container of every environment,
+    // #[AsController] making them public, and nothing reaches them without that route. They run the ceremonies
+    // of the core on the algorithms of the tools (decision 0033), through ceremonies, a registrar, an
+    // authenticator and use cases of their own, which nothing of the product reaches
     $services->set('beffroi.fido_conformance.ceremonies', WebauthnCeremonies::class)->arg('$algorithms', service(ConformanceToolsAlgorithms::class));
     $services->set('beffroi.fido_conformance.registrar', WebauthnPasskeyRegistrar::class)->arg('$ceremonies', service('beffroi.fido_conformance.ceremonies'));
     $services->set('beffroi.fido_conformance.authenticator', WebauthnPasskeyAuthenticator::class)->arg(
