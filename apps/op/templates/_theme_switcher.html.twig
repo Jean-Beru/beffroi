@@ -11,7 +11,7 @@
         {%- include 'layout/icon/chevron.html.twig' with {size: 'size-3.5'} -%}
     {% endblock %}
     {% block panel %}
-        <form method="post" action="{{ path('app_theme') }}">
+        <form method="post" action="{{ path('beffroi_interaction_theme') }}">
             <input type="hidden" name="target" value="{{ app.request.requestUri }}">
             <ul class="menu">
                 {% for value, icon in icons %}
