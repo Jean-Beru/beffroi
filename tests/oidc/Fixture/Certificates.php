@@ -10,17 +10,7 @@ use Beffroi\Oidc\Domain\Client\ClientJwks;
 use LogicException;
 
 /**
- * The certificates of the mutual-TLS tests (RFC 8705 §2), issued once with openssl and kept here as the
- * edge hands them over. Four of them, and each one answers a question:
- *
- * - "client" is signed by a small authority and carries every kind of name of §2.1.2: a subject
- *   distinguished name, a dNSName, a URI, an iPAddress and an rfc822Name, so that the five ways of
- *   registering a client are read out of one certificate.
- * - "other" is signed by the same authority and names somebody else, which is the client that holds a
- *   certificate of the right authority and is refused all the same.
- * - "selfSigned" carries the same names and no authority at all, which is what §2.2 authenticates.
- * - "reissued" is that certificate issued again, same names, another key: another certificate, and
- *   therefore not the one the client published.
+ * RFC 8705 §2
  */
 final class Certificates
 {
@@ -91,11 +81,6 @@ final class Certificates
         -----END CERTIFICATE-----
         PEM;
 
-    /**
-     * The subject distinguished name of "client" and of "selfSigned", as openssl writes it
-     * ("openssl x509 -noout -subject -nameopt RFC2253"). A registration is normalised by the reader of
-     * the provider, so what is registered is the name as the tool that printed it wrote it.
-     */
     public const string SUBJECT_DN = 'C=FR,O=Beffroi Test,CN=beffroi mtls client';
 
     public const string DNS_NAME = 'client.example.com';
@@ -127,9 +112,7 @@ final class Certificates
     }
 
     /**
-     * A certificate as a client publishes it (RFC 7517 §4.7, RFC 8705 §2.2): the JWK of its public key
-     * is not read by this provider, the "x5c" is, so the set below is the smallest one a client can
-     * publish to authenticate with a certificate.
+     * RFC 7517 §4.7, RFC 8705 §2.2
      */
     public static function publishedIn(ClientCertificate $certificate): ClientJwks
     {
@@ -141,7 +124,7 @@ final class Certificates
     }
 
     /**
-     * The same set, naming the certificate by its thumbprint instead of carrying it (RFC 7517 §4.9).
+     * RFC 7517 §4.9
      */
     public static function thumbprintedIn(ClientCertificate $certificate): ClientJwks
     {
@@ -153,7 +136,7 @@ final class Certificates
     }
 
     /**
-     * What the edge hands over, envelope included (architecture §6).
+     * Architecture §6
      */
     public static function pemOf(ClientCertificate $certificate): string
     {

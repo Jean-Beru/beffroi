@@ -118,7 +118,7 @@ final class RevocationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7009 §2.1: an opaque access token of the caller is gone, and the revocation is announced.
+     * RFC 7009 §2.1
      */
     #[Test]
     public function itRevokesAnAccessTokenOfTheCaller(): void
@@ -152,8 +152,7 @@ final class RevocationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7009 §2.1: a refresh token of the caller is revoked, with the opaque access tokens of its grant;
-     * the family and the tokens of other grants are left alone.
+     * RFC 7009 §2.1
      */
     #[Test]
     public function itRevokesARefreshTokenAndTheAccessTokensOfItsGrant(): void
@@ -194,10 +193,7 @@ final class RevocationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7009 §2.1 (issue #888): the revocation of an opaque access token is announced with the person it was issued
-     * in the name of whatever the store of its session answers. The record names that person by the session it
-     * descends from, whose subject the store of sessions keeps in the clear, so a session that cannot be opened is
-     * not an outage met once the token was removed.
+     * RFC 7009 §2.1
      */
     #[Test]
     public function anAccessTokenIsAnnouncedRevokedWhileItsSessionCannotBeOpened(): void
@@ -225,10 +221,7 @@ final class RevocationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7009 §2.1 (issue #888): the revocation of a refresh token is announced with the person its session names
-     * whatever the store of that session answers, the person being read where the store of sessions keeps them in
-     * the clear: a retry finds the token revoked already and is answered with nothing announced (§2.2), so this
-     * request is the only one that can tell it.
+     * RFC 7009 §2.1
      */
     #[Test]
     public function aRefreshTokenIsAnnouncedRevokedWhileItsSessionCannotBeOpened(): void
@@ -260,7 +253,7 @@ final class RevocationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7009 §2.1: a public client may revoke what it holds.
+     * RFC 7009 §2.1
      */
     #[Test]
     public function aPublicClientRevokesItsOwnToken(): void
@@ -284,8 +277,7 @@ final class RevocationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7009 §2.2: an invalid token, and a token of another client, are answered 200 with nothing
-     * done and nothing said; the caller cannot learn that a token exists.
+     * RFC 7009 §2.2
      *
      * @param callable(self): string $token
      */
@@ -332,8 +324,7 @@ final class RevocationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7009 §2.1: a token issued to another client is not the caller's to revoke; nothing is done and
-     * nothing is said.
+     * RFC 7009 §2.1
      */
     #[Test]
     public function anAccessTokenOfAnotherClientIsLeftAlone(): void
@@ -378,9 +369,6 @@ final class RevocationHandlerTest extends TestCase
         static::assertSame([], $this->events->of(TokenRevoked::class));
     }
 
-    /**
-     * A refresh token already revoked is left as it was: its date, and the access tokens of its grant.
-     */
     #[Test]
     public function aRefreshTokenAlreadyRevokedIsLeftAsItWas(): void
     {
@@ -407,8 +395,7 @@ final class RevocationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7009 §2.2.1: a self-contained access token of the provider cannot be taken back, and the
-     * endpoint says so rather than pretending.
+     * RFC 7009 §2.2.1
      */
     #[Test]
     public function itRefusesToRevokeAJwtOfTheProvider(): void
@@ -432,10 +419,7 @@ final class RevocationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7009 §2.2: a self-contained token the provider no longer honours is an invalid token, answered 200
-     * with nothing said, and not a token the endpoint cannot take back. It descends from a session that ended
-     * or from a grant that was revoked, or it names a person the provider no longer serves, and UserInfo and
-     * the introspection refuse it for the same reasons (AccessTokenInspector, issue #847).
+     * RFC 7009 §2.2
      *
      * @param callable(self): string $token
      */
@@ -487,7 +471,7 @@ final class RevocationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7009 §2.2.1: a store that does not take tokens back makes the endpoint say so too.
+     * RFC 7009 §2.2.1
      */
     #[Test]
     public function itRefusesToRevokeWhatTheStoreCannotTakeBack(): void
@@ -527,7 +511,7 @@ final class RevocationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7009 §2.1, RFC 6749 §2.3: the caller is authenticated as a client first.
+     * RFC 7009 §2.1, RFC 6749 §2.3
      */
     #[Test]
     public function itRefusesACallerThatDoesNotAuthenticate(): void
@@ -547,7 +531,7 @@ final class RevocationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7009 §2.1: "token" is required.
+     * RFC 7009 §2.1
      */
     #[Test]
     public function itRequiresTheToken(): void
@@ -597,9 +581,6 @@ final class RevocationHandlerTest extends TestCase
         )->value;
     }
 
-    /**
-     * A code of the client, kept where a token that descends from it is looked for (RecordedGrants).
-     */
     private function code(Client $client): AuthorizationCode
     {
         $code = Tokens::code('the-code', $client, $this->session, $this->clock->now());

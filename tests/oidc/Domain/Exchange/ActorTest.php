@@ -12,12 +12,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Who acts for the subject of a token (RFC 8693 §4.1): the "act" claim, which nests and is never flattened.
+ * RFC 8693 §4.1
  */
 final class ActorTest extends TestCase
 {
     /**
-     * RFC 8693 §4.1: an actor that received the token from the subject itself is one member.
+     * RFC 8693 §4.1
      */
     #[Test]
     public function oneActorIsWrittenAsItsSubjectAlone(): void
@@ -35,7 +35,7 @@ final class ActorTest extends TestCase
     }
 
     /**
-     * RFC 8693 §4.1: "the most recent actor is the outermost", the one it acts through nested inside it.
+     * RFC 8693 §4.1
      */
     #[Test]
     public function aChainIsWrittenWithTheMostRecentActorOutermost(): void
@@ -56,7 +56,7 @@ final class ActorTest extends TestCase
     }
 
     /**
-     * RFC 8693 §4.1: a second exchange adds its actor around the chain it found.
+     * RFC 8693 §4.1
      */
     #[Test]
     public function anActorActsThroughTheChainItFound(): void
@@ -80,7 +80,7 @@ final class ActorTest extends TestCase
     }
 
     /**
-     * RFC 8693 §4.1: read back as it was written, whatever the depth.
+     * RFC 8693 §4.1
      */
     #[Test]
     public function aChainIsReadBackAsItWasWritten(): void
@@ -112,7 +112,7 @@ final class ActorTest extends TestCase
     }
 
     /**
-     * RFC 8693 §4.1: a member this provider does not write is not one it believes.
+     * RFC 8693 §4.1
      */
     #[Test]
     public function nothingBesideTheSubjectAndTheChainIsRead(): void
@@ -132,9 +132,6 @@ final class ActorTest extends TestCase
         );
     }
 
-    /**
-     * @param mixed $act what a claim would carry
-     */
     #[Test]
     #[DataProvider('provideWhatIsNotAnActClaim')]
     public function itRefusesWhatThisProviderNeverWrote(mixed $act, string $reason): void

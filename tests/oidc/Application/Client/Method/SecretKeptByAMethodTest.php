@@ -15,10 +15,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 7592 §2.2: what a client echoes back when it replaces its own registration is compared with what the
- * provider keeps, and the method that keeps a secret is what recognises it: a hash for the methods the
- * secret is presented to (RFC 6749 §2.3.1), the secret itself for the one that computes a MAC with it
- * (OIDC Core §9). Nothing reads a secret back out of what is kept.
+ * RFC 7592 §2.2, RFC 6749 §2.3.1, OIDC Core §9
  */
 final class SecretKeptByAMethodTest extends TestCase
 {
@@ -46,10 +43,6 @@ final class SecretKeptByAMethodTest extends TestCase
         static::assertFalse($method->holdsSecret('a-secret-of-somebody-else-of-at-least-32-characters', $kept));
     }
 
-    /**
-     * A secret kept in a shape this method does not verify against is a secret of a client of another
-     * method, and no value is the one it holds.
-     */
     #[Test]
     #[DataProvider('provideSecretsKeptInAnotherShape')]
     public function aMethodRecognisesNothingKeptInAnotherShape(SecretKeepingMethodInterface $method, ClientSecretInterface $otherShape): void

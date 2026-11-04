@@ -38,9 +38,7 @@ use Beffroi\Oidc\Port\ServedGrantsInterface;
 use Beffroi\Oidc\Port\AssignedSubjectTypesInterface;
 
 /**
- * The reader every registration of the tests goes through, wired with what the provider of the tests is
- * wired with, and the two sets of sources a registration is read from: what a deployment declared, behind
- * its own defaults, and what a client sent, behind those of RFC 7591 §2.
+ * RFC 7591 §2
  */
 final class Registrations
 {
@@ -72,11 +70,6 @@ final class Registrations
         );
     }
 
-    /**
-     * The one thing that reads a registration the provider is about to write, wired as the provider wires
-     * it: the reader, what the tenant offers, what the sector of a client has to say of it, and what draws
-     * and keeps a secret.
-     */
     public static function underThePolicy(
         ?ClientMetadataReader $reader = null,
         ?OfferedScopesInterface $scopes = null,
@@ -92,8 +85,7 @@ final class Registrations
     }
 
     /**
-     * Every scope the tenant of the tests hands out tokens for: the four of OIDC Core §5.4 and whatever the
-     * clients given here registered, its deployment declaring none.
+     * OIDC Core §5.4
      */
     public static function offeredScopes(?ClientSourceInterface $clients = null): OfferedScopesInterface
     {
@@ -106,9 +98,6 @@ final class Registrations
     }
 
     /**
-     * What a deployment wrote in its configuration, behind the defaults a deployment means when it writes
-     * nothing.
-     *
      * @param array<string, mixed> $members
      */
     public static function declared(array $members): ClientMetadata
@@ -117,7 +106,7 @@ final class Registrations
     }
 
     /**
-     * What a client registered, behind the defaults of RFC 7591 §2.
+     * RFC 7591 §2
      *
      * @param array<string, mixed> $members
      */

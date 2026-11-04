@@ -18,10 +18,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Where the keys of a party this provider verifies a signature of come from (RFC 7517 §5, RFC 7591 §2):
- * the set it wrote down, or the set read back from the URL it publishes them behind, kept between
- * requests and read again at most once per cooldown when a signature names a "kid" the kept set does not
- * hold. The one reading, whoever publishes: a client, or an issuer a tenant trusts.
+ * RFC 7517 §5, RFC 7591 §2
  */
 final class PublishedKeySetProviderTest extends TestCase
 {
@@ -69,10 +66,6 @@ final class PublishedKeySetProviderTest extends TestCase
         static::assertSame([self::JWKS_URI], self::urls($fetcher));
     }
 
-    /**
-     * A party that rotates a key is followed: the "kid" it now signs with is not in the kept set, and
-     * the set is read again once the cooldown has passed.
-     */
     #[Test]
     public function anUnknownKeyIdentifierCostsOneRefetch(): void
     {
@@ -91,10 +84,6 @@ final class PublishedKeySetProviderTest extends TestCase
         static::assertCount(2, $fetcher->fetched);
     }
 
-    /**
-     * A party that signs with a key it never published cannot make the provider call it on every
-     * request.
-     */
     #[Test]
     public function aSecondUnknownKeyIdentifierInsideTheCooldownCostsNoRefetch(): void
     {
@@ -112,10 +101,6 @@ final class PublishedKeySetProviderTest extends TestCase
         static::assertCount(2, $fetcher->fetched);
     }
 
-    /**
-     * A signature that names no key is verified against everything the party published, so there is
-     * nothing to read again.
-     */
     #[Test]
     public function aSignatureThatNamesNoKeyCostsNoRefetch(): void
     {
@@ -132,10 +117,6 @@ final class PublishedKeySetProviderTest extends TestCase
         static::assertCount(1, $fetcher->fetched);
     }
 
-    /**
-     * A kept set is filed under the URL it was read from: two parties publishing behind the same URL
-     * publish the same document and share one read, and whoever registered that URL does not file it.
-     */
     #[Test]
     public function aSetIsKeptUnderTheUrlItWasReadFrom(): void
     {
@@ -151,10 +132,6 @@ final class PublishedKeySetProviderTest extends TestCase
         static::assertSame([self::JWKS_URI, 'https://other.example/jwks'], self::urls($fetcher));
     }
 
-    /**
-     * A URL that cannot be read is raised to whoever was verifying a signature against it, and nothing
-     * is kept.
-     */
     #[Test]
     public function aUrlThatCannotBeReadIsRaised(): void
     {

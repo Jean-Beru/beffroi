@@ -31,22 +31,14 @@ use function rtrim;
 use function strtr;
 
 /**
- * The client side of RFC 9101: the claims a request object carries, the compact JWS a client would send,
- * and the unsigned object of a client that registered "none". The key is the one the client assertions
- * of the suite publish, a client having one set of keys whatever it signs. Never leaves the test suite.
+ * RFC 9101
  */
 final class RequestObjects
 {
-    /**
-     * The "jti" of an object nobody replays: one value, so that two objects built alike are the same
-     * object, which is what a test of a replay sends twice and what every other test sends once.
-     */
     public const string JTI = 'b2f1c0a9-8e7d-4c6b-9a5f-0d1e2f3a4b5c';
 
     /**
-     * RFC 9101 §4: the request is the claims, "iss" naming the client and "aud" the provider. CIBA Core
-     * §7.1.1 adds "iat" and "jti" to the ones a backchannel authentication request carries, and a client
-     * that writes them writes them everywhere.
+     * RFC 9101 §4, CIBA Core §7.1.1
      *
      * @param array<string, mixed> $parameters
      *
@@ -69,9 +61,6 @@ final class RequestObjects
     /**
      * @param array<string, mixed> $claims
      * @param array<string, mixed> $header
-     * @param JoseSignatureAlgorithmInterface|null $algorithm what the client registered in
-     *                                                        "request_object_signing_alg", null for the
-     *                                                        ES256 every client of the tests signs with
      */
     public static function signed(
         array $claims,
@@ -83,8 +72,7 @@ final class RequestObjects
     }
 
     /**
-     * RFC 7515 §4.1.1, RFC 7518 §3.6: the two segments and the empty signature of a JWS with "alg":
-     * "none", which is what an unsigned request object is.
+     * RFC 7515 §4.1.1, RFC 7518 §3.6
      *
      * @param array<string, mixed> $claims
      */
@@ -101,13 +89,10 @@ final class RequestObjects
     }
 
     /**
-     * RFC 9101 §6.1: what a client encrypts to a key the provider publishes, the "alg" being the one the
-     * key is published for and the "enc" the one the provider is wired with. The payload is a compact
-     * JWS for every client but the one that registered "none", whose claims travel as they are.
+     * RFC 9101 §6.1
      *
-     * @param array<string, mixed> $publicJwk the key of the tenant, as its JWK Set publishes it
-     * @param array<string, mixed> $header what the JWE announces beside the algorithms, "cty" for a
-     *                                     nested token (RFC 7519 §5.2)
+     * @param array<string, mixed> $publicJwk
+     * @param array<string, mixed> $header
      */
     public static function encryptedTo(array $publicJwk, string $payload, array $header = []): string
     {
@@ -145,10 +130,6 @@ final class RequestObjects
         );
     }
 
-    /**
-     * A tenant that publishes no encryption key at all: what a deployment nobody encrypts to opens, which
-     * is nothing.
-     */
     private static function decrypter(): JweDecrypterInterface
     {
         return new JwtLibraryJweDecrypter(new SealedKeyProvider(new InMemoryTenantKeyRepository(), Keys::opened()), Algorithms::encryption());

@@ -29,8 +29,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * What a client is entitled to for a subject it did not sign in (RFC 8693 §2.1, RFC 7523 §2.1): the shape both
- * grants that read something as their input produce.
+ * RFC 8693 §2.1, RFC 7523 §2.1
  */
 final class SubjectAuthorizationTest extends TestCase
 {
@@ -45,8 +44,7 @@ final class SubjectAuthorizationTest extends TestCase
     }
 
     /**
-     * Architecture §4.5: nobody signed in here, so nothing of a session is invented and no document about a
-     * user can be issued from it.
+     * Architecture §4.5
      */
     #[Test]
     public function itIsNotAnAuthorizationSomebodySignedInFor(): void
@@ -62,7 +60,7 @@ final class SubjectAuthorizationTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: the access token is addressed to the resources the request named.
+     * RFC 8707 §2
      */
     #[Test]
     public function theTokenIsAddressedToTheResourcesTheRequestNamed(): void
@@ -75,7 +73,7 @@ final class SubjectAuthorizationTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: each kind of authorization writes the record of its own kind.
+     * Architecture §4.6
      */
     #[Test]
     public function itIsKeptAsTheRecordOfItsOwnKind(): void
@@ -95,8 +93,8 @@ final class SubjectAuthorizationTest extends TestCase
     }
 
     /**
-     * @param list<string> $scopes what the response carries
-     * @param list<string> $granted what the presented token or the trusted issuer carried
+     * @param list<string> $scopes
+     * @param list<string> $granted
      */
     #[Test]
     #[DataProvider('provideWhatCouldNotHaveBeenGranted')]
@@ -149,8 +147,7 @@ final class SubjectAuthorizationTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1, RFC 7523 §2.1: both grants authenticate the client, so a public client cannot hold what
-     * either of them hands out.
+     * RFC 8693 §2.1, RFC 7523 §2.1
      */
     #[Test]
     public function aPublicClientIsRefusedOne(): void

@@ -42,8 +42,7 @@ final class IdTokenHintVerifierTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.2.1: the hint names the end user by "sub"; §2: "aud" is a string or a list, "exp"
-     * is not looked at because the hint may describe a past session.
+     * OIDC Core §3.1.2.1, §2
      */
     #[Test]
     #[DataProvider('provideValidHints')]
@@ -70,10 +69,6 @@ final class IdTokenHintVerifierTest extends TestCase
     }
 
     /**
-     * A token that does not verify against the keys of the tenant, or is not a JSON object with the
-     * "iss" of the tenant and a "sub", was not issued here: invalid_request, sent back to the client,
-     * with the cause kept for the logs.
-     *
      * @param class-string<Throwable>|null $cause
      */
     #[Test]
@@ -120,10 +115,6 @@ final class IdTokenHintVerifierTest extends TestCase
         yield 'subject empty' => ['{"iss":"https://id.acme.example","sub":"","aud":"spa"}'];
     }
 
-    /**
-     * A token of this provider but for another client is refused too: a client learns nothing from a
-     * token it did not obtain.
-     */
     #[Test]
     #[DataProvider('provideOtherClientHints')]
     public function itRefusesATokenIssuedToAnotherClient(string $payload): void
@@ -154,10 +145,6 @@ final class IdTokenHintVerifierTest extends TestCase
         yield 'audience not a string' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":42}'];
     }
 
-    /**
-     * The keys are those of the client's tenant: a token of another tenant of the same deployment does
-     * not verify.
-     */
     #[Test]
     public function itVerifiesAgainstTheKeysOfTheTenantOfTheClient(): void
     {
@@ -176,9 +163,7 @@ final class IdTokenHintVerifierTest extends TestCase
     }
 
     /**
-     * RP-Initiated Logout §2: the logout endpoint reads the hint before it knows the client, and finds
-     * the client in "aud" and the session in "sid" (architecture §4.6). "exp" is not looked at: §2
-     * says the provider should accept an expired token.
+     * RP-Initiated Logout §2, architecture §4.6
      *
      * @param list<string> $audiences
      */
@@ -213,10 +198,6 @@ final class IdTokenHintVerifierTest extends TestCase
         yield 'audience list with a number' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":["spa",42]}', [], null];
     }
 
-    /**
-     * The "sid" this provider writes is a UUID: any other shape was not issued here. The flag says
-     * whether the error may be sent to a client; the logout endpoint never redirects one (§4).
-     */
     #[Test]
     #[DataProvider('provideSessionIdsNotIssuedHere')]
     public function itRefusesASessionIdentifierItDidNotWrite(string $sid): void
@@ -247,9 +228,6 @@ final class IdTokenHintVerifierTest extends TestCase
     }
 
     /**
-     * Every refusal of read() carries the flag it was given, so that the authorization endpoint sends
-     * the error back and the logout endpoint shows it.
-     *
      * @param class-string<Throwable>|null $cause
      */
     #[Test]

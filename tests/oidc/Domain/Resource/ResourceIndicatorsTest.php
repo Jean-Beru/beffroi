@@ -14,8 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The resources a request names (RFC 8707 §2). Whether a set holds a resource and whether it covers
- * another are answered here and nowhere else, as they are for a set of scopes.
+ * RFC 8707 §2
  */
 final class ResourceIndicatorsTest extends TestCase
 {
@@ -23,9 +22,6 @@ final class ResourceIndicatorsTest extends TestCase
 
     private const string CONTACTS = 'https://contacts.example.com/';
 
-    /**
-     * A request that names no resource carries no set: the absence is a null and never an empty set.
-     */
     #[Test]
     public function aSetHoldsAtLeastOneResource(): void
     {
@@ -38,7 +34,7 @@ final class ResourceIndicatorsTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: "resource" may be sent several times, so the same one twice names it once.
+     * RFC 8707 §2
      */
     #[Test]
     public function aResourceNamedTwiceCountsOnce(): void
@@ -71,7 +67,7 @@ final class ResourceIndicatorsTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2.2: what a grant has to cover for the resources a token request names.
+     * RFC 8707 §2.2
      *
      * @param list<string> $held
      * @param list<string> $asked
@@ -153,8 +149,7 @@ final class ResourceIndicatorsTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: the value a column holds the set as, space delimited, a resource indicator carrying no
-     * space.
+     * RFC 8707 §2
      */
     #[Test]
     public function itWritesTheValueAColumnHoldsItAs(): void

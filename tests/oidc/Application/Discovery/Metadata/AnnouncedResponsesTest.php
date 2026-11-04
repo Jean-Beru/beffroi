@@ -12,8 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 8414 §2: the provider answers an authorization request with a code, in the modes the integration
- * wired and no other (issue #98).
+ * RFC 8414 §2
  */
 final class AnnouncedResponsesTest extends TestCase
 {
@@ -36,10 +35,6 @@ final class AnnouncedResponsesTest extends TestCase
         );
     }
 
-    /**
-     * A deployment that wired no way of posting a response announces the one it delivers in and nothing
-     * else: the document follows the endpoint, never an enumeration of the module.
-     */
     #[Test]
     public function aProviderThatPostsNoResponseAnnouncesTheDefaultModeAlone(): void
     {
@@ -54,7 +49,7 @@ final class AnnouncedResponsesTest extends TestCase
     }
 
     /**
-     * RFC 8414 §2: a mode wired twice is announced once.
+     * RFC 8414 §2
      */
     #[Test]
     public function aModeWiredTwiceIsAnnouncedOnce(): void
@@ -70,8 +65,7 @@ final class AnnouncedResponsesTest extends TestCase
     }
 
     /**
-     * JARM §2.1 and issue #98: "jwt" is announced because a mode that signs the answer is wired, and it
-     * comes last, after the modes that deliver.
+     * JARM §2.1
      */
     #[Test]
     public function aWiredSignedModeAnnouncesTheAlias(): void

@@ -15,8 +15,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * OIDC Core §6: the provider reads a request object passed by value or by reference, and a "request_uri"
- * is registered beforehand (decision 0006, no outbound fetch of an unregistered URI).
+ * OIDC Core §6, Decision 0006
  */
 final class AnnouncedRequestObjectsTest extends TestCase
 {
@@ -36,8 +35,7 @@ final class AnnouncedRequestObjectsTest extends TestCase
     }
 
     /**
-     * OIDC Discovery §3 and issue #164: what a client may encrypt a request object to the provider with
-     * is what the wiring gave it.
+     * OIDC Discovery §3
      */
     #[Test]
     public function itAnnouncesWhatARequestObjectMayBeEncryptedToItWith(): void
@@ -54,9 +52,7 @@ final class AnnouncedRequestObjectsTest extends TestCase
     }
 
     /**
-     * OIDC Registration §2 and decision 0006: "none" is announced beside the algorithms when a client of
-     * the tenant registered it, and a deployment whose clients all sign their request objects does not
-     * announce that it would read an unsigned one (issue #98).
+     * OIDC Registration §2, Decision 0006
      *
      * @param list<string> $expected
      */

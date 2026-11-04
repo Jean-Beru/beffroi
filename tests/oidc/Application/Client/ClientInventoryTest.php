@@ -16,8 +16,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Decision 0009: every client of a tenant, whatever holds it, each saying where it came from. What is
- * listed is what is wired, so a source added to a deployment is in the list by being wired.
+ * Decision 0009
  */
 final class ClientInventoryTest extends TestCase
 {
@@ -41,10 +40,6 @@ final class ClientInventoryTest extends TestCase
         );
     }
 
-    /**
-     * A source wired later brings nothing with it: what the list holds is what the sources hold, and
-     * nothing here counts how many there are.
-     */
     #[Test]
     public function aDeploymentThatWiresOneSourceListsThatOne(): void
     {
@@ -72,10 +67,6 @@ final class ClientInventoryTest extends TestCase
         static::assertSame([], $clients);
     }
 
-    /**
-     * The client a request would be served from is the one the first source that holds the identifier
-     * answers, so that is the one shown.
-     */
     #[Test]
     public function itFindsTheClientTheFirstSourceThatHoldsItHolds(): void
     {

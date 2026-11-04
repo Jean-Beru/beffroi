@@ -12,9 +12,7 @@ use PHPUnit\Framework\TestCase;
 use function sprintf;
 
 /**
- * Decision 0009: a client that registers itself gets nothing a declared client does not get, and the
- * members this provider defines for itself are what a deployment writes or what the registration policy
- * of a tenant grants (decision 0017). A client that sends one is refused rather than obeyed.
+ * Decision 0009, Decision 0017
  */
 final class RegisteredMembersTest extends TestCase
 {
@@ -57,8 +55,7 @@ final class RegisteredMembersTest extends TestCase
     }
 
     /**
-     * A member of RFC 7591 §2 is one a client registers, however much it grants: what it may register it
-     * to is held to what its tenant offers, where a registration meets that tenant.
+     * RFC 7591 §2
      */
     #[Test]
     public function aClientRegistersTheMembersOfTheSpecifications(): void
@@ -77,9 +74,6 @@ final class RegisteredMembersTest extends TestCase
         static::assertSame($members, $source->members());
     }
 
-    /**
-     * A member sent as JSON null is a member the client said nothing about, and it is not one it sent.
-     */
     #[Test]
     public function aMemberOfTheDeploymentSentAsNullIsStillOneTheClientSent(): void
     {

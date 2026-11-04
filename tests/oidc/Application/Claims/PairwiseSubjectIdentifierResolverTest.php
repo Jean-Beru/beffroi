@@ -26,16 +26,14 @@ use function rtrim;
 use function strtr;
 
 /**
- * OIDC Core §8.1: what each sector sees of a user, and what nobody can compare across two of them.
+ * OIDC Core §8.1
  */
 final class PairwiseSubjectIdentifierResolverTest extends TestCase
 {
     private const string SALT = 'a-salt-the-deployment-drew-once!';
 
     /**
-     * OIDC Core §8.1: the SHA-256 of the sector, the local account identifier and the salt, in base64url.
-     * The value is written out, because a change to what is hashed is every identifier of every client
-     * changed, and this test is what says so.
+     * OIDC Core §8.1
      */
     #[Test]
     public function theIdentifierIsTheOneTheSpecificationComputes(): void
@@ -54,8 +52,7 @@ final class PairwiseSubjectIdentifierResolverTest extends TestCase
     }
 
     /**
-     * Architecture §4.5 (issue #880): the salt is unsealed when the client is opened, so a KMS that does not
-     * answer is said then, before whoever opened it has spent anything.
+     * Architecture §4.5
      */
     #[Test]
     public function aKmsThatDoesNotAnswerIsToldWhenTheClientIsOpened(): void
@@ -72,10 +69,6 @@ final class PairwiseSubjectIdentifierResolverTest extends TestCase
         Subjects::pairwiseKind($salts)->open(Clients::pairwise(Fixtures::tenant()));
     }
 
-    /**
-     * Assigning asks nothing of the KMS (issue #880): a client opened while the KMS answered is given the
-     * identifier the specification computes, whatever the KMS answers afterwards.
-     */
     #[Test]
     public function anIdentifierIsAssignedFromWhatWasOpenedWhateverTheKmsAnswersAfterwards(): void
     {
@@ -94,10 +87,6 @@ final class PairwiseSubjectIdentifierResolverTest extends TestCase
         static::assertSame(rtrim(strtr(base64_encode($digest), '+/', '-_'), '='), $subject->value);
     }
 
-    /**
-     * The salt opened is the one of the tenant of the client, and a user of another tenant has no identifier
-     * under it: one computed there would name that user to a sector of a tenant that never served them.
-     */
     #[Test]
     public function aUserOfAnotherTenantIsGivenNoIdentifierUnderTheSaltOfTheClient(): void
     {
@@ -114,10 +103,6 @@ final class PairwiseSubjectIdentifierResolverTest extends TestCase
         $opened->subjectOf(Fixtures::user($there));
     }
 
-    /**
-     * The property pairwise identifiers exist for: two clients of two sectors cannot find out they are
-     * looking at the same person by comparing the strings they hold.
-     */
     #[Test]
     public function twoSectorsSeeOneUserUnderTwoIdentifiers(): void
     {
@@ -135,9 +120,7 @@ final class PairwiseSubjectIdentifierResolverTest extends TestCase
     }
 
     /**
-     * CIBA Core §4: a client of the backchannel flow registers no redirection URI, so the sector its "sub"
-     * is computed per is the host of its "jwks_uri". Two such clients publishing their keys on one host are
-     * one sector and see one user under one identifier, exactly as two clients of one redirection host are.
+     * CIBA Core §4
      */
     #[Test]
     public function twoBackchannelClientsOfOneHostSeeOneUserUnderOneIdentifier(): void
@@ -173,10 +156,6 @@ final class PairwiseSubjectIdentifierResolverTest extends TestCase
         static::assertNotSame($here->value, $there->value);
     }
 
-    /**
-     * And the way back holds for them too: the identifier a backchannel client was handed names its user
-     * to that client's sector, and to no other.
-     */
     #[Test]
     public function theIdentifierOfABackchannelClientNamesItsUserInThatSector(): void
     {
@@ -208,8 +187,7 @@ final class PairwiseSubjectIdentifierResolverTest extends TestCase
     }
 
     /**
-     * OIDC Registration §5: what a sector is for. Two clients that register the same document belong to one
-     * sector, whatever their own hosts are, and one user is one account to both of them.
+     * OIDC Registration §5
      */
     #[Test]
     public function twoClientsOfOneSectorSeeOneUserUnderOneIdentifier(): void
@@ -228,10 +206,6 @@ final class PairwiseSubjectIdentifierResolverTest extends TestCase
         static::assertSame($here->value, $there->value);
     }
 
-    /**
-     * The identifier is computed and not drawn, so it is the same one at every document written afterwards
-     * and in every worker at once.
-     */
     #[Test]
     public function theSameUserAndSectorGiveTheSameIdentifierEveryTime(): void
     {
@@ -248,10 +222,6 @@ final class PairwiseSubjectIdentifierResolverTest extends TestCase
         static::assertSame($first->value, $again->value);
     }
 
-    /**
-     * The salt is a secret of the deployment and of its tenant: two tenants that share a user and a sector
-     * do not share an identifier for them, so nothing carries across a deployment either.
-     */
     #[Test]
     public function twoTenantsGiveTheSameUserAndSectorTwoIdentifiers(): void
     {
@@ -269,10 +239,6 @@ final class PairwiseSubjectIdentifierResolverTest extends TestCase
         static::assertNotSame($ofHere->value, $ofThere->value);
     }
 
-    /**
-     * The way back: an identifier this resolver wrote down names its user again, to a client of the sector
-     * it was written for.
-     */
     #[Test]
     public function anIdentifierItAssignedNamesItsUserAgain(): void
     {
@@ -290,10 +256,6 @@ final class PairwiseSubjectIdentifierResolverTest extends TestCase
         static::assertSame($user, $found);
     }
 
-    /**
-     * The property again, from the other side: the string one sector holds names nobody to a client of
-     * another, which is what makes a "sub" useless to whoever it was not written for.
-     */
     #[Test]
     public function anIdentifierOfOneSectorNamesNobodyToAnother(): void
     {
@@ -310,9 +272,6 @@ final class PairwiseSubjectIdentifierResolverTest extends TestCase
         static::assertNull($found);
     }
 
-    /**
-     * A value nobody was ever handed names nobody, as a subject that belongs to nobody does.
-     */
     #[Test]
     public function aValueItNeverAssignedNamesNobody(): void
     {
@@ -331,8 +290,7 @@ final class PairwiseSubjectIdentifierResolverTest extends TestCase
     }
 
     /**
-     * OIDC Core §8.1: a client of this kind has a sector, and a registration that names none is refused
-     * where a registration meets the wiring, not at the first token it asks for.
+     * OIDC Core §8.1
      */
     #[Test]
     public function itRefusesARegistrationThatNamesNoSector(): void

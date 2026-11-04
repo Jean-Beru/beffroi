@@ -16,7 +16,7 @@ use Symfony\Component\Uid\Uuid;
 final class RefreshTokenFamilyTest extends TestCase
 {
     /**
-     * Architecture §4.6: the family descends from a code.
+     * Architecture §4.6
      */
     #[Test]
     public function itDescendsFromACode(): void
@@ -41,7 +41,7 @@ final class RefreshTokenFamilyTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: the family carries the absolute lifetime, ninety days, the last instant excluded.
+     * Architecture §4.6
      */
     #[Test]
     #[DataProvider('provideInstants')]

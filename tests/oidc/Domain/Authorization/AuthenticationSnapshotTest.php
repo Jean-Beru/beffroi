@@ -39,7 +39,7 @@ final class AuthenticationSnapshotTest extends TestCase
     }
 
     /**
-     * RFC 8176: at least one method.
+     * RFC 8176
      */
     #[Test]
     public function itRefusesAnEmptyMethodList(): void
@@ -53,7 +53,7 @@ final class AuthenticationSnapshotTest extends TestCase
     }
 
     /**
-     * RFC 8176 §2: a method reference is a well-formed token.
+     * RFC 8176 §2
      */
     #[Test]
     public function itRefusesAMethodThatIsNotWellFormed(): void
@@ -67,7 +67,7 @@ final class AuthenticationSnapshotTest extends TestCase
     }
 
     /**
-     * OIDC Core §2: "acr" is printable ASCII without space.
+     * OIDC Core §2
      */
     #[Test]
     public function itRefusesAClassThatIsNotWellFormed(): void
@@ -207,11 +207,6 @@ final class AuthenticationSnapshotTest extends TestCase
     }
 
     /**
-     * The claims an authentication records, with one of them replaced by something it never writes. The
-     * value goes in by name and not after a spread of the whole: a key that follows an unpacked array
-     * overrides it, which is legal and is what the case means, but the literal then names one claim twice
-     * and nothing in it says which of the two wins.
-     *
      * @param array<string, mixed> $claims
      *
      * @return array<string, mixed>
@@ -224,8 +219,6 @@ final class AuthenticationSnapshotTest extends TestCase
     }
 
     /**
-     * The same, with one of them missing.
-     *
      * @param array<string, mixed> $claims
      *
      * @return array<string, mixed>

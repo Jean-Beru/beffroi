@@ -47,7 +47,7 @@ final class IssuedTokensTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.2.1: the grant that exchanged them says the type it issued, and the response carries it.
+     * RFC 8693 §2.2.1
      */
     #[Test]
     public function theTypeAGrantSaysItIssuedReachesTheResponse(): void
@@ -63,7 +63,7 @@ final class IssuedTokensTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.1: a grant with no type to name names none.
+     * RFC 6749 §5.1
      */
     #[Test]
     public function aGrantWithNoTypeToNameNamesNone(): void
@@ -79,7 +79,7 @@ final class IssuedTokensTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.1, OIDC Core §3.1.3.3: the response carries every token issued and the scopes.
+     * RFC 6749 §5.1, OIDC Core §3.1.3.3
      */
     #[Test]
     public function itBecomesTheResponseWithEveryTokenIssued(): void
@@ -151,9 +151,6 @@ final class IssuedTokensTest extends TestCase
         static::assertSame('rt.value', $issued->value);
     }
 
-    /**
-     * The record is the hash of the value: the two sides of a refresh token never drift apart.
-     */
     #[Test]
     public function aRefreshTokenRefusesAValueThatIsNotTheOneRecorded(): void
     {
@@ -168,8 +165,7 @@ final class IssuedTokensTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: the response says what the authorization granted beyond its scopes, which is what a client
-     * holding an opaque access token would otherwise have to introspect its own token to learn.
+     * RFC 9396 §7
      */
     #[Test]
     public function theDetailsOfTheAuthorizationReachTheResponse(): void
@@ -202,7 +198,7 @@ final class IssuedTokensTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: an authorization that granted none says nothing of them.
+     * RFC 9396 §7
      */
     #[Test]
     public function anAuthorizationWithNoDetailWritesNoMember(): void

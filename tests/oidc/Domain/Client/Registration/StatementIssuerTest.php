@@ -12,14 +12,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 7591 §2.3: an authority a tenant pins the software statements of, which is a name, the keys it was
- * pinned by and what it signs with, and nothing inferred.
+ * RFC 7591 §2.3
  */
 final class StatementIssuerTest extends TestCase
 {
     /**
-     * RFC 7515 §4.1.1: what an authority signs with is a closed list, so a key of one kind cannot be used
-     * with another.
+     * RFC 7515 §4.1.1
      */
     #[Test]
     public function itSignsWithWhatItWasPinnedToSignWith(): void
@@ -42,8 +40,7 @@ final class StatementIssuerTest extends TestCase
     }
 
     /**
-     * RFC 7519 §4.1.1: an "iss" naming a party whose keys a tenant holds is an absolute URI, compared byte
-     * for byte as every other name this provider registers.
+     * RFC 7519 §4.1.1
      */
     #[Test]
     #[DataProvider('provideNamesThatAreNoIssuer')]
@@ -68,10 +65,6 @@ final class StatementIssuerTest extends TestCase
         yield 'with a space' => ['https://store.example.com/ one'];
     }
 
-    /**
-     * An authority pinned to sign with nothing could sign nothing, so a declaration that names no
-     * algorithm is a declaration of nothing.
-     */
     #[Test]
     public function itRefusesAnAuthorityThatSignsWithNothing(): void
     {

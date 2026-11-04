@@ -14,9 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * JARM §3: what a signed authorization response is signed with, and what it may be encrypted with, are
- * announced where a mode that signs the answer is wired and nowhere else: a deployment that signs no
- * answer has none to sign or to encrypt.
+ * JARM §3
  */
 final class AnnouncedSignedAuthorizationResponseTest extends TestCase
 {

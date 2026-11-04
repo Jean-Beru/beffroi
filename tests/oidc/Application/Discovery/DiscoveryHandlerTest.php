@@ -19,18 +19,8 @@ use PHPUnit\Framework\TestCase;
 final class DiscoveryHandlerTest extends TestCase
 {
     /**
-     * OIDC Discovery §3: the members, in the order the section lists them, then those of RFC 8414 §2
-     * ("code_challenge_methods_supported", the revocation and introspection endpoints with their
-     * authentication methods, RFC 7009 §2.1 and RFC 7662 §2.1, and the algorithms of a signed
-     * introspection response, RFC 9701 §6), "authorization_response_iss_parameter_supported"
-     * (RFC 9207 §3), "end_session_endpoint" (RP-Initiated Logout §2.1) and the four members of the two
-     * logout specifications (Back-Channel Logout 1.0 §3, Front-Channel Logout 1.0 §3), and what
-     * RFC 8705 §3.3 asks of a provider that binds an access token to a certificate.
-     *
-     * Only what the deployment is wired with: "code", "query" and "form_post", "S256", "public",
-     * the algorithms the provider signs with, the client authentication methods it takes, those of them
-     * that authenticate the caller at introspection, the "acr" values its policy can prove, no request
-     * object left unsigned. Nothing else, and nothing twice.
+     * OIDC Discovery §3, RFC 8414 §2, RFC 7009 §2.1, RFC 7662 §2.1, RFC 9701 §6, RFC 9207 §3,
+     * RP-Initiated Logout §2.1, Back-Channel Logout 1.0 §3, Front-Channel Logout 1.0 §3, RFC 8705 §3.3
      */
     #[Test]
     public function itDescribesWhatTheProviderDoesAndNothingElse(): void
@@ -136,8 +126,7 @@ final class DiscoveryHandlerTest extends TestCase
     }
 
     /**
-     * OIDC Discovery §3: the document opens on who the provider is and where it answers, because that is
-     * the order the capabilities are wired in.
+     * OIDC Discovery §3
      */
     #[Test]
     public function theIssuerAndTheEndpointsComeFirst(): void
@@ -149,10 +138,6 @@ final class DiscoveryHandlerTest extends TestCase
         static::assertSame(['issuer', 'authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'jwks_uri'], array_slice($members, 0, 5));
     }
 
-    /**
-     * A member is announced by one capability. Two capabilities claiming the same one would leave the
-     * deployment guessing which value a client reads, so the document is refused instead.
-     */
     #[Test]
     public function twoCapabilitiesAnnouncingTheSameMemberAreRefused(): void
     {
@@ -174,10 +159,6 @@ final class DiscoveryHandlerTest extends TestCase
         $handler->handle(Fixtures::tenant());
     }
 
-    /**
-     * A capability the deployment does not serve contributes nothing, and the document simply does not
-     * carry its members: a client reads a member that is not there as "not served".
-     */
     #[Test]
     public function aCapabilityTheDeploymentDoesNotServeAddsNothing(): void
     {
@@ -202,8 +183,7 @@ final class DiscoveryHandlerTest extends TestCase
     }
 
     /**
-     * OIDC Discovery §3: "issuer" is the tenant's and the endpoints are where the integration serves
-     * this tenant, so the same wiring answers for every tenant it hosts.
+     * OIDC Discovery §3
      */
     #[Test]
     public function eachTenantGetsItsOwnIssuerAndEndpoints(): void
@@ -222,10 +202,6 @@ final class DiscoveryHandlerTest extends TestCase
         static::assertSame('https://id.globex.example/token', $globex['token_endpoint']);
     }
 
-    /**
-     * The document differs from one tenant to the next by its locations only: what the provider is wired
-     * with is the same for everyone it hosts.
-     */
     #[Test]
     public function theDocumentsOfTwoTenantsDifferByTheirLocationsOnly(): void
     {
@@ -255,7 +231,7 @@ final class DiscoveryHandlerTest extends TestCase
     }
 
     /**
-     * RFC 8414 §3: the metadata location follows the issuer of the tenant.
+     * RFC 8414 §3
      */
     #[Test]
     public function theDocumentKnowsItsWellKnownLocation(): void
@@ -282,9 +258,6 @@ final class DiscoveryHandlerTest extends TestCase
         );
     }
 
-    /**
-     * The cache lifetime is the deployment's, zero meaning "revalidate every time".
-     */
     #[Test]
     #[DataProvider('provideLifetimes')]
     public function theLifetimeIsAnOption(int $lifetime, string $cacheControl): void
@@ -313,9 +286,6 @@ final class DiscoveryHandlerTest extends TestCase
         yield 'zero' => [0, 'public, max-age=0'];
     }
 
-    /**
-     * A negative lifetime is refused at construction, not on the first request.
-     */
     #[Test]
     public function aNegativeLifetimeIsRefusedAtConstruction(): void
     {
@@ -327,11 +297,6 @@ final class DiscoveryHandlerTest extends TestCase
         new DiscoveryHandler([], -1);
     }
 
-    /**
-     * Issue #165: the same wired lists answer for every kind of document at once, because the provider
-     * opens and mints them all with them. A deployment that wires encryption announces it for the
-     * request object a client encrypts to it and for the two documents it encrypts to a client.
-     */
     #[Test]
     public function itAnnouncesTheSameEncryptionForEveryKindOfDocument(): void
     {
@@ -345,11 +310,6 @@ final class DiscoveryHandlerTest extends TestCase
         }
     }
 
-    /**
-     * What Symfony's OidcDiscovery checks before it uses a document: the "issuer" equals the configured
-     * one, and every endpoint it reads is over HTTPS, the token endpoint even on loopback. The document
-     * of a loopback issuer in development passes those checks too.
-     */
     #[Test]
     #[DataProvider('provideIssuers')]
     public function itPassesTheChecksOfSymfonyOidcDiscovery(string $issuer): void

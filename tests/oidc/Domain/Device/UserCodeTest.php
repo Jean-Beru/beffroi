@@ -13,8 +13,7 @@ use PHPUnit\Framework\TestCase;
 use function strlen;
 
 /**
- * RFC 8628 §6.1: the code is read off one screen and typed on another, so its alphabet has no character a
- * reader takes for another and what the user typed is compared after the separators are dropped.
+ * RFC 8628 §6.1
  */
 final class UserCodeTest extends TestCase
 {
@@ -30,8 +29,7 @@ final class UserCodeTest extends TestCase
     }
 
     /**
-     * RFC 8628 §6.1: twenty consonants, no vowel, so that no eight of them spell a word somebody has to
-     * read aloud to a stranger, and no digit, a digit and a letter being what a reader mixes up.
+     * RFC 8628 §6.1
      */
     #[Test]
     public function itsAlphabetIsTwentyConsonantsAndNothingElse(): void
@@ -43,9 +41,6 @@ final class UserCodeTest extends TestCase
         }
     }
 
-    /**
-     * What the provider keeps of a code is its SHA-256, as of every other value it hands out.
-     */
     #[Test]
     public function whatIsKeptOfACodeIsItsDigest(): void
     {
@@ -62,8 +57,7 @@ final class UserCodeTest extends TestCase
     }
 
     /**
-     * BCP 10027 §2: the user compares the code on the page with the code on the screen they read it from, so
-     * the page shows it the way that screen does whatever form it was typed in.
+     * BCP 10027 §2
      */
     #[Test]
     #[DataProvider('provideShownCodes')]
@@ -84,10 +78,6 @@ final class UserCodeTest extends TestCase
         yield 'with spaces' => [' BCDF GHJK ', 'BCDF-GHJK'];
     }
 
-    /**
-     * What is not a code is shown back as it was read, so that a wrong character can be corrected rather
-     * than hidden behind a grouping that would not hold anyway.
-     */
     #[Test]
     #[DataProvider('provideTypedValuesThatAreNotACode')]
     public function whatIsNotACodeIsShownBackAsItWasTyped(string $typed, string $shown): void
@@ -121,10 +111,6 @@ final class UserCodeTest extends TestCase
         yield 'nothing at all' => ['', ''];
     }
 
-    /**
-     * Normalizing says nothing of whether what is left is a code: a form filled with anything is refused
-     * rather than trimmed into something.
-     */
     #[Test]
     #[DataProvider('provideCodesThatAreNotOne')]
     public function aValueThatIsNotACodeOfThisProviderIsNotWellFormed(string $value): void

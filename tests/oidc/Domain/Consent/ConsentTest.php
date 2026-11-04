@@ -22,8 +22,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §4.3: a consent binds a user and a client of the same tenant to a set of scopes, and
- * covers a request when every requested scope is in that set.
+ * Architecture §4.3
  */
 final class ConsentTest extends TestCase
 {
@@ -128,9 +127,6 @@ final class ConsentTest extends TestCase
         static::assertEquals($revokedAt, $this->consent->revokedAt);
     }
 
-    /**
-     * The first revocation wins.
-     */
     #[Test]
     public function itIsRevokedOnce(): void
     {
@@ -164,8 +160,7 @@ final class ConsentTest extends TestCase
     }
 
     /**
-     * RFC 9396 §2: a consent carries what the user agreed to beyond the scopes, and a consent given for
-     * nothing structured carries none.
+     * RFC 9396 §2
      */
     #[Test]
     public function aConsentCarriesTheAuthorizationDetailsItWasGiven(): void
@@ -182,8 +177,7 @@ final class ConsentTest extends TestCase
     }
 
     /**
-     * Architecture §4.3: what a user agreed to is never taken back by a new agreement, the details no more
-     * than the scopes.
+     * Architecture §4.3
      */
     #[Test]
     public function extendingItGivesANewConsentWithTheAuthorizationDetailsOfBothEachOnce(): void
@@ -214,9 +208,6 @@ final class ConsentTest extends TestCase
         );
     }
 
-    /**
-     * A request that asks for no detail takes nothing back from a consent that carries some.
-     */
     #[Test]
     public function extendingItWithNoDetailKeepsTheOnesItCarries(): void
     {
@@ -238,8 +229,7 @@ final class ConsentTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: a request asking for a detail the consent does not carry is not covered by it, and a
-     * request asking for none is covered by every consent.
+     * RFC 9396 §7
      */
     #[Test]
     public function aConsentCoversTheDetailsItCarriesAndNoOther(): void
@@ -260,9 +250,6 @@ final class ConsentTest extends TestCase
         static::assertFalse($consent->coversAuthorizationDetails(AuthorizationDetailTypes::details('acct-0815')));
     }
 
-    /**
-     * A consent given for nothing structured covers no detail at all.
-     */
     #[Test]
     public function aConsentCarryingNoDetailCoversNone(): void
     {
@@ -272,8 +259,7 @@ final class ConsentTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5: a consent holds the claims the user agreed to by name, and a consent given for its
-     * scopes alone holds none.
+     * OIDC Core §5.5
      */
     #[Test]
     public function aConsentHoldsTheClaimsItWasGivenByName(): void
@@ -290,8 +276,7 @@ final class ConsentTest extends TestCase
     }
 
     /**
-     * Architecture §4.3: what a user agreed to is never taken back by a new agreement, the claims agreed to
-     * by name no more than the scopes.
+     * Architecture §4.3
      */
     #[Test]
     public function extendingItGivesANewConsentWithTheClaimsOfBothEachOnce(): void
@@ -312,9 +297,6 @@ final class ConsentTest extends TestCase
         static::assertSame(['email', 'phone_number'], $extended->claims->all);
     }
 
-    /**
-     * A request that asks for no claim by name takes nothing back from a consent that holds some.
-     */
     #[Test]
     public function extendingItWithNoClaimKeepsTheOnesItHolds(): void
     {
@@ -329,8 +311,7 @@ final class ConsentTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.2.4, §5.5: a consent answers for the claims asked for by name that it holds by name,
-     * and for nothing else; nothing asked for by name is answered by every consent.
+     * OIDC Core §3.1.2.4, §5.5
      *
      * @param list<string> $asked
      */

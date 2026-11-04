@@ -30,8 +30,7 @@ use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 7592 §2.2: a client replaces its own registration. It is whole and never a patch, it cannot reach
- * what a registration could not, and what the provider assigned does not change.
+ * RFC 7592 §2.2
  */
 final class ClientConfigurationReplacementTest extends TestCase
 {
@@ -57,7 +56,7 @@ final class ClientConfigurationReplacementTest extends TestCase
     }
 
     /**
-     * RFC 7592 §2.2: a member the request leaves out is a member the client no longer registers.
+     * RFC 7592 §2.2
      */
     #[Test]
     public function aMemberTheRequestLeavesOutIsAMemberTheClientNoLongerRegisters(): void
@@ -84,8 +83,7 @@ final class ClientConfigurationReplacementTest extends TestCase
     }
 
     /**
-     * What the provider assigned does not change: the identifier, the date it was drawn on, and the token
-     * the client reads itself with, which §2.3 does not require rotating.
+     * RFC 7592 §2.3
      */
     #[Test]
     public function whatTheProviderAssignedStays(): void
@@ -107,7 +105,7 @@ final class ClientConfigurationReplacementTest extends TestCase
     }
 
     /**
-     * RFC 7592 §2.2: the request names the client it is for, and a client may not rename itself.
+     * RFC 7592 §2.2
      */
     #[Test]
     #[DataProvider('provideRequestsThatDoNotNameTheClient')]
@@ -143,7 +141,7 @@ final class ClientConfigurationReplacementTest extends TestCase
     }
 
     /**
-     * RFC 7592 §2.2: what the provider assigned is not carried by a replacement.
+     * RFC 7592 §2.2
      */
     #[Test]
     #[DataProvider('provideMembersTheProviderAssigned')]
@@ -182,7 +180,7 @@ final class ClientConfigurationReplacementTest extends TestCase
     }
 
     /**
-     * RFC 7592 §2.2: a client may echo back the secret it holds, which is what §2.2 asks it to send back.
+     * RFC 7592 §2.2
      */
     #[Test]
     public function aClientMayEchoBackTheSecretItHolds(): void
@@ -204,7 +202,7 @@ final class ClientConfigurationReplacementTest extends TestCase
     }
 
     /**
-     * RFC 7592 §2.2: and it may echo back no other.
+     * RFC 7592 §2.2
      */
     #[Test]
     public function aSecretThatIsNotTheClientOwnIsRefused(): void
@@ -225,9 +223,6 @@ final class ClientConfigurationReplacementTest extends TestCase
         ]);
     }
 
-    /**
-     * A client that holds none is a client no secret is the secret of.
-     */
     #[Test]
     public function aClientThatHoldsNoSecretEchoesNone(): void
     {
@@ -247,8 +242,7 @@ final class ClientConfigurationReplacementTest extends TestCase
     }
 
     /**
-     * RFC 7591 §3.2.1: the provider assigns a secret exactly when the registered method proves one, so a
-     * client that registers such a method where it held none is handed one, answered once.
+     * RFC 7591 §3.2.1
      */
     #[Test]
     public function aClientThatRegistersAMethodProvingASecretIsHandedOne(): void
@@ -271,9 +265,6 @@ final class ClientConfigurationReplacementTest extends TestCase
         static::assertInstanceOf(HashedClientSecret::class, $response->record->secret);
     }
 
-    /**
-     * And a client that registers a method proving none keeps nothing of the secret it held.
-     */
     #[Test]
     public function aClientThatRegistersAMethodProvingNoSecretKeepsNone(): void
     {
@@ -295,8 +286,7 @@ final class ClientConfigurationReplacementTest extends TestCase
     }
 
     /**
-     * OIDC Core §9: a client that registers the method that signs with its secret needs the value, which
-     * the provider does not hold of a hash, so it is handed a new one.
+     * OIDC Core §9
      */
     #[Test]
     public function aClientThatRegistersTheMethodSigningWithItsSecretIsHandedOneItCanSignWith(): void
@@ -320,8 +310,7 @@ final class ClientConfigurationReplacementTest extends TestCase
     }
 
     /**
-     * Decision 0009: a replacement cannot reach what a registration could not, being read by the same
-     * thing under the same policy of the same tenant.
+     * Decision 0009
      */
     #[Test]
     public function aReplacementIsHeldToWhatTheTenantOffers(): void
@@ -342,8 +331,7 @@ final class ClientConfigurationReplacementTest extends TestCase
     }
 
     /**
-     * RFC 9101 §10.5: a replacement cannot write the registration a registration could not, a client held
-     * to signed request objects that would have them read unsigned.
+     * RFC 9101 §10.5
      */
     #[Test]
     public function aReplacementCannotHaveTheSignedObjectsItRequiresReadUnsigned(): void
@@ -365,8 +353,7 @@ final class ClientConfigurationReplacementTest extends TestCase
     }
 
     /**
-     * Decision 0017: the exemption is read from the policy every time that policy writes a registration,
-     * the replacement of §2.2 included.
+     * Decision 0017, RFC 7592 §2.2
      */
     #[Test]
     public function thePolicyWritesTheExemptionAgainOnAReplacement(): void
@@ -391,8 +378,7 @@ final class ClientConfigurationReplacementTest extends TestCase
     }
 
     /**
-     * And a policy that stops exempting stops writing it, which is how the exception of decision 0017 is
-     * withdrawn tenant by tenant.
+     * Decision 0017
      */
     #[Test]
     public function aPolicyThatNoLongerExemptsWritesNothingOnAReplacement(): void
@@ -414,12 +400,9 @@ final class ClientConfigurationReplacementTest extends TestCase
     }
 
     /**
-     * RFC 7591 §3.1.1: what a software statement signed outranks what the client sends at a replacement
-     * as it outranked what it sent at the registration, RFC 7592 §3 leaving the provider free to replace
-     * what a replacement asks for. The name an authority signed is the one the client keeps, whatever the
-     * replacement says of it (decision 0009).
+     * RFC 7591 §3.1.1, RFC 7592 §3, Decision 0009
      *
-     * @param array<string, mixed> $named what the replacement says of the name
+     * @param array<string, mixed> $named
      */
     #[Test]
     #[DataProvider('provideWhatAReplacementSaysOfTheName')]
@@ -484,7 +467,7 @@ final class ClientConfigurationReplacementTest extends TestCase
     /**
      * @param array<string, mixed>|null $metadata
      * @param array<string, mixed> $assigned
-     * @param array<string, mixed>|null $attested what a statement signed of the client, null for a client none attested
+     * @param array<string, mixed>|null $attested
      */
     private function register(
         ?array $metadata = null,

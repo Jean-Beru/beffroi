@@ -33,7 +33,7 @@ use PHPUnit\Framework\TestCase;
 final class RefreshTokenTest extends TestCase
 {
     /**
-     * RFC 7638 §3.1: the base64url of a SHA-256, the shape of a key thumbprint.
+     * RFC 7638 §3.1
      */
     private const string THUMBPRINT = 'NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs';
 
@@ -53,8 +53,7 @@ final class RefreshTokenTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: everything the next refresh needs, with the authentication of the original
-     * authorization.
+     * Architecture §4.6
      */
     #[Test]
     public function itRecordsWhatTheNextRefreshWillNeed(): void
@@ -185,8 +184,7 @@ final class RefreshTokenTest extends TestCase
     }
 
     /**
-     * RFC 9449 §5: what the request that got it proved stays on the token of a public client, which has
-     * no credentials to be asked for again.
+     * RFC 9449 §5
      */
     #[Test]
     public function aTokenOfAPublicClientKeepsWhatTheRequestProved(): void
@@ -214,8 +212,7 @@ final class RefreshTokenTest extends TestCase
     }
 
     /**
-     * RFC 8705 §4: a confidential client is asked for its credentials at every refresh, and that is the
-     * binding; keeping another one beside it would be a second rule saying the same thing.
+     * RFC 8705 §4
      */
     #[Test]
     public function aTokenOfAConfidentialClientKeepsNone(): void
@@ -273,8 +270,7 @@ final class RefreshTokenTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: the sliding expiry is capped by the family, so that the ninetieth day is the
-     * end whatever the last refresh.
+     * Architecture §4.6
      */
     #[Test]
     public function itNeverOutlivesItsFamily(): void
@@ -316,7 +312,7 @@ final class RefreshTokenTest extends TestCase
     }
 
     /**
-     * RFC 6749 §6, RFC 9700 §4.13.2: a token is rotated once.
+     * RFC 6749 §6, RFC 9700 §4.13.2
      */
     #[Test]
     public function rotatingDatesTheRotation(): void
@@ -334,9 +330,6 @@ final class RefreshTokenTest extends TestCase
         static::assertFalse($token->isRevoked());
     }
 
-    /**
-     * A second presentation is the grant's decision, so rotating twice is a programming error.
-     */
     #[Test]
     public function itCannotBeRotatedTwice(): void
     {
@@ -370,9 +363,6 @@ final class RefreshTokenTest extends TestCase
         static::assertEquals($presentedAt, $token->rotatedAt);
     }
 
-    /**
-     * Rotating a revoked token is a programming error too.
-     */
     #[Test]
     public function aRevokedTokenCannotBeRotated(): void
     {
@@ -420,9 +410,6 @@ final class RefreshTokenTest extends TestCase
         static::assertEquals($revokedAt, $token->revokedAt);
     }
 
-    /**
-     * The first revocation wins, like a consent or a session.
-     */
     #[Test]
     public function theFirstRevocationWins(): void
     {
@@ -458,10 +445,6 @@ final class RefreshTokenTest extends TestCase
         $this->token(client: Clients::public(Fixtures::tenant('other', 'https://id.other.example')));
     }
 
-    /**
-     * The lineage carries a tenant of its own, and a revocation walks the family: a token naming the
-     * family of another tenant would put the tokens of two tenants in one lineage.
-     */
     #[Test]
     public function itRefusesAFamilyOfAnotherTenant(): void
     {
@@ -476,9 +459,6 @@ final class RefreshTokenTest extends TestCase
         $this->token(family: $elsewhere);
     }
 
-    /**
-     * RFC 8176: a session always has at least one proof, so a token always has at least one method.
-     */
     #[Test]
     public function itRefusesToBeIssuedBeforeItsFamilyStarted(): void
     {

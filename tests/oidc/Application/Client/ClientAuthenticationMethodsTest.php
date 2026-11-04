@@ -12,10 +12,6 @@ use Beffroi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * What the wiring gave the provider, the one source of truth over the client authentication methods
- * (issue #98).
- */
 final class ClientAuthenticationMethodsTest extends TestCase
 {
     #[Test]

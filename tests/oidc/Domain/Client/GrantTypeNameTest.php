@@ -11,8 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 6749 appendix A.10: a grant type is a name of the registry or the absolute URI of an extension
- * grant (§4.5, RFC 6755). The value object carries that shape and never a list of the names that exist.
+ * RFC 6749 appendix A.10, §4.5, RFC 6755
  */
 final class GrantTypeNameTest extends TestCase
 {
@@ -65,8 +64,7 @@ final class GrantTypeNameTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.3: the "grant_type" of a request is compared byte for byte, so a name in another
-     * case names another grant.
+     * RFC 6749 §4.1.3
      */
     #[Test]
     public function aNameIsComparedByteForByte(): void

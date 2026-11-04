@@ -16,13 +16,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * A third party whose signature a tenant trusts (RFC 7523 §3): every list of it is closed, and nothing about it
- * is inferred.
+ * RFC 7523 §3
  */
 final class TrustedIssuerTest extends TestCase
 {
     /**
-     * RFC 7523 §3: an issuer trusted for one client is not thereby trusted for every client of the tenant.
+     * RFC 7523 §3
      */
     #[Test]
     public function itNamesTheClientsThatMayPresentItsAssertions(): void
@@ -42,7 +41,7 @@ final class TrustedIssuerTest extends TestCase
     }
 
     /**
-     * RFC 7515 §4.1.1: what it signs with is a closed list too.
+     * RFC 7515 §4.1.1
      */
     #[Test]
     public function itNamesTheAlgorithmsItSignsWith(): void
@@ -61,9 +60,6 @@ final class TrustedIssuerTest extends TestCase
         static::assertFalse(TrustedIssuers::workforce(signingAlgorithms: ['ES256'])->signsWith('RS256'));
     }
 
-    /**
-     * The scopes of a response are a subset of what the issuer is trusted for.
-     */
     #[Test]
     public function itIsTrustedForTheScopesItWasRegisteredFor(): void
     {

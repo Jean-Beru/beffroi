@@ -19,8 +19,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Architecture §4.2: the validated request answers the questions the interaction asks (scope, prompt)
- * and knows where an error raised later goes; the response mode is query.
+ * Architecture §4.2
  */
 final class AuthorizationRequestTest extends TestCase
 {
@@ -89,9 +88,7 @@ final class AuthorizationRequestTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.2.1 max_age: a session whose latest proof is older than max_age seconds exceeds it, "auth_time +
-     * max_age < now"; one exactly max_age seconds old, a younger one, and a request without max_age, do not
-     * (beffroi/saml, spec/saml.md S-49).
+     * OIDC Core §3.1.2.1, beffroi/saml S-49
      */
     #[Test]
     #[DataProvider('provideMaxAges')]

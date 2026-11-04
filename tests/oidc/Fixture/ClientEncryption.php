@@ -12,20 +12,12 @@ use Jose\Component\Encryption\JWEDecrypter;
 use Jose\Component\Encryption\Serializer\CompactSerializer;
 use PHPUnit\Framework\Assert;
 
-/**
- * The client side of what the provider encrypts for it: one P-256 key pair the client publishes for
- * encryption, and the opening a client performs on a document addressed to it. Never leaves the test
- * suite.
- */
 final class ClientEncryption
 {
     public const string KEY_ID = 'client-encryption-key';
 
     private static ?JWK $privateKey = null;
 
-    /**
-     * The private half, which only the client holds.
-     */
     public static function privateKey(): JWK
     {
         return self::$privateKey ??= new JWK([
@@ -34,9 +26,6 @@ final class ClientEncryption
         ]);
     }
 
-    /**
-     * What the client publishes: the key it signs its assertions with, and the one it is encrypted to.
-     */
     public static function publishedKeys(): ClientJwks
     {
         /** @var list<array<string, mixed>> $keys */
@@ -54,9 +43,6 @@ final class ClientEncryption
     }
 
     /**
-     * The document as the client reads it: the JWE opened with the private half, and its payload, which
-     * is a compact JWS when the provider signed before encrypting.
-     *
      * @return array{header: array<string, mixed>, payload: string}
      */
     public static function open(string $compactJwe): array

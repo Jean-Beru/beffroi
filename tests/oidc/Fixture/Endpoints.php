@@ -11,9 +11,7 @@ use Beffroi\Oidc\Port\EndpointLocatorInterface;
 use Beffroi\Oidc\Port\MutualTlsEndpointLocatorInterface;
 
 /**
- * Where the endpoints of a tenant are served in the tests: under the issuer, at the paths the
- * application routes them to, and on the host that asks for a client certificate when the test wires one
- * (RFC 8705 §5).
+ * RFC 8705 §5
  */
 final readonly class Endpoints implements ClientConfigurationEndpointInterface, EndpointLocatorInterface, MutualTlsEndpointLocatorInterface
 {

@@ -23,10 +23,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * OIDC Core §3.1.2.1: what the "login_hint" of an authorization request names, read by the one reading
- * this provider is wired with, so that the page waiting for a login can offer a name instead of the value
- * the client carried. OIDC Core §4 is what makes it worth reading: the hint of a login this provider
- * begins at a client is a "sub" this provider wrote itself.
+ * OIDC Core §3.1.2.1, §4
  */
 final class LoginHintsTest extends TestCase
 {
@@ -46,8 +43,7 @@ final class LoginHintsTest extends TestCase
     }
 
     /**
-     * OIDC Core §8: the subject this provider issued to that client, which is what §4 puts in the hint of
-     * a login it begins there.
+     * OIDC Core §8, §4
      */
     #[Test]
     public function aHintReadAsASubjectNamesItsUser(): void
@@ -63,8 +59,7 @@ final class LoginHintsTest extends TestCase
     }
 
     /**
-     * §3.1.2.1: what a login hint names is a rule of the tenant, so the same parameter read as a username
-     * finds the same user by another value, and neither reading ever tries the other.
+     * OIDC Core §3.1.2.1
      */
     #[Test]
     public function aHintReadAsAUsernameNamesItsUser(): void
@@ -80,8 +75,7 @@ final class LoginHintsTest extends TestCase
     }
 
     /**
-     * §3.1.2.1 makes the parameter a hint: what it fails to name costs the request nothing, and the page
-     * that follows offers nothing rather than a string nobody typed.
+     * OIDC Core §3.1.2.1
      */
     #[Test]
     #[DataProvider('provideHintsNamingNobody')]
@@ -108,10 +102,6 @@ final class LoginHintsTest extends TestCase
         yield 'a value that is no subject at all' => ["\x00"];
     }
 
-    /**
-     * A deployment that says "none" reads no hint at all, and a request that carries one is served exactly
-     * as a request that carries none: the value is never tried against whatever lookup might match it.
-     */
     #[Test]
     public function aHintNothingIsWiredToReadNamesNobody(): void
     {
@@ -126,8 +116,7 @@ final class LoginHintsTest extends TestCase
     }
 
     /**
-     * §3.1.2.1: a hint is offered, so a reading that refuses the value refuses the value and not the
-     * request, which would make a parameter nobody has to send able to break one.
+     * OIDC Core §3.1.2.1
      */
     #[Test]
     public function aReadingThatRefusesTheValueNamesNobody(): void
@@ -145,8 +134,7 @@ final class LoginHintsTest extends TestCase
     }
 
     /**
-     * Two readings of one parameter is a wiring with two answers to one question, and picking one of them
-     * would be the search §3.1.2.1 never asks for.
+     * OIDC Core §3.1.2.1
      */
     #[Test]
     public function twoReadingsOfOneParameterAreRefused(): void
@@ -166,8 +154,7 @@ final class LoginHintsTest extends TestCase
     }
 
     /**
-     * OIDC Core §8.1: the hint of a login begun at a pairwise client is the identifier of that client's
-     * sector, which no row carries, and reading it back is the way in that makes §4 worth anything there.
+     * OIDC Core §8.1, §4
      */
     #[Test]
     public function aPairwiseHintNamesItsUserForTheClientItWasHandedTo(): void
@@ -186,9 +173,7 @@ final class LoginHintsTest extends TestCase
     }
 
     /**
-     * OIDC Core §8.1, the property pairwise exists for: a "sub" a client was never handed names nobody for
-     * that client, even where it names somebody for another, so a hint carried from one sector to another
-     * tells the second one nothing.
+     * OIDC Core §8.1
      */
     #[Test]
     public function aPairwiseHintOfAnotherSectorNamesNobody(): void

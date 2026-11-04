@@ -8,8 +8,7 @@ use Beffroi\Oidc\Domain\Ciba\PendingApproval;
 use Beffroi\Oidc\Port\PendingApprovalNotifierInterface;
 
 /**
- * What a deployment wires to reach its users (CIBA Core §7), here keeping what it was asked to carry so
- * that a test reads it.
+ * CIBA Core §7
  */
 final class RecordingPendingApprovalNotifier implements PendingApprovalNotifierInterface
 {

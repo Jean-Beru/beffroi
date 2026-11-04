@@ -13,8 +13,7 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * Architecture §4.6: every value this provider hands out and recognises again is drawn here, 256 bits of
- * the randomness it was given, written in base64url.
+ * Architecture §4.6
  */
 final class SecretDrawerTest extends TestCase
 {
@@ -38,9 +37,6 @@ final class SecretDrawerTest extends TestCase
         static::assertNotSame($drawer->draw(), $drawer->draw());
     }
 
-    /**
-     * The value is the randomness it was given and nothing else, which is what lets a test fix it.
-     */
     #[Test]
     public function itWritesTheBytesItWasGiven(): void
     {

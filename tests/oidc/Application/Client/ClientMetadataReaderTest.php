@@ -20,14 +20,12 @@ use PHPUnit\Framework\TestCase;
 use function array_map;
 
 /**
- * RFC 7591 §2, OIDC Registration §2: the one reader of the metadata a client is registered with, whether a
- * deployment declared it or a client sent it. What differs between the two is the sources of members each
- * reads behind the ones it was given, and what each does with the refusal it raises (issue #335).
+ * RFC 7591 §2, OIDC Registration §2
  */
 final class ClientMetadataReaderTest extends TestCase
 {
     /**
-     * A JWK Set a client publishes inline (RFC 7517 §5).
+     * RFC 7517 §5
      *
      * @var array<string, mixed>
      */
@@ -42,8 +40,7 @@ final class ClientMetadataReaderTest extends TestCase
     ];
 
     /**
-     * RFC 7591 §2: a client that registers nothing beyond its redirection URI is registered for the
-     * authorization code grant alone, and not for the renewal a deployment would have written for it.
+     * RFC 7591 §2
      */
     #[Test]
     public function aClientThatRegistersNothingTakesTheGrantOfTheSpecification(): void
@@ -58,8 +55,7 @@ final class ClientMetadataReaderTest extends TestCase
     }
 
     /**
-     * RFC 7591 §2: and with "client_secret_basic", which is the method it authenticates with, and not the
-     * first method this provider happens to be wired with.
+     * RFC 7591 §2
      */
     #[Test]
     public function aClientThatRegistersNothingTakesTheMethodOfTheSpecification(): void
@@ -73,10 +69,6 @@ final class ClientMetadataReaderTest extends TestCase
         static::assertSame('client_secret_basic', $registration->authenticationMethod->name());
     }
 
-    /**
-     * A deployment that writes nothing means the browser flow and the renewal that goes with it, which is
-     * what it always meant: the two defaults are two sources and not two branches.
-     */
     #[Test]
     public function aDeclarationThatWritesNothingTakesTheDefaultsOfADeployment(): void
     {
@@ -94,9 +86,7 @@ final class ClientMetadataReaderTest extends TestCase
     }
 
     /**
-     * RFC 7591 §3.1.1: the members of a source put in front of another take precedence over the same members
-     * sent behind it, which is what an attested registration will be. Nothing here is a branch: the source
-     * that wins is the first one asked.
+     * RFC 7591 §3.1.1
      */
     #[Test]
     public function theSourceInFrontWinsTheMemberTheSourceBehindAlsoCarries(): void
@@ -121,8 +111,7 @@ final class ClientMetadataReaderTest extends TestCase
     }
 
     /**
-     * OIDC Registration §2: what a user is shown of the client that is asking, read here and shown by the
-     * consent page.
+     * OIDC Registration §2
      */
     #[Test]
     public function itReadsWhatAUserIsShownOfTheClient(): void
@@ -148,8 +137,7 @@ final class ClientMetadataReaderTest extends TestCase
     }
 
     /**
-     * OIDC Registration §2: a client that registers no name is shown under its identifier, which is the only
-     * thing this provider is sure of about it.
+     * OIDC Registration §2
      */
     #[Test]
     public function aClientThatRegistersNoNameIsShownUnderItsIdentifier(): void
@@ -164,8 +152,7 @@ final class ClientMetadataReaderTest extends TestCase
     }
 
     /**
-     * OIDC Core §8, §8.1, §4: three members this reader holds for whoever resolves a "sub" and whoever
-     * begins a login at the client.
+     * OIDC Core §8, §8.1, §4
      */
     #[Test]
     public function itReadsWhatTheSubjectAndAThirdPartyLoginAreResolvedFrom(): void
@@ -185,9 +172,7 @@ final class ClientMetadataReaderTest extends TestCase
     }
 
     /**
-     * OIDC Core §6.2, OIDC Registration §2: a "request_uris" a client registers may carry the fragment §6.2
-     * defines, and the value is kept byte for byte, hash included, because that is what a request naming it
-     * is compared with (modules `oidcc-request-uri-unsigned` and `-request-uri-signed-rs256`).
+     * OIDC Core §6.2, OIDC Registration §2
      */
     #[Test]
     public function aRequestUriMayCarryTheFragmentOfTheSpecification(): void
@@ -206,9 +191,7 @@ final class ClientMetadataReaderTest extends TestCase
     }
 
     /**
-     * The one member held to "https" is held to it alone: plain HTTP on a loopback host is what the URIs of
-     * a client on a development stack are, and the exception stays where it is earned rather than being
-     * lifted or narrowed for every member at once (decision 0006).
+     * Decision 0006
      */
     #[Test]
     public function theMembersThatAcceptPlainHttpOnALoopbackHostStillDo(): void
@@ -226,8 +209,7 @@ final class ClientMetadataReaderTest extends TestCase
     }
 
     /**
-     * OIDC Core §8: a client that registers no kind of "sub" registers none, and sees the kind the provider
-     * assigns by default; the registration holds what was registered and nothing it invents.
+     * OIDC Core §8
      */
     #[Test]
     public function aClientThatRegistersNoSubjectTypeRegistersNone(): void
@@ -242,9 +224,7 @@ final class ClientMetadataReaderTest extends TestCase
     }
 
     /**
-     * RFC 7591 §3.2.2: what the endpoint answers with, which is the class of the refusal, and the member it
-     * names. One case per rule the plan judges, read from a body and refused the same way it would be refused
-     * in a declaration.
+     * RFC 7591 §3.2.2
      *
      * @param array<string, mixed> $members
      * @param class-string<UnreadableClientMetadataException> $refusal
@@ -368,8 +348,6 @@ final class ClientMetadataReaderTest extends TestCase
             'scope',
             'is not a scope token',
         ];
-        // The provider of these cases is wired with the public kind alone, so a client that asks for a
-        // pairwise "sub" is refused by the same rule that refuses a grant nothing serves (issue #341).
         yield 'a kind of subject this provider assigns none' => [
             [
                 'redirect_uris' => ['https://rp.example/cb'],
@@ -379,8 +357,6 @@ final class ClientMetadataReaderTest extends TestCase
             'subject_type',
             'subject_type option of the client "drawn" must be one of: public',
         ];
-        // RFC 6749 §3.1.2: a redirection carries no fragment, and the kind that accepts one is the kind
-        // "request_uris" is read as, never a member name read inside ClientUri (issue #376).
         yield 'a redirection URI that carries a fragment (oidcc-redirect-uri-regfrag)' => [
             [
                 'redirect_uris' => ['https://rp.example/cb#frag'],
@@ -398,9 +374,6 @@ final class ClientMetadataReaderTest extends TestCase
             'initiate_login_uri',
             'must use HTTPS, on a loopback host as anywhere else',
         ];
-        // The module sends the URL of the run with its scheme replaced, and the suite runs on
-        // "localhost:8443": the member OIDC Registration §2 holds to "https" is held to it on the host a
-        // development stack is reached at as well (issue #377).
         yield 'a login begun by a third party over plain HTTP on a loopback host' => [
             [
                 'redirect_uris' => ['https://rp.example/cb'],
@@ -413,9 +386,7 @@ final class ClientMetadataReaderTest extends TestCase
     }
 
     /**
-     * OIDC Core §8: the kinds a client may name are the ones the provider is wired to assign, so the same
-     * registration that is refused on a provider wired with one kind is read on a provider wired with two,
-     * and nothing but the wiring says so.
+     * OIDC Core §8
      */
     #[Test]
     public function aKindOfSubjectTheProviderAssignsIsRegistered(): void
@@ -435,9 +406,7 @@ final class ClientMetadataReaderTest extends TestCase
     }
 
     /**
-     * OIDC Core §8.1: what the pairwise kind needs of a registration is read where a registration meets the
-     * wiring, so a client whose sector cannot be read from what it registered is refused at the moment it
-     * registers and not at the first token it asks for.
+     * OIDC Core §8.1
      */
     #[Test]
     public function aClientOfAKindThatNeedsASectorAndNamesNoneIsRefused(): void
@@ -461,8 +430,7 @@ final class ClientMetadataReaderTest extends TestCase
     }
 
     /**
-     * OIDC Registration §2: a client that registers no kind is not a client of no kind, it is a client of
-     * the kind the provider assigns by default, which is the first one wired.
+     * OIDC Registration §2
      */
     #[Test]
     public function aClientThatRegistersNoKindNamesNone(): void
@@ -481,8 +449,7 @@ final class ClientMetadataReaderTest extends TestCase
     }
 
     /**
-     * OIDC Registration §2: a client that asks for a code and registers no grant that answers with one is
-     * refused rather than believed by halves.
+     * OIDC Registration §2
      */
     #[Test]
     public function aResponseTypeNoGrantOfTheRegistrationAnswersWithIsRefused(): void
@@ -504,10 +471,6 @@ final class ClientMetadataReaderTest extends TestCase
         }
     }
 
-    /**
-     * A refusal says which source carried the value, which is what an attested registration needs to be
-     * debugged: the same body read from the configuration and from a request names a different one.
-     */
     #[Test]
     public function aRefusalSaysWhichSourceCarriedTheValue(): void
     {
@@ -527,10 +490,6 @@ final class ClientMetadataReaderTest extends TestCase
         }
     }
 
-    /**
-     * A grant the tenant serves is read where the registration meets the wiring, wherever the registration
-     * came from: a client that registers itself is held to the same list as a declared one.
-     */
     #[Test]
     public function aGrantNothingServesIsRefusedInARegistrationAsInADeclaration(): void
     {
@@ -549,8 +508,7 @@ final class ClientMetadataReaderTest extends TestCase
     }
 
     /**
-     * RFC 7591 §2 has no member for the secret the provider assigned (§3.2.1), so the reader is told whether
-     * one is held: a store says it by holding a column, a declaration by carrying one.
+     * RFC 7591 §2, §3.2.1
      */
     #[Test]
     public function aMethodThatProvesASecretNeedsTheProviderToHoldOne(): void
@@ -583,8 +541,7 @@ final class ClientMetadataReaderTest extends TestCase
     }
 
     /**
-     * What the registration endpoint reads: the members the client sent, behind the defaults of RFC 7591 §2,
-     * with the secret the provider drew for it held in a column of its own (§3.2.1).
+     * RFC 7591 §2, §3.2.1
      *
      * @param array<string, mixed> $members
      */

@@ -15,9 +15,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The names of this provider a client assertion may name in its "aud" (issue #267): the issuer of the
- * tenant for every client, and the two endpoints CIBA Core §7.1 adds beside it for a client of the
- * backchannel flow.
+ * CIBA Core §7.1
  */
 final class AcceptedAssertionAudiencesTest extends TestCase
 {
@@ -34,9 +32,7 @@ final class AcceptedAssertionAudiencesTest extends TestCase
     }
 
     /**
-     * FAPI 2.0 Security Profile §5.3.2.1 clause 8: the issuer identifier is the one value an authorization
-     * server accepts, although RFC 7523 §3 permits the URL of the token endpoint and OIDC Core §9
-     * recommends it.
+     * FAPI 2.0 Security Profile §5.3.2.1 clause 8
      */
     #[Test]
     public function theIssuerIsTheOneNameAnOrdinaryClientMayName(): void
@@ -52,9 +48,7 @@ final class AcceptedAssertionAudiencesTest extends TestCase
     }
 
     /**
-     * CIBA Core §7.1: the provider accepts its issuer identifier, the URL of its token endpoint and the URL
-     * of its backchannel authentication endpoint, which is how the specification settles the ambiguity it
-     * names over which of them such a client writes.
+     * CIBA Core §7.1
      */
     #[Test]
     public function aClientOfTheBackchannelFlowMayAlsoNameTheTokenAndBackchannelEndpoints(): void
@@ -76,10 +70,6 @@ final class AcceptedAssertionAudiencesTest extends TestCase
         );
     }
 
-    /**
-     * The widening is what the provider serves and not what a client wrote down: a registration naming a
-     * grant nothing answers makes no client of that flow, here as at the endpoint where it would start.
-     */
     #[Test]
     public function aClientRegisteredForAGrantTheProviderDoesNotServeNamesTheIssuerAlone(): void
     {
@@ -94,8 +84,7 @@ final class AcceptedAssertionAudiencesTest extends TestCase
     }
 
     /**
-     * RFC 8705 §5: an endpoint served on a host whose TLS listener asks for a certificate is reached there
-     * by a client that presents one, so that URL is a name of it too.
+     * RFC 8705 §5
      */
     #[Test]
     public function theEndpointsOfTheHostThatAsksForACertificateAreNamesOfThemToo(): void

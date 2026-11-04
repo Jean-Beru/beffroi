@@ -24,15 +24,10 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Decision 0009: a client nobody uses any more is deleted, after the durations its tenant names. The
- * durations here are the ones the policy of the tests names, and time is the mocked clock: a client is there
- * one instant before and gone one instant after.
+ * Decision 0009
  */
 final class UnusedClientRemovalTest extends TestCase
 {
-    /**
-     * What the policy of the tests keeps a client that was used for, and one that never was.
-     */
     private const string UNUSED_FOR = '+90 days';
 
     private const string NEVER_USED_FOR = '+7 days';
@@ -77,9 +72,6 @@ final class UnusedClientRemovalTest extends TestCase
         static::assertNull($this->clients->findRecord($this->tenant, 'used-long-ago'));
     }
 
-    /**
-     * A client that was never used holds nothing at all, so it goes on the shorter of the two durations.
-     */
     #[Test]
     public function aClientNobodyEverUsedGoesOnTheShorterDuration(): void
     {
@@ -106,9 +98,6 @@ final class UnusedClientRemovalTest extends TestCase
         static::assertSame([], $removed);
     }
 
-    /**
-     * One event says a client is gone, whichever way it went.
-     */
     #[Test]
     public function eachClientRemovedIsAnnouncedByTheOneEventAClientGoingAwayEmits(): void
     {
@@ -124,10 +113,6 @@ final class UnusedClientRemovalTest extends TestCase
         static::assertSame('never-used', $events[0]->clientId);
     }
 
-    /**
-     * A step that locks a table on a large deployment is an outage, so a run removes at most what it is
-     * bounded to and the next one takes the rest.
-     */
     #[Test]
     public function aRunRemovesAtMostWhatItIsBoundedTo(): void
     {
@@ -145,8 +130,7 @@ final class UnusedClientRemovalTest extends TestCase
     }
 
     /**
-     * Decision 0009: a tenant with no registration policy has no client that registered itself, so there is
-     * nothing to keep and nothing to drop.
+     * Decision 0009
      */
     #[Test]
     public function aTenantThatRegistersNobodyDropsNothing(): void
@@ -162,9 +146,6 @@ final class UnusedClientRemovalTest extends TestCase
         static::assertCount(1, $this->clients->records);
     }
 
-    /**
-     * The clients of one tenant are no business of another.
-     */
     #[Test]
     public function aClientOfAnotherTenantIsNotDropped(): void
     {

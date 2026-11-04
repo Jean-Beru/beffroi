@@ -12,8 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 8628 §4: the one member the specification registers, which is where a client with no browser starts.
- * The grant that goes with it is announced by the fact of being wired, as every other grant is.
+ * RFC 8628 §4
  */
 final class AnnouncedDeviceAuthorizationTest extends TestCase
 {
@@ -35,10 +34,6 @@ final class AnnouncedDeviceAuthorizationTest extends TestCase
         );
     }
 
-    /**
-     * A contributor announces nothing rather than an endpoint nothing serves: a provider wired with no
-     * grant whose user is asked on another device would refuse every client there (issue #839).
-     */
     #[Test]
     public function aProviderWiredWithNoSuchGrantAnnouncesNothing(): void
     {

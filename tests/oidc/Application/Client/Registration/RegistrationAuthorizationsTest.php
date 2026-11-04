@@ -15,9 +15,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Decision 0009: what authorises a registration is a class per mode, and the policy of a tenant names
- * one of them. Nothing here compares a mode to a literal: the classes name themselves and this matches
- * the name, so a mode the provider gains is a class added and a line of wiring.
+ * Decision 0009
  */
 final class RegistrationAuthorizationsTest extends TestCase
 {
@@ -35,9 +33,6 @@ final class RegistrationAuthorizationsTest extends TestCase
         static::assertSame($mode, $authorization);
     }
 
-    /**
-     * A deployment that wired one thing and wrote another is told which modes it wired.
-     */
     #[Test]
     public function aModeNothingServesNamesWhatIsWired(): void
     {
@@ -52,9 +47,6 @@ final class RegistrationAuthorizationsTest extends TestCase
         $modes->authorizing(new ClientRegistrationPolicy('attested'));
     }
 
-    /**
-     * A deployment with no mode at all is told so rather than shown an empty list.
-     */
     #[Test]
     public function aProviderWiredWithNoModeSaysSo(): void
     {
@@ -69,9 +61,6 @@ final class RegistrationAuthorizationsTest extends TestCase
         $modes->authorizing(new ClientRegistrationPolicy(InitialAccessTokenAuthorization::MODE));
     }
 
-    /**
-     * Two classes answering to one name is a wiring nobody can read, and it is refused at the wiring.
-     */
     #[Test]
     public function twoModesOfOneNameAreRefused(): void
     {

@@ -22,8 +22,7 @@ use Beffroi\Oidc\Tests\Fixture\Subjects;
 use PHPUnit\Framework\TestCase;
 
 /**
- * CIBA Core §7.1: a request names the user it is made for exactly once, by one of the three hints that
- * specification names, and the provider reads that hint one way.
+ * CIBA Core §7.1
  */
 final class UserHintsTest extends TestCase
 {
@@ -43,7 +42,7 @@ final class UserHintsTest extends TestCase
     }
 
     /**
-     * §15: the subject this provider issued, which says who somebody is here and nowhere else.
+     * CIBA Core §15
      */
     #[Test]
     public function aLoginHintReadAsASubjectNamesItsUser(): void
@@ -61,8 +60,7 @@ final class UserHintsTest extends TestCase
     }
 
     /**
-     * §7.1: what a login hint names is a rule of the tenant, so the same parameter read as a username
-     * finds the same user by another value, and neither reading ever tries the other.
+     * CIBA Core §7.1
      */
     #[Test]
     public function aLoginHintReadAsAUsernameNamesItsUser(): void
@@ -80,8 +78,7 @@ final class UserHintsTest extends TestCase
     }
 
     /**
-     * Decision 0006: a hint that names nobody is answered exactly as a hint that names somebody who never
-     * answers, so it is not an error and it says nothing.
+     * Decision 0006
      */
     #[Test]
     #[DataProvider('provideHintsNamingNobody')]
@@ -109,7 +106,7 @@ final class UserHintsTest extends TestCase
     }
 
     /**
-     * §7.1: "the Client MUST provide one (and only one) of the hints".
+     * CIBA Core §7.1
      *
      * @param array<string, string> $parameters
      */
@@ -138,9 +135,6 @@ final class UserHintsTest extends TestCase
         yield 'a hint this provider reads and one it does not' => [['login_hint' => 'alice-subject', 'login_hint_token' => 'eyJ.the.token']];
     }
 
-    /**
-     * A request carrying only a hint nothing is wired to read is refused, and nobody has been looked up.
-     */
     #[Test]
     public function aHintNothingIsWiredToReadIsRefused(): void
     {
@@ -157,9 +151,6 @@ final class UserHintsTest extends TestCase
         ]));
     }
 
-    /**
-     * Two things reading one parameter is a wiring with two answers to one question.
-     */
     #[Test]
     public function aParameterIsReadOneWay(): void
     {
@@ -176,9 +167,6 @@ final class UserHintsTest extends TestCase
         ]));
     }
 
-    /**
-     * A subject of another tenant names nobody here.
-     */
     #[Test]
     public function aHintOfAnotherTenantNamesNobody(): void
     {

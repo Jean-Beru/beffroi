@@ -22,11 +22,6 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Uid\UuidV7;
 
-/**
- * Issue #590: what a client was given of a person, written beside the act that gave it, out of the act and
- * out of nothing else. The journal keeps saying that the act happened; this says what left with it, which
- * is the question a person asks of a consent they have since taken back.
- */
 final class DisclosureRecordingTest extends TestCase
 {
     private InMemoryDisclosures $disclosures;
@@ -63,10 +58,6 @@ final class DisclosureRecordingTest extends TestCase
         static::assertSame('jwt', $written->tokenShape);
     }
 
-    /**
-     * The identifier is drawn here, as the identifier of the act beside it is drawn inside `ActRecording`:
-     * a UUIDv7, so that a register sorts chronologically by its primary key.
-     */
     #[Test]
     public function itDrawsTheIdentifierOfTheRow(): void
     {
@@ -78,8 +69,7 @@ final class DisclosureRecordingTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4: a client that obtained tokens for itself was given nothing of anybody, and the act of
-     * it names no person, so there is no register of a person for a row to belong to.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function anActThatNamesNobodyWritesNothingDown(): void

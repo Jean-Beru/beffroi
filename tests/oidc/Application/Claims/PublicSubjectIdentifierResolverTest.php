@@ -16,7 +16,7 @@ use PHPUnit\Framework\TestCase;
 final class PublicSubjectIdentifierResolverTest extends TestCase
 {
     /**
-     * OIDC Core §8 "public": the same subject for every client, the one the core keeps for the user.
+     * OIDC Core §8
      */
     #[Test]
     public function itGivesEveryClientTheSubjectOfTheUser(): void
@@ -30,10 +30,6 @@ final class PublicSubjectIdentifierResolverTest extends TestCase
         static::assertSame($user->subject, $resolver->resolve($user, Clients::public($user->tenant, 'other')));
     }
 
-    /**
-     * The way back is the same identifier read as itself, which is what it has always been: the string a
-     * client presents is the one the core keeps, so the user is the one that string names.
-     */
     #[Test]
     public function itReadsBackTheSubjectTheCoreKeeps(): void
     {
@@ -63,10 +59,6 @@ final class PublicSubjectIdentifierResolverTest extends TestCase
         static::assertNull($found);
     }
 
-    /**
-     * This kind is computed from nothing a client registers, so it demands nothing of a registration: a
-     * client with no redirection URI at all takes it.
-     */
     #[Test]
     public function itAsksNothingOfARegistration(): void
     {

@@ -17,15 +17,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * CIBA Core §7.1.1 against the object alone. What a client sends and what the endpoint answers for it is
- * BackchannelAuthenticationHandlerTest's; what is here is the one state the endpoint cannot reach.
+ * CIBA Core §7.1.1
  */
 final class SignedBackchannelRequestTest extends TestCase
 {
     /**
-     * RFC 9101 §4: an object reaches this rule with its claims validated, "exp" among them, because the
-     * resolver validates before it hands anything over. One that arrives without it says the rule was
-     * wired somewhere the resolver is not, which is a fault of the integration and not of the request.
+     * RFC 9101 §4
      */
     #[Test]
     public function anObjectWithoutAnExpIsAnEndpointWiredWithoutTheResolver(): void

@@ -38,12 +38,12 @@ final class AuthorizationRequestParserTest extends TestCase
     private const string CHALLENGE = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';
 
     /**
-     * RFC 7638 §3.1: the base64url of a SHA-256, the shape of a key thumbprint.
+     * RFC 7638 §3.1
      */
     private const string THUMBPRINT = 'NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs';
 
     /**
-     * The shape of a signed compact JWS (RFC 7515 §7.1); the interaction verifies it, the parser does not.
+     * RFC 7515 §7.1
      */
     private const string ID_TOKEN = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjFlOWdkazcifQ.eyJpc3MiOiJodHRwczovL2lkLmFjbWUuZXhhbXBsZSJ9.c2lnbmF0dXJl';
 
@@ -80,8 +80,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.2.1: the request of the specification, as Symfony's oidc_login sends it, with every
-     * optional parameter set.
+     * OIDC Core §3.1.2.1
      */
     #[Test]
     public function itReadsACompleteRequest(): void
@@ -127,9 +126,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.1 and OIDC Core §3.1.2.1: only scope, response_type, client_id and redirect_uri are
-     * required, plus the PKCE challenge (RFC 7636 §4.3, decision 0006). Everything else is absent, not
-     * defaulted.
+     * RFC 6749 §4.1.1, OIDC Core §3.1.2.1, RFC 7636 §4.3, decision 0006
      */
     #[Test]
     public function itReadsAMinimalRequest(): void
@@ -156,8 +153,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2.1: "resource" may be sent several times, and it names the resources the tokens of this
-     * request will be addressed to.
+     * RFC 8707 §2.1
      */
     #[Test]
     public function itReadsTheResourcesTheRequestNamesSeveralTimes(): void
@@ -172,8 +168,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: the value is an absolute URI without a fragment; anything else is "invalid_target",
-     * and the client reads it at its redirect URI as it reads any refusal of this stage.
+     * RFC 8707 §2
      */
     #[Test]
     #[DataProvider('provideResourcesThatAreNotAbsoluteUris')]
@@ -207,8 +202,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 9396 §2: what the request asks for beyond its scopes, read by the types the provider is wired
-     * with, each validating its own members.
+     * RFC 9396 §2
      */
     #[Test]
     public function itReadsTheAuthorizationDetailsTheRequestAsksFor(): void
@@ -223,9 +217,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 9396 §5: a malformed array, an object naming no type, a type nobody serves and a detail its own
-     * type refuses are one error, which the client reads at its redirect URI as it reads any refusal of
-     * this stage.
+     * RFC 9396 §5
      */
     #[Test]
     #[DataProvider('provideAuthorizationDetailsThatAreNotOne')]
@@ -262,9 +254,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 9396 §11: what a client may ask for is a closed list on its registration, as every other list of
-     * a client is. The refusal names no type: what the client registered is not something an error
-     * response teaches whoever sent the request.
+     * RFC 9396 §11
      */
     #[Test]
     public function itRefusesAnAuthorizationDetailTypeTheClientIsNotRegisteredFor(): void
@@ -295,9 +285,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2.1: what a client may ask for is a closed list on its registration, as every other list
-     * of a client is. The refusal names no resource: what the client registered is not something an
-     * error response teaches whoever sent the request.
+     * RFC 8707 §2.1
      */
     #[Test]
     public function itRefusesAResourceTheClientIsNotRegisteredFor(): void
@@ -320,8 +308,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.1, as the endpoint hands a repeated parameter over: a "resource" of another shape is
-     * no resource.
+     * RFC 6749 §3.1
      */
     #[Test]
     public function itRefusesAResourceThatIsNotTextAtAll(): void
@@ -342,8 +329,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * OAuth 2.0 Form Post Response Mode §2: a client that asks for the posted form gets it, and the
-     * request carries the mode from there on.
+     * OAuth 2.0 Form Post Response Mode §2
      */
     #[Test]
     public function itReadsTheFormPostResponseMode(): void
@@ -358,8 +344,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2.1: the redirect target says how the answer reaches the client, so a refusal of the
-     * second stage is posted like a success would have been (OIDC Core §3.1.2.6).
+     * RFC 6749 §4.1.2.1, OIDC Core §3.1.2.6
      */
     #[Test]
     public function theRedirectTargetOfTheFirstStageCarriesTheRequestedMode(): void
@@ -374,9 +359,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * JARM §2.1: "jwt" names no delivery of its own, it names the signed mode the response type defaults
-     * to, which for "code" is "query.jwt"; what the request carries from there on is the mode that
-     * delivers, never the alias.
+     * JARM §2.1
      */
     #[Test]
     public function itResolvesTheJwtResponseModeToTheSignedQuery(): void
@@ -395,7 +378,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * JARM §2.1: the posted form of a signed answer is asked for by name, and is a mode of its own.
+     * JARM §2.1
      */
     #[Test]
     public function itReadsTheSignedFormPostResponseMode(): void
@@ -413,10 +396,6 @@ final class AuthorizationRequestParserTest extends TestCase
         static::assertSame(ServedModes::SIGNED_FORM_POST, $request->responseMode);
     }
 
-    /**
-     * Issue #98: "jwt" is worth no more than the mode it names, so a deployment that wires no signed mode
-     * refuses it like any other it cannot render.
-     */
     #[Test]
     public function theJwtResponseModeIsRefusedWhereNoSignedModeIsWired(): void
     {
@@ -433,10 +412,6 @@ final class AuthorizationRequestParserTest extends TestCase
         $this->parser->parse($this->parser->redirectTarget($this->tenant, $parameters), $parameters);
     }
 
-    /**
-     * Issue #98: what the parser accepts is what the integration wired, never what the enumeration of the
-     * module holds. A deployment that posts no response refuses the mode it cannot render.
-     */
     #[Test]
     public function aModeTheIntegrationDidNotWireIsRefused(): void
     {
@@ -455,8 +430,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * A mode the provider cannot render cannot carry its own refusal: the answer goes back in the default
-     * mode, the one every client reads (Multiple Response Type Encoding Practices §2.1).
+     * Multiple Response Type Encoding Practices §2.1
      */
     #[Test]
     public function aModeTheIntegrationDidNotWireIsRefusedInTheDefaultMode(): void
@@ -470,11 +444,6 @@ final class AuthorizationRequestParserTest extends TestCase
         static::assertSame(ServedModes::QUERY, $target->responseMode);
     }
 
-    /**
-     * Issue #240: the fallback is the wiring's and not a name written in the module. A deployment that answers
-     * in "form_post" and wires no "query" refuses its own requests in a mode it can actually deliver, where a
-     * fallback written as a name would have answered in one it has no way of rendering.
-     */
     #[Test]
     public function aDeploymentThatWiresNoQueryFallsBackToAModeItServes(): void
     {
@@ -496,9 +465,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * Multiple Response Type Encoding Practices §2.1: a request that asks for no mode is answered in the one
-     * the "code" response type defaults to, which the integration wires first for that reason; a deployment
-     * that wires it nowhere is answered in the first mode it does wire rather than in one it cannot render.
+     * Multiple Response Type Encoding Practices §2.1
      */
     #[Test]
     public function aRequestThatAsksForNoModeFallsBackToAModeItServes(): void
@@ -519,7 +486,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.1: the authorization server ignores unrecognised request parameters.
+     * RFC 6749 §3.1
      */
     #[Test]
     public function itIgnoresUnknownParameters(): void
@@ -535,7 +502,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.1: parameters sent without a value are treated as if they were omitted.
+     * RFC 6749 §3.1
      */
     #[Test]
     public function itTreatsAnEmptyParameterAsOmitted(): void
@@ -556,8 +523,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.3 and OIDC Core §3.1.2.1: a repeated scope is read once, in the order given; the order
-     * of "openid" does not matter.
+     * RFC 6749 §3.3, OIDC Core §3.1.2.1
      */
     #[Test]
     public function itReadsScopesOnceEach(): void
@@ -572,8 +538,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.2.1: max_age is a number of seconds; zero is a valid value that asks for a fresh
-     * authentication.
+     * OIDC Core §3.1.2.1
      */
     #[Test]
     public function itReadsAZeroMaxAge(): void
@@ -588,7 +553,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.2.1: "none" alone is a valid prompt, and so is each of the other values, read once.
+     * OIDC Core §3.1.2.1
      *
      * @param list<Prompt> $prompts
      */
@@ -615,8 +580,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2.1 and RFC 9700 §4.1: without a valid client and redirect URI, the error is shown to
-     * the user and never redirected. OIDC Core §3.1.2.1 makes redirect_uri required.
+     * RFC 6749 §4.1.2.1, RFC 9700 §4.1, OIDC Core §3.1.2.1
      *
      * @param array<string, mixed> $overrides
      */
@@ -734,9 +698,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.1: a parameter must not be included more than once; a repeated or nested parameter
-     * arrives as an array and is refused, not reduced to one value. Before the target is established,
-     * the error is shown.
+     * RFC 6749 §3.1
      */
     #[Test]
     #[DataProvider('provideParametersOfTheFirstStage')]
@@ -770,7 +732,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.1: the same rule once the target is established, where the error is sent back.
+     * RFC 6749 §3.1
      */
     #[Test]
     #[DataProvider('provideParametersOfTheSecondStage')]
@@ -820,9 +782,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 9101 §6.1: a request object is read by the resolver an endpoint calls before the parser, and
-     * the parser is given the parameters it carried. One reaching the parser is an endpoint wired
-     * without that resolver, which is a fault of the integration and not a request to refuse.
+     * RFC 9101 §6.1
      */
     #[Test]
     #[DataProvider('provideRequestObjectParameters')]
@@ -851,8 +811,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2.1: the client and the redirect URI are checked before anything else, so a request
-     * that is wrong in every other way still establishes where its errors go.
+     * RFC 6749 §4.1.2.1
      */
     #[Test]
     public function itEstablishesTheTargetBeforeReadingAnythingElse(): void
@@ -873,7 +832,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.1: state is optional; the target carries none when the request had none.
+     * RFC 6749 §4.1.1
      */
     #[Test]
     public function theTargetCarriesNoStateWhenTheRequestHadNone(): void
@@ -888,8 +847,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2.1: once the client and the redirect URI are known, every error is sent back to the
-     * client. One case per rule of OIDC Core §3.1.2.1 and §3.1.2.2, RFC 7636 §4.3 and OIDC Core §3.1.2.6.
+     * RFC 6749 §4.1.2.1, OIDC Core §3.1.2.1, §3.1.2.2, §3.1.2.6, RFC 7636 §4.3
      *
      * @param array<string, mixed> $overrides
      */
@@ -1278,7 +1236,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.2.1: the display values of the specification.
+     * OIDC Core §3.1.2.1
      */
     #[Test]
     #[DataProvider('provideDisplays')]
@@ -1315,8 +1273,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 9449 §10: the client names the key it will exchange the code with, and the code is reserved
-     * for it.
+     * RFC 9449 §10
      */
     #[Test]
     public function itReadsTheKeyTheRequestReservesItsCodeFor(): void
@@ -1341,8 +1298,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 9449 §10 and RFC 7638 §3.1: a "dpop_jkt" is a JWK thumbprint, and a value that is not one
-     * names no key this provider could ever bind a token to.
+     * RFC 9449 §10, RFC 7638 §3.1
      */
     #[Test]
     #[DataProvider('provideThumbprintsThatAreNotOnes')]
@@ -1376,7 +1332,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * Decision 0008: a client registered without the PKCE requirement may send no challenge.
+     * Decision 0008
      */
     #[Test]
     public function itAcceptsARequestWithoutPkceFromAClientThatDoesNotRequireIt(): void
@@ -1396,8 +1352,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 9700 §2.1.1: a challenge the client sends is verified whether the client is required to send
-     * one or not.
+     * RFC 9700 §2.1.1
      */
     #[Test]
     public function itKeepsTheChallengeAClientThatDoesNotRequirePkceSends(): void
@@ -1415,8 +1370,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * The exception of decision 0008 waives the challenge, not its syntax: a "plain" method or a method
-     * without a challenge is refused as for any client.
+     * Decision 0008
      *
      * @param array<string, mixed> $overrides
      */
@@ -1463,9 +1417,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 9126 §6: a client that requires its requests to be pushed cannot start one any other way. The
-     * refusal comes before the redirect URI is even read, so that nothing of the request goes back to
-     * the browser that carried it.
+     * RFC 9126 §6
      */
     #[Test]
     public function itRefusesAnOrdinaryRequestFromAClientThatMustPushIt(): void
@@ -1485,7 +1437,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 9126 §6: the very same request, having been pushed, is read like any other.
+     * RFC 9126 §6
      */
     #[Test]
     public function itReadsTheRequestOfThatClientOnceItHasBeenPushed(): void
@@ -1508,8 +1460,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 9101 §10.5, FAPI 2.0 Message Signing §5.3.1: a client whose requests are only read from a
-     * request object it signed cannot start one any other way, and is told so on a page.
+     * RFC 9101 §10.5, FAPI 2.0 Message Signing §5.3.1
      */
     #[Test]
     public function itRefusesARequestNoSignedObjectCarriedFromAClientThatMustSignIt(): void
@@ -1529,8 +1480,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 9101 §10.5: the very same request, carried by an object that client signed, is read like any
-     * other.
+     * RFC 9101 §10.5
      */
     #[Test]
     public function itReadsTheRequestOfThatClientFromAnObjectItSigned(): void
@@ -1553,8 +1503,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * A refusal for a redirect URI that is not registered still comes first for every other client: the
-     * requirement of RFC 9126 §6 is carried by the client and by nothing global.
+     * RFC 9126 §6
      */
     #[Test]
     public function aClientThatDoesNotRequireItStartsAnOrdinaryRequest(): void
@@ -1567,7 +1516,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * A client whose only way of starting an authorization request is to push it (RFC 9126 §6).
+     * RFC 9126 §6
      */
     private function pushingClient(): void
     {
@@ -1575,7 +1524,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * A client whose requests are only read from a request object it signed (RFC 9101 §10.5).
+     * RFC 9101 §10.5
      */
     private function signingClient(): void
     {
@@ -1583,7 +1532,7 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * A confidential client registered without the PKCE requirement (decision 0008), on the same redirect URI.
+     * Decision 0008
      */
     private function legacyClient(): void
     {
@@ -1591,9 +1540,9 @@ final class AuthorizationRequestParserTest extends TestCase
     }
 
     /**
-     * The request of OIDC Core §3.1.2.1, with a PKCE challenge; a null override removes the parameter.
+     * OIDC Core §3.1.2.1
      *
-     * @param array<string, mixed> $overrides
+     * @param array<string, mixed> $overrides a null value removes the parameter
      *
      * @return array<string, mixed>
      */

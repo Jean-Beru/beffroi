@@ -12,9 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 9396 §10 "authorization_details_types_supported": which types of authorization detail a client may
- * name in an "authorization_details" parameter (§2). What is announced is what the wiring gave the
- * provider, read from it and not from a list kept beside it.
+ * RFC 9396 §10
  */
 final class AnnouncedAuthorizationDetailsTest extends TestCase
 {
@@ -38,8 +36,7 @@ final class AnnouncedAuthorizationDetailsTest extends TestCase
     }
 
     /**
-     * A member a client would read as "no type is acceptable here" is not written at all, §10 making it
-     * optional for exactly the provider that serves no rich authorization request.
+     * RFC 9396 §10
      */
     #[Test]
     public function itAnnouncesNothingWhenNoTypeIsWired(): void

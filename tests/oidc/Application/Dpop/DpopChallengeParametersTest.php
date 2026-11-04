@@ -11,13 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 9449 §7.1: what a challenge under the DPoP scheme says of it whatever the refusal.
+ * RFC 9449 §7.1
  */
 final class DpopChallengeParametersTest extends TestCase
 {
     /**
-     * RFC 9449 §7.1: "algs" is the space-delimited list of what a proof may be signed with, which is what
-     * the provider is wired to sign with, in the order it is wired.
+     * RFC 9449 §7.1
      */
     #[Test]
     public function theDpopChallengeNamesTheAlgorithmsAProofMaySignWith(): void

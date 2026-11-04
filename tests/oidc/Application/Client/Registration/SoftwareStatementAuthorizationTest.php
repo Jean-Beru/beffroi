@@ -24,8 +24,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * RFC 7591 §2.3, the fourth mode of decision 0009: the one that reads the body rather than the header, and
- * the only one that puts anything in front of the members the client sent (§3.1.1).
+ * RFC 7591 §2.3, §3.1.1, Decision 0009
  */
 final class SoftwareStatementAuthorizationTest extends TestCase
 {
@@ -49,7 +48,7 @@ final class SoftwareStatementAuthorizationTest extends TestCase
     }
 
     /**
-     * Decision 0009: a mode is compared to a literal in the class that is that mode and nowhere else.
+     * Decision 0009
      */
     #[Test]
     public function itNamesItself(): void
@@ -59,8 +58,7 @@ final class SoftwareStatementAuthorizationTest extends TestCase
     }
 
     /**
-     * §3.1.1: what a statement says outranks what the client sent, which is the same decision as trusting
-     * it, so the class that trusts it is the class that answers with the source that wins.
+     * RFC 7591 §3.1.1
      */
     #[Test]
     public function itPutsTheStatementInFrontOfWhatTheClientSent(): void
@@ -81,9 +79,6 @@ final class SoftwareStatementAuthorizationTest extends TestCase
     }
 
     /**
-     * A request that carries no statement at all presents nothing this mode acts on, which reads as a
-     * request that carries no credential: it is not a statement that failed to verify.
-     *
      * @param array<string, mixed> $members
      */
     #[Test]
@@ -114,10 +109,6 @@ final class SoftwareStatementAuthorizationTest extends TestCase
         ]];
     }
 
-    /**
-     * A body that is no JSON object carries no members at all, and says so where every other caller of the
-     * request is told it.
-     */
     #[Test]
     public function itRefusesABodyThatIsNoJsonObject(): void
     {

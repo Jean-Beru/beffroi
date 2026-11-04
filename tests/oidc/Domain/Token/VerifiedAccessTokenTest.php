@@ -19,13 +19,12 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * What a verified access token says of itself, whatever its shape (RFC 9068 §4, architecture §4.6).
+ * RFC 9068 §4, Architecture §4.6
  */
 final class VerifiedAccessTokenTest extends TestCase
 {
     /**
-     * Issue #831: a token is somebody's when it descends from a sign-in or says who it is about, and a token
-     * a client holds for itself is nobody's (RFC 6749 §4.4), whichever grant issued it.
+     * RFC 6749 §4.4
      */
     #[Test]
     #[DataProvider('provideTokens')]

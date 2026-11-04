@@ -10,11 +10,6 @@ use Beffroi\Oidc\Application\Token\TokenExchangeGrant;
 use Beffroi\Oidc\Application\Token\ServedGrants;
 use Beffroi\Oidc\Domain\Client\GrantTypeName;
 
-/**
- * The grant names the tests speak of, and the wirings they read them from. The two names the provider
- * serves today are written here once, so that a test says which grant it is about and no test says what
- * the provider is wired with.
- */
 final readonly class Grants
 {
     public static function authorizationCode(): GrantTypeName
@@ -53,18 +48,13 @@ final readonly class Grants
     }
 
     /**
-     * A grant nobody wrote a line of production code for, named by an absolute URI as an extension
-     * grant is (RFC 6749 §4.5, RFC 6755).
+     * RFC 6749 §4.5, RFC 6755
      */
     public static function invented(): GrantTypeName
     {
         return new GrantTypeName('urn:example:params:oauth:grant-type:invented');
     }
 
-    /**
-     * What the provider is wired with today: a grant that issues refresh tokens and sends the user back to
-     * the client, and a grant that spends them, neither of them doing anything.
-     */
     public static function served(): ServedGrants
     {
         return new ServedGrants([
@@ -74,8 +64,7 @@ final readonly class Grants
     }
 
     /**
-     * The same wiring with a grant a client uses for itself beside them (RFC 6749 §4.4), for what a
-     * registration of such a grant must carry and must not.
+     * RFC 6749 §4.4
      */
     public static function servedWithClientCredentials(): ServedGrants
     {
@@ -87,8 +76,7 @@ final readonly class Grants
     }
 
     /**
-     * The same wiring with a grant whose user is asked on another device beside them (RFC 8628 §3.3), for
-     * the endpoint where such a flow starts.
+     * RFC 8628 §3.3
      */
     public static function servedWithDeviceCode(): ServedGrants
     {
@@ -100,8 +88,7 @@ final readonly class Grants
     }
 
     /**
-     * The same wiring with a grant that takes a token and gives a token back beside them (RFC 8693 §2.1),
-     * for what a registration of such a grant must carry and must not.
+     * RFC 8693 §2.1
      */
     public static function servedWithTokenExchange(): ServedGrants
     {
@@ -113,9 +100,7 @@ final readonly class Grants
     }
 
     /**
-     * The same wiring with a grant served only to a client that authenticates itself, and declaring nothing
-     * else, beside them, which is what the JWT bearer grant declares (RFC 7523 §2.1), for what a registration
-     * of such a grant must not carry.
+     * RFC 7523 §2.1
      */
     public static function servedWithJwtBearer(): ServedGrants
     {
@@ -127,8 +112,7 @@ final readonly class Grants
     }
 
     /**
-     * The same wiring with a grant whose user this provider reaches itself beside them (CIBA Core §7),
-     * for the endpoint where such a flow starts.
+     * CIBA Core §7
      */
     public static function servedWithCiba(): ServedGrants
     {

@@ -14,8 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * OIDC Core §8: the kinds of "sub" a provider assigns are the resolvers it is wired with, and nothing is
- * kept beside them to say so.
+ * OIDC Core §8
  */
 final class AssignedSubjectIdentifiersTest extends TestCase
 {
@@ -29,10 +28,6 @@ final class AssignedSubjectIdentifiersTest extends TestCase
         static::assertSame(['public', 'pairwise'], $assigned);
     }
 
-    /**
-     * A deployment that wires no pairwise resolver announces "public" alone, and there is no second place
-     * to remember to change.
-     */
     #[Test]
     public function aProviderWiredWithOneKindNamesThatOne(): void
     {
@@ -44,7 +39,7 @@ final class AssignedSubjectIdentifiersTest extends TestCase
     }
 
     /**
-     * OIDC Registration §2: the kind the client registered says who assigns its identifier.
+     * OIDC Registration §2
      */
     #[Test]
     public function aClientIsAnsweredByTheKindItRegistered(): void
@@ -65,10 +60,6 @@ final class AssignedSubjectIdentifiersTest extends TestCase
         static::assertNotSame($user->subject->value, $pairwise->value);
     }
 
-    /**
-     * The same answer in two steps (issue #880): the kind the client registered is the one opened for it, and
-     * assigns afterwards what it would have assigned in one step.
-     */
     #[Test]
     public function aClientIsOpenedByTheKindItRegistered(): void
     {
@@ -88,8 +79,7 @@ final class AssignedSubjectIdentifiersTest extends TestCase
     }
 
     /**
-     * OIDC Registration §2: a client that registers no kind takes the first wired one, which is what makes
-     * "public" what a client gets by writing nothing.
+     * OIDC Registration §2
      */
     #[Test]
     public function aClientThatRegisteredNoKindTakesTheFirstWiredOne(): void
@@ -105,10 +95,6 @@ final class AssignedSubjectIdentifiersTest extends TestCase
         static::assertSame($user->subject->value, $subject->value);
     }
 
-    /**
-     * The way back goes through the same kind, so that a "sub" is read as what it is to the client that
-     * presented it.
-     */
     #[Test]
     public function aPresentedIdentifierIsReadByTheKindOfTheClientThatPresentedIt(): void
     {
@@ -130,10 +116,6 @@ final class AssignedSubjectIdentifiersTest extends TestCase
         static::assertNull($asPublic);
     }
 
-    /**
-     * A wiring where the identifier a client receives depends on an order nobody wrote down is refused
-     * rather than resolved by whichever resolver came first.
-     */
     #[Test]
     public function itRefusesTwoResolversOfTheSameKind(): void
     {
@@ -162,10 +144,6 @@ final class AssignedSubjectIdentifiersTest extends TestCase
         $subjects->assignedSubjectTypes();
     }
 
-    /**
-     * A deployment that unwires a kind its clients still name is a wiring that no longer holds, and it says
-     * so rather than answering with an identifier of another kind.
-     */
     #[Test]
     public function itRefusesAClientWhoseKindIsNoLongerWired(): void
     {
@@ -181,9 +159,6 @@ final class AssignedSubjectIdentifiersTest extends TestCase
         $subjects->resolve(Fixtures::user($tenant), Clients::pairwise($tenant));
     }
 
-    /**
-     * The same wiring refused in two steps, when the client is opened: before whoever opens it has spent anything.
-     */
     #[Test]
     public function itRefusesToOpenAClientWhoseKindIsNoLongerWired(): void
     {

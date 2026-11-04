@@ -13,8 +13,7 @@ use Beffroi\Oidc\Domain\Token\IssuedTokens;
 use LogicException;
 
 /**
- * A grant that declares it is served only to a client that authenticates itself (RFC 6749 §2.1) and nothing
- * else, which is what the JWT bearer grant declares, and grants nothing.
+ * RFC 6749 §2.1
  */
 final readonly class FakeClientAuthenticatingGrant implements RequiresClientAuthenticationInterface
 {

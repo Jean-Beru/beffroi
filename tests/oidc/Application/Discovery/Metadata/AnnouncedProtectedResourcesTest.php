@@ -14,8 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 9728 §4 "protected_resources": which resources a client of this tenant may name in a "resource"
- * parameter (RFC 8707 §2). What is announced is what the clients registered, read from them.
+ * RFC 9728 §4, RFC 8707 §2
  */
 final class AnnouncedProtectedResourcesTest extends TestCase
 {
@@ -25,7 +24,6 @@ final class AnnouncedProtectedResourcesTest extends TestCase
         // Given
         $tenant = Fixtures::tenant();
         $clients = new InMemoryClientRepository();
-        // a client of another tenant first, whose resources are no business of this one
         $other = Fixtures::tenant('other', 'https://id.other.example');
         $clients->save(Clients::public($other, resources: [new ResourceIndicator('https://files.example.com/')]));
         $clients->save(Clients::public($tenant, resources: Clients::resources()));
@@ -38,9 +36,6 @@ final class AnnouncedProtectedResourcesTest extends TestCase
         static::assertSame([Clients::CALENDAR, Clients::CONTACTS], $members['protected_resources']);
     }
 
-    /**
-     * A resource two clients registered is one resource of the tenant.
-     */
     #[Test]
     public function itAnnouncesAResourceTwoClientsRegisteredOnce(): void
     {
@@ -58,9 +53,6 @@ final class AnnouncedProtectedResourcesTest extends TestCase
         static::assertSame([Clients::CALENDAR, Clients::CONTACTS], $members['protected_resources']);
     }
 
-    /**
-     * A member a client would read as "no resource is acceptable here" is not written at all.
-     */
     #[Test]
     public function itAnnouncesNothingWhenNoClientRegisteredAResource(): void
     {
@@ -77,9 +69,6 @@ final class AnnouncedProtectedResourcesTest extends TestCase
         static::assertSame([], $members);
     }
 
-    /**
-     * The resources of one tenant are no business of another.
-     */
     #[Test]
     public function itAnnouncesNothingOfAnotherTenant(): void
     {

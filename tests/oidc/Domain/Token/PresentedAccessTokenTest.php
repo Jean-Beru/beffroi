@@ -17,14 +17,12 @@ final class PresentedAccessTokenTest extends TestCase
     private const string JWS = 'eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL2lkLmFjbWUuZXhhbXBsZSJ9.c2ln';
 
     /**
-     * RFC 7638 §3.1: the base64url of a SHA-256, whatever it is the thumbprint of.
+     * RFC 7638 §3.1
      */
     private const string THUMBPRINT = 'NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs';
 
     /**
-     * RFC 9449 §7.1: a token is presented the way it was issued. One bound to a key is sent under the
-     * "DPoP" scheme, one bound to nothing or to a certificate as a bearer token (RFC 8705 §3, which
-     * changes nothing to how a client sends it).
+     * RFC 9449 §7.1, RFC 8705 §3
      *
      * @param non-empty-string $scheme
      */

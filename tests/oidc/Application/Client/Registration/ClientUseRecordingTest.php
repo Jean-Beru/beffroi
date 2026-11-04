@@ -24,8 +24,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Decision 0009: the date a stored client carries of its last use, written from the two events that say
- * somebody is using it.
+ * Decision 0009
  */
 final class ClientUseRecordingTest extends TestCase
 {
@@ -41,10 +40,6 @@ final class ClientUseRecordingTest extends TestCase
         $this->clients = new InMemoryClientStore();
     }
 
-    /**
-     * The two things that mean somebody is using a client: an authorization granted for it, and a request it
-     * made at the token endpoint.
-     */
     /**
      * @param callable(Tenant, string, DateTimeImmutable): ClientInUseInterface $event
      */
@@ -72,9 +67,6 @@ final class ClientUseRecordingTest extends TestCase
         yield 'a request the client made at the token endpoint' => [self::tokensIssued(...)];
     }
 
-    /**
-     * A request served for another client is not a use of this one.
-     */
     #[Test]
     public function aUseOfAnotherClientLeavesThisOneAlone(): void
     {
@@ -88,10 +80,6 @@ final class ClientUseRecordingTest extends TestCase
         static::assertNull($this->clients->findRecord($this->tenant, self::CLIENT_ID)?->lastUsedAt);
     }
 
-    /**
-     * A client a deployment declared has no row, so there is nothing to write and nothing is written: it is
-     * never deleted for want of use, and nothing here has to know that.
-     */
     #[Test]
     public function aClientWithNoRowIsRecordedNowhere(): void
     {

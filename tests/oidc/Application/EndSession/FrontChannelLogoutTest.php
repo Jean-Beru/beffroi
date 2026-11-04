@@ -15,7 +15,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Front-Channel Logout 1.0 §2 and §3: which clients of an ended session the logout page loads.
+ * Front-Channel Logout 1.0 §2, §3
  */
 final class FrontChannelLogoutTest extends TestCase
 {
@@ -33,7 +33,7 @@ final class FrontChannelLogoutTest extends TestCase
     }
 
     /**
-     * §2: one frame per client of the session that registered a URI, in the order they signed in.
+     * Front-Channel Logout 1.0 §2
      */
     #[Test]
     public function eachClientOfTheSessionThatRegisteredAUriGetsAFrame(): void
@@ -50,7 +50,7 @@ final class FrontChannelLogoutTest extends TestCase
     }
 
     /**
-     * §3: a client that registered nothing is not loaded, and the clients after it still are.
+     * Front-Channel Logout 1.0 §3
      */
     #[Test]
     public function aClientWithoutAUriIsNotLoaded(): void
@@ -66,10 +66,6 @@ final class FrontChannelLogoutTest extends TestCase
         static::assertSame(['https://loaded.example/logout'], $page?->frames);
     }
 
-    /**
-     * A session no such client signed in has no page: the logout answers as it did before this page
-     * existed.
-     */
     #[Test]
     public function aSessionWithNoSuchClientHasNoPage(): void
     {
@@ -81,7 +77,7 @@ final class FrontChannelLogoutTest extends TestCase
     }
 
     /**
-     * RP-Initiated Logout §3: where the browser goes once the frames are done is carried by the page.
+     * RP-Initiated Logout §3
      */
     #[Test]
     public function thePageCarriesWhereTheBrowserGoesNext(): void
@@ -97,8 +93,7 @@ final class FrontChannelLogoutTest extends TestCase
     }
 
     /**
-     * §2, beffroi/saml S-35: a logout that ended several sessions loads the clients of each, session by
-     * session.
+     * Front-Channel Logout 1.0 §2, beffroi/saml S-35
      */
     #[Test]
     public function theClientsOfEverySessionEndedGetTheirFrames(): void
@@ -115,9 +110,6 @@ final class FrontChannelLogoutTest extends TestCase
         static::assertSame(['https://first.example/logout', 'https://second.example/logout'], $page?->frames);
     }
 
-    /**
-     * A client that obtained a token in the session: a grant of the session, exchanged.
-     */
     private function signedIn(Client $client, ?AuthenticationSession $session = null): void
     {
         $grant = Tokens::code('code-of-' . $client->registration->clientId, $client, $session ?? $this->session, Fixtures::now());

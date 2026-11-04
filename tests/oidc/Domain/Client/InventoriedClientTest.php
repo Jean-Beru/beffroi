@@ -11,15 +11,10 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Decision 0009: a client of a tenant as whoever runs the deployment sees it, and the one thing that
- * decides what may be done to it here.
+ * Decision 0009
  */
 final class InventoriedClientTest extends TestCase
 {
-    /**
-     * A client this provider registered can be taken back here, because taking the row away is what
-     * takes it away.
-     */
     #[Test]
     public function aClientThisProviderRegisteredWasRegisteredHere(): void
     {
@@ -30,10 +25,6 @@ final class InventoriedClientTest extends TestCase
         static::assertTrue($client->wasRegisteredHere());
     }
 
-    /**
-     * A declaration was not registered on a day and has nobody's history behind it: it carries neither
-     * date, and nothing of this provider takes it back.
-     */
     #[Test]
     public function aDeclaredClientCarriesNoDateAndWasNotRegisteredHere(): void
     {
@@ -55,10 +46,6 @@ final class InventoriedClientTest extends TestCase
         new InventoriedClient('registration', '');
     }
 
-    /**
-     * The two dates come from one row and say one story: a use recorded before the registration is a row
-     * nothing wrote.
-     */
     #[Test]
     public function itIsNotUsedBeforeItIsRegistered(): void
     {

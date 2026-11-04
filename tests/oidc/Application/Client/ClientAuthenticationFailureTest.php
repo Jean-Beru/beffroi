@@ -12,14 +12,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * What a client authentication method refuses with becomes the protocol error the client reads, so its description
- * is held to the rule of one (RFC 6749 §5.2) where it is written.
+ * RFC 6749 §5.2
  */
 final class ClientAuthenticationFailureTest extends TestCase
 {
     /**
-     * RFC 6749 §5.2 (issue #863): a description no protocol error could carry is refused where it is written, and not
-     * by the endpoint that would have answered with it.
+     * RFC 6749 §5.2
      */
     #[Test]
     #[DataProvider('provideDescriptionsNoErrorCarries')]

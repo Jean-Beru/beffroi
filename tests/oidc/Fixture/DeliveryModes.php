@@ -9,9 +9,7 @@ use Beffroi\Oidc\Domain\Ciba\PingDelivery;
 use Beffroi\Oidc\Domain\Ciba\PollDelivery;
 
 /**
- * The ways of telling a client that a backchannel request was answered, as the tests wire them (CIBA
- * Core §4): both of the ones the provider serves, and a wiring with none for what a provider that serves
- * no such flow announces and accepts.
+ * CIBA Core §4
  */
 final readonly class DeliveryModes
 {

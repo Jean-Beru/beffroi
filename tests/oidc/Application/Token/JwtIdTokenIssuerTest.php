@@ -76,8 +76,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     }
 
     /**
-     * OIDC Core §2: RS256 with the active key, "kid" in the header, no "typ". Verified by jwt-library
-     * against the published JWKS, the way oidc_login does.
+     * OIDC Core §2
      */
     #[Test]
     public function theHeaderNamesTheActiveKeyAndNoType(): void
@@ -99,8 +98,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     }
 
     /**
-     * OIDC Core §2: "iss", "sub", "aud", "exp", "iat", "auth_time", "nonce", "amr", "azp"; "sid" of the
-     * session (architecture §4.6). Ten minutes.
+     * OIDC Core §2, Architecture §4.6
      */
     #[Test]
     public function thePayloadCarriesTheClaimsOfOidcCoreInOrder(): void
@@ -126,8 +124,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     }
 
     /**
-     * Architecture §4.5 (issue #880): the salt the "sub" of a pairwise client is computed with is unsealed when
-     * the ID token is addressed, so a KMS that does not answer is said then, before the grant spends anything.
+     * Architecture §4.5
      */
     #[Test]
     public function aKmsThatDoesNotAnswerForThePairwiseSaltIsToldWhenTheTokenIsAddressed(): void
@@ -146,9 +143,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     }
 
     /**
-     * OIDC Core §8.1, struck asking nothing of the KMS (issue #880): the ID token of a pairwise client addressed
-     * while the KMS answered names whoever signed in by the identifier of its sector, whatever the KMS answers once
-     * the grant has spent what the request presented.
+     * OIDC Core §8.1
      */
     #[Test]
     public function anIdTokenOfAPairwiseClientNamesWhoeverSignedInByWhatWasOpenedWhenItWasAddressed(): void
@@ -179,12 +174,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     }
 
     /**
-     * Front-Channel Logout 1.0 §3 and Back-Channel Logout 1.0 §2.1: an OP that announces
-     * frontchannel_logout_session_supported or backchannel_logout_session_supported puts "sid" in the ID
-     * tokens it issues, and this one announces both as soon as it serves the channel (architecture §4.8).
-     * What a client registers for itself, frontchannel_logout_session_required and
-     * backchannel_logout_session_required, governs its logout URI (Front-Channel Logout 1.0 §2) and its
-     * logout token (Back-Channel Logout 1.0 §2.2), never its ID token.
+     * Front-Channel Logout 1.0 §3, Back-Channel Logout 1.0 §2.1
      *
      * @param callable(self): Client $client
      */
@@ -217,8 +207,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.3.6: "at_hash", cross-checked with an independent computation and with the value
-     * of appendix A.3.
+     * OIDC Core §3.1.3.6, appendix A.3
      */
     #[Test]
     public function theAtHashIsTheLeftHalfOfTheSha256OfTheAccessToken(): void
@@ -235,8 +224,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     }
 
     /**
-     * OIDC Core §12.2: on a refresh, no "nonce"; the authentication described is the original one, as the
-     * refresh token carried it, "acr" included.
+     * OIDC Core §12.2
      */
     #[Test]
     public function onARefreshThereIsNoNonceAndTheOriginalAuthenticationIsDescribed(): void
@@ -275,8 +263,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5: the claims of "claims.id_token" are in the ID token, those of "claims.userinfo" and
-     * of the scopes are not (§5.4: they belong to UserInfo); a claim the user has no value for is absent.
+     * OIDC Core §5.5, §5.4
      */
     #[Test]
     public function itAddsTheClaimsRequestedForTheIdTokenAndNoOther(): void
@@ -299,7 +286,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.1: "email_verified" is a JSON boolean on the wire.
+     * OIDC Core §5.1
      */
     #[Test]
     public function theVerificationFlagIsAJsonBooleanOnTheWire(): void
@@ -315,10 +302,6 @@ final class JwtIdTokenIssuerTest extends TestCase
         static::assertStringContainsString('"email_verified":true', Jwts::rawPayload($idToken));
     }
 
-    /**
-     * Without a claims request, or with one that asks nothing for the ID token, the provider is not
-     * consulted at all.
-     */
     #[Test]
     #[DataProvider('provideRequestsWithoutIdTokenClaims')]
     public function theProviderIsNotAskedWhenNothingIsRequestedForTheIdToken(?ClaimsRequest $claims): void
@@ -378,10 +361,6 @@ final class JwtIdTokenIssuerTest extends TestCase
         yield 'userinfo claims only' => [ClaimsRequest::fromJson('{"userinfo":{"name":null}}')];
     }
 
-    /**
-     * A claims provider answers about the user, not about the protocol: "iss", "sub", "aud" and the rest
-     * stay what the issuer wrote, whatever comes back under the same names.
-     */
     #[Test]
     public function aClaimsProviderCannotOverrideTheProtocolClaims(): void
     {
@@ -436,7 +415,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: the lifetime is a choice, ten minutes by default.
+     * Architecture §4.6
      */
     #[Test]
     public function theLifetimeIsConfigurable(): void
@@ -479,8 +458,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.2.1: the same token, given back as id_token_hint, is one this provider recognizes
-     * (the verifier of issue #6 reads what this issuer writes).
+     * OIDC Core §3.1.2.1
      */
     #[Test]
     public function theTokenServesAsAnIdTokenHint(): void
@@ -497,8 +475,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.3.7 step 3: a token minted for one client fails the audience check of another; the
-     * scopes of the response do not change the ID token.
+     * OIDC Core §3.1.3.7 step 3
      */
     #[Test]
     public function theAudienceIsTheClient(): void
@@ -519,8 +496,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     }
 
     /**
-     * OIDC Registration §2: a tenant that holds one key per algorithm signs the ID token of a client with
-     * the algorithm that client registered, and the JWK Set carries the key of each.
+     * OIDC Registration §2
      */
     #[Test]
     public function aClientGetsItsIdTokenSignedWithTheAlgorithmItRegistered(): void
@@ -562,8 +538,7 @@ final class JwtIdTokenIssuerTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.3.6: the "at_hash" halves the digest the "alg" names, so two algorithms of the same
-     * digest agree on it and the ID token of a client is readable whichever key signed it.
+     * OIDC Core §3.1.3.6
      */
     #[Test]
     public function theAccessTokenHashFollowsTheAlgorithmThatSigns(): void
@@ -603,11 +578,6 @@ final class JwtIdTokenIssuerTest extends TestCase
         return rtrim(strtr(base64_encode(substr($digest, 0, 32)), '+/', '-_'), '=');
     }
 
-    /**
-     * The acceptance of issue #165: a client that registered an encryption receives a JWE it opens with
-     * its own private key, and what it finds inside is the ID token signed by the tenant, which verifies
-     * against the published JWK Set exactly as an unencrypted one does.
-     */
     #[Test]
     public function aClientThatRegisteredAnEncryptionReceivesAJweItOpens(): void
     {
@@ -629,15 +599,14 @@ final class JwtIdTokenIssuerTest extends TestCase
         static::assertSame('ECDH-ES+A256KW', $header['alg']);
         static::assertSame('A256GCM', $header['enc']);
         static::assertSame(ClientEncryption::KEY_ID, $header['kid']);
-        // RFC 7519 §5.2: the payload of the JWE says it is itself a JWT
+        // RFC 7519 §5.2: the payload of the JWE is itself a JWT.
         static::assertSame('JWT', $header['cty']);
         ['claims' => $claims] = $this->jwts->verify($signed, 'encrypted-client', Fixtures::now()->modify('+9 minutes'));
         static::assertSame('alice-subject', $claims['sub']);
     }
 
     /**
-     * The signature is inside and not outside (OIDC Core §16.14): the client that registered an encryption
-     * receives one token and not two, and nothing of the ID token is readable before the JWE is opened.
+     * OIDC Core §16.14
      */
     #[Test]
     public function anEncryptedIdTokenIsNotAJwsAnyoneCanRead(): void
@@ -671,10 +640,6 @@ final class JwtIdTokenIssuerTest extends TestCase
         ));
     }
 
-    /**
-     * Alice with a verified email and a given name, asking "email", "email_verified" and "family_name"
-     * for the ID token and "given_name" for UserInfo.
-     */
     private function authorizationWithRequestedClaims(): UserAuthorization
     {
         $user = Fixtures::user($this->session->tenant);

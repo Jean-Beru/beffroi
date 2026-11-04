@@ -38,11 +38,6 @@ use Jose\Component\Signature\Algorithm\HS256;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\MockClock;
 
-/**
- * The client authentication methods, wired as the provider wires them. A method that verifies a secret
- * gets the fake hasher of the core unless the test brings its own; a method that verifies an assertion
- * gets the real bridge, because what it verifies is a real signature.
- */
 final class Methods
 {
     public static function clientSecretBasic(?PasswordHasherInterface $hasher = null, ?DecoyHash $decoy = null): ClientSecretBasic
@@ -106,18 +101,13 @@ final class Methods
     }
 
     /**
-     * What reads a request at an endpoint that authenticates a client, with the reader the provider is
-     * wired with: the assertion of RFC 7523 §2.2 is read here, once, whatever reads it afterwards.
+     * RFC 7523 §2.2
      */
     public static function requestParser(?CompactJwtReaderInterface $reader = null): ClientAuthenticationRequestParser
     {
         return new ClientAuthenticationRequestParser($reader ?? new JwtLibraryCompactJwtReader());
     }
 
-    /**
-     * @param AcceptedAssertionAudiences|null $audiences the names this provider answers to, read from a wiring
-     *                                                  with no backchannel grant unless the test brings one
-     */
     public static function assertionValidator(
         ?ClientAssertionReplayGuardInterface $replays = null,
         ?AcceptedAssertionAudiences $audiences = null,
@@ -130,13 +120,6 @@ final class Methods
         );
     }
 
-    /**
-     * The names of this provider a client assertion may name (issue #267), read from what the provider
-     * serves and from what the client registered.
-     *
-     * @param ServedGrantsInterface|null $grants what the provider is wired with, the two ordinary grants by default
-     * @param string|null $mutualTlsOrigin the host whose TLS listener asks for a certificate, none by default (RFC 8705 §5)
-     */
     public static function acceptedAudiences(?ServedGrantsInterface $grants = null, ?string $mutualTlsOrigin = null): AcceptedAssertionAudiences
     {
         $endpoints = new Endpoints($mutualTlsOrigin);
@@ -144,9 +127,6 @@ final class Methods
         return new AcceptedAssertionAudiences($endpoints, $endpoints, $grants ?? Grants::served());
     }
 
-    /**
-     * The seven methods in the order the provider wires them, sharing one decoy as the container shares it.
-     */
     public static function all(
         ?PasswordHasherInterface $hasher = null,
         ?ClientKeySetProvider $keys = null,

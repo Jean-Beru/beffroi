@@ -17,8 +17,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 8705 §2.1.2: the five values a client registers to be recognised by its certificate, and what each
- * one compares.
+ * RFC 8705 §2.1.2
  */
 final class CertificateIdentityTest extends TestCase
 {
@@ -47,7 +46,7 @@ final class CertificateIdentityTest extends TestCase
     }
 
     /**
-     * RFC 4343 §1: a domain name means the same thing whatever its case.
+     * RFC 4343 §1
      */
     #[Test]
     public function aDomainNameIsComparedWithoutRegardToCase(): void
@@ -60,8 +59,7 @@ final class CertificateIdentityTest extends TestCase
     }
 
     /**
-     * RFC 5321 §2.4: the local part of an address is case-sensitive, and a provider has no way of knowing
-     * what the domain of a client makes of it.
+     * RFC 5321 §2.4
      */
     #[Test]
     public function anAddressIsComparedAsItIsWritten(): void
@@ -74,8 +72,7 @@ final class CertificateIdentityTest extends TestCase
     }
 
     /**
-     * RFC 4291 §2.2: the same address is written several ways, and a certificate carries neither of them
-     * but the octets they stand for (RFC 5280 §4.2.1.6).
+     * RFC 4291 §2.2, RFC 5280 §4.2.1.6
      */
     #[Test]
     public function anAddressIsComparedAsTheOctetsItStandsFor(): void
@@ -190,8 +187,7 @@ final class CertificateIdentityTest extends TestCase
     }
 
     /**
-     * One certificate carrying every kind of name of RFC 8705 §2.1.2, as the reader of the provider reads
-     * it out.
+     * RFC 8705 §2.1.2
      */
     private static function subject(): CertificateSubject
     {

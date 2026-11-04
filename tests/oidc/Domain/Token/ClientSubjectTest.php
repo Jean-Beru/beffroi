@@ -16,8 +16,7 @@ use PHPUnit\Framework\TestCase;
 final class ClientSubjectTest extends TestCase
 {
     /**
-     * RFC 9068 §2.2: a token a client holds for itself names that client, and both shapes name it the same
-     * way or the provider does not recognise its own token.
+     * RFC 9068 §2.2
      */
     #[Test]
     public function itNamesTheClientItself(): void
@@ -33,8 +32,7 @@ final class ClientSubjectTest extends TestCase
     }
 
     /**
-     * OIDC Core §2, RFC 6749 appendix A.1: a client identifier may carry a space and a subject may not, so
-     * a client named that way cannot be named in a "sub" at all.
+     * OIDC Core §2, RFC 6749 appendix A.1
      */
     #[Test]
     #[DataProvider('provideIdentifiersNoSubjectCanBe')]

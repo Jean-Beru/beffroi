@@ -8,8 +8,7 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Oidc\Port\UnsignedRequestObjectsInterface;
 
 /**
- * What the registered clients of a tenant make of "request_object_signing_alg" (OIDC Registration §2):
- * one of them registered "none", or every one of them signs its request objects.
+ * OIDC Registration §2
  */
 final readonly class RequestObjectSignings implements UnsignedRequestObjectsInterface
 {

@@ -53,8 +53,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 8628 §3.4, §3.5: the client polls, and is told "not yet", "slow down", "expired", "refused", or given
- * the tokens of the authorization its user approved.
+ * RFC 8628 §3.4, §3.5
  */
 final class DeviceCodeGrantTest extends TestCase
 {
@@ -110,8 +109,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: the tokens are the ones of the authorization the user approved, descending from the
-     * session they approved with.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function anApprovedRequestYieldsTheAuthorizationTheUserApproved(): void
@@ -132,7 +130,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: the device code is spent by the poll that is served, as an authorization code is.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aServedPollSpendsTheDeviceCode(): void
@@ -149,8 +147,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.3.7 (issue #836): the key the ID token is encrypted to is read before the device code
-     * is spent, so keys the client cannot serve right now leave it to the next poll, with nothing issued.
+     * OIDC Core §3.1.3.7
      */
     #[Test]
     public function aDeviceCodeIsLeftUnspentWhileTheKeysOfItsClientCannotBeRead(): void
@@ -172,8 +169,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.5 (issue #870): the keys of the tenant the tokens are signed with are opened before the
-     * device code is spent, so a KMS that does not answer leaves it to the next poll, with nothing issued.
+     * Architecture §4.5
      */
     #[Test]
     public function aDeviceCodeIsLeftUnspentWhileTheKmsDoesNotAnswer(): void
@@ -195,9 +191,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.5 (issue #877): the session the user approved with is read before the device code is
-     * spent, so a store that cannot open it, its columns sealed under a data key the KMS does not open, leaves
-     * the device code to the next poll, with nothing issued.
+     * Architecture §4.5
      */
     #[Test]
     public function aDeviceCodeIsLeftUnspentWhileItsSessionCannotBeOpened(): void
@@ -220,7 +214,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: a device code is spent once, and presented again is worth nothing.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aDeviceCodePresentedTwiceIsRefused(): void
@@ -239,7 +233,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: the user has not answered yet, which is all the client is told.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aRequestNobodyHasAnsweredIsPending(): void
@@ -256,7 +250,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: a poll that is not served spends nothing, so the next one can be.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aPendingPollSpendsNothing(): void
@@ -268,7 +262,6 @@ final class DeviceCodeGrantTest extends TestCase
         try {
             $this->poll();
         } catch (AuthorizationPendingException) {
-            // the answer of this poll is not what this test is about
         }
 
         // Then
@@ -276,7 +269,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: the user refused, and the client is told so rather than left polling.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aRefusedRequestIsAnsweredAccessDenied(): void
@@ -294,8 +287,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: the token endpoint answers in JSON and redirects nothing anywhere, this client having no
-     * browser to send.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function theRefusalOfThisGrantIsNotRedirected(): void
@@ -315,8 +307,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: past its lifetime the code is dead, and the client is told to start over rather than
-     * given the one answer a code nobody issued gets.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aCodePastItsLifetimeIsAnsweredExpiredToken(): void
@@ -334,8 +325,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: a client polling sooner than the interval it was given, for an answer that is not
-     * there yet, is told to slow down.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aClientPollingTooFastIsToldToSlowDown(): void
@@ -354,8 +344,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: the interval grows by five seconds, for that request and every one after it, and the
-     * record remembers it so the two stay in step.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function beingToldToSlowDownGrowsTheIntervalOnTheRecord(): void
@@ -373,7 +362,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: a client that waited the interval it was given is served.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aClientThatWaitedTheIntervalIsServed(): void
@@ -397,8 +386,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: "slow_down" is a variant of "authorization_pending", so it has nothing to say about
-     * a request the user has answered; the interval bounds the wait and only the wait.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aRequestApprovedSinceTheLastPollIsServedHoweverSoonAfterIt(): void
@@ -420,8 +408,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: the refusal is on the same clock as the acceptance, an answered request being over
-     * whichever way it was answered.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aRequestRefusedSinceTheLastPollIsAccessDeniedHoweverSoonAfterIt(): void
@@ -440,8 +427,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: a code the store does not hold, and a code of another client, are the one refusal a
-     * guessing client gets.
+     * RFC 8628 §3.5
      */
     #[Test]
     #[DataProvider('provideCodesThatGrantNothing')]
@@ -475,7 +461,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.4: the request names the device code, and one that names none names nothing to look up.
+     * RFC 8628 §3.4
      */
     #[Test]
     public function itRequiresTheDeviceCode(): void
@@ -489,7 +475,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: a session that has ended grants nothing, whatever it once approved.
+     * Architecture §4.6
      */
     #[Test]
     public function aSessionThatEndedGrantsNothing(): void
@@ -507,8 +493,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.4, OIDC Core §11: a confidential client registered for the renewal gets a refresh token,
-     * in a family descending from the device code it spent.
+     * RFC 6749 §4.1.4, OIDC Core §11
      */
     #[Test]
     public function anApplianceGetsARefreshTokenInAFamilyDescendingFromItsDeviceCode(): void
@@ -526,8 +511,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8705 §3, RFC 9449 §5: the tokens are bound to what this request proved, the browser that approved
-     * holding nothing the appliance can prove.
+     * RFC 8705 §3, RFC 9449 §5
      */
     #[Test]
     public function theTokensAreBoundToWhatThePollProved(): void
@@ -550,8 +534,7 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: the access token is addressed to the resource the device authorization request named, the
-     * poll being no second chance to ask.
+     * RFC 8707 §2
      */
     #[Test]
     public function theTokenIsAddressedToTheResourceTheRequestNamed(): void
@@ -577,15 +560,11 @@ final class DeviceCodeGrantTest extends TestCase
         );
     }
 
-    /**
-     * A poll whose answer is not what the test is about.
-     */
     private function pollQuietly(): void
     {
         try {
             $this->poll();
         } catch (OAuth2Exception) {
-            // the answer of this poll is not what the test is about
         }
     }
 

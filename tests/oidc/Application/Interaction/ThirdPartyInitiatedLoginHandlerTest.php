@@ -18,8 +18,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * OIDC Core §4: a caller names a client of the tenant, and this answers where that client is to be sent
- * the browser, or nothing at all.
+ * OIDC Core §4
  */
 final class ThirdPartyInitiatedLoginHandlerTest extends TestCase
 {
@@ -47,10 +46,6 @@ final class ThirdPartyInitiatedLoginHandlerTest extends TestCase
     }
 
     /**
-     * A client no tenant of this name holds and a client that registered no "initiate_login_uri" are one
-     * answer: whoever asks learns which clients exist no more than whoever asks for an interaction that
-     * is not theirs learns whose it is.
-     *
      * @param callable(Tenant): Client $registered
      */
     #[Test]
@@ -87,9 +82,6 @@ final class ThirdPartyInitiatedLoginHandlerTest extends TestCase
         ];
     }
 
-    /**
-     * A client of another tenant is a client this tenant does not hold, whatever it registered.
-     */
     #[Test]
     public function aClientOfAnotherTenantIsNoClientOfThisOne(): void
     {
@@ -106,9 +98,7 @@ final class ThirdPartyInitiatedLoginHandlerTest extends TestCase
     }
 
     /**
-     * OIDC Core §4: the hint is optional, and a browser holding no session says nothing of whom to sign
-     * in. The redirection happens all the same, since the client is about to ask for whatever login it
-     * needs.
+     * OIDC Core §4
      */
     #[Test]
     public function aBrowserWithNoSessionIsSentOnWithNoHint(): void
@@ -125,9 +115,7 @@ final class ThirdPartyInitiatedLoginHandlerTest extends TestCase
     }
 
     /**
-     * OIDC Core §8: the hint goes through the resolver every other value written for a client goes
-     * through, so a client assigned a pairwise identifier is hinted with the one it was handed and never
-     * with the identifier the core keeps, which is the one string pairwise exists to withhold.
+     * OIDC Core §8
      */
     #[Test]
     public function aPairwiseClientIsHintedWithTheIdentifierItWasHanded(): void
@@ -152,8 +140,7 @@ final class ThirdPartyInitiatedLoginHandlerTest extends TestCase
     }
 
     /**
-     * OIDC Core §8 "public": the kind a client takes by registering none is the identifier the core
-     * keeps, so that client is hinted with it.
+     * OIDC Core §8
      */
     #[Test]
     public function aClientTakingThePublicKindIsHintedWithTheSubjectOfTheUser(): void
@@ -171,8 +158,7 @@ final class ThirdPartyInitiatedLoginHandlerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.1.2.3: a landing page the client registered is carried on, as the object the
-     * registration holds and not as the string the request carried.
+     * RFC 6749 §3.1.2.3
      */
     #[Test]
     public function aLandingPageTheClientRegisteredIsCarried(): void
@@ -189,9 +175,7 @@ final class ThirdPartyInitiatedLoginHandlerTest extends TestCase
     }
 
     /**
-     * The whole security of the route: nothing of the request reaches the client but the name of a
-     * landing page that client registered itself. A caller that names anything else is answered the
-     * redirection without one, which is what OIDC Core §4 makes optional.
+     * OIDC Core §4
      */
     #[Test]
     #[DataProvider('provideLandingPagesNobodyRegistered')]
@@ -229,7 +213,7 @@ final class ThirdPartyInitiatedLoginHandlerTest extends TestCase
     ): ThirdPartyInitiatedLoginHandler {
         $clients = new InMemoryClientRepository();
         $clients->save($client);
-        // the other client of the tenant, so that what one registered is never what another may be given
+        // Another client of the tenant, so that what one registered is never what another is given.
         $clients->save(Clients::public($tenant));
 
         return new ThirdPartyInitiatedLoginHandler($clients, $subjects ?? Subjects::ofAProvider());

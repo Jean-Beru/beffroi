@@ -12,12 +12,12 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * CIBA Core §7.1, §13: the one string of this flow a third party writes and a user reads.
+ * CIBA Core §7.1, §13
  */
 final class BindingMessageTest extends TestCase
 {
     /**
-     * §7.1: "a human-readable identifier or message", kept as it was sent.
+     * CIBA Core §7.1
      */
     #[Test]
     #[DataProvider('provideAcceptedMessages')]
@@ -41,8 +41,7 @@ final class BindingMessageTest extends TestCase
     }
 
     /**
-     * §13: a message that cannot be shown as it was sent is refused, never trimmed into something the
-     * client did not write.
+     * CIBA Core §13
      */
     #[Test]
     #[DataProvider('provideRefusedMessages')]
@@ -72,9 +71,6 @@ final class BindingMessageTest extends TestCase
         yield 'a zero width joiner' => ["Pay\u{200D}42", 'A binding message is plain text'];
     }
 
-    /**
-     * The page shows it as the text it is.
-     */
     #[Test]
     public function itIsItsOwnText(): void
     {

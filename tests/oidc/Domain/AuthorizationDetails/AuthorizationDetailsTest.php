@@ -13,16 +13,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The details a request asks for (RFC 9396 §2). Whether a set holds a detail and whether it covers
- * another are answered here and nowhere else, as they are for a set of scopes and for a set of resources.
+ * RFC 9396 §2
  */
 final class AuthorizationDetailsTest extends TestCase
 {
     private const string TYPE = 'account_information';
 
-    /**
-     * A request that asks for no detail carries no set: the absence is a null and never an empty set.
-     */
     #[Test]
     public function aSetHoldsAtLeastOneDetail(): void
     {
@@ -69,7 +65,7 @@ final class AuthorizationDetailsTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: what a consent has to cover for a request not to ask again.
+     * RFC 9396 §7
      */
     #[Test]
     public function aSetCoversASubsetOfItself(): void
@@ -92,7 +88,7 @@ final class AuthorizationDetailsTest extends TestCase
     }
 
     /**
-     * Architecture §4.3: what a user agreed to is never taken back by a new agreement.
+     * Architecture §4.3
      */
     #[Test]
     public function mergingTwoSetsKeepsBothAndEachDetailOnce(): void
@@ -125,7 +121,7 @@ final class AuthorizationDetailsTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7, §9: the array an access token carries and an introspection renders.
+     * RFC 9396 §7, §9
      */
     #[Test]
     public function theClaimIsTheArrayOfTheObjects(): void

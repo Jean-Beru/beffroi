@@ -50,10 +50,6 @@ final class RequestObjectResolverTest extends TestCase
         $this->resolver = RequestObjects::resolver($this->clients, $this->clock);
     }
 
-    /**
-     * A request that carries no object is a request of parameters, which the endpoint reads as it
-     * received it.
-     */
     #[Test]
     public function aRequestWithoutAnObjectIsLeftAlone(): void
     {
@@ -68,8 +64,7 @@ final class RequestObjectResolverTest extends TestCase
     }
 
     /**
-     * OIDC Core §6.1: the parameters of the object are the request; a parameter of the query the object
-     * does not carry is not part of it.
+     * OIDC Core §6.1
      */
     #[Test]
     public function theParametersOfTheObjectAreTheRequestAndTheQueryIsDropped(): void
@@ -102,8 +97,7 @@ final class RequestObjectResolverTest extends TestCase
     }
 
     /**
-     * RFC 9126 §2: at an endpoint that authenticated its client, the object is read against that client
-     * and the request needs to name nobody: what proved the client is stronger than what it wrote.
+     * RFC 9126 §2
      */
     #[Test]
     public function theObjectOfAnAuthenticatedClientIsReadAgainstThatClient(): void
@@ -134,7 +128,7 @@ final class RequestObjectResolverTest extends TestCase
     }
 
     /**
-     * OIDC Core §6: the two ways in are two, and never both at once.
+     * OIDC Core §6
      */
     #[Test]
     public function anObjectSentByValueAndByReferenceAtOnceIsRefused(): void
@@ -152,8 +146,7 @@ final class RequestObjectResolverTest extends TestCase
     }
 
     /**
-     * RFC 9101 §5: the provider has to know whose keys verify the object before it reads any of it, and
-     * the "client_id" of the request is what tells it.
+     * RFC 9101 §5
      */
     #[Test]
     public function anObjectOfNoNamedClientIsRefused(): void
@@ -197,8 +190,7 @@ final class RequestObjectResolverTest extends TestCase
     }
 
     /**
-     * RFC 9101 §6.2: the key is one the client publishes, and an object signed with another key verifies
-     * against none of them.
+     * RFC 9101 §6.2
      */
     #[Test]
     public function anObjectSignedWithAKeyTheClientDoesNotPublishIsRefused(): void
@@ -222,8 +214,7 @@ final class RequestObjectResolverTest extends TestCase
     }
 
     /**
-     * OIDC Registration §2: the algorithm is the one the client registered, and no other the provider
-     * would take for somebody else.
+     * OIDC Registration §2
      */
     #[Test]
     public function anObjectSignedWithAnotherAlgorithmThanTheRegisteredOneIsRefused(): void
@@ -244,7 +235,7 @@ final class RequestObjectResolverTest extends TestCase
     }
 
     /**
-     * Decision 0006: an unsigned object is read from the client that registered it, and from no other.
+     * Decision 0006
      */
     #[Test]
     public function anUnsignedObjectFromAClientThatRegisteredNothingIsRefused(): void
@@ -264,8 +255,7 @@ final class RequestObjectResolverTest extends TestCase
     }
 
     /**
-     * OIDC Registration §2, the named exception of decision 0006: the object of a client that registered
-     * "none" is read, and what it says of the answer is what the answer uses (issue #142).
+     * OIDC Registration §2, decision 0006
      */
     #[Test]
     public function anUnsignedObjectFromTheClientThatRegisteredItIsRead(): void
@@ -291,8 +281,7 @@ final class RequestObjectResolverTest extends TestCase
     }
 
     /**
-     * OIDC Discovery §3 "require_request_uri_registration": a URL the client did not register is refused
-     * before any request leaves the process.
+     * OIDC Discovery §3
      */
     #[Test]
     public function anUnregisteredReferenceIsRefusedWithoutARequestLeavingTheProcess(): void
@@ -316,7 +305,7 @@ final class RequestObjectResolverTest extends TestCase
     }
 
     /**
-     * OIDC Core §6.2: the object behind a registered URL is read back and read.
+     * OIDC Core §6.2
      */
     #[Test]
     public function theObjectBehindARegisteredReferenceIsReadBack(): void
@@ -341,8 +330,7 @@ final class RequestObjectResolverTest extends TestCase
     }
 
     /**
-     * Decision 0006: a client that answers an error, too slowly, too much, or a redirection leaves the
-     * request refused and the provider untouched.
+     * Decision 0006
      */
     #[Test]
     public function aReferenceThatCannotBeReadBackIsRefused(): void
@@ -366,7 +354,7 @@ final class RequestObjectResolverTest extends TestCase
     }
 
     /**
-     * RFC 9101 §6.2: a client whose keys cannot be read has no request object that verifies.
+     * RFC 9101 §6.2
      */
     #[Test]
     public function anObjectOfAClientWhoseKeysCannotBeReadIsRefused(): void

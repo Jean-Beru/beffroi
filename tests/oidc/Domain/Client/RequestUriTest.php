@@ -13,10 +13,7 @@ use PHPUnit\Framework\TestCase;
 final class RequestUriTest extends TestCase
 {
     /**
-     * OIDC Core §6.2 (modules `oidcc-request-uri-unsigned` and `-request-uri-signed-rs256`): the fragment of
-     * a "request_uri" is the base64url-encoded SHA-256 hash of the content behind it, so it is accepted and
-     * kept as it was registered. ClientUri refuses every fragment for the reason a redirection has, and
-     * nothing is redirected here.
+     * OIDC Core §6.2
      */
     #[Test]
     public function itAcceptsTheFragmentOfTheSpecificationAndKeepsIt(): void
@@ -29,8 +26,7 @@ final class RequestUriTest extends TestCase
     }
 
     /**
-     * RFC 3986 §3.5: a fragment is what a client keeps and never what a server is sent, so the URL the
-     * object is read back from is the URI without it.
+     * RFC 3986 §3.5
      */
     #[Test]
     public function theUrlItIsReadFromCarriesNoFragment(): void
@@ -42,9 +38,6 @@ final class RequestUriTest extends TestCase
         static::assertSame('https://jar.example/request.jwt?v=2', $uri->location->value);
     }
 
-    /**
-     * A URI that carries no fragment is the ordinary case, and what is read is what was registered.
-     */
     #[Test]
     public function aUriWithNoFragmentIsReadAsItWasRegistered(): void
     {
@@ -55,10 +48,6 @@ final class RequestUriTest extends TestCase
         static::assertSame('https://jar.example/request.jwt', $uri->location->value);
     }
 
-    /**
-     * What may be registered at all is the rule of every URI a client registers (ClientUri), read on the URI
-     * without its fragment: this class adds the fragment and relaxes nothing else.
-     */
     #[Test]
     #[DataProvider('provideUrisNoClientMayRegister')]
     public function itIsAUriAClientMayRegister(string $value, string $reason): void
@@ -82,10 +71,6 @@ final class RequestUriTest extends TestCase
         yield 'a fragment and nothing else' => ['#ZmFrZQ', 'is not an absolute URI'];
     }
 
-    /**
-     * Compared byte for byte, fragment included: two registrations of the same URL under two hashes are two
-     * URIs, the hash being part of what the client registered.
-     */
     #[Test]
     public function itIsComparedByteForByteWithItsFragment(): void
     {

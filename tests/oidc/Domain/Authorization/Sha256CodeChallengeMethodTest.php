@@ -12,8 +12,7 @@ use PHPUnit\Framework\TestCase;
 final class Sha256CodeChallengeMethodTest extends TestCase
 {
     /**
-     * RFC 7636 §4.3: the name a request writes in "code_challenge_method", which RFC 8414 §2 announces in
-     * "code_challenge_methods_supported".
+     * RFC 7636 §4.3, RFC 8414 §2
      */
     #[Test]
     public function itNamesItselfAsTheRequestWritesIt(): void
@@ -23,7 +22,7 @@ final class Sha256CodeChallengeMethodTest extends TestCase
     }
 
     /**
-     * RFC 7636 §4.6 with the vector of appendix B: BASE64URL(SHA256(ASCII(verifier))) is the challenge.
+     * RFC 7636 §4.6, appendix B
      */
     #[Test]
     public function itVerifiesTheCodeVerifierOfRfc7636AppendixB(): void
@@ -36,8 +35,7 @@ final class Sha256CodeChallengeMethodTest extends TestCase
     }
 
     /**
-     * RFC 7636 §4.6: one character off, the empty string, the challenge itself (a "plain" attempt) and a
-     * padded digest are refused.
+     * RFC 7636 §4.6
      */
     #[Test]
     #[DataProvider('provideWrongVerifiers')]

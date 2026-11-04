@@ -16,7 +16,7 @@ use PHPUnit\Framework\TestCase;
 final class RequestObjectTest extends TestCase
 {
     /**
-     * OIDC Core §6.1: the claims of the object are the parameters of the request.
+     * OIDC Core §6.1
      */
     #[Test]
     public function theClaimsOfTheObjectAreTheParametersOfTheRequest(): void
@@ -47,7 +47,7 @@ final class RequestObjectTest extends TestCase
     }
 
     /**
-     * RFC 7519 §4.1: what the token says about itself is not a parameter of the request it carries.
+     * RFC 7519 §4.1
      */
     #[Test]
     public function theClaimsAJwtMakesAboutItselfAreNoParameters(): void
@@ -76,8 +76,7 @@ final class RequestObjectTest extends TestCase
     }
 
     /**
-     * OIDC Core §6.1: "max_age" as a number is what the field sends, and the query would have carried
-     * its digits.
+     * OIDC Core §6.1
      */
     #[Test]
     public function aNumberIsReadAsTheParameterTheQueryWouldHaveCarried(): void
@@ -100,8 +99,7 @@ final class RequestObjectTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5: "claims" is an object inside a request object, and the JSON the query would have
-     * carried outside of it.
+     * OIDC Core §5.5
      */
     #[Test]
     public function anObjectIsReadAsTheJsonTheQueryWouldHaveCarried(): void
@@ -130,8 +128,7 @@ final class RequestObjectTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2.1: in a request object, a single "resource" is a JSON string and several are an array
-     * of strings, which reaches the parser as the repeated parameter it is.
+     * RFC 8707 §2.1
      */
     #[Test]
     public function aListOfStringsIsAParameterGivenSeveralValues(): void
@@ -154,8 +151,7 @@ final class RequestObjectTest extends TestCase
     }
 
     /**
-     * OIDC Core §6.1: anything else an array holds is an object, and it is written back as the JSON the
-     * query would have carried; only a list of strings is a parameter given several values.
+     * OIDC Core §6.1
      *
      * @param array<array-key, mixed> $value
      */
@@ -195,7 +191,7 @@ final class RequestObjectTest extends TestCase
     }
 
     /**
-     * Decision 0006: a value no authorization request carries is refused, never cast into one.
+     * Decision 0006
      */
     #[Test]
     #[DataProvider('provideValuesNoRequestCarries')]
@@ -225,9 +221,7 @@ final class RequestObjectTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: an error description is printable ASCII without a double quote or a backslash, and
-     * the name of a claim is a string the client chose, so the refusal of what a claim holds names the
-     * rule and never the claim.
+     * RFC 6749 §5.2
      */
     #[Test]
     #[DataProvider('provideNamesNoDescriptionCarries')]
@@ -258,7 +252,7 @@ final class RequestObjectTest extends TestCase
     }
 
     /**
-     * RFC 9101 §4: a request object carries the request, never another object.
+     * RFC 9101 §4
      */
     #[Test]
     #[DataProvider('provideNestedParameters')]
@@ -287,9 +281,7 @@ final class RequestObjectTest extends TestCase
     }
 
     /**
-     * RFC 9101 §4 lets an object carry any extension parameter and RFC 6749 §3.1 has the authorization
-     * server ignore one it does not recognise: a claim named by a number is such a parameter, whatever it
-     * holds, and decoding the JSON made its name an integer.
+     * RFC 9101 §4, RFC 6749 §3.1
      */
     #[Test]
     #[DataProvider('provideClaimsNamedByANumber')]
@@ -321,10 +313,6 @@ final class RequestObjectTest extends TestCase
         yield 'a value no request carries' => ['{"scope":"openid","123":true}'];
     }
 
-    /**
-     * The claims as a reader hands them over, decoded from the JSON the client wrote: json_decode() turns
-     * a name made of a number into an integer key, whatever type the reader declares for them.
-     */
     private static function objectOfJson(string $json): RequestObject
     {
         $claims = json_decode($json, true, 512, JSON_THROW_ON_ERROR);

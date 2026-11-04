@@ -17,10 +17,6 @@ use Beffroi\Oidc\Tests\Fixture\Grants;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * The grants the token endpoint serves are named by the grants themselves, so that what the endpoint
- * serves, what a client may register and what the document announces cannot disagree (issue #98).
- */
 final class ServedGrantsTest extends TestCase
 {
     #[Test]
@@ -37,9 +33,7 @@ final class ServedGrantsTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4, §3.1.2: which of the wired grants a client uses for itself, and which send the user's
-     * browser back to it, is what they declare; it is what decides which lists a registration of them must
-     * carry and must not.
+     * RFC 6749 §4.4, §3.1.2
      */
     #[Test]
     public function whatEachGrantDoesWithAUserIsWhatItDeclares(): void
@@ -57,8 +51,7 @@ final class ServedGrantsTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.3: which of the wired grants asks its user somewhere other than in the client's own
-     * browser is what they declare, and is what the endpoint where such a flow starts reads.
+     * RFC 8628 §3.3
      */
     #[Test]
     public function whichGrantsAskTheirUserOnAnotherDeviceIsWhatTheyDeclare(): void
@@ -75,8 +68,7 @@ final class ServedGrantsTest extends TestCase
     }
 
     /**
-     * CIBA Core §7: which of the wired grants has this provider reach its user is what they declare, and
-     * is what tells the two endpoints of the two waiting flows apart.
+     * CIBA Core §7
      */
     #[Test]
     public function whichGrantsHaveTheProviderReachTheirUserIsWhatTheyDeclare(): void
@@ -94,8 +86,7 @@ final class ServedGrantsTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1: which of the wired grants takes a token and gives a token back is what they declare, and
-     * is what decides which registrations must carry what a client may present.
+     * RFC 8693 §2.1
      */
     #[Test]
     public function whichGrantsExchangeATokenIsWhatTheyDeclare(): void
@@ -112,10 +103,7 @@ final class ServedGrantsTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.1: which of the wired grants is served only to a client that authenticates itself is
-     * what they declare, a grant a client uses for itself and one that exchanges a token among them, and is
-     * what decides which registrations a public client is refused and which requests of one the token
-     * endpoint refuses.
+     * RFC 6749 §2.1
      */
     #[Test]
     public function whichGrantsRequireClientAuthenticationIsWhatTheyDeclare(): void
@@ -142,10 +130,6 @@ final class ServedGrantsTest extends TestCase
         );
     }
 
-    /**
-     * Every wired grant that declares a capability is listed, in the order they are wired: the list is what
-     * they all declare and not what the first of them does.
-     */
     #[Test]
     public function everyGrantThatDeclaresACapabilityIsListed(): void
     {
@@ -162,10 +146,6 @@ final class ServedGrantsTest extends TestCase
         static::assertSame(['client_credentials', 'urn:example:params:oauth:grant-type:invented'], GrantNames::of($forTheClient));
     }
 
-    /**
-     * A wiring where no grant declares either is a wiring where no client registers a redirect URI and
-     * none acts for itself: the lists are read from the grants and never guessed from their names.
-     */
     #[Test]
     public function aWiringOfGrantsThatDeclareNeitherHasNeither(): void
     {
@@ -180,8 +160,7 @@ final class ServedGrantsTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.5: an extension grant names itself by an absolute URI, and the provider serves it
-     * because it is wired and for no other reason.
+     * RFC 6749 §4.5
      */
     #[Test]
     public function aGrantNamedByAnythingItLikesIsServedUnderThatName(): void
@@ -210,8 +189,7 @@ final class ServedGrantsTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.4: which of the wired grants may answer with a refresh token, and which spend one
-     * (§6), is what they declare and never a rule written about their names.
+     * RFC 6749 §4.1.4, §6
      */
     #[Test]
     public function whatEachGrantMakesOfARefreshTokenIsWhatItDeclares(): void

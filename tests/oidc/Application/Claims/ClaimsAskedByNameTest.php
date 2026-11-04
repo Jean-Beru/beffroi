@@ -26,8 +26,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * OIDC Core §5.5: a claim asked for by name is held to the scopes the client registered, a client registering
- * scopes and never claims (RFC 7591 §2), and to what the person agreed to (§3.1.2.4), and never further.
+ * OIDC Core §5.5, §3.1.2.4, RFC 7591 §2
  */
 final class ClaimsAskedByNameTest extends TestCase
 {
@@ -35,9 +34,6 @@ final class ClaimsAskedByNameTest extends TestCase
 
     private ClaimsAskedByName $claims;
 
-    /**
-     * A client that registered "profile" and "email" and not "phone".
-     */
     private Client $client;
 
     protected function setUp(): void
@@ -48,9 +44,7 @@ final class ClaimsAskedByNameTest extends TestCase
     }
 
     /**
-     * RFC 7591 §2, OIDC Core §5.5.1: a client is told the claims a scope it registered stands for, in each
-     * member, what it asked of each kept; a claim no scope it registered stands for is not told, and asking
-     * for it is no error.
+     * RFC 7591 §2, OIDC Core §5.5.1
      */
     #[Test]
     public function aClientMayBeToldTheClaimsAScopeItRegisteredStandsFor(): void
@@ -66,9 +60,6 @@ final class ClaimsAskedByNameTest extends TestCase
         static::assertEquals(['name' => new ClaimRequest()], $grantable?->idToken);
     }
 
-    /**
-     * A request that asked for nothing by name is told nothing by name.
-     */
     #[Test]
     public function aRequestThatAskedForNoClaimByNameStaysOne(): void
     {
@@ -77,8 +68,7 @@ final class ClaimsAskedByNameTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.1: a claim of a deployment is held to the scope its class names, exactly as a claim of
-     * §5.1 is held to its scope of §5.4.
+     * OIDC Core §5.1, §5.4
      *
      * @param list<string> $registered
      * @param list<string> $told
@@ -108,9 +98,7 @@ final class ClaimsAskedByNameTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.2.4: the person is asked by name for the claims the client may be told and no scope of
-     * the request stands for; a claim one of them stands for is agreed to with it, and one the client may
-     * not be told is asked of nobody.
+     * OIDC Core §3.1.2.4
      */
     #[Test]
     public function thePersonIsAskedForTheClaimsNoScopeOfTheRequestStandsFor(): void
@@ -140,11 +128,10 @@ final class ClaimsAskedByNameTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.4, §5.5: a consent answers for a claim asked for by name when it holds it by name or holds
-     * the scope that stands for it, and for no other.
+     * OIDC Core §5.4, §5.5
      *
-     * @param list<string> $scopes what the consent holds
-     * @param list<string> $claims what it holds by name
+     * @param list<string> $scopes
+     * @param list<string> $claims
      */
     #[Test]
     #[DataProvider('provideConsents')]
@@ -178,7 +165,7 @@ final class ClaimsAskedByNameTest extends TestCase
     }
 
     /**
-     * @param list<string> $scopes what it registered
+     * @param list<string> $scopes
      */
     private static function clientOf(Tenant $tenant, array $scopes): Client
     {

@@ -37,9 +37,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §4.3: what a user taking back what they agreed to comes to. The consent goes, and what was
- * issued under it goes with it: the grants the client left behind, the refresh tokens, the opaque access
- * tokens. What belongs to another client, to another user or to no user at all is left alone.
+ * Architecture §4.3
  */
 final class ConsentRevocationTest extends TestCase
 {
@@ -189,7 +187,7 @@ final class ConsentRevocationTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4: a token a client holds for itself descends from no user and from no consent.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function theTokenTheClientHoldsForItselfIsLeftAlone(): void
@@ -233,10 +231,6 @@ final class ConsentRevocationTest extends TestCase
         static::assertSame($this->context, $event->context);
     }
 
-    /**
-     * A grant revoked before, by the replay of its code, keeps the date it was revoked on and is not
-     * counted a second time.
-     */
     #[Test]
     public function aGrantAlreadyRevokedKeepsItsDate(): void
     {

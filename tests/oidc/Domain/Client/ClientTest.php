@@ -19,11 +19,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Beffroi\Oidc\Tests\Fixture\Shapes;
 
-/**
- * A registration bound to a tenant, with its shared secret in the shape the provider keeps it. What a
- * registration holds to is checked by ClientRegistrationTest; what is checked here is the one thing
- * only a client can see, the secret it was handed.
- */
 final class ClientTest extends TestCase
 {
     #[Test]
@@ -54,10 +49,6 @@ final class ClientTest extends TestCase
         static::assertFalse($client->belongsTo(Fixtures::tenant('other')));
     }
 
-    /**
-     * A client identifier is unique within its tenant: two registrations of the same identifier in two
-     * tenants are two clients.
-     */
     #[Test]
     public function itEqualsTheSameRegistrationOfItsTenant(): void
     {
@@ -72,9 +63,7 @@ final class ClientTest extends TestCase
     }
 
     /**
-     * OIDC Core §9: "client_secret_basic" is shown the secret and keeps a hash of it;
-     * "client_secret_jwt" computes a MAC with it and keeps the secret. A secret kept for one is not a
-     * secret the other verifies against.
+     * OIDC Core §9
      */
     #[Test]
     public function aSecretIsKeptInTheShapeTheRegisteredMethodVerifiesAgainst(): void
@@ -98,10 +87,6 @@ final class ClientTest extends TestCase
         );
     }
 
-    /**
-     * A registration says whether the client registered a shared secret. A client built against it with
-     * the other answer is a wiring fault, not a client: the two would disagree on what authenticates it.
-     */
     #[Test]
     public function aClientCannotContradictWhatItsRegistrationDeclares(): void
     {

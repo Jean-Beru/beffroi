@@ -12,13 +12,12 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * CIBA Core §7.1: what a client sends so that it recognises the call this provider makes back, and what
- * this provider therefore has to be able to present in an Authorization header (RFC 6750 §2.1).
+ * CIBA Core §7.1, RFC 6750 §2.1
  */
 final class ClientNotificationTokenTest extends TestCase
 {
     /**
-     * §7.1: a token of at least 128 bits of entropy, which a header can carry as it is.
+     * CIBA Core §7.1
      */
     #[Test]
     #[DataProvider('provideAcceptedTokens')]
@@ -40,8 +39,7 @@ final class ClientNotificationTokenTest extends TestCase
     }
 
     /**
-     * §7.1: a token this provider could not present back, or one too short to carry what the
-     * specification asks of it, is refused where it arrives.
+     * CIBA Core §7.1
      */
     #[Test]
     #[DataProvider('provideRefusedTokens')]

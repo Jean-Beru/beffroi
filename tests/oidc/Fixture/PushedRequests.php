@@ -8,8 +8,7 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Oidc\Port\PushedAuthorizationRequirementInterface;
 
 /**
- * What the registered clients of a tenant make of RFC 9126 §5: every one of them pushes its
- * authorization requests, or at least one of them does not.
+ * RFC 9126 §5
  */
 final readonly class PushedRequests implements PushedAuthorizationRequirementInterface
 {

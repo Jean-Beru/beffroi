@@ -38,33 +38,29 @@ use Beffroi\Oidc\Domain\Scope\Scope;
 
 final class Clients
 {
-    /**
-     * Where a client registered to be called back when a backchannel request has been answered.
-     */
     public const string NOTIFICATION_ENDPOINT = 'https://terminal.example/ciba';
 
     public const string SECRET = 'a2b0c5d1e9f4a7b3c8d2e6f0a1b5c9d3e7f2a6b0c4d8e1f5a9b3c7d0e4f8a2b6';
 
     /**
-     * What a native client registers (RFC 8252 §7.3): the loopback IP literal, no port, the port being what
-     * the operating system hands it when it starts.
+     * RFC 8252 §7.3
      */
     public const string LOOPBACK_REDIRECT_URI = 'http://127.0.0.1/callback';
 
     public const string LOOPBACK_POST_LOGOUT_URI = 'http://127.0.0.1/after-logout';
 
     /**
-     * Two resources a client may be registered for (RFC 8707 §2), as the examples of the RFC name them.
+     * RFC 8707 §2
      */
     public const string CALENDAR = 'https://cal.example.com/';
 
     public const string CONTACTS = 'https://contacts.example.com/';
 
     /**
-     * @param list<GrantTypeName>|null $grantTypes what this client registered for, the browser flow and its renewal unless the test says otherwise
-     * @param list<ResourceIndicator> $resources what this client may ask a token for (RFC 8707 §2)
-     * @param list<string> $authorizationDetailsTypes what this client may ask for beyond its scopes (RFC 9396 §2, §11)
-     * @param list<RedirectUri>|null $redirectUris where its browser is sent back to, the HTTPS one of the demonstration unless the test says otherwise
+     * @param list<GrantTypeName>|null $grantTypes
+     * @param list<ResourceIndicator> $resources
+     * @param list<string> $authorizationDetailsTypes
+     * @param list<RedirectUri>|null $redirectUris
      */
     public static function confidential(
         Tenant $tenant,
@@ -99,11 +95,9 @@ final class Clients
     }
 
     /**
-     * A service acting for itself (RFC 6749 §4.4): a confidential client registered for the client
-     * credentials grant, for the resources it asks its tokens for, and for no redirect URI, there being no
-     * browser of anybody's to send anywhere.
+     * RFC 6749 §4.4
      *
-     * @param list<ResourceIndicator>|null $resources what this client may ask a token for, both fixtures unless the test says otherwise
+     * @param list<ResourceIndicator>|null $resources
      */
     public static function service(
         Tenant $tenant,
@@ -132,12 +126,10 @@ final class Clients
     }
 
     /**
-     * A service that acts for somebody else (RFC 8693 §2.1): a confidential client registered for the token
-     * exchange, for the types of token it may present and for the resources it may ask a token for. It
-     * registers no redirect URI, there being no browser of anybody's in the flow.
+     * RFC 8693 §2.1
      *
-     * @param list<ResourceIndicator>|null $resources what this client may ask a token for, both fixtures unless the test says otherwise
-     * @param list<TokenTypeIdentifier>|null $subjectTokenTypes what it may present, the access token unless the test says otherwise
+     * @param list<ResourceIndicator>|null $resources
+     * @param list<TokenTypeIdentifier>|null $subjectTokenTypes
      */
     public static function gateway(
         Tenant $tenant,
@@ -171,11 +163,9 @@ final class Clients
     }
 
     /**
-     * A service that presents an assertion of an issuer the tenant trusts (RFC 7523 §2.1): a confidential
-     * client registered for the JWT bearer grant, for the scopes it may ask for and for the resources its
-     * tokens are addressed to. It registers no redirect URI: the user was authenticated elsewhere.
+     * RFC 7523 §2.1
      *
-     * @param list<ResourceIndicator>|null $resources what this client may ask a token for, both fixtures unless the test says otherwise
+     * @param list<ResourceIndicator>|null $resources
      */
     public static function presentingAssertions(
         Tenant $tenant,
@@ -204,12 +194,10 @@ final class Clients
     }
 
     /**
-     * An appliance with no browser and no keyboard (RFC 8628 §3.1): a client registered for the device grant
-     * and for the renewal that goes with it, for no redirect URI, there being nothing of anybody's to send
-     * anywhere, and for the scopes it shows its user on the approval page.
+     * RFC 8628 §3.1
      *
-     * @param list<ResourceIndicator> $resources what this client may ask a token for (RFC 8707 §2)
-     * @param list<GrantTypeName>|null $grantTypes what this client registered for, the device grant and its renewal unless the test says otherwise
+     * @param list<ResourceIndicator> $resources
+     * @param list<GrantTypeName>|null $grantTypes
      */
     public static function appliance(
         Tenant $tenant,
@@ -239,15 +227,11 @@ final class Clients
     }
 
     /**
-     * A client that asks for a user it names and waits for them to approve on a device of their own (CIBA
-     * Core §7): registered for the backchannel grant and for the renewal that goes with it, for no
-     * redirect URI, there being no browser of its own anywhere in the flow, and for a delivery mode,
-     * without which it is not a client of this flow at all.
+     * CIBA Core §7
      *
-     * @param list<ResourceIndicator> $resources what this client may ask a token for (RFC 8707 §2)
-     * @param list<GrantTypeName>|null $grantTypes what this client registered for, the backchannel grant and its renewal unless the test says otherwise
-     * @param string|null $jwksUri where this client publishes its keys, which is also what says which sector it is of, a client of this flow registering no redirection URI (CIBA Core §4)
-     * @param non-empty-string|null $subjectType the kind of "sub" it sees, null for the one the provider assigns by default
+     * @param list<ResourceIndicator> $resources
+     * @param list<GrantTypeName>|null $grantTypes
+     * @param non-empty-string|null $subjectType
      */
     public static function backchannel(
         Tenant $tenant,
@@ -291,7 +275,7 @@ final class Clients
     }
 
     /**
-     * The same client, registered for the mode where this provider calls it back (CIBA Core §10.2).
+     * CIBA Core §10.2
      */
     public static function pinged(Tenant $tenant, PasswordHash $secretHash, string $clientId = 'payment-terminal'): Client
     {
@@ -305,9 +289,7 @@ final class Clients
     }
 
     /**
-     * The client of a FAPI-CIBA plan: it authenticates with an assertion, and the tokens it comes for
-     * are bound to the certificate it presents all the same (RFC 8705 §3.4, FAPI 1.0 Advanced Final
-     * §5.2.2). It registers neither a secret nor a redirect URI, as every client of that flow.
+     * RFC 8705 §3.4, FAPI 1.0 Advanced Final §5.2.2
      */
     public static function boundToItsCertificate(Tenant $tenant, string $clientId = 'bound-terminal'): Client
     {
@@ -331,8 +313,7 @@ final class Clients
     }
 
     /**
-     * A client whose only way of starting an authorization request is to push it (RFC 9126 §6), which is
-     * what FAPI 2.0 asks of one.
+     * RFC 9126 §6
      */
     public static function pushingOnly(Tenant $tenant, PasswordHash $secretHash, string $clientId = 'fapi-demo'): Client
     {
@@ -355,11 +336,10 @@ final class Clients
     }
 
     /**
-     * @param list<ResourceIndicator> $resources what this client may ask a token for (RFC 8707 §2)
-     * @param list<GrantTypeName>|null $grantTypes what this client registered for, the browser flow unless the test says otherwise
-     * @param list<RedirectUri>|null $redirectUris where its browser is sent back to, an HTTPS URI unless the test says otherwise
-     * @param list<RedirectUri> $postLogoutRedirectUris where it is sent back to at the end of a session (RP-Initiated Logout §2)
-     * @param Scopes|null $allowedScopes what this client may ask for, "openid" alone unless the test says otherwise
+     * @param list<ResourceIndicator> $resources
+     * @param list<GrantTypeName>|null $grantTypes
+     * @param list<RedirectUri>|null $redirectUris
+     * @param list<RedirectUri> $postLogoutRedirectUris
      */
     public static function public(
         Tenant $tenant,
@@ -388,8 +368,7 @@ final class Clients
     }
 
     /**
-     * A client registered for a pairwise "sub" (OIDC Core §8.1): the kind it names, where its browser comes
-     * back to, which says which sector it belongs to, and the document it registers to say so instead.
+     * OIDC Core §8.1
      */
     public static function pairwise(
         Tenant $tenant,
@@ -414,9 +393,7 @@ final class Clients
     }
 
     /**
-     * A client of a sector that also acts for itself (RFC 6749 §4.4, OIDC Core §8.1): confidential, registered for
-     * the client credentials grant beside the browser flow and for a pairwise "sub", its sector the host its browser
-     * comes back to.
+     * RFC 6749 §4.4, OIDC Core §8.1
      */
     public static function pairwiseService(Tenant $tenant, PasswordHash $secretHash): Client
     {
@@ -440,13 +417,10 @@ final class Clients
     }
 
     /**
-     * A client this provider begins a login at (OIDC Core §4): the "initiate_login_uri" it registered,
-     * which is where the browser is sent, and the redirection URIs a "target_link_uri" is held to.
+     * OIDC Core §4
      *
-     * @param list<RedirectUri>|null $redirectUris where this client's browser comes back to, which is
-     *                                             also the set a landing page is named out of
-     * @param non-empty-string|null $subjectType the kind of "sub" this client sees, null for the one the
-     *                                           provider assigns by default
+     * @param list<RedirectUri>|null $redirectUris
+     * @param non-empty-string|null $subjectType
      */
     public static function withThirdPartyInitiatedLogin(
         Tenant $tenant,
@@ -472,10 +446,9 @@ final class Clients
     }
 
     /**
-     * A native client (RFC 8252 §8.3): a public client whose browser comes back to the loopback interface,
-     * on whatever port the operating system handed it, and which registers the IP literal without a port.
+     * RFC 8252 §8.3
      *
-     * @param list<RedirectUri>|null $postLogoutRedirectUris the loopback one unless the test says otherwise
+     * @param list<RedirectUri>|null $postLogoutRedirectUris
      */
     public static function native(Tenant $tenant, string $clientId = 'native-app', ?array $postLogoutRedirectUris = null): Client
     {
@@ -488,8 +461,6 @@ final class Clients
     }
 
     /**
-     * The two resources the fixtures name, for the tests that ask a token for one of them.
-     *
      * @return list<ResourceIndicator>
      */
     public static function resources(): array
@@ -498,8 +469,7 @@ final class Clients
     }
 
     /**
-     * The types of authorization detail a client of the tests is registered for (RFC 9396 §11): the one a
-     * deployment invents, which InventedAuthorizationDetailType answers for.
+     * RFC 9396 §11
      *
      * @return list<string>
      */
@@ -509,10 +479,9 @@ final class Clients
     }
 
     /**
-     * A client that signs its assertions with a key of its own (OIDC Core §9, "private_key_jwt"),
-     * publishing its JWK Set inline or behind a "jwks_uri".
+     * OIDC Core §9
      *
-     * @param list<GrantTypeName>|null $grantTypes what this client registered for, the browser flow alone unless the test says otherwise
+     * @param list<GrantTypeName>|null $grantTypes
      */
     public static function withKeys(
         Tenant $tenant,
@@ -541,9 +510,7 @@ final class Clients
     }
 
     /**
-     * A client that registered an encryption for what the provider hands it (OIDC Registration §2): it
-     * publishes the key the document is addressed to, and receives the shapes given, signed then
-     * encrypted. What it registers nothing for it receives as every other client does.
+     * OIDC Registration §2
      */
     public static function encryptedFor(
         Tenant $tenant,
@@ -574,9 +541,7 @@ final class Clients
     }
 
     /**
-     * A client that sends its authorization requests in a JWT (RFC 9101 §4): it publishes the keys the
-     * signature is verified against and registers, or not, the algorithm it signs with, the URLs its
-     * objects are published at and that its requests are read from nothing else (§10.5).
+     * RFC 9101 §4, §10.5
      *
      * @param list<RequestUri> $requestUris
      */
@@ -609,8 +574,7 @@ final class Clients
     }
 
     /**
-     * A client that signs its assertions with the secret it registered (OIDC Core §9,
-     * "client_secret_jwt"), which the provider therefore holds in clear.
+     * OIDC Core §9
      */
     public static function withSharedSecret(Tenant $tenant, string $clientId = 'mac-client', string $secret = self::SECRET): Client
     {
@@ -629,8 +593,7 @@ final class Clients
     }
 
     /**
-     * A client recognised by what its certificate says about it (RFC 8705 §2.1): it registers one of the
-     * five values of §2.1.2, here the subject distinguished name unless the test names another.
+     * RFC 8705 §2.1
      */
     public static function withCertificateIdentity(
         Tenant $tenant,
@@ -656,7 +619,7 @@ final class Clients
     }
 
     /**
-     * A client that publishes the certificate it signs itself (RFC 8705 §2.2), in its JWK Set.
+     * RFC 8705 §2.2
      */
     public static function withPublishedCertificate(Tenant $tenant, ?ClientJwks $jwks = null, string $clientId = 'self-signed-client'): Client
     {
@@ -678,8 +641,7 @@ final class Clients
     }
 
     /**
-     * A client the logout page loads in a frame when a session it signed in ends (Front-Channel Logout
-     * 1.0 §3), which reads "iss" and "sid" only when it said so.
+     * Front-Channel Logout 1.0 §3
      */
     public static function withFrontChannelLogout(
         Tenant $tenant,
@@ -703,7 +665,7 @@ final class Clients
     }
 
     /**
-     * A client the provider tells when a session it signed in ends (Back-Channel Logout 1.0 §2.2).
+     * Back-Channel Logout 1.0 §2.2
      */
     public static function withBackChannelLogout(Tenant $tenant, string $clientId = 'spa', string $logoutUri = 'https://spa.example/backchannel-logout'): Client
     {

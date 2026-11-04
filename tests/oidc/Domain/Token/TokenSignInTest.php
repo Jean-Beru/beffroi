@@ -14,8 +14,7 @@ use Symfony\Component\Uid\Uuid;
 final class TokenSignInTest extends TestCase
 {
     /**
-     * OIDC Core §2, Front-Channel Logout §3: the four claims a token says its sign-in with, in the order
-     * every token and every introspection response of the provider writes them.
+     * OIDC Core §2, Front-Channel Logout §3
      */
     #[Test]
     public function itWritesTheClaimsOfTheSignIn(): void

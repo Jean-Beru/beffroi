@@ -38,8 +38,7 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * "tls_client_auth" (RFC 8705 §2.1): the client presents a certificate of an authority the deployment
- * trusts, and the provider recognises it by the one value of §2.1.2 it registered.
+ * RFC 8705 §2.1, §2.1.2
  */
 final class TlsClientAuthTest extends TestCase
 {
@@ -66,7 +65,7 @@ final class TlsClientAuthTest extends TestCase
     }
 
     /**
-     * RFC 8705 §2.1.2: the certificate carries the subject distinguished name the client registered.
+     * RFC 8705 §2.1.2
      */
     #[Test]
     public function itAuthenticatesAClientWhoseCertificateCarriesTheNameItRegistered(): void
@@ -79,8 +78,7 @@ final class TlsClientAuthTest extends TestCase
     }
 
     /**
-     * The chain is the edge's to judge (architecture §6), the name is the provider's: a
-     * certificate of the very same authority that names somebody else authenticates nobody.
+     * Architecture §6
      */
     #[Test]
     public function anotherCertificateOfTheSameAuthorityIsRefused(): void
@@ -106,8 +104,7 @@ final class TlsClientAuthTest extends TestCase
     }
 
     /**
-     * RFC 8705 §2.1.2: whichever of the five values the client registered, it is read out of the
-     * certificate presented and compared to what the registration says.
+     * RFC 8705 §2.1.2
      */
     #[Test]
     #[DataProvider('provideRegisteredNames')]
@@ -125,8 +122,7 @@ final class TlsClientAuthTest extends TestCase
     }
 
     /**
-     * RFC 8705 §3: the tokens of a request authenticated this way are bound to the certificate that
-     * authenticated it.
+     * RFC 8705 §3
      */
     #[Test]
     public function theTokensOfTheRequestAreBoundToTheCertificatePresented(): void
@@ -141,10 +137,6 @@ final class TlsClientAuthTest extends TestCase
         static::assertEquals(CertificateConfirmation::ofCertificate($certificate), $authenticated->confirmation);
     }
 
-    /**
-     * A request made without a certificate presents no mutual-TLS authentication at all: it names a
-     * client and proves nothing, and naming oneself is not a method this client registered.
-     */
     #[Test]
     public function aRequestWithoutACertificateProvesNothing(): void
     {
@@ -157,8 +149,7 @@ final class TlsClientAuthTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.3.1: a client authenticates with the one method it registered, and a certificate is no
-     * exception.
+     * RFC 6749 §2.3.1
      */
     #[Test]
     public function aClientRegisteredForAnotherMethodIsRefused(): void
@@ -180,10 +171,6 @@ final class TlsClientAuthTest extends TestCase
         static::assertSame(ClientAuthenticationFailureReason::UnexpectedMethod, $event->reason);
     }
 
-    /**
-     * What the edge hands over is read, never guessed at: bytes that are not a certificate authenticate
-     * nobody and say so in the audit trail.
-     */
     #[Test]
     public function bytesThatAreNotACertificateAuthenticateNobody(): void
     {
@@ -200,9 +187,7 @@ final class TlsClientAuthTest extends TestCase
     }
 
     /**
-     * A client reaching a host whose listener asks for a certificate presents one because it was asked,
-     * not because it chose to authenticate with it: a certificate beside a credential of the request is
-     * not a second mechanism of RFC 6749 §2.3, and the client authenticates with what it registered.
+     * RFC 6749 §2.3
      */
     #[Test]
     public function aCertificateBesideAnotherCredentialIsNotASecondMechanism(): void
@@ -226,9 +211,7 @@ final class TlsClientAuthTest extends TestCase
     }
 
     /**
-     * RFC 8705 §3 lets a provider bind the tokens of a client authenticated otherwise to the certificate
-     * it presented; that is a registration of its own, which no client has here, so a client that
-     * authenticated with its secret gets bearer tokens whatever its connection proved.
+     * RFC 8705 §3
      */
     #[Test]
     public function theTokensOfAClientAuthenticatedOtherwiseAreNotBound(): void
@@ -256,7 +239,7 @@ final class TlsClientAuthTest extends TestCase
     }
 
     /**
-     * RFC 8705 §2: the method is announced under the name a client registers.
+     * RFC 8705 §2
      */
     #[Test]
     public function itAnnouncesItselfUnderTheNameOfTheSpecification(): void
@@ -270,8 +253,7 @@ final class TlsClientAuthTest extends TestCase
      */
     public static function provideRegisteredNames(): iterable
     {
-        // the distinguished name a registration carries is written back by the reader of the provider,
-        // as ClientDefinition does when it reads a client (RFC 8705 §2.1.2)
+        // The registered name is written back by the provider's reader, as ClientDefinition does (RFC 8705 §2.1.2).
         yield 'the subject distinguished name' =>
             [new SubjectDistinguishedName(new PkiFrameworkCertificateReader()->distinguishedName(Certificates::SUBJECT_DN))];
 

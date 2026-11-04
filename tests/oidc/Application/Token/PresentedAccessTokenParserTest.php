@@ -26,9 +26,7 @@ final class PresentedAccessTokenParserTest extends TestCase
     }
 
     /**
-     * RFC 6750 §2.1: "Bearer" then the b64token, the scheme compared without regard to case (RFC 9110
-     * §11.1); RFC 9449 §7.1: "DPoP" then the same, for a token bound to a key; RFC 6750 §2.2: the
-     * "access_token" form parameter, which carries a bearer token and only one. Each alone is the token.
+     * RFC 6750 §2.1, §2.2, RFC 9110 §11.1, RFC 9449 §7.1
      *
      * @param array<string, mixed> $parameters
      */
@@ -82,9 +80,7 @@ final class PresentedAccessTokenParserTest extends TestCase
     }
 
     /**
-     * RFC 6750 §3.1: a request without any bearer token is not an error of the protocol; the resource
-     * answers with the bare challenge. A header of another scheme, or an empty parameter (RFC 6749 §3.1,
-     * as every endpoint reads them), is no token either.
+     * RFC 6750 §3.1, RFC 6749 §3.1
      *
      * @param array<string, mixed> $parameters
      */
@@ -121,9 +117,7 @@ final class PresentedAccessTokenParserTest extends TestCase
     }
 
     /**
-     * RFC 6750 §2: more than one method is refused; §3.1: a header that names the scheme without a
-     * b64token, or a parameter that is not one, is a malformed request: invalid_request, 400, never a
-     * redirect.
+     * RFC 6750 §2, §3.1
      *
      * @param array<string, mixed> $parameters
      */

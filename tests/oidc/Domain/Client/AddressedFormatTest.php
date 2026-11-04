@@ -17,15 +17,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * OIDC Core §3.1.3.7, RFC 7516 §7.1: the shape a client registered for one document, with the key of the
- * tenant its JWS is signed with and the key of the client its JWE goes to.
+ * OIDC Core §3.1.3.7, RFC 7516 §7.1
  */
 final class AddressedFormatTest extends TestCase
 {
     /**
-     * Architecture §4.5 (issue #870): a shape that signs is signed with one key of the tenant and a shape that
-     * does not with none, so a key withheld from the one or given to the other is refused when the two are put
-     * together.
+     * Architecture §4.5
      *
      * @param array<string, mixed>|null $recipient
      */
@@ -51,9 +48,6 @@ final class AddressedFormatTest extends TestCase
     }
 
     /**
-     * A shape that encrypts goes to one key of the client and a shape that does not goes to none, so a key
-     * withheld from the one or given to the other is refused when the two are put together.
-     *
      * @param array<string, mixed>|null $recipient
      */
     #[Test]
@@ -78,7 +72,7 @@ final class AddressedFormatTest extends TestCase
     }
 
     /**
-     * RFC 7515 §5.1 (issue #870): the JWS of a shape that signs is signed with the key that was opened for it.
+     * RFC 7515 §5.1
      */
     #[Test]
     public function aShapeThatSignsIsSignedWithTheKeyItWasGiven(): void
@@ -93,9 +87,6 @@ final class AddressedFormatTest extends TestCase
         static::assertSame($key, $addressed->signingKey());
     }
 
-    /**
-     * A shape that signs nothing is signed with no key, and asking it for one is a fault of the caller.
-     */
     #[Test]
     public function aShapeThatSignsNothingIsSignedWithNoKey(): void
     {
@@ -111,7 +102,7 @@ final class AddressedFormatTest extends TestCase
     }
 
     /**
-     * RFC 7516 §7.1: the JWE of a shape that encrypts goes to the key it was addressed to.
+     * RFC 7516 §7.1
      */
     #[Test]
     public function aShapeThatEncryptsGoesToTheKeyItWasGiven(): void
@@ -126,9 +117,6 @@ final class AddressedFormatTest extends TestCase
         static::assertSame($key, $addressed->recipient());
     }
 
-    /**
-     * A shape that encrypts nothing goes to no key, and asking it for one is a fault of the caller.
-     */
     #[Test]
     public function aShapeThatEncryptsNothingGoesToNoKey(): void
     {
@@ -143,16 +131,13 @@ final class AddressedFormatTest extends TestCase
         $addressed->recipient();
     }
 
-    /**
-     * The key of the tenant the KMS opened, which is what a shape that signs is struck with.
-     */
     private static function signingKey(): OpenedSigningKeyInterface
     {
         return Keys::openedSigningKey(Fixtures::tenant());
     }
 
     /**
-     * @return array<string, mixed> the public half of the key the client is encrypted to
+     * @return array<string, mixed>
      */
     private static function recipient(): array
     {

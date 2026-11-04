@@ -16,8 +16,7 @@ use PHPUnit\Framework\TestCase;
 final class ConsentPageTest extends TestCase
 {
     /**
-     * OIDC Registration §2: what the user may read about the client before deciding, under the name of
-     * the member that registered it, in the order the page shows them.
+     * OIDC Registration §2
      */
     #[Test]
     public function itCarriesThePagesTheClientRegistered(): void
@@ -37,8 +36,6 @@ final class ConsentPageTest extends TestCase
     }
 
     /**
-     * A member the client registered nothing for is absent, so that the page renders no empty link.
-     *
      * @param list<string> $members
      */
     #[Test]
@@ -83,8 +80,7 @@ final class ConsentPageTest extends TestCase
     }
 
     /**
-     * CSP Level 3 §6.1, RFC 6454 §3.2: the page shows the logo of this client and no other image, so the
-     * one origin it names is the one that logo is served from.
+     * CSP Level 3 §6.1, RFC 6454 §3.2
      */
     #[Test]
     public function itNamesTheOriginTheLogoOfTheClientIsServedFrom(): void
@@ -93,10 +89,6 @@ final class ConsentPageTest extends TestCase
         static::assertSame(['https://rp.example'], new ConsentPage(self::presentation())->imageOrigins);
     }
 
-    /**
-     * A client that registered no logo leaves a page that loads no image of anybody's, which is the page
-     * every deployment that declares its own clients has been served so far.
-     */
     #[Test]
     public function itNamesNoOriginForAClientThatRegisteredNoLogo(): void
     {
@@ -105,8 +97,7 @@ final class ConsentPageTest extends TestCase
     }
 
     /**
-     * RFC 6454 §3.2: a source expression names an origin, never a path, so a logo behind a path, a port
-     * or a query is the same one source.
+     * RFC 6454 §3.2
      */
     #[Test]
     #[DataProvider('provideLogoUris')]

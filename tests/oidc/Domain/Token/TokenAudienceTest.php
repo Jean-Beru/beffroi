@@ -14,13 +14,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Who an access token is addressed to (RFC 7519 §4.1.3, RFC 8707 §2), written once for the two shapes
- * of access token, the introspection response and the verifier.
+ * RFC 7519 §4.1.3, RFC 8707 §2
  */
 final class TokenAudienceTest extends TestCase
 {
     /**
-     * RFC 8707 §2: a request that named no resource asks for nothing beyond the provider itself.
+     * RFC 8707 §2
      */
     #[Test]
     public function aTokenAskedForNoResourceIsAddressedToItsClient(): void
@@ -36,7 +35,7 @@ final class TokenAudienceTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: the resources the request named, and nothing the client merely registered.
+     * RFC 8707 §2
      */
     #[Test]
     public function aTokenAskedForResourcesIsAddressedToThem(): void
@@ -52,7 +51,7 @@ final class TokenAudienceTest extends TestCase
     }
 
     /**
-     * RFC 7519 §4.1.3: one audience is written as a string, several as a list.
+     * RFC 7519 §4.1.3
      *
      * @param list<string> $values
      * @param string|list<string> $claim
@@ -78,7 +77,7 @@ final class TokenAudienceTest extends TestCase
     }
 
     /**
-     * RFC 7519 §4.1.3: a claim is read back in either shape.
+     * RFC 7519 §4.1.3
      *
      * @param list<string> $values
      */
@@ -173,9 +172,6 @@ final class TokenAudienceTest extends TestCase
     }
 
     /**
-     * Two audiences are the same when they name the same things in the same order, which is what the
-     * claim writes.
-     *
      * @param list<string> $one
      * @param list<string> $other
      */

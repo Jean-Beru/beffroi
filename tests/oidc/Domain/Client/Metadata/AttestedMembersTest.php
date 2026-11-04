@@ -13,13 +13,12 @@ use PHPUnit\Framework\TestCase;
 use function sprintf;
 
 /**
- * RFC 7591 §2.3: what a verified statement carries as client metadata, which is its claims minus the ones
- * it carries about itself, held to what a client registers.
+ * RFC 7591 §2.3
  */
 final class AttestedMembersTest extends TestCase
 {
     /**
-     * §2.3: "whose claims are client metadata values about the client software".
+     * RFC 7591 §2.3
      */
     #[Test]
     public function itCarriesTheClaimsThatDescribeTheClient(): void
@@ -42,9 +41,7 @@ final class AttestedMembersTest extends TestCase
     }
 
     /**
-     * RFC 7519 §4.1: a claim a statement carries about itself describes no client, and it is dropped here
-     * rather than refused by the reader, a statement of the ordinary shape being no registration with
-     * unknown keys.
+     * RFC 7519 §4.1
      */
     #[Test]
     #[DataProvider('provideClaimsAboutTheStatement')]
@@ -71,9 +68,7 @@ final class AttestedMembersTest extends TestCase
     }
 
     /**
-     * Decision 0009: what a statement says is what the client is, never what it may have. The members of this
-     * provider alone are held to the same list whether the client sent them or an authority signed them, or
-     * the client would be registered with one and read back from its row as no client at all.
+     * Decision 0009
      */
     #[Test]
     #[DataProviderExternal(RegisteredMembersTest::class, 'provideMembersOfTheDeployment')]
@@ -94,9 +89,6 @@ final class AttestedMembersTest extends TestCase
         ]);
     }
 
-    /**
-     * The refusal says where the member came from, the statement and not what the client typed beside it.
-     */
     #[Test]
     public function itsRefusalOfAMemberOfTheDeploymentNamesTheStatement(): void
     {
@@ -113,9 +105,6 @@ final class AttestedMembersTest extends TestCase
         }
     }
 
-    /**
-     * What a refusal names it by, so that a member that does not hold says where the value came from.
-     */
     #[Test]
     public function itSaysWhereItsMembersCameFrom(): void
     {

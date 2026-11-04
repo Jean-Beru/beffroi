@@ -22,11 +22,6 @@ use function array_column;
 use function array_map;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #453: what a person has agreed to, in the archive they ask for. It is a chapter of this module and
- * not of the core, which is the reason a chapter is a port at all: the core knows no protocol, and a
- * consent is what OAuth calls the permission a person gave a client.
- */
 final class ConsentsChapterTest extends TestCase
 {
     #[Test]
@@ -58,8 +53,7 @@ final class ConsentsChapterTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5: what the person agreed to by name is part of what they agreed to, and the archive says
-     * it beside the scopes.
+     * OIDC Core §5.5
      */
     #[Test]
     public function aConsentSaysTheClaimsItWasGivenByName(): void
@@ -76,10 +70,6 @@ final class ConsentsChapterTest extends TestCase
         static::assertSame([['email', 'phone_number']], array_column($lines, 'claims'));
     }
 
-    /**
-     * What is in force and not what ever was: a consent taken back is not a permission a client holds, and
-     * the page of the account reads the same answer.
-     */
     #[Test]
     public function aConsentThatWasTakenBackIsNotInTheChapter(): void
     {
@@ -94,9 +84,6 @@ final class ConsentsChapterTest extends TestCase
         static::assertSame([], new ConsentsChapter($consents)->of($user));
     }
 
-    /**
-     * One line per client, the most recently granted first, as the page of the account reads them.
-     */
     #[Test]
     public function aPersonWhoAgreedToTwoClientsHasTwoLines(): void
     {

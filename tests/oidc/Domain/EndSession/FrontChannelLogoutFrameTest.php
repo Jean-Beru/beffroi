@@ -13,7 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Front-Channel Logout 1.0 §2: what the logout page loads for one client of an ended session.
+ * Front-Channel Logout 1.0 §2
  */
 final class FrontChannelLogoutFrameTest extends TestCase
 {
@@ -25,8 +25,7 @@ final class FrontChannelLogoutFrameTest extends TestCase
     }
 
     /**
-     * §2: "iss" and "sid" are added for a client that declared it reads them, and the registered query
-     * is kept before them (RFC 3986 §2.1 for the encoding).
+     * Front-Channel Logout 1.0 §2, RFC 3986 §2.1
      */
     #[Test]
     public function aClientThatReadsTheSessionGetsTheIssuerAndTheSessionIdentifier(): void
@@ -45,8 +44,7 @@ final class FrontChannelLogoutFrameTest extends TestCase
     }
 
     /**
-     * §2 makes the two parameters conditional: a client that did not ask for them is loaded on the URI
-     * it registered, byte for byte.
+     * Front-Channel Logout 1.0 §2
      */
     #[Test]
     public function aClientThatDidNotAskReadsItsUriAsRegistered(): void
@@ -62,7 +60,7 @@ final class FrontChannelLogoutFrameTest extends TestCase
     }
 
     /**
-     * The policy of the page names origins, never paths (RFC 6454 §3.2).
+     * RFC 6454 §3.2
      */
     #[Test]
     public function itKeepsTheOriginOfTheClientBesideTheUri(): void
@@ -78,10 +76,6 @@ final class FrontChannelLogoutFrameTest extends TestCase
         static::assertSame('spa', $frame->clientId);
     }
 
-    /**
-     * A client that registered nothing is left out of the page by the caller; asking for its frame is a
-     * programming error, not a client that is quietly skipped here.
-     */
     #[Test]
     public function aClientThatRegisteredNoUriHasNoFrame(): void
     {

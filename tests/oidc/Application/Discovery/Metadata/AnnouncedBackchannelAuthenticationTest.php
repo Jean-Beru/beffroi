@@ -15,8 +15,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * CIBA Core §4: where a client starts a request for a user it names, the ways it may be told the request
- * was answered, and what this provider does not take.
+ * CIBA Core §4
  */
 final class AnnouncedBackchannelAuthenticationTest extends TestCase
 {
@@ -39,7 +38,7 @@ final class AnnouncedBackchannelAuthenticationTest extends TestCase
     }
 
     /**
-     * §7.1: this provider does not take a user code, and says so rather than leaving a client to find out.
+     * CIBA Core §7.1
      */
     #[Test]
     public function itSaysThatItTakesNoUserCode(): void
@@ -51,10 +50,6 @@ final class AnnouncedBackchannelAuthenticationTest extends TestCase
         static::assertFalse($members['backchannel_user_code_parameter_supported']);
     }
 
-    /**
-     * A contributor announces nothing rather than an endpoint nothing serves: a provider wired with no
-     * grant of this flow says nothing of it.
-     */
     #[Test]
     public function aProviderWiredWithNoSuchGrantAnnouncesNothing(): void
     {

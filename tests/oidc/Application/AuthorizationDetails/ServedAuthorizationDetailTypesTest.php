@@ -16,14 +16,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The types of authorization detail the wiring gave the provider (RFC 9396 §2), the one source of truth
- * over them: what a request may ask for, what a client may register and what the document announces are
- * this list read.
+ * RFC 9396 §2
  */
 final class ServedAuthorizationDetailTypesTest extends TestCase
 {
     /**
-     * RFC 9396 §10: a type names itself, so what is announced is what is wired, in the order it is wired.
+     * RFC 9396 §10
      */
     #[Test]
     public function theTypesAreTheWiredOnesInTheOrderTheyAreWired(): void
@@ -38,10 +36,6 @@ final class ServedAuthorizationDetailTypesTest extends TestCase
         static::assertSame(['payment_initiation', AuthorizationDetailTypes::INVENTED], $types->servedAuthorizationDetailTypes());
     }
 
-    /**
-     * A deployment wired with none serves none, which is what the provider ships: no type of detail is
-     * universal.
-     */
     #[Test]
     public function aProviderWiredWithNoTypeServesNone(): void
     {
@@ -49,10 +43,6 @@ final class ServedAuthorizationDetailTypesTest extends TestCase
         static::assertSame([], AuthorizationDetailTypes::none()->servedAuthorizationDetailTypes());
     }
 
-    /**
-     * Two classes answering for one "type" is a wiring where what a detail means depends on an order
-     * nobody wrote down.
-     */
     #[Test]
     public function twoClassesCannotAnswerForOneType(): void
     {
@@ -68,7 +58,7 @@ final class ServedAuthorizationDetailTypesTest extends TestCase
     }
 
     /**
-     * RFC 9396 §2: the parameter is read into the details the wired types made of it.
+     * RFC 9396 §2
      */
     #[Test]
     public function itReadsTheParameterIntoTheDetailsOfTheWiredTypes(): void
@@ -93,10 +83,6 @@ final class ServedAuthorizationDetailTypesTest extends TestCase
         );
     }
 
-    /**
-     * The type is the only place that knows what a detail of it means, so it is the only place that says
-     * what a page shows of one.
-     */
     #[Test]
     public function aDetailCarriesWhatItsTypeSaysAPageShowsOfIt(): void
     {
@@ -117,8 +103,7 @@ final class ServedAuthorizationDetailTypesTest extends TestCase
     }
 
     /**
-     * RFC 9396 §2: a detail of a type this provider serves is one that type accepted, in the order that
-     * type built it, whatever order the request wrote it in.
+     * RFC 9396 §2
      */
     #[Test]
     public function theMembersAreTheOnesTheTypeBuiltAndNotTheOnesTheRequestWrote(): void
@@ -135,8 +120,7 @@ final class ServedAuthorizationDetailTypesTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: a token carries what a request asked for, so what is refused of one is refused of the
-     * other, and the claim is read back through the same types.
+     * RFC 9396 §7
      */
     #[Test]
     public function itReadsTheClaimOfATokenBackThroughTheSameTypes(): void
@@ -150,8 +134,7 @@ final class ServedAuthorizationDetailTypesTest extends TestCase
     }
 
     /**
-     * RFC 9396 §5: a malformed array, an object naming no type, a type nobody serves and a detail its own
-     * type refuses are all refused, none of them read as something else.
+     * RFC 9396 §5
      */
     #[Test]
     #[DataProvider('provideRefusedParameters')]
@@ -200,18 +183,12 @@ final class ServedAuthorizationDetailTypesTest extends TestCase
             '[{"type":"account_information","actions":["read"]}]',
             'A detail of the type "account_information" names an account in a non-empty "account" member.',
         ];
-        // OIDC Core §5.5 reads a claims request the same way: a name made of digits decoded as an integer
-        // key, and it names nothing
         yield 'a member whose name is made of digits' => [
             '[{"type":"account_information","0":"acct-4711"}]',
             'The members of an authorization detail of the type "account_information" are named, and a name made of digits is not a name (RFC 9396 section 2).',
         ];
     }
 
-    /**
-     * A provider wired with no type names none in its refusal, rather than an empty list a client would
-     * read as something else.
-     */
     #[Test]
     public function aProviderWiredWithNoTypeSaysSoWhenItRefusesOne(): void
     {
@@ -227,8 +204,7 @@ final class ServedAuthorizationDetailTypesTest extends TestCase
     }
 
     /**
-     * RFC 9396 §2: a type the provider gains is a class added and a line in the wiring, and no production
-     * class edited. This test invents one that nothing else knows about.
+     * RFC 9396 §2
      */
     #[Test]
     public function aTypeNobodyWroteAClassForIsServedByAddingOne(): void

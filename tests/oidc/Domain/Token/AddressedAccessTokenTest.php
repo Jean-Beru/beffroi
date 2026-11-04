@@ -13,13 +13,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Architecture §4.6 (issues #870 and #880): what the access token of a response needs from outside the provider,
- * the key of the tenant it is signed with and the kind of "sub" its client registered, opened before it is struck.
+ * Architecture §4.6
  */
 final class AddressedAccessTokenTest extends TestCase
 {
     /**
-     * RFC 9068 §2.1: a token of a shape that signs is signed with the key that was opened for it.
+     * RFC 9068 §2.1
      */
     #[Test]
     public function aTokenOfAShapeThatSignsIsSignedWithTheKeyItWasGiven(): void
@@ -34,10 +33,6 @@ final class AddressedAccessTokenTest extends TestCase
         static::assertSame($key, $addressed->signingKey());
     }
 
-    /**
-     * A token of a shape that signs nothing is a reference to a record of the provider, signed with no key,
-     * and asking it for one is a fault of the caller.
-     */
     #[Test]
     public function aTokenOfAShapeThatSignsNothingIsSignedWithNoKey(): void
     {
@@ -53,8 +48,7 @@ final class AddressedAccessTokenTest extends TestCase
     }
 
     /**
-     * OIDC Core §8 (issue #880): a token that names the person in it does so by the kind of "sub" that was opened
-     * for it.
+     * OIDC Core §8
      */
     #[Test]
     public function aTokenThatNamesThePersonDoesSoByTheKindItWasGiven(): void
@@ -69,10 +63,6 @@ final class AddressedAccessTokenTest extends TestCase
         static::assertSame($subjectIdentifier, $addressed->subjectIdentifier());
     }
 
-    /**
-     * A token of a shape that names nobody in it was opened no kind of "sub", and asking it for one is a fault of
-     * the caller.
-     */
     #[Test]
     public function aTokenOfAShapeThatNamesNobodyAssignsNoSubject(): void
     {

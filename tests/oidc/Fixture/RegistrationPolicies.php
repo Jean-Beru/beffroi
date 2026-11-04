@@ -10,8 +10,7 @@ use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
 use Beffroi\Oidc\Port\ClientRegistrationPolicyInterface;
 
 /**
- * What the tenant of the tests does with a client that registers itself (decision 0009): nothing by
- * default, which is what a deployment that writes nothing gets.
+ * Decision 0009
  */
 final class RegistrationPolicies
 {

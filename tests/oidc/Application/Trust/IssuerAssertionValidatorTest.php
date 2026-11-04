@@ -26,17 +26,12 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * What an assertion presented as an authorization has to say (RFC 7523 §3). Every refusal is the same refusal:
- * a grant that mints a user teaches nothing about what the tenant trusts.
+ * RFC 7523 §3
  */
 final class IssuerAssertionValidatorTest extends TestCase
 {
     private const string REFUSED = 'invalid_grant: The assertion is not one this provider accepts as an authorization (RFC 7523 section 3).';
 
-    /**
-     * Seconds between two reads of the same "jwks_uri" when an assertion names a "kid" the kept set does not
-     * hold, the one the deployment of the tests is wired with.
-     */
     private const int COOLDOWN = 300;
 
     private Tenant $tenant;
@@ -66,8 +61,7 @@ final class IssuerAssertionValidatorTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: signed by an issuer the tenant trusts, addressed to this provider, still valid, and about
-     * somebody; named by its issuer, and valid until it expires, which is what spending it remembers.
+     * RFC 7523 §3
      */
     #[Test]
     public function itAcceptsAnAssertionOfATrustedIssuer(): void
@@ -88,7 +82,7 @@ final class IssuerAssertionValidatorTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3, §4: one assertion is exchanged once, so spent a second time it is refused.
+     * RFC 7523 §3, §4
      */
     #[Test]
     public function itRefusesAnAssertionSpentAlready(): void
@@ -106,10 +100,6 @@ final class IssuerAssertionValidatorTest extends TestCase
         $this->validator->spend($this->tenant, $verified);
     }
 
-    /**
-     * Issue #876: judging an assertion remembers nothing of it, so an assertion whose response was never
-     * struck is the same assertion when the request is presented again.
-     */
     #[Test]
     public function anAssertionJudgedAndNeverSpentIsAcceptedAgain(): void
     {
@@ -125,7 +115,7 @@ final class IssuerAssertionValidatorTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: an issuer one tenant trusts is unknown to another.
+     * RFC 7523 §3
      */
     #[Test]
     public function anIssuerTrustedByOneTenantIsUnknownToAnother(): void
@@ -144,7 +134,7 @@ final class IssuerAssertionValidatorTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: an issuer trusted for one client is not thereby trusted for every client of the tenant.
+     * RFC 7523 §3
      */
     #[Test]
     public function itRefusesAnAssertionPresentedByAClientTheIssuerIsNotTrustedFor(): void
@@ -162,8 +152,7 @@ final class IssuerAssertionValidatorTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: an assertion this provider does not accept is refused with one answer, whatever is wrong
-     * with it.
+     * RFC 7523 §3
      *
      * @param callable(Tenant): string $assertion
      */
@@ -254,8 +243,7 @@ final class IssuerAssertionValidatorTest extends TestCase
     }
 
     /**
-     * RFC 8725 §3.10, RFC 7515 §4.1.1: an algorithm the tenant did not trust the issuer to sign with is refused
-     * even though the key is the right one.
+     * RFC 8725 §3.10, RFC 7515 §4.1.1
      */
     #[Test]
     public function itRefusesAnAlgorithmTheIssuerIsNotTrustedToSignWith(): void
@@ -273,8 +261,7 @@ final class IssuerAssertionValidatorTest extends TestCase
     }
 
     /**
-     * RFC 7523 §2.1: an assertion that authenticates a client is not one that authorizes it. The "iss" of one
-     * names the client, which no trusted issuer of this tenant is.
+     * RFC 7523 §2.1
      */
     #[Test]
     public function anAssertionThatAuthenticatesAClientIsNotAcceptedAsAnAuthorization(): void
@@ -291,8 +278,7 @@ final class IssuerAssertionValidatorTest extends TestCase
     }
 
     /**
-     * RFC 7517 §5: an issuer that publishes its keys behind a URL has them read once and kept, as a client
-     * that does has (RFC 7591 §2).
+     * RFC 7517 §5, RFC 7591 §2
      */
     #[Test]
     public function theKeysOfAnIssuerBehindAUrlAreReadOnceAndKept(): void
@@ -309,10 +295,6 @@ final class IssuerAssertionValidatorTest extends TestCase
         static::assertCount(1, $this->fetcher->fetched);
     }
 
-    /**
-     * An issuer that rotates a key is followed: the "kid" the assertion names is not in the kept set, so the
-     * set is read again, which the cooldown of the reading bounds to once (PublishedKeySetProviderTest).
-     */
     #[Test]
     public function anAssertionNamingAKeyTheKeptSetDoesNotHoldHasTheSetReadAgain(): void
     {
@@ -339,8 +321,7 @@ final class IssuerAssertionValidatorTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: an issuer whose keys cannot be read is the one refusal every other refusal of this grant
-     * is, and a client learns nothing of what the tenant trusts.
+     * RFC 7523 §3
      */
     #[Test]
     public function anIssuerWhoseKeysCannotBeReadIsTheOneRefusal(): void
@@ -379,8 +360,7 @@ final class IssuerAssertionValidatorTest extends TestCase
     }
 
     /**
-     * The issuer of the fixtures, publishing its keys behind the URL it registered rather than writing them
-     * down (RFC 7517 §5).
+     * RFC 7517 §5
      */
     private function trustIssuerPublishingBehindAUrl(): void
     {

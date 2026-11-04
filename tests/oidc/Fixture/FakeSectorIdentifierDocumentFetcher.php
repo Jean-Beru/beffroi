@@ -8,21 +8,17 @@ use Beffroi\Oidc\Domain\Client\ClientUri;
 use Beffroi\Oidc\Exception\SectorIdentifierUnavailableException;
 use Beffroi\Oidc\Port\SectorIdentifierDocumentFetcherInterface;
 
-/**
- * A "sector_identifier_uri" that answers the redirection URIs the test told it to, and counts the reads.
- * Never leaves the test suite.
- */
 final class FakeSectorIdentifierDocumentFetcher implements SectorIdentifierDocumentFetcherInterface
 {
     /**
-     * @var list<ClientUri> the URIs read, in order
+     * @var list<ClientUri>
      */
     public private(set) array $fetched = [];
 
     public ?SectorIdentifierUnavailableException $failure = null;
 
     /**
-     * @param list<string> $redirectUris what the document lists
+     * @param list<string> $redirectUris
      */
     public function __construct(
         private readonly array $redirectUris = [],

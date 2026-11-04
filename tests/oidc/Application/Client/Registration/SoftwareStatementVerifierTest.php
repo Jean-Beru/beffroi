@@ -22,9 +22,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 7591 §2.3: what a software statement has to say before any of it is read as metadata. Every refusal
- * is the same refusal, so whoever presents one learns that it was not accepted and nothing else
- * (decision 0006).
+ * RFC 7591 §2.3, Decision 0006
  */
 final class SoftwareStatementVerifierTest extends TestCase
 {
@@ -44,7 +42,7 @@ final class SoftwareStatementVerifierTest extends TestCase
     }
 
     /**
-     * §2.3: signed by an authority the tenant pinned, with a key it holds, addressed here and still valid.
+     * RFC 7591 §2.3
      */
     #[Test]
     public function itAcceptsAStatementOfAPinnedAuthority(): void
@@ -59,9 +57,6 @@ final class SoftwareStatementVerifierTest extends TestCase
         static::assertSame('Invoice reader, attested', $members->members()['client_name']);
     }
 
-    /**
-     * A tenant that pins no authority has the mode closed rather than open to whoever signs.
-     */
     #[Test]
     public function itRefusesEveryStatementOfATenantThatPinsNobody(): void
     {
@@ -77,7 +72,7 @@ final class SoftwareStatementVerifierTest extends TestCase
     }
 
     /**
-     * §2.3: the authority is the one the tenant pinned by that name, compared byte for byte.
+     * RFC 7591 §2.3
      */
     #[Test]
     public function itRefusesAStatementOfAnAuthorityTheTenantNamesNot(): void
@@ -96,9 +91,7 @@ final class SoftwareStatementVerifierTest extends TestCase
     }
 
     /**
-     * RFC 8725 §3.10, the whole point of pinning: a statement verified against a key it carries itself
-     * proves that whoever wrote it holds a key, which is what anybody holds. The signature below is valid
-     * and the key is not the tenant's, so it is refused.
+     * RFC 8725 §3.10
      */
     #[Test]
     public function itRefusesAStatementSignedWithAKeyTheTenantDidNotPin(): void
@@ -116,7 +109,7 @@ final class SoftwareStatementVerifierTest extends TestCase
     }
 
     /**
-     * RFC 7515 §4.1.1: an authority signs with what it was pinned to sign with and no other algorithm.
+     * RFC 7515 §4.1.1
      */
     #[Test]
     public function itRefusesAStatementSignedWithAnAlgorithmTheAuthorityIsNotPinnedFor(): void
@@ -133,9 +126,6 @@ final class SoftwareStatementVerifierTest extends TestCase
         $this->verifier->verify($this->tenant, $policy, $statement, Fixtures::now());
     }
 
-    /**
-     * A statement an authority signed for another provider is one this one was never given.
-     */
     #[Test]
     public function itRefusesAStatementAddressedElsewhere(): void
     {
@@ -151,8 +141,7 @@ final class SoftwareStatementVerifierTest extends TestCase
     }
 
     /**
-     * Decision 0006: a statement with no "exp" would be a registration credential for ever, and one past
-     * its "exp" is one whose authority stopped answering for it.
+     * Decision 0006
      */
     #[Test]
     public function itRefusesAStatementThatHasExpired(): void
@@ -170,10 +159,6 @@ final class SoftwareStatementVerifierTest extends TestCase
         $this->verifier->verify($this->tenant, $this->policy, $statement, Fixtures::now());
     }
 
-    /**
-     * And one signed for longer than the tenant allows is a bearer credential its authority cannot take
-     * back, whatever it wrote in it.
-     */
     #[Test]
     public function itRefusesAStatementSignedForLongerThanTheTenantAllows(): void
     {
@@ -190,9 +175,6 @@ final class SoftwareStatementVerifierTest extends TestCase
         $this->verifier->verify($this->tenant, $this->policy, $statement, Fixtures::now());
     }
 
-    /**
-     * One statement registers one client: what is remembered is its "jti", until it expires.
-     */
     #[Test]
     public function itRefusesAStatementPresentedTwice(): void
     {
@@ -208,10 +190,6 @@ final class SoftwareStatementVerifierTest extends TestCase
         $this->verifier->verify($this->tenant, $this->policy, $statement, Fixtures::now());
     }
 
-    /**
-     * A statement with no identifier is one nothing can be remembered of, so it could be presented for
-     * ever.
-     */
     #[Test]
     public function itRefusesAStatementThatCarriesNoIdentifier(): void
     {
@@ -228,9 +206,6 @@ final class SoftwareStatementVerifierTest extends TestCase
         $this->verifier->verify($this->tenant, $this->policy, $statement, Fixtures::now());
     }
 
-    /**
-     * A value that is no compact JWS at all is refused where every other one is, and says nothing more.
-     */
     #[Test]
     public function itRefusesAValueThatIsNoStatementAtAll(): void
     {

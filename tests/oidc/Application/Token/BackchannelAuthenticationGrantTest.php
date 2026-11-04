@@ -51,8 +51,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * CIBA Core §10.1, §11: the client comes back, and is told "not yet", "slow down", "expired", "refused",
- * or given the tokens of the authorization its user approved.
+ * CIBA Core §10.1, §11
  */
 final class BackchannelAuthenticationGrantTest extends TestCase
 {
@@ -101,7 +100,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * CIBA Core §7.3: the grant is named by the URI of the specification.
+     * CIBA Core §7.3
      */
     #[Test]
     public function itIsNamedByTheUrnOfTheSpecification(): void
@@ -111,8 +110,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * §10.1: the tokens are the ones of the authorization the user approved, descending from the session
-     * they approved with.
+     * CIBA Core §10.1
      */
     #[Test]
     public function anApprovedRequestYieldsTheAuthorizationTheUserApproved(): void
@@ -133,7 +131,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * §10.1: "openid" being required of every request of this flow, the answer carries an ID token.
+     * CIBA Core §10.1
      */
     #[Test]
     public function theAnswerCarriesAnIdToken(): void
@@ -149,7 +147,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * §10.1: the identifier is spent by the request that is served, as an authorization code is.
+     * CIBA Core §10.1
      */
     #[Test]
     public function aServedRequestSpendsTheIdentifier(): void
@@ -165,8 +163,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.3.7 (issue #836): the key the ID token is encrypted to is read before the identifier
-     * is spent, so keys the client cannot serve right now leave it to the next request, with nothing issued.
+     * OIDC Core §3.1.3.7
      */
     #[Test]
     public function anIdentifierIsLeftUnspentWhileTheKeysOfItsClientCannotBeRead(): void
@@ -188,8 +185,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.5 (issue #870): the keys of the tenant the tokens are signed with are opened before the
-     * identifier is spent, so a KMS that does not answer leaves it to the next request, with nothing issued.
+     * Architecture §4.5
      */
     #[Test]
     public function anIdentifierIsLeftUnspentWhileTheKmsDoesNotAnswer(): void
@@ -211,9 +207,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.5 (issue #877): the session the user approved with is read before the identifier is
-     * spent, so a store that cannot open it, its columns sealed under a data key the KMS does not open, leaves
-     * the identifier to the next request, with nothing issued.
+     * Architecture §4.5
      */
     #[Test]
     public function anIdentifierIsLeftUnspentWhileItsSessionCannotBeOpened(): void
@@ -236,7 +230,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * §10.1: an identifier presented again is worth nothing.
+     * CIBA Core §10.1
      */
     #[Test]
     public function anIdentifierPresentedTwiceIsWorthNothing(): void
@@ -255,7 +249,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * §11: while the user has not answered, the client is told "not yet" and nothing else.
+     * CIBA Core §11
      */
     #[Test]
     public function aRequestNobodyAnsweredIsPending(): void
@@ -272,7 +266,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * §11: the user said no.
+     * CIBA Core §11
      */
     #[Test]
     public function aRefusedRequestIsAccessDenied(): void
@@ -290,8 +284,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: the refusal is answered in JSON and redirected nowhere, a client of this flow having
-     * no browser to send anywhere.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function theRefusalOfThisGrantIsNotRedirected(): void
@@ -311,7 +304,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * §11: a client asking faster than the interval it was given is told to slow down.
+     * CIBA Core §11
      */
     #[Test]
     public function aRequestFasterThanTheIntervalIsToldToSlowDown(): void
@@ -329,9 +322,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * §10.2, §11: a client that was called back comes once, when it is told, which is sooner than the
-     * interval it was given to poll at; "slow_down" is a variant of "authorization_pending" and has
-     * nothing to say about a request that has been answered.
+     * CIBA Core §10.2, §11
      */
     #[Test]
     public function aRequestApprovedSinceTheLastPollIsServedHoweverSoonAfterIt(): void
@@ -355,8 +346,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * §10.2, §11: the refusal is on the same clock as the acceptance, a client called back about one
-     * being told what it was called back about.
+     * CIBA Core §10.2, §11
      */
     #[Test]
     public function aRequestRefusedSinceTheLastPollIsAccessDeniedHoweverSoonAfterIt(): void
@@ -375,7 +365,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * §11: an identifier past its lifetime grants nothing, and the client starts a new request.
+     * CIBA Core §11
      */
     #[Test]
     public function anExpiredRequestIsToldSo(): void
@@ -393,7 +383,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * §10.1: an identifier of another client is worth nothing, whoever holds it.
+     * CIBA Core §10.1
      */
     #[Test]
     public function anIdentifierOfAnotherClientIsWorthNothing(): void
@@ -415,9 +405,6 @@ final class BackchannelAuthenticationGrantTest extends TestCase
         );
     }
 
-    /**
-     * An identifier nobody ever issued is told from one that was spent by nothing at all.
-     */
     #[Test]
     public function anIdentifierNobodyIssuedIsWorthNothing(): void
     {
@@ -430,7 +417,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.1: the request names what it comes back with.
+     * RFC 6749 §3.1
      */
     #[Test]
     public function aRequestWithoutAnIdentifierIsRefused(): void
@@ -444,7 +431,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: a session that ended grants nothing afterwards, whatever the record says.
+     * Architecture §4.6
      */
     #[Test]
     public function aSessionThatEndedGrantsNothing(): void
@@ -462,8 +449,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * RFC 8705 §3, RFC 9449 §5: the tokens are bound to what this request proved, the browser that
-     * approved holding nothing the client can prove.
+     * RFC 8705 §3, RFC 9449 §5
      */
     #[Test]
     public function theTokensAreBoundToWhatTheRequestProved(): void
@@ -486,8 +472,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: the access token is addressed to the resource the backchannel request named, the
-     * token request being no second chance to ask.
+     * RFC 8707 §2
      */
     #[Test]
     public function theTokenIsAddressedToTheResourceTheRequestNamed(): void
@@ -503,8 +488,7 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.4: the refresh token descends from the record the authorization was granted through,
-     * as it does from an authorization code.
+     * RFC 6749 §4.1.4
      */
     #[Test]
     public function theRefreshTokenFamilyDescendsFromTheRequest(): void
@@ -530,15 +514,11 @@ final class BackchannelAuthenticationGrantTest extends TestCase
         );
     }
 
-    /**
-     * A request whose answer is not what the test is about.
-     */
     private function pollQuietly(): void
     {
         try {
             $this->poll();
         } catch (OAuth2Exception) {
-            // the answer of this request is not what the test is about
         }
     }
 

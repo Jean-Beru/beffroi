@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 final class FormPostResponseTest extends TestCase
 {
     /**
-     * OAuth 2.0 Form Post Response Mode §2: the parameters of the answer and where the form posts them.
+     * OAuth 2.0 Form Post Response Mode §2
      */
     #[Test]
     public function itCarriesTheParametersAndTheRedirectUriOfTheAnswer(): void
@@ -39,9 +39,7 @@ final class FormPostResponseTest extends TestCase
     }
 
     /**
-     * CSP Level 3 §6.6.2.2: the base64 of the SHA-256 of the text of the script element, so that the page
-     * allows that script and no other. The value is written out: a change to the script that forgot the
-     * policy would leave the page unable to run its own script, and this test is what says so.
+     * CSP Level 3 §6.6.2.2
      */
     #[Test]
     public function theHashIsTheOneOfTheScriptThePageCarries(): void
@@ -54,8 +52,7 @@ final class FormPostResponseTest extends TestCase
     }
 
     /**
-     * CSP Level 3 §6.1: nothing loads, nothing frames, no base URI, the one script is named by its hash
-     * and the form posts to the origin of the redirect URI and nowhere else.
+     * CSP Level 3 §6.1
      */
     #[Test]
     public function thePolicyAllowsTheScriptByHashAndNothingElse(): void
@@ -71,8 +68,7 @@ final class FormPostResponseTest extends TestCase
     }
 
     /**
-     * The policy names an origin, never a path: a redirect URI with a port or a query keeps the scheme,
-     * the host and the port alone (RFC 6454 §3.2).
+     * RFC 6454 §3.2
      */
     #[Test]
     #[DataProvider('provideRedirectUris')]

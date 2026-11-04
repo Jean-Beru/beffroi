@@ -16,15 +16,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * OIDC Core §5.1: the claims providers the wiring gave this provider, answering as one. A deployment
- * that serves claims of its own wires a class beside the standard one, and nothing that enumerates
- * scopes or claims is edited.
+ * OIDC Core §5.1
  */
 final class ServedClaimsTest extends TestCase
 {
     /**
-     * OIDC Core §5.1, §5.5: a user is described by every wired provider at once, and what each one
-     * serves it serves alone.
+     * OIDC Core §5.1, §5.5
      */
     #[Test]
     public function itServesTheClaimsOfEveryWiredProvider(): void
@@ -49,8 +46,7 @@ final class ServedClaimsTest extends TestCase
     }
 
     /**
-     * OIDC Discovery §3: a scope of a deployment is announced because a class serves it, and a scope two
-     * providers name is one scope of this provider.
+     * OIDC Discovery §3
      */
     #[Test]
     public function itServesTheScopesOfEveryWiredProviderEachOnce(): void
@@ -72,8 +68,7 @@ final class ServedClaimsTest extends TestCase
     }
 
     /**
-     * OIDC Discovery §3: "claims_supported" is what the wired providers hold together, each claim named
-     * once.
+     * OIDC Discovery §3
      */
     #[Test]
     public function itServesTheClaimsNamesOfEveryWiredProviderEachOnce(): void
@@ -92,8 +87,7 @@ final class ServedClaimsTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.4: a scope two providers serve stands for the claims each puts under it, each claim named
-     * once.
+     * OIDC Core §5.4
      */
     #[Test]
     public function aScopeStandsForTheClaimsEveryWiredProviderPutsUnderIt(): void
@@ -111,9 +105,6 @@ final class ServedClaimsTest extends TestCase
         static::assertSame(['email', 'email_verified', 'billing_id'], $claims);
     }
 
-    /**
-     * A scope no wired provider serves stands for no claim, so nothing is asked for under it by name.
-     */
     #[Test]
     public function aScopeNoWiredProviderServesStandsForNoClaim(): void
     {
@@ -130,10 +121,6 @@ final class ServedClaimsTest extends TestCase
         static::assertSame([], $claims);
     }
 
-    /**
-     * Which of the two values a client would receive is not something a deployment should have to guess,
-     * as it is not for a member of the discovery document.
-     */
     #[Test]
     public function itRefusesTwoProvidersThatServeTheSameClaim(): void
     {
@@ -151,10 +138,6 @@ final class ServedClaimsTest extends TestCase
         $served->claims(Fixtures::user(), self::scopes(['profile']), []);
     }
 
-    /**
-     * A deployment wired with no claims provider serves "sub" and nothing else, which is what the
-     * document then says of it.
-     */
     #[Test]
     public function aProviderWiredWithNoneServesNothing(): void
     {

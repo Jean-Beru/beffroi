@@ -10,8 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 9207 §3 and decision 0006: the provider names itself in every authorization response, so it says
- * so; oidc_login compares this member to true with ===.
+ * RFC 9207 §3, Decision 0006
  */
 final class AnnouncedIssuerParameterTest extends TestCase
 {

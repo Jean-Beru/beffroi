@@ -44,15 +44,10 @@ use Symfony\Component\Uid\Uuid;
 final class Tokens
 {
     /**
-     * RFC 7636 appendix B: the verifier whose S256 challenge is Requests::CHALLENGE.
+     * RFC 7636 appendix B
      */
     public const string CODE_VERIFIER = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
 
-    /**
-     * A code issued now for sixty seconds, for the first redirect URI of the client, bound to
-     * Requests::CHALLENGE unless the request carried no challenge, with the authentication of the session.
-     *
-     */
     /**
      * @param list<string> $scopes
      */
@@ -90,8 +85,7 @@ final class Tokens
     }
 
     /**
-     * A device authorization request already approved by the session given, the grant a token of that flow
-     * descends from (RFC 8628 §3.3).
+     * RFC 8628 §3.3
      *
      * @param list<string> $scopes
      */
@@ -119,8 +113,7 @@ final class Tokens
     }
 
     /**
-     * A backchannel authentication request already approved by the session given, the grant a token of that
-     * flow descends from (CIBA Core §7.1).
+     * CIBA Core §7.1
      *
      * @param list<string> $scopes
      */
@@ -152,11 +145,6 @@ final class Tokens
     }
 
     /**
-     * The record of an opaque access token issued now for ten minutes, under the hash of the value given,
-     * with the authentication of the session.
-     *
-     */
-    /**
      * @param list<string> $scopes
      */
     public static function storedAccessToken(
@@ -186,8 +174,7 @@ final class Tokens
     }
 
     /**
-     * The record of an opaque access token a client holds for itself (RFC 6749 §4.4), issued now for ten
-     * minutes, under the hash of the value given: no session, no authentication, nobody.
+     * RFC 6749 §4.4
      *
      * @param list<string> $scopes
      */
@@ -211,8 +198,7 @@ final class Tokens
     }
 
     /**
-     * The record of an opaque access token whose subject was named by what the client presented
-     * (RFC 8693 §2.1, RFC 7523 §2.1), issued now for ten minutes, under the hash of the value given.
+     * RFC 8693 §2.1, RFC 7523 §2.1
      *
      * @param list<string> $scopes
      */
@@ -233,8 +219,6 @@ final class Tokens
             $grantId ?? Uuid::v7(),
             $client,
             $subject,
-            // what the exchange resolved of the presented token: the person who signed in for it, and
-            // nobody when nobody did (issue #593)
             $person ?? $session?->user->subject,
             new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
             $resources ?? ResourceIndicators::of([Clients::CALENDAR]),
@@ -247,11 +231,10 @@ final class Tokens
     }
 
     /**
-     * What the exchange reads of the token a request presents (RFC 8693 §2.1), about a user when a session is
-     * given and about the client itself otherwise (RFC 6749 §4.4).
+     * RFC 8693 §2.1, RFC 6749 §4.4
      *
      * @param list<string> $scopes
-     * @param list<string>|null $audience who the presented token is addressed to, the calendar unless the test says otherwise
+     * @param list<string>|null $audience
      */
     public static function presented(
         Client $client,
@@ -272,35 +255,20 @@ final class Tokens
             $session === null ? null : new TokenSignIn($session->id, AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass())),
             $actor,
             $mayAct,
-            // what the type that read the token found behind it (issue #588): the user of the session it
-            // descends from, there being nobody behind a token a client holds for itself
             $session?->user->subject,
         );
     }
 
-    /**
-     * The access token that issuer writes for that authorization, addressed and struck at once, as a caller that
-     * spends nothing on the way to it does both: what a test asks for when it needs a token, and not the order
-     * of the two steps.
-     */
     public static function accessToken(AccessTokenIssuerInterface $issuer, AuthorizationInterface $authorization, DateTimeImmutable $now): AccessToken
     {
         return $issuer->issue($authorization, $issuer->addressFor($authorization), $now);
     }
 
-    /**
-     * A family started now, from a code, for ninety days.
-     */
     public static function family(DateTimeImmutable $startedAt, Tenant $tenant, string $code = 'the-code', ?Uuid $grantId = null): RefreshTokenFamily
     {
         return new RefreshTokenFamily(Uuid::v7(), $tenant, DrawnSecret::digestOf($code), $grantId ?? Uuid::v7(), $startedAt, $startedAt->modify('+90 days'));
     }
 
-    /**
-     * A refresh token issued now for thirty days, in the family given or a fresh one, with the
-     * authentication of the session.
-     *
-     */
     /**
      * @param list<string> $scopes
      */

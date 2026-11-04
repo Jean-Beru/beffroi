@@ -12,14 +12,10 @@ use Beffroi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * What the authorization endpoint hands to one client, whichever mode delivers it.
- */
 final class AuthorizationAnswerTest extends TestCase
 {
     /**
-     * JARM §2.1: a signed answer is one parameter, so neither "state" nor "iss" is written beside the
-     * document that already carries them.
+     * JARM §2.1
      */
     #[Test]
     public function aSignedAnswerCarriesTheDocumentAndNothingElse(): void

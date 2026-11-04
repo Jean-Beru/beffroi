@@ -17,9 +17,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 7592 §2.3: the registration access token is a credential of one client for one URI. The provider
- * must refuse a token that belongs to another client, and whoever does not hold the token of a client of
- * this tenant learns nothing about the one it presented.
+ * RFC 7592 §2.3
  */
 final class ClientConfigurationAccessTest extends TestCase
 {
@@ -51,8 +49,7 @@ final class ClientConfigurationAccessTest extends TestCase
     }
 
     /**
-     * RFC 9110 §11.6.1: a scheme is compared without regard to case, so a client that spelled it its own
-     * way reads itself all the same.
+     * RFC 9110 §11.6.1
      */
     #[Test]
     public function theSchemeIsReadWithoutRegardToCase(): void
@@ -68,8 +65,7 @@ final class ClientConfigurationAccessTest extends TestCase
     }
 
     /**
-     * Decision 0006: the five refusals read the same, so that a caller learns nothing about the client it
-     * named nor about the token it presented.
+     * Decision 0006
      */
     #[Test]
     #[DataProvider('provideRefusedRequests')]
@@ -105,10 +101,6 @@ final class ClientConfigurationAccessTest extends TestCase
         yield 'a client this store holds none of' => ['a-client-nobody-registered', 'Bearer ' . self::TOKEN];
     }
 
-    /**
-     * The clients of one tenant are no business of another: a token of a client registered elsewhere reads
-     * nothing here.
-     */
     #[Test]
     public function aClientOfAnotherTenantIsReadByNothingHere(): void
     {

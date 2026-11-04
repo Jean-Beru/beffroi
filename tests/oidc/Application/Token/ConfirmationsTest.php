@@ -19,18 +19,17 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 7800 §3.1, RFC 8705 §3.1 and RFC 9449 §6.1: what a token is bound to, written as "cnf" and read
- * back the same way, whichever shape the token has and whichever kind the binding is.
+ * RFC 7800 §3.1, RFC 8705 §3.1, RFC 9449 §6.1
  */
 final class ConfirmationsTest extends TestCase
 {
     /**
-     * RFC 7638 §3.1: the base64url of a SHA-256, the shape of every thumbprint here.
+     * RFC 7638 §3.1
      */
     private const string THUMBPRINT = 'NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs';
 
     /**
-     * RFC 8705 §3.1: "x5t#S256" is the SHA-256 thumbprint of the DER encoding of the certificate.
+     * RFC 8705 §3.1
      */
     #[Test]
     public function aCertificateIsNamedByItsThumbprint(): void
@@ -55,8 +54,7 @@ final class ConfirmationsTest extends TestCase
     }
 
     /**
-     * RFC 9449 §6.1: "jkt" is the JWK thumbprint of the key, and the token is presented under the DPoP
-     * scheme from then on (§7.1).
+     * RFC 9449 §6.1, §7.1
      */
     #[Test]
     public function aKeyIsNamedByItsJwkThumbprint(): void
@@ -114,10 +112,6 @@ final class ConfirmationsTest extends TestCase
         ]);
     }
 
-    /**
-     * A token is bound to one thing: a "cnf" naming two is not one this provider wrote, and honouring
-     * whichever member came first would be the provider choosing what the token means.
-     */
     #[Test]
     public function aConfirmationOfTwoKindsAtOnceIsRefused(): void
     {
@@ -132,10 +126,6 @@ final class ConfirmationsTest extends TestCase
         ]);
     }
 
-    /**
-     * Two confirmations name the same thing when they are of the same kind and carry the same
-     * thumbprint; the same thumbprint under another member names another thing.
-     */
     #[Test]
     #[DataProvider('provideComparisons')]
     public function itMatchesWhatNamesTheSameThing(ConfirmationInterface $one, ConfirmationInterface $other, bool $same): void
@@ -173,11 +163,6 @@ final class ConfirmationsTest extends TestCase
         yield 'the same thumbprint of another kind' => [new KeyConfirmation(self::THUMBPRINT), new CertificateConfirmation(self::THUMBPRINT), false];
     }
 
-    /**
-     * Issue #98: what a resource reads a token under is derived from what the provider binds tokens
-     * with, never listed beside it. A token bound to nothing is a bearer token, so that scheme is there
-     * whatever is wired, and a kind that adds no scheme of its own adds none.
-     */
     #[Test]
     public function theSchemesAResourceServesAreThoseOfTheWiredBindings(): void
     {
@@ -188,10 +173,6 @@ final class ConfirmationsTest extends TestCase
         static::assertSame([TokenResponse::BEARER, KeyConfirmation::SCHEME], $schemes);
     }
 
-    /**
-     * A deployment wired for the certificate of the handshake alone reads bearer tokens and nothing
-     * else: the binding is what the transport proves, and the token is presented as it always was.
-     */
     #[Test]
     public function aDeploymentThatBindsToCertificatesAloneServesBearerTokensOnly(): void
     {
@@ -205,9 +186,6 @@ final class ConfirmationsTest extends TestCase
         static::assertSame([TokenResponse::BEARER], $schemes);
     }
 
-    /**
-     * Which of two kinds answers for a member is not something a deployment should have to guess.
-     */
     #[Test]
     public function twoKindsAnsweringForOneMemberAreRefused(): void
     {
@@ -267,8 +245,7 @@ final class ConfirmationsTest extends TestCase
     }
 
     /**
-     * The members a confirmation writes (RFC 7800 §3.1) are the document the column of an opaque token
-     * holds it as, so the row says the same thing an "at+jwt" says of the same token.
+     * RFC 7800 §3.1
      *
      * @param array<string, mixed> $members
      */
@@ -292,8 +269,6 @@ final class ConfirmationsTest extends TestCase
     }
 
     /**
-     * Those same members under the "cnf" are what a token carries, so the two cannot drift apart.
-     *
      * @param array<string, mixed> $members
      */
     #[Test]

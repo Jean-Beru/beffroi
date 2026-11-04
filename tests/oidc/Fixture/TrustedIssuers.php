@@ -25,29 +25,26 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * The third parties the tests trust the signature of (RFC 7523 §3): one issuer, signing with the key of the
- * suite, trusted for one client, for one source of identities and for the scopes the fixtures name.
+ * RFC 7523 §3
  */
 final readonly class TrustedIssuers
 {
     public const string ISSUER = 'https://workforce.example.com';
 
     /**
-     * What the subjects of its assertions are linked identities of (decision 0002).
+     * Decision 0002
      */
     public const string PROVIDER = 'workforce';
 
     /**
-     * Where the issuer publishes its keys when a test has it publish them behind a URL rather than write them
-     * down (RFC 7517 §5).
+     * RFC 7517 §5
      */
     public const string JWKS_URI = 'https://workforce.example.com/jwks';
 
     /**
-     * @param list<string>|null $clients the clients that may present its assertions, the job runner unless the test says otherwise
-     * @param list<non-empty-string>|null $signingAlgorithms what it signs with, ES256 unless the test says otherwise
-     * @param list<string>|null $trustedScopes what it is trusted for, the two the fixtures name unless the test says otherwise
-     * @param ClientJwks|ClientUri|null $keys where its keys are, written down unless the test says otherwise
+     * @param list<string>|null $clients
+     * @param list<non-empty-string>|null $signingAlgorithms
+     * @param list<string>|null $trustedScopes
      */
     public static function workforce(
         ?array $clients = null,
@@ -71,12 +68,7 @@ final readonly class TrustedIssuers
     }
 
     /**
-     * What reads an assertion presented as an authorization, wired as the provider wires it (RFC 7523 §3): the
-     * reader and the verifier every JWT a third party signs goes through, the keys of the issuers read by the
-     * one class that reads a published set and kept in a pool of their own, and a replay guard of their own.
-     *
-     * @param ClientJwksFetcherInterface|null $fetcher what reads a "jwks_uri" of an issuer, one answering the
-     *                                                 key of the suite unless the test drives its own
+     * RFC 7523 §3
      */
     public static function validator(
         TrustedIssuersInterface $issuers,
@@ -102,8 +94,7 @@ final readonly class TrustedIssuers
     }
 
     /**
-     * RFC 7523 §3: the claims an assertion of a trusted issuer carries, all of them, signed with the key of
-     * the suite.
+     * RFC 7523 §3
      *
      * @param array<string, mixed> $overrides
      *

@@ -17,14 +17,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 7662 §2.1: where a resource server asks about a token, and how it authenticates there. RFC 9701 §7
- * adds what a signed introspection response is signed with.
+ * RFC 7662 §2.1, RFC 9701 §7
  */
 final class AnnouncedIntrospectionTest extends TestCase
 {
     /**
-     * RFC 7662 §2.1: introspection takes the methods that authenticate the caller, among those the
-     * provider takes; a public client has none, so "none" is not announced here.
+     * RFC 7662 §2.1
      */
     #[Test]
     public function itTakesTheAuthenticatingMethodsAmongThoseWired(): void
@@ -48,9 +46,7 @@ final class AnnouncedIntrospectionTest extends TestCase
     }
 
     /**
-     * RFC 9701 §6 and §7: the provider determines the algorithm of a signed response, and no client of
-     * this one registers it, so the document announces the one a response is signed with, the default of
-     * the wiring, rather than every algorithm the provider could sign with (issue #839).
+     * RFC 9701 §6, §7
      */
     #[Test]
     public function aSignedResponseIsAnnouncedUnderTheOneAlgorithmItIsSignedWith(): void
@@ -65,10 +61,6 @@ final class AnnouncedIntrospectionTest extends TestCase
         static::assertSame(['ES256'], $members['introspection_signing_alg_values_supported']);
     }
 
-    /**
-     * What a caller's assertion may be signed with is read from the methods kept, not from those the
-     * token endpoint takes.
-     */
     #[Test]
     public function theAssertionAlgorithmsAreThoseOfTheMethodsKept(): void
     {

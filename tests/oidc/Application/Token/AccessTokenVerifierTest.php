@@ -56,12 +56,6 @@ final class AccessTokenVerifierTest extends TestCase
 {
     private const string TOKEN = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjFlOWdkazcifQ.eyJpc3MiOiJodHRwczovL2lkLmFjbWUuZXhhbXBsZSJ9.c2lnbmF0dXJl';
 
-    /**
-     * A payload as JwtAccessTokenIssuer writes it, valid for ten minutes from Fixtures::now().
-     */
-    /**
-     * The name the account carries, which no client ever sees under a pairwise kind (OIDC Core §8.1).
-     */
     private const string ACCOUNT = 'alice-as-this-provider-knows-her';
 
     private const string PAYLOAD = '{"iss":"https://id.acme.example","exp":1789467000,"aud":"spa","sub":"alice-subject","client_id":"spa","iat":1789466400,"jti":"6f1c2b7e-1d2a-4c3b-8e9f-0a1b2c3d4e5f","auth_time":1789466400,"acr":"1","amr":["pwd"],"scope":"openid profile","sid":"01997b9e-0000-7000-8000-000000000000","grant_id":"01997b9e-0000-7000-8000-00000000000a"}';
@@ -77,8 +71,7 @@ final class AccessTokenVerifierTest extends TestCase
     private AccessTokenVerifier $verifier;
 
     /**
-     * An opaque token of this provider is one it drew (architecture §4.6); a value of another shape was
-     * not issued here, which the verifier says without reading any store.
+     * Architecture §4.6
      */
     private string $opaque;
 
@@ -95,10 +88,7 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
-     * RFC 9068 §4: signature, "typ" at+jwt, "iss", "exp", "aud"; §2.2: "client_id" names the client,
-     * "sub" the subject; §2.2.3: "scope" as RFC 8693 §4.2 writes it; architecture §4.6:
-     * "userinfo_claims" the names asked for by OIDC Core §5.5. Read from a token the issuer really minted
-     * and the bridge of the core really verified.
+     * RFC 9068 §2.2, §2.2.3, §4, RFC 8693 §4.2, Architecture §4.6, OIDC Core §5.5
      */
     #[Test]
     public function itReadsATokenTheIssuerMinted(): void
@@ -156,8 +146,7 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: an opaque token is the record the repository keeps under its hash, read the
-     * way the JWT claims are, with "sub" through the same resolver that names the subject in a JWT.
+     * Architecture §4.6
      */
     #[Test]
     public function itReadsTheRecordOfAnOpaqueToken(): void
@@ -193,8 +182,7 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: the details of a self-contained token are read back through the types the provider is
-     * wired with, which are the only things that know what any of them means.
+     * RFC 9396 §7
      */
     #[Test]
     public function itReadsTheAuthorizationDetailsOfASelfContainedToken(): void
@@ -212,10 +200,6 @@ final class AccessTokenVerifierTest extends TestCase
         static::assertTrue($token->authorizationDetails?->equals($details));
     }
 
-    /**
-     * A token naming a type the provider no longer serves is a token it can no longer describe, so it is
-     * refused rather than described without the part that says what it was for.
-     */
     #[Test]
     public function itRefusesASelfContainedTokenNamingATypeNobodyServes(): void
     {
@@ -237,8 +221,7 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
-     * RFC 9396 §9: the record of an opaque token carries the details, which is what its introspection
-     * renders, so the two shapes say the same thing.
+     * RFC 9396 §9
      */
     #[Test]
     public function itReadsTheAuthorizationDetailsOfTheRecordOfAnOpaqueToken(): void
@@ -261,9 +244,7 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
-     * Issue #641, RFC 8693 §2.2.1: a self-contained token of an exchange carries a "sub" the client that
-     * holds it never sees, and says beside it who it is about; this is where that is opened, the token
-     * being its own record and there being nothing else to ask.
+     * RFC 8693 §2.2.1
      */
     #[Test]
     public function itReadsThePersonASelfContainedTokenSaysItIsAbout(): void
@@ -281,8 +262,7 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
-     * A token that says nobody is read by its "sub", for the client it was written for (OIDC Core §8),
-     * which is what a token somebody signed in for carries.
+     * OIDC Core §8
      */
     #[Test]
     public function itNamesNobodyForASelfContainedTokenCarryingNoPerson(): void
@@ -298,8 +278,7 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4, RFC 9068 §2.2: a self-contained token a client holds for itself names that client in
-     * "sub" and descends from no sign-in, so nothing of a session is read back from it.
+     * RFC 6749 §4.4, RFC 9068 §2.2
      */
     #[Test]
     public function itReadsASelfContainedTokenNobodySignedInFor(): void
@@ -347,8 +326,7 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: the record of a token nobody signed in for says the same thing as the
-     * self-contained shape does, the client in "sub" and no sign-in.
+     * Architecture §4.6
      */
     #[Test]
     public function itReadsTheRecordOfAnOpaqueTokenNobodySignedInFor(): void
@@ -373,8 +351,7 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.2.1, §4.1: the record of a token somebody holds for its subject says the subject it was
-     * given, the sign-in the token it descends from named, and the chain of actors as it was written.
+     * RFC 8693 §2.2.1, §4.1
      */
     #[Test]
     public function itReadsTheRecordOfAnOpaqueTokenSomebodyHoldsForItsSubject(): void
@@ -407,7 +384,7 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
-     * RFC 8693 §1.3: a record of an impersonation names nobody acting, and nothing of one is read back.
+     * RFC 8693 §1.3
      */
     #[Test]
     public function itReadsTheRecordOfAnImpersonationWithoutAnActor(): void
@@ -428,8 +405,7 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
-     * RFC 8693 §4.1: what the issuer wrote is what comes back, the most recent actor outermost, so a
-     * delegation stays a delegation on the way back.
+     * RFC 8693 §4.1
      */
     #[Test]
     public function itReadsTheChainOfActorsOfASelfContainedToken(): void
@@ -447,9 +423,7 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: an opaque token says who it is addressed to exactly as the self-contained shape
-     * does, so that a resource server learns the same thing from the introspection of one as from the
-     * "aud" of the other.
+     * RFC 8707 §2
      *
      * @param list<string>|null $resources
      * @param list<string> $audience
@@ -487,9 +461,6 @@ final class AccessTokenVerifierTest extends TestCase
         ];
     }
 
-    /**
-     * A record without claims asked for by name is a token that asked for none.
-     */
     #[Test]
     public function anOpaqueTokenWithoutAClaimsRequestAskedForNoClaimByName(): void
     {
@@ -509,7 +480,7 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
-     * RFC 6750 §3.1: a value the repository does not know, in this tenant, is not a token of the provider.
+     * RFC 6750 §3.1
      *
      * @param callable(self): void $given
      */
@@ -558,8 +529,7 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
-     * RFC 7519 §4.1.4 applied to the record: the second of expiry included is too late, and the client
-     * is told to refresh.
+     * RFC 7519 §4.1.4
      */
     #[Test]
     public function itRefusesAnExpiredOpaqueToken(): void
@@ -583,8 +553,7 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
-     * RFC 7519 §4.1.3: "aud" is a string or a list; RFC 9068 §2.2.3: no "scope" is no scope; architecture
-     * §4.6: no "userinfo_claims" is no claim asked for by name.
+     * RFC 7519 §4.1.3, RFC 9068 §2.2.3, Architecture §4.6
      *
      * @param list<string> $expectedClaims
      */
@@ -649,10 +618,7 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
-     * RFC 6750 §3.1: whatever is not an access token of this provider is invalid_token, 401, with one
-     * description and the cause kept for the logs; RFC 9068 §4 lists what is checked: the signature, the
-     * "typ" header, "iss", "exp", "aud". RFC 8725 §3.11: "aud" is checked against the client the token
-     * names and that client is one of the tenant's.
+     * RFC 6750 §3.1, RFC 9068 §4, RFC 8725 §3.11
      *
      * @param array<string, string>|null $header
      * @param class-string<Throwable>|null $cause
@@ -691,8 +657,6 @@ final class AccessTokenVerifierTest extends TestCase
     {
         yield 'does not verify' => [null, null, InvalidJwsException::class];
         yield 'not JSON' => ['not json', null, JsonException::class];
-        // RFC 8693 §4.1: a chain of actors nests, and one nested deeper than any exchange of this provider
-        // ever writes was not written here
         yield 'too deep' => [
             self::with([
                 'act' => [
@@ -830,7 +794,6 @@ final class AccessTokenVerifierTest extends TestCase
         ];
         yield 'no auth_time' => [self::without('auth_time'), null, Throwable::class];
         yield 'no sid' => [self::without('sid'), null, null];
-        // half of a sign-in was not written here: a claim of the session without the "sid" it belongs to
         yield 'an auth_time without a sid' => [self::withoutAll(['sid', 'acr', 'amr']), null, null];
         yield 'an acr without a sid' => [self::withoutAll(['sid', 'auth_time', 'amr']), null, null];
         yield 'an amr without a sid' => [self::withoutAll(['sid', 'auth_time', 'acr']), null, null];
@@ -965,8 +928,6 @@ final class AccessTokenVerifierTest extends TestCase
             null,
             null,
         ];
-        // issue #641: who the token is about travels sealed under the KMS of the tenant, so a claim this
-        // provider did not seal there is not a claim it wrote
         yield 'a person that is not a string' => [
             self::with([
                 'person' => 1,
@@ -991,8 +952,7 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
-     * RFC 7519 §4.1.4: the current time must be before "exp", the second of "exp" included is too late;
-     * RFC 6750 §3.1: still invalid_token, with a description that tells the client to refresh.
+     * RFC 7519 §4.1.4, RFC 6750 §3.1
      */
     #[Test]
     public function itRefusesAnExpiredToken(): void
@@ -1013,10 +973,6 @@ final class AccessTokenVerifierTest extends TestCase
         }
     }
 
-    /**
-     * The tenant is the one the token was verified for: a token of another tenant does not verify
-     * against the keys of this one, and it is not read.
-     */
     #[Test]
     public function itRefusesATokenOfAnotherTenant(): void
     {
@@ -1033,7 +989,7 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
-     * @param array<string, string>|null $header null for the header of a real access token
+     * @param array<string, string>|null $header
      */
     private function knows(string $payload, ?array $header = null): void
     {
@@ -1074,9 +1030,7 @@ final class AccessTokenVerifierTest extends TestCase
     }
 
     /**
-     * Architecture §4.6 and decision 0006: a value of a shape this provider never writes is refused
-     * before any store is read. The shapes recognise what they write, so nothing here reads a token to
-     * guess its kind, and a value that is neither a compact JWS nor one drawn here is none of ours.
+     * Architecture §4.6, Decision 0006
      */
     #[Test]
     #[DataProvider('provideValuesOfNoShape')]
@@ -1101,10 +1055,6 @@ final class AccessTokenVerifierTest extends TestCase
         yield 'the digest of a value, which is not the value' => [DrawnSecret::digestOf(Secrets::draw())];
     }
 
-    /**
-     * Issue #239: a token this provider writes and cannot read back is a token nobody can spend, so the
-     * two wired lists are made to meet here rather than at a resource server.
-     */
     #[Test]
     public function aShapeWrittenAndReadBackByNobodyIsRefused(): void
     {
@@ -1119,10 +1069,6 @@ final class AccessTokenVerifierTest extends TestCase
         $verifier->verify($this->tenant, self::TOKEN, Fixtures::now());
     }
 
-    /**
-     * The other way round: a deployment that dropped an issuer and kept its verifier reads back a shape
-     * nothing writes any more, which is a wiring nobody meant.
-     */
     #[Test]
     public function aVerifierOfAShapeNothingWritesIsRefused(): void
     {

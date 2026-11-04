@@ -26,7 +26,7 @@ use Symfony\Component\Uid\Uuid;
 final class IntrospectionResponseTest extends TestCase
 {
     /**
-     * RFC 7662 §2.2: "active" alone, a JSON boolean, when the token is not one to honour.
+     * RFC 7662 §2.2
      */
     #[Test]
     public function anInactiveTokenIsDescribedByActiveFalseAlone(): void
@@ -48,9 +48,7 @@ final class IntrospectionResponseTest extends TestCase
     }
 
     /**
-     * RFC 7662 §2.2: the members in the order of the section, then the authentication of RFC 9068 §2.2.1
-     * and the two names of the provider (architecture §4.6); "aud" is the client, the token having been
-     * asked for no resource, and "client_id" names the client whatever the audience is.
+     * RFC 7662 §2.2, RFC 9068 §2.2.1, Architecture §4.6
      */
     #[Test]
     public function anActiveTokenIsDescribedByWhatTheProviderKnows(): void
@@ -101,9 +99,7 @@ final class IntrospectionResponseTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4, RFC 9068 §2.2: a token a client holds for itself is described by what it says, the
-     * client in "sub", and carries no "sid", no "auth_time", no "acr" and no "amr", nobody having signed in
-     * for it.
+     * RFC 6749 §4.4, RFC 9068 §2.2
      */
     #[Test]
     public function aTokenNobodySignedInForIsDescribedWithoutASignIn(): void
@@ -144,8 +140,7 @@ final class IntrospectionResponseTest extends TestCase
     }
 
     /**
-     * RFC 8693 §4.1: a token somebody holds for its subject renders who in "act", the most recent actor
-     * outermost, which is what a resource server reads to know through whom it was reached.
+     * RFC 8693 §4.1
      */
     #[Test]
     public function aTokenSomebodyHoldsForItsSubjectRendersTheChainOfActors(): void
@@ -182,8 +177,7 @@ final class IntrospectionResponseTest extends TestCase
     }
 
     /**
-     * RFC 9396 §9: a token of a grant somebody agreed to details for renders them, the same array the
-     * self-contained shape carries, so a resource server learns the same thing from either form.
+     * RFC 9396 §9
      */
     #[Test]
     public function aTokenOfAGrantWithDetailsRendersThem(): void
@@ -210,9 +204,6 @@ final class IntrospectionResponseTest extends TestCase
         static::assertSame($details->toClaim(), $response->members['authorization_details']);
     }
 
-    /**
-     * A token of a grant nobody agreed to a detail for renders none rather than rendering it empty.
-     */
     #[Test]
     public function aTokenOfAGrantWithoutDetailsRendersNone(): void
     {
@@ -237,8 +228,7 @@ final class IntrospectionResponseTest extends TestCase
     }
 
     /**
-     * RFC 8693 §1.3: a token nobody holds for anybody renders no "act" at all, which is what tells an
-     * impersonation from a delegation.
+     * RFC 8693 §1.3
      */
     #[Test]
     public function aTokenNobodyHoldsForAnybodyRendersNoActor(): void
@@ -264,8 +254,7 @@ final class IntrospectionResponseTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: the audience a resource server reads is the one the token carries, several resources
-     * as the list they are (RFC 7519 §4.1.3), while "client_id" goes on naming the client.
+     * RFC 8707 §2, RFC 7519 §4.1.3
      */
     #[Test]
     public function theAudienceIsWhatTheTokenIsAddressedTo(): void
@@ -292,7 +281,7 @@ final class IntrospectionResponseTest extends TestCase
     }
 
     /**
-     * RFC 9701 §5: the signed form travels as the JWT, with its own media type; the members stay.
+     * RFC 9701 §5
      */
     #[Test]
     public function aSignedResponseIsTheJwtWithItsMediaType(): void

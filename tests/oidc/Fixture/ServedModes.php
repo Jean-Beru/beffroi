@@ -6,11 +6,6 @@ namespace Beffroi\Oidc\Tests\Fixture;
 
 use Beffroi\Oidc\Port\ServedResponseModesInterface;
 
-/**
- * The response modes an integration wired: the default alone, as spike 1 had, the default and the posted
- * form, as the provider wired from spike 4, or the four the provider wires since issue #163, the two deliveries
- * of a signed document beside them. The names are the ones the ways of answering give themselves.
- */
 final readonly class ServedModes
 {
     public const string QUERY = 'query';
@@ -32,8 +27,7 @@ final readonly class ServedModes
     }
 
     /**
-     * JARM §2.1: the two deliveries of a signed answer, beside the two unsigned ones, the alias resolving to
-     * the one that delivers the way the default mode does.
+     * JARM §2.1
      */
     public static function signedToo(): ServedResponseModesInterface
     {

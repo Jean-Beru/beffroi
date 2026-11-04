@@ -38,8 +38,7 @@ final class UserAuthorizationTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.3, OIDC Core §3.1.3: after a code, the tokens carry what the code recorded, nonce
-     * included.
+     * RFC 6749 §4.1.3, OIDC Core §3.1.3
      */
     #[Test]
     public function fromACodeItCarriesEverythingTheCodeRecorded(): void
@@ -86,8 +85,7 @@ final class UserAuthorizationTest extends TestCase
     }
 
     /**
-     * RFC 6749 §6, OIDC Core §12.2: after a refresh without a scope, the scopes are those of the token,
-     * and there is no nonce.
+     * RFC 6749 §6, OIDC Core §12.2
      */
     #[Test]
     public function fromARefreshTokenItKeepsTheScopesOfTheTokenAndDropsTheNonce(): void
@@ -106,8 +104,7 @@ final class UserAuthorizationTest extends TestCase
     }
 
     /**
-     * RFC 6749 §6: after a refresh with a scope, the scopes are the narrower ones asked for and the
-     * token's scopes stay the granted ones.
+     * RFC 6749 §6
      */
     #[Test]
     public function fromARefreshTokenItNarrowsTheScopesToThoseAskedFor(): void
@@ -151,8 +148,7 @@ final class UserAuthorizationTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: the details of a response are among the ones the user agreed to, a token request being
-     * free to narrow them and never to widen them.
+     * RFC 9396 §7
      */
     #[Test]
     public function itRefusesAnAuthorizationDetailOutsideTheGrantedOnes(): void
@@ -168,9 +164,6 @@ final class UserAuthorizationTest extends TestCase
         );
     }
 
-    /**
-     * A grant nobody agreed to a detail for grants none, so a response that carries one stands on nothing.
-     */
     #[Test]
     public function itRefusesAnAuthorizationDetailWhenTheGrantCarriesNone(): void
     {
@@ -183,8 +176,7 @@ final class UserAuthorizationTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: what the code carried is what the response carries, and what the grant stands on, so a
-     * refresh token beside it is bound to all of it.
+     * RFC 9396 §7
      */
     #[Test]
     public function fromAnAuthorizationCodeItTakesTheDetailsOfTheCode(): void
@@ -202,7 +194,7 @@ final class UserAuthorizationTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: a refresh takes the details of the token it spends, which the whole grant stands on.
+     * RFC 9396 §7
      */
     #[Test]
     public function fromARefreshTokenItTakesTheDetailsOfTheToken(): void

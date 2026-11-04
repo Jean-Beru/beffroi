@@ -26,8 +26,7 @@ use Symfony\Component\Clock\MockClock;
 use Beffroi\Oidc\Tests\Fixture\Shapes;
 
 /**
- * JARM §2.1 and §2.4: what the provider signs for a client that asked for a signed answer, verified the
- * way that client verifies it, against the published JWK Set.
+ * JARM §2.1, §2.4
  */
 final class ResponseDocumentIssuerTest extends TestCase
 {
@@ -47,8 +46,7 @@ final class ResponseDocumentIssuerTest extends TestCase
     }
 
     /**
-     * JARM §2.1: the parameters of the response, each one a claim, plus the issuer, the audience naming
-     * the client and the expiry.
+     * JARM §2.1
      */
     #[Test]
     public function theDocumentCarriesTheParametersOfTheAnswerAndTheThreeClaimsOfTheSection(): void
@@ -71,7 +69,7 @@ final class ResponseDocumentIssuerTest extends TestCase
     }
 
     /**
-     * JARM §2.1: the document expires, and soon, a response being read as the browser hands it over.
+     * JARM §2.1
      */
     #[Test]
     public function theDocumentExpiresAfterTheLifetimeOfItsIssuer(): void
@@ -87,10 +85,6 @@ final class ResponseDocumentIssuerTest extends TestCase
         static::assertSame(Fixtures::now()->getTimestamp() + 120, $claims['exp']);
     }
 
-    /**
-     * The document is signed by the active key of the tenant, which is what the JWK Set publishes under
-     * that "kid".
-     */
     #[Test]
     public function theHeaderNamesTheActiveKeyOfTheTenant(): void
     {
@@ -111,7 +105,7 @@ final class ResponseDocumentIssuerTest extends TestCase
     }
 
     /**
-     * JARM §3: the algorithm is the one the client registered in "authorization_signed_response_alg".
+     * JARM §3
      */
     #[Test]
     public function theDocumentIsSignedWithTheAlgorithmTheClientRegistered(): void
@@ -148,8 +142,7 @@ final class ResponseDocumentIssuerTest extends TestCase
     }
 
     /**
-     * JARM §3 and issue #165: a client that registered an encryption receives the signed document inside
-     * a JWE addressed to one of its keys, which is the same two steps as for an ID token.
+     * JARM §3
      */
     #[Test]
     public function theDocumentIsEncryptedForAClientThatRegisteredOne(): void
@@ -171,8 +164,7 @@ final class ResponseDocumentIssuerTest extends TestCase
     }
 
     /**
-     * JARM §2.4: a refusal is signed exactly as a code is, so a client that asked for a signed answer
-     * never reads an unsigned one.
+     * JARM §2.4
      */
     #[Test]
     public function aRefusalIsSignedTheSameWay(): void

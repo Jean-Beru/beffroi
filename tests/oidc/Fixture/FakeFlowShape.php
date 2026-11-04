@@ -10,10 +10,6 @@ use Beffroi\Oidc\Domain\Flow\Actor;
 use Beffroi\Oidc\Domain\Flow\Hop;
 use Beffroi\Oidc\Port\ServedGrantsInterface;
 
-/**
- * A shape that draws the grants it was handed, with one hop named after itself: what the builder does
- * with a shape is what a test reads here, and no capability of a grant is involved.
- */
 final readonly class FakeFlowShape implements FlowShapeInterface
 {
     /**

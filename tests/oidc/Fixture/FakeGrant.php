@@ -12,9 +12,6 @@ use Beffroi\Oidc\Domain\Client\GrantTypeName;
 use Beffroi\Oidc\Domain\Token\IssuedTokens;
 use LogicException;
 
-/**
- * A grant that names its type and grants nothing, for what reads the grants the provider is wired with.
- */
 final readonly class FakeGrant implements GrantInterface
 {
     public function __construct(

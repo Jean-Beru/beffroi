@@ -30,11 +30,6 @@ final class ClaimsRequestTest extends TestCase
         }
     }';
 
-    /**
-     * Issue #590: the names it asks for, by the place they were asked of, which is what a person reads of a
-     * request made about them. The names and never what each one asks of its claim, which is for whoever
-     * serves it.
-     */
     #[Test]
     public function itSaysTheNamesItAsksForOnEachSide(): void
     {
@@ -51,10 +46,6 @@ final class ClaimsRequestTest extends TestCase
         );
     }
 
-    /**
-     * A request that asks for nothing on one side says so with an empty list, which is what a document
-     * written from it holds.
-     */
     #[Test]
     public function aSideThatAsksForNothingNamesNothing(): void
     {
@@ -69,8 +60,7 @@ final class ClaimsRequestTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5: what a person lets a client learn is the same whether the client is told it in an ID
-     * token or at UserInfo, so the names both members ask for are one set, a name asked for in both once.
+     * OIDC Core §5.5
      */
     #[Test]
     public function itNamesTheClaimsOfBothMembersEachOnce(): void
@@ -83,8 +73,7 @@ final class ClaimsRequestTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5.1: narrowed to some names, it asks for those alone in each member, and asks of each
-     * what it asked of it.
+     * OIDC Core §5.5.1
      */
     #[Test]
     public function narrowedItAsksForTheNamedClaimsAloneAsTheyWereAsked(): void
@@ -101,8 +90,7 @@ final class ClaimsRequestTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5, the example of the specification: the "userinfo" member, in order, with a claim
-     * that is null and essential claims.
+     * OIDC Core §5.5
      */
     #[Test]
     public function itReadsTheUserinfoMemberOfTheExampleOfTheSpecification(): void
@@ -122,7 +110,7 @@ final class ClaimsRequestTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5, the example of the specification: the "id_token" member, with a claim with a set of values.
+     * OIDC Core §5.5
      */
     #[Test]
     public function itReadsTheIdTokenMemberOfTheExampleOfTheSpecification(): void
@@ -136,8 +124,7 @@ final class ClaimsRequestTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5.1: "value" requests a particular value; it is a JSON scalar kept as sent, so a
-     * boolean stays a boolean and a number stays a number.
+     * OIDC Core §5.5.1
      */
     #[Test]
     public function itKeepsTheRequestedValueAsSent(): void
@@ -152,7 +139,7 @@ final class ClaimsRequestTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5: members that are not understood are ignored.
+     * OIDC Core §5.5
      */
     #[Test]
     public function itIgnoresWhatItDoesNotUnderstand(): void
@@ -166,7 +153,7 @@ final class ClaimsRequestTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5: an empty object or an absent member asks for nothing.
+     * OIDC Core §5.5
      */
     #[Test]
     #[DataProvider('provideRequestsAskingForNothing')]
@@ -203,8 +190,7 @@ final class ClaimsRequestTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5 and §5.5.1: a member that is understood but malformed is refused, and "essential" is
-     * a JSON boolean, never a string that looks like one.
+     * OIDC Core §5.5, §5.5.1
      */
     #[Test]
     #[DataProvider('provideMalformedRequests')]
@@ -244,8 +230,7 @@ final class ClaimsRequestTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5: the document a column holds the request as is the form of the wire, the two members
-     * and the claims each asks of, an empty object where it asks for nothing.
+     * OIDC Core §5.5
      *
      * @param array<string, mixed> $document
      */
@@ -301,10 +286,6 @@ final class ClaimsRequestTest extends TestCase
         ];
     }
 
-    /**
-     * A member that asks for nothing is written as an empty JSON object and not as a list, which is what
-     * an empty PHP array would have been written as.
-     */
     #[Test]
     public function aMemberThatAsksForNothingIsWrittenAsAnObject(): void
     {
@@ -312,9 +293,6 @@ final class ClaimsRequestTest extends TestCase
         static::assertEquals((object) [], new ClaimsRequest()->toDocument()['userinfo']);
     }
 
-    /**
-     * That empty object comes back as an empty array, which is what asking for nothing is.
-     */
     #[Test]
     public function aDocumentThatAsksForNothingComesBackAsARequestThatAsksForNothing(): void
     {

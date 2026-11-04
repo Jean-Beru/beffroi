@@ -106,9 +106,6 @@ final class InMemoryRepositoriesTest extends TestCase
         static::assertNull($repository->findActive($this->session->user, $this->client));
     }
 
-    /**
-     * The consent in force is the active one granted last, for this user and this client only.
-     */
     #[Test]
     public function itFindsTheActiveConsentGrantedLast(): void
     {
@@ -175,10 +172,6 @@ final class InMemoryRepositoriesTest extends TestCase
         static::assertSame($tie, $repository->findActive($this->session->user, $this->client));
     }
 
-    /**
-     * What the page of the account reads: one line per client, the most recently granted first, and
-     * nothing of what was taken back.
-     */
     #[Test]
     public function itListsWhatAUserHasInForce(): void
     {
@@ -229,7 +222,7 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4: a token a client holds for itself descends from no user and from no consent.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function itRemovesTheAccessTokensAClientHoldsForAUser(): void
@@ -295,7 +288,7 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: the claim of a code is told to one caller only, the others read a replay.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function onlyTheFirstCallerConsumesACode(): void
@@ -336,7 +329,7 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     /**
-     * RFC 9126 §4: the claim of a reference is told to one caller only, the others read a replay.
+     * RFC 9126 §4
      */
     #[Test]
     public function onlyTheFirstCallerConsumesAPushedRequest(): void
@@ -363,8 +356,7 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     /**
-     * Back-Channel Logout 1.0 §2.6: the clients of a session come back as a list, whatever the number of
-     * grants each of them holds, because a caller iterates them and a gap would be a client kept twice.
+     * Back-Channel Logout 1.0 §2.6
      */
     #[Test]
     public function theClientsOfASessionComeBackAsAListOfEachClientOnce(): void
@@ -401,7 +393,7 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: a token is found by its hash, never by its value.
+     * Architecture §4.6
      */
     #[Test]
     public function itFindsARefreshTokenByHashNeverByValue(): void
@@ -418,7 +410,7 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: a family is found whole, whatever the state of its members.
+     * Architecture §4.6
      */
     #[Test]
     public function itFindsAFamilyWhole(): void
@@ -445,8 +437,7 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: a lineage is of one tenant, its own, so the family a revocation walks never holds
-     * the tokens of two.
+     * Architecture §4.6
      */
     #[Test]
     public function itFindsOnlyTheTokensOfTheTenantOfAFamily(): void
@@ -474,7 +465,7 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: the descendants of a code are the family.
+     * Architecture §4.6
      */
     #[Test]
     public function itFindsTheDescendantsOfACode(): void
@@ -501,7 +492,7 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     /**
-     * Architecture §4.9: the tokens of a session are found whole, rotated and revoked ones included.
+     * Architecture §4.9
      */
     #[Test]
     public function itFindsEveryTokenOfASession(): void
@@ -551,8 +542,7 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: a token is kept under the digest of a value the store never sees, and found by
-     * that value.
+     * Architecture §4.6
      */
     #[Test]
     public function itKeepsAnAccessTokenAndFindsItByItsValue(): void
@@ -593,7 +583,7 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     /**
-     * RFC 7009: a revoked token is gone; the others stay.
+     * RFC 7009
      */
     #[Test]
     public function itRevokesOneAccessToken(): void
@@ -614,7 +604,7 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: the tokens of a grant go together, and are told; one of another grant stays.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function itRevokesTheAccessTokensOfAGrant(): void
@@ -639,8 +629,7 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     /**
-     * Architecture §4.6, RFC 6749 §4.4: the record kept for an authorization is the record of its kind, and
-     * the store is handed it by the authorization rather than recognising which kind it was given.
+     * Architecture §4.6, RFC 6749 §4.4
      */
     #[Test]
     public function itKeepsAnAccessTokenNobodySignedInForAsTheRecordOfItsKind(): void
@@ -670,8 +659,7 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     /**
-     * Architecture §4.9, RFC 6749 §4.4: a logout revokes the tokens of the session that ended, and a token
-     * nobody signed in for has no session to have ended.
+     * Architecture §4.9, RFC 6749 §4.4
      */
     #[Test]
     public function aLogoutLeavesTheAccessTokensNobodySignedInFor(): void
@@ -696,7 +684,7 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     /**
-     * Architecture §4.9: the tokens of a session go together; one of another session stays.
+     * Architecture §4.9
      */
     #[Test]
     public function itRevokesTheAccessTokensOfASession(): void
@@ -773,8 +761,6 @@ final class InMemoryRepositoriesTest extends TestCase
     }
 
     /**
-     * A first token rotated into a second, then a revoked one, in the family given.
-     *
      * @return list<RefreshToken>
      */
     private function lineage(RefreshTokenFamily $family): array

@@ -13,8 +13,7 @@ use PHPUnit\Framework\TestCase;
 final class JwtPayloadTest extends TestCase
 {
     /**
-     * RFC 7519 §3: a JSON object; the text keeps UTF-8 and slashes as they are, a boolean stays a
-     * boolean and a float stays a float, so that a client reads exactly the types the provider meant.
+     * RFC 7519 §3
      */
     #[Test]
     public function itEncodesClaimsAsTheyAre(): void

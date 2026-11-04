@@ -93,9 +93,7 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * OIDC RP-Initiated Logout 1.0 §2 and architecture §4.9: a hint naming the user and the session the
-     * browser holds is honoured without a question, and the user agent goes where the client asked with
-     * its state (§3).
+     * OIDC RP-Initiated Logout 1.0 §2, §3, Architecture §4.9
      */
     #[Test]
     public function itEndsTheSessionTheHintDescribesWithoutAsking(): void
@@ -113,9 +111,6 @@ final class EndSessionHandlerTest extends TestCase
         static::assertSame('https://demo.localhost/?state=af0ifjsldkj', $decision->redirect?->toUri());
     }
 
-    /**
-     * The session ends by the relying party, now.
-     */
     #[Test]
     public function theSessionEndsByTheRelyingParty(): void
     {
@@ -142,9 +137,6 @@ final class EndSessionHandlerTest extends TestCase
         static::assertSame([$otherSession], $this->sessions->findActiveByUser($this->alice, $this->clock->now()));
     }
 
-    /**
-     * AuthenticationSessionEnded carries the request that ended the session, once.
-     */
     #[Test]
     public function theEndOfTheSessionIsAnnouncedOnceWithTheRequestContext(): void
     {
@@ -160,9 +152,7 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * §2: the provider must ask when there is no id_token_hint, when the hint names another user, or
-     * when it does not belong to the current session; §6: a request without a valid hint may be a
-     * denial of service.
+     * OIDC RP-Initiated Logout 1.0 §2, §6
      *
      * @param callable(self): ?IdTokenHint $hint
      */
@@ -184,8 +174,6 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * Nothing is written until the user answers.
-     *
      * @param callable(self): ?IdTokenHint $hint
      */
     #[Test]
@@ -232,8 +220,7 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * OIDC Core §8.1, RP-Initiated Logout §2: a client of pairwise subjects holds the identifier of its sector,
-     * and its hint names the user of the session all the same, read back for that client (issue #838).
+     * OIDC Core §8.1, RP-Initiated Logout §2
      */
     #[Test]
     public function aHintOfAPairwiseClientNamingTheSessionEndsItWithoutAsking(): void
@@ -251,8 +238,7 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * OIDC Core §8: what a "sub" means is decided by the kind its client registered, so the subject the core
-     * keeps names nobody to a client of pairwise subjects.
+     * OIDC Core §8
      */
     #[Test]
     public function theSubjectTheCoreKeepsNamesNobodyToAPairwiseClient(): void
@@ -270,8 +256,7 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * §2, §6: a hint the provider could not verify (signed by a retired key, or forged) proves nothing;
-     * the user is asked, and told why.
+     * OIDC RP-Initiated Logout 1.0 §2, §6
      */
     #[Test]
     public function itAsksWhenTheHintCouldNotBeVerified(): void
@@ -288,8 +273,7 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * §2: once the user says yes, the session ends whatever the hint was worth; nothing redirects,
-     * since the hint identified no client.
+     * OIDC RP-Initiated Logout 1.0 §2
      */
     #[Test]
     public function itEndsTheSessionWhenTheUserConfirmsDespiteAnInvalidHint(): void
@@ -307,8 +291,7 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * §2: "If the End-User says yes, then the OP MUST log out the End-User": after the confirmation
-     * page, the session ends whatever the hint said, and the redirect is honoured.
+     * OIDC RP-Initiated Logout 1.0 §2
      *
      * @param callable(self): ?IdTokenHint $hint
      */
@@ -355,9 +338,7 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * §4: a logout request is idempotent, it is not an error to log out a user who is not logged in.
-     * No session, an ended one or an expired one: nothing to ask, nothing to end, and the user agent
-     * goes where the client asked when it may.
+     * OIDC RP-Initiated Logout 1.0 §4
      *
      * @param callable(self): ?AuthenticationSession $session
      */
@@ -400,10 +381,6 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * The session the hint names is not ended on the word of the token: the browser proves the session,
-     * the token does not. Nothing is announced, so nothing issued in it is revoked either
-     * (SessionTokensRevocation).
-     *
      * @param callable(self): ?AuthenticationSession $session
      */
     #[Test]
@@ -453,9 +430,6 @@ final class EndSessionHandlerTest extends TestCase
         ];
     }
 
-    /**
-     * A request that names no client, from a bare logout link, is confirmed like one without a hint.
-     */
     #[Test]
     public function itAsksWhenTheRequestNamesNoClient(): void
     {
@@ -471,8 +445,7 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * A request that names no client: the session ends after confirmation and there is nowhere to
-     * redirect to (§3).
+     * OIDC RP-Initiated Logout 1.0 §3
      */
     #[Test]
     public function itRedirectsNowhereWhenTheRequestNamesNoClient(): void
@@ -489,10 +462,6 @@ final class EndSessionHandlerTest extends TestCase
         static::assertTrue($this->session->hasEnded());
     }
 
-    /**
-     * The session the integration hands over is one of the tenant the request reached; anything else is
-     * a wiring error, not a decision.
-     */
     #[Test]
     public function beginRefusesASessionOfAnotherTenant(): void
     {
@@ -520,13 +489,7 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * The acceptance criterion of the issue, below HTTP: what OidcEndSessionListener of oidc_login 8.2
-     * sends on logout is honoured without a question. The listener redirects the browser to the
-     * end_session_endpoint with "id_token_hint", the last ID token it received, and
-     * "post_logout_redirect_uri", the URI it generated, serialized with http_build_query in RFC 3986
-     * encoding; no "state", no "client_id". The last ID token is often one re-issued on a refresh,
-     * without "nonce", and may well be expired (§2: the provider should accept it): both are minted
-     * here by the issuer of #8 and verified through the JWS bridge of the core, as the endpoint will.
+     * OIDC RP-Initiated Logout 1.0 §2
      */
     #[Test]
     #[DataProvider('provideIdTokensOidcLoginHolds')]
@@ -582,8 +545,6 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * The query string as the integration will hand it over: parsed by PHP, names as strings.
-     *
      * @return array<string, mixed>
      */
     private static function parameters(string $query): array

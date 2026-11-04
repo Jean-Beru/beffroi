@@ -20,8 +20,7 @@ use PHPUnit\Framework\TestCase;
 final class JwkSetResponseTest extends TestCase
 {
     /**
-     * RFC 7517 §5: a JSON object with a "keys" list of public JWKs, each with "kid", "kty", "alg", "use"
-     * (§4) and no private member.
+     * RFC 7517 §5, §4
      */
     #[Test]
     public function itServesThePublishedKeysAsAJwkSet(): void
@@ -64,7 +63,7 @@ final class JwkSetResponseTest extends TestCase
     }
 
     /**
-     * A set without any key is still a JWK Set (RFC 7517 §5.1 "keys" may be empty).
+     * RFC 7517 §5.1
      */
     #[Test]
     public function anEmptySetIsStillAJwkSet(): void
@@ -76,9 +75,6 @@ final class JwkSetResponseTest extends TestCase
         static::assertSame('{"keys":[]}', $response->toJson());
     }
 
-    /**
-     * An empty set is not cached: the first key generated must be seen at once.
-     */
     #[Test]
     public function anEmptySetIsNotCached(): void
     {

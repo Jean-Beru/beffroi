@@ -66,9 +66,6 @@ final class PushedAuthorizationHandlerTest extends TestCase
 
     private MockClock $clock;
 
-    /**
-     * The key the tenant publishes for encryption, which a client encrypts its pushed request object to.
-     */
     private TenantKey $encryption;
 
     private JweDecrypterInterface $decrypter;
@@ -93,7 +90,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9126 §2.2: a reference of the registered URN, and the seconds it lives.
+     * RFC 9126 §2.2
      */
     #[Test]
     public function itAnswersAReferenceAndItsLifetime(): void
@@ -107,8 +104,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9126 §2.2: the record waits under the hash of the reference, bound to the client that pushed
-     * it, unused until the browser brings the reference back.
+     * RFC 9126 §2.2
      */
     #[Test]
     public function itKeepsTheRequestUnderTheHashOfItsReference(): void
@@ -124,8 +120,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9126 §4: what the authorization endpoint will read is what the client wrote, kept as it wrote
-     * it, with the name of the authenticated client beside it.
+     * RFC 9126 §4
      */
     #[Test]
     public function itKeepsTheParametersTheClientWrote(): void
@@ -154,9 +149,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9101 §6.1 and RFC 9126 §3: a pushed request may itself be a request object, which FAPI 2.0
-     * Message Signing asks of one. It is verified here, once, and what the record keeps is the request
-     * it carried, so that the authorization endpoint reads parameters like any other.
+     * RFC 9101 §6.1, RFC 9126 §3
      */
     #[Test]
     public function itReadsARequestObjectAPushedRequestCarries(): void
@@ -196,9 +189,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * Issue #189, RFC 9101 §6.1: the object a client pushes may be encrypted to a key the tenant
-     * publishes. The endpoint opens it with that key and keeps the request it carried, which is what the
-     * authorization endpoint does with the same object.
+     * RFC 9101 §6.1
      */
     #[Test]
     public function itOpensARequestObjectAClientEncryptedToTheProvider(): void
@@ -244,8 +235,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9101 §10.5, FAPI 2.0 Message Signing §5.3.1: a client whose requests are only read from a
-     * request object it signed cannot push one as form parameters.
+     * RFC 9101 §10.5, FAPI 2.0 Message Signing §5.3.1
      */
     #[Test]
     public function aClientHeldToSignedObjectsIsRefusedARequestOfFormParameters(): void
@@ -264,9 +254,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9101 §10.5, RFC 9126 §4: the record of a request such a client pushed in an object it signed
-     * says so, which is what the authorization endpoint reads the requirement from when the reference
-     * comes back.
+     * RFC 9101 §10.5, RFC 9126 §4
      */
     #[Test]
     public function theRecordOfARequestPushedInASignedObjectSaysSo(): void
@@ -296,8 +284,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9101 §10.5: a request object of such a client that uses "alg": "none" is refused, the
-     * registration of that client reading no object unsigned.
+     * RFC 9101 §10.5
      */
     #[Test]
     public function anUnsignedObjectOfAClientHeldToSignedObjectsIsRefused(): void
@@ -328,8 +315,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9126 §2.1: a "request_uri" is not one of the parameters a pushed request carries, the
-     * reference being what the endpoint answers and not what it reads.
+     * RFC 9126 §2.1
      */
     #[Test]
     public function aRequestObjectByReferenceIsNotPushed(): void
@@ -344,10 +330,6 @@ final class PushedAuthorizationHandlerTest extends TestCase
         ]);
     }
 
-    /**
-     * A credential authenticates the request that carries it and nothing else: the record that outlives
-     * that request keeps none of it, and keeps the name of the client all the same.
-     */
     #[Test]
     public function itKeepsNothingOfWhatAuthenticatedTheClient(): void
     {
@@ -364,8 +346,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9126 §2.1: the record names the authenticated client whether or not the body did; a client
-     * authenticating through the Authorization header names itself nowhere else.
+     * RFC 9126 §2.1
      */
     #[Test]
     public function theClientOfTheRecordIsTheAuthenticatedOneEvenWhenTheBodyNamesNone(): void
@@ -378,8 +359,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9126 §2.1: "request_uri authorization request parameter is one exception, and it MUST NOT be
-     * provided".
+     * RFC 9126 §2.1
      */
     #[Test]
     public function itRefusesARequestUriAtTheEndpoint(): void
@@ -395,7 +375,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9126 §2: the endpoint authenticates the client exactly as the token endpoint does.
+     * RFC 9126 §2
      */
     #[Test]
     public function itRefusesAClientThatDoesNotAuthenticate(): void
@@ -408,8 +388,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9126 §2.1: the request is read here by the parser the authorization endpoint reads with, the
-     * redirect URI included, so that what is refused there is refused here.
+     * RFC 9126 §2.1
      *
      * @param array<string, string|null> $overrides
      * @param class-string<OAuth2Exception> $exception
@@ -480,9 +459,6 @@ final class PushedAuthorizationHandlerTest extends TestCase
         ];
     }
 
-    /**
-     * Nothing is kept of a request that is refused: the whole request is read before a reference exists.
-     */
     #[Test]
     public function aRefusedRequestIsNeverStored(): void
     {
@@ -501,8 +477,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9126 §2: a public client pushes its request too, naming itself and proving nothing, which is
-     * how it authenticates at the token endpoint.
+     * RFC 9126 §2
      */
     #[Test]
     public function aPublicClientPushesItsRequestToo(): void
@@ -518,7 +493,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9126 §2.2: the lifetime is the deployment's, and the answer says the one the record has.
+     * RFC 9126 §2.2
      */
     #[Test]
     public function theLifetimeIsTheOneTheDeploymentWired(): void
@@ -534,8 +509,7 @@ final class PushedAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9449 §10.1: a request pushed with a proof reserves its code for the key of the proof, without
-     * the client having to name it a second time.
+     * RFC 9449 §10.1
      */
     #[Test]
     public function aRequestPushedWithAProofReservesItsCodeForThatKey(): void
@@ -554,10 +528,6 @@ final class PushedAuthorizationHandlerTest extends TestCase
         static::assertSame(Proofs::thumbprintOf(Proofs::key())->thumbprint, $this->storedRequest($response)->parameters['dpop_jkt']);
     }
 
-    /**
-     * A request that names one key and is pushed with a proof of another names two keys, and choosing
-     * one of them would be the provider deciding what the client meant.
-     */
     #[Test]
     public function aRequestNamingAKeyAndProvingAnotherIsRefused(): void
     {
@@ -578,9 +548,6 @@ final class PushedAuthorizationHandlerTest extends TestCase
         );
     }
 
-    /**
-     * A client that names the key itself is taken at its word, and the code is reserved all the same.
-     */
     #[Test]
     public function aRequestMayNameTheKeyItself(): void
     {
@@ -593,17 +560,11 @@ final class PushedAuthorizationHandlerTest extends TestCase
         static::assertSame(Proofs::thumbprintOf(Proofs::key())->thumbprint, $this->storedRequest($response)->parameters['dpop_jkt']);
     }
 
-    /**
-     * A proof for the pushed endpoint of the tenant, made now.
-     */
     private function proof(): string
     {
         return Proofs::proof('POST', Endpoints::of($this->tenant)->pushedAuthorizationRequest, $this->context->receivedAt);
     }
 
-    /**
-     * The record the endpoint kept for the reference it answered with.
-     */
     private function storedRequest(PushedAuthorizationResponse $response): PushedAuthorizationRecord
     {
         return (

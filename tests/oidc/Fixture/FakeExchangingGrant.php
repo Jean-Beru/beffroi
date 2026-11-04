@@ -13,8 +13,7 @@ use Beffroi\Oidc\Domain\Token\IssuedTokens;
 use LogicException;
 
 /**
- * A grant that declares it takes a token as its input and gives a token back (RFC 8693 §2.1), which is what
- * the token exchange declares, and grants nothing.
+ * RFC 8693 §2.1
  */
 final readonly class FakeExchangingGrant implements ExchangesATokenInterface
 {

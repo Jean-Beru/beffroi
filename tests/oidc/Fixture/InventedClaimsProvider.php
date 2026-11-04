@@ -13,10 +13,7 @@ use function in_array;
 use function sprintf;
 
 /**
- * A claims provider nobody wrote a line of production code for (OIDC Core §5.1), which is what a
- * deployment adds when its own store holds something about a person that the standard claims do not say:
- * it names the scope it serves, it names the claim that scope stands for, and it answers for that claim
- * alone. The standard provider is wired beside it and neither knows of the other.
+ * OIDC Core §5.1
  */
 final readonly class InventedClaimsProvider implements ClaimsProviderInterface
 {

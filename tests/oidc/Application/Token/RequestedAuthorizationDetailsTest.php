@@ -13,8 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * What a token request asks its access token to carry beyond its scopes (RFC 9396 §7), read once for every
- * grant that spends an authorization: a subset of what was agreed to, or nothing.
+ * RFC 9396 §7
  */
 final class RequestedAuthorizationDetailsTest extends TestCase
 {
@@ -26,8 +25,7 @@ final class RequestedAuthorizationDetailsTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: a request that asks for nothing narrows nothing, and the response carries what the
-     * authorization carries.
+     * RFC 9396 §7
      */
     #[Test]
     public function aRequestThatAsksForNoDetailNarrowsNothing(): void
@@ -53,7 +51,7 @@ final class RequestedAuthorizationDetailsTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: narrowing never widens, a token request being no second chance to ask.
+     * RFC 9396 §7
      */
     #[Test]
     public function aRequestThatAsksForADetailTheAuthorizationDoesNotCarryIsRefused(): void
@@ -69,10 +67,6 @@ final class RequestedAuthorizationDetailsTest extends TestCase
         $this->requested->of(self::request(AuthorizationDetailTypes::parameter('acct-0815')), $granted);
     }
 
-    /**
-     * A grant nobody agreed to a detail for carries none, so there is nothing to narrow and the request is
-     * refused rather than served what it asked for.
-     */
     #[Test]
     public function aRequestThatAsksForADetailOfAnAuthorizationCarryingNoneIsRefused(): void
     {
@@ -85,8 +79,7 @@ final class RequestedAuthorizationDetailsTest extends TestCase
     }
 
     /**
-     * RFC 9396 §5: read the one way the authorization endpoint reads it, refused the one way it refuses it,
-     * without a redirect, this endpoint answering in JSON.
+     * RFC 9396 §5
      */
     #[Test]
     public function aParameterThatIsNotAnAuthorizationDetailsIsRefused(): void
@@ -99,9 +92,6 @@ final class RequestedAuthorizationDetailsTest extends TestCase
         $this->requested->of(self::request('[{'), AuthorizationDetailTypes::details());
     }
 
-    /**
-     * A refusal of the token endpoint is never redirected: it answers in JSON.
-     */
     #[Test]
     public function itsRefusalIsNotRedirectable(): void
     {

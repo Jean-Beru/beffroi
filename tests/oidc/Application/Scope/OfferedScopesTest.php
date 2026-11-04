@@ -23,12 +23,6 @@ use Beffroi\Oidc\Tests\Fixture\Grants;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Every scope a tenant hands out tokens for (issue #98): "openid", what the wired claims providers
- * serve, what the deployment declares for the tenant (issue #920), what the clients of the tenant
- * registered, and "offline_access" where the wired grants make good on it (OIDC Core §11). It is what
- * the document announces and what a registration is held to.
- */
 final class OfferedScopesTest extends TestCase
 {
     #[Test]
@@ -45,8 +39,7 @@ final class OfferedScopesTest extends TestCase
     }
 
     /**
-     * OIDC Core §11: "offline_access" asks for a refresh token, so a deployment wired with no grant that
-     * spends one does not announce the scope that would promise one.
+     * OIDC Core §11
      */
     #[Test]
     public function aProviderThatSpendsNoRefreshTokenAnnouncesNoOfflineAccess(): void
@@ -67,7 +60,7 @@ final class OfferedScopesTest extends TestCase
     }
 
     /**
-     * OIDC Core §11: a refresh token nothing mints is a promise the token endpoint cannot keep either.
+     * OIDC Core §11
      */
     #[Test]
     public function aProviderThatIssuesNoRefreshTokenAnnouncesNoOfflineAccess(): void
@@ -88,8 +81,7 @@ final class OfferedScopesTest extends TestCase
     }
 
     /**
-     * OIDC Discovery §3: "openid" MUST be supported; it comes first whatever the claims provider lists,
-     * and a scope listed twice is announced once.
+     * OIDC Discovery §3
      */
     #[Test]
     public function openidComesFirstAndOnce(): void
@@ -109,10 +101,6 @@ final class OfferedScopesTest extends TestCase
         static::assertSame(['openid', 'email'], $members);
     }
 
-    /**
-     * Issue #98: what a tenant announces is read from its clients, so a scope one of them registered is
-     * a scope of that tenant, each named once however many clients registered it.
-     */
     #[Test]
     public function itAnnouncesTheScopesTheClientsOfTheTenantRegistered(): void
     {
@@ -133,10 +121,6 @@ final class OfferedScopesTest extends TestCase
         );
     }
 
-    /**
-     * The scopes of one tenant are no business of another: two tenants whose clients registered
-     * different scopes announce different documents.
-     */
     #[Test]
     public function itAnnouncesNoScopeOfAnotherTenant(): void
     {
@@ -152,12 +136,6 @@ final class OfferedScopesTest extends TestCase
         static::assertSame(['openid', 'profile', 'email', 'address', 'phone', 'offline_access'], $members);
     }
 
-    /**
-     * The scope of an API stands for no claim, and a client that registers it is one of the two things
-     * that say it exists: it is announced, as a resource a client registered is (RFC 9728 §4), and a typo
-     * is announced with it rather than granted in silence. What a client that registers itself may name is
-     * held to what this document already carries, where such a registration is read.
-     */
     #[Test]
     public function aScopeNoClaimsProviderServesIsAnnouncedBecauseAClientRegisteredIt(): void
     {
@@ -174,11 +152,6 @@ final class OfferedScopesTest extends TestCase
         static::assertSame(['openid', 'billing.read', 'offline_access'], $members);
     }
 
-    /**
-     * Issue #920: the other thing that says the scope of an API exists is the deployment, which declares it
-     * for its tenant before any client exists, as a deployment that declares no client has to. It comes after
-     * what the claims providers serve and before what the clients registered.
-     */
     #[Test]
     public function theScopesTheDeploymentDeclaresAreOfferedBeforeAnyClientRegistersThem(): void
     {
@@ -200,10 +173,6 @@ final class OfferedScopesTest extends TestCase
         );
     }
 
-    /**
-     * A scope the deployment declares and a client registers is one scope of the tenant, offered once, where
-     * the declaration names it.
-     */
     #[Test]
     public function aScopeTheDeploymentDeclaresAndAClientRegistersIsOfferedOnce(): void
     {
@@ -226,9 +195,7 @@ final class OfferedScopesTest extends TestCase
     }
 
     /**
-     * OIDC Core §11: "offline_access" is the one scope a registration does not put in the document. A
-     * client registered for it on a deployment whose grants cannot make it good would have the document
-     * promise a refresh token the token endpoint would refuse.
+     * OIDC Core §11
      */
     #[Test]
     public function aClientRegisteredForOfflineAccessDoesNotAnnounceItWhereNoGrantMakesItGood(): void
@@ -260,8 +227,6 @@ final class OfferedScopesTest extends TestCase
     }
 
     /**
-     * What the deployment declares for the tenant of the fixtures: none, unless a test names some.
-     *
      * @param list<string> $scopes
      */
     private static function declared(array $scopes = []): ConfigurationDeclaredScopes
@@ -269,9 +234,6 @@ final class OfferedScopesTest extends TestCase
         return new ConfigurationDeclaredScopes(Fixtures::tenant()->slug, $scopes);
     }
 
-    /**
-     * Two scopes an API of the deployment is protected by, which no claims provider serves.
-     */
     private static function billing(): Scopes
     {
         return new Scopes([Scope::openid(), new Scope('billing.read'), new Scope('billing.write')]);

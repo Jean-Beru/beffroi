@@ -151,7 +151,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: a valid exchange consumes the code.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function aValidExchangeConsumesTheCode(): void
@@ -169,7 +169,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.3, §4.1.4: the tokens are issued for the client, the session and the scopes of the code.
+     * RFC 6749 §4.1.3, §4.1.4
      */
     #[Test]
     public function aValidExchangeYieldsTheAuthorizationOfTheCode(): void
@@ -191,8 +191,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2.2: a request that names no resource takes the resources of the authorization it
-     * spends, and the access token is addressed to them.
+     * RFC 8707 §2.2
      */
     #[Test]
     public function aValidExchangeAddressesTheTokensToTheResourcesOfTheCode(): void
@@ -208,8 +207,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: a request that named no resource asks for nothing beyond the provider itself, and
-     * its token is addressed to the client that asked for it.
+     * RFC 8707 §2
      */
     #[Test]
     public function aCodeThatNamesNoResourceYieldsATokenAddressedToItsClient(): void
@@ -225,7 +223,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2.2: the access token is issued for the subset of resources the request named.
+     * RFC 8707 §2.2
      */
     #[Test]
     public function aTokenRequestNarrowsTheResourcesOfTheCode(): void
@@ -245,8 +243,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2.2: whatever subset the access token was narrowed to, the refresh token beside it is
-     * bound to the full original grant.
+     * RFC 8707 §2.2
      */
     #[Test]
     public function theRefreshTokenStaysBoundToEveryResourceOfTheGrant(): void
@@ -267,8 +264,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: a request that asks for no detail takes the details the code carries, which is what the
-     * user agreed to.
+     * RFC 9396 §7
      */
     #[Test]
     public function aTokenRequestThatAsksForNoDetailTakesTheDetailsOfTheCode(): void
@@ -285,7 +281,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: the access token carries the subset of details the request asked for.
+     * RFC 9396 §7
      */
     #[Test]
     public function aTokenRequestNarrowsTheDetailsOfTheCode(): void
@@ -308,8 +304,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: whatever subset the access token was narrowed to, the refresh token beside it is bound
-     * to the whole of what the user agreed to.
+     * RFC 9396 §7
      */
     #[Test]
     public function theRefreshTokenStaysBoundToEveryDetailOfTheGrant(): void
@@ -334,8 +329,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: a token request narrows the details of the authorization it spends and never widens
-     * them, whether the authorization carries others or none at all.
+     * RFC 9396 §7
      */
     #[Test]
     #[DataProvider('provideDetailsTheCodeDoesNotCarry')]
@@ -371,8 +365,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2.2: a token request narrows the resources of the authorization it spends and never
-     * widens them, whether the authorization carries others or none at all.
+     * RFC 8707 §2.2
      *
      * @param list<string>|null $granted
      */
@@ -406,8 +399,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: the value is an absolute URI without a fragment, at the token endpoint as at the
-     * authorization endpoint.
+     * RFC 8707 §2
      */
     #[Test]
     public function itRefusesAResourceThatIsNotAnAbsoluteUri(): void
@@ -424,8 +416,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 7636 §4.6, OIDC Core §3.1.3.3: a valid exchange yields the access token and the ID token with
-     * the nonce of the request.
+     * RFC 7636 §4.6, OIDC Core §3.1.3.3
      */
     #[Test]
     public function aValidExchangeYieldsTheAccessTokenAndTheIdToken(): void
@@ -442,8 +433,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.5, §9: a confidential client registered for the refresh_token grant gets a refresh
-     * token in a new family descending from the code.
+     * Architecture §4.5, §9
      */
     #[Test]
     public function aConfidentialClientGetsARefreshTokenInANewFamilyDescendingFromTheCode(): void
@@ -465,7 +455,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.1, OIDC Core §3.1.3.3: the response carries every token issued.
+     * RFC 6749 §5.1, OIDC Core §3.1.3.3
      */
     #[Test]
     public function theResponseCarriesEveryTokenIssued(): void
@@ -508,7 +498,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.5: a public client gets no refresh token without "offline_access" (OIDC Core §11).
+     * Architecture §4.5, OIDC Core §11
      */
     #[Test]
     public function aPublicClientGetsNoRefreshTokenWithoutOfflineAccess(): void
@@ -529,7 +519,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.5: a public client registered for the grant gets a refresh token with "offline_access".
+     * Architecture §4.5
      */
     #[Test]
     public function aPublicClientGetsARefreshTokenWithOfflineAccess(): void
@@ -550,7 +540,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.5: a public client not registered for the grant never gets a refresh token.
+     * Architecture §4.5
      */
     #[Test]
     public function aPublicClientNotRegisteredForTheGrantGetsNoRefreshToken(): void
@@ -570,8 +560,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * Architecture §9: the refresh token without "offline_access" is a choice of the tenant for its
-     * confidential clients, on by default.
+     * Architecture §9
      */
     #[Test]
     public function aConfidentialClientGetsARefreshTokenWithoutOfflineAccessByDefault(): void
@@ -587,7 +576,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * Architecture §9: turned off, "offline_access" is the only way.
+     * Architecture §9
      */
     #[Test]
     public function aConfidentialClientGetsNoRefreshTokenWithoutOfflineAccessWhenTheTenantSaysSo(): void
@@ -603,9 +592,6 @@ final class AuthorizationCodeGrantTest extends TestCase
         static::assertNull($issued->refreshToken);
     }
 
-    /**
-     * A client not registered for refresh_token never gets one, offline_access or not.
-     */
     #[Test]
     public function aClientNotRegisteredForTheGrantGetsNoRefreshTokenEvenWithOfflineAccess(): void
     {
@@ -633,8 +619,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.3: "code" and "redirect_uri" are required. Whether "code_verifier" is depends on the
-     * code (RFC 7636 §4.5, RFC 9700 §4.8.2), so it is judged once the code is found.
+     * RFC 6749 §4.1.3
      */
     #[Test]
     #[DataProvider('provideRequiredParameters')]
@@ -653,9 +638,6 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->grant->grant(new AuthenticatedClient($this->client), RequestParameters::of($parameters), $this->context);
     }
 
-    /**
-     * Without a required parameter nothing is looked up, so nothing is consumed.
-     */
     #[Test]
     #[DataProvider('provideRequiredParameters')]
     public function aRequestWithoutARequiredParameterConsumesNothing(string $missing): void
@@ -683,8 +665,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 7636 §4.1: code-verifier = 43*128unreserved; anything else is a malformed request, not a
-     * grant to try.
+     * RFC 7636 §4.1
      */
     #[Test]
     #[DataProvider('provideMalformedVerifiers')]
@@ -728,7 +709,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: an unknown code is "invalid_grant", with nothing to tell it from any other failure.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function itRefusesAnUnknownCode(): void
@@ -759,7 +740,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: a code presented twice is denied.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function itRefusesAReplayedCode(): void
@@ -777,8 +758,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: every token issued from a replayed code is revoked, the successors of a rotation
-     * included; one already revoked keeps its date.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function aReplayedCodeRevokesTheTokensIssuedFromIt(): void
@@ -801,7 +781,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: the stored access tokens of the grant go with it; one of another grant stays.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function aReplayedCodeRevokesTheStoredAccessTokensOfItsGrant(): void
@@ -821,8 +801,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: the grant itself is revoked, which is what the provider's own UserInfo reads to
-     * refuse the access tokens issued from the code; a third presentation keeps the first date.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function aReplayedCodeRevokesTheGrant(): void
@@ -843,9 +822,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.3.7 (issue #836): the key the ID token is encrypted to is read before the code is
-     * consumed, so keys the client cannot serve right now leave the code as it was, with nothing issued
-     * from it.
+     * OIDC Core §3.1.3.7
      */
     #[Test]
     public function aCodeIsLeftUnspentWhileTheKeysOfItsClientCannotBeRead(): void
@@ -868,8 +845,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.3.7 (issue #836): the same request is served once the keys of the client can be read
-     * again, the code it presented being the one it was.
+     * OIDC Core §3.1.3.7
      */
     #[Test]
     public function aCodeLeftUnspentIsExchangedOnceTheKeysOfItsClientCanBeRead(): void
@@ -891,8 +867,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: a code presented already is a replay whatever its client publishes. Nothing is read
-     * for it, so keys that cannot be read do not keep the grant from being revoked.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function aReplayedCodeRevokesTheGrantWhateverTheKeysOfItsClient(): void
@@ -910,8 +885,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.5 (issue #870): the keys of the tenant the tokens are signed with are opened before the
-     * code is consumed, so a KMS that does not answer leaves the code as it was, with nothing issued from it.
+     * Architecture §4.5
      */
     #[Test]
     public function aCodeIsLeftUnspentWhileTheKmsDoesNotAnswer(): void
@@ -934,8 +908,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2 (issue #870): the same request is served once the KMS answers again, the code it
-     * presented being the one it was, and nothing takes it for a replay.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function aCodeLeftUnspentIsExchangedOnceTheKmsAnswers(): void
@@ -957,8 +930,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: a code presented already is a replay whatever the KMS answers. Nothing is opened for
-     * it, so a KMS that does not answer does not keep the grant from being revoked.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function aReplayedCodeRevokesTheGrantWhateverTheKms(): void
@@ -976,9 +948,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.5 (issue #877): the session the code descends from is read before the code is consumed,
-     * so a store that cannot open it, its columns sealed under a data key the KMS does not open, leaves the
-     * code as it was, with nothing issued from it.
+     * Architecture §4.5
      */
     #[Test]
     public function aCodeIsLeftUnspentWhileItsSessionCannotBeOpened(): void
@@ -1002,8 +972,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2 (issue #877): the same request is served once the session can be opened, the code it
-     * presented being the one it was, and nothing takes it for a replay.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function aCodeLeftUnspentIsExchangedOnceItsSessionOpens(): void
@@ -1026,9 +995,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: a code presented already is a replay whatever the store of its session answers. Nothing
-     * of the session is read before the grant is revoked, so a session that cannot be opened does not keep the
-     * grant from being revoked.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function aReplayedCodeRevokesTheGrantWhateverTheStoreOfItsSession(): void
@@ -1050,9 +1017,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2 (issue #884): a code presented already is refused as a replay whatever the store of its
-     * session answers. The person the replay is announced for is read where the store of sessions keeps it in the
-     * clear, so a session that cannot be opened is not an outage met after the grant was revoked.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function aReplayIsRefusedAsSuchWhileItsSessionCannotBeOpened(): void
@@ -1070,9 +1035,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2 (issue #884): the replay is announced with what it revoked and the person the code was issued
-     * in the name of, whatever the store of its session answers: the journal keeps the act whole, and the next
-     * presentation of the code, finding everything revoked already, is not the only one to tell it.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function aReplayIsAnnouncedWithWhatWasRevokedWhileItsSessionCannotBeOpened(): void
@@ -1100,9 +1063,6 @@ final class AuthorizationCodeGrantTest extends TestCase
         static::assertSame([$issued->tokenHash], $replays[0]->revokedTokenHashes);
     }
 
-    /**
-     * The detection is announced, whichever client presents the code the second time.
-     */
     #[Test]
     public function aReplayIsAnnouncedWithWhatWasRevoked(): void
     {
@@ -1149,8 +1109,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.4: the first presentation consumes the code, valid or not, so that a wrong
-     * verifier cannot be corrected on a second try.
+     * Architecture §4.4
      */
     #[Test]
     public function aFailedAttemptConsumesTheCode(): void
@@ -1185,7 +1144,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.3: the code was issued to the authenticated client.
+     * RFC 6749 §4.1.3
      */
     #[Test]
     public function itRefusesACodeIssuedToAnotherClient(): void
@@ -1215,7 +1174,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.4: sixty seconds, the last one included.
+     * Architecture §4.4
      */
     #[Test]
     public function itExchangesACodeUntilItsLastSecond(): void
@@ -1232,7 +1191,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.4: sixty seconds, the sixtieth excluded.
+     * Architecture §4.4
      */
     #[Test]
     public function itRefusesAnExpiredCode(): void
@@ -1250,8 +1209,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.3: "redirect_uri" is identical to the one of the authorization request; a
-     * registered URI that is not that one does not do.
+     * RFC 6749 §4.1.3
      */
     #[Test]
     public function itRefusesAnotherRedirectUri(): void
@@ -1268,8 +1226,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 7636 §4.5, §4.6: a code issued with a challenge is exchanged with the verifier, whatever the
-     * client is registered with.
+     * RFC 7636 §4.5, §4.6
      */
     #[Test]
     public function itRefusesACodeIssuedWithAChallengeWithoutACodeVerifier(): void
@@ -1287,9 +1244,6 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->grant->grant(new AuthenticatedClient($this->client), RequestParameters::of($parameters), $this->context);
     }
 
-    /**
-     * The code was looked up, so it is consumed: a verifier cannot be tried after a first attempt without one.
-     */
     #[Test]
     public function aCodeIssuedWithAChallengePresentedWithoutAVerifierIsConsumed(): void
     {
@@ -1306,8 +1260,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * Decision 0008: a client registered without the PKCE requirement gets a code without a challenge
-     * when it sent none, and exchanges it without a verifier.
+     * Decision 0008
      */
     #[Test]
     public function aCodeIssuedWithoutAChallengeIsExchangedWithoutAVerifier(): void
@@ -1326,9 +1279,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 9700 §4.8.2: a code_verifier is accepted only if a code_challenge was present in the
-     * authorization request; otherwise an attacker who stripped the challenge would be exchanging a
-     * code the client never bound.
+     * RFC 9700 §4.8.2
      */
     #[Test]
     public function itRefusesACodeVerifierForACodeIssuedWithoutAChallenge(): void
@@ -1346,7 +1297,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * RFC 7636 §4.6: the verifier must hash to the challenge.
+     * RFC 7636 §4.6
      */
     #[Test]
     public function itRefusesAWrongCodeVerifier(): void
@@ -1362,10 +1313,6 @@ final class AuthorizationCodeGrantTest extends TestCase
         $this->grant->grant(new AuthenticatedClient($this->client), $this->request(verifier: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXl'), $this->context);
     }
 
-    /**
-     * A code binds a session; a session that ended between the authorization and the exchange, by a
-     * logout in another tab for instance, yields no token.
-     */
     #[Test]
     public function itRefusesACodeWhoseSessionEnded(): void
     {
@@ -1399,8 +1346,6 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * A refused exchange issues nothing and announces nothing.
-     *
      * @param callable(self): RequestParameters $request
      */
     #[Test]
@@ -1437,7 +1382,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: the lifetime of the family is the tenant's, and caps the token.
+     * Architecture §4.6
      */
     #[Test]
     public function theFamilyLifetimeIsConfigurable(): void
@@ -1503,7 +1448,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * @param string|list<string>|null $resource what the request asks its access token to be addressed to (RFC 8707 §2.2)
+     * @param string|list<string>|null $resource RFC 8707 §2.2
      *
      * @return array<string, string|list<string>>
      */
@@ -1531,7 +1476,7 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
-     * @param string|list<string>|null $resource what the request asks its access token to be addressed to (RFC 8707 §2.2)
+     * @param string|list<string>|null $resource RFC 8707 §2.2
      */
     private function request(
         string $code = 'the-code',
@@ -1543,10 +1488,6 @@ final class AuthorizationCodeGrantTest extends TestCase
         return RequestParameters::of($this->parameters($code, $redirectUri, $verifier, $resource, $authorizationDetails));
     }
 
-    /**
-     * The first presentation of the code, made on a worker other than the one that serves the next: the code was
-     * consumed there, and nothing that worker opened is open here.
-     */
     private function presentedOnAnotherWorker(AuthorizationCode $code): void
     {
         $this->codes->consume($code, $this->clock->now());
@@ -1561,10 +1502,6 @@ final class AuthorizationCodeGrantTest extends TestCase
         }
     }
 
-    /**
-     * The first exchange of "the-code", then the refresh token rotated and swept meanwhile, as if the
-     * client had refreshed once.
-     */
     private function firstExchangeThenARotation(): RefreshToken
     {
         $first = $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
@@ -1584,10 +1521,6 @@ final class AuthorizationCodeGrantTest extends TestCase
         return $successor;
     }
 
-    /**
-     * What a grant of a browser flow yields, which is the only kind of authorization these grants produce
-     * and the only kind that carries what a user agreed to (RFC 9396 §2).
-     */
     private static function userAuthorization(IssuedTokens $issued): UserAuthorizationInterface
     {
         $authorization = $issued->authorization;

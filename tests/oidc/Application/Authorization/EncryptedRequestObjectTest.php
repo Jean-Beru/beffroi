@@ -25,12 +25,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Issue #189, RFC 9101 §6.1 and OIDC Core §6.1: the request object a client encrypted to a key the
- * tenant publishes. The provider opens the JWE with that key, then reads what comes out exactly as it
- * reads an object that arrived in clear, and what the object says of the request is the request.
- *
- * The keys of the tenant are the ones its JWK Set publishes, so an object encrypted to a key that has
- * retired opens with nothing, and the refusal is the refusal of an object, never a redirection.
+ * RFC 9101 §6.1, OIDC Core §6.1
  */
 final class EncryptedRequestObjectTest extends TestCase
 {
@@ -54,10 +49,6 @@ final class EncryptedRequestObjectTest extends TestCase
         $this->resolver = RequestObjects::resolver($clients, $this->clock, decrypter: new JwtLibraryJweDecrypter($keys->keys, Algorithms::encryption()));
     }
 
-    /**
-     * The acceptance of issue #189: an object encrypted to the published key is served exactly as the
-     * same object signed and in clear, its parameters being the request.
-     */
     #[Test]
     public function anObjectEncryptedToThePublishedKeyIsReadLikeOneInClear(): void
     {
@@ -93,8 +84,7 @@ final class EncryptedRequestObjectTest extends TestCase
     }
 
     /**
-     * RFC 9101 §6.2: the encryption says who may read the request and never who wrote it, so the
-     * signature inside the JWE is verified against the keys the client publishes as any other is.
+     * RFC 9101 §6.2
      */
     #[Test]
     public function theSignatureInsideTheJweIsVerifiedAgainstTheKeysOfTheClient(): void
@@ -121,8 +111,7 @@ final class EncryptedRequestObjectTest extends TestCase
     }
 
     /**
-     * OIDC Registration §2, the named exception of decision 0006: the client that registered "none"
-     * encrypts its claims themselves, and they are read as the unsigned object they are.
+     * OIDC Registration §2, decision 0006
      */
     #[Test]
     public function theClaimsOfTheClientThatRegisteredNoSignatureAreReadFromTheJwe(): void
@@ -148,8 +137,7 @@ final class EncryptedRequestObjectTest extends TestCase
     }
 
     /**
-     * RFC 8259 §2: whitespace around a JSON object is insignificant, and a claims set padded with it is
-     * read as the claims set it is rather than taken for a token.
+     * RFC 8259 §2
      */
     #[Test]
     public function theClaimsAreReadWhateverWhitespaceSurroundsThem(): void
@@ -173,8 +161,7 @@ final class EncryptedRequestObjectTest extends TestCase
     }
 
     /**
-     * Decision 0006: encrypting claims to the provider proves nothing about who wrote them, so a client
-     * that registered an algorithm is refused them exactly as it is refused an unsigned object in clear.
+     * Decision 0006
      */
     #[Test]
     public function theClaimsOfAClientThatRegisteredAnAlgorithmAreRefused(): void
@@ -197,8 +184,7 @@ final class EncryptedRequestObjectTest extends TestCase
     }
 
     /**
-     * Architecture §3.3: an encryption key is openable as long as it is published and no longer; the
-     * same object that was read a moment ago is refused once the key it names has retired.
+     * Architecture §3.3
      */
     #[Test]
     public function anObjectEncryptedToAKeyThatHasRetiredIsRefused(): void
@@ -223,8 +209,7 @@ final class EncryptedRequestObjectTest extends TestCase
     }
 
     /**
-     * RFC 7516 §4.1.6: the key is the one the header names, among those published for encryption; an
-     * object encrypted to a key the tenant never published opens with nothing.
+     * RFC 7516 §4.1.6
      */
     #[Test]
     public function anObjectEncryptedToAKeyTheTenantNeverPublishedIsRefused(): void

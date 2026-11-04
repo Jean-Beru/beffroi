@@ -11,9 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 6749 §3.1, read the one way every endpoint reads it: a parameter without a value is omitted, a
- * repeated or nested one is refused rather than reduced to one, and whether a failure may be redirected
- * back to the client is said once, by the stage that takes the parameters up.
+ * RFC 6749 §3.1
  */
 final class RequestParametersTest extends TestCase
 {
@@ -42,7 +40,7 @@ final class RequestParametersTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.1: a parameter sent without a value is a parameter that was not sent.
+     * RFC 6749 §3.1
      */
     #[Test]
     #[DataProvider('provideOmittedParameters')]
@@ -100,8 +98,7 @@ final class RequestParametersTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.1: a parameter the specification says is single is refused when it is sent twice,
-     * whichever of the two ways it is read.
+     * RFC 6749 §3.1
      *
      * @param callable(RequestParameters): mixed $read
      */
@@ -130,8 +127,7 @@ final class RequestParametersTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2.1: the first stage of an authorization request knows no redirect URI yet, and the
-     * endpoints that answer in JSON never redirect at all.
+     * RFC 6749 §4.1.2.1
      */
     #[Test]
     public function aFailureIsNotRedirectableByDefault(): void
@@ -150,8 +146,7 @@ final class RequestParametersTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2.1: the stage that answers to the client says so once, and every rule it reads
-     * with refuses the way that stage refuses.
+     * RFC 6749 §4.1.2.1
      */
     #[Test]
     public function aFailureOfAStageThatAnswersToTheClientIsRedirectable(): void
@@ -170,8 +165,7 @@ final class RequestParametersTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.1: where an answer may go is read off the client, so a request that names none is
-     * refused on the spot whatever the stage that reads it.
+     * RFC 6749 §4.1.1
      */
     #[Test]
     public function aMissingClientIdIsNeverRedirectable(): void
@@ -203,8 +197,7 @@ final class RequestParametersTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: the one kind of parameter a specification allows to be sent several times, read as
-     * the list it is, in the order it came and without repeats.
+     * RFC 8707 §2
      *
      * @param list<string> $expected
      */
@@ -266,7 +259,7 @@ final class RequestParametersTest extends TestCase
     }
 
     /**
-     * RFC 6749 appendix A.5: state = 1*VSCHAR.
+     * RFC 6749 appendix A.5
      */
     #[Test]
     public function aStateThatIsNotPrintableAsciiIsRefused(): void
@@ -313,7 +306,7 @@ final class RequestParametersTest extends TestCase
     }
 
     /**
-     * RFC 7515 §7.1, OIDC Core §2: three segments, none of them empty.
+     * RFC 7515 §7.1, OIDC Core §2
      */
     #[Test]
     public function aValueThatIsNotACompactJwsIsRefused(): void
@@ -332,8 +325,7 @@ final class RequestParametersTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.2.1 "ui_locales": space-separated language tags, most preferred first, kept once
-     * each.
+     * OIDC Core §3.1.2.1
      */
     #[Test]
     public function itReadsTheLanguageTagsInTheOrderTheyWereAskedFor(): void
@@ -364,7 +356,7 @@ final class RequestParametersTest extends TestCase
     }
 
     /**
-     * @return array<string, mixed> what a client sent: one parameter with a value, one empty, one twice
+     * @return array<string, mixed>
      */
     private static function sent(): array
     {

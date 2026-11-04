@@ -19,14 +19,11 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The third parties declared in the configuration (architecture §5.1), validated at boot: a tenant that
- * declares an issuer it cannot read learns it when the deployment starts.
+ * Architecture §5.1
  */
 final class ConfigurationTrustedIssuersTest extends TestCase
 {
     /**
-     * The public key of the issuer, as the tenant puts it in its configuration.
-     *
      * @var array<string, mixed>
      */
     private const array JWKS = [
@@ -58,7 +55,7 @@ final class ConfigurationTrustedIssuersTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: what the tenant declared is what the issuer is, read as it is written.
+     * RFC 7523 §3
      */
     #[Test]
     public function aDeclaredIssuerIsReadAsItIsWritten(): void
@@ -82,8 +79,7 @@ final class ConfigurationTrustedIssuersTest extends TestCase
     }
 
     /**
-     * RFC 7517 §5: an issuer that publishes its keys behind a URL declares that URL instead of the set, which
-     * is what an issuer that rotates its keys does; nothing is read at boot.
+     * RFC 7517 §5
      */
     #[Test]
     public function anIssuerMayPublishItsKeysBehindAUrl(): void
@@ -116,10 +112,6 @@ final class ConfigurationTrustedIssuersTest extends TestCase
         static::assertNull($issuers->find($this->tenant, 'https://somebody-else.example'));
     }
 
-    /**
-     * An issuer one tenant trusts is unknown to another, which is what keeps one deployment's trust from
-     * being another's.
-     */
     #[Test]
     public function anIssuerOfAnotherTenantIsUnknownHere(): void
     {
@@ -281,8 +273,6 @@ final class ConfigurationTrustedIssuersTest extends TestCase
     }
 
     /**
-     * The declaration of the issuer but for where its keys are, which each case names itself.
-     *
      * @return array<string, mixed>
      */
     private static function withoutKeys(): array

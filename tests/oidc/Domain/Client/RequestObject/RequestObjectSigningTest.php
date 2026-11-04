@@ -15,13 +15,10 @@ use PHPUnit\Framework\TestCase;
 
 final class RequestObjectSigningTest extends TestCase
 {
-    /**
-     * The algorithms the provider is wired with, as the discovery document announces them.
-     */
     private const array WIRED = ['RS256', 'PS256', 'ES256', 'EdDSA'];
 
     /**
-     * OIDC Registration §2: what each registration accepts of the "alg" an object carries.
+     * OIDC Registration §2
      */
     #[Test]
     #[DataProvider('provideRegistrations')]
@@ -49,8 +46,7 @@ final class RequestObjectSigningTest extends TestCase
     }
 
     /**
-     * Decision 0006: an algorithm a deployment stopped wiring stops verifying the objects of the client
-     * that registered it, without the registration being touched.
+     * Decision 0006
      */
     #[Test]
     public function anAlgorithmNothingVerifiesAnyMoreIsRefusedForTheClientThatRegisteredIt(): void
@@ -63,8 +59,7 @@ final class RequestObjectSigningTest extends TestCase
     }
 
     /**
-     * OIDC Registration §2: what the discovery document announces "none" for, and what a registration
-     * naming an algorithm needs the client to publish.
+     * OIDC Registration §2
      */
     #[Test]
     #[DataProvider('provideRegistrationShapes')]

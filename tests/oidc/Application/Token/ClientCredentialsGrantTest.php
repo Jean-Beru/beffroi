@@ -74,8 +74,7 @@ final class ClientCredentialsGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4: the authorization is the client's own, with nobody behind it, and the access token is
-     * addressed to the resource the request named (RFC 8707 §2).
+     * RFC 6749 §4.4, RFC 8707 §2
      */
     #[Test]
     public function itAuthorizesTheClientForItselfAndForTheResourceAsked(): void
@@ -95,8 +94,7 @@ final class ClientCredentialsGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4.3: the response carries an access token and nothing else, whatever the client asked
-     * for; there is nobody to describe in an ID token and nothing to renew with a refresh token.
+     * RFC 6749 §4.4.3
      */
     #[Test]
     public function theResponseCarriesNoIdTokenAndNoRefreshToken(): void
@@ -113,8 +111,7 @@ final class ClientCredentialsGrantTest extends TestCase
     }
 
     /**
-     * OIDC Core §2: "openid" asks for an authentication, and this grant authenticates nobody. The scope is
-     * refused rather than dropped from a response that would then look like an authentication.
+     * OIDC Core §2
      */
     #[Test]
     public function itRefusesTheOpenidScope(): void
@@ -135,7 +132,7 @@ final class ClientCredentialsGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4.2, §5.2: what the client did not register, it is not granted.
+     * RFC 6749 §4.4.2, §5.2
      */
     #[Test]
     public function itRefusesAScopeTheClientDidNotRegister(): void
@@ -149,7 +146,7 @@ final class ClientCredentialsGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.3: a scope parameter is a space-separated list of scope tokens, wherever one is read.
+     * RFC 6749 §3.3
      */
     #[Test]
     public function itRefusesAScopeThatIsNotAListOfScopeTokens(): void
@@ -163,8 +160,7 @@ final class ClientCredentialsGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: the scope is optional in §4.4.2 and asked for here, for the reason the resource is,
-     * so a request that names none is missing a parameter rather than granted everything.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function itRefusesARequestThatNamesNoScope(): void
@@ -183,9 +179,7 @@ final class ClientCredentialsGrantTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: a resource that is missing is as invalid as one that is unknown. A token addressed to
-     * the client that asked for it is a token no resource server accepts, and this grant exists to reach
-     * one.
+     * RFC 8707 §2
      */
     #[Test]
     public function itRefusesARequestThatNamesNoResource(): void
@@ -205,7 +199,7 @@ final class ClientCredentialsGrantTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2.1: what a client may ask a token for is what it registered.
+     * RFC 8707 §2.1
      *
      * @param string|list<string> $resource
      */
@@ -230,9 +224,6 @@ final class ClientCredentialsGrantTest extends TestCase
         yield 'not an absolute URI' => ['/calendar'];
     }
 
-    /**
-     * The event of a response says what left; there is no session to name, nobody having signed in.
-     */
     #[Test]
     public function theTokensAreAnnouncedWithoutASession(): void
     {

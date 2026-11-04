@@ -13,14 +13,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * OIDC Core §4: where a browser goes when this provider begins a login at a client, and what the
- * redirection carries.
+ * OIDC Core §4
  */
 final class ThirdPartyInitiatedLoginTest extends TestCase
 {
     /**
-     * OIDC Core §4: "iss" is what tells the client which provider to have its user authenticate against,
-     * and it is the one member the redirection always carries.
+     * OIDC Core §4
      */
     #[Test]
     public function itSendsTheBrowserToTheUriTheClientRegisteredNamingThisProvider(): void
@@ -35,10 +33,6 @@ final class ThirdPartyInitiatedLoginTest extends TestCase
         static::assertSame('https://rp.example/start?iss=https%3A%2F%2Fid.acme.example', $login->location());
     }
 
-    /**
-     * A browser that holds no session says nothing of whom to sign in, and a caller that named no landing
-     * page asks for none: the redirection is the issuer and nothing else.
-     */
     #[Test]
     public function aLoginNobodyIsSignedInForCarriesTheIssuerAlone(): void
     {
@@ -53,8 +47,7 @@ final class ThirdPartyInitiatedLoginTest extends TestCase
     }
 
     /**
-     * OIDC Core §4 and §8: the hint names the user as that client sees them, so a client assigned a
-     * pairwise identifier is hinted with that one and never with the identifier the core keeps.
+     * OIDC Core §4, §8
      */
     #[Test]
     public function theHintNamesTheUserAsThatClientSeesThem(): void
@@ -71,9 +64,7 @@ final class ThirdPartyInitiatedLoginTest extends TestCase
     }
 
     /**
-     * OIDC Core §4: where the client is asked to land the user once it has signed them in. It is an
-     * object the client registered and never a string of a request, which is what keeps this route from
-     * being a redirector with a landing page of the caller's choosing.
+     * OIDC Core §4
      */
     #[Test]
     public function theLandingPageIsOneTheClientRegistered(): void
@@ -91,8 +82,7 @@ final class ThirdPartyInitiatedLoginTest extends TestCase
     }
 
     /**
-     * RFC 3986 §2.1 and §3.4: the query the client registered is kept, and what §4 adds is added to it.
-     * A client that registered a URI with a query of its own is sent to the URI it registered.
+     * RFC 3986 §2.1, §3.4
      */
     #[Test]
     public function aRegisteredQueryIsKeptAndTheMembersAreAddedToIt(): void

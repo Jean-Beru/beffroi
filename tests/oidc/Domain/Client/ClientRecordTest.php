@@ -16,7 +16,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 7591 §3.2.1: what the provider keeps of a client it registered itself.
+ * RFC 7591 §3.2.1
  */
 final class ClientRecordTest extends TestCase
 {
@@ -61,8 +61,7 @@ final class ClientRecordTest extends TestCase
     }
 
     /**
-     * RFC 7591 §3.2.1: "client_secret_expires_at" is about a secret, so a client that holds none has
-     * nothing that expires.
+     * RFC 7591 §3.2.1
      */
     #[Test]
     public function aRecordWithoutASecretHasNothingThatExpires(): void
@@ -123,7 +122,7 @@ final class ClientRecordTest extends TestCase
     }
 
     /**
-     * RFC 7592 §2.3: the token is kept as the digest of its value, never as the value.
+     * RFC 7592 §2.3
      */
     #[Test]
     public function theRegistrationAccessTokenIsKeptAsItsDigest(): void
@@ -137,8 +136,7 @@ final class ClientRecordTest extends TestCase
     }
 
     /**
-     * RFC 7592 §2.3: a token drawn for another client is a token this one does not read with, which is the
-     * same answer as a value nobody was ever handed.
+     * RFC 7592 §2.3
      */
     #[Test]
     public function aRecordIsReadWithTheTokenItWasHanded(): void
@@ -151,8 +149,7 @@ final class ClientRecordTest extends TestCase
     }
 
     /**
-     * RFC 7592 §2.2: a replacement is whole and never a patch, so a member the client left out is a member
-     * it no longer registers.
+     * RFC 7592 §2.2
      */
     #[Test]
     public function aReplacementIsTheWholeRegistration(): void
@@ -194,7 +191,7 @@ final class ClientRecordTest extends TestCase
     }
 
     /**
-     * What the provider assigned does not change when a client replaces its own registration (RFC 7592 §2.2).
+     * RFC 7592 §2.2
      */
     #[Test]
     public function aReplacementLeavesWhatTheProviderAssigned(): void
@@ -218,9 +215,6 @@ final class ClientRecordTest extends TestCase
         static::assertEquals(Fixtures::now(), $record->issuedAt);
     }
 
-    /**
-     * The rules of a row are the rules of a replacement too: what is left has to hold together.
-     */
     #[Test]
     public function aReplacementThatLeavesNoSecretLeavesNothingThatExpires(): void
     {
@@ -245,8 +239,7 @@ final class ClientRecordTest extends TestCase
     }
 
     /**
-     * RFC 7591 §3.1.1: what a statement signed of a client is what a replacement reads in front of what the
-     * client sends (RFC 7592 §2.2), under the name of the statement where a refusal names it.
+     * RFC 7591 §3.1.1, RFC 7592 §2.2
      */
     #[Test]
     public function whatAStatementSignedIsReadInFrontOfWhatTheClientSends(): void
@@ -274,9 +267,6 @@ final class ClientRecordTest extends TestCase
         static::assertEquals([new AttestedMembers($attested)], $inFront);
     }
 
-    /**
-     * And a client no statement attested has nothing read in front of what it sends.
-     */
     #[Test]
     public function aClientNoStatementAttestedHasNothingReadInFrontOfWhatItSends(): void
     {
@@ -293,8 +283,7 @@ final class ClientRecordTest extends TestCase
     }
 
     /**
-     * Decision 0009: a client that was never used is not a client used long ago, and the two are not kept
-     * for as long.
+     * Decision 0009
      */
     #[Test]
     public function aRecordKnowsNobodyHasUsedItYet(): void
@@ -319,11 +308,6 @@ final class ClientRecordTest extends TestCase
         static::assertEquals(Fixtures::now()->modify('+1 hour'), $record->lastUsedAt);
     }
 
-    /**
-     * The two events that say a client is being used are written to a queue and read from it, so they arrive
-     * in whatever order the queue gives them: a use recorded late must not make a client look older than it
-     * is.
-     */
     #[Test]
     public function theDateOfALastUseOnlyMovesForward(): void
     {
@@ -339,7 +323,7 @@ final class ClientRecordTest extends TestCase
     }
 
     /**
-     * RFC 7592 §2.2: replacing a registration is not using the client, so it is not a use.
+     * RFC 7592 §2.2
      */
     #[Test]
     public function aReplacementIsNotAUse(): void

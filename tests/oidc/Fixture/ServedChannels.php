@@ -7,10 +7,6 @@ namespace Beffroi\Oidc\Tests\Fixture;
 use Beffroi\Oidc\Domain\EndSession\LogoutChannel;
 use Beffroi\Oidc\Port\ServedLogoutChannelsInterface;
 
-/**
- * The ways of telling a client that a session ended an integration wired: both, as the provider wires
- * since spike 4, one of them, or neither, as a deployment that tells nobody.
- */
 final readonly class ServedChannels implements ServedLogoutChannelsInterface
 {
     /**
@@ -32,7 +28,7 @@ final readonly class ServedChannels implements ServedLogoutChannelsInterface
     }
 
     /**
-     * A deployment that loads a logout URI in a frame and posts nothing (Front-Channel Logout 1.0 §3).
+     * Front-Channel Logout 1.0 §3
      */
     public static function frontChannelOnly(): self
     {

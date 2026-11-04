@@ -21,8 +21,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 7592 §2.1: a client reads itself, and what it is answered is the registration the provider holds,
- * never the credentials it was handed once.
+ * RFC 7592 §2.1
  */
 final class ClientConfigurationReaderTest extends TestCase
 {
@@ -49,10 +48,6 @@ final class ClientConfigurationReaderTest extends TestCase
         );
     }
 
-    /**
-     * The secret was answered once, at the moment the provider assigned one, and what the row keeps of it
-     * is a hash nobody reads back.
-     */
     #[Test]
     public function aClientIsNeverAnsweredItsSecretAgain(): void
     {
@@ -64,8 +59,7 @@ final class ClientConfigurationReaderTest extends TestCase
     }
 
     /**
-     * RFC 7592 §2.3 permits rotating the token on every answer and does not require it: a read writes
-     * nothing at all, and the client keeps the token it was handed.
+     * RFC 7592 §2.3
      */
     #[Test]
     public function aReadHandsOutNoNewToken(): void

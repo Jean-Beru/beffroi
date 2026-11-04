@@ -43,11 +43,6 @@ use function strtr;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\KeyManagement\Exception\RuntimeException as KeyManagementRuntimeException;
 
-/**
- * A tenant with one real active RS256 key, signing through the bridge of the core, and the verification a
- * relying party performs with web-token/jwt-library against the published JWK Set. activate() gives the
- * tenant a key of another algorithm, for a client that registered that one.
- */
 final readonly class Jwts
 {
     public TenantKey $key;
@@ -58,10 +53,6 @@ final readonly class Jwts
 
     public JoseSignatureAlgorithms $algorithms;
 
-    /**
-     * What mints the three documents a client receives, signed and, for a client that registered one,
-     * encrypted to a key it publishes.
-     */
     public ClientDocumentIssuer $documents;
 
     private InMemoryTenantKeyRepository $repository;
@@ -77,11 +68,6 @@ final readonly class Jwts
         $this->documents = $this->documentsFor();
     }
 
-    /**
-     * The document issuer, reading the keys a client publishes through the fetcher given, or through the
-     * one every other fixture uses, and opening the keys of the tenant through the signer given, or through
-     * the one of this tenant.
-     */
     public function documentsFor(?ClientJwksFetcherInterface $fetcher = null, ?SigningKeyOpenerInterface $signer = null): ClientDocumentIssuer
     {
         return new ClientDocumentIssuer(
@@ -92,10 +78,6 @@ final readonly class Jwts
         );
     }
 
-    /**
-     * What signs for the tenant behind a KMS that does not answer, in a process that has opened none of its
-     * keys: what a worker meets during an outage before its first signature.
-     */
     public function signerBehindAnOutage(): JwtLibraryJwsSigner
     {
         return new JwtLibraryJwsSigner(new SealedKeyProvider($this->repository, new OpenedKeys(new EnvelopeKeySealer(
@@ -104,9 +86,6 @@ final readonly class Jwts
         ))), $this->algorithms);
     }
 
-    /**
-     * An active key of that algorithm for the tenant, published in its JWK Set beside the others.
-     */
     public function activate(KeyAlgorithmInterface $algorithm, ?GeneratedKeyPair $pair = null): TenantKey
     {
         $pair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate($algorithm);
@@ -126,11 +105,9 @@ final readonly class Jwts
     }
 
     /**
-     * The signature against the JWK Set of the tenant, then "iss", "aud", "exp" and "iat" the way a
-     * relying party checks them (OIDC Core §3.1.3.7) at the time given. A logout token has no "exp"
-     * (RFC 8417 §2), so what must be there is said by the caller.
+     * OIDC Core §3.1.3.7
      *
-     * @param list<string> $mandatory the claims the token must carry
+     * @param list<string> $mandatory
      *
      * @return array{header: array<string, mixed>, claims: array<string, mixed>}
      */
@@ -160,9 +137,6 @@ final readonly class Jwts
         ];
     }
 
-    /**
-     * The payload as the wire carries it, before any decoding: what a JSON boolean or number looks like.
-     */
     public static function rawPayload(string $compactJws): string
     {
         [, $payload] = explode('.', $compactJws);

@@ -12,8 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 8705 §2.1.2: a registration carries exactly one of the five values, and the kind it carries is
- * what the provider compares the certificate against.
+ * RFC 8705 §2.1.2
  */
 final class CertificateIdentitiesTest extends TestCase
 {
@@ -42,7 +41,7 @@ final class CertificateIdentitiesTest extends TestCase
     }
 
     /**
-     * RFC 8705 §2.1.2 names one expected value; two of them would be two rules for one certificate.
+     * RFC 8705 §2.1.2
      */
     #[Test]
     public function twoValuesAreRefused(): void

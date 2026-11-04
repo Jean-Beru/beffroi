@@ -20,9 +20,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The rules of a requested "acr" (OIDC Core §5.5.1.1, decision 0010), asked of the request and of the session
- * and of nothing else: issue #251 moved them out of the handler so that they could be read and tested without
- * a store to ask, a clock to move or a page to reach. Nothing here names a repository.
+ * OIDC Core §5.5.1.1, Decision 0010
  */
 final class RequestedAuthenticationContextTest extends TestCase
 {
@@ -37,10 +35,6 @@ final class RequestedAuthenticationContextTest extends TestCase
         $this->session = Fixtures::session(Fixtures::user($tenant));
     }
 
-    /**
-     * A request that names no class asks for none in particular, so the credentials of the user are worth
-     * nothing to it and are not read.
-     */
     #[Test]
     public function aRequestThatNamesNoClassPutsNoneInQuestion(): void
     {
@@ -56,8 +50,7 @@ final class RequestedAuthenticationContextTest extends TestCase
     }
 
     /**
-     * Decision 0010: a class no wired login can prove is one the provider cannot assert, so nothing is in
-     * question and no credential is read for it.
+     * Decision 0010
      */
     #[Test]
     public function aClassNoWiredLoginCanProvePutsNothingInQuestion(): void
@@ -67,8 +60,7 @@ final class RequestedAuthenticationContextTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5.1.1: an essential "acr" naming only classes the provider cannot assert fails before any
-     * login, the user being able to do nothing about it on a page.
+     * OIDC Core §5.5.1.1
      */
     #[Test]
     public function anEssentialClassTheProviderCannotProveIsRefusedBeforeAnyLogin(): void
@@ -85,7 +77,7 @@ final class RequestedAuthenticationContextTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5.1.1: a voluntary request is never refused, whatever the provider can prove.
+     * OIDC Core §5.5.1.1
      */
     #[Test]
     public function aVoluntaryClassTheProviderCannotProveIsNotRefused(): void
@@ -101,8 +93,7 @@ final class RequestedAuthenticationContextTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5.1.1: an essential "acr" the session does not satisfy and no credential of the user could
-     * is a failed authentication before any page.
+     * OIDC Core §5.5.1.1
      */
     #[Test]
     public function anEssentialClassNoCredentialOfTheUserCouldMeetIsRefused(): void
@@ -119,8 +110,7 @@ final class RequestedAuthenticationContextTest extends TestCase
     }
 
     /**
-     * Decision 0010: a credential of the user would satisfy it, so the login page asks for what is missing
-     * rather than refusing.
+     * Decision 0010
      */
     #[Test]
     public function aClassACredentialOfTheUserWouldSatisfyIsAStepUp(): void
@@ -137,14 +127,6 @@ final class RequestedAuthenticationContextTest extends TestCase
         $context->assertTheUserCouldMeetIt($this->session, $stepUp);
     }
 
-    /**
-     * Issue #327: a step-up names the kinds of credential that would reach the class, and never one the
-     * floor of the tenant forbids. A password beside a key would satisfy two factors, which is why the
-     * question is asked here: the page would otherwise offer a form no login of this tenant accepts.
-     *
-     * A tenant that named no floor is the control: the same session, the same request and the same
-     * credential, and the password is offered.
-     */
     #[Test]
     public function aStepUpOffersNoKindTheFloorOfTheTenantForbids(): void
     {
@@ -175,7 +157,7 @@ final class RequestedAuthenticationContextTest extends TestCase
     }
 
     /**
-     * Decision 0010: a session that already satisfies a requested class has nothing to step up to.
+     * Decision 0010
      */
     #[Test]
     public function aSessionThatAlreadySatisfiesAClassStepsUpToNothing(): void
@@ -188,8 +170,7 @@ final class RequestedAuthenticationContextTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5.1.1: an essential "acr" still unsatisfied once the login is done is a failed
-     * authentication.
+     * OIDC Core §5.5.1.1
      */
     #[Test]
     public function anEssentialClassTheSessionDoesNotSatisfyIsRefusedAfterTheLogin(): void
@@ -206,8 +187,7 @@ final class RequestedAuthenticationContextTest extends TestCase
     }
 
     /**
-     * OIDC Core §2: the class every token of the grant will name is the requested one the session satisfies,
-     * and the one the session has when the request asked for none in particular.
+     * OIDC Core §2
      */
     #[Test]
     public function theClassOfTheGrantIsTheOneTheSessionHasWhenNoneWasAsked(): void
@@ -216,10 +196,6 @@ final class RequestedAuthenticationContextTest extends TestCase
         static::assertSame($this->session->authenticationContextClass()->value, $this->context()->classFor($this->session)->value);
     }
 
-    /**
-     * A request of a client of that tenant that asks for the two factors, judged against what the logins of
-     * the provider prove for it: what the floor of the tenant leaves of them (issue #327).
-     */
     private function contextOf(Tenant $tenant): RequestedAuthenticationContext
     {
         return RequestedAuthenticationContext::of(

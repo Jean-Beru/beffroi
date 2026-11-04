@@ -13,8 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * OIDC Discovery §3: "claims_supported" is "sub" and what the claims provider may supply, and a client
- * may ask for them by name (OIDC Core §5.5).
+ * OIDC Discovery §3, OIDC Core §5.5
  */
 final class AnnouncedClaimsTest extends TestCase
 {
@@ -33,8 +32,7 @@ final class AnnouncedClaimsTest extends TestCase
     }
 
     /**
-     * OIDC Core §2: "sub" is always a claim; it comes first whatever the integration lists, and a claim
-     * listed twice is announced once.
+     * OIDC Core §2
      */
     #[Test]
     public function subComesFirstAndOnce(): void

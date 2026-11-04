@@ -50,9 +50,7 @@ use Beffroi\Oidc\Tests\Fixture\Subjects;
 use Beffroi\Oidc\Tests\Fixture\Shapes;
 
 /**
- * Architecture §3.3: the kinds of artifact the module binds to a key of the tenant, as the rotation of the
- * core reads them to date the retirement of a key. A JWS the module issues holds back a key that signs; a
- * JWE a client may still be sending holds back a key it is encrypted to.
+ * Architecture §3.3
  */
 final class KeyBoundArtifactsTest extends TestCase
 {
@@ -109,8 +107,7 @@ final class KeyBoundArtifactsTest extends TestCase
     }
 
     /**
-     * JARM §2.1 and issue #155: the signed authorization response is a fourth kind of JWS, and it says
-     * how long it stays verifiable rather than leaving the window to the two token lifetimes.
+     * JARM §2.1
      */
     #[Test]
     public function theSignedAuthorizationResponseLivesAsLongAsItsIssuerSaysWhenASignedModeIsWired(): void
@@ -122,9 +119,6 @@ final class KeyBoundArtifactsTest extends TestCase
         static::assertEquals(new DateInterval('PT30M'), $kind->longestLifetime($this->tenant));
     }
 
-    /**
-     * A deployment that answers in "query" and "form_post" alone signs no such document.
-     */
     #[Test]
     public function theSignedAuthorizationResponseIsNotIssuedWhenNoSignedModeIsWired(): void
     {
@@ -135,10 +129,6 @@ final class KeyBoundArtifactsTest extends TestCase
         static::assertNull($kind->longestLifetime($this->tenant));
     }
 
-    /**
-     * The acceptance of issue #163: a tenant that serves JARM keeps a key published long enough for the
-     * document it signed to be verified, even when both token lifetimes are shorter than that.
-     */
     #[Test]
     public function theRetirementWindowOfATenantThatServesJarmCoversTheResponseDocument(): void
     {
@@ -176,8 +166,7 @@ final class KeyBoundArtifactsTest extends TestCase
     }
 
     /**
-     * Back-Channel Logout 1.0 §2.5 and issue #155: a logout token carries no "exp", RFC 8417 §2.2 not
-     * recommending one, so what it declares is how long its delivery may still be tried.
+     * Back-Channel Logout 1.0 §2.5, RFC 8417 §2.2
      */
     #[Test]
     public function theLogoutTokenLivesAsLongAsItsDeliveryMayBeTried(): void
@@ -190,8 +179,7 @@ final class KeyBoundArtifactsTest extends TestCase
     }
 
     /**
-     * Front-Channel Logout 1.0 §3: a deployment that loads a logout URI in a frame posts no token, and
-     * signs none.
+     * Front-Channel Logout 1.0 §3
      */
     #[Test]
     public function theLogoutTokenIsNotIssuedWhenNothingPostsOne(): void
@@ -203,11 +191,6 @@ final class KeyBoundArtifactsTest extends TestCase
         static::assertNull($kind->longestLifetime($this->tenant));
     }
 
-    /**
-     * The acceptance of issue #155: an operator who lowers both token lifetimes under the patience of the
-     * sender does not shrink the window under it, and a logout token delivered on a late retry still
-     * names a key the JWK Set publishes.
-     */
     #[Test]
     public function theRetirementWindowOfATenantThatPostsLogoutTokensCoversTheirDelivery(): void
     {
@@ -244,9 +227,6 @@ final class KeyBoundArtifactsTest extends TestCase
         );
     }
 
-    /**
-     * An opaque access token depends on no key: a tenant whose clients all receive one issues no such JWS.
-     */
     #[Test]
     public function theSelfContainedAccessTokenIsNotIssuedWhenEveryClientReceivesAnOpaqueOne(): void
     {
@@ -271,10 +251,6 @@ final class KeyBoundArtifactsTest extends TestCase
         static::assertNull($kind->longestLifetime($this->tenant));
     }
 
-    /**
-     * Issue #164: an encryption key stays openable while a client may still be sending a request object
-     * encrypted to it, which is how long the provider lets such an object stand.
-     */
     #[Test]
     public function theRequestObjectLivesAsLongAsTheProviderLetsOneStand(): void
     {
@@ -286,7 +262,7 @@ final class KeyBoundArtifactsTest extends TestCase
     }
 
     /**
-     * RFC 9126 §2: so does a request the client pushes, for as long as the endpoint says.
+     * RFC 9126 §2
      */
     #[Test]
     public function thePushedRequestLivesAsLongAsTheEndpointSays(): void
@@ -298,11 +274,6 @@ final class KeyBoundArtifactsTest extends TestCase
         static::assertEquals(new DateInterval('PT90S'), $kind->longestLifetime($this->tenant));
     }
 
-    /**
-     * The acceptance of issue #164: the two uses do not share a window. An encryption key retires on what
-     * a client may still be encrypting to it, and never on the lifetime of a token it never signed; the
-     * key that signs retires on the tokens, and never on the request objects.
-     */
     #[Test]
     public function eachUseIsHeldBackByTheArtifactsOfItsOwnUse(): void
     {

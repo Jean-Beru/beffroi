@@ -14,8 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 7009 §2.1: where a client revokes a token, and how it authenticates there. A client authenticates
- * at revocation exactly as it does at the token endpoint, including as a public client.
+ * RFC 7009 §2.1
  */
 final class AnnouncedRevocationTest extends TestCase
 {

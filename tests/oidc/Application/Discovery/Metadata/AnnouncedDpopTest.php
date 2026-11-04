@@ -12,7 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 9449 §5.1: what the provider verifies a DPoP proof with is what it is wired to verify a JWS with.
+ * RFC 9449 §5.1
  */
 final class AnnouncedDpopTest extends TestCase
 {
