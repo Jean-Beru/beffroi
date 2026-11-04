@@ -47,7 +47,7 @@ use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Token\CertificateConfirmation;
 use Beffroi\Oidc\Domain\Token\ClientAuthorization;
 use Beffroi\Oidc\Domain\Token\UserAuthorization;
-use Beffroi\Oidc\Domain\UserInfo\UserInfoErrorResponse;
+use Beffroi\Oidc\Domain\Resource\ProtectedResourceErrorResponse;
 use Beffroi\Oidc\Exception\InsufficientScopeException;
 use Beffroi\Oidc\Exception\InvalidDpopProofException;
 use Beffroi\Oidc\Exception\InvalidRequestException;
@@ -381,7 +381,7 @@ final class UserInfoHandlerTest extends TestCase
             // Then
             static::assertSame(
                 'Bearer, DPoP algs="RS256 PS256 ES256 EdDSA"',
-                UserInfoErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
+                ProtectedResourceErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
             );
         }
     }
@@ -427,7 +427,7 @@ final class UserInfoHandlerTest extends TestCase
             // Then
             static::assertSame(
                 'Bearer error="invalid_token", error_description="The access token expired."',
-                UserInfoErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
+                ProtectedResourceErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
             );
         }
     }
@@ -500,7 +500,7 @@ final class UserInfoHandlerTest extends TestCase
             static::assertSame(403, $exception->statusCode);
             static::assertSame(
                 'Bearer error="insufficient_scope", error_description="The access token was not obtained through an OpenID Connect authentication request.", scope="openid"',
-                UserInfoErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
+                ProtectedResourceErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
             );
         }
     }
@@ -888,7 +888,7 @@ final class UserInfoHandlerTest extends TestCase
             static::assertSame('DPoP', $exception->challengeScheme());
             static::assertSame(
                 'DPoP error="invalid_token", error_description="The access token is bound to a key and was presented as a bearer token (RFC 9449 section 7.1).", algs="RS256 PS256 ES256 EdDSA"',
-                UserInfoErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
+                ProtectedResourceErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
             );
         }
     }
@@ -911,7 +911,7 @@ final class UserInfoHandlerTest extends TestCase
             // Then
             static::assertSame(
                 'Bearer error="invalid_token", error_description="The access token expired."',
-                UserInfoErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
+                ProtectedResourceErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
             );
         }
     }
@@ -935,7 +935,7 @@ final class UserInfoHandlerTest extends TestCase
             // Then
             static::assertSame(
                 'DPoP error="invalid_token", error_description="The access token expired.", algs="RS256 PS256 ES256 EdDSA"',
-                UserInfoErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
+                ProtectedResourceErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
             );
         }
     }
@@ -965,7 +965,7 @@ final class UserInfoHandlerTest extends TestCase
             // Then
             static::assertSame(
                 'DPoP error="invalid_token", error_description="The access token is addressed to a resource of its own and not to this provider (RFC 8707 section 2).", algs="RS256 PS256 ES256 EdDSA"',
-                UserInfoErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
+                ProtectedResourceErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters())->challenge(),
             );
         }
     }
@@ -986,7 +986,7 @@ final class UserInfoHandlerTest extends TestCase
             static::fail('The token should have been refused.');
         } catch (InsufficientScopeException $exception) {
             // Then
-            $refusal = UserInfoErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters());
+            $refusal = ProtectedResourceErrorResponse::fromException($exception, Bindings::schemes(), Bindings::challengeParameters());
             static::assertSame(403, $refusal->statusCode);
             static::assertSame(
                 'DPoP error="insufficient_scope", error_description="The access token was not obtained through an OpenID Connect authentication request.", scope="openid", algs="RS256 PS256 ES256 EdDSA"',

@@ -54,6 +54,7 @@ const CADDY_ROOT_CERTIFICATE = '/data/beffroi/root.crt';
 const STACK_HOSTS = [
     'SERVER_NAME' => 'op.localhost',
     'MTLS_SERVER_NAME' => 'mtls.op.localhost',
+    'ADMINISTRATION_SERVER_NAME' => 'admin.op.localhost',
     'saml-sp.localhost',
     'saml-idp.localhost',
 ];

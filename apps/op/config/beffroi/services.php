@@ -8,6 +8,19 @@ use Beffroi\Core\Port\UpstreamProvidersInterface;
 use App\Saml\SamlUpstreamProviders;
 use Beffroi\Core\Application\Identity\FederatedDomains;
 use App\Command\DoctorCommand;
+use App\Administration\AdministrationGuard;
+use App\Administration\Controller\HealthController;
+use App\Http\ProtectedResourceRefusals;
+use App\Messenger\LaneBacklogs;
+use App\Statistics\InstanceStatistics;
+use Beffroi\Core\Port\CanCountActiveSessionsInterface;
+use Beffroi\Core\Port\CanCountActsInterface;
+use Beffroi\Core\Port\CanCountUsersInterface;
+use Beffroi\Oidc\Application\Administration\AdministeredJournal;
+use Beffroi\Oidc\Application\Administration\AdministeredPerson;
+use Beffroi\Oidc\Application\Administration\AdministeredSessions;
+use Beffroi\Oidc\Application\Administration\AdministratorOfARequest;
+use Beffroi\Oidc\Application\Administration\PersonsOfTheTenant;
 use App\Doctor\NotificationsLanePatience;
 use Beffroi\Oidc\Application\Secret\SecretDrawer;
 use Beffroi\Oidc\Application\Secret\UserCodeDrawer;
@@ -173,6 +186,7 @@ use App\Messenger\MessengerContract;
 use App\Messenger\NotificationRetryPolicy;
 use App\Messenger\SealedBodySerializer;
 use App\Plane\Plane;
+use App\Routing\ProviderRoutes;
 use App\Plane\PlaneRequestListener;
 use App\Routing\RouterEndpointLocator;
 use App\Scheduler\BeffroiSchedule;
@@ -788,6 +802,12 @@ return static function (ContainerConfigurator $container): void {
     $services->set(TenantFactory::class);
 
     $services->load('App\\Controller\\', '../../src/Controller/');
+    $services->load('App\\Administration\\', '../../src/Administration/');
+    $services->set(AdministrationGuard::class)->arg('$plane', '%env(enum:' . Plane::class . ':BEFFROI_PLANE)%');
+    $services->get(HealthController::class)->args([
+        '$checks' => tagged_iterator('beffroi.doctor_check'),
+    ]);
+    $services->set(ProtectedResourceRefusals::class);
     $services->load('App\\Form\\', '../../src/Form/');
     $services->set(RequestContextFactory::class);
     $services->set(FapiInteractionId::class);
@@ -848,6 +868,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(JournalInterface::class, DoctrineJournal::class);
     $services->alias(ActsOfAPersonInterface::class, DoctrineJournal::class);
     $services->alias(CanPageActsOfAPersonInterface::class, DoctrineJournal::class);
+    $services->alias(CanCountActsInterface::class, DoctrineJournal::class);
     $services->set(ActRecording::class);
     $services->set(JournalRetention::class);
     $services->set(DoctrineDisclosures::class);
@@ -950,7 +971,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(TotpProvisioningStore::class);
     $services->set(QrCode::class);
     $services->set(TwoFactorPage::class);
-    $services->set(RouterEndpointLocator::class);
+    $services->set(RouterEndpointLocator::class)->arg('$router', service(ProviderRoutes::URL_GENERATOR));
     $services->alias(EndpointLocatorInterface::class, RouterEndpointLocator::class);
     $services->alias(MutualTlsEndpointLocatorInterface::class, RouterEndpointLocator::class);
     $services->alias(ClientConfigurationEndpointInterface::class, RouterEndpointLocator::class);
@@ -963,6 +984,8 @@ return static function (ContainerConfigurator $container): void {
     $services->get(DoctorCommand::class)->args([
         '$checks' => tagged_iterator('beffroi.doctor_check'),
     ]);
+    $services->set(LaneBacklogs::class)->args([service('messenger.receiver_locator')]);
+    $services->set(InstanceStatistics::class);
     $services
         ->set(NotificationsLanePatience::class)
         ->args([
@@ -1096,6 +1119,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ClientResolver::class)->tag('doctrine.orm.entity_listener');
     $services->set(DoctrineUserRepository::class);
     $services->alias(UserRepositoryInterface::class, DoctrineUserRepository::class);
+    $services->alias(CanCountUsersInterface::class, DoctrineUserRepository::class);
     $services->set(DoctrineAtomicWrites::class);
     $services->alias(AtomicWritesInterface::class, DoctrineAtomicWrites::class);
     $services->set(DoctrineLinkedIdentityRepository::class);
@@ -1121,6 +1145,7 @@ return static function (ContainerConfigurator $container): void {
     ]);
     $services->alias(AuthenticationSessionRepositoryInterface::class, DoctrineAuthenticationSessionRepository::class);
     $services->alias(CanFindUnendedSessionsInterface::class, DoctrineAuthenticationSessionRepository::class);
+    $services->alias(CanCountActiveSessionsInterface::class, DoctrineAuthenticationSessionRepository::class);
     $services->alias(CanPageActiveSessionsInterface::class, DoctrineAuthenticationSessionRepository::class);
     $services->alias(SubjectsOfSessionsInterface::class, DoctrineAuthenticationSessionRepository::class);
     $services->set(DoctrineInteractionRepository::class)->tag('beffroi.dead_records');
@@ -1561,6 +1586,11 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ConfigurationAdministrationResource::class);
     $services->alias(AdministrationResourceInterface::class, ConfigurationAdministrationResource::class);
     $services->set(AdministrationAudience::class);
+    $services->set(AdministratorOfARequest::class);
+    $services->set(PersonsOfTheTenant::class);
+    $services->set(AdministeredPerson::class);
+    $services->set(AdministeredSessions::class);
+    $services->set(AdministeredJournal::class);
     $services->set(OfferedScopes::class);
     $services->alias(OfferedScopesInterface::class, OfferedScopes::class);
 

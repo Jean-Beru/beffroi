@@ -11,6 +11,7 @@ use function basename;
 use function class_exists;
 use function dirname;
 use function glob;
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Event\DomainEventInterface;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Tests\Fixture\Fixtures;
@@ -36,6 +37,9 @@ use Beffroi\Oidc\Domain\Event\RegisteredClientDeleted;
 use Beffroi\Oidc\Domain\Event\RefreshTokenRotated;
 use Beffroi\Oidc\Domain\Event\TokenRevoked;
 use Beffroi\Oidc\Domain\Event\TokensIssued;
+use Beffroi\Oidc\Domain\Event\PersonReadByAnAdministrator;
+use Beffroi\Oidc\Domain\Event\SessionsReadByAnAdministrator;
+use Beffroi\Oidc\Domain\Event\JournalReadByAnAdministrator;
 use Beffroi\Oidc\Domain\Event\UserInfoAnswered;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Scope\Scopes;
@@ -147,6 +151,30 @@ final class EventsLeaveTheProcessTest extends TestCase
         )];
         yield 'an introspection answered' => [new IntrospectionAnswered($now, $client->tenant, $clientId, $subject, $context)];
         yield 'a userinfo answered' => [new UserInfoAnswered($now, $client->tenant, $clientId, $subject, $context)];
+        yield 'a person read by an administrator' => [new PersonReadByAnAdministrator(
+            $now,
+            $client->tenant,
+            $clientId,
+            $subject,
+            new Subject('administrator-subject'),
+            $context,
+        )];
+        yield 'their sessions read by an administrator' => [new SessionsReadByAnAdministrator(
+            $now,
+            $client->tenant,
+            $clientId,
+            $subject,
+            new Subject('administrator-subject'),
+            $context,
+        )];
+        yield 'their journal read by an administrator' => [new JournalReadByAnAdministrator(
+            $now,
+            $client->tenant,
+            $clientId,
+            $subject,
+            new Subject('administrator-subject'),
+            $context,
+        )];
         yield 'a registered client deleted' => [new RegisteredClientDeleted($now, $client->tenant, $clientId, $context)];
         yield 'a logout token given up on' => [new LogoutTokenGivenUp(
             $now,

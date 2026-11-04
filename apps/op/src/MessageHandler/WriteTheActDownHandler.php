@@ -7,6 +7,7 @@ namespace App\MessageHandler;
 use Beffroi\Core\Application\Journal\ActRecording;
 use Beffroi\Core\Domain\Event\ConcernsAPersonInterface;
 use Beffroi\Core\Domain\Event\DomainEventInterface;
+use Beffroi\Core\Domain\Event\NamesItsAuthorInterface;
 use Beffroi\Oidc\Domain\Event\ConcernsAClientInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -27,6 +28,7 @@ final readonly class WriteTheActDownHandler
             $event->context,
             $event instanceof ConcernsAPersonInterface ? $event->subject() : null,
             $event instanceof ConcernsAClientInterface ? $event->clientId : null,
+            $event instanceof NamesItsAuthorInterface ? $event->author() : null,
         );
     }
 }

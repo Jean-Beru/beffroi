@@ -7,7 +7,7 @@ namespace Beffroi\Oidc\Tests\Domain\UserInfo;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Tests\Fixture\Bindings;
-use Beffroi\Oidc\Domain\UserInfo\UserInfoErrorResponse;
+use Beffroi\Oidc\Domain\Resource\ProtectedResourceErrorResponse;
 use Beffroi\Oidc\Domain\UserInfo\UserInfoResponse;
 use Beffroi\Oidc\Domain\Token\KeyConfirmation;
 use Beffroi\Oidc\Domain\Token\TokenResponse;
@@ -90,7 +90,7 @@ final class UserInfoResponseTest extends TestCase
     public function anInvalidTokenIsA401WithTheErrorInTheChallenge(): void
     {
         // When
-        $response = UserInfoErrorResponse::fromException(
+        $response = ProtectedResourceErrorResponse::fromException(
             new InvalidTokenException('The access token expired.'),
             Bindings::schemes(),
             Bindings::challengeParameters(),
@@ -118,7 +118,7 @@ final class UserInfoResponseTest extends TestCase
     public function aTokenRefusedAsInvalidIsChallengedUnderTheSchemeItWasPresentedUnder(): void
     {
         // When
-        $response = UserInfoErrorResponse::fromException(
+        $response = ProtectedResourceErrorResponse::fromException(
             InvalidTokenException::expired()->presentedUnder(KeyConfirmation::SCHEME),
             Bindings::schemes(),
             Bindings::challengeParameters(),
@@ -140,7 +140,7 @@ final class UserInfoResponseTest extends TestCase
     public function everyChallengeUnderDpopNamesTheAlgorithmsAProofMaySignWith(OAuth2Exception $refusal): void
     {
         // When
-        $response = UserInfoErrorResponse::fromException($refusal, Bindings::schemes(), Bindings::challengeParameters());
+        $response = ProtectedResourceErrorResponse::fromException($refusal, Bindings::schemes(), Bindings::challengeParameters());
 
         // Then
         static::assertSame(
@@ -173,7 +173,7 @@ final class UserInfoResponseTest extends TestCase
     public function anErrorIsNotCached(): void
     {
         // When
-        $response = UserInfoErrorResponse::fromException(
+        $response = ProtectedResourceErrorResponse::fromException(
             new InvalidTokenException('The access token expired.'),
             Bindings::schemes(),
             Bindings::challengeParameters(),
@@ -197,7 +197,7 @@ final class UserInfoResponseTest extends TestCase
     public function anInvalidRequestIsA400(): void
     {
         // When
-        $response = UserInfoErrorResponse::fromException(
+        $response = ProtectedResourceErrorResponse::fromException(
             new InvalidRequestException('The access token is sent by more than one method.'),
             Bindings::schemes(),
             Bindings::challengeParameters(),
@@ -215,7 +215,7 @@ final class UserInfoResponseTest extends TestCase
     public function anInsufficientScopeIsA403NamingTheScopes(): void
     {
         // When
-        $response = UserInfoErrorResponse::fromException(
+        $response = ProtectedResourceErrorResponse::fromException(
             new InsufficientScopeException(
                 'The token opens nothing here.',
                 new Scopes([
@@ -252,7 +252,7 @@ final class UserInfoResponseTest extends TestCase
     public function anInsufficientScopeIsChallengedUnderTheSchemeTheTokenWasPresentedUnder(): void
     {
         // When
-        $response = UserInfoErrorResponse::fromException(
+        $response = ProtectedResourceErrorResponse::fromException(
             new InsufficientScopeException('The token opens nothing here.', new Scopes([Scope::openid()]), KeyConfirmation::SCHEME),
             Bindings::schemes(),
             Bindings::challengeParameters(),
@@ -273,7 +273,7 @@ final class UserInfoResponseTest extends TestCase
     public function aRequestWithoutTokenGetsTheBareChallenge(): void
     {
         // When
-        $response = UserInfoErrorResponse::fromException(new MissingBearerTokenException(), Bindings::schemes(), Bindings::challengeParameters());
+        $response = ProtectedResourceErrorResponse::fromException(new MissingBearerTokenException(), Bindings::schemes(), Bindings::challengeParameters());
 
         // Then
         static::assertSame(401, $response->statusCode);
@@ -299,7 +299,7 @@ final class UserInfoResponseTest extends TestCase
     public function theDescriptionIsOptional(): void
     {
         // When
-        $response = new UserInfoErrorResponse(401, 'invalid_token', null);
+        $response = new ProtectedResourceErrorResponse(401, 'invalid_token', null);
 
         // Then
         static::assertSame('Bearer error="invalid_token"', $response->challenge());

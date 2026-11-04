@@ -27,11 +27,16 @@ services:
       # the same listener, another name, and the site block of apps/op/frankenphp/mtls.Caddyfile, imported
       # the way worker.Caddyfile is. The host of SERVER_NAME above is untouched and keeps asking for nothing.
       MTLS_SERVER_NAME: ${MTLS_SERVER_NAME:-mtls.op.localhost}
+      # The host of the administration API of the tenant (decision 0038, apps/op/frankenphp/administration.Caddyfile):
+      # a site of this listener with a worker of its own, whose kernel serves the routes of the API and no other. It is
+      # the identifier apps/op/.env.local gives the API, BEFFROI_TENANT_ADMINISTRATION_RESOURCE.
+      ADMINISTRATION_SERVER_NAME: ${ADMINISTRATION_SERVER_NAME:-admin.op.localhost}
       # The service provider of the SAML judge, saml-sp.localhost, and its identity provider, saml-idp.localhost,
       # are sites of this listener as well: docker/saml-sp/saml-sp.Caddyfile and docker/saml-idp/saml-idp.Caddyfile,
       # mounted below rather than built into the image, being sites of the stack and not of the application.
       CADDY_EXTRA_CONFIG: |-
         import mtls.Caddyfile
+        import administration.Caddyfile
         import saml-sp.Caddyfile
         import saml-idp.Caddyfile
       DATABASE_URL: postgresql://${POSTGRES_USER:-beffroi}:${POSTGRES_PASSWORD:-beffroi}@database:5432/${POSTGRES_DB:-beffroi}?serverVersion=16&charset=utf8
@@ -85,6 +90,9 @@ services:
       - ./docker/op/entrypoint.sh:/entrypoint/entrypoint.sh:ro
       - ./docker/conformance/trust-nginx.sh:/entrypoint/trust-nginx.sh:ro
       - ./docker/saml-sp/saml-sp.Caddyfile:/etc/frankenphp/saml-sp.Caddyfile:ro
+      # the site of the administration API, mounted rather than read from the image, so that a change to it reaches a
+      # stack without a build, as the two sites of the judges below do
+      - ./apps/op/frankenphp/administration.Caddyfile:/etc/frankenphp/administration.Caddyfile:ro
       - ./docker/saml-idp/saml-idp.Caddyfile:/etc/frankenphp/saml-idp.Caddyfile:ro
       - ./apps/op:/app
       - ./src:/src
@@ -132,6 +140,8 @@ services:
           - op.localhost
           # so that a container of the stack reaches the mTLS host the way a browser on the machine does
           - mtls.op.localhost
+          # and the host of the administration API
+          - admin.op.localhost
           # and the identity provider of the SAML judge, whose site is this Caddy's, at the name its metadata give
           - saml-idp.localhost
     depends_on:

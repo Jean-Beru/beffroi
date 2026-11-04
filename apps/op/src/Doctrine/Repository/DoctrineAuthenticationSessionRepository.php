@@ -20,6 +20,7 @@ use Beffroi\Core\Domain\Listing\Listing;
 use Beffroi\Core\Domain\Listing\Pagination;
 use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\CanCountActiveSessionsInterface;
 use Beffroi\Core\Port\CanFindUnendedSessionsInterface;
 use Beffroi\Core\Port\CanPageActiveSessionsInterface;
 use Beffroi\Core\Port\DeadRecordsInterface;
@@ -37,6 +38,7 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class DoctrineAuthenticationSessionRepository extends DoctrineRepository implements
     AuthenticationSessionRepositoryInterface,
+    CanCountActiveSessionsInterface,
     CanFindUnendedSessionsInterface,
     CanPageActiveSessionsInterface,
     DeadRecordsInterface,
@@ -117,6 +119,19 @@ final readonly class DoctrineAuthenticationSessionRepository extends DoctrineRep
     {
         /** @var list<AuthenticationSession> */
         return $this->unendedOf($user)->andWhere('s.expiresAt > :now')->setParameter('now', $now, Types::DATETIME_IMMUTABLE)->getQuery()->getResult();
+    }
+
+    public function countActiveSessionsIn(Tenant $tenant, DateTimeImmutable $now): int
+    {
+        return (int) $this->queryBuilder('s')
+            ->select('COUNT(s.id)')
+            ->where('s.tenant = :tenant')
+            ->andWhere('s.endedAt IS NULL')
+            ->andWhere('s.expiresAt > :now')
+            ->setParameter('tenant', $tenant->id, UuidType::NAME)
+            ->setParameter('now', $now, Types::DATETIME_IMMUTABLE)
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
     public function findUnendedByUser(User $user): array

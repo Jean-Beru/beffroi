@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Configuration;
 
 use function array_keys;
+use App\Routing\ProviderRoutes;
 use App\Client\SelfClient;
 use Beffroi\Core\Port\PasswordHasherInterface;
 use Beffroi\Oidc\Application\Client\ClientMetadataReader;
@@ -22,7 +23,6 @@ use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\inline_service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 final readonly class SelfClientSection extends ConfigurationSection implements ExposesParametersInterface
 {
@@ -106,7 +106,7 @@ final readonly class SelfClientSection extends ConfigurationSection implements E
                 $clientId,
                 $declared,
                 inline_service(SelfClient::class)->args([
-                    service(UrlGeneratorInterface::class),
+                    service(ProviderRoutes::URL_GENERATOR),
                     self::string($tenant, 'issuer'),
                     self::string($application, 'redirect_route'),
                     is_string($postLogoutRoute) ? $postLogoutRoute : null,

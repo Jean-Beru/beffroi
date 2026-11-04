@@ -72,6 +72,7 @@ use App\Saml\ServiceProviderEntityIdPass;
 use App\Saml\ServiceProvidersPass;
 use App\Saml\UpstreamIdentityProvidersPass;
 use App\Plane\Plane;
+use App\Routing\ProviderRoutes;
 use App\Security\CorePasswordHasher;
 use App\Security\RateLimitedAttempts;
 use App\Security\SecurityUser;
@@ -286,6 +287,7 @@ final class BeffroiExtension extends AbstractExtension
         }
 
         $services = $container->services();
+        ProviderRoutes::register($services, $builder);
         foreach (self::sections() as $section) {
             $section->load($config, $services, $debug);
         }
