@@ -8,10 +8,6 @@ use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticatorListStore;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * The port of the store of the list of the community as the tests of the core see it: one document, replaced by
- * the next one, nothing until one is written.
- */
 final class InMemoryAuthenticatorListStoreTest extends TestCase
 {
     #[Test]

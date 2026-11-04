@@ -16,10 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * OIDC Registration §2: what a client registered about itself reaches the user who is about to authorise
- * it. The clients here register themselves, which is the one way every combination of the five members
- * exists, and it is the way the three modules of the Dynamic OP plan make theirs
- * (oidcc-registration-logo-uri, -policy-uri, -tos-uri).
+ * OIDC Registration §2
  */
 final class ConsentPresentationTest extends BrowserTestCase
 {
@@ -36,12 +33,10 @@ final class ConsentPresentationTest extends BrowserTestCase
     private const string CLIENT_URI = 'https://rp.test/';
 
     /**
-     * The five members of OIDC Registration §2 a user reads, every combination of them: all five, none of
-     * them, and each one alone. What the page carries is what the client registered and nothing else, in
-     * the order it shows them, so a client that registered none of them renders no empty element.
+     * OIDC Registration §2
      *
-     * @param array<string, string> $registered what the client registers about itself
-     * @param list<string> $shown the "data-client" codes the page carries, in the order it shows them
+     * @param array<string, string> $registered
+     * @param list<string> $shown the "data-client" codes of the page, in the order it shows them
      */
     #[Test]
     #[DataProvider('provideRegistrations')]
@@ -118,10 +113,6 @@ final class ConsentPresentationTest extends BrowserTestCase
         ];
     }
 
-    /**
-     * The image is the URL the client registered, loaded by the browser of the user with no referrer, and
-     * named for whoever does not see it.
-     */
     #[Test]
     public function theLogoIsLoadedFromTheClientWithNoReferrer(): void
     {
@@ -140,10 +131,6 @@ final class ConsentPresentationTest extends BrowserTestCase
         static::assertSame('Logo of An application of the ecosystem', $logo->attr('alt'));
     }
 
-    /**
-     * The three pages are links, each said in the words of what it is, opened beside the interaction
-     * rather than in place of it and carrying nothing of this provider to the client.
-     */
     #[Test]
     public function thePagesOfTheClientAreLinksThatCarryNothingBack(): void
     {
@@ -163,13 +150,6 @@ final class ConsentPresentationTest extends BrowserTestCase
         static::assertSame(['noreferrer noopener', 'noreferrer noopener', 'noreferrer noopener'], $links->extract(['rel']));
     }
 
-    /**
-     * Issue #584: the page carries the policy of its deployment like every other page of this plane, the
-     * origin the logo of the asking client is served from being a directive of that policy completed
-     * where the answer leaves and never a policy the page wrote instead (ConsentPage, Http\ImageSource).
-     * The kernel of this suite writes no policy, so what the page carries is the floor of the plane,
-     * which restricts no image; a deployment that writes one is walked by FormTargetTest.
-     */
     #[Test]
     public function thePageOfAClientThatRegisteredALogoCarriesThePolicyOfItsDeployment(): void
     {
@@ -188,8 +168,7 @@ final class ConsentPresentationTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §5.7: what the page gained is read in the language of the interaction, like everything
-     * else on it.
+     * Architecture §5.7
      */
     #[Test]
     public function whatTheClientRegisteredIsSaidInTheLanguageOfTheInteraction(): void
@@ -256,8 +235,7 @@ final class ConsentPresentationTest extends BrowserTestCase
     }
 
     /**
-     * The consent page of an authorization this client began, in the language the request asked for
-     * (OIDC Core §3.1.2.1), which the interaction records once and every page of it then speaks.
+     * OIDC Core §3.1.2.1
      */
     private function consentPageOf(string $clientId, ?string $uiLocales = null): Crawler
     {

@@ -34,10 +34,7 @@ use PHPUnit\Framework\TestCase;
 use function strlen;
 
 /**
- * Section 6.4, B-7, B-9, B-10, B-12: what PostSender writes, read back from the PostForm it returns with PHP's own
- * decoder, and what it refuses before it writes anything a receiver would refuse: the HTTP-POST rows of sections 9.2
- * and 9.3 that are the sender's. That every form it writes is received, verified and validated is PostRoundTripTest's.
- * SAML Bindings §3.5.4.
+ * Section 6.4, sections 9.2 and 9.3, B-7, B-9, B-10, B-12, SAML Bindings §3.5.4
  *
  * @phpstan-import-type PostMessage from SendingFixtures
  */
@@ -46,8 +43,7 @@ final class PostSenderTest extends TestCase
     use SendingFixtures;
 
     /**
-     * §9.3 row 12, section 6.4 step 4, SAML Bindings §3.5.4: the form holds SAMLRequest or SAMLResponse, then
-     * RelayState when given, in that order and nothing else, its action the message's Destination.
+     * §9.3 row 12, section 6.4 step 4, SAML Bindings §3.5.4
      *
      * @param PostMessage  $message
      * @param list<string> $names
@@ -96,8 +92,7 @@ final class PostSenderTest extends TestCase
     }
 
     /**
-     * §9.3 row 12, B-9, section 6.7: RelayState is carried as given, nothing escaped for HTML nor for the URL: the page
-     * and the browser are the consumer's.
+     * §9.3 row 12, B-9, section 6.7
      */
     #[Test]
     public function itCarriesRelayStateAsGiven(): void
@@ -110,9 +105,7 @@ final class PostSenderTest extends TestCase
     }
 
     /**
-     * §9.3 row 12, B-10, section 6.4 steps 2 and 3, SAML Bindings §3.5.4: the message field is the base64, on one line
-     * and padded, of the bytes Core's Serializer gives of the document the model's writer wrote with the Signing given,
-     * never deflated: what the form carries is what the writer signed.
+     * §9.3 row 12, B-10, section 6.4 steps 2 and 3, SAML Bindings §3.5.4
      *
      * @param PostMessage $message
      */
@@ -181,8 +174,7 @@ final class PostSenderTest extends TestCase
     }
 
     /**
-     * B-12, section 6.4 step 2, SAML Profiles §4.4.4.1: what a Signing is given for is signed in XML, the logout
-     * messages always, so that the form carries a ds:Signature.
+     * B-12, section 6.4 step 2, SAML Profiles §4.4.4.1
      *
      * @param PostMessage $message
      */
@@ -213,8 +205,7 @@ final class PostSenderTest extends TestCase
     }
 
     /**
-     * Section 6.4 step 1: the Destination is the action as it is, its own query among it, which the receiver never
-     * reads: unlike a URL of HTTP-Redirect, nothing of it is refused.
+     * Section 6.4 step 1
      */
     #[Test]
     public function itPostsToTheDestinationAsItIs(): void
@@ -230,9 +221,7 @@ final class PostSenderTest extends TestCase
     }
 
     /**
-     * §9.2 row 33, section 6.4 step 1, RFC 3986 §3.1: a Destination whose scheme is neither http nor https, which
-     * would be the action the browser submits the form to, is a programming error of the caller, whatever the method,
-     * refused before anything is written or signed, and whatever the case of the letters of the scheme.
+     * §9.2 row 33, section 6.4 step 1, RFC 3986 §3.1
      *
      * @param PostMessage $message
      */
@@ -273,8 +262,7 @@ final class PostSenderTest extends TestCase
     }
 
     /**
-     * Section 6.4 step 1, RFC 3986 §3.1: a Destination whose scheme is http or https, in whatever case, is the action
-     * as it is written, never normalised: the scheme of a URL is case-insensitive, and a browser reads it so.
+     * Section 6.4 step 1, RFC 3986 §3.1
      *
      * @param PostMessage $message
      */
@@ -308,9 +296,7 @@ final class PostSenderTest extends TestCase
     }
 
     /**
-     * Every method of the sender, with the message it is given.
-     *
-     * @return array<string, PostMessage>
+     * @return array<string, PostMessage> keyed by method
      */
     private static function postMessages(): array
     {
@@ -324,9 +310,7 @@ final class PostSenderTest extends TestCase
     }
 
     /**
-     * §9.2 row 33, B-9, section 6.4 step 1, section 8: a RelayState of 1 025 bytes, or an empty one, given to
-     * any method, is a programming error of the caller, refused before anything is written or signed: a key management
-     * service is never called for a form the sender refuses by its arguments.
+     * §9.2 row 33, B-9, section 6.4 step 1, section 8
      *
      * @param PostMessage $message
      */
@@ -367,8 +351,7 @@ final class PostSenderTest extends TestCase
     }
 
     /**
-     * §9.2 row 33, section 6.4 step 1, M-15: an AuthnRequest or a Response without Destination, the action of the
-     * form, is a programming error of the caller, refused before its writer runs and before the key is called.
+     * §9.2 row 33, section 6.4 step 1, M-15
      *
      * @param 'authnRequest'|'response'|'failure' $method
      */
@@ -406,8 +389,7 @@ final class PostSenderTest extends TestCase
     }
 
     /**
-     * Section 6.4 step 2, M-15: what the model's writer refuses, a response of Success given to failure() or a failure
-     * given to response(), is refused as the writer refuses it, a programming error of the caller.
+     * Section 6.4 step 2, M-15
      *
      * @param 'response'|'failure' $method
      */
@@ -442,8 +424,7 @@ final class PostSenderTest extends TestCase
     }
 
     /**
-     * §9.2 row 34, B-7, section 6.4 step 3: a form whose message, once encoded, is one byte longer than
-     * maxFormValueBytes, which the package's receiver would refuse, is refused, whatever the method.
+     * §9.2 row 34, B-7, section 6.4 step 3
      *
      * @param PostMessage $message
      */
@@ -477,8 +458,7 @@ final class PostSenderTest extends TestCase
     }
 
     /**
-     * B-7, section 6.4 step 3, section 7: a message of exactly maxFormValueBytes once encoded is sent, and the package's
-     * receiver, under the same bounds, reads it.
+     * B-7, section 6.4 step 3, section 7
      */
     #[Test]
     public function itSendsAMessageOfExactlyMaxFormValueBytesWhichTheReceiverReads(): void
@@ -495,8 +475,7 @@ final class PostSenderTest extends TestCase
     }
 
     /**
-     * §9.3 row 15, section 6.4 step 2, section 11, model.md section 6.7: the Encryption given is the writer's, whose
-     * response then holds a saml:EncryptedAssertion in place of its assertion.
+     * §9.3 row 15, section 6.4 step 2, section 11, model.md section 6.7
      */
     #[Test]
     public function itHandsTheEncryptionToTheWriter(): void
@@ -518,8 +497,7 @@ final class PostSenderTest extends TestCase
     }
 
     /**
-     * B-12, section 5.3: the sender has a method for each message HTTP-POST carries, a response among them, and no
-     * other.
+     * B-12, section 5.3
      */
     #[Test]
     public function itHasAMethodForEachMessage(): void
@@ -534,9 +512,6 @@ final class PostSenderTest extends TestCase
         );
     }
 
-    /**
-     * A Signing whose key fails the test if the sender calls it.
-     */
     private function uncalledSigning(): Signing
     {
         $key = $this->createMock(SigningKeyInterface::class);

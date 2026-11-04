@@ -13,7 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Architecture §5.3: raw bytes in a text column as base64url (RFC 4648 §5), never a stream.
+ * Architecture §5.3, RFC 4648 §5
  */
 final class BytesTypeTest extends TestCase
 {

@@ -8,11 +8,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Decision 0008, the named exception to the PKCE rule of decision 0006: a confidential client registered
- * with "requires_pkce: false" runs the code flow of OIDC Core §3.1 without a code_challenge, the way the
- * OpenID certification profiles do; what it sends is verified all the same (RFC 9700 §2.1.1) and a
- * code_verifier for a code issued without a challenge is refused (RFC 9700 §4.8.2). One step per test,
- * on the test kernel, the "legacy-app" client of its configuration.
+ * Decision 0008, OIDC Core §3.1, RFC 9700 §2.1.1, §4.8.2
  */
 final class PkceExemptFlowTest extends BrowserTestCase
 {
@@ -23,7 +19,7 @@ final class PkceExemptFlowTest extends BrowserTestCase
     private const string REDIRECT_URI = 'https://legacy.test/callback';
 
     /**
-     * RFC 7636 §4.4.1 would refuse the request; decision 0008 parks it like any other.
+     * Decision 0008, RFC 7636 §4.4.1
      */
     #[Test]
     public function anAuthorizationRequestWithoutAChallengeIsParked(): void
@@ -58,7 +54,7 @@ final class PkceExemptFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §4.1.3 without RFC 7636 §4.5: no code_verifier in the token request.
+     * RFC 6749 §4.1.3 without RFC 7636 §4.5
      */
     #[Test]
     public function theCodeIsExchangedWithoutAVerifier(): void
@@ -80,8 +76,7 @@ final class PkceExemptFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9700 §4.8.2: a code_verifier is accepted only if a code_challenge was present in the
-     * authorization request.
+     * RFC 9700 §4.8.2
      */
     #[Test]
     public function aVerifierIsRefusedForACodeIssuedWithoutAChallenge(): void
@@ -102,7 +97,7 @@ final class PkceExemptFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9700 §2.1.1: a challenge the client sends binds the code, exception or not.
+     * RFC 9700 §2.1.1
      */
     #[Test]
     public function aChallengeTheClientSendsIsEnforcedAtTheTokenEndpoint(): void
@@ -124,7 +119,7 @@ final class PkceExemptFlowTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0006 stands: "plain" does not exist, for this client either (RFC 7636 §4.3).
+     * Decision 0006, RFC 7636 §4.3
      */
     #[Test]
     public function aPlainChallengeIsRefusedForThisClientToo(): void
@@ -142,8 +137,6 @@ final class PkceExemptFlowTest extends BrowserTestCase
     }
 
     /**
-     * The request of the legacy client: no code_challenge unless the test adds one.
-     *
      * @param array<string, string|null> $parameters
      *
      * @return array<string, string>
@@ -172,8 +165,6 @@ final class PkceExemptFlowTest extends BrowserTestCase
     }
 
     /**
-     * The code the legacy client gets once alice signed in and allowed.
-     *
      * @param array<string, string|null> $parameters
      */
     private function codeAllowedByAlice(array $parameters = []): string
@@ -189,8 +180,6 @@ final class PkceExemptFlowTest extends BrowserTestCase
     }
 
     /**
-     * The token request of the legacy client, client_secret_post, without a code_verifier unless given.
-     *
      * @param array<string, string> $parameters
      */
     private function exchange(string $code, array $parameters = []): void

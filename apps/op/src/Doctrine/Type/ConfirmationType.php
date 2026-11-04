@@ -9,11 +9,6 @@ use Beffroi\Oidc\Port\ConfirmationReaderInterface;
 use LogicException;
 
 /**
- * What an opaque access token is bound to (RFC 8705 §3), stored as the "cnf" of RFC 7800 §3.1 is
- * written: the members themselves (`ConfirmationInterface::toMembers()`), so that the row says the same
- * thing an "at+jwt" says of the same token, and a confirmation of another kind is another member and not
- * another column.
- *
  * @extends JsonbObjectType<ConfirmationInterface>
  */
 final class ConfirmationType extends JsonbObjectType implements NeedsConfirmationReaderInterface

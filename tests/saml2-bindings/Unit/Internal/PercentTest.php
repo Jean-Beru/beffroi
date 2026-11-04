@@ -15,15 +15,12 @@ use PHPUnit\Framework\TestCase;
 use function range;
 
 /**
- * B-8, section 6.1 steps 2, 5 and 6, section 6.3 step 3: the percent codec. Decoding reads the
- * application/x-www-form-urlencoded form of the URL Standard, a % and two hexadecimal digits of either case or a
- * refusal, a + for a space; encoding writes RFC 3986, uppercase. SAML Bindings §3.4.4.1: the values of a query string
- * are URL-encoded.
+ * B-8, section 6.1 steps 2, 5 and 6, section 6.3 step 3, URL Standard, RFC 3986, SAML Bindings §3.4.4.1
  */
 final class PercentTest extends TestCase
 {
     /**
-     * §9.3 row 2, B-8, RFC 3986 §2.1: a percent-escape in lowercase hexadecimal is the byte its uppercase spelling is.
+     * §9.3 row 2, B-8, RFC 3986 §2.1
      */
     #[Test]
     #[DataProvider('provideEscapes')]
@@ -51,7 +48,7 @@ final class PercentTest extends TestCase
     }
 
     /**
-     * §9.3 row 2, B-8, URL Standard §5: a space written + and written %20 decode to the same string.
+     * §9.3 row 2, B-8, URL Standard §5
      */
     #[Test]
     #[DataProvider('provideSpaces')]
@@ -75,7 +72,7 @@ final class PercentTest extends TestCase
     }
 
     /**
-     * B-8: what is not a percent-escape and not a + is the byte it is.
+     * B-8
      */
     #[Test]
     public function itKeepsEveryOtherByte(): void
@@ -91,8 +88,7 @@ final class PercentTest extends TestCase
     }
 
     /**
-     * §9.2 row 27, B-8, B-11: a % not followed by two hexadecimal digits is refused, never kept as it is, and the
-     * refusal carries nothing of the value.
+     * §9.2 row 27, B-8, B-11
      */
     #[Test]
     #[DataProvider('provideMalformedEscapes')]
@@ -124,8 +120,7 @@ final class PercentTest extends TestCase
     }
 
     /**
-     * §9.3 row 11, section 6.3 step 3, RFC 3986 §2.1 and §2.3: every byte outside ALPHA, DIGIT, -, ., _ and ~ is
-     * escaped, in uppercase hexadecimal.
+     * §9.3 row 11, section 6.3 step 3, RFC 3986 §2.1 and §2.3
      */
     #[Test]
     #[DataProvider('provideBytes')]
@@ -163,7 +158,7 @@ final class PercentTest extends TestCase
     }
 
     /**
-     * B-8, section 6.3 step 3: what the package encodes, it decodes to the same bytes, for every byte.
+     * B-8, section 6.3 step 3
      */
     #[Test]
     public function itDecodesWhatItEncodes(): void

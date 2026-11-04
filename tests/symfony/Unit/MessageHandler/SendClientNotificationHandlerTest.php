@@ -16,15 +16,10 @@ use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
 /**
- * CIBA Core §10.2, architecture §5.6: what the provider does with the word it owes a client that asked to
- * be called back, when that client does not take it.
+ * CIBA Core §10.2, Architecture §5.6
  */
 final class SendClientNotificationHandlerTest extends TestCase
 {
-    /**
-     * A client that could not be reached may be reached in a minute: the lane brings the notification
-     * back, on its policy and not beyond it, as it does for a logout token.
-     */
     #[Test]
     public function aClientThatCannotBeReachedIsCalledAgainOnThePolicyOfTheLane(): void
     {

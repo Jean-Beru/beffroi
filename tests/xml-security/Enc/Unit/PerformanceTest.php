@@ -17,14 +17,13 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 9.5: a soft assertion, run in CI only, where the machine is known.
+ * Section 9.5
  */
 #[RequiresEnvironmentVariable('CI')]
 final class PerformanceTest extends TestCase
 {
     /**
-     * Section 9.5: decrypting the assertion SimpleSAMLphp's library encrypted, the load included, takes less than
-     * 30 ms, on the ARM64 runners of the CI as on the x86-64 one.
+     * Section 9.5
      */
     #[Test]
     public function itDecryptsSimpleSamlPhpsAssertionInLessThanThirtyMilliseconds(): void

@@ -15,8 +15,7 @@ use Beffroi\Oidc\Port\ServedGrantsInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * RFC 6749 §4.4.2: the client asks for itself, with nobody signed in behind it. One request, one
- * answer, and the whole flow is drawn.
+ * RFC 6749 §4.4.2
  */
 final readonly class AskTheTokenEndpointForTheClientItself implements DrivenHopInterface
 {
@@ -32,7 +31,6 @@ final readonly class AskTheTokenEndpointForTheClientItself implements DrivenHopI
             'scope' => $client->scope,
         ];
         if ($client->resource !== null) {
-            // RFC 8707 §2: what the token is to be addressed to, where the lab registered one
             $fields['resource'] = $client->resource;
         }
 

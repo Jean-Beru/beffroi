@@ -9,10 +9,6 @@ use App\Webauthn\FileMetadataBlobStore;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
-/**
- * What the passkeys of the deployment are judged against (architecture §3.4): the metadata blob of the FIDO Alliance, kept where this says,
- * and the list of the community the pages name the authenticator of a passkey from, kept in its "community" directory.
- */
 final readonly class WebauthnSection extends ConfigurationSection
 {
     public function name(): string

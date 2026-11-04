@@ -10,15 +10,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-11: where the identity provider sends a browser for a service provider is an https URL on a host name
- * or an IP address, and nothing a form, a redirection or a Content-Security-Policy would read otherwise.
+ * spec/saml.md S-11
  */
 final class EndpointLocationTest extends TestCase
 {
     /**
-     * S-11, the security review of 20 October 2026 (findings B-3, C-2, C-3): a location in clear, one that is no web
-     * address at all, and one whose authority is not a host and a port are refused, the reg-name of RFC 3986 §3.2.2
-     * admitting the ';' and the ',' that split a policy.
+     * S-11, RFC 3986 §3.2.2, findings B-3, C-2, C-3 of the security review of 20 October 2026
      */
     #[Test]
     #[DataProvider('provideRefusedLocations')]
@@ -50,8 +47,7 @@ final class EndpointLocationTest extends TestCase
     }
 
     /**
-     * S-11: an https URL on a name, an IPv4 address or an IPv6 literal, with or without a port, its scheme in any case
-     * (RFC 3986 §3.1), is where a browser may be sent.
+     * S-11, RFC 3986 §3.1
      */
     #[Test]
     #[DataProvider('provideAcceptedLocations')]

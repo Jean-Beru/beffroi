@@ -33,8 +33,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * spec/saml.md section 6.9, S-38 to S-40: the metadata of the service provider of a tenant, written by saml2-model's
- * MetadataWriter and read back by its MetadataReader.
+ * spec/saml.md section 6.9, S-38 to S-40
  */
 final class ServiceProviderMetadataHandlerTest extends TestCase
 {
@@ -55,10 +54,7 @@ final class ServiceProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * S-39, section 6.9 steps 3 and 4: the entity ID is the URL of the metadata, the one assertion consumer service is
-     * on HTTP-POST at its URL under the issuer, of index 0, the certificate of the key is a signing one, the requests
-     * are said signed and the assertions wanted signed; no single logout service, no key for encryption and no NameID
-     * format.
+     * S-39, section 6.9 steps 3 and 4
      */
     #[Test]
     public function itIsReadBackByTheMetadataReaderOfTheModel(): void
@@ -87,7 +83,7 @@ final class ServiceProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * S-38: the entity ID the deployment names is the one the metadata carry, in place of the URL of the metadata.
+     * S-38
      */
     #[Test]
     public function itCarriesTheEntityIdTheDeploymentNames(): void
@@ -108,8 +104,7 @@ final class ServiceProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * S-2, S-40: during a rotation, the certificate of the staged key is published beside the active one's before the
-     * staged key signs a request.
+     * S-2, S-40
      */
     #[Test]
     public function itPublishesTheNextCertificateBesideTheCurrentOne(): void
@@ -131,8 +126,7 @@ final class ServiceProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * S-65, section 6.12: the metadata given to an upstream identity provider are those of S-39 with the certificate
-     * of its key as a key for encryption.
+     * S-65, section 6.12, S-39
      */
     #[Test]
     public function aProviderIsGivenTheCertificateOfItsKey(): void
@@ -163,7 +157,7 @@ final class ServiceProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * S-65: the metadata given to a provider never carry the certificate of the key of another.
+     * S-65
      */
     #[Test]
     public function aProviderIsNeverGivenTheCertificateOfAnother(): void
@@ -182,7 +176,7 @@ final class ServiceProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * S-65: during a rotation, the certificate of the next key comes first, the one a provider takes from its staging.
+     * S-65
      */
     #[Test]
     public function theNextCertificateOfAProviderComesFirst(): void
@@ -206,8 +200,7 @@ final class ServiceProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * S-39, S-65: the metadata at the URL of the entity ID carry no key for encryption, whatever keys the providers
-     * hold.
+     * S-39, S-65
      */
     #[Test]
     public function theMetadataOfTheEntityIdCarryNoKeyForEncryption(): void
@@ -224,7 +217,7 @@ final class ServiceProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * Section 6.12 step 1: a provider for which the tenant holds no key in service is given no metadata.
+     * Section 6.12 step 1
      */
     #[Test]
     public function aProviderWithoutAKeyIsGivenNoMetadata(): void
@@ -242,7 +235,7 @@ final class ServiceProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * Section 6.12 step 3: a provider is given no metadata while the tenant holds no SAML signing key in service.
+     * Section 6.12 step 3
      */
     #[Test]
     public function aProviderIsGivenNoMetadataWithoutASigningKey(): void
@@ -259,7 +252,7 @@ final class ServiceProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * Section 6.9 step 1: a tenant that holds no SAML key in service has no metadata of its service provider.
+     * Section 6.9 step 1
      */
     #[Test]
     public function aTenantWithoutASamlKeyHasNoMetadata(): void
@@ -273,7 +266,7 @@ final class ServiceProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * Section 6.9 step 5, S-40: the metadata may be cached for the max-age of the keys of the tenant and no longer.
+     * Section 6.9 step 5, S-40
      */
     #[Test]
     public function itIsCachedForTheMaxAgeOfTheKeys(): void
@@ -294,7 +287,7 @@ final class ServiceProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * Section 6.9 step 5: a lifetime that is not a number of seconds is refused when the handler is built.
+     * Section 6.9 step 5
      */
     #[Test]
     public function itRefusesALifetimeThatIsNotANumberOfSeconds(): void
@@ -308,8 +301,7 @@ final class ServiceProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * S-12, S-40: unless the deployment says otherwise, an upstream identity provider may keep the metadata a day, as
-     * a service provider keeps the metadata of the identity provider, written on the md:EntityDescriptor.
+     * S-12, S-40
      */
     #[Test]
     public function anUpstreamIdentityProviderMayKeepItADayByDefault(): void
@@ -331,8 +323,7 @@ final class ServiceProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * S-12, S-40: the shortest cacheDuration a deployment may set is one second, under a staging delay one second
-     * longer.
+     * S-12, S-40
      */
     #[Test]
     public function aCacheDurationOneSecondShortOfTheStagingDelayIsWritten(): void
@@ -348,8 +339,7 @@ final class ServiceProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * S-12, S-40: a cacheDuration under one second, or one an upstream identity provider would still be inside when
-     * the next key signs, is refused when the handler is built.
+     * S-12, S-40
      */
     #[Test]
     #[DataProvider('provideCacheDurationsRefused')]

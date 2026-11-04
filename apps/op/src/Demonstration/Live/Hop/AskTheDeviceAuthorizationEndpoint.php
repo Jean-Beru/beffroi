@@ -15,8 +15,7 @@ use Beffroi\Oidc\Port\ServedGrantsInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * RFC 8628 §3.1: the client with no browser starts its flow, and is handed the code to show and the
- * address to send its user to.
+ * RFC 8628 §3.1
  */
 final readonly class AskTheDeviceAuthorizationEndpoint implements DrivenHopInterface
 {

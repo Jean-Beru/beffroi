@@ -9,10 +9,6 @@ use Beffroi\Saml\Exception\MetadataRefusedException;
 use Beffroi\Saml\Port\MetadataFetcherInterface;
 use Exception;
 
-/**
- * The document each location of the test answers, changed by the test between two refreshes; a location it was given
- * nothing for cannot be read, and one it was given a fault for throws it, as a fetcher that fails rather than refuses.
- */
 final class FixedMetadataFetcher implements MetadataFetcherInterface
 {
     /**
@@ -36,7 +32,7 @@ final class FixedMetadataFetcher implements MetadataFetcherInterface
     }
 
     /**
-     * @throws Exception the fault the test gave the location
+     * @throws Exception
      */
     public function fetch(MetadataLocation $location): string
     {

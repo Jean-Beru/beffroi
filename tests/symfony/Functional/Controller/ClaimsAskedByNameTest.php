@@ -20,10 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * OIDC Core §5.5: a claim a client asks for by name is held to the scopes it registered, a client registering
- * scopes and never claims (RFC 7591 §2), and to what the person agreed to (§3.1.2.4), from the authorization
- * request to the two documents that tell it. The clients are the ones of the test kernel, which register
- * the scopes a declared client takes when it names none, "openid", "profile" and "email", and not "phone".
+ * OIDC Core §5.5, §3.1.2.4, RFC 7591 §2
  */
 final class ClaimsAskedByNameTest extends BrowserTestCase
 {
@@ -32,8 +29,7 @@ final class ClaimsAskedByNameTest extends BrowserTestCase
     private const string NATIVE_REDIRECT_URI = 'http://127.0.0.1/callback';
 
     /**
-     * RFC 7591 §2, OIDC Core §5.5.1: the phone number the demonstration asks for by name is not served,
-     * and asking for it is no error; the email address it asks for beside it is, its scope being registered.
+     * RFC 7591 §2, OIDC Core §5.5.1
      */
     #[Test]
     public function userInfoServesNoClaimNoScopeTheClientRegisteredStandsFor(): void
@@ -53,9 +49,6 @@ final class ClaimsAskedByNameTest extends BrowserTestCase
         static::assertSame(['sub', 'email'], array_keys(self::json($response)));
     }
 
-    /**
-     * The same rule in the ID token: what a client may not be told by name is told in neither document.
-     */
     #[Test]
     public function theIdTokenCarriesNoClaimNoScopeTheClientRegisteredStandsFor(): void
     {
@@ -72,8 +65,7 @@ final class ClaimsAskedByNameTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §3.1.2.4: the consent page lists by name the claim the request asks for that no scope of it
-     * stands for, in the words the account says it in.
+     * OIDC Core §3.1.2.4
      */
     #[Test]
     public function theConsentPageListsAClaimAskedForByNameBeyondTheScopesOfTheRequest(): void
@@ -96,8 +88,7 @@ final class ClaimsAskedByNameTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §3.1.2.4: a consent given for the scopes alone is not one for a claim the request asks for
-     * by name beyond them, so the page is shown again instead of a code being issued on it.
+     * OIDC Core §3.1.2.4
      */
     #[Test]
     public function aConsentForTheScopesAloneIsAskedAgainForAClaimAskedForByName(): void
@@ -118,7 +109,7 @@ final class ClaimsAskedByNameTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §4.3: what the person agreed to by name is held by the consent beside its scopes.
+     * Architecture §4.3
      */
     #[Test]
     public function theClaimAgreedToByNameIsHeldByTheConsent(): void
@@ -135,8 +126,7 @@ final class ClaimsAskedByNameTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §5.5: a claim agreed to by name is served without its scope, which is what asking for it by
-     * name is for.
+     * OIDC Core §5.5
      */
     #[Test]
     public function userInfoServesTheClaimAgreedToByName(): void
@@ -166,7 +156,7 @@ final class ClaimsAskedByNameTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §5.2: the page of the account says what a consent holds by name, beside its scopes.
+     * Architecture §5.2
      */
     #[Test]
     public function theAccountListsTheClaimsAConsentHoldsByName(): void
@@ -193,9 +183,6 @@ final class ClaimsAskedByNameTest extends BrowserTestCase
     }
 
     /**
-     * The code flow of the demonstration, which needs no consent, asking for "openid" alone and for the
-     * claims given by name, under the signing key of the tenant: the token response.
-     *
      * @return array<string, mixed>
      */
     private function tokensOfTheDemoClient(string $claims): array
@@ -225,10 +212,6 @@ final class ClaimsAskedByNameTest extends BrowserTestCase
         return self::json($response);
     }
 
-    /**
-     * The native application asks for "openid" alone and for the claims given by name, and the person allows
-     * it on the consent page: the code it is sent back with.
-     */
     private function allowTheNativeApplication(string $claims): string
     {
         $this->browser->request('GET', '/authorize', self::authorizationParameters('native-app', [
@@ -243,9 +226,6 @@ final class ClaimsAskedByNameTest extends BrowserTestCase
         return self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The native application got no code.');
     }
 
-    /**
-     * Alice, with an address and a phone number, both verified.
-     */
     private static function alice(): User
     {
         $alice = self::user('alice');

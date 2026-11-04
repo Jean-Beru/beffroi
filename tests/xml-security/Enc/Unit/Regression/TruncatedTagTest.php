@@ -18,17 +18,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 3, the truncated tag: CVE-2026-32313 in xmlseclibs and CVE-2026-32600 in simplesamlphp/xml-security,
- * March 2026, missing AES-GCM authentication tag validation, where a tag truncated down to nothing authenticated
- * anything; and PHP's primitive accepts a truncated tag and says nothing (section 13). The rules: the tag is the
- * last 16 bytes of the cipher value whatever its length (E-2), so a shortened value loses ciphertext, not tag, and
- * fails in the one way (E-3); a value too short for an IV, a byte and a tag never reaches the primitive.
+ * Section 3, CVE-2026-32313, CVE-2026-32600, section 13, E-2, E-3
  */
 final class TruncatedTagTest extends TestCase
 {
     /**
-     * CVE-2026-32313, CVE-2026-32600, §9.2 row 24: the cipher value shortened by one byte is a 16-byte tag that
-     * does not verify, not a 15-byte tag the primitive would accept.
+     * CVE-2026-32313, CVE-2026-32600, §9.2 row 24
      */
     #[Test]
     public function cve202632313AndCve202632600ATruncatedTagFailsInTheOneWay(): void
@@ -48,8 +43,7 @@ final class TruncatedTagTest extends TestCase
     }
 
     /**
-     * §9.2 rows 17 and 26, E-2: a cipher value of an IV and a tag with nothing between is refused by the model,
-     * which is why an empty plaintext is not reachable: GCM keeps the length, and there is always a byte to keep.
+     * §9.2 rows 17 and 26, E-2
      */
     #[Test]
     public function theModelRefusesACipherValueWithNoRoomForCiphertext(): void

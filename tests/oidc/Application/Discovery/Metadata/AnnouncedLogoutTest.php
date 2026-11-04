@@ -14,9 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RP-Initiated Logout §2.1: where a client sends the user to end the session. Back-Channel Logout 1.0 §3
- * and Front-Channel Logout 1.0 §3: the provider announces a channel only where something serves it, and
- * a channel it serves always carries the session (issue #98).
+ * RP-Initiated Logout §2.1, Back-Channel Logout 1.0 §3, Front-Channel Logout 1.0 §3
  */
 final class AnnouncedLogoutTest extends TestCase
 {

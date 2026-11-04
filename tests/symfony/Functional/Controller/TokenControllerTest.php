@@ -9,13 +9,12 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * RFC 6749 §3.2, §5.1, §5.2 and architecture §4.5: the token endpoint answers JSON, never cached,
- * the client authenticated before anything is read.
+ * RFC 6749 §3.2, §5.1, §5.2, Architecture §4.5
  */
 final class TokenControllerTest extends BrowserTestCase
 {
     /**
-     * RFC 6749 §3.2: POST only.
+     * RFC 6749 §3.2
      */
     #[Test]
     public function theTokenEndpointIsPostOnly(): void
@@ -30,7 +29,7 @@ final class TokenControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §5.2: invalid_client is 401 with the challenge when the header was used.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function aWrongSecretInTheHeaderIsChallenged(): void
@@ -47,7 +46,7 @@ final class TokenControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §5.1 and §5.2: the answers of the token endpoint are never cached, the errors included.
+     * RFC 6749 §5.1, §5.2
      */
     #[Test]
     public function anErrorOfTheTokenEndpointIsNotCached(): void
@@ -62,7 +61,7 @@ final class TokenControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §5.2: a grant the provider does not offer.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function anUnknownGrantTypeIsRefused(): void
@@ -80,8 +79,7 @@ final class TokenControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7523 §2.2, RFC 6749 §5.2 (issue #863): an assertion of another type than the one of the specification is
-     * answered invalid_request, never a server error.
+     * RFC 7523 §2.2, RFC 6749 §5.2
      */
     #[Test]
     public function anAssertionOfAnotherTypeIsAnInvalidRequest(): void
@@ -100,7 +98,7 @@ final class TokenControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §3.2: the parameters are read from the form body, never from the query string.
+     * RFC 6749 §3.2
      */
     #[Test]
     public function theQueryStringIsNotRead(): void
@@ -115,9 +113,7 @@ final class TokenControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §6 and architecture §4.5: a confidential client gets a refresh token through the same
-     * endpoint, and keeps it. Its authentication is what tells that token from a copy of itself, so
-     * replacing it would add nothing (FAPI 2.0 Security Profile §5.3.2.1-9).
+     * RFC 6749 §6, Architecture §4.5, FAPI 2.0 Security Profile §5.3.2.1-9
      */
     #[Test]
     public function theRefreshTokenOfAConfidentialClientStands(): void
@@ -139,10 +135,7 @@ final class TokenControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9700 §4.13.2: rotation is one of three ways of telling a refresh token from a copy of itself,
-     * and a confidential client is told by its authentication; its token refreshes again and again.
-     * What rotation protects, and what a rotated token presented again costs, is the public client's,
-     * and it is verified where the rule lives (RefreshTokenGrantTest).
+     * RFC 9700 §4.13.2
      */
     #[Test]
     public function theRefreshTokenOfAConfidentialClientRefreshesAgain(): void
@@ -161,8 +154,7 @@ final class TokenControllerTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §10.1.1 and architecture §3.3: the opaque refresh token depends on no key; a rotation
-     * changes nothing for it, and the tokens it gets are signed by the key that signs now.
+     * OIDC Core §10.1.1, Architecture §3.3
      */
     #[Test]
     public function aRefreshAfterARotationIssuesTokensSignedByTheNewKey(): void
@@ -199,9 +191,6 @@ final class TokenControllerTest extends BrowserTestCase
         );
     }
 
-    /**
-     * The refresh token oidc-demo gets from the code flow of alice.
-     */
     private function refreshTokenOfTheDemoClient(): string
     {
         self::signingKey();

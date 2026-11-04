@@ -28,35 +28,12 @@ use Symfony\Component\Security\Http\SecurityRequestAttributes;
 use function trim;
 
 /**
- * The form login on the firewall of the interaction pages (architecture §5.4), in the place of Symfony's
- * own: the username and the password the login page posts, handed to the core, which names the user,
- * counts the attempt, pays the decoy, verifies the hash, refuses a disabled account after the password,
- * dates and rehashes the credential and announces every outcome (PasswordVerification). The order of a
- * login is written there and nowhere else (issue #130): the firewall keeps the form token, the token of
- * the firewall and the redirection, which is what Symfony asks of an authenticator, and no second copy of
- * what a login does.
- *
- * **The form token is checked before the password reaches the core**, because a form without its token is
- * not an attempt on an account: it must cost the person it names no attempt, no decoy and no act in their
- * journal. It is checked here and not by the badge of the component, whose listener runs once the passport
- * exists, which is after the core has answered: one check, in the one place the order allows.
- *
- * **A field left empty is refused here** and never counted: an empty password is not a guess at one, and
- * that is what Symfony's form login does with it.
- *
- * The passport carries the password (VerifiedPassword) for the one reader of it after a login, the lookup
- * of compromised passwords, and the user the core loaded rather than one loaded again. A refusal is the
- * flat exception of the component, the reason it carries being the core's, already announced: the login
- * page shows one message whatever happened (decision 0006) and the failure listener has nothing to add on
- * this route.
+ * Checks the form token before the core counts an attempt; Symfony's CSRF badge would be checked too late.
  */
 final readonly class PasswordLoginAuthenticator implements AuthenticatorInterface, InteractiveAuthenticatorInterface, AuthenticationEntryPointInterface
 {
     /**
-     * The identifier of the token the three logins post, the form of the login page, the passkey it offers and the
-     * code of the code page (PasskeyLoginAuthenticator, TotpLoginAuthenticator). The provider's own, like the token of
-     * every other form of the provider that carries one, so that no list of stateless identifiers an application
-     * declares for the forms of Symfony reaches these pages (issue #891).
+     * The provider's own, so that no stateless token identifier an application declares covers these forms.
      */
     public const string CSRF_TOKEN_ID = 'beffroi_login';
 
@@ -86,8 +63,6 @@ final readonly class PasswordLoginAuthenticator implements AuthenticatorInterfac
         $username = trim($request->request->getString(self::USERNAME_PARAMETER));
         $password = $request->request->getString(self::PASSWORD_PARAMETER);
         if ($request->hasSession()) {
-            // what the login page shows in the field when it comes back refused, where the component
-            // keeps it (AuthenticationUtils::getLastUsername)
             $request->getSession()->set(SecurityRequestAttributes::LAST_USERNAME, $username);
         }
         $this->checkTheFormToken($request);
@@ -131,9 +106,7 @@ final readonly class PasswordLoginAuthenticator implements AuthenticatorInterfac
     }
 
     /**
-     * Where the firewall sends a browser that reached something it is not signed in for. The pages of this
-     * plane decide for themselves whether a session is needed, so nothing of the provider asks for this; it
-     * is what a firewall of several authenticators must name, and the honest answer is the login page.
+     * A firewall of several authenticators must name an entry point; no page of this plane relies on it.
      */
     public function start(Request $request, ?AuthenticationException $authException = null): Response
     {

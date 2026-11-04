@@ -18,55 +18,29 @@ use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use function trim;
 
 /**
- * What a page of the interaction plane adds to the Content-Security-Policy its answer carries: one
- * directive, and the origins that page may reach through it (CSP Level 3 §6.1, §6.3).
- *
- * A page says what it adds and never what the whole policy is, because the whole policy belongs to the
- * deployment: the floor of the plane restricts nothing and comes out as it went in (InteractionPages),
- * and the policy an application writes for its pages is completed once it is written (apps/op
- * config/packages/nelmio_security.yaml). A page that wrote a policy of its own would be a page served
- * without the other directives of that deployment, and nothing would say so: a policy nobody merges is a
- * policy that goes missing in silence.
- *
- * What a page may reach is read from the request it is resuming, so a deployment cannot name it: a
- * redirection URI belongs to a client, the logo of a client is served by a host that client named, and a
- * client may register itself (RFC 7591). The origins are named where the page that will carry them is
- * built and read where the answer leaves, as the name of an exchange is (FapiInteractionId).
- *
- * Which directive, and what that directive falls back to, is the caller's (FormTarget, ImageSource).
+ * Adds the origins a page named to one directive of the Content-Security-Policy its answer carries, whichever policy
+ * that is (CSP Level 3 §6.1, §6.3).
  */
 final readonly class PolicyCompletion
 {
     /**
-     * After the policy of the application is written, which is the one to complete. The pages of this
-     * plane leave here with the floor of the plane, an application gives way to its own by recognising
-     * that floor (apps/op App\Http\DeploymentPolicyPrevails), and a floor completed before that moment is
-     * another value it would no longer recognise.
+     * After the policy of the application is written: DeploymentPolicyPrevails recognises the floor of the plane by its
+     * value, which a completion made earlier would change.
      */
     public const int AFTER_THE_POLICY_IS_WRITTEN = -32;
 
     /**
-     * What a browser refuses to combine with a source: "'none'" is a source list on its own (CSP Level 3
-     * §2.2.1), so a directive that refuses everything gives way to the origins the page must reach.
+     * A source list on its own (CSP Level 3 §2.2.1): replaced by the origins, never combined with them.
      */
     private const string NO_SOURCE = "'none'";
 
     /**
-     * The two policies an answer may carry, the enforced one and the one that only reports: a report of
-     * what the provider does on purpose says nothing to anybody.
+     * The report-only policy is completed too: a report of what a page does on purpose tells nobody anything.
      */
     private const array HEADERS = ['Content-Security-Policy', 'Content-Security-Policy-Report-Only'];
 
     /**
-     * @param string $attribute where the origins of a page wait between the controller that names them
-     *                          and the answer that carries them
-     * @param string $directive the name of the directive, written lowercase here, a directive being
-     *                          matched without regard to case (CSP Level 3 §2.2)
-     * @param string|null $fallsBackTo the directive this one falls back to, so that a policy naming that
-     *                                 one and not this one is completed with this one written out of it
-     *                                 (CSP Level 3 §6.1, where "default-src" answers for every fetch
-     *                                 directive a policy leaves out); null when it falls back to no
-     *                                 other, a policy leaving it out then restricting nothing
+     * @param string $directive lowercase, a directive being matched without regard to case (CSP Level 3 §2.2)
      */
     public function __construct(
         private string $attribute,
@@ -76,10 +50,7 @@ final readonly class PolicyCompletion
     }
 
     /**
-     * Named by a page that may reach this origin through this directive, once per origin it may reach. The origin is
-     * written into the header as it is named, so a value that is no origin is refused here, where the page names it
-     * (SourceOrigin), and not when the answer leaves, where an exception would replace the page by an error page the
-     * kernel sends without the listeners left to run.
+     * Refused here rather than when the answer leaves, where an exception would skip the listeners left to run.
      *
      * @throws LogicException when the value is not an origin
      */
@@ -94,9 +65,6 @@ final readonly class PolicyCompletion
         $request->attributes->set($this->attribute, $origins);
     }
 
-    /**
-     * The policies the answer carries, each one completed with what the page named.
-     */
     public function complete(ResponseEvent $event): void
     {
         if (! $event->isMainRequest()) {
@@ -120,10 +88,6 @@ final readonly class PolicyCompletion
     }
 
     /**
-     * The same policy with the origins named in this directive: in the directive the policy wrote, in
-     * this directive written out of the one it falls back to when the policy names that one alone, and
-     * nowhere when it names neither and the directive restricts nothing.
-     *
      * @param non-empty-list<string> $origins
      */
     private function completed(string $policy, array $origins): string
@@ -166,11 +130,7 @@ final readonly class PolicyCompletion
     }
 
     /**
-     * The directive and its sources, with the origins the page named added to them.
-     *
-     * @param string $name the name as the policy wrote it, a directive the page did not name being
-     *                     written with the name of this one
-     * @param list<string> $written the sources the directive carries
+     * @param list<string> $written
      * @param non-empty-list<string> $origins
      *
      * @return non-empty-list<string>

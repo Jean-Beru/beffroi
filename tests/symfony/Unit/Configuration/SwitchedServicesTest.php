@@ -15,8 +15,7 @@ use PHPUnit\Framework\TestCase;
 use stdClass;
 
 /**
- * Decision 0030: what a tag wires is in every image, and what a role brings is listed after it while the role is on, a
- * list built while it is off being the list of a deployment that never declared it.
+ * Decision 0030
  */
 final class SwitchedServicesTest extends TestCase
 {
@@ -47,10 +46,6 @@ final class SwitchedServicesTest extends TestCase
         static::assertSame($wired, $services);
     }
 
-    /**
-     * What a role that is off would bring is never built: the channel of web push, for one, needs a subject the
-     * deployment did not name.
-     */
     #[Test]
     public function aRoleThatIsOffBuildsNothingOfWhatItWouldBring(): void
     {
@@ -77,9 +72,6 @@ final class SwitchedServicesTest extends TestCase
         static::assertSame([], $listed);
     }
 
-    /**
-     * A list read at every request is the same list every time.
-     */
     #[Test]
     public function theListIsTheSameEveryTimeItIsRead(): void
     {

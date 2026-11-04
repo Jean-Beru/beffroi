@@ -14,7 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-23: the key an assertion or a logout message is remembered under, the SHA-256 of its tenant, its issuer and its ID.
+ * spec/saml.md S-23
  */
 final class RememberedMessageTest extends TestCase
 {
@@ -26,7 +26,7 @@ final class RememberedMessageTest extends TestCase
     }
 
     /**
-     * S-23: the three, each followed by a NUL, in hexadecimal.
+     * S-23
      */
     #[Test]
     public function theKeyIsTheDigestOfTheTenantTheIssuerAndTheId(): void
@@ -39,7 +39,7 @@ final class RememberedMessageTest extends TestCase
     }
 
     /**
-     * S-23, M-11: the same ID from two issuers is two messages.
+     * S-23, M-11
      */
     #[Test]
     public function twoIssuersGiveTwoKeys(): void
@@ -52,7 +52,7 @@ final class RememberedMessageTest extends TestCase
     }
 
     /**
-     * S-23: the same message under two tenants is two rows, each under its tenant.
+     * S-23
      */
     #[Test]
     public function twoTenantsGiveTwoKeys(): void
@@ -65,7 +65,7 @@ final class RememberedMessageTest extends TestCase
     }
 
     /**
-     * S-23, decision 0011: a row names no person, a digest, its tenant and when it may be forgotten.
+     * S-23, decision 0011
      */
     #[Test]
     public function aRowNamesNoPerson(): void

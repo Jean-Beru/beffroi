@@ -21,8 +21,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * OIDC Core §8.1 and CIBA Core §4: which sector a client is of, read through every source the deployment
- * wired, in the order it wired them.
+ * OIDC Core §8.1, CIBA Core §4
  */
 final class SectorIdentifiersTest extends TestCase
 {
@@ -85,8 +84,7 @@ final class SectorIdentifiersTest extends TestCase
     }
 
     /**
-     * CIBA Core §4: two clients of the backchannel flow whose keys are published on one host are of one
-     * sector, and see a user under one identifier, as two clients whose browsers come back to one host do.
+     * CIBA Core §4
      */
     #[Test]
     public function twoBackchannelClientsOfOneHostShareOneSector(): void
@@ -118,11 +116,6 @@ final class SectorIdentifiersTest extends TestCase
         static::assertFalse($one->equals($other));
     }
 
-    /**
-     * The "jwks_uri" stands in for a client that registers no redirection URI, and for no other: a client
-     * whose browser comes back somewhere is of the sector it comes back to, whatever its keys say, so an
-     * ordinary client is never given the sector of its keys by accident.
-     */
     #[Test]
     public function aClientThatRegistersARedirectionUriIsOfItsHostAndNotOfItsKeys(): void
     {
@@ -138,9 +131,7 @@ final class SectorIdentifiersTest extends TestCase
     }
 
     /**
-     * OIDC Core §8.1: a client whose redirection URIs are on several hosts registers a
-     * "sector_identifier_uri" to say which sector it belongs to, and is refused rather than assigned an
-     * identifier computed from whichever host came first.
+     * OIDC Core §8.1
      */
     #[Test]
     public function aClientOnSeveralHostsAndWithoutADocumentNamesNoSector(): void
@@ -157,9 +148,7 @@ final class SectorIdentifiersTest extends TestCase
     }
 
     /**
-     * CIBA Core §4: a client of the backchannel flow that registers neither a "sector_identifier_uri" nor a
-     * "jwks_uri" registers nothing any wired source reads, and is refused rather than served a "sub"
-     * nobody can compute.
+     * CIBA Core §4
      */
     #[Test]
     public function aClientThatRegistersNeitherADocumentNorKeysNamesNoSector(): void
@@ -175,10 +164,6 @@ final class SectorIdentifiersTest extends TestCase
         Sectors::ofAProvider()->sectorOf($service->registration);
     }
 
-    /**
-     * There is no last resort: a deployment that wires one way of saying it reads that one, and a client
-     * that says it another way is refused rather than read by something nobody wired.
-     */
     #[Test]
     public function aWayOfSayingItThatNobodyWiredReadsNothing(): void
     {
@@ -195,8 +180,7 @@ final class SectorIdentifiersTest extends TestCase
     }
 
     /**
-     * OIDC Registration §5: what a client publishes to back its claim is what it would otherwise have been
-     * judged on, which for an ordinary client is every redirection URI it registered.
+     * OIDC Registration §5
      */
     #[Test]
     public function aClientPublishesTheRedirectionUrisItsSectorWouldHaveBeenReadFrom(): void
@@ -216,8 +200,7 @@ final class SectorIdentifiersTest extends TestCase
     }
 
     /**
-     * CIBA Core §4: and for a client that registers no redirection URI, the "jwks_uri" its sector would
-     * have been read from instead.
+     * CIBA Core §4
      */
     #[Test]
     public function aBackchannelClientPublishesTheJwksUriItsSectorWouldHaveBeenReadFrom(): void
@@ -236,11 +219,6 @@ final class SectorIdentifiersTest extends TestCase
         static::assertSame(['https://terminal.example/jwks.json'], $published);
     }
 
-    /**
-     * An ordinary client's keys are not what its sector is read from, so the document of its sector has no
-     * business naming them: a client that publishes its keys behind a URI and registers a document
-     * publishes its redirection URIs there and nothing else.
-     */
     #[Test]
     public function anOrdinaryClientPublishesNothingOfItsKeys(): void
     {

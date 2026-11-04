@@ -29,27 +29,21 @@ use Beffroi\Xml\Core\Serializer;
 use DateTimeImmutable;
 use Beffroi\Saml2\Model\Tests\Support\InMemoryReplayGuard;
 
-/**
- * The parties, the clock and the messages the logout tests share (sections 6.3, 6.4 and 9.1): an identity provider
- * and a service provider carrying the test keys of tests/saml2-model/Fixture/keys/, the identity provider's request to the service
- * provider and the service provider's response to it, the clock frozen at their IssueInstant.
- */
 final class LogoutFixtures
 {
     public const string IDP = 'https://idp.example.com/saml';
 
     public const string SP = 'https://sp.example.com/saml';
 
-    /** The single logout service of the service provider, on both bindings, where the request arrives. */
     public const string SP_SLO = 'https://sp.example.com/saml/slo';
 
-    /** The single logout service of the identity provider on HTTP-Redirect, without ResponseLocation. */
     public const string IDP_SLO = 'https://idp.example.com/saml/slo';
 
-    /** The Location of the identity provider's single logout service on HTTP-POST, where a request arrives. */
     public const string IDP_SLO_POST = 'https://idp.example.com/saml/slo/post';
 
-    /** Its ResponseLocation, where a response arrives (SAML Metadata §2.2.2). */
+    /**
+     * SAML Metadata §2.2.2
+     */
     public const string IDP_SLO_RESPONSE = 'https://idp.example.com/saml/slo/response';
 
     public const string REQUEST_ID = '_5d1a0e7c9b3f4a2e8d6c1b0a9f8e7d6c5b4a3f2e';
@@ -84,8 +78,7 @@ final class LogoutFixtures
     }
 
     /**
-     * The identity provider's LogoutRequest to the service provider, which expires five minutes after its issue and
-     * says the user asked for it (SAML Core §3.7.3).
+     * SAML Core §3.7.3
      *
      * @param list<string> $sessionIndexes
      */
@@ -106,10 +99,6 @@ final class LogoutFixtures
         );
     }
 
-    /**
-     * The service provider's LogoutResponse to the identity provider's request, at the identity provider's
-     * ResponseLocation.
-     */
     public static function response(
         Status $status = new Status(StatusCode::Success),
         string $destination = self::IDP_SLO_RESPONSE,
@@ -135,8 +124,7 @@ final class LogoutFixtures
     }
 
     /**
-     * @param InMemoryReplayGuard $replay the store the validator remembers what it accepts in (M-11), a new one unless
-     *                                    a test reads it
+     * M-11
      */
     public static function requestValidator(
         int $seconds = 0,
@@ -146,8 +134,7 @@ final class LogoutFixtures
     }
 
     /**
-     * @param InMemoryReplayGuard $replay the store the validator remembers what it accepts in (M-11), a new one unless
-     *                                    a test reads it
+     * M-11
      */
     public static function responseValidator(
         int $seconds = 0,
@@ -157,8 +144,7 @@ final class LogoutFixtures
     }
 
     /**
-     * A written document as its peer receives it: serialized with Core, loaded again with SamlLoader::create()
-     * (section 9.1).
+     * Section 9.1
      */
     public static function reload(Document $document): Document
     {

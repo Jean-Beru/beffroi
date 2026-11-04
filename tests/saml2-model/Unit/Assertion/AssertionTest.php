@@ -20,12 +20,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3, M-4, M-6: an assertion, one of each of its parts, its ID an ID of M-6 (SAML Core §2.3.3).
+ * Section 5.3, M-4, M-6, SAML Core §2.3.3
  */
 final class AssertionTest extends TestCase
 {
     /**
-     * Section 5.3: the eight fields, kept as given.
+     * Section 5.3
      */
     #[Test]
     public function itKeepsItsParts(): void
@@ -68,7 +68,7 @@ final class AssertionTest extends TestCase
     }
 
     /**
-     * M-6, SAML Core §1.3.4: an ID that is not an NCName.
+     * M-6, SAML Core §1.3.4
      */
     #[Test]
     public function itRefusesAnIdThatIsNotAnNcName(): void
@@ -116,7 +116,7 @@ final class AssertionTest extends TestCase
     }
 
     /**
-     * Section 7, M-15, M-17: 256 attributes, the bound the reader of the service provider applies.
+     * Section 7, M-15, M-17
      */
     #[Test]
     public function itHoldsTheAttributesOfTheirBound(): void
@@ -132,8 +132,7 @@ final class AssertionTest extends TestCase
     }
 
     /**
-     * §9.2 row 36, M-15, M-17: 257 attributes, which the reader of the service provider would refuse, are refused
-     * whoever builds the assertion, a writer included.
+     * §9.2 row 36, M-15, M-17
      */
     #[Test]
     public function itRefusesAttributesOverTheirBound(): void

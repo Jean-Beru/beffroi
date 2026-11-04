@@ -16,13 +16,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Issue #593, RFC 8693 §2.1 and RFC 7009 §2.1: a token whose subject a client named is given back, and the
- * act of that revocation is in the journal of the person it was issued for.
- *
- * The "sub" such a token keeps is a name only the client the presented token was written for holds (OIDC
- * Core §8.1), so nothing can read it back under the client that asked: what the exchange resolved when it
- * read what was presented is kept on the record, and that is what the revocation names. A token nobody
- * signed in for still writes its act, naming nobody.
+ * RFC 8693 §2.1, RFC 7009 §2.1, OIDC Core §8.1
  */
 final class TheRevocationOfAnExchangedTokenTest extends BrowserTestCase
 {
@@ -60,9 +54,7 @@ final class TheRevocationOfAnExchangedTokenTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §4.4: a token a client holds for itself is about nobody, and neither is what an exchange of
-     * it issues. The act is written all the same, naming no person, which is what the journal does with
-     * every act that concerns none.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function theRevocationOfATokenNobodySignedInForNamesNobody(): void
@@ -79,8 +71,7 @@ final class TheRevocationOfAnExchangedTokenTest extends BrowserTestCase
     }
 
     /**
-     * An access token of a client the person signed in to, addressed to the calendar (RFC 8707 §2): what a
-     * gateway presents at the exchange, and what an exchange narrows what it is addressed to inside of.
+     * RFC 8707 §2
      */
     private function tokenOfAPerson(): string
     {
@@ -109,8 +100,7 @@ final class TheRevocationOfAnExchangedTokenTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §4.4: a token a service holds for itself, of the one client of the test kernel whose own
-     * tokens are opaque, so that the presented token is read from its record as a gateway reads one.
+     * RFC 6749 §4.4
      */
     private function tokenOfAService(): string
     {
@@ -130,8 +120,7 @@ final class TheRevocationOfAnExchangedTokenTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8693 §2.1: the gateway exchanges the token it presents for one of its own, opaque, so that it can
-     * be given back at the revocation endpoint (RFC 7009 §2.2.1).
+     * RFC 8693 §2.1, RFC 7009 §2.2.1
      */
     private function exchanged(string $subjectToken): string
     {
@@ -167,9 +156,6 @@ final class TheRevocationOfAnExchangedTokenTest extends BrowserTestCase
     }
 
     /**
-     * The person each act of a revocation names, read from the rows: an act that names nobody is not an act
-     * the journal of a person answers for.
-     *
      * @return list<string|null>
      */
     private static function subjectsOfTheRevocations(): array

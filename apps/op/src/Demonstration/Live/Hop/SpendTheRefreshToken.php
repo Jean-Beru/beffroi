@@ -16,9 +16,7 @@ use function count;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * RFC 6749 §6: the client spends the refresh token it was given and is handed another pair, the user
- * being asked nothing again. The grant named is the one that spends a refresh token, read from the
- * wiring: this hop belongs to the flow that issued the token and is served by another.
+ * RFC 6749 §6
  */
 final readonly class SpendTheRefreshToken implements DrivenHopInterface
 {

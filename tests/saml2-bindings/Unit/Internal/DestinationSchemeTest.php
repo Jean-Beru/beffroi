@@ -10,14 +10,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.3 step 1, section 6.4 step 1, RFC 3986 §3.1: the scheme of a Destination, read at its first byte, http or
- * https in letters of either case, followed by a colon, and nothing trimmed or normalised to find it.
+ * Section 6.3 step 1, section 6.4 step 1, RFC 3986 §3.1
  */
 final class DestinationSchemeTest extends TestCase
 {
     /**
-     * §9.2 row 33, section 6.3 step 1: a Destination of the scheme http or https is a web location, whatever the case
-     * of its letters (RFC 3986 §3.1).
+     * §9.2 row 33, section 6.3 step 1, RFC 3986 §3.1
      */
     #[Test]
     #[DataProvider('provideWebDestinations')]
@@ -45,8 +43,7 @@ final class DestinationSchemeTest extends TestCase
     }
 
     /**
-     * §9.2 row 33, section 6.3 step 1: a Destination of another scheme, or whose scheme is not found at its first
-     * byte, is not a web location.
+     * §9.2 row 33, section 6.3 step 1
      */
     #[Test]
     #[DataProvider('provideOtherDestinations')]

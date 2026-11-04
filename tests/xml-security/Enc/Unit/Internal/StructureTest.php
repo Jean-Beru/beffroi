@@ -14,7 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * E-5: the structure read strictly, direct children only, counted, every other child refused.
+ * E-5
  */
 final class StructureTest extends TestCase
 {
@@ -155,7 +155,7 @@ final class StructureTest extends TestCase
     }
 
     /**
-     * E-5, Core I-12: the text of an element, read through Text::of(), a comment skipped.
+     * E-5, Core I-12
      */
     #[Test]
     public function itReadsTheTextOfAnElement(): void
@@ -171,7 +171,7 @@ final class StructureTest extends TestCase
     }
 
     /**
-     * E-5: an element inside a text is refused under the rule of the namespace, never with Core's MixedContent.
+     * E-5
      */
     #[Test]
     public function itRefusesAnElementInsideTheText(): void

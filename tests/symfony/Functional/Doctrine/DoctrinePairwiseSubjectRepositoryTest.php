@@ -13,8 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * OIDC Core §8.1, architecture §5.3: what each sector of a tenant has seen a user under, which is the one
- * way back from a "sub" that is a hash.
+ * OIDC Core §8.1, Architecture §5.3
  */
 final class DoctrinePairwiseSubjectRepositoryTest extends DatabaseTestCase
 {
@@ -37,10 +36,6 @@ final class DoctrinePairwiseSubjectRepositoryTest extends DatabaseTestCase
         static::assertTrue($found?->id->equals($alice->id));
     }
 
-    /**
-     * The property pairwise identifiers exist for, at the store: the string one sector holds names nobody
-     * in another.
-     */
     #[Test]
     public function anIdentifierOfOneSectorNamesNobodyInAnother(): void
     {
@@ -68,11 +63,6 @@ final class DoctrinePairwiseSubjectRepositoryTest extends DatabaseTestCase
         static::assertNull($found);
     }
 
-    /**
-     * The identifier is computed, so every document written afterwards records the same one: the write is
-     * asked for again at every token and does nothing, which is what lets two workers issuing the first two
-     * tokens of a user at once leave one row between them.
-     */
     #[Test]
     public function recordingTheSameIdentifierAgainChangesNothing(): void
     {

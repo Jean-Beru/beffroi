@@ -16,7 +16,7 @@ use function str_repeat;
 final class AuthenticationMethodTest extends TestCase
 {
     /**
-     * RFC 8176 §2: each registered method proves something the user knows, has or is.
+     * RFC 8176 §2
      */
     #[Test]
     #[DataProvider('provideMethodsAndTheirFactor')]
@@ -49,8 +49,7 @@ final class AuthenticationMethodTest extends TestCase
     }
 
     /**
-     * RFC 8176 §2: a presence check, a location, a risk score, a channel or a provider's own value
-     * describes a proof without being a factor.
+     * RFC 8176 §2
      */
     #[Test]
     #[DataProvider('provideMethodsWithoutAFactor')]
@@ -75,7 +74,7 @@ final class AuthenticationMethodTest extends TestCase
     }
 
     /**
-     * RFC 8176 §2 "mfa": several factors asserted without naming each.
+     * RFC 8176 §2
      */
     #[Test]
     public function mfaAssertsMultipleFactors(): void
@@ -85,10 +84,6 @@ final class AuthenticationMethodTest extends TestCase
         static::assertFalse(AuthenticationMethod::password()->isMultipleFactors());
     }
 
-    /**
-     * The shape a value is held to, whoever sent it: a letter or a digit, then at most sixty-three
-     * letters, digits, dots, underscores, colons or hyphens.
-     */
     #[Test]
     #[DataProvider('provideValuesThatAreNotWellFormed')]
     public function aValueThatIsNotWellFormedIsRefused(string $value): void

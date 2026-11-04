@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * OIDC Discovery §3: who the provider is and where it answers, for the tenant asked about.
+ * OIDC Discovery §3
  */
 final class ProviderIdentityTest extends TestCase
 {

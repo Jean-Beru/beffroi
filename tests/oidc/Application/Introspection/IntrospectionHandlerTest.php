@@ -65,10 +65,6 @@ use Symfony\Component\Clock\MockClock;
 use Beffroi\Oidc\Tests\Fixture\Subjects;
 use Beffroi\Oidc\Tests\Fixture\Shapes;
 
-/**
- * The endpoint end to end below HTTP: tokens of both shapes, a real client authentication, the response
- * signed by the bridge of the core and verified the way Symfony's Oauth2TokenHandler verifies it.
- */
 final class IntrospectionHandlerTest extends TestCase
 {
     private Tenant $tenant;
@@ -155,7 +151,7 @@ final class IntrospectionHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7662 §2.2: an opaque token of the caller, described from its record.
+     * RFC 7662 §2.2
      */
     #[Test]
     public function itDescribesAnOpaqueTokenToTheClientItWasIssuedTo(): void
@@ -199,11 +195,6 @@ final class IntrospectionHandlerTest extends TestCase
         static::assertNull($response->jwt);
     }
 
-    /**
-     * Issue #589: a resource server told who a token names is one of the two reads where a personal datum
-     * leaves this provider, so it is an act, naming the client that asked and the person by the subject
-     * their account carries.
-     */
     #[Test]
     public function describingATokenOfAPersonIsAnAct(): void
     {
@@ -221,9 +212,7 @@ final class IntrospectionHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7662 §2.2: an inactive answer carries no other member, so it says a read of nobody; writing an
-     * act of it would also let whoever asks after tokens they do not hold reach the journal of somebody
-     * (issue #589).
+     * RFC 7662 §2.2
      */
     #[Test]
     public function anInactiveAnswerIsNoAct(): void
@@ -236,8 +225,7 @@ final class IntrospectionHandlerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4: a token a client holds for itself names that client and no person, so describing it
-     * hands no personal datum to anybody and is no act of this register (issue #589).
+     * RFC 6749 §4.4
      */
     #[Test]
     public function describingATokenAClientHoldsForItselfIsNoAct(): void
@@ -264,9 +252,7 @@ final class IntrospectionHandlerTest extends TestCase
     }
 
     /**
-     * Issue #831, RFC 7523 §2.1: a token issued on an assertion names the person the assertion was validated
-     * for though nobody signed in for it here, so describing it hands that person to the client that asked,
-     * which is an act like any other read of them (issue #589).
+     * RFC 7523 §2.1
      */
     #[Test]
     public function describingATokenOfAnAssertionIsAnActOfItsPerson(): void
@@ -285,8 +271,7 @@ final class IntrospectionHandlerTest extends TestCase
     }
 
     /**
-     * Issue #831, RFC 7662 §2.2: the token of an assertion whose person was disabled since is a token this
-     * provider no longer honours, "active": false as the token of a disabled user somebody signed in for is.
+     * RFC 7662 §2.2
      */
     #[Test]
     public function aTokenOfAnAssertionWhosePersonWasDisabledIsInactive(): void
@@ -308,8 +293,7 @@ final class IntrospectionHandlerTest extends TestCase
     }
 
     /**
-     * RFC 8705 §3.2: the answer tells the resource server what the token is bound to, so that it can ask
-     * its own caller to present that certificate again.
+     * RFC 8705 §3.2
      */
     #[Test]
     public function itTellsWhatABoundTokenIsBoundTo(): void
@@ -347,8 +331,7 @@ final class IntrospectionHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7662 §2.2: a self-contained token is described the same way, from its claims, for a resource
-     * server that would rather not verify it itself.
+     * RFC 7662 §2.2
      */
     #[Test]
     public function itDescribesAJwtTokenAsWell(): void
@@ -388,8 +371,7 @@ final class IntrospectionHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7662 §2.2 and §4: a token that is not the caller's, or not one to honour, is "active": false and
-     * nothing else, whatever the reason.
+     * RFC 7662 §2.2, §4
      *
      * @param callable(self): string $token
      */
@@ -453,8 +435,7 @@ final class IntrospectionHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7662 §2.1: the caller authenticates as a client; a wrong secret is invalid_client, 401, with the
-     * challenge of the token endpoint.
+     * RFC 7662 §2.1
      */
     #[Test]
     public function itRefusesACallerThatDoesNotAuthenticate(): void
@@ -479,8 +460,7 @@ final class IntrospectionHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7662 §2.1: a public client has nothing to authenticate with, and the endpoint requires it
-     * against token scanning.
+     * RFC 7662 §2.1
      */
     #[Test]
     public function itRefusesAPublicClient(): void
@@ -503,7 +483,7 @@ final class IntrospectionHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7662 §2.1: "token" is required; a hint that is not a string is not read either.
+     * RFC 7662 §2.1
      *
      * @param array<string, mixed> $parameters
      */
@@ -547,9 +527,7 @@ final class IntrospectionHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9701 §4 and §5: when asked, the members travel as the "token_introspection" claim of a JWT that
-     * names the provider, the caller and the moment, signed with the active key under the "typ" of §5,
-     * which is what Symfony's Oauth2TokenHandler checks before reading the members.
+     * RFC 9701 §4, §5
      */
     #[Test]
     public function itSignsTheResponseWhenAsked(): void
@@ -588,7 +566,7 @@ final class IntrospectionHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9701 §5: an inactive token is signed too; the caller asked for a JWT and gets one.
+     * RFC 9701 §5
      */
     #[Test]
     public function anInactiveTokenIsSignedToo(): void
@@ -615,8 +593,7 @@ final class IntrospectionHandlerTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.4: the tokens of the device grant descend from the device authorization request, so it is
-     * that record introspection asks whether the grant is still alive.
+     * RFC 8628 §3.4
      */
     #[Test]
     public function itDescribesATokenOfTheDeviceGrantAsActive(): void
@@ -642,7 +619,7 @@ final class IntrospectionHandlerTest extends TestCase
     }
 
     /**
-     * CIBA Core §10.1: the same of the backchannel grant, whose record is the grant too.
+     * CIBA Core §10.1
      */
     #[Test]
     public function itDescribesATokenOfTheBackchannelGrantAsActive(): void
@@ -667,9 +644,6 @@ final class IntrospectionHandlerTest extends TestCase
         static::assertSame($record->grantId->toRfc4122(), $response->members['grant_id']);
     }
 
-    /**
-     * One request of a caller describing one token, the shape the tests of the act above share.
-     */
     private function describe(string $token, string $authorization): IntrospectionResponse
     {
         return $this->handler->handle(
@@ -703,8 +677,7 @@ final class IntrospectionHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7523 §2.1: an opaque token of the job runner for the person an assertion named, whose record keeps
-     * that person (issue #588) and no sign-in.
+     * RFC 7523 §2.1
      */
     private function tokenOfAnAssertion(): string
     {

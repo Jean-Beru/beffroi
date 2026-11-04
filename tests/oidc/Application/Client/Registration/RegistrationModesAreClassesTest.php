@@ -21,12 +21,7 @@ use function str_replace;
 use function strtr;
 
 /**
- * Decision 0009: a mode of registration is a class added and a line of wiring, so the name of a mode is
- * written in the class that is that mode and nowhere else. Anything that compared a mode to a literal
- * would be a place to edit when #347 adds its own, which is the shape this project refuses.
- *
- * The wiring of a deployment names a mode, of course: that is what a policy is. What is checked here is
- * the source of the two packages, where nothing but the class itself may spell it.
+ * Decision 0009
  */
 final class RegistrationModesAreClassesTest extends TestCase
 {

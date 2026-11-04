@@ -12,14 +12,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-38, section 6.9 steps 1 and 3: what the metadata of the service provider of a tenant says.
+ * spec/saml.md S-38, section 6.9 steps 1 and 3
  */
 final class ServiceProviderDescriptionTest extends TestCase
 {
     private const string ENTITY_ID = 'urn:acme:service-provider';
 
     /**
-     * S-38: the entity ID of the metadata is the one the endpoints were located with.
+     * S-38
      */
     #[Test]
     public function itsEntityIdIsTheOneItWasLocatedWith(): void
@@ -32,8 +32,7 @@ final class ServiceProviderDescriptionTest extends TestCase
     }
 
     /**
-     * Section 6.9 step 1: metadata announcing signed requests with no key to verify them by is not metadata to
-     * publish.
+     * Section 6.9 step 1
      */
     #[Test]
     public function itRefusesToDescribeAServiceProviderWithoutACertificate(): void

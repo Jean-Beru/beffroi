@@ -17,18 +17,8 @@ use function random_bytes;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 /**
- * The references a sign-on at an upstream identity provider starts under (beffroi/saml, spec/saml.md S-51): drawn when
- * the login page sends the browser to the sign-on, by the step of the address, which posts under its form token
- * (S-61), or by the "login_hint" that skips it (S-62), 32 bytes of random_bytes() in the URL of that redirection alone;
- * kept in the HTTP session of that browser by interaction, and under a key of its own for the login a page of the
- * provider waits for (LoginTarget), which no identifier of an interaction can be, with the provider the discovery
- * chose and the instant it was drawn; at most eight, the oldest forgotten first, a login drawing another forgetting
- * the one before, and a reference past its life dropped whenever the references of the browser are read or written,
- * as LoginAddresses keeps the address sent on with it.
- *
- * The sign-on takes it once: forgotten at its first presentation whatever was presented, compared with hash_equals(),
- * for the provider it was drawn for and within LIFE of its drawing. A page of another site can send the browser to the
- * sign-on, the session cookie going with a top-level navigation, but reads none of them, and starts nothing.
+ * One-time references kept in the HTTP session, without which another site sending the browser to the sign-on
+ * starts nothing (beffroi/saml S-51).
  *
  * @phpstan-type Kept array{reference: string, identity_provider: string, issued_at: int}
  */
@@ -39,22 +29,19 @@ final readonly class UpstreamSignOnReferences
     public const int MAX_KEPT = 8;
 
     /**
-     * Section 7: the life of a reference, in seconds, the redirection that carries it being followed at once.
+     * In seconds (spec/saml.md section 7).
      */
     public const int LIFE = 60;
 
     private const int BYTES = 32;
 
     /**
-     * The login a page of the provider waits for, which no identifier of an interaction is: those are base64url.
+     * The key of the login a page waits for: no interaction identifier, being base64url, holds a colon.
      */
     private const string WAITING_PAGE = ':page';
 
     /**
-     * The reference of the sign-on of that login at that provider, which the redirection to the sign-on carries.
-     *
      * @param Interaction|null $interaction null for the login a page of the provider waits for
-     * @param string $identityProvider the entity ID of the provider the discovery chose
      */
     public function issue(SessionInterface $httpSession, ?Interaction $interaction, string $identityProvider, DateTimeImmutable $now): string
     {
@@ -73,8 +60,7 @@ final readonly class UpstreamSignOnReferences
     }
 
     /**
-     * Whether the sign-on of that login at that provider is presented the reference drawn for it, within its life;
-     * the reference forgotten whatever was presented, so that it starts one sign-on at most.
+     * Forgets the reference whatever was presented, so that it starts one sign-on at most.
      *
      * @param Interaction|null $interaction null for the login a page of the provider waits for
      */
@@ -100,8 +86,6 @@ final readonly class UpstreamSignOnReferences
     }
 
     /**
-     * The references kept whose life is not over at that instant.
-     *
      * @return array<string, Kept>
      */
     private static function living(SessionInterface $httpSession, DateTimeImmutable $now): array
@@ -113,8 +97,6 @@ final readonly class UpstreamSignOnReferences
     }
 
     /**
-     * What the HTTP session holds, an entry that is no reference kept left out.
-     *
      * @return array<string, Kept>
      */
     private static function kept(SessionInterface $httpSession): array

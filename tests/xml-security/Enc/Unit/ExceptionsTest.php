@@ -22,9 +22,7 @@ use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 /**
- * Section 5.6: every refusal is an EncryptionRefused, which is a RefusedXml of Core, so that a consumer catching
- * that base class catches everything the package refuses; the one failure carries the one message (E-3); an
- * EncryptionFailed is never input.
+ * Section 5.6, E-3
  */
 final class ExceptionsTest extends TestCase
 {
@@ -64,7 +62,7 @@ final class ExceptionsTest extends TestCase
     }
 
     /**
-     * §9.2 row 33, E-3: the one failure carries the one message and nothing else, by construction.
+     * §9.2 row 33, E-3
      */
     #[Test]
     public function itsOneFailureCarriesTheOneMessage(): void

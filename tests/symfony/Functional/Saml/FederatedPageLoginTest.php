@@ -24,18 +24,12 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * beffroi/saml, spec/saml.md S-49 to S-51 and S-61, decision 0029: the login a page of the provider waits for without an
- * interaction (LoginTarget), here the approval of a device (RFC 8628 §3.3), asks for the address first, and sends an
- * address of a federated domain to the sign-on of its provider, which remembers that page to come back to. What follows
- * at the provider, and the way back through the assertion consumer service, is issue #784's.
+ * beffroi/saml, spec/saml.md S-49 to S-51 and S-61, Decision 0029, RFC 8628 §3.3
  */
 final class FederatedPageLoginTest extends ConsoleTestCase
 {
     private const string SINGLE_SIGN_ON = 'https://saml-idp.localhost/simplesaml/module.php/saml/idp/singleSignOnService';
 
-    /**
-     * What the appliance shows and the person types, well formed: the page carries it back once signed in.
-     */
     private const string USER_CODE = 'BCDFGHJK';
 
     protected static function kernelOptions(): array
@@ -46,7 +40,7 @@ final class FederatedPageLoginTest extends ConsoleTestCase
     }
 
     /**
-     * S-61: the login the page of a device waits for asks for the address, and offers no password.
+     * S-61
      */
     #[Test]
     public function theLoginTheDevicePageWaitsForAsksForTheAddress(): void
@@ -67,8 +61,7 @@ final class FederatedPageLoginTest extends ConsoleTestCase
     }
 
     /**
-     * S-61, S-51: an address of a federated domain typed on the login the page of a device waits for is sent to the
-     * sign-on without an interaction, and on to the single sign-on service of its provider.
+     * S-61, S-51
      */
     #[Test]
     public function aFederatedAddressOnTheDevicePageIsSentToItsProvider(): void
@@ -88,8 +81,7 @@ final class FederatedPageLoginTest extends ConsoleTestCase
     }
 
     /**
-     * S-50: the request remembered names the page that waits, with the code it carried, and no interaction, so that the
-     * answer of the provider comes back to it.
+     * S-50
      */
     #[Test]
     public function theRequestRemembersThePageThatWaits(): void
@@ -122,8 +114,7 @@ final class FederatedPageLoginTest extends ConsoleTestCase
     }
 
     /**
-     * S-49: the first login a page asks for of a browser that holds no session forces no login at the provider, which
-     * may answer from the session it holds.
+     * S-49
      */
     #[Test]
     public function aFirstLoginForcesNoLoginAtTheProvider(): void
@@ -141,8 +132,7 @@ final class FederatedPageLoginTest extends ConsoleTestCase
     }
 
     /**
-     * S-49: a page that asks a person signed in already for a proof given a short while ago (RecentLogin) forces a
-     * login at the provider, whose own session must not answer for a proof the page asked to be fresh.
+     * S-49
      */
     #[Test]
     public function aFreshProofOfASignedInPersonForcesTheLoginAtTheProvider(): void
@@ -163,9 +153,6 @@ final class FederatedPageLoginTest extends ConsoleTestCase
         static::assertStringContainsString('ForceAuthn="true"', self::inflatedRequest((string) $this->browser->getResponse()->headers->get('Location')));
     }
 
-    /**
-     * The page of the device sends the browser to the login, whose address is posted as a person posts it.
-     */
     private function signOnFromTheDevicePage(): void
     {
         $this->browser->request('GET', '/device', [
@@ -183,7 +170,7 @@ final class FederatedPageLoginTest extends ConsoleTestCase
     }
 
     /**
-     * The AuthnRequest a redirection carries, inflated (SAML Bindings §3.4.4.1).
+     * SAML Bindings §3.4.4.1
      */
     private static function inflatedRequest(string $location): string
     {
@@ -195,9 +182,6 @@ final class FederatedPageLoginTest extends ConsoleTestCase
         return (string) gzinflate((string) base64_decode($encoded, true));
     }
 
-    /**
-     * The SAML key of the tenant, drawn as an operator draws it.
-     */
     private static function generate(): void
     {
         $tester = self::console('beffroi:keys:generate', [
@@ -206,9 +190,6 @@ final class FederatedPageLoginTest extends ConsoleTestCase
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
     }
 
-    /**
-     * The document of the identity provider of the judge accepted for the tenant.
-     */
     private static function accept(): void
     {
         self::service('test.beffroi.saml_upstream_accepted_metadata', AcceptedMetadataRepositoryInterface::class)

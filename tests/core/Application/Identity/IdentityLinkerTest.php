@@ -43,7 +43,7 @@ final class IdentityLinkerTest extends TestCase
     }
 
     /**
-     * Decision 0002: the row that makes a subject of an upstream provider a user of this tenant.
+     * Decision 0002
      */
     #[Test]
     public function itLinksAUserToASubjectOfAProviderAndSavesIt(): void
@@ -78,9 +78,6 @@ final class IdentityLinkerTest extends TestCase
         );
     }
 
-    /**
-     * What a second run of an import does: the row is the one that was there, with what the provider says now.
-     */
     #[Test]
     public function itRefreshesTheIdentityItAlreadyHasRatherThanAddingASecond(): void
     {
@@ -122,8 +119,7 @@ final class IdentityLinkerTest extends TestCase
     }
 
     /**
-     * Decision 0002: a subject names one user of a tenant, so moving it would hand one account the sign-ins
-     * of another.
+     * Decision 0002
      */
     #[Test]
     public function itRefusesAnIdentityAnotherUserOfTheTenantAlreadyIs(): void
@@ -140,9 +136,6 @@ final class IdentityLinkerTest extends TestCase
         $this->linker->link($other, self::PROVIDER, self::SUBJECT);
     }
 
-    /**
-     * The same subject at another provider is another identity: what names a user is the pair.
-     */
     #[Test]
     public function itLinksTheSameSubjectAtAnotherProviderAsAnotherIdentity(): void
     {

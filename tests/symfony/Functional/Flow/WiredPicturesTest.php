@@ -12,9 +12,7 @@ use Beffroi\Oidc\Port\FlowPicturesInterface;
 use PHPUnit\Framework\Attributes\Test;
 
 /**
- * Issue #462: the flows this provider draws are the grants it is wired with. The document announces what
- * is wired (OIDC Discovery §3) and the pictures are read from the same wiring, so the two cannot
- * disagree: a grant added is announced and drawn, a grant unwired is neither.
+ * OIDC Discovery §3
  */
 final class WiredPicturesTest extends BrowserTestCase
 {
@@ -36,8 +34,7 @@ final class WiredPicturesTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §3.2: whatever brought a flow there, it ends at the token endpoint, so every picture
-     * draws that request and its answer.
+     * RFC 6749 §3.2
      */
     #[Test]
     public function everyFlowIsDrawnAskingTheTokenEndpoint(): void

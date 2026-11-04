@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.8, M-12: a NameID against the rule of its format, refused with the rest of what the model refuses.
+ * Section 5.8, M-12
  */
 final class InvalidNameIdTest extends TestCase
 {

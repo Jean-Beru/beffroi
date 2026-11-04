@@ -27,9 +27,6 @@ use function is_string;
 use function sprintf;
 
 /**
- * The records of backchannel authentication requests, in beffroi_backchannel_authentication_request (CIBA
- * Core §7). A record of a client no longer registered is not found, as an identifier of one is not.
- *
  * @extends DoctrineRepository<BackchannelAuthenticationRecord>
  */
 final readonly class DoctrineBackchannelAuthenticationRecordRepository extends DoctrineRepository implements
@@ -47,12 +44,7 @@ final readonly class DoctrineBackchannelAuthenticationRecordRepository extends D
     }
 
     /**
-     * A record row outlives the minutes somebody has to be reached about a request and answer it: this flow
-     * writes no authorization code either, so the record is the grant its tokens descend from, and a
-     * resource server asks this row whether that grant still stands (architecture §4.6,
-     * AccessTokenInspector). It waits what a token still needs, exactly as a code does.
-     *
-     * Counted from the expiry, the column the mapping indexes.
+     * Kept for as long as a token may still need it: the record is the grant AccessTokenInspector checks.
      */
     public function forgetWhatIsDead(Tenant $tenant, DateTimeImmutable $now, int $limit): int
     {
@@ -110,9 +102,7 @@ final readonly class DoctrineBackchannelAuthenticationRecordRepository extends D
     }
 
     /**
-     * The grants a client asked a user for through a backchannel, whatever their state: the request names
-     * its user before anybody answers it, so one still waiting is covered by the consent and is revoked
-     * with it.
+     * A request still waiting is revoked too: it names its user before anybody answers it.
      *
      * @return list<BackchannelAuthenticationRecord>
      */
@@ -139,9 +129,7 @@ final readonly class DoctrineBackchannelAuthenticationRecordRepository extends D
     }
 
     /**
-     * One UPDATE ... WHERE used_at IS NULL through the connection, not the unit of work: the count of
-     * affected rows says who claimed the row. The loser reads the date back so that its copy says what the
-     * winner wrote.
+     * One UPDATE ... WHERE used_at IS NULL through the connection: the affected row count says who claimed it.
      */
     public function consume(BackchannelAuthenticationRecord $record, DateTimeImmutable $now): bool
     {

@@ -28,42 +28,26 @@ use function str_starts_with;
 use function strtolower;
 
 /**
- * Section 8 of the specification: the methods of the Dom API and the functions never called, as saml2-model bans them
- * (model.md section 8), in src/ and in tests/; and the calls section 8 confines to named files, as xml-security
- * confines createFromString() to its Loader: the percent codec to Internal\Percent, base64_decode() to Internal\Base64,
- * inflation to Internal\Inflater, deflation to Internal\Deflater, validateAuthenticatedByBinding() to the four Received*
- * classes (B-5, B-8). base64_decode() is called with its strict flag wherever it is allowed (B-8).
- *
- * A function name ending with * bans the prefix (every openssl_* function). A method of a class of the SAML stack is
- * not the Dom method of the same name (AuthnRequestValidator::validate() of the model, ReceivedAuthnRequest::validate()
- * of this package, are not Dom\Document::validate()), so a call to a banned method whose receiver is known to be one
- * is let through; a confined method is confined whatever its receiver. A dynamic call or a dynamic instantiation would
- * escape the rule, so both are refused too; a first-class callable of a banned or confined call (base64_decode(...)
- * handed to array_map()), which PHPStan visits as a node of its own, is BannedCallablesRule's, which asks this rule.
- * ekino/phpstan-banned-code bans a function by the name as written; this rule reads the name as resolved, whatever its
- * case.
+ * Section 8, model.md section 8, B-5, B-8
  *
  * @implements Rule<CallLike>
  */
 final class BannedCallsRule implements Rule
 {
-    /**
-     * The namespaces of the SAML stack, lowercased: this package's and the model's.
-     */
     private const array STACK = ['beffroi\\saml2\\bindings\\', 'beffroi\\saml2\\model\\'];
 
     /**
-     * @var array<string, string> the lowercased method names, mapped to the spelling of the configuration
+     * @var array<string, string> lowercased method name to its configured spelling
      */
     private array $methods = [];
 
     /**
-     * @var array<string, string> the lowercased function names, mapped to the spelling of the configuration
+     * @var array<string, string> lowercased function name to its configured spelling
      */
     private array $functions = [];
 
     /**
-     * @var array<string, string> the lowercased function prefixes, mapped to the spelling of the configuration
+     * @var array<string, string> lowercased prefix to its configured spelling
      */
     private array $prefixes = [];
 
@@ -78,9 +62,9 @@ final class BannedCallsRule implements Rule
     private array $confinedFunctions = [];
 
     /**
-     * @param list<string>                                                                $methods
-     * @param list<string>                                                                $functions each a name, or a prefix followed by *
-     * @param list<array{method?: string, function?: string, allowedIn: list<string>}> $confined  one of method or function each, its paths relative to the working directory
+     * @param list<string> $methods
+     * @param list<string> $functions each a name, or a prefix followed by *
+     * @param list<array{method?: string, function?: string, allowedIn: list<string>}> $confined method or function
      */
     public function __construct(
         array $methods,
@@ -158,9 +142,6 @@ final class BannedCallsRule implements Rule
         return [...$this->banned($method . '()'), ...$confined];
     }
 
-    /**
-     * The banned function $name calls, as the configuration spells it or, for a banned prefix, as written; else null.
-     */
     private function function(Name $name): ?string
     {
         $function = $this->functions[$name->toLowerString()] ?? null;
@@ -176,9 +157,6 @@ final class BannedCallsRule implements Rule
         return null;
     }
 
-    /**
-     * Whether the receiver of the call is a class of the SAML stack, as far as PHPStan knows its type.
-     */
     private function ofTheStack(MethodCall|NullsafeMethodCall|StaticCall $node, Scope $scope): bool
     {
         if ($node instanceof StaticCall) {
@@ -238,8 +216,7 @@ final class BannedCallsRule implements Rule
     }
 
     /**
-     * B-8: base64_decode() with its strict flag, true as PHPStan knows it, positional or named; a first-class callable
-     * of it has no flag and is refused too.
+     * B-8
      *
      * @return list<IdentifierRuleError>
      */

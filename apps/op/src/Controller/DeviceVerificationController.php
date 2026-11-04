@@ -22,23 +22,9 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Where a user types the code an appliance is showing and says yes or no (RFC 8628 §3.3, BCP 10027 §2): the
- * one screen of the whole flow, and the only part of it no specification writes for us.
+ * RFC 8628 §3.3, BCP 10027 §2
  *
- * The user signs in before the code is read at all: a request approved by nobody is a request approved by
- * nobody, and the attempts at a code are counted against the person making them, as every other code typed
- * on a page of this provider is (decision 0014). The page they were on is remembered (LoginTarget), the
- * login of the firewall is the one every other page of the provider uses, and the browser lands back on the
- * code it carried.
- *
- * Nothing is approved on a GET. The complete verification URI of §3.3.1 brings the code already typed, and
- * what it gets is the same page asking for a confirmation: a link followed from a television screen, or
- * prefetched by whatever the browser hands the address to, must not be an approval. The act is a POST with
- * the token this page rendered.
- *
- * A code that names no request awaiting an answer gets one refusal whatever the reason, and only the
- * refusals are counted: thirty-four bits of code are enough only if guessing is slow (§5.1, §5.2), and a
- * user who typed the right code has guessed nothing.
+ * Nothing is approved on a GET: a link followed or prefetched must not be an approval.
  */
 #[AsController]
 final readonly class DeviceVerificationController
@@ -81,7 +67,6 @@ final readonly class DeviceVerificationController
 
         $session = $this->browser->authenticationSession($request, $tenant);
         if ($session === null) {
-            // remembered so that the login of the firewall brings the browser back to the code it carried
             return $this->loginTargets->sendToLogin(
                 $request->getSession(),
                 self::ROUTE,
@@ -91,14 +76,10 @@ final readonly class DeviceVerificationController
                     ] : [],
             );
         }
-        // the page is no longer waiting for a login, whatever it does with the code next
         $this->loginTargets->forget($request->getSession());
         if ($typed === '') {
             return $this->page->renderForm();
         }
-        // What is compared and what is shown are two readings of one code (UserCode): the lookup is made by
-        // the bare value, and the page shows the code as the appliance shows it, so that the user sees at a
-        // glance that it is theirs (BCP 10027 §2).
         $shown = UserCode::shown($typed);
         if (! $this->attempts->mayAttempt($session->user)) {
             return $this->page->renderForm(DeviceApprovalPage::TOO_MANY_ATTEMPTS, $shown, Response::HTTP_TOO_MANY_REQUESTS);

@@ -9,13 +9,6 @@ use Beffroi\Core\Exception\InvalidArgumentException;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 
 /**
- * The source that created a person and the claims it holds (decision 0002), as one JSON column.
- *
- * **A local source is a null column, and a null column is a local source.** A local source holds nothing
- * and writes no document (`UserSource::toDocument()`), so there is nothing to seal; and the column comes to
- * a table that already holds people, every one of them created by a console, a fixture or an import, which
- * a migration can say without the data key of their tenant, which it does not have.
- *
  * @extends JsonObjectType<UserSource>
  */
 final class UserSourceType extends JsonObjectType

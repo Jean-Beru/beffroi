@@ -11,8 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-5, section 6.2 step 1: the metadata of a service provider are read from an https URL or from the
- * absolute path of a file of the deployment, and nothing else.
+ * spec/saml.md S-5, section 6.2 step 1
  */
 final class MetadataLocationTest extends TestCase
 {

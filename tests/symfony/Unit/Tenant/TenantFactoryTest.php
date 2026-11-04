@@ -21,8 +21,7 @@ use Symfony\Component\Clock\MockClock;
 final class TenantFactoryTest extends TestCase
 {
     /**
-     * Architecture §5.1: the tenant is the configuration; RFC 9562 §5.5 gives it a stable identifier from
-     * its slug, the same in every process.
+     * Architecture §5.1, RFC 9562 §5.5
      */
     #[Test]
     public function theTenantIsBuiltFromTheConfiguration(): void
@@ -40,10 +39,6 @@ final class TenantFactoryTest extends TestCase
         static::assertEquals(Fixtures::now(), $tenant->createdAt);
     }
 
-    /**
-     * Issue #449: what the pages show of the tenant is the configuration's too, read into the value
-     * object that refuses a colour a style attribute must not carry.
-     */
     #[Test]
     public function theTenantCarriesTheConfiguredLook(): void
     {
@@ -63,9 +58,6 @@ final class TenantFactoryTest extends TestCase
         static::assertSame('#ffffff', $look->primaryContentColor);
     }
 
-    /**
-     * A deployment that declares no look is served the pages it has always been served.
-     */
     #[Test]
     public function aConfigurationThatDeclaresNoLookGivesTheTenantNone(): void
     {
@@ -97,8 +89,7 @@ final class TenantFactoryTest extends TestCase
     }
 
     /**
-     * Decision 0010: the tenant carries the configured classes in their order; a name that is a number
-     * in the configuration is a name.
+     * Decision 0010
      */
     #[Test]
     public function theTenantCarriesTheConfiguredAuthenticationClasses(): void
@@ -117,11 +108,6 @@ final class TenantFactoryTest extends TestCase
         static::assertSame(TwoFactors::NAME, $tenant->authenticationContextPolicy->classes[0]->predicate->name());
     }
 
-    /**
-     * Issue #607: the predicates are the ones the provider is wired with, so a class named on a predicate
-     * nothing carries is a configuration this deployment cannot honour, and it refuses the start with the
-     * predicates that are wired.
-     */
     #[Test]
     public function aClassNamedOnAPredicateNothingWiredCarriesIsRefused(): void
     {
@@ -139,9 +125,7 @@ final class TenantFactoryTest extends TestCase
     }
 
     /**
-     * Issue #626: the name a tenant opens is the name OIDC Core §5.1 defines, which is the name the
-     * discovery document of the same instance announces. What the configuration named is read against the
-     * claims this provider holds and carried by the tenant.
+     * OIDC Core §5.1
      */
     #[Test]
     public function aClaimIsOpenedUnderTheNameTheSpecificationDefines(): void
@@ -166,9 +150,7 @@ final class TenantFactoryTest extends TestCase
     }
 
     /**
-     * Issue #626: a claim is opened under the name OIDC Core §5.1 defines, which is the name the discovery
-     * document of the same instance announces. A configuration that carried another spelling refuses the
-     * start, naming the claims this provider holds, which is where a renamed claim has to show itself.
+     * OIDC Core §5.1
      */
     #[Test]
     public function aClaimNamedBySomethingNoWiredClaimAnswersRefusesTheStart(): void
@@ -192,9 +174,6 @@ final class TenantFactoryTest extends TestCase
         $factory->create();
     }
 
-    /**
-     * Decisions 0006 and 0010: what a policy may not say refuses the start, not a request.
-     */
     #[Test]
     public function aPolicyTheCoreRefusesIsRefused(): void
     {
@@ -213,7 +192,7 @@ final class TenantFactoryTest extends TestCase
     }
 
     /**
-     * RFC 9562 §5.5: the identifier comes from the slug, the same in every process.
+     * RFC 9562 §5.5
      */
     #[Test]
     public function theIdentifierIsStableAcrossProcessesAndIssuers(): void
@@ -258,9 +237,7 @@ final class TenantFactoryTest extends TestCase
     }
 
     /**
-     * Issue #992: the issuer of a tenant is an origin, the routes of the provider being served at its root. An
-     * issuer that carries a path refuses the start, wherever that path would come from: RFC 8414 §3 places the
-     * metadata of such an issuer at the origin, where no route of the provider is.
+     * RFC 8414 §3
      */
     #[Test]
     public function anIssuerThatCarriesAPathRefusesTheStart(): void
@@ -289,10 +266,6 @@ final class TenantFactoryTest extends TestCase
         $factory->create();
     }
 
-    /**
-     * Four of the claims the provider wires, three of them the ones whose class is named after the field it
-     * reads and not after the claim it is.
-     */
     private static function claims(): WiredClaims
     {
         return new WiredClaims([new Nickname(), new ProfileUrl(), new PictureUrl(), new WebsiteUrl()]);

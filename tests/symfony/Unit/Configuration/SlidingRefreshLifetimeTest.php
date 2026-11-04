@@ -11,9 +11,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
 /**
- * Architecture §4.6: no rotation carries a refresh token past the absolute lifetime of its family, so the
- * sliding lifetime it is renewed for is no longer than that one, checked again when the container builds
- * the issuer of the refresh tokens (issue #911).
+ * Architecture §4.6
  */
 final class SlidingRefreshLifetimeTest extends TestCase
 {
@@ -37,9 +35,6 @@ final class SlidingRefreshLifetimeTest extends TestCase
         yield 'as long' => [7_776_000];
     }
 
-    /**
-     * Issue #913: a refresh token renewed for no time is expired when it is issued.
-     */
     #[Test]
     public function aSlidingLifetimeOfNoTimeIsRefused(): void
     {

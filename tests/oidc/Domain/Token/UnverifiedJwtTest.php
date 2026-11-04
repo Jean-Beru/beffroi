@@ -12,7 +12,7 @@ use PHPUnit\Framework\TestCase;
 final class UnverifiedJwtTest extends TestCase
 {
     /**
-     * RFC 7515 §4.1.1 and §4.1.4: what the protected header says of the signature, read as it is.
+     * RFC 7515 §4.1.1, §4.1.4
      */
     #[Test]
     public function itReadsTheAlgorithmAndTheKeyOfTheHeader(): void
@@ -33,8 +33,6 @@ final class UnverifiedJwtTest extends TestCase
     }
 
     /**
-     * A header that names neither names none: nothing is guessed and nothing is cast.
-     *
      * @param array<string, mixed> $header
      */
     #[Test]
@@ -65,9 +63,6 @@ final class UnverifiedJwtTest extends TestCase
         ]];
     }
 
-    /**
-     * A claim is read when it is the text it is supposed to be, and read as absent otherwise.
-     */
     #[Test]
     public function aClaimIsTheTextItIsOrNothing(): void
     {
@@ -90,7 +85,7 @@ final class UnverifiedJwtTest extends TestCase
     }
 
     /**
-     * RFC 7519 §2: a numeric date is a number of seconds since the epoch, and nothing else is read as one.
+     * RFC 7519 §2
      */
     #[Test]
     public function aNumericDateIsSecondsSinceTheEpochAndNothingElse(): void
@@ -114,7 +109,7 @@ final class UnverifiedJwtTest extends TestCase
     }
 
     /**
-     * RFC 7519 §4.1.3: one string, or an array of them.
+     * RFC 7519 §4.1.3
      *
      * @param list<string> $expected
      */
@@ -149,9 +144,6 @@ final class UnverifiedJwtTest extends TestCase
         yield 'nothing at all' => [null, []];
     }
 
-    /**
-     * An audience nobody set is no audience.
-     */
     #[Test]
     public function aTokenWithoutAnAudienceNamesNone(): void
     {

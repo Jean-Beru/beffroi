@@ -77,9 +77,7 @@ final class JwksHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7517 §5, architecture §4.8: the active key and the retiring one are served, a retired one and
-     * another tenant's are not, in creation order, read the way Symfony's OidcJwks reads a document
-     * (JSON, "keys" filtered on a string "kty", a string "kid" and "use" equal to "sig").
+     * RFC 7517 §5, Architecture §4.8
      */
     #[Test]
     public function itServesTheActiveAndRetiringKeysOfTheTenant(): void
@@ -94,10 +92,7 @@ final class JwksHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7517 §5 and RFC 7515 §4.1.4: a tenant that signs with two algorithms publishes one key per
-     * algorithm, each naming itself, so that a relying party picks by "kid" and knows what to verify with.
-     * The two keys of the fixture are created at the same instant, and the set orders same-instant keys by
-     * "kid", which is a thumbprint: which of them comes first is not a behaviour, so it is not asserted.
+     * RFC 7517 §5, RFC 7515 §4.1.4
      */
     #[Test]
     public function theSetCarriesOneKeyPerAlgorithmTheTenantSignsWith(): void
@@ -137,9 +132,6 @@ final class JwksHandlerTest extends TestCase
         );
     }
 
-    /**
-     * A token the tenant signs verifies against the served document.
-     */
     #[Test]
     public function aTokenOfTheTenantVerifiesAgainstTheServedKeys(): void
     {
@@ -171,9 +163,6 @@ final class JwksHandlerTest extends TestCase
         static::assertTrue($verified);
     }
 
-    /**
-     * A tenant without any published key gets an empty set, served but not cached.
-     */
     #[Test]
     public function aTenantWithoutKeysGetsAnEmptyUncachedSet(): void
     {
@@ -196,9 +185,6 @@ final class JwksHandlerTest extends TestCase
         );
     }
 
-    /**
-     * The cache lifetime is the deployment's, zero meaning "revalidate every time".
-     */
     #[Test]
     #[DataProvider('provideLifetimes')]
     public function theLifetimeIsAnOption(int $lifetime, string $cacheControl): void
@@ -227,9 +213,6 @@ final class JwksHandlerTest extends TestCase
         yield 'zero' => [0, 'public, max-age=0'];
     }
 
-    /**
-     * A negative lifetime is refused at construction, not on the first request.
-     */
     #[Test]
     public function aNegativeLifetimeIsRefusedAtConstruction(): void
     {
@@ -263,8 +246,6 @@ final class JwksHandlerTest extends TestCase
     }
 
     /**
-     * What Symfony's OidcJwks::fromResponse() keeps of a JWKS payload, with its default strict key usage.
-     *
      * @return list<array<string, mixed>>
      */
     private static function keysAsOidcJwksReadsThem(string $payload): array

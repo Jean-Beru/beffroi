@@ -11,10 +11,6 @@ use Beffroi\Core\Port\PasswordAlgorithmsInterface;
 use LogicException;
 
 /**
- * The algorithm a stored password hash was made with, kept as the name it carries (decision 0002) and
- * read back as the class the wiring holds for that name. A name nothing wired accounts for is a row this
- * deployment cannot read, and it says so at load instead of handing back an algorithm nobody chose.
- *
  * @extends StringObjectType<PasswordAlgorithmInterface>
  */
 final class PasswordAlgorithmType extends StringObjectType implements NeedsPasswordAlgorithmsInterface

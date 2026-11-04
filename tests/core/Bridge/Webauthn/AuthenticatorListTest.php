@@ -14,11 +14,6 @@ use PHPUnit\Framework\TestCase;
 use function strtoupper;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * The list of passkey providers the community keeps, read as the schema of its repository writes it
- * (aaguid.json.schema of github.com/passkeydeveloper/passkey-authenticator-aaguids), and refused whole when it
- * is anything else or names nothing.
- */
 final class AuthenticatorListTest extends TestCase
 {
     private const string AAGUID = '50726f74-6f6e-5061-7373-50726f746f6e';
@@ -131,9 +126,6 @@ final class AuthenticatorListTest extends TestCase
         static::assertSame(2, $list->count());
     }
 
-    /**
-     * The schema leaves a model open to members it does not define: one is left aside, not refused.
-     */
     #[Test]
     public function aMemberTheSchemaDoesNotDefineIsLeftAside(): void
     {

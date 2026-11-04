@@ -13,16 +13,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * M-8, section 6.1 step 7: the Issuer of an assertion, the identity provider's entity ID, its Format omitted or entity
- * (SAML Profiles §4.1.4.2, SAML Core §2.2.5); M-1, section 5.4: the Issuer of a message as it arrived, which chooses
- * the peer.
+ * M-8, section 6.1 step 7, SAML Profiles §4.1.4.2, SAML Core §2.2.5, M-1, section 5.4
  */
 final class IssuerReaderTest extends TestCase
 {
     use AssertionFixtures;
 
     /**
-     * M-8, SAML Core §2.2.5: without Format, or with the entity format, the Issuer is the peer's entity ID, as read.
+     * M-8, SAML Core §2.2.5
      */
     #[Test]
     #[DataProvider('provideIssuers')]
@@ -48,7 +46,7 @@ final class IssuerReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 16, M-8: the assertion's Issuer another entity, or with a Format other than entity.
+     * §9.2 row 16, M-8
      */
     #[Test]
     #[DataProvider('provideMismatchedIssuers')]
@@ -82,8 +80,7 @@ final class IssuerReaderTest extends TestCase
     }
 
     /**
-     * M-8, SAML Core §8.3.6: an entity identifier omits NameQualifier, SPNameQualifier and SPProvidedID, and an Issuer
-     * carrying one is not the peer's entity ID.
+     * M-8, SAML Core §8.3.6
      */
     #[Test]
     #[DataProvider('provideQualifiedIssuers')]
@@ -113,7 +110,7 @@ final class IssuerReaderTest extends TestCase
     }
 
     /**
-     * Section 5.4, M-1: the Issuer of a message as it arrived, a URI of M-6, or null when it has none.
+     * Section 5.4, M-1, M-6
      */
     #[Test]
     #[DataProvider('provideUnverifiedIssuers')]
@@ -142,7 +139,7 @@ final class IssuerReaderTest extends TestCase
     }
 
     /**
-     * M-4, section 5.4: two Issuers leave the consumer two peers to choose from, and neither is picked.
+     * M-4, section 5.4
      */
     #[Test]
     public function itRefusesTwoIssuersBeforeAnyVerification(): void

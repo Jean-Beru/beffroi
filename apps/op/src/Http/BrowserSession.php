@@ -21,10 +21,7 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The cookie side of architecture §3.2: the AuthenticationSession the browser is bound to, and the
- * interactions it began, which only it may resume (§4.3). The list of interactions is bounded, the oldest
- * forgotten first. An interaction forgotten takes with it what the step of the address kept for it
- * (LoginAddresses, beffroi/saml S-68), the address of a sign-on it never reached among it.
+ * Binds the browser to its AuthenticationSession and to the interactions it began, which only it may resume.
  */
 final readonly class BrowserSession
 {
@@ -42,9 +39,6 @@ final readonly class BrowserSession
     ) {
     }
 
-    /**
-     * Null unless the session named is of this tenant and still active.
-     */
     public function authenticationSession(Request $request, Tenant $tenant): ?AuthenticationSession
     {
         if (! $request->hasPreviousSession()) {

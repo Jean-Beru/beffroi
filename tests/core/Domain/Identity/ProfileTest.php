@@ -15,7 +15,7 @@ use function sprintf;
 final class ProfileTest extends TestCase
 {
     /**
-     * OIDC Core §5.1: birthdate is "YYYY-MM-DD", or "YYYY" when only the year is known, "0000" when it is not.
+     * OIDC Core §5.1
      */
     #[Test]
     #[DataProvider('provideValidBirthdates')]
@@ -38,10 +38,6 @@ final class ProfileTest extends TestCase
         yield 'the 29th of February of a year withheld' => ['0000-02-29'];
     }
 
-    /**
-     * Issue #471: the language a person says they read replaces that claim and leaves what they said of
-     * themselves alone, a profile being held whole by whoever holds it.
-     */
     #[Test]
     public function readingItInAnotherLanguageReplacesThatClaimAlone(): void
     {
@@ -101,8 +97,7 @@ final class ProfileTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.1 and issue #846: a date names a day of the calendar, and its shape alone does not make it
-     * one.
+     * OIDC Core §5.1
      */
     #[Test]
     #[DataProvider('provideDatesThatAreNoDay')]
@@ -133,9 +128,6 @@ final class ProfileTest extends TestCase
     }
 
     /**
-     * The document names no claim and no field: it is the properties of the object, under their own names,
-     * so a claim added to the object is a claim the column carries without a line anywhere else.
-     *
      * @param array<string, string> $document
      */
     #[Test]
@@ -216,7 +208,7 @@ final class ProfileTest extends TestCase
     }
 
     /**
-     * The names of OIDC Core §5.1 and not the fields: three of them differ (issue #626).
+     * OIDC Core §5.1
      */
     #[Test]
     public function itSaysEachClaimUnderItsNameInTheSpecification(): void
@@ -233,9 +225,6 @@ final class ProfileTest extends TestCase
         static::assertNull($claims['nickname']);
     }
 
-    /**
-     * The two directions of one match, held together: a claim written by its name is read back under it.
-     */
     #[Test]
     #[DataProvider('provideClaimNames')]
     public function aClaimSaidByItsNameIsReadBackUnderIt(string $claim): void

@@ -20,13 +20,12 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * B-4, section 6.1 step 12, dsig.md §6.4: the detached signature verified over its octets by Verifier::verifyDetached()
- * under the keys of the peer's metadata, and refused without them.
+ * B-4, section 6.1 step 12, dsig.md §6.4
  */
 final class DetachedSignatureTest extends TestCase
 {
     /**
-     * B-4, D-7, SAML Bindings §3.4.4.1: the key of the peer under which the signature is one of the octets.
+     * B-4, D-7, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itReturnsTheKeyThatVerifiesTheOctets(): void
@@ -47,8 +46,7 @@ final class DetachedSignatureTest extends TestCase
     }
 
     /**
-     * §9.3 row 8, B-4, D-7, SAML Metadata §2.4.1.1: every key of the role is tried, the second verifying during a
-     * rotation.
+     * §9.3 row 8, B-4, D-7, SAML Metadata §2.4.1.1
      */
     #[Test]
     public function itTriesEveryKeyOfThePeer(): void
@@ -70,7 +68,7 @@ final class DetachedSignatureTest extends TestCase
     }
 
     /**
-     * §9.2 row 18, B-4, B-11, SAML Metadata §2.4.1.1: a peer whose role holds no signing certificate verifies nothing.
+     * §9.2 row 18, B-4, B-11, SAML Metadata §2.4.1.1
      */
     #[Test]
     public function itRefusesAPeerWithoutKey(): void
@@ -91,7 +89,7 @@ final class DetachedSignatureTest extends TestCase
     }
 
     /**
-     * §9.2 row 17, B-4, D-8, SAML Bindings §3.4.4.1: a signature no key of the peer verifies is refused.
+     * §9.2 row 17, B-4, D-8, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesASignatureNoKeyOfThePeerVerifies(): void
@@ -112,8 +110,7 @@ final class DetachedSignatureTest extends TestCase
     }
 
     /**
-     * B-2, SAML Bindings §3.4.4.1: the signature covers the octets and nothing else, the octets of another message
-     * among them.
+     * B-2, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesASignatureOfOtherOctets(): void
@@ -139,7 +136,7 @@ final class DetachedSignatureTest extends TestCase
     }
 
     /**
-     * §9.2 row 19, D-14, SAML Bindings §3.4.4.1: a signature shorter than 256 bytes is refused before any key.
+     * §9.2 row 19, D-14, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesASignatureOutsideTheBoundsOfDsig(): void
@@ -156,8 +153,7 @@ final class DetachedSignatureTest extends TestCase
     }
 
     /**
-     * §9.3 row 13, dsig.md §5.1, SAML Bindings §3.4.4.1: RSASSA-PSS on a build without PHP 8.5 and OpenSSL 3.1 is
-     * refused before any key.
+     * §9.3 row 13, dsig.md §5.1, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesAnAlgorithmTheBuildLacks(): void

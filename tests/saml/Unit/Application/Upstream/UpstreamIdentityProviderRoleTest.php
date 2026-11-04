@@ -18,14 +18,12 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * spec/saml.md section 6.10: the role of the upstream identity providers reads the metadata of an upstream identity
- * provider and of nothing else.
+ * spec/saml.md section 6.10
  */
 final class UpstreamIdentityProviderRoleTest extends TestCase
 {
     /**
-     * Section 6.10: a peer of another role handed to the role of the upstream identity providers is a programming
-     * error, refused before anything is read.
+     * Section 6.10
      */
     #[Test]
     public function aPeerOfAnotherRoleIsRefused(): void

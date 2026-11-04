@@ -19,17 +19,8 @@ use Symfony\Component\Security\Http\Authentication\AuthenticationSuccessHandlerI
 use Symfony\Component\Security\Http\SecurityRequestAttributes;
 
 /**
- * After the form login of the firewall, success or failure, the browser goes back where it came from
- * (architecture §5.2, §5.4): the login page of its interaction, or the page of the provider that asked for
- * a login and is not one (LoginTarget), the page a user approves what an appliance asked on being the one
- * (RFC 8628 §3.3). No target path is read from the body or a referer; a remembered one was written by this
- * provider into the session of that browser.
- *
- * A login that serves no authorization request is where a person whose password a list of compromised
- * passwords has found is asked to replace it (Http\Account\BreachedPasswordDemand, issue #579): the
- * browser goes to the page of their password in place of the page it was going to, which stays remembered
- * until they replace it. A login serving an authorization request is interrupted by nothing, which is what
- * a certification run plays.
+ * No target path is read from the body or a referer, only one this provider remembered in the session. A login
+ * serving an authorization request is never sent to replace a breached password: a certification run plays one.
  */
 final readonly class InteractionLoginHandler implements AuthenticationSuccessHandlerInterface, AuthenticationFailureHandlerInterface
 {
@@ -46,9 +37,8 @@ final readonly class InteractionLoginHandler implements AuthenticationSuccessHan
     }
 
     /**
-     * Kept where the security component keeps it, for the login page to read once. A refused login goes back
-     * to the login page and never to the page that asked for it: that page would send the browser here again,
-     * and the message would be read by nobody.
+     * A refused login goes back to the login page and never to the page that asked for it, which would send the
+     * browser here again and lose the message.
      */
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): Response
     {
@@ -58,11 +48,8 @@ final readonly class InteractionLoginHandler implements AuthenticationSuccessHan
     }
 
     /**
-     * The page that asked for this login, when the request names no interaction: an interaction named in the
-     * query of the form action is what this login was for, and a page remembered from before is what a login
-     * that names none was for. The page of the password comes first when a password of this person was
-     * found in a breach: what is asked of a login is read of the credentials the provider loaded for it,
-     * whichever of them signed this person in, a password somebody else holds signing them in all the same.
+     * The page of the password comes first when a password of this person was found in a breach, whichever
+     * credential signed them in: a password somebody else holds signs them in all the same.
      */
     private function remembered(Request $request, ?UserInterface $user): ?Response
     {

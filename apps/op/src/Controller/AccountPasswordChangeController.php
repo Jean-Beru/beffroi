@@ -22,32 +22,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * The password of the signed-in person replaced by them (architecture §5.2): they prove who they are
- * again, type the one in use, pose another twice, and every other browser signed in as them is signed out.
- *
- * **A session alone does not post it** (AsksForARecentProofInterface): the same window the page is read
- * under bounds the post, because a guard the form does not repeat is a guard a form post goes around. The
- * browser is sent to the login of the firewall and comes back to the page, where the form is typed again.
- *
- * **The password posed is typed twice.** A password nobody can read back is a password nobody can check
- * they typed right, and somebody who mistypes it twice the same way has lost the account rather than
- * changed it; the two are compared with hash_equals, as the console does on its two prompts.
- *
- * **Signing the others out is this page's policy and not the core's**, which writes the password and says
- * so: a password is replaced because the one before it is not trusted any more, and a session opened under
- * it is exactly what should not outlive it. The browser this was asked from stays signed in, because
- * asking for a password is not a reason to ask for it twice.
- *
- * It answers with a redirection whether the password was written or refused (issue #481), so a browser
- * reloading the page it comes back to does not post a password again; what was refused crosses the
- * redirection in the session and the page says which rule pronounced it.
- *
- * **A password written carries the browser on to the page that was waiting for the login that was sent
- * here** (BreachedPasswordDemand, issue #579), and to the page of the password when none was: the demand
- * is answered by the password itself, so nothing of it is read back here and nothing of it outlives the
- * credential it was made about.
- */
 #[AsController]
 final readonly class AccountPasswordChangeController implements AsksForARecentProofInterface
 {
@@ -61,9 +35,6 @@ final readonly class AccountPasswordChangeController implements AsksForARecentPr
 
     public const string POSED_AGAIN_PARAMETER = 'new_password_again';
 
-    /**
-     * The password was posed twice and the two are not the same, so neither is what was meant.
-     */
     public const string NOT_CONFIRMED = 'not_confirmed';
 
     public function __construct(
@@ -77,9 +48,6 @@ final readonly class AccountPasswordChangeController implements AsksForARecentPr
     ) {
     }
 
-    /**
-     * The page of the password, which holds the form this posts.
-     */
     public function comesBackTo(): string
     {
         return AccountPasswordController::ROUTE;
@@ -105,10 +73,7 @@ final readonly class AccountPasswordChangeController implements AsksForARecentPr
                 new PlainPassword($posed, PasswordLength::under($session->user->tenant->loginFloor)),
                 $context,
             );
-        } catch (PasswordRefusedException $exception) {
-            // what a password has to be, and what a list of compromised passwords said of this one
-            return $this->refused($request, $exception->refusal->value);
-        } catch (PasswordChangeRefusedException $exception) {
+        } catch (PasswordRefusedException|PasswordChangeRefusedException $exception) {
             return $this->refused($request, $exception->refusal->value);
         }
         $this->others->endEveryOther($session, $context);

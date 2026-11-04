@@ -10,22 +10,10 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Throwable;
 
 /**
- * Tells one client that the backchannel request it made has been answered (CIBA Core §10.2): a POST of
- * "application/json" whose only member is the identifier of that request, carrying the token that client
- * sent with it, nothing read back but the status code. No cookie, no redirect followed (decision 0006):
- * a notification endpoint names where the word goes, and the provider does not let a third party move it.
- *
- * No token is ever carried here (§10.3 is not served): what the client is told is that there is something
- * to come and get, and it comes to the token endpoint for it, which is where a client that only polls
- * would have found the same answer.
- *
- * The timeout is the sender's own, because a client that hangs must not hold a worker.
+ * CIBA Core §10.2
  */
 final readonly class ClientNotificationSender
 {
-    /**
-     * §10.2: the one member of the body.
-     */
     public const string PARAMETER = 'auth_req_id';
 
     public function __construct(
@@ -55,11 +43,6 @@ final readonly class ClientNotificationSender
         }
     }
 
-    /**
-     * §10.2: 2xx is done. A client that refuses the token it gave us, or the request itself, says the
-     * same thing every time and is given up on at once rather than told again and again with a
-     * credential it has already rejected. A redirect is final too: the provider does not follow it.
-     */
     private static function outcomeOf(int $status, ?string $location): OutboundDelivery
     {
         if ($status >= 200 && $status < 300) {

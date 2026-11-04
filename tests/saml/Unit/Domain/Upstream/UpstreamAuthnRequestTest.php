@@ -15,13 +15,12 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * spec/saml.md S-50: the RelayState of a request to an upstream identity provider is a reference, never empty and
- * within the 80 bytes of SAML Bindings §3.4.3 and §3.5.3.
+ * S-50, SAML Bindings §3.4.3, §3.5.3
  */
 final class UpstreamAuthnRequestTest extends TestCase
 {
     /**
-     * S-50, SAML Bindings §3.4.3: a RelayState of 80 bytes is one.
+     * S-50, SAML Bindings §3.4.3
      */
     #[Test]
     public function aRelayStateOfEightyBytesIsOne(): void
@@ -34,7 +33,7 @@ final class UpstreamAuthnRequestTest extends TestCase
     }
 
     /**
-     * S-50: an empty RelayState, and one longer than 80 bytes, are no reference, a programming error.
+     * S-50
      */
     #[Test]
     #[DataProvider('provideRelayStatesThatAreNoReference')]

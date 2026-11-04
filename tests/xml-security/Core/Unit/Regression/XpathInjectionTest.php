@@ -11,15 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 3, XPath injection: xmlseclibs built XPath expressions from the reference URI (GHSA-2g98-f9jv-w8c5,
- * 20 May 2024). The rule: no XPath expression exists anywhere in the brick, and an ID is looked up in the index
- * built at load (I-9, I-14).
+ * Section 3, GHSA-2g98-f9jv-w8c5, I-9, I-14
  */
 final class XpathInjectionTest extends TestCase
 {
     /**
-     * GHSA-2g98-f9jv-w8c5, I-9: a reference identifier crafted as an XPath fragment is compared as a string and
-     * matches nothing; nothing is evaluated.
+     * GHSA-2g98-f9jv-w8c5, I-9
      */
     #[Test]
     #[DataProvider('provideCraftedIdentifiers')]

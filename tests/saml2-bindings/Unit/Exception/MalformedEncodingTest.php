@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.4, B-8: a value out of its one lexical form, refused with the rest of what the package refuses.
+ * Section 5.4, B-8
  */
 final class MalformedEncodingTest extends TestCase
 {

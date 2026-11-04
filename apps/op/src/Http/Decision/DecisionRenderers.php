@@ -10,15 +10,10 @@ use function sprintf;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * The ways this integration answers a decision, in the order they are wired: the one source of truth
- * over them. A decision nothing answers for is an integration wired without the renderer of a decision
- * the provider makes, which is a fault of the wiring and never of a request.
- */
 final readonly class DecisionRenderers
 {
     /**
-     * @var array<string, DecisionRendererInterface> by the decision each one answers for
+     * @var array<string, DecisionRendererInterface> by decision
      */
     private array $renderers;
 

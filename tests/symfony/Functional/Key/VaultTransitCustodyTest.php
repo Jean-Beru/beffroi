@@ -20,14 +20,6 @@ use Symfony\Component\KeyManagement\Dsn;
 use Symfony\Component\KeyManagement\Envelope;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-/**
- * Issue #57, against a real Vault: the Transit key of the tenant is what docker/vault/init.sh creates, the
- * OP holds a token under the policy of docker/vault/beffroi-op.hcl and that policy allows the sealing and
- * nothing else. Skipped unless the kernel seals with Vault (BEFFROI_TEST_KMS_DSN), which no job of the CI
- * does and which "castor phpunit" does not pass to its container: it is run by hand, BEFFROI_TEST_KMS_DSN
- * naming the Vault of the development stack ("castor start --kms vault") and BEFFROI_TEST_KMS_KEY_ID its
- * key ("beffroi-{tenant}"), and every other test of that run then seals with that Vault too.
- */
 final class VaultTransitCustodyTest extends DatabaseTestCase
 {
     private const string SCHEME = 'hashicorp-vault-transit://';
@@ -46,10 +38,6 @@ final class VaultTransitCustodyTest extends DatabaseTestCase
         $this->vault = self::vaultClient(Dsn::fromString($dsn));
     }
 
-    /**
-     * The envelope of a sealed key names the Transit key of the tenant and carries the data key as Vault
-     * wrapped it: the KMS kept, it did not sign, and the private JWK stayed in the process.
-     */
     #[Test]
     public function theDataKeyOfASealedKeyIsWrappedByTheTransitKeyOfTheTenant(): void
     {
@@ -68,10 +56,6 @@ final class VaultTransitCustodyTest extends DatabaseTestCase
         static::assertStringStartsWith('vault:v', $envelope->wrappedDek);
     }
 
-    /**
-     * The key docker/vault/init.sh creates: derived, so that the context of the envelope (the AAD that
-     * binds it to its tenant) is honoured; not exportable, no plaintext backup, deletion refused.
-     */
     #[Test]
     public function theTransitKeyOfTheTenantKeepsItsMaterialToItself(): void
     {
@@ -89,9 +73,6 @@ final class VaultTransitCustodyTest extends DatabaseTestCase
         static::assertFalse($key['deletion_allowed'] ?? null);
     }
 
-    /**
-     * What the policy of the OP grants: a data key under the Transit key of a tenant, with a context.
-     */
     #[Test]
     public function theTokenOfTheOpMintsADataKeyUnderTheKeyOfTheTenant(): void
     {
@@ -111,10 +92,6 @@ final class VaultTransitCustodyTest extends DatabaseTestCase
         static::assertStringStartsWith('vault:v', $data['ciphertext']);
     }
 
-    /**
-     * What the policy of the OP refuses: every path that would read, move, replace or delete the key
-     * material, and every key outside the "beffroi-" prefix.
-     */
     #[Test]
     #[DataProvider('provideRefusedRequests')]
     public function theTokenOfTheOpIsRefusedEverythingElse(string $method, string $path): void
@@ -145,10 +122,6 @@ final class VaultTransitCustodyTest extends DatabaseTestCase
         yield 'the policies' => ['GET', 'sys/policies/acl/beffroi-op'];
     }
 
-    /**
-     * A client on the Vault of the DSN, with its token, as the bridge builds it (the base URI from the host,
-     * the port and the path, "/v1/" unless said otherwise, the scheme from the option).
-     */
     private static function vaultClient(Dsn $dsn): HttpClientInterface
     {
         $scheme = $dsn->getOption('scheme', 'https');

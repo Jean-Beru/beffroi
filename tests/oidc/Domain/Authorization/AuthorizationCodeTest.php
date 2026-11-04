@@ -39,8 +39,7 @@ final class AuthorizationCodeTest extends TestCase
     }
 
     /**
-     * Architecture §4.4: everything the token endpoint needs, with the authentication as it was when
-     * the code was issued.
+     * Architecture §4.4
      */
     #[Test]
     public function itRecordsWhatTheGrantWillNeed(): void
@@ -141,7 +140,7 @@ final class AuthorizationCodeTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: a code is used once. The first presentation consumes it.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function consumingDatesTheUse(): void
@@ -159,7 +158,7 @@ final class AuthorizationCodeTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: a second presentation is the grant's decision, so consuming twice is a programming error.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function itCannotBeConsumedTwice(): void
@@ -206,7 +205,7 @@ final class AuthorizationCodeTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: the replay of a code revokes what was issued from it, said on the grant itself.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function revokingDatesTheRevocation(): void
@@ -223,9 +222,6 @@ final class AuthorizationCodeTest extends TestCase
         static::assertEquals($replayedAt, $code->revokedAt);
     }
 
-    /**
-     * A third presentation replays the code again; the grant was revoked when it first was.
-     */
     #[Test]
     public function aSecondRevocationKeepsTheFirstDate(): void
     {
@@ -242,7 +238,7 @@ final class AuthorizationCodeTest extends TestCase
     }
 
     /**
-     * Architecture §4.4: sixty seconds, the last one excluded.
+     * Architecture §4.4
      */
     #[Test]
     #[DataProvider('provideInstants')]

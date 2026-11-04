@@ -30,40 +30,26 @@ use function sprintf;
 use function strtolower;
 
 /**
- * Section 8 of the specification: what beffroi/saml never calls, in src/ and in tests/, so that the binding's
- * authentication stays the word of beffroi/saml2-bindings alone and nothing builds a class of its Internal\ namespace
- * outside it (bindings.md section 6.8, B-5).
+ * Section 8, bindings.md section 6.8, B-5
  *
- * validateAuthenticatedByBinding() of the model's validators, __unserialize() and unserialize(), whatever the receiver;
- * the functions unserialize() and session_decode(); bind(), bindTo() and call() of a Closure, statically or not; and
- * Reflection: a class of the Reflection API, or one that extends it, instantiated or called statically, and a method of
- * an object of one, however it was obtained. The ban holds in the whole package and not on the classes of Internal\
- * alone: what such a call reaches is known at runtime only (unserialize() names no class, Closure::bind() takes its
- * scope as a value), so that a ban scoped by type would have a way around it.
- *
- * A function, a method or a class given as a value rather than a name is read as PHPStan knows it: a constant string
- * or a constant callable array naming one of the above is that call, and a string PHPStan cannot read in place of a
- * name is refused; a Closure is let through. Every argument of a call is read the same way, so that a callable naming
- * one of the above handed to array_map(), call_user_func() or Closure::fromCallable() is refused where it is written;
- * a callable PHPStan cannot read handed to such a function is not seen. A first-class callable, which PHPStan visits as
- * a node of its own, is BannedCallablesRule's, which asks this rule.
+ * The ban covers the whole package: what such a call reaches is known at runtime only.
  *
  * @implements Rule<CallLike>
  */
 final class BannedCallsRule implements Rule
 {
     /**
-     * @var array<string, string> the lowercased function names, mapped to the spelling of the configuration
+     * @var array<string, string> lowercased name => spelling of the configuration
      */
     private array $functions = [];
 
     /**
-     * @var array<string, string> the lowercased method names, mapped to the spelling of the configuration
+     * @var array<string, string> lowercased name => spelling of the configuration
      */
     private array $methods = [];
 
     /**
-     * @var array<string, string> the lowercased methods of Closure, mapped to the spelling of the configuration
+     * @var array<string, string> lowercased name => spelling of the configuration
      */
     private array $closureMethods = [];
 
@@ -75,8 +61,8 @@ final class BannedCallsRule implements Rule
     /**
      * @param list<string> $functions
      * @param list<string> $methods        banned whatever the receiver
-     * @param list<string> $closureMethods banned on a Closure
-     * @param list<string> $reflection     the classes of the Reflection API, each banned with what extends it
+     * @param list<string> $closureMethods
+     * @param list<string> $reflection     banned with what extends them
      */
     public function __construct(array $functions, array $methods, array $closureMethods, array $reflection)
     {
@@ -186,10 +172,6 @@ final class BannedCallsRule implements Rule
     }
 
     /**
-     * A callable given as a value: a constant string, "function" or "Class::method", or a constant array of an object
-     * or a class and a method name. $invoked is true when the value is the callee itself, where a string or an array
-     * PHPStan cannot read is refused.
-     *
      * @return list<string>
      */
     private function callable(Type $type, bool $invoked): array
@@ -225,9 +207,6 @@ final class BannedCallsRule implements Rule
     }
 
     /**
-     * The classes a value names: those of an object, or those a string names, constant or a class-string; none when
-     * PHPStan cannot read them.
-     *
      * @return list<string>
      */
     private function classes(Type $type): array
@@ -257,7 +236,7 @@ final class BannedCallsRule implements Rule
     }
 
     /**
-     * @param list<string> $receiver the classes of the receiver, as far as PHPStan knows them
+     * @param list<string> $receiver
      *
      * @return list<string>
      */

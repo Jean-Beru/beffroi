@@ -13,13 +13,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * M-12, SAML Core §2.2.3: the one reader of a saml:NameID, the subject of an assertion and the principal of a logout
- * request.
+ * M-12, SAML Core §2.2.3
  */
 final class NameIdReaderTest extends TestCase
 {
     /**
-     * M-12, SAML Core §8.3.7: the value as read, the format, and the three qualifiers.
+     * M-12, SAML Core §8.3.7
      */
     #[Test]
     public function itReadsTheValueTheFormatAndTheQualifiers(): void
@@ -44,8 +43,7 @@ final class NameIdReaderTest extends TestCase
     }
 
     /**
-     * §9.3 row 1, M-12, I-12: a value split by a comment is read whole, the comment dropped, absent Format meaning
-     * unspecified.
+     * §9.3 row 1, M-12, I-12
      */
     #[Test]
     public function itReadsAValueSplitByACommentWhole(): void
@@ -61,7 +59,7 @@ final class NameIdReaderTest extends TestCase
     }
 
     /**
-     * M-12, SAML Core §8.3: a Format SAML Core does not list is refused.
+     * M-12, SAML Core §8.3
      */
     #[Test]
     public function itRefusesAnUnknownFormat(): void

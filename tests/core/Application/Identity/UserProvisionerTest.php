@@ -46,23 +46,14 @@ use Symfony\Component\Uid\UuidV4;
 
 final class UserProvisionerTest extends TestCase
 {
-    /**
-     * A password past every rule of the value object, and one a list counts: what this suite poses.
-     */
     private const string A_PASSWORD = 'correct horse battery staple';
 
     private const string ANOTHER_PASSWORD = 'nine lives of a quiet cat';
 
     private const string BREACHED = 'monkey business as usual';
 
-    /**
-     * The upstream provider that creates a person in this suite, named as its linked identities name it.
-     */
     private const string PROVIDER = 'https://idp.acme.example/saml';
 
-    /**
-     * The languages a person may say they read in this suite, where the provider reads them out of ICU.
-     */
     private const array KNOWN_LOCALES = [
         'en-GB' => 'English (United Kingdom)',
     ];
@@ -81,9 +72,6 @@ final class UserProvisionerTest extends TestCase
 
     private InMemoryUpstreamProviders $upstreamProviders;
 
-    /**
-     * What the deployment under test wires: the two claims whose set is closed.
-     */
     private FixedClaims $claims;
 
     protected function setUp(): void
@@ -116,7 +104,7 @@ final class UserProvisionerTest extends TestCase
     }
 
     /**
-     * Decision 0002: a stable "sub", distinct from the technical identifier.
+     * Decision 0002
      */
     #[Test]
     public function itGeneratesARandomSubjectDistinctFromTheIdentifier(): void
@@ -208,7 +196,7 @@ final class UserProvisionerTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.1: the attributes the "profile", "phone" and "address" scopes stand for, saved at once.
+     * OIDC Core §5.1
      */
     #[Test]
     public function theProfileThePhoneNumberAndTheAddressAreSetAtOnce(): void
@@ -232,9 +220,6 @@ final class UserProvisionerTest extends TestCase
         static::assertEquals($this->clock->now(), $user->updatedAt);
     }
 
-    /**
-     * A replacement, not a merge: a second description clears what it does not say.
-     */
     #[Test]
     public function aSecondProfileReplacesTheFirstInFull(): void
     {
@@ -266,10 +251,6 @@ final class UserProvisionerTest extends TestCase
         static::assertNull($user->address);
     }
 
-    /**
-     * Issue #846: a closed set is the claim's and not a page's (issue #479), so what an operator says is held
-     * to it as what a person says on the page of the account is.
-     */
     #[Test]
     #[DataProvider('provideValuesOutsideTheSetOfTheirClaim')]
     public function aValueOutsideTheSetOfItsClaimIsRefused(Profile $profile, string $value): void
@@ -313,10 +294,6 @@ final class UserProvisionerTest extends TestCase
         static::assertSame('+44 1865 000000', $user->phoneNumber);
     }
 
-    /**
-     * The set is the claim's, so a claim the deployment wires nothing for holds a value to nothing but what
-     * the model refuses.
-     */
     #[Test]
     public function aClaimNothingWiresHoldsNoSet(): void
     {
@@ -347,7 +324,7 @@ final class UserProvisionerTest extends TestCase
     }
 
     /**
-     * Decision 0002: a person a console, a fixture or an import creates is local.
+     * Decision 0002
      */
     #[Test]
     public function aUserCreatedWithoutASourceIsLocal(): void
@@ -360,7 +337,7 @@ final class UserProvisionerTest extends TestCase
     }
 
     /**
-     * Decision 0002: a person an upstream provider creates names it, with the claims it holds of them.
+     * Decision 0002
      */
     #[Test]
     public function aUserCreatedByAnUpstreamProviderNamesIt(): void
@@ -375,8 +352,7 @@ final class UserProvisionerTest extends TestCase
     }
 
     /**
-     * Decision 0002: what the source of a person holds, a manual description does not change, and the
-     * refusal names the provider.
+     * Decision 0002
      */
     #[Test]
     #[DataProvider('provideDescriptionsOfWhatTheSourceHolds')]
@@ -407,10 +383,6 @@ final class UserProvisionerTest extends TestCase
         yield 'the address' => [Profile::empty(), null, new Address(locality: 'London'), 'address'];
     }
 
-    /**
-     * What the source holds and has not written yet is still its own to write: the next sign-in through it
-     * fills it, and an operator who filled it first would be overwritten there.
-     */
     #[Test]
     public function aClaimTheSourceHoldsAndHasNotWrittenIsNotTheOperatorsToFill(): void
     {
@@ -428,10 +400,6 @@ final class UserProvisionerTest extends TestCase
         $this->provisioner->setProfile($user, new Profile(familyName: 'Liddell'));
     }
 
-    /**
-     * Whether a number is verified is part of what the source holds of it: the same number said
-     * unverified is said otherwise.
-     */
     #[Test]
     public function aPhoneNumberTheSourceHoldsSaidWithAnotherVerificationIsRefused(): void
     {
@@ -466,10 +434,6 @@ final class UserProvisionerTest extends TestCase
         static::assertNull($user->profile->nickname);
     }
 
-    /**
-     * A description says the whole profile and clears what it does not say, except what the source holds,
-     * which stays what the source wrote.
-     */
     #[Test]
     public function whatTheSourceHoldsStaysWhatItWroteWhenADescriptionDoesNotSayIt(): void
     {
@@ -487,10 +451,6 @@ final class UserProvisionerTest extends TestCase
         static::assertSame('Oxford', $user->address?->locality);
     }
 
-    /**
-     * A provisioning script played again says what the source holds as it already is, which changes
-     * nothing of it.
-     */
     #[Test]
     public function aClaimTheSourceHoldsMayBeSaidAsItIs(): void
     {
@@ -542,10 +502,6 @@ final class UserProvisionerTest extends TestCase
         static::assertEquals($this->clock->now()->modify('-1 day'), $second->createdAt);
     }
 
-    /**
-     * The bounds are the PlainPassword's (tested there); what this one keeps is that a refused password
-     * leaves the stored one alone.
-     */
     #[Test]
     public function aRefusedPasswordLeavesTheCurrentOneInPlace(): void
     {
@@ -567,8 +523,7 @@ final class UserProvisionerTest extends TestCase
     }
 
     /**
-     * The rule NIST SP 800-63B §3.1.1.2 puts first, on the path an operator writes a password for
-     * somebody: the console gets it by construction and not by remembering it.
+     * NIST SP 800-63B §3.1.1.2
      */
     #[Test]
     public function aPasswordAListCountsIsRefused(): void
@@ -603,8 +558,7 @@ final class UserProvisionerTest extends TestCase
     }
 
     /**
-     * Decision 0006: an unknown is not a clean answer. A list that could not be asked refuses the
-     * password rather than writing one nobody checked.
+     * Decision 0006
      */
     #[Test]
     public function aPasswordNoListCouldBeAskedAboutIsRefused(): void
@@ -623,10 +577,6 @@ final class UserProvisionerTest extends TestCase
         }
     }
 
-    /**
-     * The answer is written on the credential, so that the first login does not ask again what was just
-     * asked.
-     */
     #[Test]
     public function aPasswordAListWasAskedAboutIsMarkedAsLookedUp(): void
     {
@@ -642,10 +592,6 @@ final class UserProvisionerTest extends TestCase
         static::assertFalse($credential->dueForABreachLookup($this->clock->now()));
     }
 
-    /**
-     * A deployment that names no list writes the password and marks nothing: the credential stays due, so
-     * the day a list is named it is asked about.
-     */
     #[Test]
     public function aDeploymentThatNamesNoListWritesThePasswordAndMarksNothing(): void
     {
@@ -661,10 +607,6 @@ final class UserProvisionerTest extends TestCase
         static::assertTrue($credential->dueForABreachLookup($this->clock->now()));
     }
 
-    /**
-     * Issue #327: a tenant that signs its users in by passkey holds no password of anybody, so none is
-     * posed, and the list of compromised passwords is not asked about one this provider will not hold.
-     */
     #[Test]
     public function aTenantThatAdmitsNoPasswordPosesNone(): void
     {
@@ -680,8 +622,7 @@ final class UserProvisionerTest extends TestCase
     }
 
     /**
-     * Decision 0029, spec/saml.md S-63: an operator sets no password for a person of an e-mail domain the tenant
-     * federates to an upstream provider, through which alone they sign in.
+     * Decision 0029, spec/saml.md S-63
      */
     #[Test]
     public function aPasswordIsSetForNobodyOfAFederatedDomain(): void
@@ -699,10 +640,6 @@ final class UserProvisionerTest extends TestCase
         $this->provisioner->setPassword($user, Fixtures::plainPassword(self::A_PASSWORD));
     }
 
-    /**
-     * A person an upstream provider created, with what it holds written the way a sign-in through it writes
-     * it: through the entity, which is not a manual description.
-     */
     private function createdBySource(): User
     {
         $user = $this->provisioner->create($this->tenant, 'alice', source: UserSource::upstream(self::PROVIDER, ['given_name', 'phone_number', 'address']));

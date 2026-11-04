@@ -16,10 +16,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Issue #603: the document the codes of a TOTP are kept as, read back without a connection. Each entry is
- * the document of a password hash and never a second shape of one, and the moment the code was spent at.
- */
 final class StoredBackupCodesTest extends TestCase
 {
     private StoredBackupCodes $codes;

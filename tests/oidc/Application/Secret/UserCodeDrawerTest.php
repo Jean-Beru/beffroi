@@ -15,16 +15,10 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 8628 §5.1, §6.1: the code is drawn from the randomness the provider is given, in the alphabet a user
- * can read aloud, and a byte that would make one character likelier than another is dropped rather than
- * folded.
+ * RFC 8628 §5.1, §6.1
  */
 final class UserCodeDrawerTest extends TestCase
 {
-    /**
-     * A test that cares what the code will be says which bytes it is drawn from: each one names the
-     * character of its place in the alphabet, the twenty-first byte naming the first character again.
-     */
     #[Test]
     public function itSpellsTheBytesItWasGiven(): void
     {
@@ -39,8 +33,7 @@ final class UserCodeDrawerTest extends TestCase
     }
 
     /**
-     * A byte at or above twelve whole alphabets names nothing and is dropped: folding it would make four of
-     * the twenty characters likelier than the rest, which is exactly the entropy RFC 8628 §5.1 is about.
+     * RFC 8628 §5.1
      */
     #[Test]
     public function itDropsAByteThatWouldBiasTheAlphabet(): void
@@ -58,9 +51,6 @@ final class UserCodeDrawerTest extends TestCase
         static::assertSame('BBBBCCCC', $code->value);
     }
 
-    /**
-     * Whatever the bytes say, what comes out is a code of the shape this provider draws.
-     */
     #[Test]
     public function whatItDrawsIsAlwaysACodeOfThisProvider(): void
     {
@@ -81,7 +71,7 @@ final class UserCodeDrawerTest extends TestCase
     }
 
     /**
-     * @param list<int> $values each of them a byte
+     * @param list<int> $values
      */
     private static function bytes(array $values): string
     {

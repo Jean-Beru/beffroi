@@ -14,8 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-15, S-37: what signs for a tenant, its active SAML key, and the certificate the metadata publish for
- * that key, which every signature of the provider carries in its KeyInfo.
+ * spec/saml.md S-15, S-37
  */
 final class TenantSigningTest extends TestCase
 {
@@ -34,7 +33,7 @@ final class TenantSigningTest extends TestCase
     }
 
     /**
-     * S-37: the certificate a signature carries is the one the metadata publish for the active key, as a PEM.
+     * S-37
      */
     #[Test]
     public function itCarriesTheCertificateOfTheActiveKey(): void
@@ -47,8 +46,7 @@ final class TenantSigningTest extends TestCase
     }
 
     /**
-     * S-2, S-37: the certificate of a key staged beside the active one, which the metadata list too, is carried by no
-     * signature, since that key signs nothing yet.
+     * S-2, S-37
      */
     #[Test]
     public function theCertificateOfAStagedKeyIsNotCarried(): void

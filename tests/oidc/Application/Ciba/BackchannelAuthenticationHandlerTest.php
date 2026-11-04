@@ -51,8 +51,7 @@ use Beffroi\Oidc\Tests\Fixture\Subjects;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * CIBA Core §7: an authenticated client asks for a user it names, and is answered an identifier, a
- * lifetime and an interval, whoever that user turns out to be.
+ * CIBA Core §7
  */
 final class BackchannelAuthenticationHandlerTest extends TestCase
 {
@@ -107,7 +106,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §7.3: the identifier, the lifetime and the interval.
+     * CIBA Core §7.3
      */
     #[Test]
     public function itAnswersAnIdentifierALifetimeAndAnInterval(): void
@@ -122,8 +121,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §7: the record waits under the hash of the identifier, bound to the client that asked and to the
-     * user it named, with what the request asked for, unanswered and unspent.
+     * CIBA Core §7
      */
     #[Test]
     public function itKeepsTheRequestUnderTheHashOfItsIdentifier(): void
@@ -142,10 +140,6 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
         static::assertFalse($record->isUsed());
     }
 
-    /**
-     * What the provider keeps of a client that only polls is the digest of the identifier and nothing
-     * else: that client is the only holder of the value, as of every other value this provider draws.
-     */
     #[Test]
     public function aPollingClientLeavesNothingBehindButADigest(): void
     {
@@ -159,8 +153,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §10.2: a client this provider has to call back is the one reason it keeps what it handed out, and
-     * both values are kept sealed under the KMS of the tenant.
+     * CIBA Core §10.2
      */
     #[Test]
     public function aClientThatIsCalledBackLeavesTwoSealedValues(): void
@@ -178,8 +171,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §7: the user the request named is told that something is waiting for them, with the message the
-     * client wrote and the page where an answer is given, and with nothing that carries them into one.
+     * CIBA Core §7
      */
     #[Test]
     public function theUserItNamesIsToldSomethingIsWaiting(): void
@@ -199,9 +191,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §7.1 "acr_values": what the client would like the authentication to reach is kept on the record, in
-     * the order it preferred, for the page where its user answers (decision 0010); nothing is judged
-     * against it here, where the person it is about is not.
+     * CIBA Core §7.1, Decision 0010
      */
     #[Test]
     public function theClassesTheRequestAsksForAreKeptOnTheRecord(): void
@@ -217,8 +207,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §7.1: a request that asks for no class in particular asks for none, and the approval answers it
-     * with the class the session that approved proves.
+     * CIBA Core §7.1
      */
     #[Test]
     public function aRequestThatNamesNoClassKeepsNone(): void
@@ -232,8 +221,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * OIDC Core §2: a class is printable ASCII without space, and a space-separated list is what the
-     * parameter is; what is not one is refused here as it is at the endpoint a browser reaches.
+     * OIDC Core §2
      */
     #[Test]
     public function aClassThatIsNotOneIsRefused(): void
@@ -249,8 +237,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * Decision 0006, §13: a request naming a stranger is answered exactly as a request naming somebody
-     * who never answers, and the record it leaves is answerable by nobody.
+     * Decision 0006, CIBA Core §13
      */
     #[Test]
     public function aRequestNamingAStrangerIsAnsweredLikeEveryOther(): void
@@ -269,8 +256,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §7.1: a client registered for none of the grants of this flow is refused here rather than answered
-     * an identifier nothing would ever spend.
+     * CIBA Core §7.1
      */
     #[Test]
     public function aClientOfAnotherFlowIsRefused(): void
@@ -284,8 +270,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §4: a client that registered no delivery mode is not a client of this flow, and no default makes
-     * it one.
+     * CIBA Core §4
      */
     #[Test]
     public function aClientThatRegisteredNoDeliveryModeIsRefused(): void
@@ -299,7 +284,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §7.1: the request is authenticated as at the token endpoint, and nothing is read of it before that.
+     * CIBA Core §7.1
      */
     #[Test]
     public function anUnauthenticatedRequestIsRefused(): void
@@ -312,7 +297,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §7.1: "openid" is among the scopes of every request of this flow.
+     * CIBA Core §7.1
      */
     #[Test]
     public function aRequestThatDoesNotAskForOpenidIsRefused(): void
@@ -328,7 +313,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.3: among the scopes the client registered, and never more.
+     * RFC 6749 §3.3
      */
     #[Test]
     public function aScopeTheClientDidNotRegisterIsRefused(): void
@@ -344,7 +329,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §7.1: a request that names no scope at all says nothing a page could show somebody.
+     * CIBA Core §7.1
      */
     #[Test]
     public function aRequestWithoutScopesIsRefused(): void
@@ -360,7 +345,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §13: a message that cannot be shown as it was sent is refused with the error that says so.
+     * CIBA Core §13
      */
     #[Test]
     public function aBindingMessageThatCannotBeShownIsRefused(): void
@@ -376,7 +361,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §7.1: the token is required of a client this provider calls back.
+     * CIBA Core §7.1
      */
     #[Test]
     public function aClientThatIsCalledBackSendsATokenToRecogniseTheCall(): void
@@ -390,8 +375,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §7.1: a client that only polls sends none, and one that sends one is telling the provider to keep a
-     * credential it would never present.
+     * CIBA Core §7.1
      */
     #[Test]
     public function aPollingClientSendsNoTokenAtAll(): void
@@ -407,7 +391,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §7.1: a token this provider could not present back is refused where it arrives.
+     * CIBA Core §7.1
      */
     #[Test]
     public function aTokenTheProviderCouldNotPresentBackIsRefused(): void
@@ -423,8 +407,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §7.1: this provider does not take a user code, and the document says so; a request carrying one is
-     * refused rather than served without it.
+     * CIBA Core §7.1
      */
     #[Test]
     public function aRequestCarryingAUserCodeIsRefused(): void
@@ -440,7 +423,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §7.1: what the client asks the lifetime to be, capped at what the provider serves.
+     * CIBA Core §7.1
      */
     #[Test]
     #[DataProvider('provideRequestedExpiries')]
@@ -466,8 +449,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §7.1: a value that is not a number of seconds is refused, a client that wrote something there
-     * having meant something by it.
+     * CIBA Core §7.1
      */
     #[Test]
     #[DataProvider('provideRefusedExpiries')]
@@ -495,8 +477,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: the resources the request names are kept on the record, among the ones the client
-     * registered.
+     * RFC 8707 §2
      */
     #[Test]
     public function theResourcesTheRequestNamesAreKept(): void
@@ -512,7 +493,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: a resource the client did not register is refused.
+     * RFC 8707 §2
      */
     #[Test]
     public function aResourceTheClientDidNotRegisterIsRefused(): void
@@ -527,8 +508,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9101 §6.1, FAPI-CIBA §5.2.2: the request may itself be a signed object, read here against the
-     * client that has just authenticated, and what it carries is the request.
+     * RFC 9101 §6.1, FAPI-CIBA §5.2.2
      */
     #[Test]
     public function aSignedRequestObjectIsTheRequest(): void
@@ -548,10 +528,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §13: the errors this endpoint answers are the ones it lists, and "invalid_request_object" is not
-     * among them; it belongs to the endpoint a browser reaches. An object this one will not read is
-     * "invalid_request", with the reason the object was refused for and with nowhere to be sent, this
-     * client having no browser.
+     * CIBA Core §13
      */
     #[Test]
     public function anObjectThisEndpointWillNotReadIsAnInvalidRequest(): void
@@ -576,9 +553,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * FAPI-CIBA §5.2.2, RFC 9101 §10.5 "require_signed_request_object": a client that registered it is
-     * read from an object it signed here as at the authorization endpoint, a request having arrived
-     * without a browser changing nothing of what a request of that client is made of.
+     * FAPI-CIBA §5.2.2, RFC 9101 §10.5
      */
     #[Test]
     public function aClientHeldToSignedObjectsIsRefusedARequestOfFormParameters(): void
@@ -595,9 +570,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §7.1.1: a signed backchannel authentication request carries an "iat" and a "jti" beyond the four
-     * claims that bound what a signature proves, an object of this endpoint being bound to nothing but
-     * itself where one of the authorization endpoint is bound to a browser.
+     * CIBA Core §7.1.1
      */
     #[Test]
     #[DataProvider('provideAClaimOfItsOwn')]
@@ -626,9 +599,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * §7.1.1: the "jti" is remembered until the "exp" the object already carries, so that one signed
-     * request is made once. Replaying it would draw a second identifier and ask a real person a second
-     * time to approve one payment.
+     * CIBA Core §7.1.1
      */
     #[Test]
     public function aSignedRequestIsMadeOnceUnderItsJti(): void
@@ -646,10 +617,6 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
         $this->askWithAnObject($claims);
     }
 
-    /**
-     * The lifetime, the maximum and the interval are the deployment's, and what the client is told is
-     * what the record has.
-     */
     #[Test]
     public function theLifetimeAndTheIntervalAreTheOnesTheDeploymentWired(): void
     {
@@ -665,9 +632,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
-     * CIBA Core §11: the interval the deployment wired is held to the bound of a request when the handler is
-     * built, so that a number an environment variable carries refuses the start of the service rather than
-     * its first request (issue #913).
+     * CIBA Core §11
      */
     #[Test]
     public function itIsNotBuiltWithAnIntervalNoRequestMayBeMadeWith(): void
@@ -682,9 +647,6 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
 
     private const string NOTIFICATION_TOKEN = 'a8f2c1d0e9b7a6c5d4e3f2a1b0';
 
-    /**
-     * A client of this flow that signs what it sends, with the keys the fixtures publish.
-     */
     private function signingClient(bool $requiresSignedRequestObject = false): void
     {
         $this->clients->save(Clients::backchannel(

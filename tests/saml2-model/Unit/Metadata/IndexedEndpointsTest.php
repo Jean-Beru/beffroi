@@ -18,13 +18,12 @@ use PHPUnit\Framework\TestCase;
 use function range;
 
 /**
- * Section 5.3, M-9: the assertion consumer services of a service provider, their indexes unique, and the three
- * searches that resolve the endpoint of a request (SAML Metadata §2.2.3).
+ * Section 5.3, M-9, SAML Metadata §2.2.3
  */
 final class IndexedEndpointsTest extends TestCase
 {
     /**
-     * Section 5.3: the endpoints, in the order given.
+     * Section 5.3
      */
     #[Test]
     public function itKeepsItsEndpointsInOrder(): void
@@ -41,7 +40,7 @@ final class IndexedEndpointsTest extends TestCase
     }
 
     /**
-     * Section 7: 64 endpoints of one kind, the bound itself.
+     * Section 7
      */
     #[Test]
     public function itAcceptsSixtyFourEndpoints(): void
@@ -54,7 +53,7 @@ final class IndexedEndpointsTest extends TestCase
     }
 
     /**
-     * M-17, §9.2 row 36, "one over each bound of section 7": 65 endpoints of one kind.
+     * M-17, §9.2 row 36
      */
     #[Test]
     public function itRefusesSixtyFiveEndpoints(): void
@@ -68,7 +67,7 @@ final class IndexedEndpointsTest extends TestCase
     }
 
     /**
-     * §9.2 row 35, "a duplicate index", SAML Metadata §2.2.3: an index names one endpoint.
+     * §9.2 row 35, SAML Metadata §2.2.3
      */
     #[Test]
     public function itRefusesADuplicateIndex(): void
@@ -82,8 +81,7 @@ final class IndexedEndpointsTest extends TestCase
     }
 
     /**
-     * M-9, section 8: an assertion consumer service on another binding than HTTP-POST, which a response cannot be sent
-     * over, is refused whoever builds the list, so that no search establishes it; the reader drops it before.
+     * M-9, section 8
      */
     #[Test]
     public function itRefusesAnEndpointNotOnHttpPost(): void
@@ -100,8 +98,7 @@ final class IndexedEndpointsTest extends TestCase
     }
 
     /**
-     * §9.3 row 12, "IndexedEndpoints::default() over the three cases", SAML Metadata §2.2.3: the first whose
-     * isDefault is true; else the first without isDefault false; else the first.
+     * §9.3 row 12, SAML Metadata §2.2.3
      *
      * @param list<?bool> $isDefaults
      */
@@ -136,7 +133,7 @@ final class IndexedEndpointsTest extends TestCase
     }
 
     /**
-     * M-9: no endpoint, no default.
+     * M-9
      */
     #[Test]
     public function itHasNoDefaultWhenEmpty(): void
@@ -153,7 +150,7 @@ final class IndexedEndpointsTest extends TestCase
     }
 
     /**
-     * M-9: the AssertionConsumerServiceIndex of a request names the endpoint of that index.
+     * M-9
      */
     #[Test]
     public function itFindsAnEndpointByIndex(): void
@@ -167,7 +164,7 @@ final class IndexedEndpointsTest extends TestCase
     }
 
     /**
-     * M-9, §9.2 row 30, "an AuthnRequest whose index the metadata does not list": UnknownEndpoint.
+     * M-9, §9.2 row 30
      */
     #[Test]
     public function itRefusesAnIndexItDoesNotList(): void
@@ -184,7 +181,7 @@ final class IndexedEndpointsTest extends TestCase
     }
 
     /**
-     * M-9: the AssertionConsumerServiceURL of a request names the first endpoint at that location.
+     * M-9
      */
     #[Test]
     public function itFindsTheFirstEndpointByLocation(): void
@@ -202,8 +199,7 @@ final class IndexedEndpointsTest extends TestCase
     }
 
     /**
-     * M-8, M-9, §9.2 row 30, "an AuthnRequest whose AssertionConsumerServiceURL the metadata does not list":
-     * compared exactly, no normalisation.
+     * M-8, M-9, §9.2 row 30
      */
     #[Test]
     #[DataProvider('provideLocationsNotListed')]

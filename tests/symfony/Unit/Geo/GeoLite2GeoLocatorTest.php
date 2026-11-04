@@ -15,10 +15,6 @@ use function sys_get_temp_dir;
 use Symfony\Component\Filesystem\Filesystem;
 use function uniqid;
 
-/**
- * Issue #473: the place of an address, read in the two GeoLite2 editions of the deployment and nowhere
- * else.
- */
 final class GeoLite2GeoLocatorTest extends TestCase
 {
     private string $directory;
@@ -37,10 +33,6 @@ final class GeoLite2GeoLocatorTest extends TestCase
         new Filesystem()->remove($this->directory);
     }
 
-    /**
-     * The seven fields of a GeoLocation, four from the city edition and two from the ASN edition, the
-     * region being the most specific subdivision the record holds.
-     */
     #[Test]
     public function theTwoEditionsTogetherSayTheSevenThingsAPlaceIs(): void
     {
@@ -60,10 +52,6 @@ final class GeoLite2GeoLocatorTest extends TestCase
         static::assertSame(-1.2577, $place->longitude);
     }
 
-    /**
-     * A deployment that never ran the refresh holds nothing, and says no place rather than failing: every
-     * flow is served, with a provenance that says an address alone.
-     */
     #[Test]
     public function aDeploymentThatHoldsNoDatabaseSaysNoPlace(): void
     {
@@ -74,10 +62,6 @@ final class GeoLite2GeoLocatorTest extends TestCase
         static::assertNull($place);
     }
 
-    /**
-     * An address in no network of the editions is the same answer, and it is the common one: a database
-     * of addresses covers the public internet and not a desk.
-     */
     #[Test]
     public function anAddressNoNetworkOfTheDatabasesCoversSaysNoPlace(): void
     {
@@ -92,10 +76,7 @@ final class GeoLite2GeoLocatorTest extends TestCase
     }
 
     /**
-     * One edition alone answers what that edition carries: the two are stored by the same command and a
-     * deployment may still hold one of them.
-     *
-     * @param array{?string, ?int} $expected the city of the place and the number of its autonomous system
+     * @param array{?string, ?int} $expected the city and the autonomous system number
      */
     #[Test]
     #[DataProvider('provideSingleEditions')]
@@ -120,10 +101,6 @@ final class GeoLite2GeoLocatorTest extends TestCase
         yield 'the ASN edition alone' => [false, true, [null, 64_268]];
     }
 
-    /**
-     * A file that is not a database loses a place and nothing else: what fails is an enrichment, on a
-     * lane, behind a login that has already happened.
-     */
     #[Test]
     public function aDatabaseThatCannotBeReadSaysNoPlace(): void
     {
@@ -138,10 +115,6 @@ final class GeoLite2GeoLocatorTest extends TestCase
         static::assertNull($place->city);
     }
 
-    /**
-     * A record whose country code is not a country code: the place is given up rather than written down
-     * wrong, and nothing of it reaches the row.
-     */
     #[Test]
     public function aRecordTheDomainRefusesSaysNoPlace(): void
     {

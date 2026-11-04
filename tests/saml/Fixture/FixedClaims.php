@@ -10,8 +10,7 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Saml\Port\ServedClaimsInterface;
 
 /**
- * The claims a provider under test serves (spec/saml.md S-16): the standard claims of OpenID Connect by default, and
- * the values a test gives every user.
+ * spec/saml.md S-16
  */
 final readonly class FixedClaims implements ServedClaimsInterface
 {

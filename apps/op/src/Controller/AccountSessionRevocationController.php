@@ -22,20 +22,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * A session of the signed-in user ended from the page of the account (architecture §5.2): it authenticates
- * nothing afterwards, and what it opened for a relying party is reached by the back-channel exactly as a
- * logout reaches it, because the end of a session is one act of the core and says so once
- * (AuthenticationSessionEnded). Someone else's session is not found.
- *
- * Ending the session of the browser reading the page is not the same act as ending another: that browser
- * is signed out here, the way the end session endpoint signs one out, the clients of OpenID Connect of
- * the session that registered a front-channel logout URI loaded by its page and the SAML service
- * providers it signed in told in turn (beffroi/saml S-29, S-35), and it is told so.
- *
- * **A session alone reaches it** (ReachedOnTheSessionAloneInterface): ending a session is what a person
- * does because they fear that session, and asking them to prove themselves first would be asking them to
- * type a password on the browser they are worried about. It is the one gesture of these pages that only
- * ever locks an attacker out.
+ * Reached on the session alone: asking for a proof first would mean typing a password on a browser one fears.
  */
 #[AsController]
 final readonly class AccountSessionRevocationController implements ReachedOnTheSessionAloneInterface

@@ -13,12 +13,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Where the user of a device flow answers (RFC 8628 §3.3): the page the code is typed at. The hop is
- * the answer and not the page, so it is the form coming back that is drawn, and what the browser
- * carried with it is what the drawing shows.
- *
- * The browser names no client: it holds a code and nothing else, which is the whole point of this
- * flow. The hop joins the trace of the client that last played it.
+ * RFC 8628 §3.3
  */
 final readonly class TheDeviceVerificationPage implements RecordedEndpointInterface
 {

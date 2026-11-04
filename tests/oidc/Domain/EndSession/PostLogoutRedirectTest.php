@@ -12,8 +12,7 @@ use PHPUnit\Framework\TestCase;
 final class PostLogoutRedirectTest extends TestCase
 {
     /**
-     * OIDC RP-Initiated Logout 1.0 §3, §2 "state": the registered URI, its query kept, with state
-     * added when the request carried one, percent-encoded.
+     * OIDC RP-Initiated Logout 1.0 §3, §2
      */
     #[Test]
     public function itRedirectsToTheRegisteredUriWithTheState(): void
@@ -25,10 +24,6 @@ final class PostLogoutRedirectTest extends TestCase
         static::assertSame('https://demo.localhost/?app=1&state=af0ifjsldkj%2F%3D', $redirect->toUri());
     }
 
-    /**
-     * Without state, the URI is the registered one, byte for byte: nothing is added, not even "iss"
-     * (RFC 9207 covers authorization responses only), and oidc_login sends none.
-     */
     #[Test]
     public function itRedirectsToTheRegisteredUriAsIsWithoutState(): void
     {

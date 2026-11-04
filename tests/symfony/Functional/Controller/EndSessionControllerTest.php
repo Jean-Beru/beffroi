@@ -20,15 +20,14 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * OIDC RP-Initiated Logout 1.0 §2 to §4 and architecture §4.9, §5.2: the end session endpoint, its
- * confirmation page, and what the browser holds afterwards.
+ * OIDC RP-Initiated Logout 1.0 §2 to §4, Architecture §4.9, §5.2
  */
 final class EndSessionControllerTest extends BrowserTestCase
 {
     use TokensOfASession;
 
     /**
-     * §4: a logout request from a browser that holds no session is honoured as is.
+     * RP-Initiated Logout 1.0 §4
      */
     #[Test]
     public function aBrowserWithoutASessionIsLoggedOutAlready(): void
@@ -44,7 +43,7 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
-     * §2: without a hint the user is asked; the confirmation form carries the parameters over.
+     * RP-Initiated Logout 1.0 §2
      */
     #[Test]
     public function withoutAHintTheUserIsAsked(): void
@@ -69,7 +68,7 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
-     * §2, §3: on yes the session ends and the browser goes where the client asked, with the state.
+     * RP-Initiated Logout 1.0 §2, §3
      */
     #[Test]
     public function aConfirmedLogoutEndsTheSessionAndRedirectsWithTheState(): void
@@ -90,9 +89,6 @@ final class EndSessionControllerTest extends BrowserTestCase
         static::assertTrue($ended->hasEnded());
     }
 
-    /**
-     * After the logout the browser is not bound to anything any more: an authorization request needs a login.
-     */
     #[Test]
     public function aLoggedOutBrowserNeedsALoginAgain(): void
     {
@@ -108,7 +104,7 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
-     * §2: the user may refuse; nothing ends and the browser goes nowhere.
+     * RP-Initiated Logout 1.0 §2
      */
     #[Test]
     public function theUserMayStaySignedIn(): void
@@ -131,8 +127,7 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
-     * §2: a hint that names the session the browser holds ends it without a question, the way
-     * oidc_login sends it: id_token_hint and post_logout_redirect_uri, nothing else.
+     * RP-Initiated Logout 1.0 §2
      */
     #[Test]
     public function aHintNamingTheSessionEndsItWithoutAQuestion(): void
@@ -154,8 +149,7 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
-     * Issue #741, decision 0006: the tokens issued under the session the endpoint ends are revoked with it,
-     * on the event every end of a session announces and not by the endpoint itself.
+     * Decision 0006
      */
     #[Test]
     public function aLogoutRevokesTheTokensIssuedUnderTheSession(): void
@@ -177,9 +171,7 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
-     * Issue #741, S-25, RFC 6749 §5.2: a refresh token saved under the session after its tokens were revoked, which a
-     * refresh in flight when the session ended does, is refused at its first use, and that use revokes what the
-     * session still holds, dated by the end of the session, once the event it announces is handled.
+     * beffroi/saml S-25, RFC 6749 §5.2
      */
     #[Test]
     public function aRefreshTokenSavedAfterTheRevocationIsRevokedAtItsFirstUse(): void
@@ -230,7 +222,7 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
-     * §2: a hint of the same user but of another session asks first.
+     * RP-Initiated Logout 1.0 §2
      */
     #[Test]
     public function aHintOfAnotherSessionAsksFirst(): void
@@ -251,9 +243,7 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §10.1.1 and architecture §3.3: a hint signed before a rotation still proves the session
-     * while its key is retiring; what oidc_login sends after a rotation ends the session without a
-     * question.
+     * OIDC Core §10.1.1, Architecture §3.3
      */
     #[Test]
     public function aHintSignedByARetiringKeyEndsTheSessionWithoutAQuestion(): void
@@ -277,8 +267,7 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
-     * §2, §6: a hint signed by a retired key is an invalid hint; the provider asks the user instead of
-     * failing, and drops the redirect the hint came with.
+     * RP-Initiated Logout 1.0 §2, §6
      */
     #[Test]
     public function aHintSignedByARetiredKeyAsksTheUser(): void
@@ -303,7 +292,7 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
-     * §2: on yes the session ends; §3: the browser goes nowhere, the hint having identified no client.
+     * RP-Initiated Logout 1.0 §2, §3
      */
     #[Test]
     public function aConfirmedLogoutWithAHintSignedByARetiredKeyEndsTheSessionAndRedirectsNowhere(): void
@@ -333,7 +322,7 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
-     * §4: a request found wrong is shown to the user, never redirected.
+     * RP-Initiated Logout 1.0 §4
      */
     #[Test]
     public function anUnregisteredRedirectUriIsShownToTheUser(): void
@@ -351,9 +340,6 @@ final class EndSessionControllerTest extends BrowserTestCase
         static::assertStringContainsString('data-error="invalid_request"', self::string($response->getContent()));
     }
 
-    /**
-     * The confirmation form is protected against cross-site submission: a forged "yes" ends nothing.
-     */
     #[Test]
     public function aForgedConfirmationEndsNothing(): void
     {
@@ -373,9 +359,6 @@ final class EndSessionControllerTest extends BrowserTestCase
         static::assertFalse($kept->hasEnded());
     }
 
-    /**
-     * The confirmation page of a logout asked by oidc-demo without a hint, with a state.
-     */
     private function confirmationPage(): Crawler
     {
         return $this->browser->request('GET', '/logout', [
@@ -385,10 +368,6 @@ final class EndSessionControllerTest extends BrowserTestCase
         ]);
     }
 
-    /**
-     * An ID token issued to oidc-demo for a session of the user, obtained through the code flow, which
-     * leaves the browser bound to that session. The tenant signs with the key active at that moment.
-     */
     private function idTokenOf(User $user): string
     {
         if (self::service('test.beffroi.keys', TenantKeyRepositoryInterface::class)->findActive(self::tenant(), Algorithms::rs256()) === null) {
@@ -404,9 +383,6 @@ final class EndSessionControllerTest extends BrowserTestCase
         return self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class);
     }
 
-    /**
-     * An ID token issued to oidc-demo for the session the browser is bound to.
-     */
     private function idTokenOfTheBoundBrowser(): string
     {
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));

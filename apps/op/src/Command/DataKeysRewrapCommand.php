@@ -24,24 +24,6 @@ use Symfony\Component\KeyManagement\EncrypterInterface;
 use Symfony\Component\KeyManagement\RewrappableDataKeyStoreInterface;
 use Symfony\Contracts\Service\ServiceProviderInterface;
 
-/**
- * The data keys of one tenant wrapped by another KMS from now on, or by another master key of the same one
- * (decision 0018). No sealed value is read and none is rewritten: what changes protection is a data key,
- * and every ciphertext goes on referring to the same key, which is the whole reason those keys are held in
- * a store.
- *
- * **One tenant at a time, because a master key belongs to one tenant.** Moving a customer from one KMS to
- * another is not moving every customer, and the command of the component walks the whole store. What asks
- * it for one tenant is a store whose listing holds that tenant's rows and no other
- * (`TenantScopedDataKeyStore`), so nothing of its loop, of its unwrapping, of its re-wrapping or of its
- * `--dry-run` is written here a second time.
- *
- * **The master key is not an option.** The master key of a tenant is what `KmsKeyId` resolves for its
- * slug, the one its signing keys are already sealed under, so it is derived and not asked for: an operator
- * who had to type it could type another tenant's.
- *
- * It is asked for by a person, as the key rotation of the key custody is, and nothing schedules it.
- */
 #[AsCommand(
     name: 'beffroi:data-keys:rewrap',
     description: 'Wrap the data keys of the tenant with another KMS client from now on, or with another master key of the same one; --dry-run lists what would move. No sealed value is read or rewritten.',
@@ -51,9 +33,8 @@ final readonly class DataKeysRewrapCommand
     public const string NAME = 'beffroi:data-keys:rewrap';
 
     /**
-     * @param ServiceProviderInterface<DecrypterInterface&EncrypterInterface> $clients the KMS clients of the
-     *                                                  deployment, by the name the configuration gives them
-     * @param string $masterKeyId the pattern of the master key of a tenant, "{tenant}" standing for its slug
+     * @param ServiceProviderInterface<DecrypterInterface&EncrypterInterface> $clients keyed by their configured name
+     * @param string $masterKeyId a pattern, "{tenant}" standing for the slug of the tenant
      */
     public function __construct(
         private ConfiguredTenant $tenant,

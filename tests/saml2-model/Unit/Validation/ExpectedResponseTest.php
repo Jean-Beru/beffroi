@@ -9,12 +9,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.5, M-8, M-10: what the consumer expects of a response.
+ * Section 5.5, M-8, M-10
  */
 final class ExpectedResponseTest extends TestCase
 {
     /**
-     * M-10, SAML Profiles §4.1.4.3: an answer to a request names it, with the URL of arrival and our entity ID.
+     * M-10, SAML Profiles §4.1.4.3
      */
     #[Test]
     public function itExpectsAnAnswerToTheRequestItNames(): void
@@ -34,7 +34,7 @@ final class ExpectedResponseTest extends TestCase
     }
 
     /**
-     * M-10, SAML Profiles §4.1.5: an unsolicited response answers no request.
+     * M-10, SAML Profiles §4.1.5
      */
     #[Test]
     public function itExpectsAnUnsolicitedResponseToAnswerNoRequest(): void

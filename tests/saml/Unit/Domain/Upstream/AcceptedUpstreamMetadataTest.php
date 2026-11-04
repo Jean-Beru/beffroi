@@ -11,13 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-8, S-42: the document accepted for an upstream identity provider is sealed in the family of its own
- * table, the rest of its row classified as every peer's.
+ * S-8, S-42
  */
 final class AcceptedUpstreamMetadataTest extends TestCase
 {
     /**
-     * S-8, S-42: the document is sealed in the family of the table of the upstream identity providers.
+     * S-8, S-42
      */
     #[Test]
     public function theDocumentIsSealedInTheFamilyOfItsTable(): void
@@ -30,7 +29,7 @@ final class AcceptedUpstreamMetadataTest extends TestCase
     }
 
     /**
-     * S-8: every field of the row is classified, what every peer keeps and the document.
+     * S-8
      */
     #[Test]
     public function everyFieldOfTheRowIsClassified(): void

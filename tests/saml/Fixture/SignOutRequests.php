@@ -7,11 +7,6 @@ namespace Beffroi\Saml\Tests\Fixture;
 use Beffroi\Saml\Domain\SingleLogout\SignOutRequest;
 use Beffroi\Saml\Domain\SingleSignOn\PersistentNameId;
 
-/**
- * Logout requests accepted from the service provider whose metadata the model's writer signs with the test key of a
- * service provider (ServiceProviderDocuments::SIGNED), answered over HTTP-Redirect at its single logout service; a test
- * names what it changes.
- */
 final readonly class SignOutRequests
 {
     public const string ID = '_9c8b7a6f5e4d3c2b1a0f9e8d7c6b5a4f3e2d1c0b';

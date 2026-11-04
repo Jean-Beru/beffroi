@@ -20,16 +20,9 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Throwable;
 
 /**
- * Reads back the document a client publishes behind its "sector_identifier_uri" (OIDC Registration §5): one
- * GET, no cookie, no authentication, nothing sent but the request. No redirect is followed (decision 0006):
- * the document proves that whoever registers controls the host of the sector, and a redirect would let a
- * third party answer for that host. The body is read in chunks and the read stops as soon as it is longer
- * than a list of redirection URIs has any reason to be, and the timeout is the fetcher's own, because a
- * client that hangs must not hold a worker: a registration is waiting on this.
+ * OIDC Registration §5
  *
- * What comes back is a JSON array of strings and nothing else. A document that is an object, or an array
- * holding anything but strings, is not the document §5 describes, and a registration is refused rather than
- * checked against half of one.
+ * No redirect is followed: a redirect would let a third party answer for the host of the sector.
  */
 final readonly class SectorIdentifierDocumentFetcher implements SectorIdentifierDocumentFetcherInterface
 {

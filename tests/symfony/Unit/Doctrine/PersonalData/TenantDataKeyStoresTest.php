@@ -25,12 +25,6 @@ use Symfony\Component\KeyManagement\Exception\RuntimeException;
 use Symfony\Component\KeyManagement\Test\InMemoryKms;
 use Symfony\Component\KeyManagement\Test\SwitchableKms;
 
-/**
- * The secrets the stores of the tenants bind a row with (`StoredDataKey::bindingFor()`): the first one binds
- * a new row and every one is accepted when a row is read, which is what lets a deployment rotate the secret
- * without losing what it sealed, a rewrap binding each row again under the first. And what a KMS that does
- * not answer is when a data key is asked for: an outage.
- */
 final class TenantDataKeyStoresTest extends TestCase
 {
     private const string SCOPE = 'acme.user';
@@ -60,10 +54,6 @@ final class TenantDataKeyStoresTest extends TestCase
         $this->stores(['current'])->reader()->createTable();
     }
 
-    /**
-     * A row whose secret the deployment no longer lists opens nothing: whoever wrote the table could have
-     * wrapped its key themselves, and only a listed secret tells them apart.
-     */
     #[Test]
     public function aRowBoundUnderASecretNoLongerListedOpensNothing(): void
     {
@@ -77,10 +67,6 @@ final class TenantDataKeyStoresTest extends TestCase
         $this->stores(['current'])->get($reference);
     }
 
-    /**
-     * Every listed secret is accepted when a row is read, so a secret written second still opens the rows it
-     * bound while it was the first.
-     */
     #[Test]
     public function aRowBoundUnderASecretListedSecondStillOpens(): void
     {
@@ -94,10 +80,6 @@ final class TenantDataKeyStoresTest extends TestCase
         static::assertSame($reference, $handle->reference);
     }
 
-    /**
-     * A rewrap towards the client that already wraps the keys binds each row again under the first secret,
-     * after which the retired one is no longer needed: the rotation the configuration describes.
-     */
     #[Test]
     public function aRewrapBindsTheRowsAgainUnderTheFirstSecret(): void
     {
@@ -117,10 +99,7 @@ final class TenantDataKeyStoresTest extends TestCase
     }
 
     /**
-     * Decision 0018 (issue #877): a KMS that does not answer when a data key is opened or minted is an outage,
-     * the KmsUnavailableException a request is answered 503 for and served past once the KMS is back, and not
-     * the failure of the component, which no listener tells from an error of the server. What the KMS said is
-     * kept behind it.
+     * Decision 0018
      *
      * @param Closure(TenantDataKeyStores, string): DataKeyHandle $ask
      */
@@ -167,9 +146,6 @@ final class TenantDataKeyStoresTest extends TestCase
     }
 
     /**
-     * The stores of the tenants under these secrets, built afresh so that nothing a previous one opened is
-     * held: what a row is read with is the table and the secrets, as in a process that just started.
-     *
      * @param non-empty-list<string> $secrets
      */
     private function stores(array $secrets): TenantDataKeyStores

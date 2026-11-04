@@ -18,8 +18,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-5, section 5.2, section 6.2 step 1: the service providers the configuration of the deployment
- * declares, keyed by entity ID, validated when they are built, those of one tenant.
+ * spec/saml.md S-5, section 5.2, section 6.2 step 1
  */
 final class ConfigurationServiceProvidersTest extends TestCase
 {
@@ -28,9 +27,7 @@ final class ConfigurationServiceProvidersTest extends TestCase
     private const string LOCATION = 'https://sp.example.com/saml/metadata';
 
     /**
-     * S-5, section 5.2: a declaration is read whole into its ServiceProvider, its entity ID, its metadata location,
-     * the certificates that sign its metadata, its attribute mappings with their name format and friendly name,
-     * encryptAssertions and signsAuthnRequests.
+     * S-5, section 5.2
      */
     #[Test]
     public function aDeclarationIsReadWhole(): void
@@ -80,7 +77,7 @@ final class ConfigurationServiceProvidersTest extends TestCase
     }
 
     /**
-     * S-7 and issue #730: what a declaration leaves out is no encryption and requests signed.
+     * S-7
      */
     #[Test]
     public function aDeclarationLeftOutTakesTheDefaults(): void
@@ -104,8 +101,7 @@ final class ConfigurationServiceProvidersTest extends TestCase
     }
 
     /**
-     * Section 5.2: ServiceProvidersInterface::of() lists the service providers of the tenant in the order of the
-     * declaration, the order in which refreshAll() reads them (section 6.2).
+     * Section 5.2, section 6.2
      */
     #[Test]
     public function theServiceProvidersAreListedInTheOrderOfTheDeclaration(): void
@@ -133,7 +129,7 @@ final class ConfigurationServiceProvidersTest extends TestCase
     }
 
     /**
-     * Section 5.2: the declarations are those of one tenant, named by its slug, so another tenant lists none.
+     * Section 5.2
      */
     #[Test]
     public function anotherTenantListsNone(): void
@@ -154,8 +150,7 @@ final class ConfigurationServiceProvidersTest extends TestCase
     }
 
     /**
-     * Section 5.2: the declarations are those of one tenant, named by its slug, so another tenant finds none of them,
-     * even by an entity ID declared for the first.
+     * Section 5.2
      */
     #[Test]
     public function anotherTenantFindsNone(): void
@@ -176,8 +171,7 @@ final class ConfigurationServiceProvidersTest extends TestCase
     }
 
     /**
-     * S-5, section 5.2: a service provider is the one the configuration declares, found by its entity ID compared
-     * exactly, so an entity ID that differs by a character finds none.
+     * S-5, section 5.2
      */
     #[Test]
     public function anEntityIdNobodyDeclaredIsFoundNowhere(): void
@@ -198,8 +192,7 @@ final class ConfigurationServiceProvidersTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 1: a declaration that does not hold together fails where it is built, naming its service
-     * provider.
+     * Section 6.2 step 1
      *
      * @param array<array-key, mixed> $definition
      */

@@ -20,10 +20,6 @@ use Symfony\Component\Filesystem\Filesystem;
 use function sys_get_temp_dir;
 use function uniqid;
 
-/**
- * Issue #473: the database inside what MaxMind serves, taken out of the archive and nothing else with it;
- * issue #904: read from a file and written to another, by stream.
- */
 final class GeoLite2ArchiveTest extends TestCase
 {
     private string $directory;
@@ -53,10 +49,6 @@ final class GeoLite2ArchiveTest extends TestCase
         static::assertSame($database, file_get_contents($this->directory . '/taken.mmdb'));
     }
 
-    /**
-     * A deployment that unpacked an archive by hand names the database itself, which is a file this takes
-     * as it stands.
-     */
     #[Test]
     public function aDatabaseThatIsNotInAnArchiveIsTakenAsItStands(): void
     {
@@ -71,10 +63,6 @@ final class GeoLite2ArchiveTest extends TestCase
         static::assertSame($database, file_get_contents($this->directory . '/taken.mmdb'));
     }
 
-    /**
-     * A member that is not the database is read past by the length its header gives, whatever it holds:
-     * a notice that holds the tar of another database is not where the database is taken from.
-     */
     #[Test]
     public function aMemberThatIsNotTheDatabaseIsReadPastWhateverItHolds(): void
     {
@@ -130,10 +118,7 @@ final class GeoLite2ArchiveTest extends TestCase
     }
 
     /**
-     * The archive with the CRC32 of its gzip member changed, which is the first of the eight bytes that end
-     * it (RFC 1952 §2.3.1): every byte before it is what a whole archive holds, and only reading the stream
-     * to its end tells the difference. The licence after the database is long enough that the end is not
-     * read along with the database.
+     * RFC 1952 §2.3.1
      */
     private static function withAnotherCheck(string $archive): string
     {

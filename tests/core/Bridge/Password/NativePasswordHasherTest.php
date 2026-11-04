@@ -39,8 +39,7 @@ final class NativePasswordHasherTest extends TestCase
     }
 
     /**
-     * RFC 9106 §4 asks for 64 MiB of memory, three passes and four lanes in its memory-constrained set. The memory and
-     * the passes are read as a floor, what PHP defaults to being that memory and a pass more; the lanes are exact.
+     * RFC 9106 §4
      */
     #[Test]
     public function itHashesWithTheParameterSetOfRfc9106(): void

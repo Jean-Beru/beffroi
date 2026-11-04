@@ -56,7 +56,7 @@ final class AuthenticationSessionTest extends TestCase
     }
 
     /**
-     * OIDC Core §2 "acr", architecture §3.2: read from the proofs, "1" for the one factor a password is.
+     * OIDC Core §2, architecture §3.2
      */
     #[Test]
     public function aSessionEstablishedByAPasswordSatisfiesTheSingleFactorClass(): void
@@ -70,8 +70,7 @@ final class AuthenticationSessionTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5.1.1: a session satisfies a requested class when its proofs meet it, a class below
-     * the strongest included.
+     * OIDC Core §5.5.1.1
      */
     #[Test]
     public function aSessionSatisfiesTheClassesItsProofsMeet(): void
@@ -99,7 +98,7 @@ final class AuthenticationSessionTest extends TestCase
     }
 
     /**
-     * Architecture §3.2: a step-up adds a proof, and the class moves with it as auth_time does.
+     * Architecture §3.2
      */
     #[Test]
     public function aNewProofOfAnotherKindRaisesTheClass(): void
@@ -115,8 +114,7 @@ final class AuthenticationSessionTest extends TestCase
     }
 
     /**
-     * beffroi/saml S-57: a proof an upstream identity provider gave is dated by its AuthnInstant, the auth_time it
-     * leaves the session with, and not by the request that carried it.
+     * beffroi/saml S-57
      */
     #[Test]
     public function aProofIsDatedWhenWhatProvedItSaysItWasGiven(): void
@@ -137,8 +135,7 @@ final class AuthenticationSessionTest extends TestCase
     }
 
     /**
-     * beffroi/saml S-57: a proof dated after the request that carried it, an upstream clock ahead of ours, is dated by
-     * the request.
+     * beffroi/saml S-57
      */
     #[Test]
     public function aProofIsNeverDatedAfterTheRequestThatCarriedIt(): void
@@ -159,8 +156,7 @@ final class AuthenticationSessionTest extends TestCase
     }
 
     /**
-     * beffroi/saml S-57, SAML Core §2.7.2: the session expires no later than what an upstream identity provider
-     * allows, which shortens it and never lengthens it.
+     * beffroi/saml S-57, SAML Core §2.7.2
      */
     #[Test]
     #[DataProvider('provideBounds')]
@@ -274,7 +270,7 @@ final class AuthenticationSessionTest extends TestCase
     }
 
     /**
-     * OIDC Core §2: auth_time is the time of the End-User authentication; a re-authentication moves it.
+     * OIDC Core §2
      */
     #[Test]
     public function aNewProofMovesAuthTime(): void
@@ -291,9 +287,6 @@ final class AuthenticationSessionTest extends TestCase
         static::assertEquals(Fixtures::now(), $session->establishedAt);
     }
 
-    /**
-     * The proofs of other methods keep their own date (symfony/symfony#66064).
-     */
     #[Test]
     public function aNewProofKeepsTheOtherProofs(): void
     {
@@ -480,10 +473,6 @@ final class AuthenticationSessionTest extends TestCase
         $session->touch(Fixtures::context(), Fixtures::now()->modify('+1 day'));
     }
 
-    /**
-     * Issue #473: the enrichment adds a place to each provenance and rewrites nothing of what the
-     * requests carried, which is why it is given the places and not two provenances.
-     */
     #[Test]
     public function locatingASessionAddsAPlaceToEachProvenanceAndChangesNothingElse(): void
     {
@@ -502,10 +491,6 @@ final class AuthenticationSessionTest extends TestCase
         static::assertSame('curl/8.5.0', $session->lastSeenFrom->userAgent);
     }
 
-    /**
-     * A message of the lane may arrive after a logout, which is late and not wrong: there is a row, and
-     * it says where it was seen from.
-     */
     #[Test]
     public function anEndedSessionIsStillLocated(): void
     {

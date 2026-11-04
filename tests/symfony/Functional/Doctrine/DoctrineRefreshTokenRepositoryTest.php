@@ -30,8 +30,7 @@ use Symfony\Component\Uid\Uuid;
 use Beffroi\Oidc\Tests\Fixture\Shapes;
 
 /**
- * Architecture §4.6, §5.3: a token keyed by its hash, its family on every token of the lineage, found by
- * family, by the code the family descends from and by session; rotated and revoked tokens stay.
+ * Architecture §4.6, §5.3
  */
 final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
 {
@@ -111,7 +110,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * RFC 9700 §4.13.2: a reuse revokes the family, found whole, in issuance order.
+     * RFC 9700 §4.13.2
      */
     #[Test]
     public function tokensAreFoundByFamilyInIssuanceOrder(): void
@@ -126,7 +125,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: a replay of the code revokes its descendants, found whole.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function tokensAreFoundByAuthorizationCode(): void
@@ -139,7 +138,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Decision 0006: a logout revokes the tokens of the session, found whole.
+     * Decision 0006
      */
     #[Test]
     public function tokensAreFoundBySession(): void
@@ -153,10 +152,6 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
         static::assertSame([], self::hashes(self::tokens()->findBySession(Uuid::v7())));
     }
 
-    /**
-     * A token of a client removed from the configuration is not a token: not found, so that nothing
-     * dereferences a client that does not exist.
-     */
     #[Test]
     public function aTokenOfAnUnregisteredClientIsNotFound(): void
     {
@@ -167,9 +162,6 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
         static::assertNull(self::tokens()->findByTokenHash($orphan->tokenHash));
     }
 
-    /**
-     * A token of a client removed from the configuration is not listed either, by family or by session.
-     */
     #[Test]
     public function aTokenOfAnUnregisteredClientIsNotListed(): void
     {
@@ -182,9 +174,6 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Two tokens of one family in one session of alice, saved out of order, and a third of a sibling
-     * family in another session of hers.
-     *
      * @return array{family: RefreshTokenFamily, first: RefreshToken, second: RefreshToken, sibling: RefreshTokenFamily, third: RefreshToken, aliceSession: AuthenticationSession, otherSession: AuthenticationSession}
      */
     private static function twoFamilies(): array
@@ -215,9 +204,6 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * A token of a client removed from the configuration next to one of a registered client, in the
-     * same family and the same session.
-     *
      * @return array{orphan: RefreshToken, kept: RefreshToken, family: RefreshTokenFamily, session: AuthenticationSession}
      */
     private static function anOrphanAndAKeptToken(): array
@@ -285,8 +271,7 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Architecture §4.3: what a client can still renew for a user goes with the consent that user takes
-     * back; what it renews for another user, and what another client renews, stays.
+     * Architecture §4.3
      */
     #[Test]
     public function theRefreshTokensOfAConsentAreThoseOfItsUserAndItsClient(): void

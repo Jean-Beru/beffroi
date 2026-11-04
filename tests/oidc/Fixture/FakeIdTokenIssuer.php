@@ -17,10 +17,6 @@ use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
 use Beffroi\Oidc\Port\IdTokenIssuerInterface;
 use function sprintf;
 
-/**
- * An issuer whose ID tokens say what they would carry, in clear. Never leaves the test suite: the real
- * one, JwtIdTokenIssuer, writes a signed JWT.
- */
 final class FakeIdTokenIssuer implements IdTokenIssuerInterface
 {
     /**
@@ -28,10 +24,6 @@ final class FakeIdTokenIssuer implements IdTokenIssuerInterface
      */
     public private(set) array $issued = [];
 
-    /**
-     * What addressing an ID token throws while the keys of the client cannot be read, which a test sets and
-     * takes back; null while they can.
-     */
     public ?ClientKeysUnavailableException $unreadableKeys = null;
 
     public function address(Client $client): AddressedIdToken

@@ -9,10 +9,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Throwable;
 
 /**
- * What the console downloads for the passkeys of the deployment (architecture §3.4, §5.5), the Metadata BLOB of
- * the FIDO Alliance and the list of the community: one GET and its answer whole, no redirect followed (decision
- * 0006), the URL a redirect leads to named so that whoever runs the command can name it instead, and an answer
- * other than 200 refused with its status.
+ * Downloads the FIDO Metadata BLOB or the community list of authenticators for the console.
  */
 final readonly class DocumentDownload
 {

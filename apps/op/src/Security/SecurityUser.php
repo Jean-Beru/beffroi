@@ -14,10 +14,6 @@ use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * What the security component sees of a user of the core (architecture §5.4, decision 0002). Serialised
- * into the HTTP session as identifier, username, hash and state; the entities are read again from the rows.
- */
 final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInterface, EquatableInterface
 {
     public const string ROLE = 'ROLE_USER';
@@ -47,9 +43,6 @@ final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInte
         $this->credential = $credential;
     }
 
-    /**
-     * An adapter restored from the HTTP session holds none until the provider refreshed it.
-     */
     public function user(): User
     {
         return $this->user ?? throw new LogicException('This user was restored from the session; refresh it through the provider first.');

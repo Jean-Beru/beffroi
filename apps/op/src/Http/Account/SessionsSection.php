@@ -10,10 +10,6 @@ use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use function count;
 use Psr\Clock\ClockInterface;
 
-/**
- * Where this person is signed in, on the home page: how many sessions are open in their name at this
- * instant. A session that ended or expired is on no count, the page of the sessions showing what is open.
- */
 final readonly class SessionsSection implements AccountSectionInterface
 {
     public function __construct(

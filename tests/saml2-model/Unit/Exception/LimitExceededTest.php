@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.8, M-17: a count or a length over its bound, refused with the rest of what the model refuses.
+ * Section 5.8, M-17
  */
 final class LimitExceededTest extends TestCase
 {

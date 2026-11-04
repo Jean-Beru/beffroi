@@ -27,11 +27,7 @@ use Symfony\Component\Messenger\Transport\TransportInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Back-Channel Logout 1.0 §2.5 and §2.8, architecture §5.6: what the provider does with the logout token
- * it minted, and what it does when the relying party does not take it. The delivery is asynchronous in
- * production; the token waits in the queue of this kernel as it waits on a broker, and what a worker does
- * with it happens here on the call of the handler, or under the worker of the lane itself when what is
- * judged is how often the lane brings the token back.
+ * Back-Channel Logout 1.0 §2.5, §2.8, Architecture §5.6
  */
 final class LogoutTokenDeliveryTest extends ConsoleTestCase
 {
@@ -55,8 +51,7 @@ final class LogoutTokenDeliveryTest extends ConsoleTestCase
     }
 
     /**
-     * Architecture §5.6: the logout answers the browser without waiting for the relying party. The token
-     * waits in the queue of its own transport, and a client that hangs holds a worker, never a user.
+     * Architecture §5.6
      */
     #[Test]
     public function theLogoutAnswersWithoutWaitingForTheClient(): void
@@ -74,8 +69,7 @@ final class LogoutTokenDeliveryTest extends ConsoleTestCase
     }
 
     /**
-     * §2.5: the token reaches the URI the client registered, posted as a form whose one parameter is the
-     * one of the section, and it names the session that ended.
+     * Back-Channel Logout 1.0 §2.5
      */
     #[Test]
     public function theQueuedTokenIsPostedToTheClient(): void
@@ -98,7 +92,7 @@ final class LogoutTokenDeliveryTest extends ConsoleTestCase
     }
 
     /**
-     * §2.8: a client that answers 200 is done, and nothing is given up on.
+     * Back-Channel Logout 1.0 §2.8
      */
     #[Test]
     public function aClientThatAnswersOkIsDone(): void
@@ -112,8 +106,7 @@ final class LogoutTokenDeliveryTest extends ConsoleTestCase
     }
 
     /**
-     * §2.8: a client that failed for its own reasons is asked again, which the transport does on the
-     * schedule of its retry policy; nothing is given up on while it may still work.
+     * Back-Channel Logout 1.0 §2.8
      */
     #[Test]
     public function aClientThatFailsForItsOwnReasonsIsAskedAgain(): void
@@ -129,10 +122,6 @@ final class LogoutTokenDeliveryTest extends ConsoleTestCase
         $this->deliver();
     }
 
-    /**
-     * The token of the second attempt is the one that was minted, and the client that came back takes it:
-     * a retry asks the key management service for no new signature.
-     */
     #[Test]
     public function aClientThatComesBackTakesTheSameTokenOnTheNextAttempt(): void
     {
@@ -142,7 +131,6 @@ final class LogoutTokenDeliveryTest extends ConsoleTestCase
         try {
             self::handler()($message);
         } catch (NotificationNotDeliveredException) {
-            // the first attempt, which the transport would bring back
         }
 
         // When
@@ -153,9 +141,6 @@ final class LogoutTokenDeliveryTest extends ConsoleTestCase
         static::assertSame([], self::givenUp());
     }
 
-    /**
-     * A client that never answers is asked again too: a timeout is not a refusal.
-     */
     #[Test]
     public function aClientThatNeverAnswersIsAskedAgain(): void
     {
@@ -171,8 +156,7 @@ final class LogoutTokenDeliveryTest extends ConsoleTestCase
     }
 
     /**
-     * §2.8, architecture §5.6: a client that never comes back is asked as many times as the policy of the
-     * notifications lane allows, the first send and each of its retries, and then no more.
+     * Back-Channel Logout 1.0 §2.8, Architecture §5.6
      */
     #[Test]
     public function aClientThatNeverComesBackIsAskedAsOftenAsTheLaneAllows(): void
@@ -189,8 +173,7 @@ final class LogoutTokenDeliveryTest extends ConsoleTestCase
     }
 
     /**
-     * §2.8: once the policy of the lane runs out, the provider says which client it gave up on and what the
-     * last attempt got back, as it does for a client that refused.
+     * Back-Channel Logout 1.0 §2.8
      */
     #[Test]
     public function aClientTheLaneRunsOutOnIsGivenUpOn(): void
@@ -211,8 +194,7 @@ final class LogoutTokenDeliveryTest extends ConsoleTestCase
     }
 
     /**
-     * Decision 0006: no outbound request follows a redirect, and the same redirect would answer every
-     * attempt, so the provider gives up at once and says where it was being sent.
+     * Decision 0006
      */
     #[Test]
     public function aClientThatRedirectsIsNotFollowedAndIsGivenUpOn(): void
@@ -231,8 +213,7 @@ final class LogoutTokenDeliveryTest extends ConsoleTestCase
     }
 
     /**
-     * §2.8: 400 and 501 are the two answers that say the client read the token and will not act on it;
-     * asking again gets the same answer, so the provider gives up and says so.
+     * Back-Channel Logout 1.0 §2.8
      */
     #[Test]
     #[DataProvider('provideFinalRefusals')]
@@ -265,22 +246,11 @@ final class LogoutTokenDeliveryTest extends ConsoleTestCase
         self::handler()(self::message());
     }
 
-    /**
-     * The token put on the command bus as the provider puts it there, which routes it to the notifications
-     * lane.
-     */
     private static function queue(SendLogoutToken $message): void
     {
         self::service('command.bus', MessageBusInterface::class)->dispatch($message);
     }
 
-    /**
-     * What the worker of a deployment does with the lane, "messenger:consume async_notifications", for the
-     * whole schedule of the policy and as long again, where a lane that never gives up would still be
-     * trying: the clock of the kernel is mocked, so the waits between two attempts pass without the test
-     * sleeping. Nothing is reset between two messages, the queue of this kernel living in memory, where a
-     * reset empties it.
-     */
     private static function work(): void
     {
         self::mockTime();
@@ -296,9 +266,6 @@ final class LogoutTokenDeliveryTest extends ConsoleTestCase
         return self::service(NotificationRetryPolicy::class, NotificationRetryPolicy::class);
     }
 
-    /**
-     * What a worker does with what it finds in the queue.
-     */
     private function deliverQueued(): void
     {
         foreach (self::queued() as $envelope) {
@@ -322,9 +289,6 @@ final class LogoutTokenDeliveryTest extends ConsoleTestCase
         return $envelopes;
     }
 
-    /**
-     * The session of alice, signed in by one client through the whole code flow.
-     */
     private function signedInWith(string $clientId): AuthenticationSession
     {
         $session = $this->signIn(self::user('alice'));

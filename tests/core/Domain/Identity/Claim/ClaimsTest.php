@@ -23,15 +23,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Issue #479: the three claims whose set is closed on what exists, and what a closed set refuses.
- */
 final class ClaimsTest extends TestCase
 {
-    /**
-     * The set a stored value is already read against when a date is shown to that person, so the two agree
-     * instead of one guarding the other.
-     */
     #[Test]
     public function theTimeZoneIsOneOfTheNamesOfTheZoneinfoDatabase(): void
     {
@@ -71,9 +64,6 @@ final class ClaimsTest extends TestCase
         static::assertSame('Pacific/Chatham', $user->profile->zoneinfo);
     }
 
-    /**
-     * A deployment that names no language offers something to type, there being nothing to choose.
-     */
     #[Test]
     public function theLanguageOfADeploymentThatNamesNoneIsALineOfText(): void
     {
@@ -108,9 +98,6 @@ final class ClaimsTest extends TestCase
         new Locale(['fr' => 'français'])->describe($user, 'ja', Fixtures::now());
     }
 
-    /**
-     * A browser offers a calendar for a date, and the pattern comes with it for one that does not.
-     */
     #[Test]
     public function theBirthdateIsADate(): void
     {
@@ -123,8 +110,7 @@ final class ClaimsTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.1 provides for a year alone, which a date input cannot express: the model holds one
-     * all the same, a console and an import writing it.
+     * OIDC Core §5.1
      */
     #[Test]
     public function aYearAloneIsStillABirthdateTheModelHolds(): void
@@ -139,10 +125,6 @@ final class ClaimsTest extends TestCase
         static::assertSame('1815', $user->profile->birthdate);
     }
 
-    /**
-     * What the shape of a value is, where the set is not closed, stays the model's: a birthdate that is
-     * not a date is refused by the profile that holds it and not by the field.
-     */
     #[Test]
     public function aBirthdateThatIsNotADateIsRefusedByTheProfile(): void
     {
@@ -157,9 +139,6 @@ final class ClaimsTest extends TestCase
         new Birthdate()->describe($user, 'the first of May', Fixtures::now());
     }
 
-    /**
-     * A claim with no closed set refuses nothing of its own.
-     */
     #[Test]
     public function aClaimWithNoClosedSetWritesWhateverItIsGiven(): void
     {
@@ -175,10 +154,7 @@ final class ClaimsTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.1, issue #626: three claims are named by the specification and held by a field of
-     * another name, the class being named after the field it reads. The name the claim answers and the
-     * field it writes are paired in one place (`Profile::describedWith()`), so what a person says under
-     * the name of the specification is read back from the field that holds it.
+     * OIDC Core §5.1
      *
      * @param Closure(Profile): ?string $read
      */
@@ -207,9 +183,6 @@ final class ClaimsTest extends TestCase
         yield 'website' => [new WebsiteUrl(), 'website', static fn (Profile $profile): ?string => $profile->websiteUrl];
     }
 
-    /**
-     * Whatever a claim says it is, it is a kind a browser understands without a script.
-     */
     #[Test]
     public function theKindOfAClaimIsOneABrowserUnderstandsWithoutAScript(): void
     {

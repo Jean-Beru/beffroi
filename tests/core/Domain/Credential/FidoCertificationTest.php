@@ -11,8 +11,7 @@ use PHPUnit\Framework\TestCase;
 use Webauthn\MetadataService\Statement\AuthenticatorStatus;
 
 /**
- * FIDO Metadata Service v3.1.1 §3.1.4: the certification the status reports of a model leave it with, the
- * statuses §3.1.4.1 relates to certification and no other.
+ * FIDO Metadata Service v3.1.1 §3.1.4, §3.1.4.1
  */
 final class FidoCertificationTest extends TestCase
 {

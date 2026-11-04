@@ -28,10 +28,7 @@ use PHPUnit\Framework\TestCase;
 use function sprintf;
 
 /**
- * §9.3 row 10: the assertion of a built response, then the response, signed with every scheme this build offers,
- * exclusive and exclusive with comments, written into the directory XMLSEC_ORACLE names for xmlsec1 to verify
- * both signatures of each (tests/xml-security/Dsig/Fixture/oracle/README.md, the job Oracle of the CI). The files are the
- * input of the oracle, not fixtures: the test is skipped when the variable is not set.
+ * §9.3 row 10
  */
 #[RequiresEnvironmentVariable('XMLSEC_ORACLE')]
 final class SignerOracleTest extends TestCase
@@ -54,7 +51,6 @@ final class SignerOracleTest extends TestCase
         $document = Built::responseWithAssertion();
         $xml = $document->root()->ownerDocument;
         static::assertInstanceOf(XMLDocument::class, $xml);
-        // a comment inside the signed element: a same-document reference digests it away, whatever the method
         Children::one(
             $document->root(),
             new Name(Stack::SAML_ASSERTION, 'Assertion'),

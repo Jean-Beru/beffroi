@@ -2,18 +2,6 @@
 
 declare(strict_types=1);
 
-/*
- * The knowledge graph of the repository (graphify): tree-sitter over the code, a model over the documents,
- * and a graph the agents and the maintainer query about the whole monorepo at once. It reads the sources
- * and never the running stack, and it writes graphify-out/, which git ignores: graph.json, the report
- * GRAPH_REPORT.md and the page graph.html, whose bubbles are the communities the model named.
- *
- * The semantic half needs a model. It is asked of the Claude Code CLI, billed to the subscription, rather
- * than of an API key, and that choice is what these tasks carry: the backend is named explicitly because
- * graphify never selects it on its own, and ANTHROPIC_API_KEY is removed from the environment because the
- * CLI gives a key precedence over the claude.ai login and a key without credit then fails every chunk.
- */
-
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
 use function Castor\context;
@@ -21,22 +9,17 @@ use function Castor\io;
 use function Castor\run;
 
 /**
- * The extras of the Python package, named in full at every install: they are not cumulative, so an install
- * that omits one removes it. "anthropic" is the API backend, "terraform" the tree-sitter grammar of the
- * .hcl files, "mcp" the graphify-mcp server, "leiden" the community detection that Louvain replaces when
- * it is absent.
+ * Named in full at every install: extras are not cumulative, and an install that omits one removes it.
  */
 const GRAPHIFY_EXTRAS = ['anthropic', 'terraform', 'mcp', 'leiden'];
 
 /**
- * The backend of the semantic extraction. graphify excludes it from its own detection (detect_backend()),
- * so a run that does not name it falls back to the API key.
+ * Named on every run: graphify never detects it (detect_backend()) and would fall back to the API key.
  */
 const GRAPHIFY_BACKEND = 'claude-cli';
 
 /**
- * What that backend asks the CLI for. Its own default is Opus, more than the structured JSON extraction
- * graphify performs over the documents of the repository needs.
+ * The CLI defaults to Opus, more than the structured extraction needs.
  */
 const GRAPHIFY_MODEL = 'claude-sonnet-5';
 
@@ -80,8 +63,7 @@ function graphify_build(
         return;
     }
 
-    // Every name, not only the missing ones: the extraction above re-partitioned the graph, so the
-    // communities are numbered afresh and a name kept from the previous numbering would name another set.
+    // Every community is named again: the extraction renumbered them, so a kept name would label another set.
     graphify_label($model);
 
     io()->success(sprintf('%s holds graph.json, GRAPH_REPORT.md and graph.html', graphify_out()));
@@ -163,8 +145,6 @@ function graphify_god_nodes(
 }
 
 /**
- * Runs a graphify command that writes the graph. A failure is a failure of the task, reported as such.
- *
  * @param array<string> $arguments
  */
 function graphify_run(array $arguments, string $model = GRAPHIFY_MODEL): void
@@ -173,9 +153,7 @@ function graphify_run(array $arguments, string $model = GRAPHIFY_MODEL): void
 }
 
 /**
- * Runs a graphify command that reads the graph, and carries its exit code without adding to its output: a
- * question the graph cannot answer is answered by graphify itself, naming the nodes that were ambiguous or
- * the graph that is missing, and a task that framed that as its own error would bury the answer.
+ * Passes the exit code on and adds nothing to the output: graphify itself says what it could not answer.
  *
  * @param array<string> $arguments
  */
@@ -191,12 +169,7 @@ function graphify_read(array $arguments): void
 }
 
 /**
- * The command line of every task: graphify against this repository whatever directory castor was started
- * from, the corpus named by its absolute path and the output directory by GRAPHIFY_OUT, which every
- * graphify command reads, so a task called from a package of the monorepo writes and queries the one graph
- * at the root.
- *
- * "env -u" is what removes the API key for the child process only; the key stays in the shell that called.
+ * "env -u" drops the API key for the child only: the CLI would prefer it to the claude.ai login.
  *
  * @param array<string> $arguments
  *
@@ -220,17 +193,11 @@ function graphify_command(array $arguments, string $model): array
     ];
 }
 
-/**
- * The root of the repository, the directory castor.php lives in, and the corpus graphify indexes.
- */
 function graphify_root(): string
 {
     return dirname(__DIR__, 2);
 }
 
-/**
- * Where the graph is written and read, absolute so that no command depends on the working directory.
- */
 function graphify_out(): string
 {
     return graphify_root() . '/graphify-out';

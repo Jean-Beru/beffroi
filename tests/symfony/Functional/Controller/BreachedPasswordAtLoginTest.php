@@ -14,18 +14,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestWith;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * The password already posed, looked up after the login that used it (issue #552): the one thing a login
- * orders about it, and the one moment this provider holds the password at all.
- *
- * **What a login costs is what this is about.** The lookup is a Command, so it goes to a lane and the
- * browser waits for nothing; the transports of this kernel are synchronous, where a Command is handled in
- * the request, so what is asserted here is the mark and what was asked, and that it is a Command at all is
- * the routing of the contract (MessengerContractTest).
- *
- * The list of this kernel is a fixture that names nothing until a test names one (config_test.yml): no
- * test here reaches a host.
- */
 final class BreachedPasswordAtLoginTest extends BrowserTestCase
 {
     private const string PASSWORD = 'correct horse battery staple';
@@ -59,10 +47,6 @@ final class BreachedPasswordAtLoginTest extends BrowserTestCase
         static::assertNotNull(self::passwordOf($alice)->breachCheckedAt);
     }
 
-    /**
-     * Nothing of a wrong guess is sent to anybody: a refused login never reaches the moment the lookup is
-     * ordered from.
-     */
     #[Test]
     public function aPasswordThatDidNotVerifyIsAskedAboutNobody(): void
     {
@@ -77,11 +61,6 @@ final class BreachedPasswordAtLoginTest extends BrowserTestCase
         static::assertSame([], self::breaches()->asked);
     }
 
-    /**
-     * A login does not ask again what was asked last month, and asks again past the delay: the lists are
-     * published in batches. The clock is held still for it, a second of margin being less than a login
-     * takes to verify a hash of the cost RFC 9106 §4 asks for.
-     */
     #[Test]
     #[TestWith(['+1 second', false], 'a second short of the delay')]
     #[TestWith(['-1 day', true], 'a day past the delay')]
@@ -91,7 +70,6 @@ final class BreachedPasswordAtLoginTest extends BrowserTestCase
         self::mockTime(self::currentSecond());
         $alice = self::userWithPassword('alice', self::PASSWORD);
         $credential = self::passwordOf($alice);
-        // the moment of the last lookup, read back from now: a second short of the delay, or a day past it
         $credential->notFoundInABreach(
             self::currentSecond()->sub(new DateInterval(PasswordCredential::LOOKUP_AGAIN_AFTER))->modify($modification),
         );
@@ -105,10 +83,6 @@ final class BreachedPasswordAtLoginTest extends BrowserTestCase
         static::assertSame($asked, self::breaches()->asked !== []);
     }
 
-    /**
-     * A deployment that names no list computes nothing and orders nothing: it signs people in and asks
-     * nobody.
-     */
     #[Test]
     public function aDeploymentThatNamesNoListSignsThePersonInAndAsksNobody(): void
     {
@@ -124,11 +98,6 @@ final class BreachedPasswordAtLoginTest extends BrowserTestCase
         static::assertNull(self::passwordOf($alice)->breachCheckedAt);
     }
 
-    /**
-     * What every other test of every suite runs as, asserted rather than assumed: the list of this kernel
-     * names nothing, so no test of this repository reaches a host to ask about a password. A test that
-     * wants the rule arms the fixture and the arming dies with its kernel.
-     */
     #[Test]
     public function theListOfTheSuiteNamesNothingUntilATestNamesOne(): void
     {
@@ -136,9 +105,6 @@ final class BreachedPasswordAtLoginTest extends BrowserTestCase
         static::assertFalse(self::breaches()->looksUp());
     }
 
-    /**
-     * Signs the user in through the form of the firewall, which is the path the digest is taken on.
-     */
     private function signInOnTheForm(string $username, string $password): void
     {
         $this->browser->request('GET', '/account');

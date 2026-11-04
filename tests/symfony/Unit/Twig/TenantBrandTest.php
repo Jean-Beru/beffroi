@@ -19,13 +19,7 @@ use Twig\Loader\FilesystemLoader;
 use Twig\TwigFunction;
 
 /**
- * Issue #449, architecture §5.2: the logo of the organisation the visitor came for, which the provider
- * ships as a header with the name of that organisation as the text that stands in for the image.
- *
- * The fragment is rendered on an environment of its own, because what it reads is a function
- * ("beffroi_tenant()", TenantExtension) and what a deployment declares is one look: giving it the look to
- * render is giving it that function. It needs nothing else of the provider, neither a catalogue nor a
- * router, which is what makes that possible.
+ * Architecture §5.2
  */
 final class TenantBrandTest extends TestCase
 {
@@ -50,8 +44,7 @@ final class TenantBrandTest extends TestCase
     }
 
     /**
-     * The browser of the reader loads the image from a host the tenant named, and tells it nothing of
-     * where that reader was (Referrer Policy §8.3), as the logo of a client on the consent page does.
+     * Referrer Policy §8.3
      */
     #[Test]
     public function theLogoIsLoadedWithoutTellingItsHostWhereTheReaderWas(): void
@@ -73,10 +66,6 @@ final class TenantBrandTest extends TestCase
         static::assertCount(0, $brand->filter('header[data-tenant="brand"]'));
     }
 
-    /**
-     * A colour is a look, and the look of these pages is the application's: the provider hands the value to
-     * the template and writes no style of its own.
-     */
     #[Test]
     public function aTenantThatDeclaredColoursAloneShowsNothing(): void
     {
@@ -87,10 +76,6 @@ final class TenantBrandTest extends TestCase
         static::assertCount(0, $brand->filter('header[data-tenant="brand"]'));
     }
 
-    /**
-     * The page that says the row of the tenant is missing or disagrees with the configuration is a page
-     * of this plane too, and it renders.
-     */
     #[Test]
     public function aPageWithNoTenantToNameShowsNothing(): void
     {

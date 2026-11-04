@@ -40,10 +40,6 @@ final class StoredUserAccessTokenTest extends TestCase
         $this->client = Clients::public($this->session->tenant);
     }
 
-    /**
-     * Issue #588: the row names the person it was issued for, by the subject their account carries, which
-     * is what the act of its revocation is written under.
-     */
     #[Test]
     public function itNamesThePersonItWasIssuedFor(): void
     {
@@ -54,11 +50,6 @@ final class StoredUserAccessTokenTest extends TestCase
         static::assertTrue($token->person()->equals($this->session->user->subject));
     }
 
-    /**
-     * Issue #888: the person of the row is named by the session it descends from, by the identifier of that
-     * session, which reads nothing of it: a session a store has not opened yet stays unopened, and its person is
-     * read where the store of sessions keeps their subject in the clear.
-     */
     #[Test]
     public function itNamesItsPersonByTheSessionItDescendsFromWithoutOpeningIt(): void
     {
@@ -72,8 +63,7 @@ final class StoredUserAccessTokenTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: everything a resource or the introspection endpoint answers with, kept instead
-     * of written as claims, with the authentication of the original authorization.
+     * Architecture §4.6
      */
     #[Test]
     public function itRecordsWhatAJwtWouldCarryAsClaims(): void
@@ -105,10 +95,6 @@ final class StoredUserAccessTokenTest extends TestCase
         static::assertEquals($issuedAt->modify('+10 minutes'), $token->expiresAt);
     }
 
-    /**
-     * The record of a response: the scopes of that response, not the ones granted, and the grant the
-     * tokens descend from.
-     */
     #[Test]
     public function itIsBuiltFromAnAuthorizationWithTheScopesOfTheResponse(): void
     {
@@ -184,9 +170,6 @@ final class StoredUserAccessTokenTest extends TestCase
         $this->token(client: Clients::public(Fixtures::tenant('other', 'https://id.other.example')));
     }
 
-    /**
-     * RFC 8176: a session always has at least one proof, so a token always has at least one method.
-     */
     #[Test]
     public function itRefusesToExpireBeforeItWasIssued(): void
     {

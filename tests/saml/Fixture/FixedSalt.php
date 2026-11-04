@@ -8,7 +8,7 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Saml\Port\PersistentIdentifierSaltInterface;
 
 /**
- * The salt of every tenant under test (spec/saml.md S-13).
+ * spec/saml.md S-13
  */
 final readonly class FixedSalt implements PersistentIdentifierSaltInterface
 {

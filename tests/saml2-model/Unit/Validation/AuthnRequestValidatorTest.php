@@ -37,8 +37,7 @@ use Psr\Clock\ClockInterface;
 use function sprintf;
 
 /**
- * Sections 5.6 and 6.2: an AuthnRequest validated by the identity provider, in order; the request rows of sections
- * 9.2 and 9.3; M-1, M-2, M-3, M-5, M-6, M-7, M-8, M-9 on the way.
+ * Sections 5.6, 6.2, 9.2 and 9.3, M-1, M-2, M-3, M-5, M-6, M-7, M-8, M-9
  */
 final class AuthnRequestValidatorTest extends TestCase
 {
@@ -47,9 +46,7 @@ final class AuthnRequestValidatorTest extends TestCase
     private const string UNSIGNED = 'behaviour/authn-request-unsigned.xml';
 
     /**
-     * M-2, M-1, Profiles §4.1.6: a signed request is verified under the service provider's keys and read from what
-     * was verified, whether the metadata of a party asks for the signature or neither does: every signature present
-     * is verified.
+     * M-2, M-1, Profiles §4.1.6
      */
     #[Test]
     #[DataProvider('provideWhoAsksForTheSignature')]
@@ -97,8 +94,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 31, "an unsigned AuthnRequest from a service provider whose metadata says AuthnRequestsSigned", M-2,
-     * Profiles §4.1.6: refused, and refused as well when our own metadata wants the requests signed.
+     * §9.2 row 31, M-2, Profiles §4.1.6
      */
     #[Test]
     #[DataProvider('providePartyAskingForTheSignature')]
@@ -132,8 +128,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-2, Profiles §4.1.6: an unsigned request that neither party's metadata asks to be signed was authenticated by
-     * nothing, and is accepted.
+     * M-2, Profiles §4.1.6
      */
     #[Test]
     public function itAcceptsAnUnsignedRequestNoPartyWantsSigned(): void
@@ -152,8 +147,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * Section 6.8, M-2: a request whose query string saml2-bindings verified under the service provider's keys, the
-     * metadata of both parties asking for signed requests.
+     * Section 6.8, M-2
      */
     #[Test]
     public function itAcceptsARequestTheBindingAuthenticated(): void
@@ -177,9 +171,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * Section 6.8, M-3: the binding verified the query string with the keys of the service provider's metadata; one
-     * whose metadata holds no signing key cannot have been verified so, and is refused as validate() refuses a signed
-     * request from it, whatever the two parties ask for.
+     * Section 6.8, M-3
      */
     #[Test]
     #[TestWith([false, false])]
@@ -210,8 +202,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 32, "an AuthnRequest with a ds:Signature given to validateAuthenticatedByBinding()", SAML Bindings
-     * §3.4.4.1: the HTTP-Redirect encoding removes the signature of the message.
+     * §9.2 row 32, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesASignatureGivenToTheBindingPath(): void
@@ -233,7 +224,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-3, D-7: the request signed by a key the service provider's metadata does not list, its own or not.
+     * M-3, D-7
      */
     #[Test]
     public function itRefusesARequestSignedByAKeyNotOfTheServiceProvider(): void
@@ -255,8 +246,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-2, section 5.8: the AssertionConsumerServiceURL changed after signing, to a service the metadata lists, is
-     * Dsig's refusal, as it is, whether the signature is required or not.
+     * M-2, section 5.8
      */
     #[Test]
     #[DataProvider('provideWhoAsksForTheSignature')]
@@ -279,8 +269,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-9, §9.3 row 13, "an AuthnRequest without an assertion consumer service": the service of the URL, of the
-     * index, or the default of the metadata (SAML Metadata §2.2.3), never a location the request brings.
+     * M-9, §9.3 row 13, SAML Metadata §2.2.3
      */
     #[Test]
     #[DataProvider('provideAssertionConsumerServices')]
@@ -321,8 +310,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 30, "an AuthnRequest whose AssertionConsumerServiceURL the metadata does not list; whose index it
-     * does not list; with both", M-9, SAML Core §3.4.1.
+     * §9.2 row 30, M-9, SAML Core §3.4.1
      *
      * @param class-string<MessageRefused> $exception
      */
@@ -373,8 +361,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 33, "an AuthnRequest with ProtocolBinding HTTP-Redirect", section 8: the Redirect binding cannot
-     * carry a response.
+     * §9.2 row 33, section 8
      */
     #[Test]
     public function itRefusesTheRedirectProtocolBinding(): void
@@ -391,7 +378,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 33, "an AuthnRequest without Issuer", Profiles §4.1.4.1, M-4.
+     * §9.2 row 33, Profiles §4.1.4.1, M-4
      */
     #[Test]
     public function itRefusesARequestWithoutIssuer(): void
@@ -408,8 +395,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 33, "an AuthnRequest with a saml:Subject", section 8: saml:Subject, saml:Conditions and
-     * samlp:Scoping refused by name, wherever they are.
+     * §9.2 row 33, section 8
      */
     #[Test]
     #[DataProvider('provideUnsupportedChildren')]
@@ -438,8 +424,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-4, M-5, section 6.2 step 1: the children in the order and with the cardinality of the schema, checked before
-     * any signature is touched.
+     * M-4, M-5, section 6.2 step 1
      */
     #[Test]
     #[DataProvider('provideStructuresOutsideTheSchema')]
@@ -491,9 +476,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 12, a Destination other than the URL of arrival, M-8, Bindings §3.4.5.2, §3.5.5.2: the Destination is
-     * the URL at which the request arrived, byte for byte, whether the request is signed, unsigned or authenticated by
-     * the binding.
+     * §9.2 row 12, M-8, Bindings §3.4.5.2, §3.5.5.2
      */
     #[Test]
     #[DataProvider('provideDestinationsOfAnotherUrl')]
@@ -524,8 +507,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-8, SAML Bindings §3.4.5.2, §3.5.5.2: a request that carries a signature, its own or the binding's, carries its
-     * Destination.
+     * M-8, SAML Bindings §3.4.5.2, §3.5.5.2
      */
     #[Test]
     #[DataProvider('provideSignedWithoutDestination')]
@@ -552,7 +534,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * SAML Core §3.2.1: the Destination of a request that nothing signed is optional.
+     * SAML Core §3.2.1
      */
     #[Test]
     public function itAcceptsAnUnsignedRequestWithoutDestination(): void
@@ -571,7 +553,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-8, section 6.2 step 3: the request arrived at one of our single sign-on services, any of them.
+     * M-8, section 6.2 step 3
      */
     #[Test]
     public function itAcceptsARequestAtAnyOfOurSingleSignOnServices(): void
@@ -593,8 +575,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-8, section 6.2 step 3: the URL the consumer says the request arrived at is one of our single sign-on
-     * services, the Destination equal to it or absent.
+     * M-8, section 6.2 step 3
      */
     #[Test]
     #[DataProvider('provideDestinationsOfNoService')]
@@ -627,7 +608,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-8, Profiles §4.1.4.1: the Issuer is the service provider's entity ID, its Format omitted or entity.
+     * M-8, Profiles §4.1.4.1
      */
     #[Test]
     #[DataProvider('provideIssuersRefused')]
@@ -664,8 +645,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-8, §9.2 row 16, "the Issuer ... with a NameQualifier, an SPNameQualifier or an SPProvidedID", SAML Core §8.3.6:
-     * the Issuer of a request carries none of the three qualifiers an entity identifier omits.
+     * M-8, §9.2 row 16, SAML Core §8.3.6
      */
     #[Test]
     #[DataProvider('provideIssuerQualifiers')]
@@ -698,7 +678,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-8, SAML Core §2.2.5: an Issuer whose Format is entity, what its absence means.
+     * M-8, SAML Core §2.2.5
      */
     #[Test]
     public function itAcceptsAnIssuerOfFormatEntity(): void
@@ -716,7 +696,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-7: the IssueInstant at now plus the skew, and exactly maxMessageAge old, the two edges of its window.
+     * M-7
      */
     #[Test]
     #[DataProvider('provideEdgesOfTheWindow')]
@@ -747,8 +727,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.2 row 18, M-7: an IssueInstant one second beyond now plus the skew, or one second
-     * older than maxMessageAge.
+     * §9.2 row 18, M-7
      */
     #[Test]
     #[DataProvider('provideOutsideTheWindow')]
@@ -786,7 +765,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * M-7: now is read once per validation.
+     * M-7
      */
     #[Test]
     #[DataProvider('provideValidations')]
@@ -826,9 +805,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 5: what the request asks, returned and never enforced: ForceAuthn, IsPassive in any of the
-     * forms of a boolean (M-6), the NameIDPolicy and the requested authentication context; the attributes the model
-     * does not read left aside.
+     * Section 6.2 step 5, M-6
      */
     #[Test]
     public function itReturnsWhatTheRequestAsks(): void
@@ -860,10 +837,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 5, section 8, SAML Core §3.4.1.1: an SPNameQualifier naming another entity than the service
-     * provider is an affiliation, which the package does not read, and which an identity provider honouring it would
-     * answer with the identifier the user has at that other entity; the service provider's own is returned, as the
-     * test above shows.
+     * Section 6.2 step 5, section 8, SAML Core §3.4.1.1
      */
     #[Test]
     public function itRefusesAnAffiliationTheNameIdPolicyNames(): void
@@ -884,7 +858,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * SAML Core §3.4.1: ForceAuthn and IsPassive false, written as false or 0, or absent.
+     * SAML Core §3.4.1
      */
     #[Test]
     #[DataProvider('provideFalseFlags')]
@@ -911,7 +885,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * §9.3 row 9, "a samlp:Extensions with content in a request": accepted, not read.
+     * §9.3 row 9
      */
     #[Test]
     public function itAcceptsExtensionsWithContentUnread(): void
@@ -931,8 +905,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 5, section 8, M-5, M-12: a NameIDPolicy or a requested authentication context outside its
-     * vocabulary.
+     * Section 6.2 step 5, section 8, M-5, M-12
      *
      * @param class-string<MessageRefused> $exception
      */
@@ -987,8 +960,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * Section 9.2 row of M-6 (IsPassive="TRUE", " true", "yes", a Version of 2.1, a time without Z), section 9.7: a
-     * value not of its lexical form, or a required attribute absent (M-5).
+     * Section 9.2 row of M-6, section 9.7, M-5
      *
      * @param array<string, ?string> $changes
      */
@@ -1052,8 +1024,7 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * Section 6.2: the rules apply in their order, the first a request breaks is the one that refuses it; two faults
-     * each, the second of a later step.
+     * Section 6.2
      *
      * @param array<string, ?string> $changes
      * @param class-string<MessageRefused> $exception
@@ -1160,9 +1131,6 @@ final class AuthnRequestValidatorTest extends TestCase
     }
 
     /**
-     * The service provider and our identity provider of the fixtures, neither asking for signed requests, the request
-     * arrived at our single sign-on service; $validation names the method.
-     *
      * @throws MessageRefused
      * @throws RefusedXml
      */

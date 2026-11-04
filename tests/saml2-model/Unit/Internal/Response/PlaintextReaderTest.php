@@ -23,9 +23,7 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * Section 6.7 steps 3 to 5, M-1, M-14, enc.md E-15, E-16: the xenc:EncryptedData of the response as section 6.1 step 3
- * left it, decrypted by Enc with the key given with the identity provider, its plaintext read inside the decryption
- * when the response is signed.
+ * Section 6.7 steps 3 to 5, M-1, M-14, enc.md E-15, E-16
  */
 final class PlaintextReaderTest extends TestCase
 {
@@ -34,9 +32,7 @@ final class PlaintextReaderTest extends TestCase
     private const string XMLENC = 'http://www.w3.org/2001/04/xmlenc#';
 
     /**
-     * §9.3 row 24, M-1, section 6.7: the ciphertext of a signed response is decrypted from the response as its
-     * signature verified it, and the assertion read from it: the ciphertext of the received document, replaced once the
-     * signature was verified by bytes that decrypt to nothing, is not the one read.
+     * §9.3 row 24, M-1, section 6.7
      */
     #[Test]
     public function itDecryptsTheCiphertextOfTheVerifiedResponse(): void
@@ -59,8 +55,7 @@ final class PlaintextReaderTest extends TestCase
     }
 
     /**
-     * §9.3 row 24: the ciphertext of the received document left as it is would decrypt; replaced, it does not, so that
-     * the test above reads the verified one.
+     * §9.3 row 24
      */
     #[Test]
     public function theReplacedCiphertextOfTheReceivedDocumentDecryptsToNothing(): void
@@ -84,8 +79,7 @@ final class PlaintextReaderTest extends TestCase
     }
 
     /**
-     * §9.3 row 23, M-2, section 6.7: an assertion that carries its own signature, in an unsigned response, is read
-     * after decrypt(), from the verification of that signature.
+     * §9.3 row 23, M-2, section 6.7
      */
     #[Test]
     public function itReadsTheSignedAssertionOfAnUnsignedResponse(): void
@@ -107,8 +101,7 @@ final class PlaintextReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 44, section 5.5, section 6.7: the key is read from the identity provider itself; a provider given none
-     * has its encrypted assertion refused by name.
+     * §9.2 row 44, section 5.5, section 6.7
      */
     #[Test]
     public function itRefusesAProviderGivenNoKey(): void
@@ -125,10 +118,6 @@ final class PlaintextReaderTest extends TestCase
         PlaintextReader::decrypt($response, self::identityProvider(), SamlLoader::create(), self::context());
     }
 
-    /**
-     * The context of the responses of tests/saml2-model/Fixture/encrypted/: a second after they were issued, to the
-     * request _request, at our assertion consumer service, for our entity ID.
-     */
     private static function context(): AssertionContext
     {
         return new AssertionContext(
@@ -141,9 +130,6 @@ final class PlaintextReaderTest extends TestCase
         );
     }
 
-    /**
-     * The xenc:CipherValue of the content of the one saml:EncryptedAssertion of $document, as it was received.
-     */
     private function receivedCipherValue(Document $document): Element
     {
         return Children::one(

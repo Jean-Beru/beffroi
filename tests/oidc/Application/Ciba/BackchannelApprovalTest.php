@@ -41,9 +41,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * CIBA Core §10.1, §11, BCP 10027 §5.2: what the page where a user answers asks of the provider. What is
- * waiting is found by who is signed in, and a request of somebody else is not in that list and is not
- * answerable.
+ * CIBA Core §10.1, §11, BCP 10027 §5.2
  */
 final class BackchannelApprovalTest extends TestCase
 {
@@ -91,7 +89,7 @@ final class BackchannelApprovalTest extends TestCase
     }
 
     /**
-     * §10.1: what is waiting for this user, and nothing that is waiting for somebody else.
+     * CIBA Core §10.1
      */
     #[Test]
     public function itShowsTheRequestsMadeForThatUser(): void
@@ -108,9 +106,6 @@ final class BackchannelApprovalTest extends TestCase
         static::assertSame(DrawnSecret::digestOf(self::AUTH_REQUEST_ID), $waiting[0]->authRequestIdHash);
     }
 
-    /**
-     * A request that was answered, that expired or that was spent is waiting for nobody.
-     */
     #[Test]
     public function aRequestThatIsNoLongerWaitingIsNotShown(): void
     {
@@ -131,10 +126,6 @@ final class BackchannelApprovalTest extends TestCase
         static::assertSame([], $waiting);
     }
 
-    /**
-     * A handle is looked for among the requests that user may answer, so a request of somebody else is
-     * named by nothing.
-     */
     #[Test]
     public function aHandleNamesOnlyARequestThatUserMayAnswer(): void
     {
@@ -149,8 +140,7 @@ final class BackchannelApprovalTest extends TestCase
     }
 
     /**
-     * §10.1: approving is granting an authorization of the ordinary kind, with the consent recorded where
-     * a consent is recorded and the session frozen on the record.
+     * CIBA Core §10.1
      */
     #[Test]
     public function anApprovalRecordsAConsentAndFreezesTheSession(): void
@@ -170,7 +160,7 @@ final class BackchannelApprovalTest extends TestCase
     }
 
     /**
-     * §7.1: only the user the request named may answer it.
+     * CIBA Core §7.1
      */
     #[Test]
     public function aSessionOfSomebodyElseApprovesNothing(): void
@@ -188,7 +178,7 @@ final class BackchannelApprovalTest extends TestCase
     }
 
     /**
-     * §11: a refusal is an answer and ends the request.
+     * CIBA Core §11
      */
     #[Test]
     public function aRefusalEndsTheRequest(): void
@@ -206,7 +196,7 @@ final class BackchannelApprovalTest extends TestCase
     }
 
     /**
-     * §10.1: a client that only polls is told nothing; it finds the answer at the token endpoint.
+     * CIBA Core §10.1
      */
     #[Test]
     public function aPollingClientIsNotCalledBack(): void
@@ -229,8 +219,7 @@ final class BackchannelApprovalTest extends TestCase
     }
 
     /**
-     * §10.2: a client that registered to be called back is told that the request is over, with the
-     * identifier it was handed and the token it sent, both read back out of their envelopes.
+     * CIBA Core §10.2
      */
     #[Test]
     public function aPingedClientIsToldTheRequestIsOver(): void
@@ -251,8 +240,7 @@ final class BackchannelApprovalTest extends TestCase
     }
 
     /**
-     * §10.2: the client is told that the request is over whichever way it was answered; what it was
-     * answered, it reads at the token endpoint.
+     * CIBA Core §10.2
      */
     #[Test]
     public function aPingedClientIsAlsoToldOfARefusal(): void
@@ -269,8 +257,7 @@ final class BackchannelApprovalTest extends TestCase
     }
 
     /**
-     * §7.1: a session that may not answer a request owes it nothing; what is asked of what it proves is
-     * asked of the user the request named, and this one is refused for who it is.
+     * CIBA Core §7.1
      */
     #[Test]
     public function aSessionOfSomebodyElseIsRefusedForWhoItIsAndNotForWhatItProves(): void
@@ -290,8 +277,7 @@ final class BackchannelApprovalTest extends TestCase
     }
 
     /**
-     * §7.1, decision 0010: the client asked for a class this session does not prove and a passkey of this
-     * user would, so one more proof is owed before the approval may be recorded.
+     * CIBA Core §7.1, Decision 0010
      */
     #[Test]
     public function aSessionThatProvesNoRequestedClassOwesOneMoreProof(): void
@@ -310,8 +296,7 @@ final class BackchannelApprovalTest extends TestCase
     }
 
     /**
-     * §7.1: a session that owes one more proof approves nothing; the page reads it before it offers the
-     * answer.
+     * CIBA Core §7.1
      */
     #[Test]
     public function anApprovalBySuchASessionIsRefused(): void
@@ -330,8 +315,7 @@ final class BackchannelApprovalTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5.1.1: the demand is a request and not a condition, so a class no credential of this
-     * user could ever reach is asked of nobody and the request is answered all the same.
+     * OIDC Core §5.5.1.1
      */
     #[Test]
     public function aClassNoCredentialOfTheUserCouldReachOwesNothing(): void
@@ -349,8 +333,7 @@ final class BackchannelApprovalTest extends TestCase
     }
 
     /**
-     * OIDC Core §2, §5.5.1.1: the tokens name the requested class the session satisfies, which may be
-     * below the strongest it satisfies, and never the one the request asked for.
+     * OIDC Core §2, §5.5.1.1
      */
     #[Test]
     public function theTokensNameTheRequestedClassTheSessionSatisfies(): void

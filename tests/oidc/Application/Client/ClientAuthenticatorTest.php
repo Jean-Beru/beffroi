@@ -41,7 +41,7 @@ final class ClientAuthenticatorTest extends TestCase
     private const string CHALLENGE = 'Basic realm="https://id.acme.example"';
 
     /**
-     * The endpoint that received the request; an assertion may name it as its audience (RFC 7523 §3).
+     * RFC 7523 §3
      */
     private const string ENDPOINT = 'https://id.acme.example/token';
 
@@ -99,8 +99,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.3.1: the identifier and the secret are form-urlencoded before being Basic-encoded, which
-     * is what Symfony's ClientSecretBasic sends.
+     * RFC 6749 §2.3.1
      */
     #[Test]
     public function itAuthenticatesWithClientSecretBasic(): void
@@ -120,9 +119,6 @@ final class ClientAuthenticatorTest extends TestCase
         static::assertSame($this->basicClient, $client->client);
     }
 
-    /**
-     * The secret is compared by the hasher, against the client's own hash, exactly once.
-     */
     #[Test]
     public function itVerifiesTheSecretAgainstTheHashOfTheClientOnce(): void
     {
@@ -144,8 +140,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * Decision 0014: the load budget of a client is counted where its identifier is proven, by tenant
-     * and by client.
+     * Decision 0014
      */
     #[Test]
     public function anAuthenticatedClientTakesOneOfItsLoadBudget(): void
@@ -158,8 +153,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * Decision 0014: a budget counted on an identifier that was only claimed is emptied by naming
-     * somebody else's client, so a client that proves nothing (RFC 6749 §2.1) is counted nowhere here.
+     * Decision 0014, RFC 6749 §2.1
      */
     #[Test]
     public function aPublicClientTakesNothingOfTheLoadBudgetOfAClient(): void
@@ -172,8 +166,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * Decision 0014: what a refusal costs is bounded by the budget of the origin of the request, the
-     * client not being known to be the client until the secret verifies.
+     * Decision 0014
      */
     #[Test]
     public function aRefusedClientTakesNothingOfTheLoadBudgetOfAClient(): void
@@ -189,8 +182,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * Decision 0014: the refusal is not an error of the protocol and leaves the authenticator as it was
-     * thrown, for the one thing that answers it to turn it into the 429 of RFC 6585 §4.
+     * Decision 0014, RFC 6585 §4
      */
     #[Test]
     public function aClientWhoseLoadBudgetIsSpentIsRefused(): void
@@ -214,9 +206,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 7523 §2.2, issue #246: the assertion a request carries is read once, before any method sees the
-     * request. Two of the wired methods take an assertion and the one that authenticates reads it again
-     * to verify it and to judge its claims; the reader is asked once all the same.
+     * RFC 7523 §2.2
      */
     #[Test]
     public function theAssertionOfARequestIsReadOnceWhateverReadsItAfterwards(): void
@@ -244,7 +234,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.3.1: a colon, a plus sign or a percent sign in the secret survives the encoding.
+     * RFC 6749 §2.3.1
      */
     #[Test]
     public function itDecodesTheFormEncodedBasicCredentials(): void
@@ -261,7 +251,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 7235 §2.1: the scheme is case-insensitive, followed by one or more spaces.
+     * RFC 7235 §2.1
      */
     #[Test]
     public function itReadsTheSchemeCaseInsensitively(): void
@@ -277,8 +267,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 7617 §2: the first colon separates the identifier from the secret; a client that did not encode a
-     * colon in its secret is still understood, because the identifier never contains one.
+     * RFC 7617 §2
      */
     #[Test]
     public function onlyTheFirstColonSeparatesTheIdentifierFromTheSecret(): void
@@ -294,9 +283,6 @@ final class ClientAuthenticatorTest extends TestCase
         static::assertSame('colon-client', $client->client->registration->clientId);
     }
 
-    /**
-     * Symfony's OidcClient always sends client_id in the body, whatever the authentication method.
-     */
     #[Test]
     public function itAcceptsAMatchingClientIdInTheBodyNextToTheHeader(): void
     {
@@ -316,7 +302,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.3.1: client_id and client_secret in the request body.
+     * RFC 6749 §2.3.1
      */
     #[Test]
     public function itAuthenticatesWithClientSecretPost(): void
@@ -339,7 +325,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.1, §3.2.1: a public client only identifies itself.
+     * RFC 6749 §2.1, §3.2.1
      */
     #[Test]
     public function itIdentifiesAPublicClientByItsIdAlone(): void
@@ -361,7 +347,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.3: more than one authentication method is invalid_request.
+     * RFC 6749 §2.3
      */
     #[Test]
     public function itRefusesAHeaderAndABodySecretTogether(): void
@@ -383,7 +369,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.3: two methods are refused before any lookup.
+     * RFC 6749 §2.3
      */
     #[Test]
     public function twoMethodsAreRefusedBeforeAnyVerification(): void
@@ -442,8 +428,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: an unsupported authentication method is invalid_client; the challenge names the
-     * scheme the provider supports.
+     * RFC 6749 §5.2
      */
     #[Test]
     #[DataProvider('provideHeadersThatAreNotBasic')]
@@ -573,10 +558,6 @@ final class ClientAuthenticatorTest extends TestCase
         ]];
     }
 
-    /**
-     * A request whose credentials are not strings is refused before anything is read, and the audit
-     * trail keeps no identifier from it: none of what it carries can be trusted, the header included.
-     */
     #[Test]
     public function aMalformedBodyNextToAHeaderIsAnnouncedWithoutIdentifier(): void
     {
@@ -591,9 +572,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 7523 §2.2, RFC 6749 §5.2 (issue #863): an assertion of another type than the one of the specification is a
-     * request no method can read, answered invalid_request with a description the client can read, and never a
-     * server error.
+     * RFC 7523 §2.2, RFC 6749 §5.2
      */
     #[Test]
     public function anAssertionOfAnotherTypeIsAnInvalidRequest(): void
@@ -623,8 +602,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: "no client authentication included" is invalid_client; no header was used, so no
-     * challenge.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function itRefusesARequestWithoutAnyCredentials(): void
@@ -651,10 +629,6 @@ final class ClientAuthenticatorTest extends TestCase
         $this->assertFailureAnnounced(ClientAuthenticationFailureReason::NoCredentials, null, null);
     }
 
-    /**
-     * An unknown client presenting a secret is invalid_client, with the challenge of the scheme it used,
-     * and an error description that does not tell it from a known one.
-     */
     #[Test]
     public function anUnknownClientWithABasicSecretIsInvalidClient(): void
     {
@@ -681,10 +655,6 @@ final class ClientAuthenticatorTest extends TestCase
         static::assertNull($exception->challenge);
     }
 
-    /**
-     * An unknown client presenting a secret costs a verification against a decoy, the same decoy for the
-     * life of the authenticator, so that the time taken does not tell it from a known one.
-     */
     #[Test]
     public function anUnknownClientCostsAVerificationAgainstTheSameDecoyEveryTime(): void
     {
@@ -740,9 +710,6 @@ final class ClientAuthenticatorTest extends TestCase
         static::assertSame([], $this->hasher->verifiedAgainst);
     }
 
-    /**
-     * Clients are scoped by tenant: the same identifier in another tenant is unknown here.
-     */
     #[Test]
     public function aClientOfAnotherTenantIsUnknown(): void
     {
@@ -755,7 +722,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.3: a method other than the registered one is refused, with the challenge of the scheme used.
+     * RFC 6749 §2.3
      *
      * @param array<string, mixed> $parameters
      */
@@ -772,8 +739,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.3: a method other than the registered one costs the same as a wrong secret, against a
-     * decoy, never against the hash of the client.
+     * RFC 6749 §2.3
      *
      * @param array<string, mixed> $parameters
      */
@@ -855,9 +821,6 @@ final class ClientAuthenticatorTest extends TestCase
         ];
     }
 
-    /**
-     * A wrong secret is invalid_client, with the challenge and a description that does not say why.
-     */
     #[Test]
     public function aWrongSecretIsInvalidClient(): void
     {
@@ -870,9 +833,6 @@ final class ClientAuthenticatorTest extends TestCase
         static::assertSame('Client authentication failed.', $exception->errorDescription);
     }
 
-    /**
-     * The secret is compared by the hasher, against the client's own hash, exactly once.
-     */
     #[Test]
     public function aWrongSecretIsVerifiedAgainstTheHashOfTheClientOnce(): void
     {
@@ -922,9 +882,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 8705 §3.4: a client that registered certificate-bound access tokens is bound to the
-     * certificate of its connection whichever way it authenticated, which is what FAPI 1.0 Advanced
-     * Final §5.2.2 asks of a client of a profile that binds and authenticates with an assertion.
+     * RFC 8705 §3.4, FAPI 1.0 Advanced Final §5.2.2
      */
     #[Test]
     public function aClientRegisteredForCertificateBoundTokensIsBoundToTheCertificateItPresented(): void
@@ -940,9 +898,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 8705 §3: a client reaching the host whose listener asks for a certificate presents one
-     * because it was asked, and a client that registered no binding is not bound to it: binding a
-     * client that never asked for it would break the resource server it calls.
+     * RFC 8705 §3
      */
     #[Test]
     public function aClientRegisteredForNoBindingIsNotBoundToTheCertificateItPresented(): void
@@ -958,8 +914,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * OIDC Core §9: the client signs an assertion with the key it published, and presents whatever the
-     * handshake gave the provider beside it.
+     * OIDC Core §9
      */
     private function authenticateWithAnAssertion(string $clientId, ClientCertificate $certificate): AuthenticatedClient
     {

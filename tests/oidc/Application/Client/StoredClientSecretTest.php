@@ -19,10 +19,7 @@ use PHPUnit\Framework\TestCase;
 use Throwable;
 
 /**
- * Issue #603: the document the secret of a client is kept as (RFC 7591 §3.2.1), read back without a
- * connection. The document says which of the two shapes the domain has it carries: the digest of a secret
- * the provider cannot read back, or the secret itself, which the one method that computes a MAC with it
- * needs (OIDC Core §9).
+ * RFC 7591 §3.2.1, OIDC Core §9
  */
 final class StoredClientSecretTest extends TestCase
 {

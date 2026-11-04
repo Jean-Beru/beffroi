@@ -12,9 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 8705 §5: the aliases are the endpoints of the tenant, located a second time by the integration on
- * the host whose listener asks for a client certificate. They are derived from the endpoints and not
- * kept beside them: the paths are the same and only the origin differs.
+ * RFC 8705 §5
  */
 final class AnnouncedMutualTlsEndpointsTest extends TestCase
 {
@@ -43,11 +41,6 @@ final class AnnouncedMutualTlsEndpointsTest extends TestCase
         );
     }
 
-    /**
-     * An alias names an endpoint the document announces: a provider wired with no grant whose user is
-     * asked on another device announces no device authorization endpoint, and no alias of it either
-     * (issue #839).
-     */
     #[Test]
     public function aProviderWiredWithNoDeviceGrantAliasesNoDeviceAuthorizationEndpoint(): void
     {
@@ -73,8 +66,7 @@ final class AnnouncedMutualTlsEndpointsTest extends TestCase
     }
 
     /**
-     * RFC 8705 §5: a deployment that serves no such host announces no alias at all, rather than aliases
-     * naming the ordinary endpoints.
+     * RFC 8705 §5
      */
     #[Test]
     public function aDeploymentWithoutSuchAHostAnnouncesNoAlias(): void

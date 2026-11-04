@@ -9,25 +9,10 @@ use Beffroi\Core\Exception\KmsUnavailableException;
 use Closure;
 use ReflectionClass;
 
-/**
- * Rows as a store hands them over before it read them, which is how Doctrine hands over an entity another one
- * points at: an object marked lazy, opened at the first read of a property it does not hold yet, which is when
- * the store reads the row and opens what it seals under the data keys of the tenant (decisions 0011 and 0018).
- * While the KMS does not answer, that read fails with the outage and leaves the object unopened, to be opened by
- * the next read once it answers.
- */
 final class UnopenedRows
 {
-    /**
-     * What every read of an unopened row fails with, null while the KMS answers.
-     */
     public ?KmsUnavailableException $outage = null;
 
-    /**
-     * The row itself made unopened, its identifier ("id", as every entity of the core names it) still readable:
-     * whoever holds it holds the same object, which opens with the values it had. What it no longer holds is what
-     * PHP lets an object give back, which is everything but its readonly properties already written.
-     */
     public function unopen(object $row): void
     {
         $class = new ReflectionClass($row);
@@ -38,9 +23,6 @@ final class UnopenedRows
     }
 
     /**
-     * A new object standing for the row, unopened, holding nothing but the properties named: what an object built
-     * around it reads of it, a session reading the tenant of its person, is readable without opening it.
-     *
      * @template T of object
      *
      * @param T $row
@@ -60,19 +42,12 @@ final class UnopenedRows
         return $unopened;
     }
 
-    /**
-     * The session a record names as a store hands it over with the record, before it read it: its identifier
-     * readable, and what building a record around it reads, its tenant and its proofs, the person it names left for
-     * the store to open with it.
-     */
     public function unopenedSession(AuthenticationSession $session): AuthenticationSession
     {
         return $this->unopened($session, ['id', 'tenant', 'proofs']);
     }
 
     /**
-     * What opens an unopened row with the values of the one it stands for, once the KMS answers.
-     *
      * @template T of object
      *
      * @param ReflectionClass<T> $class

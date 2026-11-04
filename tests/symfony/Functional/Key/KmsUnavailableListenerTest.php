@@ -20,8 +20,7 @@ use Symfony\Component\KeyManagement\Exception\RuntimeException as KeyManagementR
 use Throwable;
 
 /**
- * Issue #128, architecture §3.3 and §5.4: what the listener of the provider makes of an exception on its way
- * out of a request, on the real ExceptionEvent of the kernel; the requests themselves are KmsOutageTest.
+ * Architecture §3.3, §5.4
  */
 final class KmsUnavailableListenerTest extends DatabaseTestCase
 {
@@ -56,9 +55,6 @@ final class KmsUnavailableListenerTest extends DatabaseTestCase
         static::assertSame($outage, $throwable->getPrevious());
     }
 
-    /**
-     * What wrapped the outage on its way up (a bus, a handler) does not hide it.
-     */
     #[Test]
     public function anOutageWrappedOnItsWayUpIsStillAnOutage(): void
     {
@@ -76,8 +72,7 @@ final class KmsUnavailableListenerTest extends DatabaseTestCase
     }
 
     /**
-     * Architecture §3.5: the audit receives the outage with the request it turned away and the words of
-     * the KMS.
+     * Architecture §3.5
      */
     #[Test]
     public function theOutageIsAnnouncedWithTheRequestAndTheWordsOfTheKms(): void
@@ -113,10 +108,6 @@ final class KmsUnavailableListenerTest extends DatabaseTestCase
         static::assertSame([], self::service(RecordingEventHandler::class, RecordingEventHandler::class)->events);
     }
 
-    /**
-     * What the sealer throws when the bridge of Vault cannot reach it, with the words of the bridge and of
-     * the transport under it.
-     */
     private static function outage(): KmsUnavailableException
     {
         return new KmsUnavailableException(

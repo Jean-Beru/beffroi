@@ -16,9 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 7592: what decision 0009 promises every dynamic client. The registration hands it a
- * "registration_access_token" and a "registration_client_uri", and at that URI it reads itself, replaces
- * itself and deletes itself, with that token and with nothing else.
+ * RFC 7592, Decision 0009
  */
 final class ClientConfigurationTest extends BrowserTestCase
 {
@@ -27,9 +25,6 @@ final class ClientConfigurationTest extends BrowserTestCase
     private const string REDIRECT_URI = 'https://registered.test/callback';
 
     /**
-     * What the registration answered: the client, its secret, its registration access token and the URI it
-     * reads itself at.
-     *
      * @var array<string, mixed>
      */
     private array $registered = [];
@@ -37,13 +32,12 @@ final class ClientConfigurationTest extends BrowserTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        // one token worth two registrations: this client, and the one whose URI its token must not read
         $this->issue();
         $this->registered = $this->register();
     }
 
     /**
-     * RFC 7591 §3.2.1: the two members that make RFC 7592 usable at all, handed out once.
+     * RFC 7591 §3.2.1, RFC 7592
      */
     #[Test]
     public function theRegistrationHandsOutTheTokenAndTheUriOfTheClient(): void
@@ -57,7 +51,7 @@ final class ClientConfigurationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7592 §2.1: the registration as the provider holds it.
+     * RFC 7592 §2.1
      */
     #[Test]
     public function aClientReadsWhatItRegistered(): void
@@ -73,10 +67,6 @@ final class ClientConfigurationTest extends BrowserTestCase
         static::assertSame([self::REDIRECT_URI], $read['redirect_uris']);
     }
 
-    /**
-     * The secret was answered once, at the registration, and what the row keeps of it is a hash nobody
-     * reads back.
-     */
     #[Test]
     public function aClientThatReadsItselfIsAnsweredNoSecret(): void
     {
@@ -88,8 +78,7 @@ final class ClientConfigurationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7592 §2.3: the provider must refuse a token that belongs to another client, and decision 0006
-     * makes that refusal the one a token nobody issued gets.
+     * RFC 7592 §2.3, Decision 0006
      */
     #[Test]
     #[DataProvider('provideUnauthorizedRequests')]
@@ -128,7 +117,7 @@ final class ClientConfigurationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7592 §2.2: an update is whole and never a patch.
+     * RFC 7592 §2.2
      */
     #[Test]
     public function aMemberLeftOutOfAReplacementIsAMemberTheClientNoLongerRegisters(): void
@@ -155,9 +144,8 @@ final class ClientConfigurationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7592 §2.2: the request names the client it is for, and it carries nothing the provider assigned.
-     */
-    /**
+     * RFC 7592 §2.2
+     *
      * @param array<string, mixed> $members
      */
     #[Test]
@@ -224,7 +212,7 @@ final class ClientConfigurationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7592 §2.2: the request names the client it is for, and a request that names none names another.
+     * RFC 7592 §2.2
      */
     #[Test]
     public function aReplacementThatNamesNoClientIsRefused(): void
@@ -241,8 +229,7 @@ final class ClientConfigurationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7591 §3.1: a body that is no JSON object carries no metadata at all, and a caller that reads no
-     * client is told that first, rather than what it sent.
+     * RFC 7591 §3.1
      */
     #[Test]
     public function aBodyThatIsNoJsonObjectIsRefusedAfterTheTokenIsRead(): void
@@ -267,7 +254,7 @@ final class ClientConfigurationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7592 §2.2: a client may echo back the secret it holds, and no other.
+     * RFC 7592 §2.2
      */
     #[Test]
     public function aSecretThatIsNotTheClientOwnIsRefused(): void
@@ -286,7 +273,7 @@ final class ClientConfigurationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7592 §2.3: a 204 and nothing to answer.
+     * RFC 7592 §2.3
      */
     #[Test]
     public function aClientThatDeletesItselfIsGone(): void
@@ -305,9 +292,6 @@ final class ClientConfigurationTest extends BrowserTestCase
         );
     }
 
-    /**
-     * The token that deleted the client reads nothing afterwards.
-     */
     #[Test]
     public function theTokenOfADeletedClientReadsNothing(): void
     {
@@ -322,8 +306,7 @@ final class ClientConfigurationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7592 §2.3: the registration access token is a credential of one client for one URI. It is not an
-     * access token of this provider and it opens no endpoint of it.
+     * RFC 7592 §2.3
      */
     #[Test]
     #[DataProvider('provideEndpointsItOpensNothingAt')]
@@ -356,9 +339,7 @@ final class ClientConfigurationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7592 §2: the operations of this endpoint are switched through the HTTP method, and an operation
-     * the provider does not switch on is answered with the error code that says so. The three it serves are
-     * three routes on one path, so the router answers that for a fourth without anything written for it.
+     * RFC 7592 §2
      */
     #[Test]
     public function aMethodTheEndpointDoesNotSwitchOnIsAnsweredAsSuch(): void
@@ -376,10 +357,6 @@ final class ClientConfigurationTest extends BrowserTestCase
         static::assertSame(Response::HTTP_METHOD_NOT_ALLOWED, $this->browser->getResponse()->getStatusCode());
     }
 
-    /**
-     * A client of the same tenant, registered with a token of its own, whose URI this client's token does
-     * not read.
-     */
     private function anotherClient(): string
     {
         return self::string($this->register()['registration_client_uri']);

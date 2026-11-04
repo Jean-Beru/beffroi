@@ -9,14 +9,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3, section 6.7: the form PostSender writes holds its action and its fields as they are given, in their
- * order, nothing escaped for HTML, which is the page's. SAML Bindings §3.5.4.
+ * Section 5.3, section 6.7, SAML Bindings §3.5.4
  */
 final class PostFormTest extends TestCase
 {
     /**
-     * Section 6.7, SAML Bindings §3.5.4: the action and the fields, in their order, as given, an ampersand and markup
-     * left unescaped.
+     * Section 6.7, SAML Bindings §3.5.4
      */
     #[Test]
     public function itHoldsItsActionAndFieldsAsGiven(): void

@@ -2,13 +2,6 @@
 
 declare(strict_types=1);
 
-/*
- * beffroi/saml2-model against the implementations that are not this one (spec/model.md sections 9.1 and 9.5):
- * xmlsec1 on what the writers signed, the oracle the CI runs, and the judge of section 9.5, SimpleSAMLphp and
- * Keycloak both ways, run by hand and never by the CI (section 12). tests/saml2-model/Interop/simplesamlphp/README.md
- * and tests/saml2-model/Interop/keycloak/README.md hold what each step does, its results and its findings.
- */
-
 use Castor\Attribute\AsArgument;
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
@@ -18,15 +11,10 @@ use function Castor\exit_code;
 use function Castor\io;
 use function Castor\run;
 
-/**
- * Where the oracle writes the responses it signed, under the ignored var/.
- */
 const SAML2_MODEL_ORACLE = 'var/oracle/saml2-model';
 
 /**
- * The signed documents the writers wrote and the repository commits, by the certificate of their signer (section
- * 9.1): the identity provider's responses, logout request and metadata, the service provider's AuthnRequest and
- * logout response. The job Oracle of the CI verifies the same files.
+ * The job Oracle of the CI verifies the same files.
  */
 const SAML2_MODEL_XMLSEC_COMMITTED = [
     'tests/saml2-model/Fixture/keys/idp-signing-certificate.pem' => [
@@ -42,9 +30,6 @@ const SAML2_MODEL_XMLSEC_COMMITTED = [
     ],
 ];
 
-/**
- * The directory of the SimpleSAMLphp judge, relative to the root of the repository.
- */
 const SAML2_MODEL_SIMPLESAMLPHP = 'tests/saml2-model/Interop/simplesamlphp';
 
 /**
@@ -54,10 +39,6 @@ const SAML2_MODEL_SIMPLESAMLPHP_LIBRARY_IMAGE = 'ghcr.io/spomky-labs/phpqa:8.4';
 
 const SAML2_MODEL_KEYCLOAK_COMPOSE = 'tests/saml2-model/Interop/keycloak/compose.yaml';
 
-/**
- * Where the documents of a Keycloak run go unless --output says otherwise, under the ignored var/: the model's in its
- * model/ directory, for xmlsec1.
- */
 const SAML2_MODEL_KEYCLOAK_RUN = 'var/keycloak';
 
 #[AsTask(
@@ -105,8 +86,6 @@ function saml2_model_oracle(): void
 }
 
 /**
- * Runs tests/saml2-model/Fixture/oracle/verify-signatures.sh over $files with the key of $certificate, in Alpine.
- *
  * @param list<string> $files
  */
 function saml2_model_xmlsec1(array $files, string $certificate): void
@@ -190,10 +169,6 @@ function saml2_model_simplesamlphp(
     }
 }
 
-/**
- * What a clean checkout lacks: the dependencies of the repository, which the exchange loads, and the throwaway
- * Composer project of the library half.
- */
 function saml2_model_simplesamlphp_install(): void
 {
     if (! is_file('vendor/autoload.php')) {
@@ -206,8 +181,7 @@ function saml2_model_simplesamlphp_install(): void
 }
 
 /**
- * The installation in the configuration of the exchange: the identity provider publishes HTTP-POST next to
- * HTTP-Redirect; both parties read the model's metadata from written/, created here so that Docker does not.
+ * Creates written/, which both parties read, so that Docker does not create it as root.
  */
 function saml2_model_simplesamlphp_up(): void
 {
@@ -252,8 +226,8 @@ function saml2_model_simplesamlphp_up(): void
 }
 
 /**
- * The exchange script in the phpqa image, on the network of the installation, localhost:8081 and localhost:8082
- * pinned to its two containers so that every URL stays the one the installation knows.
+ * localhost:8081 and localhost:8082 pinned to the two containers of the installation, so that every URL stays the one
+ * it knows.
  */
 function saml2_model_simplesamlphp_exchange(bool $keep): void
 {
@@ -279,9 +253,6 @@ function saml2_model_simplesamlphp_exchange(bool $keep): void
     ]);
 }
 
-/**
- * verify.php of the library half, then xmlsec1, on every document of a batch that matches the glob.
- */
 function saml2_model_simplesamlphp_verify(string $in, string $glob): void
 {
     saml2_model_simplesamlphp_library(['php', 'verify.php', '/in', $glob], [$in => '/in:ro']);
@@ -297,8 +268,6 @@ function saml2_model_simplesamlphp_down(): void
 }
 
 /**
- * A command of the library half in its container, library/ at /app and the test keys at /keys, as its README runs it.
- *
  * @param list<string> $command
  * @param array<string, string> $mounts directories relative to the root, and where the container sees them
  */
@@ -404,8 +373,8 @@ function saml2_model_keycloak(
 }
 
 /**
- * Runs exchange.php in the phpqa image, inside the network namespace of the Keycloak container: localhost:8180 is
- * Keycloak there, the host and the port of every URL Keycloak builds and checks.
+ * In the network namespace of the Keycloak container, where localhost:8180, the host and the port of every URL
+ * Keycloak builds and checks, is Keycloak.
  */
 function saml2_model_keycloak_exchange(string $output, string $model): void
 {
@@ -443,10 +412,6 @@ function saml2_model_keycloak_exchange(string $output, string $model): void
     ]);
 }
 
-/**
- * The PHP of the image the exchanges of the SAML judges run in, saml2-model's and saml2-bindings': the one PHP_VERSION
- * names, as for every task of the repository, 8.5 when it names none, the PHP the README of each judge measured with.
- */
 function saml2_interop_php_version(): string
 {
     return getenv('PHP_VERSION') ?: '8.5';

@@ -19,8 +19,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3: an AuthnRequest, whoever builds it (SAML Core §3.4.1); the rules of its values, M-6, M-9 and section
- * 8, applied by its constructor as by its reader (M-15).
+ * Section 5.3, SAML Core §3.4.1, M-6, M-9, section 8, M-15
  */
 final class AuthnRequestTest extends TestCase
 {
@@ -29,7 +28,7 @@ final class AuthnRequestTest extends TestCase
     private const string ACS = 'https://sp.example.com/saml/acs';
 
     /**
-     * Section 5.3: every field, as given.
+     * Section 5.3
      */
     #[Test]
     public function itHoldsItsFields(): void
@@ -89,8 +88,7 @@ final class AuthnRequestTest extends TestCase
     }
 
     /**
-     * SAML Core §3.4.1: everything but the ID, the IssueInstant and the Issuer is optional, ForceAuthn and IsPassive
-     * false when absent.
+     * SAML Core §3.4.1
      */
     #[Test]
     public function itHoldsNothingElseByDefault(): void
@@ -115,7 +113,7 @@ final class AuthnRequestTest extends TestCase
     }
 
     /**
-     * M-6: the ID is an NCName.
+     * M-6
      */
     #[Test]
     public function itRefusesAnIdThatIsNotAnNcName(): void
@@ -133,7 +131,7 @@ final class AuthnRequestTest extends TestCase
     }
 
     /**
-     * M-6: the Destination and the AssertionConsumerServiceURL are URIs.
+     * M-6
      */
     #[Test]
     #[DataProvider('provideRelativeUris')]
@@ -157,7 +155,7 @@ final class AuthnRequestTest extends TestCase
     }
 
     /**
-     * M-6: the AssertionConsumerServiceIndex is an xs:unsignedShort, from 0 to 65535, both included.
+     * M-6
      */
     #[Test]
     #[DataProvider('provideIndexes')]
@@ -180,7 +178,7 @@ final class AuthnRequestTest extends TestCase
     }
 
     /**
-     * M-6: an index under 0 or over 65535 is not an xs:unsignedShort.
+     * M-6
      */
     #[Test]
     #[DataProvider('provideIndexesOutOfRange')]
@@ -204,8 +202,7 @@ final class AuthnRequestTest extends TestCase
     }
 
     /**
-     * M-9, SAML Core §3.4.1, M-15: an index next to a URL or a ProtocolBinding is refused whoever builds the request,
-     * so that a writer never writes what the identity provider refuses.
+     * M-9, SAML Core §3.4.1, M-15
      */
     #[Test]
     #[DataProvider('provideIndexNextToAnother')]
@@ -229,7 +226,7 @@ final class AuthnRequestTest extends TestCase
     }
 
     /**
-     * Section 8, M-15: a ProtocolBinding other than HTTP-POST is refused whoever builds the request.
+     * Section 8, M-15
      */
     #[Test]
     public function itRefusesTheRedirectProtocolBinding(): void

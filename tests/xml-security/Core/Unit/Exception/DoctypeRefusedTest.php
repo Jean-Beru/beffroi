@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.7: a DOCTYPE in the bytes, a doctype node, an entity reference node (I-1). A consumer catches the base class when it does not care which rule fired.
+ * Section 5.7, I-1
  */
 final class DoctypeRefusedTest extends TestCase
 {

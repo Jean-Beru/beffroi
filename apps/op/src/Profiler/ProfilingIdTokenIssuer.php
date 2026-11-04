@@ -16,14 +16,6 @@ use function array_keys;
 use function implode;
 use const DATE_ATOM;
 
-/**
- * The ID token the token endpoint just handed out (OIDC Core §2), said without its value: whom it names
- * itself to, what the session had proven when the authorization was granted, and the shape the client
- * registered for it. Which key signed it is the key observer's to say.
- *
- * The claims of an ID token are the user, which decision 0011 keeps out of anything written down; the
- * names of the ones the client asked for are what the panel shows of them.
- */
 final readonly class ProfilingIdTokenIssuer implements IdTokenIssuerInterface
 {
     public function __construct(
@@ -57,11 +49,6 @@ final readonly class ProfilingIdTokenIssuer implements IdTokenIssuerInterface
         return $idToken;
     }
 
-    /**
-     * What the document the client will read says of itself. A token encrypted to the client is one
-     * string here and stays one: what hides it is what the client registered, and the panel does not
-     * undo it to look inside.
-     */
     private function claimsOf(string $idToken): string
     {
         try {

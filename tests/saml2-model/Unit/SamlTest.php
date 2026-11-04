@@ -10,13 +10,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.1: the names of SAML 2.0 the package reads and writes.
+ * Section 5.1
  */
 final class SamlTest extends TestCase
 {
     /**
-     * SAML Core §2 and §3, Metadata §2: the three namespaces, compared byte for byte wherever an element is matched;
-     * M-6: the one version a message carries (SAML Core §2.3.3, §3.2.1).
+     * SAML Core §2 and §3, Metadata §2, M-6, SAML Core §2.3.3, §3.2.1
      */
     #[Test]
     #[DataProvider('provideNames')]

@@ -46,7 +46,7 @@ final class PasswordCredentialTest extends TestCase
     }
 
     /**
-     * RFC 8176 §2: "pwd", what an authentication with a password may prove (architecture §4.3).
+     * RFC 8176 §2, Architecture §4.3
      */
     #[Test]
     public function anAuthenticationWithItMayProveAPassword(): void
@@ -108,10 +108,6 @@ final class PasswordCredentialTest extends TestCase
         static::assertSame($used, $credential->lastUsedAt);
     }
 
-    /**
-     * The mark outlives the login that found it, which is the point: a person is told on the pages of
-     * their account and not in the one request that noticed.
-     */
     #[Test]
     public function aPasswordFoundInABreachIsMarkedAsFoundAndAsLookedUp(): void
     {
@@ -144,10 +140,6 @@ final class PasswordCredentialTest extends TestCase
         static::assertNull($credential->breachFoundAt);
     }
 
-    /**
-     * A password nobody has asked about yet is due, which is every password written before the two dates
-     * existed.
-     */
     #[Test]
     public function aPasswordNobodyHasAskedAboutIsDue(): void
     {
@@ -155,10 +147,6 @@ final class PasswordCredentialTest extends TestCase
         static::assertTrue(self::credential()->dueForABreachLookup(Fixtures::now()));
     }
 
-    /**
-     * A login does not ask again what was asked yesterday; past the delay it asks again, the lists being
-     * published in batches.
-     */
     #[Test]
     #[DataProvider('provideMomentsAfterALookup')]
     public function aPasswordIsDueAgainOnlyPastTheDelay(string $modification, bool $due): void
@@ -184,10 +172,6 @@ final class PasswordCredentialTest extends TestCase
         yield 'a year later' => ['+1 year', true];
     }
 
-    /**
-     * What a list said of the password that is gone is forgotten with it: a rehash is the same password
-     * and keeps it.
-     */
     #[Test]
     public function aPasswordChangeForgetsWhatAListSaidOfTheOneBefore(): void
     {

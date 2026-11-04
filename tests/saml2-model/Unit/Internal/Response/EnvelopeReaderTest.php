@@ -17,15 +17,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.1 step 6, M-6, M-7, M-8, M-10: the envelope of a response, its lexical forms and its window; the rules the
- * corpus of §9.2 names are the tests of ResponseValidatorTest.
+ * Section 6.1 step 6, M-6, M-7, M-8, M-10
  */
 final class EnvelopeReaderTest extends TestCase
 {
     use ResponseFixtures;
 
     /**
-     * Section 5.5: the ID of the response, as read.
+     * Section 5.5
      */
     #[Test]
     public function itReturnsTheIdOfTheResponse(): void
@@ -41,7 +40,7 @@ final class EnvelopeReaderTest extends TestCase
     }
 
     /**
-     * M-7: an IssueInstant at now plus the skew, and one exactly maxMessageAge old, are inside the window.
+     * M-7
      */
     #[Test]
     #[DataProvider('provideEdgesOfTheWindow')]
@@ -67,7 +66,7 @@ final class EnvelopeReaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 18, M-7: an IssueInstant later than now plus the skew; a response older than maxMessageAge.
+     * §9.2 row 18, M-7
      */
     #[Test]
     #[DataProvider('provideInstantsOutsideTheWindow')]
@@ -100,8 +99,7 @@ final class EnvelopeReaderTest extends TestCase
     }
 
     /**
-     * §9.2 rows 25 and 26, M-5, M-6: a Version other than 2.0, no Version, no ID, no IssueInstant, an InResponseTo that
-     * is not an NCName, a relative Destination.
+     * §9.2 rows 25 and 26, M-5, M-6
      */
     #[Test]
     #[DataProvider('provideEnvelopesNotOfTheirForm')]
@@ -143,10 +141,6 @@ final class EnvelopeReaderTest extends TestCase
         ];
     }
 
-    /**
-     * The response of $fixture, verified when it is signed; the received Document is held while it is verified, since
-     * Core finds the document of an element through it.
-     */
     private function signedResponse(string $fixture): SignedResponse
     {
         $document = $this->document($fixture);
@@ -154,9 +148,6 @@ final class EnvelopeReaderTest extends TestCase
         return SignedResponse::of($document->root(), self::identityProvider(), SamlLoader::create());
     }
 
-    /**
-     * The context of the valid response, at $now.
-     */
     private function contextAt(string $now): AssertionContext
     {
         return new AssertionContext(

@@ -2,15 +2,6 @@
 
 declare(strict_types=1);
 
-/*
- * beffroi/saml2-bindings against what is not this package (spec/bindings.md sections 9.1 and 9.5): the OpenSSL command
- * line and Python's zlib on the URLs the sender signed, the oracle the CI runs, and the judge of section 9.5,
- * SimpleSAMLphp both ways with Keycloak reinforcing it, run by hand and never by the CI (section 12).
- * tests/saml2-bindings/Interop/simplesamlphp/README.md and tests/saml2-bindings/Interop/keycloak/README.md hold what
- * each step does, its results and its findings. The two installations have compose projects and ports of their own
- * (8091, 8092 and 8190), so that they run beside saml2-model's.
- */
-
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
 use function Castor\capture;
@@ -19,19 +10,10 @@ use function Castor\exit_code;
 use function Castor\io;
 use function Castor\run;
 
-/**
- * Where the OpenSSL oracle writes its URLs, under the ignored var/.
- */
 const SAML2_BINDINGS_ORACLE = 'var/oracle/saml2-bindings';
 
-/**
- * The directory of the SimpleSAMLphp judge, relative to the root of the repository.
- */
 const SAML2_BINDINGS_SIMPLESAMLPHP = 'tests/saml2-bindings/Interop/simplesamlphp';
 
-/**
- * The directory of the Keycloak harness, relative to the root of the repository.
- */
 const SAML2_BINDINGS_KEYCLOAK = 'tests/saml2-bindings/Interop/keycloak';
 
 #[AsTask(
@@ -58,7 +40,6 @@ function saml2_bindings_oracle(): void
         ],
         ['REDIRECT_ORACLE' => SAML2_BINDINGS_ORACLE],
     );
-    // What the oracle reads, mounted read-only: the script, the two certificates and what the sender wrote.
     in_alpine(
         'apk add -q openssl python3 >/dev/null 2>&1 && openssl version && python3 --version'
         . ' && sh tests/saml2-bindings/Fixture/oracle/verify-redirect.sh tests/saml2-bindings/Fixture/keys/sp-signing-certificate.pem '
@@ -130,9 +111,6 @@ function saml2_bindings_simplesamlphp(
     }
 }
 
-/**
- * What a clean checkout lacks: the dependencies of the repository, which the scripts load.
- */
 function saml2_bindings_installed(): void
 {
     if (! is_file('vendor/autoload.php')) {
@@ -142,8 +120,7 @@ function saml2_bindings_installed(): void
 }
 
 /**
- * The installation up, its image built from installation/Dockerfile; written/, which both parties mount, created here
- * so that Docker does not create it as root.
+ * Creates written/, which both parties mount, so that Docker does not create it as root.
  */
 function saml2_bindings_simplesamlphp_up(): void
 {
@@ -185,8 +162,8 @@ function saml2_bindings_simplesamlphp_up(): void
 }
 
 /**
- * A script of the judge in the phpqa image, on the network of the installation, localhost:8091 and localhost:8092
- * pinned to its two containers so that every URL stays the one the installation knows.
+ * localhost:8091 and localhost:8092 pinned to the two containers of the installation, so that every URL stays the one
+ * it knows.
  */
 function saml2_bindings_simplesamlphp_script(string $script, bool $keep): void
 {
@@ -265,17 +242,14 @@ function saml2_bindings_keycloak(
     }
 }
 
-/**
- * Keycloak up, the realms imported at its first start with new keys; the scripts wait for it to answer.
- */
 function saml2_bindings_keycloak_up(): void
 {
     run(['docker', 'compose', '-f', SAML2_BINDINGS_KEYCLOAK . '/compose.yaml', 'up', '-d']);
 }
 
 /**
- * A script of the harness in the phpqa image, inside the network namespace of the Keycloak container: localhost:8190 is
- * Keycloak there, the host and the port of every URL it builds and checks.
+ * In the network namespace of the Keycloak container, where localhost:8190, the host and the port of every URL the
+ * script builds and checks, is Keycloak.
  */
 function saml2_bindings_keycloak_script(string $script, bool $keep): void
 {

@@ -12,9 +12,7 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The page of what the signed-in user has agreed to (architecture §4.3, §5.2): the clients that may
- * obtain something about them, and what taking one back does to the client, from the page to the token
- * endpoint and to UserInfo.
+ * Architecture §4.3, §5.2
  */
 final class AccountConsentsTest extends BrowserTestCase
 {
@@ -86,8 +84,7 @@ final class AccountConsentsTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §4.3: a consent is what makes the provider ask once rather than at every request;
-     * taking it back is how a user changes their mind.
+     * Architecture §4.3
      */
     #[Test]
     public function theClientAsksAfreshOnceItsConsentIsTakenBack(): void
@@ -106,8 +103,7 @@ final class AccountConsentsTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §4.6: a resource of this provider asks whether the grant a token descends from is
-     * still alive, and the consent taken back revoked it.
+     * Architecture §4.6
      */
     #[Test]
     public function theAccessTokenOfThatClientNoLongerOpensUserInfo(): void
@@ -130,7 +126,7 @@ final class AccountConsentsTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §6: nothing renews, so what a confidential client holds runs out and is not replaced.
+     * RFC 6749 §6
      */
     #[Test]
     public function theRefreshTokenOfThatClientIsRefused(): void
@@ -154,10 +150,6 @@ final class AccountConsentsTest extends BrowserTestCase
         static::assertSame('invalid_grant', self::json($response)['error']);
     }
 
-    /**
-     * A consent is named to the POST by an identifier of the user's own list, so somebody else's is not
-     * takeable back, signed in or not.
-     */
     #[Test]
     public function aConsentOfAnotherUserIsNotFound(): void
     {
@@ -165,7 +157,6 @@ final class AccountConsentsTest extends BrowserTestCase
         $alice = self::user('alice');
         $this->allow($alice);
         $ofAlice = $this->consentOf($alice);
-        // the same browser, signed in as somebody else, holding a form of their own list
         $this->allow(self::user('bob', 'bob-subject'));
         $token = self::string($this->consentsPage()->filter('input[name="_token"]')->attr('value'));
 
@@ -198,9 +189,7 @@ final class AccountConsentsTest extends BrowserTestCase
     }
 
     /**
-     * The code the native client gets once the user signed in and allowed, which leaves a consent behind.
-     *
-     * @param array<string, string|null> $parameters what the authorization request carries beyond the defaults
+     * @param array<string, string|null> $parameters
      */
     private function allow(User $user, string $clientId = 'native-app', array $parameters = []): string
     {
@@ -233,8 +222,7 @@ final class AccountConsentsTest extends BrowserTestCase
     }
 
     /**
-     * The tokens of a confidential client, which gets a refresh token without asking for
-     * "offline_access" (RFC 6749 §4.1.4), and which registered the exception of decision 0008.
+     * RFC 6749 §4.1.4, decision 0008
      *
      * @return array<string, mixed>
      */

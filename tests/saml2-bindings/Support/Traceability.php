@@ -33,11 +33,7 @@ use const T_DOC_COMMENT;
 use function trim;
 
 /**
- * What the traceability test reads, as xml-security's reads its specifications: spec/bindings.md, the invariants B-1 to
- * B-13 of its section 4, the rows of its corpus tables, and the docblocks of the tests that cite them. The tests are
- * the proof and the specification is the law: an invariant or a row added there without a test docblock that cites
- * it is what the test built on this class fails on. A refusal message that names a rule is not a citation: only the
- * docblocks are read.
+ * Reads the invariants B-1 to B-13 and the corpus rows of spec/bindings.md, and the test docblocks citing them.
  */
 final readonly class Traceability
 {
@@ -45,10 +41,6 @@ final readonly class Traceability
 
     private string $docblocks;
 
-    /**
-     * @param string $specificationPath the absolute path of spec/bindings.md
-     * @param string $testsDirectory the absolute path of the tests that cite it
-     */
     public function __construct(string $specificationPath, string $testsDirectory)
     {
         $specification = file_get_contents($specificationPath);
@@ -72,8 +64,6 @@ final readonly class Traceability
     }
 
     /**
-     * The invariants the docblocks of the tests cite, each once.
-     *
      * @return list<string>
      */
     public function citedInvariants(): array
@@ -84,9 +74,7 @@ final readonly class Traceability
     }
 
     /**
-     * The rows of the table under a heading, numbered from 1, the header and its separator left aside.
-     *
-     * @return array<int, string>
+     * @return array<int, string> numbered from 1
      */
     public function tableRows(string $heading): array
     {
@@ -148,9 +136,6 @@ final readonly class Traceability
         return array_values(array_unique($rows));
     }
 
-    /**
-     * The docblocks of every test under the directory, the leading asterisks of their lines dropped, concatenated.
-     */
     private function docblocks(string $directory): string
     {
         $docblocks = [];

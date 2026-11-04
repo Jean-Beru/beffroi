@@ -3,22 +3,7 @@
 declare(strict_types=1);
 
 /*
- * The signing side of "castor demo --assertion" (.castor/lab/demo.php, demo_assertion_check): a client that
- * presents an assertion signed by an issuer the tenant trusts and is answered with an access token for the
- * user that assertion names (RFC 7523 §2.1). The task is what runs under castor, which loads no code of the
- * monorepo; this script runs under the autoloader of the monorepo, so that the assertion is signed with the
- * key the provider was given the public half of.
- *
- * It plays the trust decision whole, and a trust decision is what its refusals are: one assertion is
- * exchanged once, an assertion about somebody no linked identity resolves buys nothing, and "openid" is not
- * something this grant may hand out, because nobody authenticated in it. Every refusal comes back saying the
- * same thing, which is the point: what a tenant trusts is not something an error response teaches.
- *
- * Reads one JSON object on stdin: "token_endpoint", "cafile" (the CA of the OP), "client_id",
- * "client_secret", "trusted_issuer" (the "iss" its assertions carry), "audience" (the issuer identifier of
- * the provider, the one name an assertion may be addressed to), "subject" (the user, as the issuer names
- * them), "unknown_subject", "scope", "resource" and "jwks_file" (where "castor provision" left the private
- * half). Writes one JSON object on stdout: what each of the four attempts was answered.
+ * The client of "castor demo --assertion": assertions of a trusted issuer exchanged for tokens (RFC 7523 §2.1).
  */
 
 use Jose\Component\Core\AlgorithmManager;
@@ -33,10 +18,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 require __DIR__ . '/../../vendor/autoload.php';
 
 /**
- * An issuer whose signature a tenant trusts, as far as this demonstration is concerned: it signs assertions
- * about the users it knows, and the client below presents them (RFC 7523 §3). Whoever holds this key can name
- * a user of that tenant, which is why the provider was given the public half alone and why the registration
- * names both the client that may present these assertions and the source their subjects resolve through.
+ * RFC 7523 §3
  */
 final readonly class TrustedIssuerSigner
 {
@@ -56,8 +38,7 @@ final readonly class TrustedIssuerSigner
     }
 
     /**
-     * RFC 7523 §3: the issuer, the subject it is about, this provider as the one audience, a lifetime, and an
-     * identifier of its own, which is what makes the assertion good once.
+     * RFC 7523 §3
      */
     public function sign(string $subject, int $lifetime = 60): string
     {
@@ -68,8 +49,7 @@ final readonly class TrustedIssuerSigner
             'aud' => $this->audience,
             'iat' => $now,
             'exp' => $now + $lifetime,
-            // drawn, never counted: an identifier a replay guard remembers must not be one another party
-            // can produce
+            // Drawn, never counted: nobody else may produce an identifier the replay guard remembers.
             'jti' => rtrim(strtr(base64_encode(random_bytes(16)), '+/', '-_'), '='),
         ];
         $jws = $this->jws
@@ -87,9 +67,7 @@ final readonly class TrustedIssuerSigner
 }
 
 /**
- * The client that presents those assertions. It authenticates with its own credentials beside the assertion
- * and never with it: the assertion is the authorization, and the two readings of an assertion share nothing
- * (RFC 7523 §2.1, last paragraph).
+ * RFC 7523 §2.1
  */
 final readonly class AssertionClient
 {
@@ -110,9 +88,6 @@ final readonly class AssertionClient
     }
 
     /**
-     * One attempt, and what the provider answered it: the status, the error when there is one, and what the
-     * token says of itself when there is a token.
-     *
      * @return array<string, mixed>
      */
     public function present(string $assertion, string $scope, string $resource): array
@@ -153,8 +128,7 @@ final readonly class AssertionClient
     }
 
     /**
-     * RFC 9068 §2.2: what the token says of itself, read to report it; nothing is verified here, this being
-     * the client and not a resource server.
+     * Decoded only to report its RFC 9068 §2.2 claims: a client verifies nothing of a token it merely carries.
      *
      * @return array<string, mixed>
      */
@@ -181,9 +155,6 @@ function assertion_cli_text(array $input, string $member): string
 }
 
 /**
- * A JSON object as the members it has: decoded, its keys are whatever they were written as, and a key made of
- * digits names no member.
- *
  * @param array<array-key, mixed> $decoded
  *
  * @return array<string, mixed>
@@ -217,9 +188,6 @@ $subject = assertion_cli_text($input, 'subject');
 $scope = assertion_cli_text($input, 'scope');
 $resource = assertion_cli_text($input, 'resource');
 
-// The one that works, then the three refusals, each one a rule of the grant and not an accident: the same
-// assertion again (RFC 7523 §3, the replay guard), one about somebody no linked identity resolves (decision
-// 0002), and one asking for an authentication this grant performs for nobody (OIDC Core §2).
 $assertion = $signer->sign($subject);
 $granted = $client->present($assertion, $scope, $resource);
 $replayed = $client->present($assertion, $scope, $resource);

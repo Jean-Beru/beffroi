@@ -16,8 +16,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Decision 0002, issue #782: the memberships of a person written in beffroi_group_membership, by the port
- * beside the one that reads them, and replaced there by the sign-in through an upstream provider.
+ * Decision 0002
  */
 final class GroupMembershipsTest extends DatabaseTestCase
 {
@@ -39,9 +38,6 @@ final class GroupMembershipsTest extends DatabaseTestCase
         static::assertSame(GroupSource::UpstreamClaims, $memberships[0]->source);
     }
 
-    /**
-     * The row goes; the group stays, others may be in it.
-     */
     #[Test]
     public function aMembershipTakenBackLeavesTheTableAndTheGroupStays(): void
     {
@@ -61,10 +57,6 @@ final class GroupMembershipsTest extends DatabaseTestCase
         static::assertNotNull(self::entityManager()->find(Group::class, $admins->id));
     }
 
-    /**
-     * The use case as the container wires it, on the table: the membership the provider no longer asserts
-     * goes, the one it asserts now comes, the local one stays.
-     */
     #[Test]
     public function aSignInReplacesTheUpstreamMembershipsInTheTable(): void
     {

@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §3.2: what an integration holds between the first factor and the code.
+ * Architecture §3.2
  */
 final class PendingLoginTest extends TestCase
 {

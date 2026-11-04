@@ -19,13 +19,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * A consent of the signed-in user taken back from the page of the account (architecture §4.3, §5.2): the
- * client asks afresh at its next authorization request, and what it was issued under that consent goes
- * with it.
- *
- * The consent is named by an identifier of the user's own list, as a request waiting for an answer is
- * (PendingApprovalsController): somebody else's consent is not in it, so it is not takeable back, and
- * one already taken back is not either.
+ * The consent is found in the user's own list: somebody else's cannot be taken back.
  */
 #[AsController]
 final readonly class ConsentRevocationController implements ReachedOnTheSessionAloneInterface

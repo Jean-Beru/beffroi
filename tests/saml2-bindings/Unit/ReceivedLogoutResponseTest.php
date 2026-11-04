@@ -21,17 +21,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.1 step 12, B-2, B-4, B-5, SAML Profiles §4.4.4.2: a LogoutResponse of the service provider received by the
- * identity provider over HTTP-Redirect, its query string signed with the "sp" test key: verified under the service
- * provider's keys before validateAuthenticatedByBinding(), and refused unsigned by the model's validate().
+ * Section 6.1 step 12, B-2, B-4, B-5, SAML Profiles §4.4.4.2
  */
 final class ReceivedLogoutResponseTest extends TestCase
 {
     use ReceptionFixtures;
 
     /**
-     * B-5, M-10: a signed LogoutResponse, its signature verified under the service provider's key, is accepted by the
-     * binding's authentication, as the answer to the request it names.
+     * B-5, M-10
      */
     #[Test]
     public function itAuthenticatesASignedResponseByTheBinding(): void
@@ -50,8 +47,7 @@ final class ReceivedLogoutResponseTest extends TestCase
     }
 
     /**
-     * §9.2 row 20, B-5, M-2, SAML Profiles §4.4.4.2: an unsigned LogoutResponse over HTTP-Redirect is refused by the
-     * model's validate().
+     * §9.2 row 20, B-5, M-2, SAML Profiles §4.4.4.2
      */
     #[Test]
     public function itRefusesAnUnsignedResponse(): void
@@ -68,8 +64,7 @@ final class ReceivedLogoutResponseTest extends TestCase
     }
 
     /**
-     * §9.2 row 14, B-1, B-2, SAML Bindings §3.4.4.1: the signature of a SAMLRequest carried over a SAMLResponse of the
-     * same value is refused: the name of the message parameter is among the octets.
+     * §9.2 row 14, B-1, B-2, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesTheSignatureOfASamlRequestCarriedOverASamlResponse(): void
@@ -91,8 +86,7 @@ final class ReceivedLogoutResponseTest extends TestCase
     }
 
     /**
-     * §9.2 row 17, B-4, SAML Bindings §3.4.4.1: a LogoutResponse signed by a key the service provider's metadata does
-     * not list is refused.
+     * §9.2 row 17, B-4, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesAKeyThePeerDoesNotList(): void
@@ -109,8 +103,7 @@ final class ReceivedLogoutResponseTest extends TestCase
     }
 
     /**
-     * §9.2 row 18, B-4, SAML Metadata §2.4.1.1: a signed LogoutResponse from a service provider whose metadata holds no
-     * signing certificate is refused.
+     * §9.2 row 18, B-4, SAML Metadata §2.4.1.1
      */
     #[Test]
     public function itRefusesAPeerWithoutSigningCertificate(): void
@@ -127,8 +120,7 @@ final class ReceivedLogoutResponseTest extends TestCase
     }
 
     /**
-     * Section 5.2, B-5: a ReceivedLogoutResponse is built from the reception of a LogoutResponse and of no other message, a programming
-     * error otherwise.
+     * Section 5.2, B-5
      */
     #[Test]
     #[DataProvider('provideReceptionsOfOtherMessages')]
@@ -177,10 +169,6 @@ final class ReceivedLogoutResponseTest extends TestCase
         return $received;
     }
 
-    /**
-     * $received validated as the identity provider at its single logout service, from the service provider $sp or the
-     * one of the fixtures, as the answer to the LogoutRequest of the fixtures.
-     */
     private function validate(
         ReceivedLogoutResponse $received,
         ?ServiceProvider $sp = null,

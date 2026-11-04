@@ -12,8 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * OIDC Discovery §3: what the provider signs an ID token with, and what a client may have it encrypted
- * to itself with (issue #165).
+ * OIDC Discovery §3
  */
 final class AnnouncedIdTokenTest extends TestCase
 {
@@ -37,10 +36,6 @@ final class AnnouncedIdTokenTest extends TestCase
         );
     }
 
-    /**
-     * A deployment nobody encrypts to still signs: it announces what signs an ID token and nothing about
-     * encrypting one.
-     */
     #[Test]
     public function aDeploymentThatEncryptsNothingStillAnnouncesWhatSigns(): void
     {

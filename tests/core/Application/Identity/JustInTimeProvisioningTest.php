@@ -59,10 +59,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Issue #781, decision 0002: the person an upstream provider names at a sign-in through it, created at the
- * first one with its provenance and its linked identity, and found again at the next ones by that identity.
- * What the provider writes of a person keeps to its domains and to an address nobody else holds (decision
- * 0029), and no existing account is linked on its own (spike 12, beffroi-auth/beffroi#85).
+ * Decisions 0002 and 0029
  */
 final class JustInTimeProvisioningTest extends TestCase
 {
@@ -120,11 +117,6 @@ final class JustInTimeProvisioningTest extends TestCase
         $this->provisioning = $this->provisioningDrawing(new SymfonyUuidGenerator());
     }
 
-    /**
-     * The acceptance of the issue, its first half: one person, named by its address, whose source is the
-     * provider and holds what that provider fills and said, its address verified, the provider answering
-     * for its domain.
-     */
     #[Test]
     public function aFirstSignInCreatesThePersonTheProviderNames(): void
     {
@@ -142,10 +134,6 @@ final class JustInTimeProvisioningTest extends TestCase
         static::assertEquals($this->clock->now(), $alice->createdAt);
     }
 
-    /**
-     * The acceptance of the issue, its second half: one linked identity, which names the person created and
-     * holds the snapshot of what the provider said.
-     */
     #[Test]
     public function aFirstSignInLinksThePersonToTheSubjectTheProviderGave(): void
     {
@@ -166,10 +154,6 @@ final class JustInTimeProvisioningTest extends TestCase
         );
     }
 
-    /**
-     * The act of the account: the subject of the person and the name of the provider, and nothing the
-     * provider said of them.
-     */
     #[Test]
     public function aFirstSignInAnnouncesThePersonCreated(): void
     {
@@ -189,10 +173,6 @@ final class JustInTimeProvisioningTest extends TestCase
         static::assertSame($context, $announced[0]->context);
     }
 
-    /**
-     * The person, its source and its linked identity are one unit, kept all or none; the refusals come before
-     * it, so a refused creation opens none.
-     */
     #[Test]
     public function aFirstSignInWritesThePersonAndItsLinkedIdentityAsOneUnit(): void
     {
@@ -203,10 +183,6 @@ final class JustInTimeProvisioningTest extends TestCase
         static::assertSame(1, $this->writes->units);
     }
 
-    /**
-     * The source holds what the provider fills and said: the birthdate it fills and did not say, it does not
-     * hold, and a manual description may say it.
-     */
     #[Test]
     public function aFirstSignInHoldsWhatTheProviderFillsAndSaid(): void
     {
@@ -217,10 +193,6 @@ final class JustInTimeProvisioningTest extends TestCase
         static::assertFalse($alice->source->holds('birthdate'));
     }
 
-    /**
-     * The acceptance of the issue: the person found again by its linked identity, and nothing created or
-     * announced a second time.
-     */
     #[Test]
     public function aSecondSignInCreatesNothing(): void
     {
@@ -236,10 +208,6 @@ final class JustInTimeProvisioningTest extends TestCase
         static::assertCount(1, $this->events->of(PersonProvisioned::class));
     }
 
-    /**
-     * The acceptance of the issue: what the source holds is written as the provider says it now, and the
-     * snapshot is the last thing it said.
-     */
     #[Test]
     public function aSecondSignInWritesWhatTheProviderSaysNow(): void
     {
@@ -269,9 +237,6 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
-     * No source holds a claim for ever: one its provider stops sending, or stops filling because its
-     * declaration no longer names it, is released, keeping the value the provider wrote last.
-     *
      * @param array<string, string> $claims
      */
     #[Test]
@@ -310,10 +275,6 @@ final class JustInTimeProvisioningTest extends TestCase
         ];
     }
 
-    /**
-     * A claim released is the person's again: a manual description says it, which it refused while the
-     * provider held it.
-     */
     #[Test]
     public function aReleasedClaimCanBeDescribedByHand(): void
     {
@@ -330,10 +291,6 @@ final class JustInTimeProvisioningTest extends TestCase
         static::assertEquals(new Profile(givenName: 'Ali', familyName: 'Liddell'), $alice->profile);
     }
 
-    /**
-     * What another source holds is not this provider's to write: a person a console created, and whom an
-     * import linked to this provider, keeps what they are, and only the snapshot of the identity moves.
-     */
     #[Test]
     public function aSignInThroughAProviderThatIsNotTheSourceOfThePersonRefreshesTheSnapshotOnly(): void
     {
@@ -359,8 +316,7 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
-     * The acceptance of the issue, decision 0029: a provider never creates a person of a domain it does not
-     * answer for.
+     * Decision 0029
      */
     #[Test]
     public function anAddressOutsideTheDomainsOfTheProviderIsRefused(): void
@@ -372,11 +328,6 @@ final class JustInTimeProvisioningTest extends TestCase
         static::assertSame(UpstreamProvisioningRefusalReason::OutsideItsDomains, $refusal->reason);
     }
 
-    /**
-     * The acceptance of the issue: no existing account is linked on its own, linking one being spike 12's,
-     * after a local re-authentication. The mailbox is matched as its blind index matches it, folded whole,
-     * so that a second person never holds the mailbox of a first under another spelling.
-     */
     #[Test]
     #[DataProvider('provideAddressesBobHolds')]
     public function anAddressAnotherPersonHoldsIsRefused(string $address): void
@@ -401,10 +352,6 @@ final class JustInTimeProvisioningTest extends TestCase
         yield 'its local part in another case' => ['Bob@acme.example'];
     }
 
-    /**
-     * The username of the person is its address, so a local person already named by that address holds it
-     * too: no existing account is linked on its own, and the same refusal says nothing of which.
-     */
     #[Test]
     public function anAddressAnotherPersonIsNamedByIsRefused(): void
     {
@@ -418,10 +365,6 @@ final class JustInTimeProvisioningTest extends TestCase
         static::assertSame(UpstreamProvisioningRefusalReason::AddressHeld, $refusal->reason);
     }
 
-    /**
-     * The subject drawn for the person is checked before the unit like every other collision, so that
-     * nothing raised inside it names anybody.
-     */
     #[Test]
     public function aDrawnSubjectAPersonAlreadyHasIsRefused(): void
     {
@@ -437,10 +380,6 @@ final class JustInTimeProvisioningTest extends TestCase
         static::assertSame(UpstreamProvisioningRefusalReason::DrawnSubjectTaken, $refusal->reason);
     }
 
-    /**
-     * Another sign-in links the same subject between the lookup and the unit: the same refusal, which does
-     * not say whom the identity is, and nothing of what the linker said carried along.
-     */
     #[Test]
     public function anIdentityLinkedMeanwhileIsRefusedWithoutNamingItsPerson(): void
     {
@@ -467,8 +406,6 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
-     * A refusal is raised before the first write: nobody is created, nothing is linked, nothing announced.
-     *
      * @param array<string, string> $claims
      */
     #[Test]
@@ -509,10 +446,6 @@ final class JustInTimeProvisioningTest extends TestCase
         ];
     }
 
-    /**
-     * Refused before the lookup: an empty subject matches no row, and a person created for it would be left
-     * without the linked identity that refuses it.
-     */
     #[Test]
     public function anEmptySubjectIsRefused(): void
     {
@@ -525,8 +458,7 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
-     * Decision 0029 at the next sign-ins too: what the provider writes of a person keeps to its domains and
-     * to an address nobody else holds, and a refusal writes nothing, the snapshot included.
+     * Decision 0029
      */
     #[Test]
     #[DataProvider('provideAddressesASecondSignInCannotWrite')]
@@ -552,14 +484,9 @@ final class JustInTimeProvisioningTest extends TestCase
         yield 'outside the domains of the provider' => ['alice@initech.example', UpstreamProvisioningRefusalReason::OutsideItsDomains];
         yield 'held by another person' => ['bob@acme.example', UpstreamProvisioningRefusalReason::AddressHeld];
         yield 'held by another person under another spelling' => ['Bob@acme.example', UpstreamProvisioningRefusalReason::AddressHeld];
-        // the username follows the address, so a new address another person is named by is refused too
         yield 'the username of another person' => ['carol@acme.example', UpstreamProvisioningRefusalReason::AddressHeld];
     }
 
-    /**
-     * Both refusals come before the unit, the contract of the port: the one the first sign-in spent is the
-     * only one, and the person, its source and its snapshot are what they were.
-     */
     #[Test]
     #[DataProvider('provideRefusedSecondSignIns')]
     public function aRefusedSecondSignInWritesNothing(string $address): void
@@ -597,7 +524,7 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
-     * beffroi/saml S-56: a person an administrator disabled is refused, whatever the provider says of them now.
+     * beffroi/saml S-56
      */
     #[Test]
     public function aDisabledPersonIsRefused(): void
@@ -613,8 +540,7 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
-     * beffroi/saml S-56: the refusal of a disabled person comes before the unit, so that a person disabled follows the
-     * provider no more: its address, its name, its profile and its snapshot are what they were.
+     * beffroi/saml S-56
      */
     #[Test]
     public function aDisabledPersonIsWrittenNothing(): void
@@ -640,8 +566,7 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
-     * beffroi/saml S-56: a disabled person the console linked to the provider, which is not their source, is refused
-     * before the snapshot of the identity moves.
+     * beffroi/saml S-56
      */
     #[Test]
     public function aDisabledPersonTheConsoleLinkedKeepsTheirSnapshot(): void
@@ -661,10 +586,6 @@ final class JustInTimeProvisioningTest extends TestCase
         static::assertSame([0, []], [$this->writes->units, $this->identities->of($alice)[0]->claims]);
     }
 
-    /**
-     * The username follows the address: a provider that sends another one has the person renamed to it in
-     * the same unit, so that the pages a person reads call them by the address they have.
-     */
     #[Test]
     public function aNewAddressRenamesThePerson(): void
     {
@@ -679,10 +600,6 @@ final class JustInTimeProvisioningTest extends TestCase
         static::assertSame($alice, $this->users->findByUsername($this->tenant, 'alice.liddell@acme.example'));
     }
 
-    /**
-     * The old address is nobody's any more, as a mailbox or as a username: the next person who holds it is
-     * created, where a username that followed no change of address would have refused them for ever.
-     */
     #[Test]
     public function theOldAddressOfARenamedPersonIsFreedForTheNextOne(): void
     {
@@ -698,10 +615,6 @@ final class JustInTimeProvisioningTest extends TestCase
         static::assertSame(self::ADDRESS, $next->username);
     }
 
-    /**
-     * The person holds their own address, so somebody who shares it with them, which nothing forbids two
-     * local persons, is not a reason to refuse them their own sign-in. Asked only of an address that changed.
-     */
     #[Test]
     public function anAddressThePersonAlreadyHoldsIsNotAskedAgain(): void
     {
@@ -716,10 +629,6 @@ final class JustInTimeProvisioningTest extends TestCase
         static::assertSame($alice, $again);
     }
 
-    /**
-     * The mailbox the person holds, spelt in another case, is still theirs, and it is not asked again: a
-     * local person who shares it with them, which nothing forbids, is not a reason to refuse them.
-     */
     #[Test]
     #[DataProvider('provideSpellingsOfAlicesMailbox')]
     public function theMailboxThePersonHoldsSpeltAnotherWayIsWritten(string $address): void
@@ -746,8 +655,7 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
-     * beffroi/saml S-56, issue #782: the groups the provider asserts are written in the unit of the person, so that
-     * the person and its memberships are kept together or not at all.
+     * beffroi/saml S-56
      */
     #[Test]
     public function theGroupsTheProviderAssertsAreWrittenInTheUnitOfThePerson(): void
@@ -755,7 +663,7 @@ final class JustInTimeProvisioningTest extends TestCase
         // Given
         $memberships = new class($this->memberships, $this->writes) implements GroupMembershipRepositoryInterface {
             /**
-             * @var list<bool> whether each membership was written inside a unit
+             * @var list<bool>
              */
             public private(set) array $inside = [];
 
@@ -798,8 +706,7 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
-     * beffroi/saml S-56: a person whose memberships could not be written is not announced, the event coming once all
-     * of the unit is kept.
+     * beffroi/saml S-56
      */
     #[Test]
     public function aPersonWhoseGroupsFailToBeWrittenIsNotAnnounced(): void
@@ -838,8 +745,7 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
-     * beffroi/saml S-45, S-56: a telephone number the provider says is written unverified, being never verified by
-     * being filled, and held by the source of the person as a claim it fills.
+     * beffroi/saml S-45, S-56
      */
     #[Test]
     public function theTelephoneNumberTheProviderSaysIsWrittenUnverifiedAndHeld(): void
@@ -860,8 +766,7 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
-     * beffroi/saml S-56: a telephone number the provider no longer says is released to a manual description, with the
-     * value it wrote last, as a claim of the profile is.
+     * beffroi/saml S-56
      */
     #[Test]
     public function aTelephoneNumberTheProviderNoLongerSaysIsReleased(): void
@@ -885,9 +790,7 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
-     * beffroi/saml S-56: a first sign-in that loses a race at the store, the person or its linked identity written by
-     * another sign-in between the checks and the unit, is refused as the collision the linker sees is, without what
-     * the store said of whom.
+     * beffroi/saml S-56
      */
     #[Test]
     #[DataProvider('provideRacesLostAtTheStore')]
@@ -966,8 +869,7 @@ final class JustInTimeProvisioningTest extends TestCase
     }
 
     /**
-     * beffroi/saml S-56: a sign-in of a person that loses a race on a membership, another sign-in of the same person
-     * having given it the same group meanwhile, is refused, the store refusing the second membership.
+     * beffroi/saml S-56
      */
     #[Test]
     public function aSignInThatLosesARaceOnAMembershipIsRefused(): void
@@ -1015,10 +917,6 @@ final class JustInTimeProvisioningTest extends TestCase
         yield 'the person' => [false];
     }
 
-    /**
-     * The use case on the adapters of the suite, the subject of a person it creates drawn from those
-     * identifiers, and what it looks a linked identity up in, when a test says it.
-     */
     private function provisioningDrawing(
         UuidGeneratorInterface $uuids,
         ?LinkedIdentityRepositoryInterface $identities = null,
@@ -1038,9 +936,6 @@ final class JustInTimeProvisioningTest extends TestCase
         );
     }
 
-    /**
-     * The groups of the tenant the provider of the suite asserts, by the values it sends.
-     */
     private function members(): GroupMapping
     {
         return new GroupMapping([
@@ -1048,10 +943,6 @@ final class JustInTimeProvisioningTest extends TestCase
         ]);
     }
 
-    /**
-     * The refusal a sign-in through the provider of the suite raised, which a test reads the reason of, the
-     * message being the same whatever it is.
-     */
     private function failToSignIn(string $address): UpstreamProvisioningRefusedException
     {
         try {

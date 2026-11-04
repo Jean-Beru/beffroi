@@ -10,12 +10,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3, M-5: the two bindings an endpoint is kept on (SAML Bindings §3.4, §3.5).
+ * Section 5.3, M-5, SAML Bindings §3.4, §3.5
  */
 final class BindingTest extends TestCase
 {
     /**
-     * SAML Bindings §3.4.1 and §3.5.1: the URIs of HTTP-Redirect and HTTP-POST, and no other case.
+     * SAML Bindings §3.4.1 and §3.5.1
      */
     #[Test]
     public function itIsHttpRedirectAndHttpPost(): void

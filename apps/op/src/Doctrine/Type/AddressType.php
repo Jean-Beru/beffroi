@@ -7,8 +7,7 @@ namespace App\Doctrine\Type;
 use Beffroi\Core\Domain\Identity\Address;
 
 /**
- * The OIDC Core §5.1.1 address in one JSON column: an embeddable whose every column is null would
- * hydrate as an object, not as null. What the document holds is the address's own (`Address::toDocument()`).
+ * A JSON column: an embeddable whose every column is null would hydrate as an object, not as null.
  *
  * @extends JsonObjectType<Address>
  */

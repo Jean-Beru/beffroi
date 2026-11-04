@@ -46,11 +46,7 @@ use function substr_replace;
 use const ZLIB_ENCODING_RAW;
 
 /**
- * Section 6.1 steps 1 to 11, the HTTP-Redirect rows of sections 9.2 and 9.3 that refuse or accept a query string
- * before the consumer validates what it carries: the bound (B-7), the parameters (B-1, B-3), RelayState (B-9), the
- * encodings (B-8), the document (B-10), no XML signature in it (B-6), the message the method expects (M-1). The rows
- * that need the signature verified are asserted with the Received* classes; those whose acceptance means a verified
- * signature are asserted here through validate(), the consumer's one path. SAML Bindings §3.4.4.1.
+ * Section 6.1 steps 1 to 11, sections 9.2 and 9.3, B-1, B-3, B-6, B-7, B-8, B-9, B-10, M-1, SAML Bindings §3.4.4.1
  */
 final class RedirectReceiverTest extends TestCase
 {
@@ -59,9 +55,7 @@ final class RedirectReceiverTest extends TestCase
     private const string BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
     /**
-     * §9.2 row 1, B-1, CVE-2025-27773: SAMLRequest and SAMLResponse in one query string, the signature a genuine one
-     * of the peer over the SAMLResponse, the SAMLRequest unsigned, in either order, given to either method, are refused
-     * before anything is decoded.
+     * §9.2 row 1, B-1, CVE-2025-27773
      *
      * @param 'authnRequest'|'logoutMessage' $method
      */
@@ -105,8 +99,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 11, M-1, SAML Bindings §3.4.4.1: a SAMLRequest given to authnRequest() is the model's unverified
-     * AuthnRequest, its Issuer read, carried over HTTP-Redirect, without RelayState.
+     * Section 6.1 step 11, M-1, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itReceivesAnAuthnRequest(): void
@@ -122,8 +115,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 11, M-1, SAML Bindings §3.4.4.1: a SAMLRequest given to logoutMessage() is the model's
-     * unverified LogoutRequest.
+     * Section 6.1 step 11, M-1, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itReceivesALogoutRequest(): void
@@ -143,8 +135,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 11, M-1, SAML Bindings §3.4.4.1: a SAMLResponse given to logoutMessage() is the model's
-     * unverified LogoutResponse, its Issuer and InResponseTo read.
+     * Section 6.1 step 11, M-1, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itReceivesALogoutResponse(): void
@@ -164,8 +155,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.3 row 5, B-9, section 8, SAML Bindings §3.4.3: RelayState is returned as decoded, at the 80 bytes of the
-     * binding and at exactly 1 024 bytes, the exception of section 8, and null when the query string has none.
+     * §9.3 row 5, B-9, section 8, SAML Bindings §3.4.3
      */
     #[Test]
     #[DataProvider('provideRelayStates')]
@@ -195,8 +185,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.3 row 1, B-2, SAML Bindings §3.4.4.1: parameters that arrive as SigAlg, Signature, RelayState, SAMLRequest,
-     * signed in the order of the binding, are accepted, whatever the order of arrival.
+     * §9.3 row 1, B-2, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itVerifiesTheOctetsWhateverTheOrderOfArrival(): void
@@ -214,9 +203,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.3 row 2, B-2, B-8, SAML Bindings §3.4.4.1: values escaped in lowercase hexadecimal, a space of RelayState
-     * written + or %20, signed as they were sent, are accepted, and RelayState is decoded to the same string either
-     * way.
+     * §9.3 row 2, B-2, B-8, SAML Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideSpacesOfRelayState')]
@@ -252,9 +239,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.3 row 3, §9.3 row 4, §9.3 row 6, §9.3 row 10, B-1, B-2, SAML Bindings §3.4.4.1: the query of a Location,
-     * other parameters, a trailing &, empty segments and SAMLEncoding of DEFLATE are skipped and never signed: the
-     * octets of B-2 verify without them.
+     * §9.3 row 3, §9.3 row 4, §9.3 row 6, §9.3 row 10, B-1, B-2, SAML Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideQueriesWithWhatIsNotSigned')]
@@ -290,7 +275,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 3, B-1, SAML Bindings §3.4.4.1: a query string without SAMLRequest or SAMLResponse is refused.
+     * §9.2 row 3, B-1, SAML Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideQueriesWithoutMessage')]
@@ -315,7 +300,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 4, B-1, section 6.1 step 3, SAML Bindings §3.4.4.1: a SAMLResponse given to authnRequest() is refused.
+     * §9.2 row 4, B-1, section 6.1 step 3, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesASamlResponseGivenToAuthnRequest(): void
@@ -329,8 +314,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 5, B-1, SAML Bindings §3.4.4.1: a second SAMLRequest, SAMLResponse, RelayState, SigAlg, Signature or
-     * SAMLEncoding is refused, before the first and after it.
+     * §9.2 row 5, B-1, SAML Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideSecondParameters')]
@@ -371,9 +355,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 6, B-1, section 6.1 step 2, SAML Bindings §3.4.4.1: a parameter of B-1 under a name PHP's parser of a
-     * query string reads as it while it is not written so, percent-encoded, after a leading space, followed by a NUL
-     * or a "[", is refused, alone and next to the literal one.
+     * §9.2 row 6, B-1, section 6.1 step 2, SAML Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideNamesReadAsAParameterOfTheBinding')]
@@ -425,7 +407,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 7, B-1, SAML Bindings §3.4.4.1: a parameter of B-1 without = is refused.
+     * §9.2 row 7, B-1, SAML Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideParametersWithoutEquals')]
@@ -453,8 +435,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 7, B-8, section 6.1 step 3, SAML Bindings §3.4.4.1: an empty SAMLRequest or SAMLResponse is refused
-     * before anything else reads the query string.
+     * §9.2 row 7, B-8, section 6.1 step 3, SAML Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideEmptyMessages')]
@@ -479,7 +460,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 7, B-8, SAML Bindings §3.4.4.1: an empty Signature is refused.
+     * §9.2 row 7, B-8, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesAnEmptySignature(): void
@@ -496,7 +477,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 9, B-3, SAML Bindings §3.4.4.1: a Signature without SigAlg, or a SigAlg without Signature, is refused.
+     * §9.2 row 9, B-3, SAML Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideHalfSignatures')]
@@ -522,9 +503,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 10, B-3, D-5, section 6.1 step 5: a SigAlg off the closed list, RSA-SHA1 and DSA-SHA1 although SAML
-     * Bindings §3.4.4.1 requires them, is refused before the message is decoded: the message, a DEFLATE bomb of 5 MiB
-     * that would exceed maxInflatedBytes, is never inflated.
+     * §9.2 row 10, B-3, D-5, section 6.1 step 5, SAML Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideAlgorithmsOffTheList')]
@@ -558,8 +537,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 16, B-9, section 8, SAML Bindings §3.4.3: a RelayState of 1 025 bytes once decoded, one over the
-     * exception section 8 makes to the binding, is refused.
+     * §9.2 row 16, B-9, section 8, SAML Bindings §3.4.3
      */
     #[Test]
     #[DataProvider('provideRelayStatesOf1025Bytes')]
@@ -586,7 +564,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 16, B-9, section 12, SAML Bindings §3.4.3: an empty RelayState is refused, absence saying the same.
+     * §9.2 row 16, B-9, section 12, SAML Bindings §3.4.3
      */
     #[Test]
     public function itRefusesAnEmptyRelayState(): void
@@ -603,8 +581,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 19, section 7, SAML Bindings §3.4.4.1: the text of Signature longer than 1 368 characters, the base64 of
-     * 1 027 bytes, is refused before it is decoded.
+     * §9.2 row 19, section 7, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesASignatureTextLongerThan1368Characters(): void
@@ -623,8 +600,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 21, B-6, SAML Bindings §3.4.4.1 step 1: a message whose root holds a ds:Signature is refused, whether
-     * the query string is signed or not.
+     * §9.2 row 21, B-6, SAML Bindings §3.4.4.1 step 1
      */
     #[Test]
     #[DataProvider('provideXmlSignedMessages')]
@@ -653,11 +629,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * B-6, SAML Bindings §3.4.4.1 step 1: the check looks at the children of the root and no deeper. The AuthnRequest
-     * signed in XML of the hostile corpus, its ds:Signature moved under samlp:Extensions, passes it and is left to the
-     * strict reader of the model, which never reads that element (saml2-model, spec/model.md section 6.2 step 1, M-5)
-     * and neither verifies nor reads a ds:Signature below a child of the root (M-2): the request is accepted on its
-     * other merits, the query string signed or not.
+     * B-6, SAML Bindings §3.4.4.1 step 1, model.md section 6.2 step 1, M-5, M-2
      */
     #[Test]
     #[DataProvider('provideMessagesSignedInXmlUnderTheirExtensions')]
@@ -694,10 +666,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 22, B-7, section 6.1 step 8, SAML Bindings §3.4.4.1: the largest DEFLATE bomb a query string under
-     * maxQueryStringBytes carries, 6 MiB of zeros deflated by zlib at level 9 into 6 113 bytes, a query string of 8 168
-     * bytes (the largest measured on 1 October 2026, zlib 1.3.1, is 6 311 474 bytes into 8 190), is refused at
-     * maxInflatedBytes.
+     * §9.2 row 22, B-7, section 6.1 step 8, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesTheLargestBombAQueryStringCarries(): void
@@ -714,13 +683,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 22, B-7, section 6.1 step 8, SAML Bindings §3.4.4.1: what the largest bomb costs the receiver before its
-     * refusal is the bound, plus the output of one byte of input, at most 1 032 bytes, plus zlib's fixed state, 64 KiB
-     * its window among it, as the inflater alone (InflaterTest), plus the query string held in its decodings: its
-     * segments, its value percent-decoded then base64-decoded, each no longer than the query string. Measured on 1
-     * October 2026, zlib 1.3.1, the same on PHP 8.5.10 and 8.4.25, Xdebug collecting coverage or not: a peak of 135 904
-     * to 135 984 bytes under the default bound, the ceiling asserted 156 608, where the bomb inflated whole would hold
-     * 6 291 456.
+     * §9.2 row 22, B-7, section 6.1 step 8, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itHoldsTheLargestBombWithinTheBound(): void
@@ -740,7 +703,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 22, B-7, SAML Bindings §3.4.4.1: a message one byte over maxInflatedBytes is refused, the bound named.
+     * §9.2 row 22, B-7, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesAMessageOneByteOverMaxInflatedBytes(): void
@@ -761,7 +724,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * B-7, section 7, SAML Bindings §3.4.4.1: a message of exactly maxInflatedBytes is accepted.
+     * B-7, section 7, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itAcceptsAMessageOfExactlyMaxInflatedBytes(): void
@@ -778,8 +741,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 23, B-7, section 6.1 step 1, SAML Bindings §3.4.4: a query string over maxQueryStringBytes is refused
-     * before anything reads it, a malformed one among them.
+     * §9.2 row 23, B-7, section 6.1 step 1, SAML Bindings §3.4.4
      */
     #[Test]
     #[DataProvider('provideQueriesOverTheBound')]
@@ -805,7 +767,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * B-7, section 7, SAML Bindings §3.4.4: a query string of exactly maxQueryStringBytes is accepted.
+     * B-7, section 7, SAML Bindings §3.4.4
      */
     #[Test]
     public function itAcceptsAQueryStringOfExactlyMaxQueryStringBytes(): void
@@ -822,8 +784,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 24, B-8, RFC 1950, RFC 1951, RFC 1952: a message wrapped by zlib or gzip, cut before its final block,
-     * followed by a byte, or not DEFLATE, is refused.
+     * §9.2 row 24, B-8, RFC 1950, RFC 1951, RFC 1952
      */
     #[Test]
     #[DataProvider('provideStreamsThatAreNotRawDeflate')]
@@ -862,8 +823,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 25, §9.2 row 26, B-8, RFC 4648 §3.5, §4, SAML Bindings §3.4.4.1: the base64 of the message in any form
-     * but its one form, or with whitespace, a + left unescaped and decoded to a space among it, is refused.
+     * §9.2 row 25, §9.2 row 26, B-8, RFC 4648 §3.5, §4, SAML Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideMessagesNotInTheirOneBase64')]
@@ -895,8 +855,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 26, B-8, SAML Bindings §3.4.4.1: a + left unescaped in the base64 of Signature, decoded to a space, is
-     * refused.
+     * §9.2 row 26, B-8, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesAPlusLeftUnescapedInTheSignature(): void
@@ -915,8 +874,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 27, B-8, SAML Bindings §3.4.4.1: a percent-escape %G1, %2 or a trailing %, in a name and in a value, is
-     * refused.
+     * §9.2 row 27, B-8, SAML Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideMalformedEscapes')]
@@ -949,7 +907,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 28, section 8, SAML Bindings §3.4.4: a SAMLEncoding of another URI is refused by name.
+     * §9.2 row 28, section 8, SAML Bindings §3.4.4
      */
     #[Test]
     #[DataProvider('provideOtherEncodings')]
@@ -974,8 +932,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 31, section 6.1 step 11, M-1, SAML Bindings §3.4.4: a message of another root than the method and the
-     * parameter expect is the model's MalformedMessage.
+     * §9.2 row 31, section 6.1 step 11, M-1, SAML Bindings §3.4.4
      *
      * @param 'authnRequest'|'logoutMessage' $method
      */
@@ -1019,7 +976,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * §9.2 row 32, B-10, I-1, SAML Bindings §3.4.4.1: a DOCTYPE among the inflated bytes is Core's refusal, as it is.
+     * §9.2 row 32, B-10, I-1, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itLetsCoreRefuseADoctype(): void
@@ -1054,7 +1011,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * The query string of §9.2 row 22: 6 MiB of zeros, deflated at level 9, as the message of a query string.
+     * §9.2 row 22
      */
     private function largestBomb(): string
     {
@@ -1064,9 +1021,6 @@ final class RedirectReceiverTest extends TestCase
         return $query;
     }
 
-    /**
-     * $query received, its refusal for exceeding maxInflatedBytes swallowed: what is measured is the state it leaves.
-     */
     private function receiveAndForget(RedirectReceiver $receiver, string $query): void
     {
         try {
@@ -1075,9 +1029,6 @@ final class RedirectReceiverTest extends TestCase
         }
     }
 
-    /**
-     * $length zeros, raw-deflated at level 9.
-     */
     private function zeros(int $length): string
     {
         return self::bytes(gzdeflate(str_repeat("\0", $length), 9, ZLIB_ENCODING_RAW));
@@ -1088,9 +1039,6 @@ final class RedirectReceiverTest extends TestCase
         return self::bytes(gzdeflate($bytes, -1, ZLIB_ENCODING_RAW));
     }
 
-    /**
-     * What a function of zlib returned, a failure stopping the test.
-     */
     private static function bytes(string|false $bytes): string
     {
         if (! is_string($bytes)) {
@@ -1101,7 +1049,7 @@ final class RedirectReceiverTest extends TestCase
     }
 
     /**
-     * $base64, padded, with the lowest of the unused bits of its last character set (RFC 4648 §3.5).
+     * RFC 4648 §3.5
      */
     private static function withAnUnusedBitSet(string $base64): string
     {

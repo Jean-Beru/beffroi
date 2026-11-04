@@ -19,9 +19,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * What arrived at an endpoint that authenticates a client, read into the request the methods are handed
- * (RFC 6749 §2.3): the credentials it carries are strings, and the assertion of RFC 7523 §2.2 is read
- * here and nowhere else.
+ * RFC 6749 §2.3, RFC 7523 §2.2
  */
 final class ClientAuthenticationRequestParserTest extends TestCase
 {
@@ -55,7 +53,7 @@ final class ClientAuthenticationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 6749 appendix A: an empty parameter is no parameter, and an empty credential is no credential.
+     * RFC 6749 Appendix A
      */
     #[Test]
     public function anEmptyParameterIsNoParameter(): void
@@ -73,8 +71,7 @@ final class ClientAuthenticationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.3.1: an empty secret is a secret all the same, presented and wrong, and is read as it
-     * is given.
+     * RFC 6749 §2.3.1
      */
     #[Test]
     public function anEmptySecretIsASecret(): void
@@ -101,8 +98,7 @@ final class ClientAuthenticationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 7523 §2.2: the assertion is read and verified in nothing, so that the provider knows which
-     * client claims it and which key is supposed to have signed it.
+     * RFC 7523 §2.2
      */
     #[Test]
     public function itReadsTheAssertionTheRequestCarries(): void
@@ -120,10 +116,6 @@ final class ClientAuthenticationRequestParserTest extends TestCase
         static::assertSame('a-client', $request->assertion->claim('sub'));
     }
 
-    /**
-     * The assertion is read once, whatever reads it afterwards: the parser is what owns the reader, and
-     * every method the authenticator then asks is handed what was read here.
-     */
     #[Test]
     public function itReadsTheAssertionOnce(): void
     {
@@ -147,7 +139,7 @@ final class ClientAuthenticationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 7523 §2.2: a request that carries one half of the pair carries neither.
+     * RFC 7523 §2.2
      *
      * @param array<string, mixed> $parameters
      */
@@ -181,7 +173,7 @@ final class ClientAuthenticationRequestParserTest extends TestCase
     }
 
     /**
-     * RFC 7523 §2.2: "client_assertion_type" has one value.
+     * RFC 7523 §2.2
      */
     #[Test]
     public function itRefusesATypeThatIsNotTheOneOfTheSpecification(): void
@@ -211,10 +203,6 @@ final class ClientAuthenticationRequestParserTest extends TestCase
         static::assertSame('The client assertion is not a readable JWT (RFC 7523 section 2.2).', $failure->description);
     }
 
-    /**
-     * The audit trail is told which client the body named, that being all a request whose assertion
-     * cannot be read says about itself.
-     */
     #[Test]
     public function aRefusedAssertionNamesTheClientOfTheBody(): void
     {
@@ -229,9 +217,6 @@ final class ClientAuthenticationRequestParserTest extends TestCase
     }
 
     /**
-     * A request whose credentials are not strings is refused before anything is read, and the audit trail
-     * keeps no identifier from it, because none of it can be trusted.
-     *
      * @param array<string, mixed> $parameters
      */
     #[Test]
@@ -281,8 +266,7 @@ final class ClientAuthenticationRequestParserTest extends TestCase
     }
 
     /**
-     * A parameter that is not a credential is not this parser's business: what reads it says what it
-     * takes, and an authorization request carries parameters of every shape (RFC 8707 §2).
+     * RFC 8707 §2
      */
     #[Test]
     public function itLeavesAParameterThatIsNotACredentialAlone(): void

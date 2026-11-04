@@ -17,10 +17,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #453: the archive holds the whole journal of a person and not the sign-ins alone, which is what
- * makes it worth asking for where the page of their account shows them the last twenty attempts.
- */
 final class JournalChapterTest extends TestCase
 {
     #[Test]
@@ -45,10 +41,6 @@ final class JournalChapterTest extends TestCase
         static::assertSame(Fixtures::context()->ipAddress, $from['ip_address']);
     }
 
-    /**
-     * Every act and not a few names: which acts answer a question is the question's, and this one asks
-     * for all of them.
-     */
     #[Test]
     public function everyActOfThePersonIsInTheChapterWhateverItIsCalled(): void
     {
@@ -64,10 +56,6 @@ final class JournalChapterTest extends TestCase
         static::assertCount(3, $lines);
     }
 
-    /**
-     * A person with years of history is read in pages, which is what the identifier being a UUIDv7 is for:
-     * each page is a lookup past the last act read.
-     */
     #[Test]
     public function aJournalLongerThanOnePageIsReadWhole(): void
     {
@@ -84,9 +72,6 @@ final class JournalChapterTest extends TestCase
         static::assertCount($howMany, $lines);
     }
 
-    /**
-     * The acts are oldest first, so a person reads their own history from the beginning.
-     */
     #[Test]
     public function theActsAreOldestFirst(): void
     {
@@ -102,10 +87,6 @@ final class JournalChapterTest extends TestCase
         static::assertSame(['first.act', 'second.act', 'third.act'], array_column($lines, 'act'));
     }
 
-    /**
-     * The journal of another person is not in this archive, which is the whole reason a row of it names a
-     * subject.
-     */
     #[Test]
     public function theJournalOfAnotherPersonIsNotInTheChapter(): void
     {

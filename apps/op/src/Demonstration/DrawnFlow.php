@@ -12,23 +12,9 @@ use Beffroi\Oidc\Domain\Flow\Actor;
 use Beffroi\Oidc\Domain\Flow\FlowPicture;
 use Beffroi\Oidc\Domain\Flow\Hop;
 
-/**
- * A flow and what it exchanged, as one page reads it (issue #462): the actors of the picture, the hops
- * the picture plans, and the hops that really happened, each with the payload that travelled and the
- * compact JWTs that payload carried.
- *
- * The plan and the trace are joined here and nowhere else: a hop that happened is drawn between the
- * actors its picture names, and a hop that did not happen is drawn as a hop of the plan nobody took.
- * A trace that holds a hop no picture plans is drawn as nothing, because a drawing has nowhere to put
- * it; that is a provider and a demonstration that disagree, and the page is not the place to hide it.
- */
 final readonly class DrawnFlow
 {
     /**
-     * The flow, the client whose trace it is, the actors of the picture, the plan (one entry per hop of
-     * the picture, with how many times it was taken) and the hops that happened, in the order they
-     * happened, each with its payload, the indented reading of it and the compact JWTs it carried.
-     *
      * @return array<string, mixed>
      */
     public function of(FlowPicture $picture, ?FlowTrace $trace): array

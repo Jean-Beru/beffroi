@@ -10,8 +10,7 @@ use Beffroi\Saml\Domain\SingleLogout\LogoutChain;
 use Beffroi\Saml\Port\LogoutChainRepositoryInterface;
 
 /**
- * The chains of spec/saml.md S-32 in the memory of one process, for the tests only: written under their reference,
- * taken by the one call that finds them as they were read, never forgotten otherwise, the tests reading what is there.
+ * spec/saml.md S-32
  */
 final class InMemoryLogoutChains implements LogoutChainRepositoryInterface
 {
@@ -55,9 +54,7 @@ final class InMemoryLogoutChains implements LogoutChainRepositoryInterface
     }
 
     /**
-     * Every chain held, in the order they were written.
-     *
-     * @return list<LogoutChain>
+     * @return list<LogoutChain> in the order they were written
      */
     public function all(): array
     {

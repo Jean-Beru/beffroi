@@ -11,10 +11,6 @@ use Beffroi\Oidc\Domain\Interaction\AuthorizationDecision;
 use Beffroi\Oidc\Domain\Interaction\LoginRequired;
 use function implode;
 
-/**
- * Why the browser is sent to the login page (OIDC Core §3.1.2.1), the classes a step-up is still short
- * of and the kinds of credential that would reach them (decision 0010).
- */
 final readonly class LoginRequiredObservation implements DecisionObservationInterface
 {
     public function decision(): string

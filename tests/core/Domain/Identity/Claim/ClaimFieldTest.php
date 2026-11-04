@@ -13,9 +13,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function range;
 
-/**
- * Issues #476 and #479: what kind of field a claim is offered as, and what a closed set is closed on.
- */
 final class ClaimFieldTest extends TestCase
 {
     #[Test]
@@ -38,10 +35,6 @@ final class ClaimFieldTest extends TestCase
         yield 'one of a closed set' => [ClaimField::oneOf(['fr' => 'français']), 'text'];
     }
 
-    /**
-     * The pattern comes with a date for a browser that renders a line of text instead, where it is the
-     * only check left.
-     */
     #[Test]
     public function aDateCarriesThePatternAndTheExample(): void
     {
@@ -64,10 +57,6 @@ final class ClaimFieldTest extends TestCase
         ClaimField::oneOf([]);
     }
 
-    /**
-     * Each value with the label a person reads it by, the name of a language in that language being the
-     * only thing recognisable in a list of several hundred.
-     */
     #[Test]
     public function aClosedSetCarriesALabelPerValue(): void
     {
@@ -122,10 +111,6 @@ final class ClaimFieldTest extends TestCase
         static::assertFalse(ClaimField::oneOf(['fr' => 'français'])->holds('ja'));
     }
 
-    /**
-     * Taking a value back is holdable by every field: an empty field is a person who said nothing of
-     * themselves any more.
-     */
     #[Test]
     #[DataProvider('provideNothing')]
     public function takingAValueBackIsHeldByAClosedSet(?string $nothing): void
@@ -143,9 +128,6 @@ final class ClaimFieldTest extends TestCase
         yield 'an empty field' => [''];
     }
 
-    /**
-     * What the shape of a value is, where the set is not closed, stays the model's.
-     */
     #[Test]
     public function aFieldWithNoClosedSetHoldsAnything(): void
     {
@@ -165,12 +147,7 @@ final class ClaimFieldTest extends TestCase
     }
 
     /**
-     * A date input renders a value it cannot carry empty, a year alone as much as a whole date with a
-     * line feed behind it or a day whose year is withheld, and a save on an empty input would quietly
-     * erase what an import wrote, so what is offered for such a value is a line of text.
-     *
-     * Issue #887: OIDC Core §5.1 withholds a year by writing it "0000", and the year of a date input is
-     * above zero (HTML §2.3.5.1, §2.3.5.2).
+     * OIDC Core §5.1, HTML §2.3.5.1, §2.3.5.2
      */
     #[Test]
     #[DataProvider('provideValuesADateInputCannotCarry')]
@@ -196,7 +173,7 @@ final class ClaimFieldTest extends TestCase
     }
 
     /**
-     * HTML §2.3.5.1: every year above zero is one a date input carries, the first one included.
+     * HTML §2.3.5.1
      */
     #[Test]
     #[DataProvider('provideWholeDates')]
@@ -223,9 +200,6 @@ final class ClaimFieldTest extends TestCase
         static::assertSame('date', ClaimField::date('\d{4}')->forHolding($nothing)->kind);
     }
 
-    /**
-     * Only a kind whose input is narrower than what its claim holds has anything to fall back from.
-     */
     #[Test]
     public function aLineOfTextIsOfferedAsItselfWhateverItHolds(): void
     {

@@ -11,13 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.2, section 7, M-7: the clock skew, the message age and the bearer window, each a bound between 1 second and
- * its ceiling, never a switch.
+ * Section 5.2, section 7, M-7
  */
 final class TimeBoundsTest extends TestCase
 {
     /**
-     * Section 7: 180 seconds of skew, 300 of message age, 3600 of bearer window.
+     * Section 7
      */
     #[Test]
     public function itHasTheDefaultsOfSection7(): void
@@ -30,7 +29,7 @@ final class TimeBoundsTest extends TestCase
     }
 
     /**
-     * Section 7: from 1 second to its ceiling of 300.
+     * Section 7
      */
     #[Test]
     #[DataProvider('provideClockSkews')]
@@ -53,8 +52,7 @@ final class TimeBoundsTest extends TestCase
     }
 
     /**
-     * Section 7, section 5.8: a clock skew out of its range is a programming error of the caller; the message names
-     * the bound and its range, never the value.
+     * Section 7, section 5.8
      */
     #[Test]
     #[DataProvider('provideClockSkewsOutOfRange')]
@@ -79,7 +77,7 @@ final class TimeBoundsTest extends TestCase
     }
 
     /**
-     * Section 7: from 1 second to its ceiling of 3600.
+     * Section 7
      */
     #[Test]
     #[DataProvider('provideMessageAges')]
@@ -102,7 +100,7 @@ final class TimeBoundsTest extends TestCase
     }
 
     /**
-     * Section 7, section 5.8: a message age out of its range; the message names the bound, never the value.
+     * Section 7, section 5.8
      */
     #[Test]
     #[DataProvider('provideMessageAgesOutOfRange')]
@@ -126,7 +124,7 @@ final class TimeBoundsTest extends TestCase
     }
 
     /**
-     * Section 7: from 1 second to its ceiling of 86400.
+     * Section 7
      */
     #[Test]
     #[DataProvider('provideBearerWindows')]
@@ -149,7 +147,7 @@ final class TimeBoundsTest extends TestCase
     }
 
     /**
-     * Section 7, section 5.8: a bearer window out of its range; the message names the bound, never the value.
+     * Section 7, section 5.8
      */
     #[Test]
     #[DataProvider('provideBearerWindowsOutOfRange')]

@@ -15,8 +15,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Decision 0002, issue #782: what the declaration of an upstream provider makes of the values it asserts for
- * groups. A value leads to a group of the tenant only when the declaration names it.
+ * Decision 0002
  */
 final class GroupMappingTest extends TestCase
 {
@@ -38,9 +37,6 @@ final class GroupMappingTest extends TestCase
         static::assertSame([$sales, $admins], $groups);
     }
 
-    /**
-     * A group is never created from what a provider sends: a value nobody declared is nothing.
-     */
     #[Test]
     public function aValueItDoesNotNameIsIgnored(): void
     {
@@ -80,10 +76,6 @@ final class GroupMappingTest extends TestCase
         yield 'a prefix of it' => ['admins'];
     }
 
-    /**
-     * PHP keys the declared value "1" by the integer 1: what a provider sent is a value only when it is a
-     * string, so nothing else reaches that key.
-     */
     #[Test]
     #[DataProvider('provideAssertedValuesThatAreNotStrings')]
     public function anAssertedValueThatIsNotAStringIsIgnored(mixed $asserted): void

@@ -52,8 +52,7 @@ final class EmailAddressTest extends TestCase
     }
 
     /**
-     * RFC 4343 §3: a domain is compared without regard to ASCII case, which is how an upstream provider
-     * answers for one (issue #781).
+     * RFC 4343 §3
      */
     #[Test]
     #[DataProvider('provideDomains')]
@@ -73,10 +72,6 @@ final class EmailAddressTest extends TestCase
         yield 'after the last at sign of a quoted local part' => ['"alice@home"@acme.example', 'acme.example'];
     }
 
-    /**
-     * Issue #781: one mailbox whatever the case it is written in, the local part included, every server a
-     * person reads their mail on ignoring it.
-     */
     #[Test]
     #[DataProvider('provideMailboxes')]
     public function itTellsTheSameMailbox(string $one, string $other, bool $same): void
@@ -99,8 +94,7 @@ final class EmailAddressTest extends TestCase
     }
 
     /**
-     * Decision 0029, beffroi/saml S-60: an address however it was written holds its domain as its A-label, read by the
-     * one rule of the domain, and its local part as it was written.
+     * Decision 0029, beffroi/saml S-60
      */
     #[Test]
     #[DataProvider('provideSpellings')]
@@ -125,8 +119,7 @@ final class EmailAddressTest extends TestCase
     }
 
     /**
-     * Decision 0029, beffroi/saml S-60: what holds no "@", a domain the rule refuses and a local part this class
-     * refuses are no address of any spelling.
+     * Decision 0029, beffroi/saml S-60
      */
     #[Test]
     #[DataProvider('provideUnreadSpellings')]

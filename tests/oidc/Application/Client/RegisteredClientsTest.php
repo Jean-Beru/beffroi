@@ -20,9 +20,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Architecture §4.1, issue #334: the clients of a tenant come from every source the wiring holds, and
- * what a question about the set of them means is answered here. A deployment declares some of its clients
- * and registers others; nothing that asks about them learns there are two places.
+ * Architecture §4.1
  */
 final class RegisteredClientsTest extends TestCase
 {
@@ -64,9 +62,6 @@ final class RegisteredClientsTest extends TestCase
         static::assertNull($clients->findByClientId($this->tenant, 'nobody'));
     }
 
-    /**
-     * A client belongs to the tenant it was registered under, whichever source holds it.
-     */
     #[Test]
     public function aClientOfAnotherTenantIsResolvedByNobody(): void
     {
@@ -79,8 +74,7 @@ final class RegisteredClientsTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2, RFC 9728 §4: the resources of a tenant are what its clients registered, whichever
-     * source holds them, each named once.
+     * RFC 8707 §2, RFC 9728 §4
      */
     #[Test]
     public function theResourcesOfATenantAreThoseOfEverySource(): void
@@ -104,8 +98,7 @@ final class RegisteredClientsTest extends TestCase
     }
 
     /**
-     * OIDC Discovery §3, issue #278: the scopes the clients of a tenant registered are read from every
-     * source that holds them, each named once.
+     * OIDC Discovery §3
      */
     #[Test]
     public function theScopesOfATenantAreThoseOfEverySource(): void
@@ -126,8 +119,7 @@ final class RegisteredClientsTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: a shape one client of the tenant registered is a shape the provider writes for
-     * it, whichever source that client came from.
+     * Architecture §4.6
      */
     #[Test]
     public function aShapeOneSourceRegisteredIsIssuedByTheTenant(): void
@@ -158,8 +150,7 @@ final class RegisteredClientsTest extends TestCase
     }
 
     /**
-     * RFC 9126 §5: the document says a request must be pushed when every client of the tenant says so,
-     * which now means every client of every source.
+     * RFC 9126 §5
      */
     #[Test]
     public function theTenantRequiresAPushedRequestWhenEveryClientOfEverySourceDoes(): void
@@ -174,10 +165,6 @@ final class RegisteredClientsTest extends TestCase
         static::assertTrue($clients->requiresPushedAuthorizationRequests($this->tenant));
     }
 
-    /**
-     * One client that may still start an ordinary request is enough, and a source that holds none says
-     * nothing of the others: a source with no client of the tenant answers about no client, not "no".
-     */
     #[Test]
     public function oneClientOfOneSourceThatStartsAnOrdinaryRequestIsEnough(): void
     {
@@ -190,9 +177,6 @@ final class RegisteredClientsTest extends TestCase
         static::assertFalse($clients->requiresPushedAuthorizationRequests($this->tenant));
     }
 
-    /**
-     * A source that holds no client of the tenant takes nothing away from what the others require.
-     */
     #[Test]
     public function aSourceWithNoClientOfTheTenantRequiresNothingOfIt(): void
     {
@@ -205,7 +189,7 @@ final class RegisteredClientsTest extends TestCase
     }
 
     /**
-     * RFC 9126 §5: a tenant no source holds a client of requires nothing of anybody.
+     * RFC 9126 §5
      */
     #[Test]
     public function aTenantWithNoClientAtAllRequiresNothingOfAnybody(): void
@@ -218,8 +202,7 @@ final class RegisteredClientsTest extends TestCase
     }
 
     /**
-     * OIDC Registration §2, decision 0012: the document announces "none" when a client of the tenant
-     * registered it, whichever source holds that client.
+     * OIDC Registration §2, Decision 0012
      */
     #[Test]
     public function anUnsignedRequestObjectOfOneSourceIsAnnouncedByTheTenant(): void
@@ -245,9 +228,6 @@ final class RegisteredClientsTest extends TestCase
         static::assertFalse($clients->acceptsUnsignedRequestObjects($this->tenant));
     }
 
-    /**
-     * The clients of one tenant are no business of another, whichever source holds them.
-     */
     #[Test]
     public function anotherTenantIsAnsweredAboutItsOwnClientsAlone(): void
     {

@@ -16,12 +16,6 @@ use function in_array;
 use function sprintf;
 use Throwable;
 
-/**
- * A notifier that keeps the notices it was handed, and tells every service provider but the ones a test says it cannot
- * reach, at "<entity ID>/slo", over HTTP-Redirect or, for the ones a test says, by a form over HTTP-POST, the IDs of
- * its requests numbered in their order; it refuses to write the request of the ones a test says, and fails as the KMS
- * fails while a test holds it down.
- */
 final class RecordingSignOutNotifier implements SignOutNotifierInterface
 {
     /**
@@ -29,9 +23,6 @@ final class RecordingSignOutNotifier implements SignOutNotifierInterface
      */
     public private(set) array $notices = [];
 
-    /**
-     * What every call to notify() throws while it is set: an outage of the KMS, a failure that is no service provider's.
-     */
     public ?Throwable $failure = null;
 
     /**
@@ -72,9 +63,6 @@ final class RecordingSignOutNotifier implements SignOutNotifierInterface
         return new SentSignOutNotice($id, new RedirectedMessage($destination . '?SAMLRequest=told'));
     }
 
-    /**
-     * The ID of the $nth request the notifier wrote.
-     */
     public static function idOf(int $nth): string
     {
         return sprintf('_request-%d', $nth);

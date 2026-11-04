@@ -8,23 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * What a client was given of a person, at one act of the protocol (issue #590): one row per act that
- * handed something over, so that the question a person asks of their own register, which data did this
- * application obtain of me on 3 March, has an answer once the consent is taken back and the grants are
- * gone.
- *
- * It is not the journal, which is four facts and two names and no column a caller fills. The journal keeps
- * saying that the act happened; this says what left with it, and the person is named here as the journal
- * names them, by the subject their account carries.
- *
- * `scopes`, `claims` and `authorization_details` are sealed under the data key of the tenant, in a family
- * of their own (decisions 0011 and 0018), where a consent holds the same values in the clear: a consent is
- * a permission, one row per client, and this is one row per act.
- *
- * Two indexes, for the two questions asked of this table: what was given to one person, by an identifier
- * that sorts chronologically, and what is old enough to forget, which walks by the moment of the act.
- */
 final class Version20261011120000 extends AbstractMigration
 {
     public function getDescription(): string

@@ -22,7 +22,7 @@ use PHPUnit\Framework\TestCase;
 final class AuthenticationContextPolicyTest extends TestCase
 {
     /**
-     * Decision 0010: the default policy is the fixed vocabulary that existed, strongest first.
+     * Decision 0010
      */
     #[Test]
     public function theDefaultPolicyNamesTheTwoEapNamesAndTheTwoKeycloakLevels(): void
@@ -44,8 +44,7 @@ final class AuthenticationContextPolicyTest extends TestCase
     }
 
     /**
-     * Decision 0010: when nothing is requested, the first class of the policy the proofs satisfy; the
-     * order of declaration serves that and nothing else.
+     * Decision 0010
      */
     #[Test]
     #[DataProvider('provideProofsAndTheirClassUnderTheDefaultPolicy')]
@@ -74,10 +73,6 @@ final class AuthenticationContextPolicyTest extends TestCase
         ];
     }
 
-    /**
-     * A tenant that orders its policy the other way answers the weakest name first: no hierarchy is
-     * assumed, the order is the tenant's.
-     */
     #[Test]
     public function theOrderOfThePolicyIsTheTenantsNotAHierarchy(): void
     {
@@ -92,7 +87,7 @@ final class AuthenticationContextPolicyTest extends TestCase
     }
 
     /**
-     * Decision 0010: several names may carry the same predicate, for the vocabularies of several kinds of RP.
+     * Decision 0010
      */
     #[Test]
     public function aNameOfTheTenantIsFoundWithItsPredicate(): void
@@ -113,7 +108,7 @@ final class AuthenticationContextPolicyTest extends TestCase
     }
 
     /**
-     * OIDC Core §2: a name the tenant did not declare is never asserted.
+     * OIDC Core §2
      */
     #[Test]
     public function aNameTheTenantDidNotDeclareIsNoClass(): void
@@ -123,8 +118,7 @@ final class AuthenticationContextPolicyTest extends TestCase
     }
 
     /**
-     * OIDC Discovery §3 "acr_values_supported", decision 0010: the classes a login proving these methods
-     * satisfies, in the order of the policy.
+     * OIDC Discovery §3 "acr_values_supported", Decision 0010
      *
      * @param non-empty-list<string> $methods
      * @param list<string> $provable
@@ -197,7 +191,7 @@ final class AuthenticationContextPolicyTest extends TestCase
     }
 
     /**
-     * Decisions 0006 and 0010: what a policy may not say is refused when it is built, so at the start.
+     * Decisions 0006 and 0010
      *
      * @param list<AuthenticationContextClass> $classes
      */

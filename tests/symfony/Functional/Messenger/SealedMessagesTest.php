@@ -29,14 +29,7 @@ use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Decision 0020, wired: what every transport of this provider encodes with is the serializer of the provider,
- * and what it writes is sealed to the key the tenant keeps for it. The unit test of the serializer says
- * what it does with a message; this says that this is what a deployment gets, with the tenant of the
- * kernel, its KMS and its key store.
- *
- * The transports of the test kernel are synchronous, where nothing is ever encoded, which is why what is
- * asked here is asked of the serializer the component hands a transport and not of a message dispatched on
- * a bus.
+ * Decision 0020
  */
 final class SealedMessagesTest extends DatabaseTestCase
 {
@@ -66,10 +59,6 @@ final class SealedMessagesTest extends DatabaseTestCase
         new Filesystem()->remove($this->directory);
     }
 
-    /**
-     * The contract names the serializer of the provider, so what the component hands every transport is that
-     * one: a deployment that declares a transport of its own gets it without asking.
-     */
     #[Test]
     public function everyTransportEncodesWithTheSerializerOfTheProvider(): void
     {
@@ -77,14 +66,6 @@ final class SealedMessagesTest extends DatabaseTestCase
         static::assertInstanceOf(SealedBodySerializer::class, $this->serializer);
     }
 
-    /**
-     * Issue #548: the first key of a tenant is written and then announced, so what seals a body has to be
-     * the key that has just been written and not the key that is active. A key that could only be sealed to
-     * once active could not seal the event that announces it, and no tenant could be given a first one.
-     *
-     * The sequence is the one of a rotation, played with the serializer of the wiring and the key store of
-     * the kernel: stage the key, then write the event that announces it.
-     */
     #[Test]
     public function theFirstMessageKeyOfATenantSealsTheEventThatAnnouncesIt(): void
     {
@@ -106,10 +87,6 @@ final class SealedMessagesTest extends DatabaseTestCase
         static::assertSame(TenantKeyStaged::class, $encoded['headers'][SealedBodySerializer::TYPE_HEADER] ?? null);
     }
 
-    /**
-     * The round trip through the wiring: the tenant of the kernel, its KMS and the key the rotation of the
-     * setup generated.
-     */
     #[Test]
     public function aMessageIsSealedToTheKeyOfTheTenantAndOpensBack(): void
     {
@@ -124,10 +101,6 @@ final class SealedMessagesTest extends DatabaseTestCase
         static::assertSame(serialize($message), serialize($this->serializer->decode($encoded)->getMessage()));
     }
 
-    /**
-     * What the criterion of the issue asks of the body: none of the values the message carried, and the
-     * same values are what the search of a dump looks for in a column (DumpGivesNothingAwayTest).
-     */
     #[Test]
     #[DataProvider('provideWhatTheMessageCarries')]
     public function theEncodedBodyGivesNoneOfTheValuesTheMessageCarriedAway(string $value): void
@@ -153,10 +126,6 @@ final class SealedMessagesTest extends DatabaseTestCase
         yield 'what the provider had to say' => ['the vault did not answer'];
     }
 
-    /**
-     * Issue #552: the digest of a password is the one shape of a password that leaves a request, and what
-     * it leaves in is a sealed body, so neither the broker nor the failure table holds it readable.
-     */
     #[Test]
     public function theDigestOfAPasswordLeavesSealed(): void
     {
@@ -172,11 +141,6 @@ final class SealedMessagesTest extends DatabaseTestCase
         static::assertStringNotContainsString($digest->value, $encoded['body']);
     }
 
-    /**
-     * What travels in the clear, named: the class of the message and the scope it was written under. The
-     * "kid" of the key is in the protected header of the body, which carries it anyway, and nothing else
-     * is anywhere.
-     */
     #[Test]
     public function theHeadersNameTheClassAndTheScopeAndNothingElse(): void
     {
@@ -195,10 +159,6 @@ final class SealedMessagesTest extends DatabaseTestCase
         );
     }
 
-    /**
-     * The key a body is sealed to is not in the JWK Set: a key published there would let any reader of the
-     * discovery document seal a body this provider opens.
-     */
     #[Test]
     public function theKeyAMessageIsSealedToIsNotPublished(): void
     {
@@ -214,10 +174,6 @@ final class SealedMessagesTest extends DatabaseTestCase
         }
     }
 
-    /**
-     * The failure transport is a transport like the others, so what waits in it is sealed too: it is the
-     * one that keeps what it is given the longest.
-     */
     #[Test]
     public function theFailureTransportIsNotAnExceptionToTheSealing(): void
     {

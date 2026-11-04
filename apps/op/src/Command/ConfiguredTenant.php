@@ -9,11 +9,6 @@ use App\Doctrine\TenantProvider;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * The tenant every command of the provider works on, and the one thing to say when its row is not there
- * or no longer says what the configuration says. A command reads it and stops; what to do about it is
- * the same answer wherever it is asked, so it is written here alone.
- */
 final readonly class ConfiguredTenant
 {
     public function __construct(
@@ -21,9 +16,6 @@ final readonly class ConfiguredTenant
     ) {
     }
 
-    /**
-     * @return Tenant|null null when the command was told why it cannot go on, and should fail
-     */
     public function orTold(SymfonyStyle $io): ?Tenant
     {
         try {

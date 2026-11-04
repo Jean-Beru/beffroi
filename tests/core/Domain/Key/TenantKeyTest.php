@@ -23,8 +23,7 @@ use PHPUnit\Framework\TestCase;
 final class TenantKeyTest extends TestCase
 {
     /**
-     * OIDC Core §10.1.1: the key is published before it signs, so that a relying party caching the JWK Set
-     * learns it.
+     * OIDC Core §10.1.1
      */
     #[Test]
     public function aNewKeyIsStagedPublishedAndNotActive(): void
@@ -40,9 +39,6 @@ final class TenantKeyTest extends TestCase
         static::assertNull($key->activatedAt);
     }
 
-    /**
-     * The staging window is a fact of the key, written when it is created.
-     */
     #[Test]
     public function aNewKeySaysWhenItsActivationIsDue(): void
     {
@@ -121,9 +117,6 @@ final class TenantKeyTest extends TestCase
         static::assertSame($key->kid, $key->publicJwk['kid']);
     }
 
-    /**
-     * The staging window ends: staged, then active.
-     */
     #[Test]
     public function anActivatedKeyIsActiveAndPublished(): void
     {
@@ -155,9 +148,6 @@ final class TenantKeyTest extends TestCase
         $key->activate(Fixtures::now());
     }
 
-    /**
-     * The retirement window: active, then retiring, still published, due at the date given.
-     */
     #[Test]
     public function aRetiringKeyIsNoLongerActiveButStillPublished(): void
     {
@@ -222,9 +212,6 @@ final class TenantKeyTest extends TestCase
         $key->startRetiring(Fixtures::now(), Fixtures::now()->modify('-1 second'));
     }
 
-    /**
-     * The retirement window: retiring, then retired, gone from the JWK Set.
-     */
     #[Test]
     public function aRetiredKeyIsNoLongerPublished(): void
     {
@@ -349,8 +336,7 @@ final class TenantKeyTest extends TestCase
     }
 
     /**
-     * RFC 7517 §4.2: the "use" of the JWK is the use of the algorithm the key was generated for, asserted
-     * and not assumed. A key of an encryption algorithm publishes "enc".
+     * RFC 7517 §4.2
      */
     #[Test]
     public function anEncryptionKeyIsPublishedForEncryption(): void
@@ -363,10 +349,6 @@ final class TenantKeyTest extends TestCase
         static::assertSame(KeyUse::Encryption, $key->algorithm->keyUse());
     }
 
-    /**
-     * The other way round of "wrong use": a JWK that says it signs cannot describe a key generated to be
-     * encrypted to.
-     */
     #[Test]
     public function aJwkThatSignsDoesNotDescribeAnEncryptionKey(): void
     {
@@ -385,7 +367,7 @@ final class TenantKeyTest extends TestCase
     }
 
     /**
-     * RFC 7517 §5 and §4.2: the set carries both uses, and a consumer asks for the one it needs.
+     * RFC 7517 §5, §4.2
      */
     #[Test]
     public function thePublicKeySetCarriesBothUsesAndNarrowsToOne(): void
@@ -403,10 +385,6 @@ final class TenantKeyTest extends TestCase
         static::assertSame([$encryption->kid], array_map(static fn (TenantKey $key): string => $key->kid, $set->forUse(KeyUse::Encryption)->keys));
     }
 
-    /**
-     * A key of one use is not found among the keys of the other, which is what keeps a signature from
-     * being verified against a key published to be encrypted to.
-     */
     #[Test]
     public function aKeyIsNotFoundAmongTheKeysOfTheOtherUse(): void
     {
@@ -428,7 +406,7 @@ final class TenantKeyTest extends TestCase
     }
 
     /**
-     * RFC 7517 §5: the JWK Set lists the published keys only, a staged one included.
+     * RFC 7517 §5
      */
     #[Test]
     public function thePublicKeySetServesPublishedKeysOnly(): void
@@ -474,7 +452,7 @@ final class TenantKeyTest extends TestCase
     }
 
     /**
-     * RFC 7517 §5: public members only.
+     * RFC 7517 §5
      */
     #[Test]
     public function theJwksCarriesNoPrivateMember(): void
@@ -525,9 +503,6 @@ final class TenantKeyTest extends TestCase
         );
     }
 
-    /**
-     * Issue #455: the age of a key is read on the key, counted from the moment it became the one in use.
-     */
     #[Test]
     public function aKeyHasNotReachedItsAgeBeforeIt(): void
     {
@@ -548,10 +523,6 @@ final class TenantKeyTest extends TestCase
         static::assertTrue($key->hasReachedItsAge(Fixtures::now()->modify('+30 days'), new DateInterval('P30D')));
     }
 
-    /**
-     * Counted from the activation and not from the creation: the staging window a key waited through is
-     * not time it worked.
-     */
     #[Test]
     public function theAgeOfAKeyIsCountedFromItsActivation(): void
     {
@@ -563,10 +534,6 @@ final class TenantKeyTest extends TestCase
         static::assertFalse($key->hasReachedItsAge(Fixtures::now()->modify('+30 days'), new DateInterval('P30D')));
     }
 
-    /**
-     * A key that is not the one in use has no age to reach: a staged key has not started working, and a
-     * retiring one has stopped.
-     */
     #[Test]
     #[DataProvider('provideKeysThatAreNotActive')]
     public function aKeyThatIsNotActiveNeverReachesItsAge(TenantKey $key): void
@@ -616,10 +583,6 @@ final class TenantKeyTest extends TestCase
         return $key;
     }
 
-    /**
-     * A set says what it is given: a key that has retired is refused rather than quietly dropped, so
-     * that nobody serves a JWK Set shorter than they think.
-     */
     #[Test]
     public function aRetiredKeyIsRefusedByTheSetRatherThanDropped(): void
     {

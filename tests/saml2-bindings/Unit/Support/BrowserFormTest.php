@@ -9,16 +9,10 @@ use Beffroi\Saml2\Bindings\Tests\Support\BrowserForm;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * The browser and the parser of the tests' forms (sections 6.7, 6.8, 9.1), checked against PHP alone: the body is the
- * application/x-www-form-urlencoded encoding of the URL Standard, and its fields are what PHP's parser gives back, so
- * that a row of the corpus posts what a browser posts and receives what a consumer receives.
- */
 final class BrowserFormTest extends TestCase
 {
     /**
-     * URL Standard §5: each name and value encoded, a space as "+", "+", "/" and "=" of base64 percent-encoded, in the
-     * order given.
+     * URL Standard §5
      */
     #[Test]
     public function itEncodesTheBodyAsABrowserDoes(): void
@@ -35,8 +29,7 @@ final class BrowserFormTest extends TestCase
     }
 
     /**
-     * Section 6.8: PHP's parser gives the fields back as they were posted, line breaks among them, and makes an array
-     * of a field named with brackets.
+     * Section 6.8
      */
     #[Test]
     public function itGivesTheFieldsAsPhpParsesThem(): void
@@ -53,8 +46,7 @@ final class BrowserFormTest extends TestCase
     }
 
     /**
-     * Section 6.7: the fields of a PostForm, posted by a browser and parsed by PHP, are the fields of the form, the
-     * action aside.
+     * Section 6.7
      */
     #[Test]
     public function itSubmitsTheFieldsOfAPostForm(): void

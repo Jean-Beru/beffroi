@@ -7,9 +7,6 @@ namespace App\Doctrine\Type;
 use Beffroi\Core\Domain\Credential\PasskeyUserHandle;
 
 /**
- * The user handle of a passkey (WebAuthn Level 3 §5.4.3), 64 bytes in a text column as the handle writes
- * itself, base64url in the alphabet of the core (`PasskeyUserHandle::toDocument()`).
- *
  * @extends StringObjectType<PasskeyUserHandle>
  */
 final class PasskeyUserHandleType extends StringObjectType

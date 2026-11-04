@@ -61,7 +61,7 @@ final class RefreshTokenGrantTest extends TestCase
     private const string INVALID_GRANT = 'invalid_grant: The refresh token is invalid.';
 
     /**
-     * RFC 7638 §3.1: the base64url of a SHA-256, the shape of a key thumbprint.
+     * RFC 7638 §3.1
      */
     private const string THUMBPRINT = 'NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs';
 
@@ -93,8 +93,7 @@ final class RefreshTokenGrantTest extends TestCase
     {
         $this->tenant = Fixtures::tenant();
         $this->alice = Fixtures::user($this->tenant);
-        // A public client: rotation is what tells its refresh token from a copy of itself, where a
-        // confidential client is told by its authentication and its token stands (RFC 9700 §4.13.2,
+        // A public client: the refresh token of a confidential client is not rotated (RFC 9700 §4.13.2,
         // FAPI 2.0 Security Profile §5.3.2.1-9).
         $this->client = Clients::public($this->tenant);
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
@@ -127,7 +126,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §6, RFC 9700 §4.13: the token presented is rotated, not revoked.
+     * RFC 6749 §6, RFC 9700 §4.13
      */
     #[Test]
     public function itRotatesTheTokenPresented(): void
@@ -146,7 +145,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 9700 §4.13: the successor is issued in the same family with the same scopes and a sliding expiry.
+     * RFC 9700 §4.13
      */
     #[Test]
     public function itIssuesASuccessorInTheSameFamilyWithASlidingExpiry(): void
@@ -187,8 +186,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §6, OIDC Core §12.2: the access token covers the scopes of the token, and the ID token is
-     * reissued without nonce, with the original authentication.
+     * RFC 6749 §6, OIDC Core §12.2
      */
     #[Test]
     public function itIssuesTheTokensForTheScopesAndTheAuthenticationOfTheToken(): void
@@ -234,7 +232,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §6: the scope asked for narrows this response, each scope once.
+     * RFC 6749 §6
      */
     #[Test]
     public function itNarrowsTheScopeOfTheResponse(): void
@@ -252,7 +250,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §6: the scope asked for does not narrow the successor, which keeps what was granted.
+     * RFC 6749 §6
      */
     #[Test]
     public function theSuccessorKeepsTheScopesGranted(): void
@@ -268,7 +266,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * OIDC Core §12.2: below "openid", no ID token.
+     * OIDC Core §12.2
      */
     #[Test]
     public function noIdTokenIsIssuedBelowOpenid(): void
@@ -284,9 +282,6 @@ final class RefreshTokenGrantTest extends TestCase
         static::assertSame([], $this->idTokens->issued);
     }
 
-    /**
-     * What was granted can be asked for again on the next refresh.
-     */
     #[Test]
     public function aScopeNarrowedOnceCanBeAskedForAgain(): void
     {
@@ -306,7 +301,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §6: a scope not originally granted is "invalid_scope".
+     * RFC 6749 §6
      */
     #[Test]
     public function itRefusesAScopeOutsideTheGrant(): void
@@ -323,9 +318,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.3.7 (issue #836): the key the ID token is encrypted to is read before the token is
-     * rotated, so keys the client cannot serve right now leave the token as it was and issue no successor:
-     * presented again once they can be read, it is no reuse.
+     * OIDC Core §3.1.3.7
      */
     #[Test]
     public function aTokenIsNotRotatedWhileTheKeysOfItsClientCannotBeRead(): void
@@ -347,8 +340,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.5 (issue #870): the keys of the tenant the tokens are signed with are opened before the
-     * token is rotated, so a KMS that does not answer leaves the token as it was and issues no successor.
+     * Architecture §4.5
      */
     #[Test]
     public function aTokenIsNotRotatedWhileTheKmsDoesNotAnswer(): void
@@ -370,8 +362,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 9700 §4.13.2 (issue #870): presented again once the KMS answers, the token left as it was is
-     * refreshed, and nothing takes it for a reuse that would revoke its family.
+     * RFC 9700 §4.13.2
      */
     #[Test]
     public function aTokenLeftAsItWasIsRefreshedOnceTheKmsAnswers(): void
@@ -393,9 +384,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.5 (issue #877): the session the token descends from is read before the token is rotated,
-     * so a store that cannot open it, its columns sealed under a data key the KMS does not open, leaves the
-     * token as it was and issues no successor.
+     * Architecture §4.5
      */
     #[Test]
     public function aTokenIsNotRotatedWhileItsSessionCannotBeOpened(): void
@@ -418,9 +407,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.5 (issue #877): the person the session names is read before the token is rotated, so a
-     * store that cannot open them leaves the token as it was and issues no successor, where read for the
-     * announcement of the rotation they would make the next presentation a reuse.
+     * Architecture §4.5
      */
     #[Test]
     public function aTokenIsNotRotatedWhileItsPersonCannotBeOpened(): void
@@ -442,8 +429,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 9700 §4.13.2 (issue #877): presented again once the person can be opened, the token left as it was
-     * is refreshed, and nothing takes it for a reuse that would revoke its family.
+     * RFC 9700 §4.13.2
      */
     #[Test]
     public function aTokenLeftAsItWasIsRefreshedOnceItsPersonOpens(): void
@@ -479,7 +465,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.3: a scope that is not a list of scope tokens is refused, the cause kept for the logs.
+     * RFC 6749 §3.3
      */
     #[Test]
     #[DataProvider('provideMalformedScopes')]
@@ -500,7 +486,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.3: a malformed scope is refused before anything is looked up.
+     * RFC 6749 §3.3
      */
     #[Test]
     #[DataProvider('provideMalformedScopes')]
@@ -547,8 +533,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: unknown, issued to another client, or revoked, it is "invalid_grant" with nothing
-     * to tell one from the other.
+     * RFC 6749 §5.2
      *
      * @param callable(self): string $token
      */
@@ -568,9 +553,6 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * Nothing else happens: a token of another client is not a reuse, even rotated, and a revoked one
-     * is not detected twice.
-     *
      * @param callable(self): string $token
      */
     #[Test]
@@ -614,7 +596,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 9700 §4.13.2: a rotated token presented again reveals a copy and is refused.
+     * RFC 9700 §4.13.2
      */
     #[Test]
     public function itRefusesARotatedTokenPresentedAgain(): void
@@ -632,8 +614,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 9700 §4.13.2: the whole family is revoked, the presented token and the current one included;
-     * another family is not concerned.
+     * RFC 9700 §4.13.2
      */
     #[Test]
     public function aRotatedTokenPresentedAgainRevokesTheWholeFamily(): void
@@ -656,7 +637,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 9700 §4.13.2: the detection is announced once, with what was revoked.
+     * RFC 9700 §4.13.2
      */
     #[Test]
     public function aReuseIsAnnouncedWithWhatWasRevoked(): void
@@ -679,9 +660,6 @@ final class RefreshTokenGrantTest extends TestCase
         static::assertCount(2, $this->events->of(TokensIssued::class));
     }
 
-    /**
-     * A revoked family is refused on every member and not detected again.
-     */
     #[Test]
     public function aRevokedFamilyIsNotDetectedAgain(): void
     {
@@ -699,9 +677,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 9700 §4.13.2 (issue #884): a rotated token presented again is refused as a reuse whatever the store of its
-     * session answers. The person the reuse is announced for is read where the store of sessions keeps it in the
-     * clear, so a session that cannot be opened is not an outage met after the family was revoked.
+     * RFC 9700 §4.13.2
      */
     #[Test]
     public function aReuseIsRefusedAsSuchWhileItsSessionCannotBeOpened(): void
@@ -719,9 +695,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 9700 §4.13.2 (issue #884): the reuse is announced with the family it revoked and the person the family
-     * descends from, whatever the store of its session answers: a token of a revoked family is refused before any
-     * reuse is looked for, so this presentation is the only one that can tell it.
+     * RFC 9700 §4.13.2
      */
     #[Test]
     public function aReuseIsAnnouncedWithWhatWasRevokedWhileItsSessionCannotBeOpened(): void
@@ -743,8 +717,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: thirty days sliding; a refresh on the last second issues a successor for thirty
-     * more days.
+     * Architecture §4.6
      */
     #[Test]
     public function aRefreshOnTheLastSecondSlidesTheExpiry(): void
@@ -762,7 +735,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: thirty days sliding, the last instant excluded.
+     * Architecture §4.6
      */
     #[Test]
     public function itRefusesATokenPastItsSlidingExpiry(): void
@@ -780,7 +753,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: ninety days absolute; the family expired one day after this token was issued.
+     * Architecture §4.6
      */
     #[Test]
     public function itRefusesATokenWhoseFamilyExpired(): void
@@ -812,8 +785,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.9: a logout revokes the tokens of the session; one that outlived the revocation
-     * is refused rather than honoured.
+     * Architecture §4.9
      */
     #[Test]
     public function itRefusesATokenWhoseSessionHasEnded(): void
@@ -832,9 +804,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * Architecture §4.9, issue #741: a token of a session that has ended, which a refresh in flight when the session
-     * ended saved after the tokens of the session were revoked, is announced as it is refused, the end of the session
-     * dating the revocation that event asks for.
+     * Architecture §4.9
      */
     #[Test]
     public function aTokenWhoseSessionHasEndedIsAnnounced(): void
@@ -863,9 +833,6 @@ final class RefreshTokenGrantTest extends TestCase
         );
     }
 
-    /**
-     * An expired session is another matter: offline access is what a refresh token is for.
-     */
     #[Test]
     public function itHonoursATokenWhoseSessionExpired(): void
     {
@@ -880,8 +847,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2.2: a refresh token is bound to the resources of the whole grant, and the access token
-     * it yields is addressed to them when the request names none.
+     * RFC 8707 §2.2
      */
     #[Test]
     public function aRefreshAddressesTheAccessTokenToTheResourcesOfTheGrant(): void
@@ -897,8 +863,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2.2: a refresh may ask for a subset of the resources of the grant, as it may for its
-     * scopes.
+     * RFC 8707 §2.2
      */
     #[Test]
     public function aRefreshNarrowsTheResourcesOfTheGrant(): void
@@ -918,7 +883,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2.2: a refresh never widens what the grant carries.
+     * RFC 8707 §2.2
      */
     #[Test]
     public function itRefusesAResourceTheGrantDoesNotCarry(): void
@@ -935,8 +900,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: a refresh token is bound to the details of the whole grant, and the access token it
-     * yields carries them when the request asks for none.
+     * RFC 9396 §7
      */
     #[Test]
     public function aRefreshCarriesTheDetailsOfTheGrant(): void
@@ -953,8 +917,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: a refresh may ask for a subset of the details of the grant, as it may for its scopes,
-     * and its successor stays bound to them all.
+     * RFC 9396 §7
      */
     #[Test]
     public function aRefreshNarrowsTheDetailsOfTheGrant(): void
@@ -979,7 +942,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: a refresh never widens what the grant carries.
+     * RFC 9396 §7
      */
     #[Test]
     public function itRefusesADetailTheGrantDoesNotCarry(): void
@@ -1026,10 +989,6 @@ final class RefreshTokenGrantTest extends TestCase
         return $token;
     }
 
-    /**
-     * A refresh token of that session rotated by a refresh made on a worker other than the one that serves the next
-     * request: nothing that worker opened is open here.
-     */
     private function rotatedOnAnotherWorker(string $value, AuthenticationSession $session): RefreshToken
     {
         $token = $this->token($value, session: $session);
@@ -1039,19 +998,13 @@ final class RefreshTokenGrantTest extends TestCase
         return $token;
     }
 
-    /**
-     * A session of alice that reads as it should, the person it names left for the store to open: what a session
-     * a store opened holds of a person it did not read along with it.
-     */
     private function sessionOfAnUnopenedPerson(): AuthenticationSession
     {
         return Fixtures::session($this->rows->unopened($this->alice, ['id', 'tenant']), $this->clock->now()->modify('-1 hour'));
     }
 
     /**
-     * RFC 9449 §5: a refresh token bound to a key is refreshed by a request that proves that key. Such a
-     * token was issued to a public client, which has no credentials: the binding is the whole of what
-     * tells its holder from whoever took a copy.
+     * RFC 9449 §5
      */
     #[Test]
     public function aBoundTokenIsRefreshedByARequestThatProvesItsKey(): void
@@ -1099,7 +1052,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * @param string|list<string>|null $resource what the request asks its access token to be addressed to (RFC 8707 §2.2)
+     * @param string|list<string>|null $resource RFC 8707 §2.2
      */
     private function request(
         string $refreshToken = 'the-token',
@@ -1134,8 +1087,6 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * Two refreshes a minute apart from the token named, then a minute more.
-     *
      * @return array{IssuedRefreshToken, IssuedRefreshToken}
      */
     private function twoRotationsOf(string $value): array
@@ -1157,10 +1108,6 @@ final class RefreshTokenGrantTest extends TestCase
         return [$second, $third];
     }
 
-    /**
-     * What a grant of a browser flow yields, which is the only kind of authorization these grants produce
-     * and the only kind that carries what a user agreed to (RFC 9396 §2).
-     */
     private static function userAuthorization(IssuedTokens $issued): UserAuthorizationInterface
     {
         $authorization = $issued->authorization;

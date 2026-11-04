@@ -17,12 +17,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * What one application holds of the signed-in user (architecture §4.3, §5.2): the page behind each line of
- * the list of what they agreed to.
- *
- * The application is named by the consent of the user's own list, as a consent taken back is
- * (ConsentRevocationController): an application they agreed to nothing for has no page, and neither has
- * somebody else's.
+ * The application is found among the user's own consents: somebody else's has no page.
  */
 #[AsController]
 final readonly class AccountApplicationController implements ReachedOnTheSessionAloneInterface

@@ -13,8 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * D-9: the structure read strictly, direct children only, counted, the unexpected refused with the message the
- * caller gives.
+ * D-9
  */
 final class StructureTest extends TestCase
 {
@@ -144,7 +143,7 @@ final class StructureTest extends TestCase
     }
 
     /**
-     * D-9, Core I-12: the text of an element, read through Text::of(), a comment skipped.
+     * D-9, Core I-12
      */
     #[Test]
     public function itReadsTheTextOfAnElement(): void
@@ -160,7 +159,7 @@ final class StructureTest extends TestCase
     }
 
     /**
-     * D-9: an element inside a text is refused under the rule of the namespace, never with Core's MixedContent.
+     * D-9
      */
     #[Test]
     public function itRefusesAnElementInsideTheText(): void
@@ -177,7 +176,7 @@ final class StructureTest extends TestCase
     }
 
     /**
-     * D-1, D-9: direct children only; a grandchild of the name is not found.
+     * D-1, D-9
      */
     #[Test]
     public function itNeverSearchesDescendants(): void

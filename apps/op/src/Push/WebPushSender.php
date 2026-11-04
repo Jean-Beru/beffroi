@@ -28,51 +28,32 @@ use WebPush\VAPID\WebTokenProvider;
 use WebPush\WebPush;
 
 /**
- * Leaves one message with the push service of one browser (RFC 8030, RFC 8291, RFC 8292). The payload is
- * encrypted to the two keys that browser gave, so the push service carries a length and nothing else, and
- * the request is signed by the application server key that browser subscribed under, which is the only
- * one the push service will take for it (RFC 8292 §4.2).
+ * RFC 8030, RFC 8291, RFC 8292
  *
- * The key is looked up by the "kid" the subscription carries and not by what is active now: a rotation
- * moves what a new browser subscribes under and never what an old one is bound to (architecture §3.3). A
- * subscription whose key has retired is worth nothing, and is answered so rather than pushed to.
- *
- * What becomes of the message after the push service has it, this provider never learns: RFC 8030 §5 is
- * a store and forward, and a 201 says it was taken, not that it was shown.
+ * Signs with the key whose "kid" the subscription carries, never the active one: a rotation never moves what an
+ * existing subscription is bound to.
  */
 final readonly class WebPushSender
 {
     /**
-     * RFC 8030 §5.3: what a user is being asked to confirm now is not a message that may wait for the
-     * device to wake up on its own.
+     * RFC 8030 §5.3
      */
     private const string URGENCY = 'high';
 
     /**
-     * RFC 8291 §4: the one content encoding this provider encrypts with, and the one a browser is told
-     * to expect. "aesgcm" is the draft that came before it and is not offered.
+     * RFC 8291 §4
      */
     private const string CONTENT_ENCODING = 'aes128gcm';
 
     /**
-     * The length every notification of this provider is padded to before it is encrypted (RFC 8291 §4), so
-     * that what a push service carries is the same size whatever it says: the words are short and the shape
-     * is always the same three members, so their length would otherwise tell a push service how long a
-     * client's binding message is.
-     *
-     * A constant and not the library's recommendation, which pads to 3052 and leaves under a kilobyte of the
-     * 4096 octets RFC 8291 §4 allows: what a client wrote is text this provider did not choose, and a
-     * notification that grows into the ceiling is one the sender refuses outright rather than delivers
-     * shorter.
+     * RFC 8291 §4: one length for every notification, so that its size does not tell a push service how long a
+     * binding message is. Below the library's 3052, which leaves under a kilobyte of the 4096 octets allowed to
+     * text a client wrote.
      */
     private const int PADDED_TO = 1024;
 
     /**
-     * @param string $subject the "sub" of the signed token, a "mailto:" or "https:" URI a push service can
-     *                        reach this deployment at when something is wrong with what it sends
-     *                        (RFC 8292 §2.1); not empty, which the tree refuses written and which a
-     *                        variable of the environment can only be refused for here
-     * @param Timeout $timeout what a push service is given before a worker is given back
+     * @param string $subject a "mailto:" or "https:" URI (RFC 8292 §2.1)
      *
      * @throws InvalidConfigurationException when the subject is empty
      */
@@ -87,9 +68,6 @@ final readonly class WebPushSender
     }
 
     /**
-     * The rule of the subject, which the role of web push holds a subject of the environment to as well
-     * (WebPushSection::role()), the container building the role before anything sends.
-     *
      * @throws InvalidConfigurationException when the subject is empty
      */
     public static function assertSubject(string $subject): void

@@ -13,20 +13,15 @@ use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use function sprintf;
 
-/**
- * A verifier that knows a few tokens by heart: the ones it was given verify, with the payload it was
- * given for them, in the tenant it was given them for; every other token is invalid. Never leaves the
- * test suite.
- */
 final class FakeJwsVerifier implements JwsVerifierInterface
 {
     /**
-     * @var array<string, array{Tenant, string, array<string, string>}> compact JWS => tenant, payload and the header members beyond "alg" and "kid"
+     * @var array<string, array{Tenant, string, array<string, string>}> compact JWS => tenant, payload, header
      */
     private array $known = [];
 
     /**
-     * @param array<string, string> $header the protected header members beyond "alg" and "kid", "typ" for one
+     * @param array<string, string> $header the members beyond "alg" and "kid"
      */
     public function knows(Tenant $tenant, string $compactJws, string $payload, array $header = []): void
     {

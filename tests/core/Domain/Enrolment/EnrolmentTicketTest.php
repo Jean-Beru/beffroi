@@ -14,9 +14,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #613: what lets one person reach one enrolment once, and what it answers of itself.
- */
 final class EnrolmentTicketTest extends TestCase
 {
     private User $alice;
@@ -65,10 +62,6 @@ final class EnrolmentTicketTest extends TestCase
         static::assertFalse($ticket->opensAnEnrolment($this->now));
     }
 
-    /**
-     * Whoever spends one has just written a credential: doing it twice would be two credentials from one
-     * ticket, so the second is refused rather than ignored.
-     */
     #[Test]
     public function aTicketIsNotSpentTwice(): void
     {
@@ -96,10 +89,6 @@ final class EnrolmentTicketTest extends TestCase
         static::assertTrue($ticket->opensAnEnrolment($this->now->modify('+71 hours 59 minutes')));
     }
 
-    /**
-     * A door is not opened into an account that cannot sign in: the state of the person is read at every
-     * request and not at the one that issued the ticket.
-     */
     #[Test]
     public function aTicketOfADisabledPersonOpensNothing(): void
     {

@@ -14,9 +14,7 @@ use PHPUnit\Framework\Assert;
 use function strtr;
 
 /**
- * Whether a certificate the metadata of a tenant publish is around the public half of a SAML key of the tenant
- * (beffroi/saml, spec/saml.md S-3): the RSA modulus of the one, read by OpenSSL, and the "n" of the public JWK of the
- * other, as bytes.
+ * beffroi/saml, spec/saml.md S-3
  */
 final class CertificateModulus
 {

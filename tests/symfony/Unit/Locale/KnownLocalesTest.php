@@ -15,8 +15,7 @@ use function asort;
 use const SORT_STRING;
 
 /**
- * Issue #479: the languages a person may say they read, which are the locales ICU has data for. Not the
- * ones this deployment serves: "locale" is a claim of OIDC Core §5.1 and not a setting of this provider.
+ * OIDC Core §5.1
  */
 final class KnownLocalesTest extends TestCase
 {
@@ -39,10 +38,6 @@ final class KnownLocalesTest extends TestCase
         yield 'brazilian portuguese' => ['pt-BR', 'português (Brasil)'];
     }
 
-    /**
-     * The shape the claim is defined in and the shape a browser sends, where ICU writes a tag with
-     * underscores.
-     */
     #[Test]
     public function aTagIsCanonicalBcp47(): void
     {
@@ -55,9 +50,6 @@ final class KnownLocalesTest extends TestCase
         }
     }
 
-    /**
-     * Several hundred, which is what makes the field a picker rather than a list.
-     */
     #[Test]
     public function theLanguagesAreTheOnesIcuHasDataFor(): void
     {
@@ -65,10 +57,6 @@ final class KnownLocalesTest extends TestCase
         static::assertGreaterThan(400, count(new KnownLocales()->all));
     }
 
-    /**
-     * Sorted by the name a person reads, so a list reads in the alphabet of whoever is looking rather
-     * than in the order ICU keeps its data.
-     */
     #[Test]
     public function theLanguagesAreSortedByTheNameAPersonReads(): void
     {

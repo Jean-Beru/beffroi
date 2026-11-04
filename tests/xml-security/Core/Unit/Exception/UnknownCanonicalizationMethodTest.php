@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.7: a canonicalization URI that is none of the four (section 5.4). A consumer catches the base class when it does not care which rule fired.
+ * Section 5.7, section 5.4
  */
 final class UnknownCanonicalizationMethodTest extends TestCase
 {

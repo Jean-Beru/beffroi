@@ -15,7 +15,7 @@ use function sodium_crypto_sign_publickey;
 use function sodium_crypto_sign_secretkey;
 
 /**
- * An Ed25519 key signing in EdDSA (RFC 9053 §2.2, COSE -8), what a hardware key creates when it is asked first.
+ * RFC 9053 §2.2
  */
 final readonly class Ed25519SoftwareKey implements SoftwareCredentialKey
 {
@@ -33,7 +33,7 @@ final readonly class Ed25519SoftwareKey implements SoftwareCredentialKey
 
     public function cosePublicKey(): string
     {
-        // RFC 9053 §7.2: kty OKP (1: 1), alg EdDSA (3: -8), crv Ed25519 (-1: 6), x (-2)
+        // RFC 9053 §7.2: kty OKP (1: 1), alg EdDSA (3: -8), crv Ed25519 (-1: 6), x (-2).
         return (string) MapObject::create([
             MapItem::create(UnsignedIntegerObject::create(1), UnsignedIntegerObject::create(1)),
             MapItem::create(UnsignedIntegerObject::create(3), NegativeIntegerObject::create($this->algorithm())),

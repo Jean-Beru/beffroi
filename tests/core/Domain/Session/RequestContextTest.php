@@ -102,9 +102,6 @@ final class RequestContextTest extends TestCase
         yield 'longer than the bound' => [str_repeat('é', RequestContext::USER_AGENT_MAX_LENGTH + 100), RequestContext::USER_AGENT_MAX_LENGTH];
     }
 
-    /**
-     * Enrichment happens later and elsewhere: it produces a new context and leaves the original untouched.
-     */
     #[Test]
     public function locatingProducesANewContextAndLeavesTheOriginalUntouched(): void
     {
@@ -155,9 +152,6 @@ final class RequestContextTest extends TestCase
     }
 
     /**
-     * The document one column holds a provenance as: the moment to the second, the address, the user
-     * agent, and the two enrichments nested in it rather than held beside it.
-     *
      * @param array<string, mixed> $document
      */
     #[Test]
@@ -236,9 +230,6 @@ final class RequestContextTest extends TestCase
         ];
     }
 
-    /**
-     * The moment is written to the second, which is the precision the column it replaced held.
-     */
     #[Test]
     public function theMomentIsWrittenToTheSecond(): void
     {

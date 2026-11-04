@@ -17,14 +17,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.1 step 2, M-4, M-5, M-13: the structure of the envelope of a response, read before any key is touched.
+ * Section 6.1 step 2, M-4, M-5, M-13
  */
 final class EnvelopeTest extends TestCase
 {
     use AssertionFixtures;
 
     /**
-     * M-4, section 6.1 step 2: a status of Success and its one assertion, the direct child of the element read.
+     * M-4, section 6.1 step 2
      */
     #[Test]
     public function itKeepsTheStatusAndTheOneAssertion(): void
@@ -43,7 +43,7 @@ final class EnvelopeTest extends TestCase
     }
 
     /**
-     * M-13, SAML Profiles §4.1.4.2: a failure holds no assertion.
+     * M-13, SAML Profiles §4.1.4.2
      */
     #[Test]
     public function itKeepsTheStatusOfAFailureWithoutAssertion(): void
@@ -59,8 +59,7 @@ final class EnvelopeTest extends TestCase
     }
 
     /**
-     * §9.2 rows 5, 6, 22 and 25, M-4, M-5, M-13: a child out of the order of the schema, an Issuer repeated, the
-     * assertions the status forbids or more than one.
+     * §9.2 rows 5, 6, 22 and 25, M-4, M-5, M-13
      */
     #[Test]
     #[DataProvider('provideMalformedEnvelopes')]
@@ -105,8 +104,7 @@ final class EnvelopeTest extends TestCase
     }
 
     /**
-     * §9.3 row 23, M-4, section 6.1 step 2, section 6.7: the one saml:EncryptedAssertion of a response of Success, kept
-     * as its assertion and said to be encrypted, nothing decrypted yet.
+     * §9.3 row 23, M-4, section 6.1 step 2, section 6.7
      */
     #[Test]
     public function itKeepsAnEncryptedAssertion(): void
@@ -125,7 +123,7 @@ final class EnvelopeTest extends TestCase
     }
 
     /**
-     * M-4, section 6.1 step 2: an assertion in clear is not said to be encrypted.
+     * M-4, section 6.1 step 2
      */
     #[Test]
     public function itSaysAnAssertionInClearIsNotEncrypted(): void
@@ -141,9 +139,7 @@ final class EnvelopeTest extends TestCase
     }
 
     /**
-     * §9.2 rows 42 and 43, M-4, M-5, M-8, M-13, section 6.7, SAML Profiles §4.1.4.2 as corrected by E17: a
-     * saml:EncryptedAssertion holding no xenc:EncryptedData or two, two of them, one next to a saml:Assertion or in a
-     * failure, and a response holding one without its own Issuer, refused before any key is touched.
+     * §9.2 rows 42 and 43, M-4, M-5, M-8, M-13, section 6.7, SAML Profiles §4.1.4.2 as corrected by E17
      */
     #[Test]
     #[DataProvider('provideMalformedEncryptedAssertions')]
@@ -193,8 +189,7 @@ final class EnvelopeTest extends TestCase
     }
 
     /**
-     * §9.2 row 44, section 6.7, enc.md section 12: an xenc:EncryptedKey next to the xenc:EncryptedData, the sibling
-     * form, refused by name before any key is touched.
+     * §9.2 row 44, section 6.7, enc.md section 12
      */
     #[Test]
     public function itRefusesAnEncryptedKeyNextToTheEncryptedData(): void

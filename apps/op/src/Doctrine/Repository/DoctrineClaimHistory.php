@@ -23,9 +23,6 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * What a claim of a person used to say, in beffroi_claim_change (issue #482): written in the unit of work
- * that changed the record, read by the page of that record and by the archive, forgotten in bounded runs.
- *
  * @extends DoctrineRepository<ClaimChange>
  */
 final readonly class DoctrineClaimHistory extends DoctrineRepository implements
@@ -33,11 +30,6 @@ final readonly class DoctrineClaimHistory extends DoctrineRepository implements
     ChangesOfAPersonInterface,
     ClaimHistoryInterface
 {
-    /**
-     * How many rows one run of the retention forgets. The bound the journal has, for the same reason: a
-     * tick that deleted everything past the duration in one statement would hold the table of a
-     * deployment that kept years of it, where the next tick takes what this one left.
-     */
     public const int FORGOTTEN_AT_ONCE = 1000;
 
     public function __construct(

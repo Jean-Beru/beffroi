@@ -10,31 +10,17 @@ use Beffroi\Oidc\Application\Authorization\RequestObjectValidator;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
-/**
- * What the provider allows of a request object a client signs (RFC 9101 §4), and what one read of a "request_uri" may cost: a browser is waiting on it.
- */
 final readonly class RequestObjectsSection extends ConfigurationSection
 {
     /**
-     * RFC 9101 §4: how long a request object may stand, from its "nbf". One hour is what FAPI 2.0
-     * Message Signing allows; an object is a request made now, not an authorization kept for a day.
+     * One hour is what FAPI 2.0 Message Signing allows.
      */
     public const int DEFAULT_REQUEST_OBJECT_MAX_LIFETIME = 3600;
 
-    /**
-     * What is allowed of the clock of a client, both ways.
-     */
     public const int DEFAULT_REQUEST_OBJECT_LEEWAY = 30;
 
-    /**
-     * Seconds one read of a "request_uri" is given, connection included: the browser of a user is
-     * waiting on it.
-     */
     public const float DEFAULT_REQUEST_OBJECT_TIMEOUT = 3.0;
 
-    /**
-     * Bytes a "request_uri" may answer; a request object carries the parameters of one request.
-     */
     public const int DEFAULT_REQUEST_OBJECT_MAX_SIZE = 65536;
 
     public function name(): string

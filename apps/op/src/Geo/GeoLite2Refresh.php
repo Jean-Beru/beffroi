@@ -28,45 +28,14 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 use Throwable;
 
 /**
- * The databases of addresses the enrichment of a provenance reads, brought up to date (architecture §3.5,
- * issue #473): the archive of each edition downloaded, the database taken out of it, opened and refused
- * unless it is an edition this provider reads, then stored where the lane reads it.
- *
- * **What authenticates the source is TLS and the licence key**, and this says so rather than implying
- * more: MaxMind signs nothing, so there is no counterpart here to the root the FIDO metadata blob chains
- * to (`beffroi:webauthn:mds-refresh`). What is checked is the file itself, with the very reader the
- * enrichment will open it with: a database that cannot be opened, or that declares an edition the
- * enrichment does not read, is refused and nothing of it is kept.
- *
- * **It asks before it downloads.** The ETag of what is stored goes out as `If-None-Match`, and the storage
- * MaxMind redirects its downloads to answers it, so a run that finds the version it keeps costs a redirect
- * and an answer that nothing changed, and no byte of the database. MaxMind publishes the city edition on
- * Tuesdays and Fridays and the ASN edition every weekday ("Download and update databases",
- * https://support.maxmind.com/knowledge-base/articles/download-and-update-maxmind-databases).
- *
- * **No archive and no database is held whole in memory** (issue #904): what a source serves is written to
- * a file as it arrives, the database is unpacked from that file into another, the reader opens that one
- * and the storage copies it. The city edition is fifty megabytes unpacked, and its archive decompressed
- * whole goes past the memory PHP gives a worker by default.
- *
- * **No address of this provider leaves it.** What leaves is a request for a file, carrying the licence key
- * of the deployment and nothing of anybody who signed in; what the lane later asks of that file, it asks
- * locally (`GeoLite2GeoLocator`).
+ * MaxMind signs nothing: TLS and the licence key authenticate the source, and the file is checked by opening it.
  */
 final readonly class GeoLite2Refresh
 {
-    /**
-     * Where MaxMind is asked for its databases (https://dev.maxmind.com/geoip/updating-databases): one
-     * archive per edition, named by a query string, under the licence key of an account.
-     */
     public const string MAXMIND_DOWNLOAD = 'https://download.maxmind.com/app/geoip_download';
 
     /**
-     * Where MaxMind keeps the archives it serves, and the one origin an outbound request of this provider
-     * follows a redirect to (decision 0032): MaxMind answers every download with a redirect to a presigned
-     * URL of R2, the storage of Cloudflare, "using HTTPS on the following hostname"
-     * (https://dev.maxmind.com/geoip/updating-databases). The redirect is followed once, from a download of
-     * MaxMind, to a URL that starts with this.
+     * MaxMind redirects every download here, the one origin a redirect is followed to (decision 0032).
      */
     public const string MAXMIND_STORAGE = 'https://mm-prod-geoip-databases.a2649acb697e2c09b632799562c076f2.r2.cloudflarestorage.com/';
 
@@ -78,10 +47,6 @@ final readonly class GeoLite2Refresh
     }
 
     /**
-     * Every edition the enrichment reads, from MaxMind under the licence key of the deployment, or the
-     * sources given instead; nothing at all when there is neither, which is a deployment that enriches no
-     * provenance and is told so by whoever asked.
-     *
      * @param list<string> $sources an https URL or a file, one archive or one database each
      *
      * @return list<GeoLite2Refreshment>
@@ -119,15 +84,12 @@ final readonly class GeoLite2Refresh
         } catch (Throwable $exception) {
             return GeoLite2Refreshment::refused($named, self::withoutQueries($exception->getMessage()));
         } finally {
-            // What was downloaded and what was unpacked are this run's, whatever came of them.
             @unlink($downloaded);
             @unlink($database);
         }
     }
 
     /**
-     * What the database says of itself, read by the reader the enrichment uses.
-     *
      * @return array{string, DateTimeImmutable, int}
      *
      * @throws InvalidArgumentException when it cannot be opened, or is not an edition this provider reads
@@ -152,20 +114,14 @@ final readonly class GeoLite2Refresh
     }
 
     /**
-     * The archive as a file of this host and the version it was served with, or nothing when the source
-     * answers that what is stored is what it serves: a file is read where it is, and what an https source
-     * serves is written to the file given as it arrives. No outbound request follows a redirect (decision
-     * 0006) but one, from a download of MaxMind to its storage, once (decision 0032).
-     *
      * @return array{string, ?string}|null
      *
-     * @throws InvalidArgumentException when the source cannot be read
+     * @throws InvalidArgumentException
      */
     private function fetch(string $source, ?string $version, string $into): ?array
     {
         if (! str_starts_with($source, 'https://')) {
-            // A file, and nothing a stream wrapper would go and fetch: what reaches the network reaches
-            // it through the client above, where a redirect is not followed (decision 0006).
+            // A file only: a stream wrapper would reach the network without the client's redirect refusal.
             if (! is_file($source)) {
                 throw new InvalidArgumentException('it is neither an https URL nor a file of this host');
             }
@@ -200,10 +156,6 @@ final readonly class GeoLite2Refresh
         }
     }
 
-    /**
-     * One GET, the version of what is stored going out with it, and no redirect followed by the client:
-     * the one this provider follows, it follows itself.
-     */
     private function requested(string $url, ?string $version): ResponseInterface
     {
         return $this->http->request('GET', $url, [
@@ -218,10 +170,7 @@ final readonly class GeoLite2Refresh
     }
 
     /**
-     * Where a redirect of that source leads, when it is the one redirect an outbound request follows
-     * (decision 0032): a download of MaxMind, to its storage, over https.
-     *
-     * @throws InvalidArgumentException on any other redirect, naming where it leads
+     * @throws InvalidArgumentException
      */
     private static function followed(string $source, string $location): string
     {
@@ -243,9 +192,7 @@ final readonly class GeoLite2Refresh
     }
 
     /**
-     * What the response serves, written to that file as it arrives.
-     *
-     * @throws InvalidArgumentException when the file cannot be written
+     * @throws InvalidArgumentException
      */
     private function written(ResponseInterface $response, string $into): void
     {
@@ -278,28 +225,19 @@ final readonly class GeoLite2Refresh
     }
 
     /**
-     * The reason of a refusal with the query of every URL it names withheld, "?..." in its place: the
-     * licence key of a download of MaxMind and the signature of a presigned URL travel there, a refusal is
-     * written to a console and to a log, and the reason a client of HTTP gives names the URL it could not
-     * read whole. What follows a URL, a parenthesis, a comma or a period, stays.
+     * The query of a URL carries the licence key or a presigned signature, and a refusal is logged.
      */
     private static function withoutQueries(string $reason): string
     {
         return preg_replace('~(https?://[^\s"\'<>?#]*)([?#])[^\s"\'<>]*?(?=[.,;:)\]]*(?:[\s"\'<>]|$))~', '$1$2...', $reason) ?? $reason;
     }
 
-    /**
-     * A file of the temporary directory of this host for one run, named so that two runs never meet.
-     */
     private static function temporary(): string
     {
         return sys_get_temp_dir() . '/beffroi-geoip-' . bin2hex(random_bytes(8));
     }
 
     /**
-     * The archive of every edition the enrichment reads, at MaxMind, under the licence key of the
-     * deployment.
-     *
      * @return list<string>
      */
     private function maxmind(): array
@@ -319,10 +257,6 @@ final readonly class GeoLite2Refresh
         return $sources;
     }
 
-    /**
-     * Which edition a source serves, when the source says so: what the ETag of a stored database may be
-     * compared with is the version of that same edition, so a source that names none is downloaded.
-     */
     private static function editionOf(string $source): ?string
     {
         foreach (GeoLite2Databases::EDITIONS as $edition) {
@@ -335,8 +269,7 @@ final readonly class GeoLite2Refresh
     }
 
     /**
-     * A source as a line of output may name it, which is a URL without the licence key of the deployment:
-     * what a console writes is read again in a log, in a terminal history and over a shoulder.
+     * The source without the licence key: what a console writes ends up in logs and terminal histories.
      */
     private static function named(string $source): string
     {

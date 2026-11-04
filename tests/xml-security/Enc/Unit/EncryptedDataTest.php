@@ -33,13 +33,12 @@ use function strlen;
 use Throwable;
 
 /**
- * Section 5.3, E-5: the xenc:EncryptedData element read strictly, nothing decrypted; every shape of section 9.2
- * the model refuses, with its rule named (E-12).
+ * Section 5.3, section 9.2, E-5, E-12
  */
 final class EncryptedDataTest extends TestCase
 {
     /**
-     * Section 5.3, §9.1 row 1: the encrypted assertion of the vector, every field where the section says it is.
+     * Section 5.3, §9.1 row 1
      */
     #[Test]
     public function itReadsTheEncryptedDataOfTheVector(): void
@@ -61,8 +60,7 @@ final class EncryptedDataTest extends TestCase
     }
 
     /**
-     * §9.1 rows 1 to 9, E-1: every vector reads, with its content algorithm, AES-GCM or AES-CBC, and the hash of its
-     * key transport.
+     * §9.1 rows 1 to 9, E-1
      */
     #[Test]
     #[DataProvider('provideVectors')]
@@ -135,8 +133,7 @@ final class EncryptedDataTest extends TestCase
     }
 
     /**
-     * §9.2 row 44, E-2: under AES-CBC, a cipher value that is not an IV and whole blocks, at least one, is refused
-     * before anything is decrypted.
+     * §9.2 row 44, E-2
      */
     #[Test]
     #[DataProvider('provideCbcCipherValuesThatAreNotWholeBlocks')]
@@ -164,7 +161,7 @@ final class EncryptedDataTest extends TestCase
     }
 
     /**
-     * §9.2 row 44, E-2: under AES-CBC, an IV and one block, the shortest cipher value, is read.
+     * §9.2 row 44, E-2
      */
     #[Test]
     public function itReadsACbcCipherValueOfAnIvAndOneBlock(): void
@@ -187,8 +184,7 @@ final class EncryptedDataTest extends TestCase
     }
 
     /**
-     * §9.2 rows 1 to 15, 17 and 18, E-1, E-2, E-5, E-7, E-13: every shape the model refuses, with the rule named
-     * and never the input (E-12).
+     * §9.2 rows 1 to 15, 17 and 18, E-1, E-2, E-5, E-7, E-12, E-13
      *
      * @param class-string<Throwable> $exception
      */
@@ -352,7 +348,7 @@ final class EncryptedDataTest extends TestCase
     }
 
     /**
-     * §9.3 row 17, E-12: every refusal of the corpus names its rule in parentheses and carries no URI.
+     * §9.3 row 17, E-12
      */
     #[Test]
     public function itsRefusalsNameTheRuleAndNeverTheInput(): void
@@ -366,8 +362,7 @@ final class EncryptedDataTest extends TestCase
     }
 
     /**
-     * §9.2 row 16, E-13: a CipherValue text over maxCipherValueBytes, in a document the consumer's limits let
-     * through, refused before it is decoded.
+     * §9.2 row 16, E-13
      */
     #[Test]
     public function itRefusesACipherValueTextOverTheBound(): void
@@ -391,7 +386,7 @@ final class EncryptedDataTest extends TestCase
     }
 
     /**
-     * E-5: the element is not an EncryptedData, an EncryptedAssertion here.
+     * E-5
      */
     #[Test]
     public function itRefusesAnElementThatIsNotAnEncryptedData(): void
@@ -409,7 +404,7 @@ final class EncryptedDataTest extends TestCase
     }
 
     /**
-     * §9.2 row 34: a document parsed outside the loader.
+     * §9.2 row 34
      */
     #[Test]
     public function itRefusesAForeignElement(): void

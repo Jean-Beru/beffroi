@@ -22,13 +22,12 @@ use function str_repeat;
 use function strlen;
 
 /**
- * Section 5.2, E-11: the peer's encryption certificate, read three ways, RSA of at least 2048 bits, wrapping a
- * session key the matching private key unwraps.
+ * Section 5.2, E-11
  */
 final class PeerKeyTest extends TestCase
 {
     /**
-     * Section 5.2: the certificate's PEM wraps a session key the test key unwraps.
+     * Section 5.2
      */
     #[Test]
     public function itReadsACertificatePemAndWrapsWhatThePrivateKeyUnwraps(): void
@@ -46,7 +45,7 @@ final class PeerKeyTest extends TestCase
     }
 
     /**
-     * §9.3 row 16: the content of an X509Certificate element, its line breaks included.
+     * §9.3 row 16
      */
     #[Test]
     public function itReadsACertificateBase64WithLineBreaks(): void
@@ -68,7 +67,7 @@ final class PeerKeyTest extends TestCase
     }
 
     /**
-     * Section 5.2: a PEM public key, the one of the test certificate.
+     * Section 5.2
      */
     #[Test]
     public function itReadsAPublicKeyPem(): void
@@ -87,8 +86,7 @@ final class PeerKeyTest extends TestCase
     }
 
     /**
-     * Section 13: under SHA-256 where the build takes a digest, the private key unwraps under SHA-256 and not under
-     * SHA-1; AlgorithmUnavailable on 8.4.
+     * Section 13
      */
     #[Test]
     public function itWrapsUnderSha256WhereTheBuildTakesADigest(): void
@@ -110,7 +108,7 @@ final class PeerKeyTest extends TestCase
     }
 
     /**
-     * E-11: what is not base64 is not a certificate.
+     * E-11
      */
     #[Test]
     #[TestWith(['not base64 at all!'], 'characters outside the alphabet')]
@@ -127,7 +125,7 @@ final class PeerKeyTest extends TestCase
     }
 
     /**
-     * E-11: base64 that is no certificate, and a PEM that holds no public key.
+     * E-11
      */
     #[Test]
     public function itRefusesBase64ThatIsNoCertificate(): void
@@ -141,7 +139,7 @@ final class PeerKeyTest extends TestCase
     }
 
     /**
-     * E-11: one block of type CERTIFICATE whose bytes openssl cannot read as a certificate.
+     * E-11
      */
     #[Test]
     public function itRefusesACertificateBlockAroundGarbage(): void
@@ -155,8 +153,7 @@ final class PeerKeyTest extends TestCase
     }
 
     /**
-     * §9.2 row 41, E-11: what is not exactly one block of type CERTIFICATE never reaches openssl, a path to a file
-     * that holds one first.
+     * §9.2 row 41, E-11
      */
     #[Test]
     #[DataProvider('provideWhatIsNotOneCertificateBlock')]
@@ -187,7 +184,7 @@ final class PeerKeyTest extends TestCase
     }
 
     /**
-     * §9.2 row 41, E-11: what is not exactly one block of type PUBLIC KEY never reaches openssl.
+     * §9.2 row 41, E-11
      */
     #[Test]
     #[DataProvider('provideWhatIsNotOnePublicKeyBlock')]
@@ -214,7 +211,7 @@ final class PeerKeyTest extends TestCase
     }
 
     /**
-     * E-12: the session key given to wrap() stays out of the trace of its failure, a key too long for OAEP.
+     * E-12
      */
     #[Test]
     public function itKeepsTheSessionKeyOutOfTheTrace(): void
@@ -236,7 +233,7 @@ final class PeerKeyTest extends TestCase
     }
 
     /**
-     * §9.2 row 32, E-11: a certificate of 1024 bits, then an EC one.
+     * §9.2 row 32, E-11
      */
     #[Test]
     #[TestWith(['keys/weak-rsa-1024-certificate.pem'], 'RSA-1024')]
@@ -255,7 +252,7 @@ final class PeerKeyTest extends TestCase
     }
 
     /**
-     * E-12: the refusal carries nothing of the PEM.
+     * E-12
      */
     #[Test]
     public function itsRefusalCarriesNothingOfThePem(): void

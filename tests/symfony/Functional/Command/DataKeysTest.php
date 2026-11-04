@@ -32,13 +32,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * What an operator holds the data keys of a tenant with (decision 0018): one command that reads them, one
- * that moves them to another KMS, and one that erases them, which is the only thing that erases a data
- * key.
- *
- * The tenant is the one this kernel is configured for, there being one. What a second tenant does not see
- * of the first is what the scope says, the slug being its prefix, and the unit test of the encrypter is
- * what plays two of them.
+ * Decision 0018
  */
 final class DataKeysTest extends ConsoleTestCase
 {
@@ -61,10 +55,6 @@ final class DataKeysTest extends ConsoleTestCase
         static::assertStringContainsString('test', $display);
     }
 
-    /**
-     * A data key is minted at the first write of its family, so a tenant that has sealed nothing holds
-     * none, which is not an error: what it is told is which families there are to hold one for.
-     */
     #[Test]
     public function aTenantThatHasSealedNothingIsToldWhichFamiliesThereAre(): void
     {
@@ -80,10 +70,6 @@ final class DataKeysTest extends ConsoleTestCase
         }
     }
 
-    /**
-     * The listing never opens a key, and it never shows its material: what the store holds is wrapped, and
-     * a reading of this kind has no business unwrapping it.
-     */
     #[Test]
     public function theListingShowsNoKeyMaterial(): void
     {
@@ -131,11 +117,6 @@ final class DataKeysTest extends ConsoleTestCase
         static::assertNotSame([], self::rows());
     }
 
-    /**
-     * The fifth success criterion of the spike, as far as a test of one kernel reaches: after the
-     * destruction the rows are still there and nothing opens them. That it reaches one tenant and not
-     * another is played against the stack (#410).
-     */
     #[Test]
     public function theDestructionErasesTheKeysAndLeavesTheRowsUnreadable(): void
     {
@@ -152,9 +133,7 @@ final class DataKeysTest extends ConsoleTestCase
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode());
         static::assertStringContainsString('erased', self::flattened($tester));
-        // the destruction is itself an act, and the provenance of an act is sealed (issue #454), so the
-        // journal of this erasure mints one key of its own; what it does not do is bring a sealed value
-        // back, which the read below is the proof of
+        // The erasure is itself an act, and its sealed provenance mints the one journal key left.
         static::assertSame(
             [
                 [
@@ -204,10 +183,6 @@ final class DataKeysTest extends ConsoleTestCase
         static::assertStringContainsString('--to', self::flattened($tester));
     }
 
-    /**
-     * A tenant that holds nothing is told so rather than handed a run that moves nothing: the command of
-     * the component would answer "0 data key(s) would move", which says less.
-     */
     #[Test]
     public function theRewrapOfATenantThatHoldsNothingSaysSo(): void
     {
@@ -241,10 +216,6 @@ final class DataKeysTest extends ConsoleTestCase
         static::assertNull(self::recorded(TenantDataKeysRewrapped::class));
     }
 
-    /**
-     * The keys of the tenant wrapped by the other client, and every sealed value read back afterwards: a
-     * rewrap changes how a key is protected and not the key, so nothing of what it sealed is rewritten.
-     */
     #[Test]
     public function theRewrapMovesTheKeysAndWhatTheySealedStillReads(): void
     {
@@ -259,9 +230,7 @@ final class DataKeysTest extends ConsoleTestCase
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode());
         foreach (self::rows() as $row) {
-            // the rewrap is itself an act, and the provenance of an act is sealed (issue #454), so the
-            // journal of this run mints one key under the client the configuration names, after the run
-            // moved what there was: everything is on the other client except the scope of the journal
+            // The rewrap's own journal key is minted after the move, under the client the configuration names.
             static::assertSame($row['scope'] === self::tenant()->slug . '.journal' ? 'test' : 'second', $row['client']);
         }
         self::reload();
@@ -289,11 +258,6 @@ final class DataKeysTest extends ConsoleTestCase
         static::assertGreaterThan(0, $event->keys);
     }
 
-    /**
-     * A run from the client the keys have left lists what has been written since and nothing more, which
-     * is what says the previous run moved them all. What has been written since is one key: the journal of
-     * that run itself, whose provenance is sealed under the client the configuration names (issue #454).
-     */
     #[Test]
     public function aSecondDryRunFromTheOldClientListsOnlyWhatWasWrittenSince(): void
     {
@@ -319,15 +283,6 @@ final class DataKeysTest extends ConsoleTestCase
         ), 'scope'));
     }
 
-    /**
-     * The promise the bridge makes, and the one "it still reads" does not prove: a rewrap changes how a
-     * data key is wrapped and never the key, so every sealed column keeps the exact bytes it had. A rewrap
-     * that had rewritten a payload would have had to read one, which is the round trip a store exists to
-     * spare.
-     *
-     * Compared column by column, over the columns the classification declares sealed rather than over a
-     * list of its own, so a column sealed later is compared without this test being touched.
-     */
     #[Test]
     public function everySealedColumnIsByteIdenticalBeforeAndAfterTheRewrap(): void
     {
@@ -346,16 +301,6 @@ final class DataKeysTest extends ConsoleTestCase
         static::assertSame($before, self::sealedColumns(), 'a rewrap that moved a payload would be a rewrap that read one.');
     }
 
-    /**
-     * The fourth success criterion of the spike: destroying the data keys of a tenant makes what they
-     * sealed unreadable. The row stays untouched, what is gone is the means of opening it, so the read is
-     * refused rather than answered with something.
-     *
-     * The tenant here is the configured one, which is the only one a unit of work can read through: an
-     * encrypter composes its scope from the ambient tenant, so a row of another tenant read while this one
-     * is ambient is not a row this provider ever tries to open. What reaches one tenant and not the other
-     * is the test below.
-     */
     #[Test]
     public function aRowWhoseDataKeyWasDestroyedNoLongerOpens(): void
     {
@@ -384,10 +329,6 @@ final class DataKeysTest extends ConsoleTestCase
         static::assertStringContainsString('was not found in the store', self::reasonOf($thrown));
     }
 
-    /**
-     * And nothing else: a destruction that took both tenants down is the failure this criterion exists to
-     * catch, so the tenant that was left alone is read in a test of its own.
-     */
     #[Test]
     public function aRowOfTheOtherTenantStillOpens(): void
     {
@@ -406,11 +347,6 @@ final class DataKeysTest extends ConsoleTestCase
     }
 
     /**
-     * What every sealed column of the user table holds, as the database holds it.
-     *
-     * A column the fixture left empty is left out, a null having no bytes to compare, and the count of what
-     * is compared is asserted where the comparison is.
-     *
      * @return array<string, string>
      */
     private static function sealedColumns(): array
@@ -450,10 +386,6 @@ final class DataKeysTest extends ConsoleTestCase
         self::reload();
     }
 
-    /**
-     * The message of a failure and of whatever it was wrapped in, a Doctrine type reporting the conversion
-     * and carrying the cause under it.
-     */
     private static function reasonOf(Throwable $thrown): string
     {
         $reason = $thrown->getMessage();
@@ -466,10 +398,6 @@ final class DataKeysTest extends ConsoleTestCase
         return $reason;
     }
 
-    /**
-     * A user of another tenant with the same sealed columns written, so that what is compared between the
-     * two tenants is the same thing.
-     */
     private static function sealSomethingFor(Tenant $tenant, string $username): User
     {
         $user = User::create(
@@ -487,10 +415,6 @@ final class DataKeysTest extends ConsoleTestCase
         return $user;
     }
 
-    /**
-     * A user with a sealed column written, which is what mints the data key of its family and the index
-     * key of the tenant.
-     */
     private static function sealSomething(): User
     {
         $user = User::create(

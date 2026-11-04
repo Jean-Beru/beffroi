@@ -10,13 +10,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * model.md section 5.2, M-11: the replay port in memory, the double of the tests, keyed by the pair of the issuer and
- * the ID.
+ * model.md section 5.2, M-11
  */
 final class InMemoryReplayGuardTest extends TestCase
 {
     /**
-     * model.md section 5.2: a pair not seen yet is new, and remembered.
+     * model.md section 5.2
      */
     #[Test]
     public function itRemembersAPairItHasNotSeen(): void
@@ -36,7 +35,7 @@ final class InMemoryReplayGuardTest extends TestCase
     }
 
     /**
-     * M-11: the same pair a second time is not new.
+     * M-11
      */
     #[Test]
     public function itAnswersFalseForAPairItHasSeen(): void
@@ -57,7 +56,7 @@ final class InMemoryReplayGuardTest extends TestCase
     }
 
     /**
-     * M-11: the key is the pair, so the same ID from another issuer is new.
+     * M-11
      */
     #[Test]
     public function itRemembersTheSameIdFromAnotherIssuer(): void
@@ -78,7 +77,7 @@ final class InMemoryReplayGuardTest extends TestCase
     }
 
     /**
-     * M-11: another ID from the same issuer is new.
+     * M-11
      */
     #[Test]
     public function itRemembersAnotherIdFromTheSameIssuer(): void
@@ -99,7 +98,7 @@ final class InMemoryReplayGuardTest extends TestCase
     }
 
     /**
-     * model.md section 5.2: when the pair may be forgotten, as it was first given; a second call changes nothing.
+     * model.md section 5.2
      */
     #[Test]
     public function itKeepsTheExpiryItWasFirstGiven(): void
@@ -117,7 +116,7 @@ final class InMemoryReplayGuardTest extends TestCase
     }
 
     /**
-     * model.md section 5.2: a pair never remembered has no expiry.
+     * model.md section 5.2
      */
     #[Test]
     public function itHasNoExpiryForAPairNeverRemembered(): void
@@ -131,7 +130,7 @@ final class InMemoryReplayGuardTest extends TestCase
     }
 
     /**
-     * M-11: a store nothing was remembered in is empty.
+     * M-11
      */
     #[Test]
     public function itIsEmptyUntilAPairIsRemembered(): void
@@ -141,7 +140,7 @@ final class InMemoryReplayGuardTest extends TestCase
     }
 
     /**
-     * M-11: a store holding a pair is not empty.
+     * M-11
      */
     #[Test]
     public function itIsNotEmptyOnceAPairIsRemembered(): void

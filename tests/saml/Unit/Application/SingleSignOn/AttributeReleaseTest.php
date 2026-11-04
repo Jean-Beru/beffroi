@@ -21,8 +21,7 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\LogLevel;
 
 /**
- * spec/saml.md S-16, section 6.4 step 6: the attributes the declaration maps, from the claims the provider serves,
- * and nothing else.
+ * spec/saml.md S-16, section 6.4 step 6
  */
 final class AttributeReleaseTest extends TestCase
 {
@@ -38,8 +37,7 @@ final class AttributeReleaseTest extends TestCase
     }
 
     /**
-     * S-16: one attribute per mapping, under the name, the format and the friendly name of the mapping, in the order
-     * of the declaration, and none of the claims nobody mapped.
+     * S-16
      */
     #[Test]
     public function theMappedClaimsAreReleasedUnderTheirMapping(): void
@@ -61,7 +59,7 @@ final class AttributeReleaseTest extends TestCase
     }
 
     /**
-     * S-16: a claim the user does not hold sends no attribute.
+     * S-16
      */
     #[Test]
     public function aClaimTheUserDoesNotHoldSendsNothing(): void
@@ -77,7 +75,7 @@ final class AttributeReleaseTest extends TestCase
     }
 
     /**
-     * S-16: a claim whose values are none, an empty list, sends no attribute.
+     * S-16
      */
     #[Test]
     public function aClaimWithoutValuesSendsNothing(): void
@@ -93,8 +91,7 @@ final class AttributeReleaseTest extends TestCase
     }
 
     /**
-     * S-16, issue #670: a value holding a character XML does not carry is not sent, neither cut nor rewritten, and
-     * the sign-on goes on with the other attributes.
+     * S-16
      */
     #[Test]
     public function aClaimHoldingWhatXmlDoesNotCarryIsNotSent(): void
@@ -110,7 +107,7 @@ final class AttributeReleaseTest extends TestCase
     }
 
     /**
-     * S-16: the refusal is written to the log, naming the service provider, the claim and the rule, never the value.
+     * S-16
      */
     #[Test]
     public function aClaimNotSentIsWrittenToTheLogWithoutItsValue(): void
@@ -137,7 +134,7 @@ final class AttributeReleaseTest extends TestCase
     }
 
     /**
-     * S-16: a claim that is a JSON object, the address, is not sent.
+     * S-16
      */
     #[Test]
     public function aClaimThatIsAnObjectIsNotSent(): void
@@ -153,9 +150,6 @@ final class AttributeReleaseTest extends TestCase
         static::assertSame([], $released);
     }
 
-    /**
-     * A declaration that maps nothing asks for no claim.
-     */
     #[Test]
     public function aDeclarationThatMapsNothingReleasesNothing(): void
     {

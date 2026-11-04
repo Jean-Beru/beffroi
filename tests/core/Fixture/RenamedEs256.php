@@ -9,10 +9,6 @@ use Jose\Component\Core\JWK;
 use Jose\Component\Signature\Algorithm\ES256;
 use Jose\Component\Signature\Algorithm\SignatureAlgorithm;
 
-/**
- * ES256 of web-token/jwt-library under another name, so that a test can wire an algorithm the provider
- * has never heard of without implementing elliptic curve arithmetic.
- */
 final readonly class RenamedEs256 implements SignatureAlgorithm
 {
     private ES256 $es256;

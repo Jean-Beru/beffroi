@@ -21,17 +21,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.1 step 12, B-4, B-5, SAML Profiles §4.4.4.1: a LogoutRequest of the identity provider received by the
- * service provider over HTTP-Redirect, its query string signed with the "idp" test key: verified under the identity
- * provider's keys before validateAuthenticatedByBinding(), and refused unsigned by the model's validate().
+ * Section 6.1 step 12, B-4, B-5, SAML Profiles §4.4.4.1
  */
 final class ReceivedLogoutRequestTest extends TestCase
 {
     use ReceptionFixtures;
 
     /**
-     * B-5: a signed LogoutRequest, its signature verified under the identity provider's key, is accepted by the
-     * binding's authentication.
+     * B-5
      */
     #[Test]
     public function itAuthenticatesASignedRequestByTheBinding(): void
@@ -50,8 +47,7 @@ final class ReceivedLogoutRequestTest extends TestCase
     }
 
     /**
-     * §9.2 row 20, B-5, M-2, SAML Profiles §4.4.4.1: an unsigned LogoutRequest over HTTP-Redirect is refused by the
-     * model's validate().
+     * §9.2 row 20, B-5, M-2, SAML Profiles §4.4.4.1
      */
     #[Test]
     public function itRefusesAnUnsignedRequest(): void
@@ -68,8 +64,7 @@ final class ReceivedLogoutRequestTest extends TestCase
     }
 
     /**
-     * §9.2 row 17, B-4, SAML Bindings §3.4.4.1: a LogoutRequest signed by a key the identity provider's metadata does
-     * not list is refused.
+     * §9.2 row 17, B-4, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesAKeyThePeerDoesNotList(): void
@@ -86,8 +81,7 @@ final class ReceivedLogoutRequestTest extends TestCase
     }
 
     /**
-     * §9.2 row 18, B-4, SAML Metadata §2.4.1.1: a signed LogoutRequest from an identity provider whose metadata holds
-     * no signing certificate is refused.
+     * §9.2 row 18, B-4, SAML Metadata §2.4.1.1
      */
     #[Test]
     public function itRefusesAPeerWithoutSigningCertificate(): void
@@ -104,8 +98,7 @@ final class ReceivedLogoutRequestTest extends TestCase
     }
 
     /**
-     * Section 5.2, B-5: a ReceivedLogoutRequest is built from the reception of a LogoutRequest and of no other message, a programming
-     * error otherwise.
+     * Section 5.2, B-5
      */
     #[Test]
     #[DataProvider('provideReceptionsOfOtherMessages')]
@@ -154,10 +147,6 @@ final class ReceivedLogoutRequestTest extends TestCase
         return $received;
     }
 
-    /**
-     * $received validated as the service provider at its single logout service, from the identity provider $idp or
-     * the one of the fixtures.
-     */
     private function validate(
         ReceivedLogoutRequest $received,
         ?IdentityProvider $idp = null,

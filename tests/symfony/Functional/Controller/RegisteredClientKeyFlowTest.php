@@ -18,14 +18,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * OIDC Core §9, RFC 7523: a client that registered itself and authenticates with a key of its own. It is
- * the shape every module of the Dynamic OP plan that reaches a token uses, `OIDCCDynamicTestPlan` fixing
- * `private_key_jwt` and `OIDCCCreateDynamicClientRegistrationRequest` registering an inline JWK Set of
- * RS256 keys, and nothing covered it: the tests of the method use declared clients, and the tests of the
- * registration endpoint register clients that hold a secret or none (issue #379).
- *
- * The registration goes through the endpoint and the exchange through the token endpoint, so what is
- * judged is the whole way such a client is served, from the two places its keys may be.
+ * OIDC Core §9, RFC 7523
  */
 final class RegisteredClientKeyFlowTest extends BrowserTestCase
 {
@@ -34,11 +27,9 @@ final class RegisteredClientKeyFlowTest extends BrowserTestCase
     private const string REDIRECT_URI = 'https://registered.test/callback';
 
     /**
-     * OIDC Core §9, RFC 7591 §2: the client signs an assertion with the key it published, the provider
-     * verifies it against that key and issues the tokens. The two places a client may publish its keys are
-     * two registrations and one behaviour.
+     * OIDC Core §9, RFC 7591 §2
      *
-     * @param array<string, mixed> $published what the registration says about the keys of the client
+     * @param array<string, mixed> $published
      */
     #[Test]
     #[DataProvider('provideKeySources')]
@@ -78,14 +69,7 @@ final class RegisteredClientKeyFlowTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0016: the "aud" of a client assertion is the issuer identifier of the tenant and nothing
-     * else, for a client that registered itself as for a declared one. The URL of the token endpoint, which
-     * OIDC Core §9 recommends and `draft-ietf-oauth-rfc7523bis` §4 now forbids, is refused: an assertion
-     * made for one endpoint would otherwise be good at every other endpoint of the same provider.
-     *
-     * It is the refusal the modules of the Dynamic OP plan that reach a token read as a non-200
-     * (`CheckTokenEndpointHttpStatus200`), the suite signing the URL of the token endpoint
-     * (`CreateClientAuthenticationAssertionClaims`, read in the source at the pinned tag).
+     * Decision 0016, draft-ietf-oauth-rfc7523bis §4
      */
     #[Test]
     public function anAssertionNamingTheTokenEndpointIsRefused(): void
@@ -109,9 +93,6 @@ final class RegisteredClientKeyFlowTest extends BrowserTestCase
     }
 
     /**
-     * The identifier the provider drew for the client, registered with the method that proves a key of its
-     * own and with the keys the case gives it.
-     *
      * @param array<string, mixed> $published
      */
     private function register(array $published): string

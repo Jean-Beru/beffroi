@@ -11,9 +11,7 @@ use function is_string;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * The proof a request carries (RFC 9449 §4.1): the one DPoP header, or none. A request carrying two is
- * refused here and not arbitrated (§4.3): which of them the provider read would decide which key the
- * tokens of the response are bound to, and nothing in the request says which one the client meant.
+ * RFC 9449 §4.1, §4.3
  */
 final readonly class DpopProofHeader
 {

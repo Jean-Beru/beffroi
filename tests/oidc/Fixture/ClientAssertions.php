@@ -21,25 +21,17 @@ use function rtrim;
 use function strtr;
 
 /**
- * The client side of "private_key_jwt" and of "client_secret_jwt": one key pair per algorithm asked for,
- * the claims RFC 7523 §3 asks for, and the compact JWS a client would send. ES256 is what a caller that
- * names no algorithm gets; RS256 is what the Dynamic OP plan signs with, so a test that reproduces a module
- * names it. Never leaves the test suite.
+ * RFC 7523 §3
  */
 final class ClientAssertions
 {
     public const string KEY_ID = 'client-key';
 
     /**
-     * One pair per algorithm, drawn once: generating an RSA key is slow enough to be worth keeping.
-     *
-     * @var array<non-empty-string, JWK>
+     * @var array<non-empty-string, JWK> by algorithm
      */
     private static array $privateKeys = [];
 
-    /**
-     * The private key of the client, with a "kid".
-     */
     public static function privateKey(?JoseSignatureAlgorithmInterface $algorithm = null): JWK
     {
         $algorithm ??= Algorithms::es256();
@@ -50,9 +42,6 @@ final class ClientAssertions
         ]);
     }
 
-    /**
-     * What the client publishes, inline or behind its "jwks_uri".
-     */
     public static function publishedKeys(?JoseSignatureAlgorithmInterface $algorithm = null): ClientJwks
     {
         /** @var list<array<string, mixed>> $keys */
@@ -62,8 +51,7 @@ final class ClientAssertions
     }
 
     /**
-     * RFC 7523 §3: "iss" and "sub" name the client, "aud" names where it is sent, and "exp", "iat" and
-     * "jti" are all there.
+     * RFC 7523 §3
      *
      * @param array<string, mixed> $overrides
      *
@@ -85,7 +73,6 @@ final class ClientAssertions
     /**
      * @param array<string, mixed> $claims
      * @param array<string, mixed> $header
-     * @param JWK|null $key the key to sign with, null for the pair this algorithm publishes
      */
     public static function signedWithKey(
         array $claims,
@@ -120,7 +107,7 @@ final class ClientAssertions
     }
 
     /**
-     * The two parameters of RFC 7523 §2.2, as a request body carries them.
+     * RFC 7523 §2.2
      *
      * @return array<string, string>
      */

@@ -13,11 +13,6 @@ use PHPUnit\Framework\TestCase;
 use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #453: the archive a person asks for of everything this provider holds about them. It is the one
- * file where every sealed column stands in clear at once, which is why it expires on a date fixed when it
- * was asked for and not on one anybody may move.
- */
 final class PersonalArchiveTest extends TestCase
 {
     private const string DOCUMENT = '{"profile":[]}';
@@ -34,10 +29,6 @@ final class PersonalArchiveTest extends TestCase
         static::assertNull($archive->builtAt);
     }
 
-    /**
-     * The expiry is counted from the moment it was asked for, so a row always carries the date it goes
-     * away on whatever happened to its build.
-     */
     #[Test]
     public function anArchiveExpiresAWeekAfterItWasAskedFor(): void
     {
@@ -66,10 +57,6 @@ final class PersonalArchiveTest extends TestCase
         static::assertSame(Fixtures::now()->format('c'), $archive->builtAt?->format('c'));
     }
 
-    /**
-     * An archive answers the question asked at the moment it was asked, so a second build is not a second
-     * document: a retry of the message that builds it finds the row done.
-     */
     #[Test]
     public function anArchiveIsBuiltOnce(): void
     {
@@ -116,10 +103,6 @@ final class PersonalArchiveTest extends TestCase
         static::assertTrue($archive->hasExpired($archive->expiresAt));
     }
 
-    /**
-     * Nothing comes back to say a build threw or that nobody was consuming the lane, so a row still empty
-     * past the delay a build is given is a row this provider says it is not building.
-     */
     #[Test]
     public function aBuildThatHasNotComeBackInItsDelayHasStalled(): void
     {
@@ -137,10 +120,6 @@ final class PersonalArchiveTest extends TestCase
         static::assertFalse(self::asked()->hasStalled(Fixtures::now()));
     }
 
-    /**
-     * A build that took its time is a build that came back: what holds a document is ready, whatever the
-     * clock says of when it was asked for.
-     */
     #[Test]
     public function anArchiveThatHoldsItsDocumentNeverStalls(): void
     {
@@ -163,10 +142,6 @@ final class PersonalArchiveTest extends TestCase
         new PersonalArchive(Uuid::v7(), Fixtures::user(), Fixtures::now(), Fixtures::now());
     }
 
-    /**
-     * The file name travels in a header that proxies and browsers write down, so it names the archive and
-     * never the person.
-     */
     #[Test]
     public function theFileIsNamedAfterTheArchiveAndNeverAfterThePerson(): void
     {
@@ -183,10 +158,6 @@ final class PersonalArchiveTest extends TestCase
         static::assertStringNotContainsString('ada-subject', $name);
     }
 
-    /**
-     * Issue #483: a container names its own extension and the name itself is one rule, so the wrapped file
-     * and the plain one are the same name and differ by what the file is.
-     */
     #[Test]
     public function theFileWrappedInAContainerCarriesTheExtensionOfThatContainer(): void
     {

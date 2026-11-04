@@ -17,12 +17,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3: a samlp:LogoutRequest, whose values are of their lexical form whoever builds it (M-6, M-15).
+ * Section 5.3, M-6, M-15
  */
 final class LogoutRequestTest extends TestCase
 {
     /**
-     * Section 5.3, SAML Core §3.7.1: the fields the rules of section 6.3 read and the writer writes.
+     * Section 5.3, SAML Core §3.7.1, section 6.3
      */
     #[Test]
     public function itKeepsItsFields(): void
@@ -56,7 +56,7 @@ final class LogoutRequestTest extends TestCase
     }
 
     /**
-     * SAML Core §3.7.1: the NotOnOrAfter, the session indexes and the Reason are optional.
+     * SAML Core §3.7.1
      */
     #[Test]
     public function itHasNoExpiryNoSessionIndexAndNoReasonUnlessGivenThem(): void
@@ -76,7 +76,7 @@ final class LogoutRequestTest extends TestCase
     }
 
     /**
-     * M-6, M-15: an ID, a Destination and a Reason that the reader would refuse are refused whoever builds them.
+     * M-6, M-15
      */
     #[Test]
     #[DataProvider('provideValuesRefused')]
@@ -129,7 +129,7 @@ final class LogoutRequestTest extends TestCase
     }
 
     /**
-     * Section 7, M-17: sixteen session indexes, and not seventeen.
+     * Section 7, M-17
      */
     #[Test]
     public function itHoldsSixteenSessionIndexes(): void
@@ -142,7 +142,7 @@ final class LogoutRequestTest extends TestCase
     }
 
     /**
-     * §9.2 row 36, section 7, M-17: one session index over the bound, whoever builds the request.
+     * §9.2 row 36, section 7, M-17
      */
     #[Test]
     public function itRefusesSeventeenSessionIndexes(): void
@@ -156,8 +156,7 @@ final class LogoutRequestTest extends TestCase
     }
 
     /**
-     * M-15: a session index holding a NUL, which the DOM would cut the written value at, or another character XML does
-     * not carry, refused whoever builds the request.
+     * M-15
      */
     #[Test]
     #[DataProvider('provideSessionIndexesNotCarried')]

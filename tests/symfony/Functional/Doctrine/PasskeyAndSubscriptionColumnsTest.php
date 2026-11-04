@@ -22,37 +22,10 @@ use PHPUnit\Framework\Attributes\Test;
 use function sort;
 use function sprintf;
 
-/**
- * The name a person gave a passkey, and what a push subscription holds of one of their devices, sealed and
- * read back (decisions 0011 and 0018).
- *
- * Three columns over two tables, and **no index and no constraint moved**, which is what distinguishes
- * these two tables from `beffroi_user` and `beffroi_linked_identity`. Each has its own reason.
- *
- * A passkey is found by the credential ID its authenticator issued and, for a ceremony that starts without
- * a username, by the user handle: both are in the clear, being published by the authenticator and drawn at
- * random, and both keep the index they had. Nobody searches a passkey by the name its owner typed, so that
- * column needs no tag. That the lookup is untouched is `DoctrineCredentialRepositoryTest`, which runs
- * against this mapping and is not repeated here.
- *
- * And `beffroi_push_subscription` already holds the digest of its endpoint in a column of its own, with the
- * unique constraint and the lookup on it: that is the shape a blind index builds, built there for its own
- * reason, an endpoint being as long as its push service decided. The two tests at the end of this class are
- * the ones that had to be written, because they are what sealing the endpoint could have broken.
- */
 final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
 {
     /**
-     * The personal data of a device, by the column each one lands in, over the two tables: what the fixture
-     * writes and what the row must not hold.
-     *
      * @var array<string, array<string, string>> table, then column, then the plaintext written there
-     */
-    /**
-     * Read from the shared fixture and declared nowhere else, for the same reason as everywhere else: the
-     * test that searches the whole database searches for these very values.
-     *
-     * @var array<string, array<string, string>>
      */
     private const array PLAINTEXTS = [
         'beffroi_passkey_credential' => SealedRows::VALUES['beffroi_passkey_credential'],
@@ -60,9 +33,7 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
     ];
 
     /**
-     * The fixture writes every column the classification of the schema declares sealed on these two tables,
-     * and no other: a column sealed without a value written here would be asserted against nothing, and the
-     * model is what says which those are (ClassifiedFieldsInterface, decision 0011).
+     * Decision 0011
      */
     #[Test]
     #[DataProvider('provideTables')]
@@ -95,10 +66,6 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
         }
     }
 
-    /**
-     * The domain does not change because the column seals: the name comes back as the person typed it, the
-     * encrypted type decorating the type the column had.
-     */
     #[Test]
     public function aPasskeyIsReadBackWithTheNameItsOwnerGaveIt(): void
     {
@@ -130,11 +97,6 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
         static::assertSame(self::PLAINTEXTS['beffroi_push_subscription']['label'], $read->label);
     }
 
-    /**
-     * A sealed column that accepts a null holds a null and not the envelope of an empty string, which is
-     * the one thing an encrypted type has to get right on a nullable column: a browser nobody named has no
-     * label, and a label read back as an empty string would be a label.
-     */
     #[Test]
     public function aBrowserNobodyNamedIsReadBackWithNoLabel(): void
     {
@@ -151,10 +113,6 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
         static::assertNull(self::rows('beffroi_push_subscription')[0]['label']);
     }
 
-    /**
-     * Column by column over the two tables, which is the point of the data provider: a column that stopped
-     * sealing fails on its own line.
-     */
     #[Test]
     #[DataProvider('provideSealedColumns')]
     public function theRowHoldsNoneOfThePlaintexts(string $table, string $column, string $plaintext): void
@@ -187,9 +145,7 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
     }
 
     /**
-     * Push API §3.4: the same browser subscribing again hands back the endpoint it already had, and that
-     * is what says it is this browser. The lookup matches on the digest, which the domain computes from the
-     * endpoint it is given and which stays in the clear, so sealing the endpoint takes nothing from it.
+     * Push API §3.4
      */
     #[Test]
     public function aBrowserIsStillRecognisedByTheDigestOfItsSealedEndpoint(): void
@@ -211,10 +167,6 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
         static::assertTrue($found->id->equals($saved->id));
     }
 
-    /**
-     * And the constraint that holds it, which is on the digest and not on the sealed column: two rows for
-     * one browser would be two notifications for one request.
-     */
     #[Test]
     public function aSecondSubscriptionForTheSameBrowserIsRefusedByTheConstraintThatIsThere(): void
     {
@@ -229,9 +181,6 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
         self::subscription($user, label: 'The same browser, said twice');
     }
 
-    /**
-     * One row of each of the two tables, written through the repositories a request writes them with.
-     */
     private static function rowsOfBothTables(): void
     {
         $user = self::user();

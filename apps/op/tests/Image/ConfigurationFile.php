@@ -30,14 +30,6 @@ use function strpbrk;
 use function substr;
 use Symfony\Component\Yaml\Yaml;
 
-/**
- * A YAML file of the configuration of this application, read the way its kernel reads it (issue #922): Symfony
- * reads the configuration of an environment in that environment alone, from where it looks for it
- * (KernelTrait::configureContainer() and MicroKernelTrait::configureRoutes(), 8.2: config/packages/<env>/,
- * config/routes/<env>/, config/services_<env>.yaml) and from the sections "when@<env>" of any other file (the
- * YamlFileLoader of DependencyInjection and of Routing). An environment is another one when it is not "prod", the
- * one the image runs in (APP_ENV of apps/op/Dockerfile).
- */
 final readonly class ConfigurationFile
 {
     private const string PRODUCTION = 'prod';
@@ -45,7 +37,6 @@ final readonly class ConfigurationFile
     private const string PROJECT_DIRECTORY = '%kernel.project_dir%/';
 
     /**
-     * @param string $file the path of the file in the application
      * @param array<mixed> $content
      */
     private function __construct(
@@ -55,7 +46,7 @@ final readonly class ConfigurationFile
     }
 
     /**
-     * @return list<self> every YAML file of config/, in the order of their paths
+     * @return list<self>
      */
     public static function everyOne(): array
     {
@@ -71,9 +62,6 @@ final readonly class ConfigurationFile
         return array_map(self::of(...), $files);
     }
 
-    /**
-     * @param string $file the path of the file in the application
-     */
     public static function of(string $file): self
     {
         $content = Yaml::parseFile(ApplicationFiles::path($file), Yaml::PARSE_CONSTANT | Yaml::PARSE_CUSTOM_TAGS);
@@ -82,7 +70,7 @@ final readonly class ConfigurationFile
     }
 
     /**
-     * @return list<string> the environments other than production its sections "when@<env>" configure
+     * @return list<string>
      */
     public function otherEnvironments(): array
     {
@@ -96,10 +84,6 @@ final readonly class ConfigurationFile
         return $environments;
     }
 
-    /**
-     * Whether it is read in other environments than production alone: where Symfony looks for the configuration of
-     * one, or every section of it being one of theirs.
-     */
     public function isOfAnotherEnvironment(): bool
     {
         if (preg_match('#^config/(?:packages|routes)/([^/]+)/#', $this->file, $directory) === 1) {
@@ -113,9 +97,7 @@ final readonly class ConfigurationFile
     }
 
     /**
-     * @return list<string> the variables of the environment a production kernel reads in it, by the placeholders
-     *                      "%env(...)%" of its values and the defaults "env(NAME)" of its parameters: none in a file
-     *                      of another environment, and none in its sections "when@<env>" of another one
+     * @return list<string>
      */
     public function variablesReadInProduction(): array
     {
@@ -127,7 +109,7 @@ final readonly class ConfigurationFile
     }
 
     /**
-     * @return list<string> the variables of the environment it reads in another environment than production alone
+     * @return list<string>
      */
     public function variablesReadElsewhere(): array
     {
@@ -139,10 +121,7 @@ final readonly class ConfigurationFile
     }
 
     /**
-     * @return list<string> the paths of the application it names, each by its path in the application: what the
-     *                      kernel loads a resource from, the classes of a prototype of services or a file of the
-     *                      container or of routes it imports, read from the directory of the file; and any path under
-     *                      the directory of the project, "%kernel.project_dir%"
+     * @return list<string>
      */
     public function namedPaths(): array
     {
@@ -155,9 +134,6 @@ final readonly class ConfigurationFile
     }
 
     /**
-     * What YamlFileLoader loads a resource from: an entry of "imports" or of "services" in a file of the container,
-     * an entry of a file of routes, each in the file itself or in one of its sections "when@<env>".
-     *
      * @return list<string>
      */
     private function loadedResources(): array
@@ -168,8 +144,6 @@ final readonly class ConfigurationFile
             $entries = $routes ? $section : [...self::listOf($section['imports'] ?? []), ...self::listOf($section['services'] ?? [])];
             foreach ($entries as $entry) {
                 $resource = is_array($entry) ? $entry['resource'] ?? null : $entry;
-                // A service that loads routes, a bundle and a placeholder name no file read from here: the path
-                // under the directory of the project is read with every other one.
                 if (! is_string($resource) || is_array($entry) && ($entry['type'] ?? null) === 'service' || str_starts_with($resource, '@')) {
                     continue;
                 }
@@ -183,7 +157,7 @@ final readonly class ConfigurationFile
     /**
      * @param array<mixed> $content
      *
-     * @return list<array<mixed>> the file outside its sections "when@<env>", then each of them
+     * @return list<array<mixed>>
      */
     private static function sectionsOf(array $content): array
     {
@@ -208,8 +182,7 @@ final readonly class ConfigurationFile
     /**
      * @param array<mixed> $node
      *
-     * @return list<string> every value of the node and of the nodes under it that is a path under the directory of
-     *                      the project, from that directory
+     * @return list<string>
      */
     private static function underTheProject(array $node): array
     {
@@ -234,8 +207,7 @@ final readonly class ConfigurationFile
     /**
      * @param array<mixed> $node
      *
-     * @return list<string> the variables a placeholder of the node or of a node under it reads, the last name of
-     *                      "%env(processor:...:NAME)%", and the ones a parameter "env(NAME)" gives a default
+     * @return list<string>
      */
     private static function variablesIn(array $node): array
     {
@@ -255,10 +227,6 @@ final readonly class ConfigurationFile
         return array_values(array_unique($variables));
     }
 
-    /**
-     * The path without its "." and ".." segments, up to the first segment that is a pattern, when it stays in the
-     * application, and nothing when it leaves it or names another placeholder.
-     */
     private static function inTheApplication(string $path): ?string
     {
         $segments = [];

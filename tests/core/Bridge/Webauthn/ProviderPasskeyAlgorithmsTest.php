@@ -16,8 +16,7 @@ use Webauthn\PublicKeyCredentialParameters;
 final class ProviderPasskeyAlgorithmsTest extends TestCase
 {
     /**
-     * Decision 0033: EdDSA over Ed25519, ES256 and RS256, from the strongest to the weakest
-     * (w3c/webauthn#2448), ES384 not among them.
+     * Decision 0033
      */
     #[Test]
     public function theOptionsOfferTheAlgorithmsOfTheProviderFromTheStrongest(): void
@@ -36,8 +35,7 @@ final class ProviderPasskeyAlgorithmsTest extends TestCase
     }
 
     /**
-     * Decision 0033: the signatures are verified with the algorithms the options offer, and none other,
-     * neither ES384 (-35) nor RS1 (-65535) among them.
+     * Decision 0033
      */
     #[Test]
     public function theSignaturesAreVerifiedWithTheOfferedAlgorithmsAlone(): void
@@ -53,7 +51,7 @@ final class ProviderPasskeyAlgorithmsTest extends TestCase
     }
 
     /**
-     * Decision 0033: what the product verifies of an attestation statement goes through the refusal of RS1.
+     * Decision 0033
      */
     #[Test]
     public function anAttestationFormatIsRunRefusingRs1(): void

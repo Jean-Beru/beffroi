@@ -15,10 +15,6 @@ use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
-/**
- * Where the keys read back from a "jwks_uri" are kept between requests, and what comes back from a pool
- * that outlived a deployment.
- */
 final class ClientJwksCacheTest extends TestCase
 {
     private const string JWKS_URI = 'https://key.example/jwks';
@@ -56,10 +52,6 @@ final class ClientJwksCacheTest extends TestCase
         static::assertEquals($fetchedAt, $kept->fetchedAt);
     }
 
-    /**
-     * A pool outlives a deployment: what comes back from it is read as strictly as what comes back from
-     * the party itself, and what cannot be read is read again from that party.
-     */
     #[Test]
     public function whatWasKeptInAnotherShapeIsIgnored(): void
     {
@@ -72,9 +64,6 @@ final class ClientJwksCacheTest extends TestCase
         static::assertNull($this->cache->read(self::jwksUri()));
     }
 
-    /**
-     * A set is filed under the URL it was read from: what one URL answered is not what another did.
-     */
     #[Test]
     public function theSetOfOneUrlIsNotTheSetOfAnother(): void
     {

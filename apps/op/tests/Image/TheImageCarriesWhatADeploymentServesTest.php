@@ -25,27 +25,10 @@ use function substr;
 use function trim;
 
 /**
- * Issue #922, decision 0030: of this application, the image carries what a deployment serves, and nothing that only
- * the development stack, the suite of this application or the lab reads. What only another environment than
- * production reads is where Symfony looks for the configuration of that environment, or in a file whose every
- * section is one of its (ConfigurationFile), and in the files of the environment Dotenv loads for it alone
- * (.env.<env>, Dotenv::loadEnv() of symfony/dotenv 8.2); what such a file names in the application, the classes of
- * the demonstration and of the lab and the metadata of a judge, is read with it.
- *
- * So the build leaves those files and what they name out; a YAML file of the configuration the image carries has
- * no section of another environment; the .env the image compiles declares no variable that only the configuration of
- * another environment reads; and the copy of the application into the production image leaves out what the development image copies
- * from it: both images are built from the same Dockerfile and the same context (compose.yaml), so the ignore file
- * of the build cannot be what leaves that out. A file of the configuration is held to these rules by what it is,
- * wherever it is: a new one is held as soon as it is written. What the configuration does not name, the templates
- * of the demonstration, what a debug kernel writes and the configuration of PHPUnit, the ignore file leaves out by
- * name, and nothing here derives it.
+ * Decision 0030
  */
 final class TheImageCarriesWhatADeploymentServesTest extends TestCase
 {
-    /**
-     * The stage compose.yaml builds the development stack from.
-     */
     private const string DEVELOPMENT_STAGE = 'frankenphp_dev';
 
     #[Test]
@@ -113,11 +96,6 @@ final class TheImageCarriesWhatADeploymentServesTest extends TestCase
     }
 
     /**
-     * What is compared is the YAML configuration: a variable production reads in PHP alone (APP_SHARE_DIR of the
-     * kernel, BEFFROI_PLANE of the provider) is read by no file here, and a file of another environment that read it
-     * would have it yielded; a variable the castor tasks or the suite read outside it (BEFFROI_DEV_USER_PASSWORD,
-     * KERNEL_CLASS) is not yielded.
-     *
      * @return iterable<string, array{string}>
      */
     public static function provideTheVariablesOnlyTheConfigurationOfAnotherEnvironmentReads(): iterable
@@ -188,8 +166,7 @@ final class TheImageCarriesWhatADeploymentServesTest extends TestCase
     }
 
     /**
-     * @return list<string> the paths the copy of the whole application into an image leaves out, from the directory
-     *                      of the application, which is the source the patterns of "--exclude" are read from
+     * @return list<string>
      */
     private static function excludedFromTheCopyOfTheApplication(): array
     {
@@ -217,8 +194,7 @@ final class TheImageCarriesWhatADeploymentServesTest extends TestCase
     }
 
     /**
-     * @return list<string> the variables .env declares, which "composer dump-env prod" compiles into the image with
-     *                      the value it gives them
+     * @return list<string>
      */
     private static function variablesTheImageCompiles(): array
     {
@@ -233,9 +209,6 @@ final class TheImageCarriesWhatADeploymentServesTest extends TestCase
     }
 
     /**
-     * The COPY instructions of apps/op/Dockerfile, each with the stage it belongs to, which none of them spreads
-     * over more than a line.
-     *
      * @return list<array{stage: string, from: ?string, excluded: list<string>, sources: list<string>}>
      */
     private static function copies(): array

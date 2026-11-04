@@ -21,34 +21,25 @@ use function strtolower;
 use const ZLIB_ENCODING_RAW;
 
 /**
- * A query string of HTTP-Redirect as the tests write it (sections 9.2 and 9.3), built from outside the package so that
- * it judges the receiver rather than mirrors it: its parameters in the order of arrival, each value exactly as it goes
- * on the wire, and a signature computed with a test key through Dsig's PrivateKey over whatever octets the test names:
- * those of SAML Bindings §3.4.4.1 by default (B-2), or any others, in any order and any escaping, for the hostile rows.
- * Nothing here calls the package: the octets are concatenated, the message deflated by zlib and encoded by PHP.
+ * Sections 9.2 and 9.3, B-2, SAML Bindings §3.4.4.1
  */
 final readonly class RedirectQuery
 {
     /**
-     * @param list<array{string, string}> $parameters each name and value as the query string carries them, in order
+     * @param list<array{string, string}> $parameters each name and value as on the wire, in order
      */
     private function __construct(
         private array $parameters,
     ) {
     }
 
-    /**
-     * A query string with no parameter yet.
-     */
     public static function none(): self
     {
         return new self([]);
     }
 
     /**
-     * A query string read back, without its leading "?": split on & and each segment on its first =, as the receiver
-     * splits it (section 6.1 step 2), each name and value kept as written, so that a test reads what a sender wrote. A
-     * segment without = is a name whose value is empty.
+     * Section 6.1 step 2
      */
     public static function of(string $queryString): self
     {
@@ -63,7 +54,7 @@ final readonly class RedirectQuery
     }
 
     /**
-     * A query string carrying $xml under $name, as HTTP-Redirect encodes it (SAML Bindings §3.4.4.1).
+     * SAML Bindings §3.4.4.1
      */
     public static function carrying(string $name, string $xml): self
     {
@@ -71,8 +62,7 @@ final readonly class RedirectQuery
     }
 
     /**
-     * $xml raw-deflated (RFC 1951), base64-encoded on one line and percent-encoded in uppercase hexadecimal, as
-     * SimpleSAMLphp writes a message parameter.
+     * RFC 1951
      */
     public static function message(string $xml): string
     {
@@ -85,8 +75,7 @@ final readonly class RedirectQuery
     }
 
     /**
-     * $bytes percent-encoded as RFC 3986 writes them, every byte outside the unreserved characters as % and two
-     * uppercase hexadecimal digits.
+     * RFC 3986
      */
     public static function encode(string $bytes): string
     {
@@ -94,16 +83,13 @@ final readonly class RedirectQuery
     }
 
     /**
-     * $bytes percent-encoded with lowercase hexadecimal digits, which B-8 reads as uppercase.
+     * B-8
      */
     public static function encodeInLowercase(string $bytes): string
     {
         return self::inLowercase(rawurlencode($bytes));
     }
 
-    /**
-     * Every percent-escape of $encoded, a value already percent-encoded, in lowercase hexadecimal.
-     */
     public static function inLowercase(string $encoded): string
     {
         $lowercase = preg_replace_callback(
@@ -118,32 +104,23 @@ final readonly class RedirectQuery
         return $lowercase;
     }
 
-    /**
-     * $name and $value appended, $value as the query string carries it.
-     */
     public function with(string $name, string $value): self
     {
         return new self([...$this->parameters, [$name, $value]]);
     }
 
-    /**
-     * RelayState appended, percent-encoded in uppercase hexadecimal.
-     */
     public function withRelayState(string $relayState): self
     {
         return $this->with('RelayState', self::encode($relayState));
     }
 
-    /**
-     * SigAlg appended, the URI of $algorithm percent-encoded in uppercase hexadecimal.
-     */
     public function withSigAlg(SignatureAlgorithm $algorithm): self
     {
         return $this->with('SigAlg', self::encode($algorithm->value));
     }
 
     /**
-     * SigAlg, then Signature over the octets of B-2 the parameters then give, signed by the test key $key.
+     * B-2
      *
      * @param 'idp'|'sp' $key
      */
@@ -155,8 +132,6 @@ final readonly class RedirectQuery
     }
 
     /**
-     * Signature appended, over $octets whatever they are, signed by the test key $key under $algorithm.
-     *
      * @param 'idp'|'sp' $key
      */
     public function signedOver(
@@ -171,8 +146,7 @@ final readonly class RedirectQuery
     }
 
     /**
-     * The octets of SAML Bindings §3.4.4.1 the parameters give as they are: the first SAMLRequest or SAMLResponse, then
-     * RelayState when present, then SigAlg, each value as the query string carries it.
+     * SAML Bindings §3.4.4.1
      */
     public function octets(): string
     {
@@ -185,9 +159,6 @@ final readonly class RedirectQuery
         return $message[0] . '=' . $message[1] . $relayState . '&SigAlg=' . $this->value('SigAlg');
     }
 
-    /**
-     * The value of the first parameter named $name, as the query string carries it.
-     */
     public function value(string $name): string
     {
         foreach ($this->parameters as [$parameter, $value]) {
@@ -200,8 +171,6 @@ final readonly class RedirectQuery
     }
 
     /**
-     * The names of the parameters, in order.
-     *
      * @return list<string>
      */
     public function names(): array
@@ -209,9 +178,6 @@ final readonly class RedirectQuery
         return array_map(static fn (array $parameter): string => $parameter[0], $this->parameters);
     }
 
-    /**
-     * Every parameter named $name given $value instead.
-     */
     public function replaced(string $name, string $value): self
     {
         return new self(array_map(
@@ -220,9 +186,6 @@ final readonly class RedirectQuery
         ));
     }
 
-    /**
-     * Every parameter named $name removed.
-     */
     public function without(string $name): self
     {
         return new self(array_values(array_filter(
@@ -232,8 +195,6 @@ final readonly class RedirectQuery
     }
 
     /**
-     * The parameters in the order of $names, each name present once.
-     *
      * @param list<string> $names
      */
     public function inOrder(array $names): self
@@ -241,9 +202,6 @@ final readonly class RedirectQuery
         return new self(array_map(fn (string $name): array => [$name, $this->value($name)], $names));
     }
 
-    /**
-     * The query string, without its leading "?".
-     */
     public function toString(): string
     {
         return implode('&', array_map(

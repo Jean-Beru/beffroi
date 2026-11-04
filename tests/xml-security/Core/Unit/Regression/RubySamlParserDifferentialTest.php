@@ -12,9 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 3, the parser differential: ruby-saml verified with one parser and read with another, and the two
- * disagreed on a DOCTYPE (CVE-2025-25291) and on a namespace (CVE-2025-25292). The rule: one parser, one DOM (I-4),
- * a DOCTYPE refused before parsing (I-1), a diagnostic a refusal (I-3).
+ * Section 3, CVE-2025-25291, CVE-2025-25292, I-1, I-3, I-4
  */
 final class RubySamlParserDifferentialTest extends TestCase
 {
@@ -26,7 +24,7 @@ final class RubySamlParserDifferentialTest extends TestCase
     }
 
     /**
-     * CVE-2025-25291: a response whose DOCTYPE makes one parser see a different document than the other.
+     * CVE-2025-25291
      */
     #[Test]
     public function cve202525291ADoctypeInAResponseIsRefusedBeforeAnyParserSeesIt(): void
@@ -45,8 +43,7 @@ final class RubySamlParserDifferentialTest extends TestCase
     }
 
     /**
-     * CVE-2025-25292: a namespace one parser binds and the other does not; here an unbound prefix on the element the
-     * signature reference points at, which libxml reports and the brick refuses.
+     * CVE-2025-25292
      */
     #[Test]
     public function cve202525292ANamespaceTheParsersDisagreeOnIsRefusedAtParsing(): void

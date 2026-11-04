@@ -15,9 +15,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Where every flow ends up, whatever brought it there (RFC 6749 §3.2). The flow a call belongs to is
- * the "grant_type" it names, looked up among the wired grants: a name the provider does not serve is
- * a request it refuses, and a hop of no picture.
+ * RFC 6749 §3.2
  */
 final readonly class TheTokenEndpoint implements RecordedEndpointInterface
 {

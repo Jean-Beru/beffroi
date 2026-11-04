@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.4, B-6: an XML signature over HTTP-Redirect, refused with the rest of what the package refuses.
+ * Section 5.4, B-6
  */
 final class XmlSignatureRefusedTest extends TestCase
 {

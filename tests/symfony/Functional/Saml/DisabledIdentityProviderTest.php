@@ -20,21 +20,12 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * beffroi/saml, spec/saml.md section 5.1: a deployment that turned its SAML identity provider off after its tenant
- * drew a SAML key (config_test_without_saml.yml). The key stays in the key directory of the tenant, dormant, and the
- * provider goes on with the other keys as if it were not there.
+ * beffroi/saml, spec/saml.md section 5.1
  */
 final class DisabledIdentityProviderTest extends ConsoleTestCase
 {
-    /**
-     * The environment whose configuration turns the identity provider off.
-     */
     private const string WITHOUT_SAML = 'test_without_saml';
 
-    /**
-     * The pair of the SAML key, drawn once for the class: an RSA pair of 3 072 bits is the slow part of the fixture,
-     * and what each test seals and writes of it is its own.
-     */
     private static ?GeneratedKeyPair $samlPair = null;
 
     protected static function kernelOptions(): array
@@ -45,8 +36,7 @@ final class DisabledIdentityProviderTest extends ConsoleTestCase
     }
 
     /**
-     * Section 5.1, S-1: the JWK Set is served with the key the tenant signs with, and the SAML key left behind is no
-     * more in it than it was.
+     * Section 5.1, S-1
      */
     #[Test]
     public function theJwkSetIsServedWithTheOtherKeys(): void
@@ -65,7 +55,7 @@ final class DisabledIdentityProviderTest extends ConsoleTestCase
     }
 
     /**
-     * Section 5.1: a client is issued its tokens, the ID token signed with the key the tenant signs with.
+     * Section 5.1
      */
     #[Test]
     public function aClientIsIssuedItsTokens(): void
@@ -83,7 +73,7 @@ final class DisabledIdentityProviderTest extends ConsoleTestCase
     }
 
     /**
-     * Section 5.1: the key commands go on with the other keys of the tenant.
+     * Section 5.1
      *
      * @param array<string, string|bool> $input
      */
@@ -135,8 +125,7 @@ final class DisabledIdentityProviderTest extends ConsoleTestCase
     }
 
     /**
-     * Section 5.1, section 6.1 step 1: the metadata answers that there is none, as for a tenant that holds no SAML
-     * key.
+     * Section 5.1, section 6.1 step 1
      */
     #[Test]
     public function theMetadataAnswersThatThereIsNone(): void
@@ -151,11 +140,6 @@ final class DisabledIdentityProviderTest extends ConsoleTestCase
         static::assertSame(Response::HTTP_NOT_FOUND, $this->browser->getResponse()->getStatusCode());
     }
 
-    /**
-     * The SAML key the tenant drew while its identity provider was enabled, active, as "castor provision" leaves it:
-     * drawn by the generator of a deployment that wires its algorithm, sealed by the KMS of this one and written where
-     * this kernel keeps the keys of the tenant.
-     */
     private static function samlKeyLeftBehind(): void
     {
         $algorithm = new SamlSigning();

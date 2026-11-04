@@ -12,8 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * OIDC Core §5.3.2 and OIDC Discovery §3: a client may have the UserInfo answer signed by the tenant,
- * and encrypted to itself, with the algorithms the provider signs and encrypts everything else with.
+ * OIDC Core §5.3.2, OIDC Discovery §3
  */
 final class AnnouncedUserInfoTest extends TestCase
 {

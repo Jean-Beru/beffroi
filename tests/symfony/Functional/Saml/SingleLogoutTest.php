@@ -64,12 +64,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * beffroi/saml, spec/saml.md section 6.5, the acceptance of issue #734: the service provider https://sp.example.org/saml
- * of the configuration of the test, its metadata accepted with a single logout service on each binding, signs the user
- * in over HTTP-Redirect, then sends the LogoutRequest its assertion lets it write, signed with the test key of a
- * service provider of saml2-model: the session of the provider ends, and the LogoutResponse comes back signed to the
- * single logout service of the metadata, which saml2-model's validator accepts under the certificate the metadata of
- * the tenant publish. The KMS of the kernel is behind the switch of KmsOutage, up unless a test takes it down.
+ * beffroi/saml, spec/saml.md section 6.5
  */
 final class SingleLogoutTest extends ConsoleTestCase
 {
@@ -90,7 +85,7 @@ final class SingleLogoutTest extends ConsoleTestCase
     private const string LOGOUT_REQUEST_ID = '_0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b';
 
     /**
-     * The policy of the page that posts a form (spec/saml.md section 6.8), its "form-action" left to the test.
+     * spec/saml.md section 6.8
      */
     private const string POLICY = "default-src 'none'; script-src 'sha256-8lDeP0UDwCO6/RhblgeH/ctdBzjVpJxrXizsnIk3cEQ='; form-action %s; base-uri 'none'; frame-ancestors 'none'";
 
@@ -127,9 +122,7 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #734, S-22, S-27, B-12: a LogoutRequest signed over HTTP-Redirect is answered with a 302
-     * to the single logout service of the metadata on HTTP-Redirect, a LogoutResponse signed over its query string that
-     * says Success.
+     * S-22, S-27, B-12
      */
     #[Test]
     public function aLogoutOverHttpRedirectIsAnsweredSuccessAtTheSingleLogoutService(): void
@@ -149,7 +142,7 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * B-9, section 6.8: the RelayState the request carried comes back with the answer, byte for byte.
+     * B-9, section 6.8
      */
     #[Test]
     public function theRelayStateComesBackWithTheAnswer(): void
@@ -165,7 +158,7 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * SAML Bindings §3.4.5.1: the redirection carries the caching headers of the binding.
+     * SAML Bindings §3.4.5.1
      */
     #[Test]
     public function theRedirectionCarriesTheCachingOfTheBinding(): void
@@ -189,8 +182,7 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #734, S-24, S-25: the session of the provider the assertion was written from has ended,
-     * by the service provider.
+     * S-24, S-25
      */
     #[Test]
     public function theSessionOfTheProviderEnds(): void
@@ -206,9 +198,7 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #734, S-25, Back-Channel Logout 1.0 §2.6: a client of OpenID Connect the same session
-     * signed in, which registered a back-channel logout URI, is given a logout token, as a logout at the end session
-     * endpoint gives it one.
+     * S-25, Back-Channel Logout 1.0 §2.6
      */
     #[Test]
     public function aClientOfOpenIdConnectOfTheSessionIsToldByTheBackChannel(): void
@@ -232,8 +222,7 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * Issue #741, S-25: the tokens of OpenID Connect issued under the session a service provider ends are
-     * revoked with it, as those of a session ended at the end session endpoint are.
+     * S-25
      */
     #[Test]
     public function theTokensIssuedUnderTheSessionAreRevoked(): void
@@ -250,8 +239,7 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-25: the browser that held the session is not signed in any more: a request of the service provider is sent to
-     * the login of the provider.
+     * S-25
      */
     #[Test]
     public function theBrowserIsSignedOut(): void
@@ -274,8 +262,7 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-27, M-2: a LogoutRequest signed in its XML over HTTP-POST is answered with the page that posts a LogoutResponse
-     * signed in its XML to the single logout service of the metadata on HTTP-POST.
+     * S-27, M-2
      */
     #[Test]
     public function aLogoutOverHttpPostIsAnsweredWithThePageThatPostsTheResponse(): void
@@ -298,8 +285,7 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-36, section 6.8: the page that posts the LogoutResponse over HTTP-POST, a response nobody answers, names in its
-     * "form-action" the origin of the single logout service it posts to and nothing else.
+     * S-36, section 6.8
      */
     #[Test]
     public function thePagePostingTheResponseNamesTheOriginOfItsActionAloneInItsPolicy(): void
@@ -319,8 +305,7 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #734, S-23, issue #708: the same URL presented again inside its window is refused, with
-     * the page of a refusal and no SAML answer.
+     * S-23
      */
     #[Test]
     public function theSameLogoutRequestIsRefusedTheSecondTime(): void
@@ -340,7 +325,7 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-22, M-2: a LogoutRequest whose query string carries no signature ends nothing and gets no SAML answer.
+     * S-22, M-2
      */
     #[Test]
     public function anUnsignedLogoutRequestIsRefused(): void
@@ -360,8 +345,7 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-25, S-27, section 6.5 step 1: a tenant whose SAML key is no longer active ends no session, the key that would
-     * sign the answer being opened before the request is read; the page of a tenant that serves no identity provider.
+     * S-25, S-27, section 6.5 step 1
      */
     #[Test]
     public function aTenantWithoutItsKeyEndsNoSession(): void
@@ -381,8 +365,7 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-23, section 6.5 step 1: a request a tenant without its key could not answer was not remembered, and the same URL
-     * is answered Success once the tenant holds an active key again.
+     * S-23, section 6.5 step 1
      */
     #[Test]
     public function theSameRequestIsAnsweredOnceTheKeyIsBack(): void
@@ -408,8 +391,7 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-25, S-27, section 6.5 step 1, architecture §5.4: a KMS that does not answer to open the SAML key, one this
-     * process has not opened yet, ends no session: a 503 with a Retry-After.
+     * S-25, S-27, section 6.5 step 1, Architecture §5.4
      */
     #[Test]
     public function aKmsThatDoesNotAnswerEndsNoSession(): void
@@ -431,8 +413,7 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-23, section 6.5 step 1: a request the KMS left unanswered was not remembered, and the same URL is answered
-     * Success once the KMS is back.
+     * S-23, section 6.5 step 1
      */
     #[Test]
     public function theSameRequestIsAnsweredOnceTheKmsIsBack(): void
@@ -456,8 +437,7 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * S-26: the sign-on recorded the service provider's part in the session, which the logout the identity provider
-     * starts reads (issue #735).
+     * S-26
      */
     #[Test]
     public function theSignOnRecordsTheServiceProviderOfTheSession(): void
@@ -476,10 +456,6 @@ final class SingleLogoutTest extends ConsoleTestCase
         );
     }
 
-    /**
-     * The browser signed in, sent by the service provider with a request over HTTP-Redirect, and the assertion the page
-     * of the provider posts back, as the service provider accepts it.
-     */
     private function signedOn(): AcceptedAssertion
     {
         $this->signIn($this->alice);
@@ -496,10 +472,6 @@ final class SingleLogoutTest extends ConsoleTestCase
             );
     }
 
-    /**
-     * The LogoutRequest the service provider writes from the assertion it holds: its NameID as received and its
-     * SessionIndex, to the single logout service of the tenant.
-     */
     private function logoutRequest(AcceptedAssertion $assertion): LogoutRequest
     {
         $nameId = $assertion->assertion->nameId;
@@ -521,9 +493,7 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * The LogoutResponse of a URL the provider redirected to, as the service provider validates it, and its RelayState.
-     *
-     * @return array{AcceptedLogoutResponse, ?string}
+     * @return array{AcceptedLogoutResponse, ?string} the response and its RelayState
      */
     private function answer(string $location): array
     {
@@ -554,10 +524,6 @@ final class SingleLogoutTest extends ConsoleTestCase
         );
     }
 
-    /**
-     * The active SAML key of the tenant retiring, with no key active in its place: what the tenant holds once an
-     * operator took it out without a successor.
-     */
     private static function withoutActiveKey(): void
     {
         $keys = self::service('test.beffroi.keys', TenantKeyRepositoryInterface::class);
@@ -566,10 +532,6 @@ final class SingleLogoutTest extends ConsoleTestCase
         $keys->save($key);
     }
 
-    /**
-     * A second SAML key generated after the sign-on, active at once: the process opened the key that signed the
-     * assertion, and has not opened this one.
-     */
     private static function withAKeyNotOpenedYet(): void
     {
         $tester = self::console('beffroi:keys:generate', [
@@ -587,8 +549,6 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * The form of the page, as a browser reads it.
-     *
      * @return array{action: string, fields: array<string, string>}
      */
     private function form(): array
@@ -619,7 +579,7 @@ final class SingleLogoutTest extends ConsoleTestCase
     }
 
     /**
-     * The SessionIndex of the assertion, the ID of the session of the provider (spec/saml.md section 6.4 step 7).
+     * spec/saml.md section 6.4 step 7
      */
     private static function sessionIndex(AcceptedAssertion $assertion): string
     {

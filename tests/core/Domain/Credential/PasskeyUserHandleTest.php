@@ -15,7 +15,7 @@ use function str_repeat;
 use function strlen;
 
 /**
- * WebAuthn Level 3 §14.6.1: the user handle carries no personal information, 64 random bytes.
+ * WebAuthn Level 3 §14.6.1
  */
 final class PasskeyUserHandleTest extends TestCase
 {
@@ -70,7 +70,7 @@ final class PasskeyUserHandleTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §5.4.3: the sixty-four octets as a column holds them, base64url without padding.
+     * WebAuthn Level 3 §5.4.3
      */
     #[Test]
     public function itWritesTheValueAColumnHoldsItAs(): void

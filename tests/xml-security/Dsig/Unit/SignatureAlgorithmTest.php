@@ -13,12 +13,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.1, D-5: the closed list of signature methods, and what each case knows of itself.
+ * Section 5.1, D-5
  */
 final class SignatureAlgorithmTest extends TestCase
 {
     /**
-     * §9.3 row 13: each case round-trips through fromUri().
+     * §9.3 row 13
      */
     #[Test]
     #[DataProvider('provideCases')]
@@ -39,7 +39,7 @@ final class SignatureAlgorithmTest extends TestCase
     }
 
     /**
-     * §9.2 rows 18, 19 and 20, D-5: SHA-1, HMAC, DSA, ECDSA and every unknown URI are refused by name.
+     * §9.2 rows 18, 19 and 20, D-5
      */
     #[Test]
     #[DataProvider('provideRefusedUris')]
@@ -71,7 +71,7 @@ final class SignatureAlgorithmTest extends TestCase
     }
 
     /**
-     * §9.3 row 14: the hash of the scheme.
+     * §9.3 row 14
      */
     #[Test]
     #[DataProvider('provideDigests')]
@@ -116,7 +116,7 @@ final class SignatureAlgorithmTest extends TestCase
     }
 
     /**
-     * §9.3 row 15: the PKCS#1 v1.5 schemes are available everywhere.
+     * §9.3 row 15
      */
     #[Test]
     #[DataProvider('providePkcs1Cases')]
@@ -137,8 +137,7 @@ final class SignatureAlgorithmTest extends TestCase
     }
 
     /**
-     * §9.3 row 15, section 13: the PSS schemes are available where OPENSSL_PKCS1_PSS_PADDING is defined, PHP 8.5,
-     * on OpenSSL 3.1 or later, whose default salt is the digest's length, and nowhere else.
+     * §9.3 row 15, section 13
      */
     #[Test]
     public function itsPssSchemesAreAvailableWhereTheBuildDefinesThePaddingOnOpenSsl31(): void

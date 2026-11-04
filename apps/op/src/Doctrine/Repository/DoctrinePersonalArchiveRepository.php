@@ -16,18 +16,10 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The archives a person asked for, in beffroi_personal_archive (issue #453): one row from the moment they
- * ask, the document sealed in it once it is built, and the row gone once it has expired.
- *
  * @extends DoctrineRepository<PersonalArchive>
  */
 final readonly class DoctrinePersonalArchiveRepository extends DoctrineRepository implements PersonalArchiveRepositoryInterface
 {
-    /**
-     * How many rows one run of the retention forgets. The bound the journal has, for the same reason: a
-     * tick that deleted everything expired in one statement would hold the table of a deployment whose
-     * people all asked at once, where the next tick takes what this one left.
-     */
     public const int FORGOTTEN_AT_ONCE = 100;
 
     public function __construct(EntityManagers $managers)

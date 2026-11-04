@@ -45,8 +45,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * RFC 8693 §2.1: the grant of a service that acts for somebody else. Delegation when an "actor_token" says who
- * acts, impersonation when nothing does, and nothing widened either way.
+ * RFC 8693 §2.1
  */
 final class TokenExchangeGrantTest extends TestCase
 {
@@ -84,8 +83,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §1.3, §4.1: the new token names the subject of the presented one and the actor in its "act",
-     * and it is addressed to the resource the request asked for, inside what the presented token covered.
+     * RFC 8693 §1.3, §4.1
      */
     #[Test]
     public function aDelegationNamesTheSubjectAndTheActorThatHoldsTheToken(): void
@@ -122,7 +120,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §1.3: no "actor_token", nobody acting, and nothing in the token that says otherwise.
+     * RFC 8693 §1.3
      */
     #[Test]
     public function anImpersonationNamesTheSubjectAndNobodyActing(): void
@@ -142,11 +140,6 @@ final class TokenExchangeGrantTest extends TestCase
         static::assertNull($authorization->actor);
     }
 
-    /**
-     * Issue #588: the "sub" of the new token is the one the presented token named, and the acts it leads
-     * to are written in the journal of the person the presented token was read back as. A name one client
-     * holds is a key of nothing, so the two are carried apart.
-     */
     #[Test]
     public function theAuthorizationNamesThePersonThePresentedTokenWasReadBackAs(): void
     {
@@ -163,8 +156,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4: a token a client holds for itself is about nobody, so what it is exchanged for is in
-     * nobody's name either.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function theAuthorizationOfAnExchangedClientTokenNamesNobody(): void
@@ -182,8 +174,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.2.1: the response names the type of the token it issued, which no other grant of this
-     * provider has to say.
+     * RFC 8693 §2.2.1
      */
     #[Test]
     public function theResponseNamesTheTypeOfTheTokenItIssued(): void
@@ -201,8 +192,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.2.1: an access token, and nothing else. There is nobody to describe in an ID token, the
-     * provider having signed nobody in for this request, and nothing to renew.
+     * RFC 8693 §2.2.1
      */
     #[Test]
     public function theResponseCarriesNoIdTokenAndNoRefreshToken(): void
@@ -229,7 +219,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1: the scopes of the new token are a subset of the ones the presented token carried.
+     * RFC 8693 §2.1
      */
     #[Test]
     public function theScopesOfTheNewTokenAreNarrowedToWhatTheRequestAsksFor(): void
@@ -254,7 +244,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1: a request that names no scope narrows nothing and is served what it already held.
+     * RFC 8693 §2.1
      */
     #[Test]
     public function aRequestThatNamesNoScopeKeepsTheOnesOfThePresentedToken(): void
@@ -272,7 +262,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1: never a superset.
+     * RFC 8693 §2.1
      */
     #[Test]
     public function aWiderScopeIsRefused(): void
@@ -297,10 +287,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.3, §5.2: the scopes of a response are among the ones the client that receives it registered,
-     * here as in every other grant; a gateway is not served what it never registered because somebody else
-     * was, whether the request names that scope or takes it from the presented token by naming none, and it
-     * is told so in the error of the protocol.
+     * RFC 6749 §3.3, §5.2
      *
      * @param array<string, string|null> $parameters
      */
@@ -333,10 +320,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2, RFC 6749 §5.2: the resources of a response are among the ones the client that receives it
-     * registered; the presented token may be addressed to a resource the gateway never registered, and the
-     * gateway is not served it whether the request names it or takes it from the presented token by naming
-     * none.
+     * RFC 8707 §2, RFC 6749 §5.2
      *
      * @param array<string, string|null> $parameters
      */
@@ -372,7 +356,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1, RFC 8707 §2: the resource asked for is inside what the presented token was addressed to.
+     * RFC 8693 §2.1, RFC 8707 §2
      */
     #[Test]
     public function aResourceOutsideThePresentedTokenIsRefused(): void
@@ -397,8 +381,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1: a token addressed to the client that holds it was asked for no resource at all, so there
-     * is nothing to narrow and the new token could only be addressed further than the old one reached.
+     * RFC 8693 §2.1
      */
     #[Test]
     public function aTokenAddressedToItsOwnClientIsNotExchangeable(): void
@@ -417,7 +400,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1: what a client may do is registered, and a client that registered nothing may do nothing.
+     * RFC 8693 §2.1
      */
     #[Test]
     public function aClientThatIsNotRegisteredForAnExchangeIsRefused(): void
@@ -437,7 +420,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1: the types it may present are registered too.
+     * RFC 8693 §2.1
      */
     #[Test]
     public function aTypeOfTokenTheClientDidNotRegisterIsRefused(): void
@@ -461,7 +444,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §3: a type the provider is not wired to read is refused before anything is read.
+     * RFC 8693 §3
      */
     #[Test]
     public function aTypeOfTokenTheProviderDoesNotReadIsRefused(): void
@@ -486,8 +469,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1: a client registered to exchange tokens of its own is not thereby registered to act for a
-     * user.
+     * RFC 8693 §2.1
      */
     #[Test]
     public function aClientNotRegisteredToActForAUserIsRefusedATokenAboutOne(): void
@@ -507,7 +489,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §4.4: the subject's own word on who may act for them beats the registration of whoever asks.
+     * RFC 8693 §4.4
      */
     #[Test]
     public function anExchangeNoMayActAllowsIsRefused(): void
@@ -526,7 +508,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §4.4: the party named is served.
+     * RFC 8693 §4.4
      */
     #[Test]
     public function anExchangeTheMayActNamesIsServed(): void
@@ -546,7 +528,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §4.1: a token that already carries an "act" gets the new actor on the outside.
+     * RFC 8693 §4.1
      */
     #[Test]
     public function aSecondExchangeNestsTheChainOfActors(): void
@@ -582,8 +564,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §4.1: an impersonation of a token that already names an actor keeps the chain it found rather
-     * than dropping who has been holding the token.
+     * RFC 8693 §4.1
      */
     #[Test]
     public function anImpersonationKeepsTheChainThePresentedTokenCarried(): void
@@ -608,8 +589,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1: a token is held by whoever holds it, so one naming somebody else would let a client write
-     * that somebody else into the "act" of a token nobody else asked for.
+     * RFC 8693 §2.1
      */
     #[Test]
     public function anActorTokenOfAnotherClientIsRefused(): void
@@ -637,7 +617,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1: the type is required beside the token, and refused without one.
+     * RFC 8693 §2.1
      */
     #[Test]
     public function anActorTokenTypeWithoutAnActorTokenIsRefused(): void
@@ -662,8 +642,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1: this provider issues access tokens, so a request that asks for another type asks for
-     * something it cannot answer.
+     * RFC 8693 §2.1
      */
     #[Test]
     public function anotherRequestedTokenTypeIsRefused(): void
@@ -688,8 +667,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1: what a token of this provider is addressed to is named by the resource indicators of
-     * RFC 8707 §2 and by nothing else, so a logical name beside them is refused rather than ignored.
+     * RFC 8693 §2.1, RFC 8707 §2
      */
     #[Test]
     public function anAudienceParameterIsRefused(): void
@@ -714,8 +692,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.2.2: a token this provider no longer honours is refused, and what it says of it is that it
-     * is not good.
+     * RFC 8693 §2.2.2
      */
     #[Test]
     public function aTokenThisProviderDoesNotHonourIsRefused(): void
@@ -732,8 +709,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1: the new token descends from the grant the presented one descended from, so taking that
-     * grant back takes both, and a session that ended refuses both.
+     * RFC 8693 §2.1
      */
     #[Test]
     public function theNewTokenDescendsFromTheGrantThePresentedOneDescendedFrom(): void
@@ -752,8 +728,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 9068 §2.2.1: the sign-in the presented token descended from, carried unchanged, so that the provider
-     * keeps asking of the new token what it asked of the old one.
+     * RFC 9068 §2.2.1
      */
     #[Test]
     public function theNewTokenCarriesTheSignInThePresentedOneNamed(): void
@@ -773,8 +748,7 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4: a token a client holds for itself names no sign-in, and the token it is exchanged for
-     * names none either.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function aTokenOfAClientActingForItselfIsExchangedWithoutASignIn(): void

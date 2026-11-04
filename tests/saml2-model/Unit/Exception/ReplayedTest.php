@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.8, M-11: an assertion accepted before, refused with the rest of what the model refuses.
+ * Section 5.8, M-11
  */
 final class ReplayedTest extends TestCase
 {

@@ -2,22 +2,6 @@
 
 declare(strict_types=1);
 
-/*
- * The first success criterion of spike 8 (issue #409), against the database a deployment actually runs: a
- * dump of PostgreSQL searched byte by byte for what "castor provision" and the walks of the laboratory
- * wrote. A finding names the value, the table, the column and the offset, because a red run whose message
- * is "a fixture value was found" costs an hour to turn into a fix.
- *
- * The other half of the criterion is a test of the suite, DumpGivesNothingAwayTest, and the two are not
- * interchangeable. The suite runs on SQLite; what a sealed column leaves in a page, in an index and in a
- * write-ahead log is the business of the engine, and PostgreSQL stores it as BYTEA with pages of its own.
- * Only this one speaks of the database that serves.
- *
- * It searches, it does not provision and it plays no journey: what is in the database is what the operator
- * put there, and a run against an empty table would be green for the worst reason there is, which is why
- * it refuses one.
- */
-
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
 use function Castor\context;
@@ -26,36 +10,19 @@ use function Castor\load_dot_env;
 use function Castor\run;
 
 /**
- * Where the dump is written. Under var/, which the repository ignores: it is the one file of this walk that
- * holds every personal datum of the stack in whatever form the database keeps it.
+ * Under the ignored var/: the dump holds every personal datum of the stack.
  */
 const DUMP_FILE = 'var/dump/beffroi.sql';
 
 /**
- * The shortest value the search accepts, in bytes, and the reason is the same arithmetic as the one of the
- * suite (SealedRows::SHORTEST_VALUE): a sealed column holds bytes indistinguishable from random, so a short
- * value is found in one by chance rather than by leaking. Over a dump of some megabytes, three bytes turn up
- * every run and four often enough to make a red run mean nothing; five turn up about once in two million.
- *
- * A value below the floor is named in the output as not searched, rather than searched and excused.
+ * In bytes: a sealed column looks random, and a shorter value turns up in a dump of some megabytes by chance.
  */
 const DUMP_SHORTEST_VALUE = 5;
 
-/**
- * The tables the search steps over, each with the reason it is out of scope.
- */
 const DUMP_SKIPPED_TABLES = [
     'messenger_messages' => 'the message bus, which the README of the spike puts out of scope: a message carries what its handling needs for as long as its handling, and what the "failed" transport keeps is noted in the retention question and not answered here',
 ];
 
-/**
- * The backends the criterion asks for, and what each is worth today.
- *
- * The dump is the same dump and the backend is a configuration, so this walk does not play the three: it
- * plays the one the stack is provisioned with and names it. What this list carries is the state of each,
- * with the issue of the one that cannot be played, on the model of the "known" list of CONFORMANCE_PLANS: a
- * gap written down with what closes it, so that the day it closes the line is deleted rather than carried.
- */
 const DUMP_BACKENDS = [
     'sodium' => 'played: "castor provision --kms sodium", the default of a development stack',
     'file' => 'played: "castor provision --kms file", the self-hosted default without a KMS',
@@ -64,15 +31,10 @@ const DUMP_BACKENDS = [
 ];
 
 /**
- * The user agent the walks of the laboratory present, which is Symfony's HttpClient and which a session
- * records in its provenance. Searched because the provenance is sealed, so the clear form of it belongs
- * nowhere in the dump.
+ * A session seals it in its provenance, so its clear form belongs nowhere in the dump.
  */
 const DUMP_LABORATORY_USER_AGENT = 'Symfony HttpClient';
 
-/**
- * The credentials of the database container, as compose.yaml declares them.
- */
 const DUMP_DATABASE_DEFAULTS = ['user' => 'beffroi', 'database' => 'beffroi'];
 
 #[AsTask(
@@ -152,9 +114,6 @@ function dump_search(
     return 0;
 }
 
-/**
- * The dump as pg_dump writes it: the schema, the data and the sequences, searched whole.
- */
 function dump_take(): string
 {
     $running = compose_running_services();
@@ -194,13 +153,6 @@ function dump_take(): string
 }
 
 /**
- * What the search looks for, read where each value is declared and never typed again here.
- *
- * The provision names the user and every claim of its profile (DEV_USERNAME and DEV_USER_PROFILE, which is
- * a list of options and their values), the walk of the passkeys names what it calls the key it enrols, and
- * the laboratory presents one user agent. A value added to the profile of the provision is searched for
- * without this file being touched, which is the point of reading it there.
- *
  * @return list<string>
  */
 function dump_values(): array
@@ -219,13 +171,6 @@ function dump_values(): array
 }
 
 /**
- * Every value found, with the table and the column it sits in.
- *
- * The dump is walked as pg_dump writes it, which is a COPY block per table: a line inside a block is a row,
- * its fields separated by tabs and in the order the block names, so a hit inside one names its column. A
- * line outside every block is the schema, where a value would be a default or a comment, and a hit there is
- * named as such.
- *
  * @param list<string> $values
  *
  * @return list<array{string, string, string, string}>
@@ -281,8 +226,6 @@ function dump_findings(string $dump, array $values): array
 }
 
 /**
- * The column a hit sits in, from the tab-separated fields of a COPY row and the order the block declares.
- *
  * @param list<string> $columns
  */
 function dump_column(string $line, array $columns, int $at): string
@@ -293,13 +236,9 @@ function dump_column(string $line, array $columns, int $at): string
 }
 
 /**
- * The ways a value could be written, by the name a finding calls each.
+ * A column holding a JSON document escapes a slash, so a search for the bytes alone would miss the value there.
  *
- * Its own bytes, which is what a column holds; and its JSON escaping, which is what a column holding a
- * document holds, where a slash becomes an escaped slash. A search for the bytes alone passes on a column
- * it should have failed.
- *
- * @return array<string, string>
+ * @return array<string, string> the value as each encoding writes it, by the name a finding calls it
  */
 function dump_encodings(string $value): array
 {
@@ -316,10 +255,6 @@ function dump_encodings(string $value): array
     return $encodings;
 }
 
-/**
- * What seals on this stack, read in apps/op/.env.local, so that a green run says which backend it was green
- * against: the criterion asks for the three, and a run names the one it played.
- */
 function dump_backend(): string
 {
     if (! is_file(DEV_ENV_LOCAL)) {
@@ -335,11 +270,7 @@ function dump_backend(): string
 }
 
 /**
- * A value the dump has to hold, which is what makes a green run mean the search was looking.
- *
- * The issuer of the tenant, which `Tenant` declares readable because it names an organisation and
- * no person. It is read from the database rather than from a configuration file, so that it is the value
- * this stack actually wrote.
+ * The issuer of the tenant, which names no person and is stored in the clear.
  */
 function dump_canary(): string
 {

@@ -3,22 +3,7 @@
 declare(strict_types=1);
 
 /*
- * The CLI of "castor demo --device" (.castor/lab/demo.php, demo_device_check): a program with no browser
- * and no secret that obtains a token by the device authorization grant (RFC 8628). It is what the second
- * success criterion of spike 6 asks for, and it is a demonstration before it is a test: run by hand it
- * prints the code to read out and the address to go to, then waits.
- *
- * Two streams, for the two readers it has. The trace a human follows goes to stderr; stdout carries one
- * JSON object per step, one per line, so that the task can read the code as soon as it is drawn, confirm it
- * in a browser while this program is still polling, and assert on every step afterwards:
- *
- *   {"step":"device_authorization", "user_code", "verification_uri", "verification_uri_complete", ...}
- *   {"step":"pending", "error", "interval", "polls"}        one per refusal to answer yet
- *   {"step":"tokens", "token_type", "scope", "expires_in", "refresh_token", "sub", "aud", "polls"}
- *   {"step":"error", "error", "description"}                and exit 1
- *
- * Options: --issuer, --client-id, --scope, --cafile (the CA of the OP), --timeout. Nothing else: a client
- * of this grant registers no redirect URI and holds no secret, so there is nothing else to give it.
+ * The client of "castor demo --device": a program with no browser and no secret, using the grant of RFC 8628.
  */
 
 use Symfony\Component\HttpClient\HttpClient;
@@ -28,21 +13,19 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 require __DIR__ . '/../../vendor/autoload.php';
 
 /**
- * A client with no browser (RFC 8628): it asks for a code, shows it, and polls the token endpoint until
- * somebody has answered on another device. What it must not do is poll faster than it was told
- * (§3.5): the interval belongs to the provider, and "slow_down" moves it.
+ * RFC 8628
  */
 final class DeviceClient
 {
     public const string GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:device_code';
 
     /**
-     * RFC 8628 §3.5: the provider asks for five more seconds each time it says so.
+     * RFC 8628 §3.5
      */
     private const int SLOW_DOWN_SECONDS = 5;
 
     /**
-     * RFC 8628 §3.2: what a provider that names no interval means.
+     * RFC 8628 §3.2
      */
     private const int DEFAULT_INTERVAL = 5;
 
@@ -58,10 +41,9 @@ final class DeviceClient
     }
 
     /**
-     * RFC 8628 §3.1, §3.2: the request a client with no browser starts with, and what comes back for the
-     * user to read out.
+     * RFC 8628 §3.1, §3.2
      *
-     * @throws RuntimeException when the provider refuses to start the flow
+     * @throws RuntimeException
      *
      * @return array<string, mixed>
      */
@@ -81,9 +63,6 @@ final class DeviceClient
     }
 
     /**
-     * A member of an answer, as the thing it must be; the provider writes them and this program reads them,
-     * so a member that is not what it must be is an answer this client cannot use.
-     *
      * @param array<string, mixed> $answer
      *
      * @throws RuntimeException
@@ -106,13 +85,11 @@ final class DeviceClient
     }
 
     /**
-     * RFC 8628 §3.4, §3.5: the same request again and again until somebody answers, at the interval the
-     * provider named, five seconds more each time it says to slow down. Every refusal that is not
-     * "authorization_pending" nor "slow_down" ends the flow: an expired code and a refusal are answers.
+     * RFC 8628 §3.4, §3.5
      *
      * @param callable(array<string, mixed>): void $pending told of every refusal to answer yet
      *
-     * @throws RuntimeException when the flow ends without tokens
+     * @throws RuntimeException
      *
      * @return array<string, mixed>
      */
@@ -183,7 +160,6 @@ final class DeviceClient
         if (! is_array($decoded)) {
             throw new RuntimeException(sprintf('%s answered something that is not a JSON object.', $url));
         }
-        // a JSON object decodes with keys of its own, which are the names of its members
         $answer = [];
         foreach ($decoded as $member => $value) {
             $answer[(string) $member] = $value;
@@ -201,10 +177,7 @@ final class DeviceClient
 }
 
 /**
- * The options of the run, each one with what a development stack makes of it: nothing else is asked of the
- * command line, a client of this grant registering no redirect URI and holding no secret.
- *
- * @throws RuntimeException when an option is given without a value
+ * @throws RuntimeException
  *
  * @return array<string, string>
  */
@@ -233,8 +206,6 @@ function device_cli_options(): array
 }
 
 /**
- * One step, on the two streams it belongs to: the line the task reads, and the sentence a human reads.
- *
  * @param array<string, mixed> $step
  */
 function device_cli_step(array $step, string $said): void
@@ -293,8 +264,7 @@ try {
         ),
     );
     $accessToken = DeviceClient::text($tokens, 'access_token');
-    // RFC 9068 §2.2: what the token says of itself, read here only to print it; a client is not a resource
-    // server and reads nothing of a token it merely carries
+    // Decoded only to print its RFC 9068 §2.2 claims: a client verifies nothing of a token it merely carries.
     $claims = [];
     $parts = explode('.', $accessToken);
     if (count($parts) === 3) {
@@ -325,8 +295,6 @@ try {
         ),
     );
 } catch (RuntimeException $exception) {
-    // the step is written for the task that reads these lines, then the exception ends the process: its
-    // code is what the task asserts on, as it does of the other programs of tests/demo/
     device_cli_step(
         [
             'step' => 'error',

@@ -9,12 +9,12 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * RFC 7009 §2, architecture §4.12: the revocation endpoint over HTTP.
+ * RFC 7009 §2, Architecture §4.12
  */
 final class RevocationControllerTest extends BrowserTestCase
 {
     /**
-     * RFC 7009 §2.1: POST only.
+     * RFC 7009 §2.1
      */
     #[Test]
     public function theRevocationEndpointIsPostOnly(): void
@@ -29,7 +29,7 @@ final class RevocationControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7009 §2.2: an invalid token is answered 200 with an empty body, never cached.
+     * RFC 7009 §2.2
      */
     #[Test]
     public function anUnknownTokenIsAnsweredWithNothing(): void
@@ -52,7 +52,7 @@ final class RevocationControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7009 §2.2.1, RFC 6749 §5.2: a caller that does not authenticate is invalid_client, 401.
+     * RFC 7009 §2.2.1, RFC 6749 §5.2
      */
     #[Test]
     public function aWrongSecretIsChallenged(): void
@@ -74,7 +74,7 @@ final class RevocationControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7009 §2.2.1: a self-contained access token of the provider cannot be taken back.
+     * RFC 7009 §2.2.1
      */
     #[Test]
     public function aJwtAccessTokenIsRefusedAsUnsupported(): void
@@ -99,9 +99,7 @@ final class RevocationControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7009 §2.2, issue #847: a self-contained access token of a session that ended is refused by UserInfo
-     * and the introspection, so it is an invalid token here too, answered 200 with nothing, and not a token
-     * the endpoint cannot take back.
+     * RFC 7009 §2.2
      */
     #[Test]
     public function aJwtAccessTokenOfASessionThatEndedIsAnsweredWithNothing(): void
@@ -129,7 +127,7 @@ final class RevocationControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7009 §2.1: a refresh token given back is refused by the token endpoint from then on.
+     * RFC 7009 §2.1
      */
     #[Test]
     public function aRevokedRefreshTokenIsRefusedByTheTokenEndpoint(): void
@@ -164,10 +162,6 @@ final class RevocationControllerTest extends BrowserTestCase
         static::assertSame('invalid_grant', self::json($this->browser->getResponse())['error']);
     }
 
-    /**
-     * The access token oidc-demo gets from the code flow of alice; the response of the token endpoint is
-     * the last one of the browser.
-     */
     private function jwtAccessTokenOfTheDemoClient(): string
     {
         self::signingKey();
@@ -176,9 +170,6 @@ final class RevocationControllerTest extends BrowserTestCase
         return $this->jwtAccessTokenOfTheSignedInBrowser();
     }
 
-    /**
-     * The access token oidc-demo gets from the code flow of the browser, signed in already.
-     */
     private function jwtAccessTokenOfTheSignedInBrowser(): string
     {
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));

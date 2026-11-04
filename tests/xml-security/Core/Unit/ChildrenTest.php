@@ -16,8 +16,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * I-11, section 6.4: direct children only, matched on namespace URI and local name (I-10); an element wrapped in
- * another is never found from the root, which is what a signature wrapping relies on ("On Breaking SAML", 2012).
+ * I-11, section 6.4, I-10
  */
 final class ChildrenTest extends TestCase
 {
@@ -29,7 +28,7 @@ final class ChildrenTest extends TestCase
     }
 
     /**
-     * §9.3 row 5, I-11: a saml:Assertion inside samlp:Extensions is not a child of the response.
+     * §9.3 row 5, I-11
      */
     #[Test]
     public function itFindsTheDirectChildOnlyAndNotTheWrappedOne(): void
@@ -49,7 +48,7 @@ final class ChildrenTest extends TestCase
     }
 
     /**
-     * §9.3 row 6, section 6.4: two direct children of the name, one() is ambiguous.
+     * §9.3 row 6, section 6.4
      */
     #[Test]
     public function oneRefusesTwoChildrenOfTheName(): void
@@ -66,7 +65,7 @@ final class ChildrenTest extends TestCase
     }
 
     /**
-     * §9.3 row 6, section 6.4: two direct children of the name, optional() is ambiguous too.
+     * §9.3 row 6, section 6.4
      */
     #[Test]
     public function optionalRefusesTwoChildrenOfTheName(): void
@@ -83,7 +82,7 @@ final class ChildrenTest extends TestCase
     }
 
     /**
-     * §9.3 row 7, section 6.4: no child of the name, one() is missing.
+     * §9.3 row 7, section 6.4
      */
     #[Test]
     public function oneRefusesAMissingChild(): void
@@ -100,7 +99,7 @@ final class ChildrenTest extends TestCase
     }
 
     /**
-     * §9.3 row 7, section 6.4: no child of the name, optional() is null.
+     * §9.3 row 7, section 6.4
      */
     #[Test]
     public function optionalIsNullForAMissingChild(): void
@@ -113,7 +112,7 @@ final class ChildrenTest extends TestCase
     }
 
     /**
-     * Section 6.4: exactly one child of the name, optional() returns it.
+     * Section 6.4
      */
     #[Test]
     public function optionalReturnsTheOnlyChildOfTheName(): void
@@ -130,7 +129,7 @@ final class ChildrenTest extends TestCase
     }
 
     /**
-     * §9.3 row 8, I-10: same local name, other namespace, not matched.
+     * §9.3 row 8, I-10
      */
     #[Test]
     public function itDoesNotMatchTheSameLocalNameInAnotherNamespace(): void
@@ -143,7 +142,7 @@ final class ChildrenTest extends TestCase
     }
 
     /**
-     * §9.3 row 9, I-10: same namespace, other prefix, matched.
+     * §9.3 row 9, I-10
      */
     #[Test]
     public function itMatchesTheSameNamespaceUnderAnotherPrefix(): void
@@ -160,7 +159,7 @@ final class ChildrenTest extends TestCase
     }
 
     /**
-     * I-11, section 5.5: all() is the element children in document order, text and comments left aside.
+     * I-11, section 5.5
      */
     #[Test]
     public function allListsTheElementChildrenInDocumentOrder(): void
@@ -179,7 +178,7 @@ final class ChildrenTest extends TestCase
     }
 
     /**
-     * I-11: an element with no element child has an empty list.
+     * I-11
      */
     #[Test]
     public function allIsEmptyForALeaf(): void
@@ -192,7 +191,7 @@ final class ChildrenTest extends TestCase
     }
 
     /**
-     * Section 6.4: named() keeps every matching child, in order, as a list.
+     * Section 6.4
      */
     #[Test]
     public function namedListsEveryMatchingChildInOrder(): void
@@ -211,7 +210,7 @@ final class ChildrenTest extends TestCase
     }
 
     /**
-     * Section 6.4, I-16: a name in no namespace is written without braces in the refusal.
+     * Section 6.4, I-16
      */
     #[Test]
     public function itNamesAChildInNoNamespaceWithoutBraces(): void

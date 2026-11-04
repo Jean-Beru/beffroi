@@ -38,14 +38,12 @@ use PHPUnit\Framework\TestCase;
 use Beffroi\Oidc\Tests\Fixture\Shapes;
 
 /**
- * What a relying party registered, and the rules it holds to (RFC 7591 §2). A registration answers for
- * itself, wherever it comes from, so that nothing which builds one has to check it a second time.
+ * RFC 7591 §2
  */
 final class ClientRegistrationTest extends TestCase
 {
     /**
-     * RFC 9126 §6: "If omitted, the default value is false". A client starts an ordinary authorization
-     * request unless its registration says it only pushes them.
+     * RFC 9126 §6
      */
     #[Test]
     public function aClientStartsAnOrdinaryAuthorizationRequestUnlessItSaysOtherwise(): void
@@ -95,7 +93,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * Decision 0008: PKCE is the rule.
+     * Decision 0008
      */
     #[Test]
     public function aClientRequiresPkceUnlessRegisteredOtherwise(): void
@@ -108,7 +106,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * Decision 0008: the named exception is carried by a confidential client.
+     * Decision 0008
      */
     #[Test]
     public function aConfidentialClientMayBeRegisteredWithoutThePkceRequirement(): void
@@ -121,7 +119,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 9700 §2.1.1: a public client MUST use PKCE; the exception of decision 0008 is not for it.
+     * RFC 9700 §2.1.1, Decision 0008
      */
     #[Test]
     public function aPublicClientCannotBeRegisteredWithoutThePkceRequirement(): void
@@ -143,8 +141,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * OIDC Registration §2 "contacts": a way of reaching nobody is not a way of reaching anybody, as no other
-     * closed list of a registration holds an empty name.
+     * OIDC Registration §2
      */
     #[Test]
     public function aClientRegistersNoEmptyContact(): void
@@ -165,7 +162,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.1: a public client has no secret.
+     * RFC 6749 §2.1
      */
     #[Test]
     public function aPublicClientHasNoSecret(): void
@@ -181,7 +178,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.1.2.3: exact match of the redirect URI.
+     * RFC 6749 §3.1.2.3
      */
     #[Test]
     #[DataProvider('provideRedirectUris')]
@@ -205,9 +202,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 8252 §7.3: the port of a loopback redirection of a public native client is the one named
-     * exception to the exact match, because the client listens on the port the operating system handed it
-     * when it started. Nothing else varies.
+     * RFC 8252 §7.3
      */
     #[Test]
     #[DataProvider('provideLoopbackRedirectUris')]
@@ -234,9 +229,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 8252 §8.3: a public client in plain HTTP is a native client, and it names the loopback interface
-     * by its IP literal. A name is resolved, and a redirection carrying a code is not a thing to hand to
-     * whatever answers for it on the machine of the user.
+     * RFC 8252 §8.3
      */
     #[Test]
     #[DataProvider('provideNamesAPublicClientCannotBeSentBackTo')]
@@ -261,9 +254,6 @@ final class ClientRegistrationTest extends TestCase
         yield 'another address of the loopback block' => ['http://127.0.0.2/callback'];
     }
 
-    /**
-     * The same rule for the URI a session ends at, a native client being reached the same way at both.
-     */
     #[Test]
     public function aPublicClientInPlainHttpNamesTheLoopbackLiteralAtTheEndOfASessionToo(): void
     {
@@ -280,9 +270,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 8252 §8.3 is a rule about a native client, which a confidential client is not: a web application
-     * on the machine of a developer registers plain HTTP on a loopback name (ClientUri) and is held to it
-     * byte for byte.
+     * RFC 8252 §8.3
      */
     #[Test]
     public function aConfidentialClientMayBeSentBackToALoopbackName(): void
@@ -300,8 +288,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 8252 §7.3: the exception belongs to a client that cannot register its port, which a confidential
-     * client is not; it has a host of its own and is held to what it registered.
+     * RFC 8252 §7.3
      */
     #[Test]
     public function aConfidentialClientIsHeldToThePortOfItsLoopbackRedirectUri(): void
@@ -319,8 +306,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 8252 §7.3: a public client that registered HTTPS registered a host it controls, and the port
-     * with it.
+     * RFC 8252 §7.3
      */
     #[Test]
     public function aPublicClientIsHeldToThePortOfAUriThatIsNotALoopbackOne(): void
@@ -333,8 +319,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RP-Initiated Logout §2 and the same exception: a native client is reached on the port it was given at
-     * the end of a session as at the beginning of one.
+     * RP-Initiated Logout §2
      */
     #[Test]
     public function aPublicClientIsSentBackOnAnyPortOfItsLoopbackPostLogoutRedirectUri(): void
@@ -348,7 +333,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * OIDC RP-Initiated Logout 1.0 §2: the post-logout URI is a registered value, matched exactly too.
+     * OIDC RP-Initiated Logout 1.0 §2
      */
     #[Test]
     #[DataProvider('providePostLogoutRedirectUris')]
@@ -507,7 +492,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.1: "none" is the method of a public client and the only one that authenticates nothing.
+     * RFC 6749 §2.1
      */
     #[Test]
     #[DataProvider('provideAuthenticationMethods')]
@@ -530,8 +515,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * OIDC Core §9: a method that verifies a signature of the client needs the keys of the client, and a
-     * registration that publishes none cannot work.
+     * OIDC Core §9
      */
     #[Test]
     public function aClientThatSignsItsAssertionsPublishesItsKeys(): void
@@ -552,7 +536,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 7591 §2: "jwks" and "jwks_uri" are exclusive.
+     * RFC 7591 §2
      */
     #[Test]
     public function aClientPublishesItsKeysOneWayOrTheOther(): void
@@ -575,8 +559,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 8705 §2.1: a method that recognises a client by what its certificate says about it needs the
-     * registration to say what that is, and a registration that says nothing cannot work.
+     * RFC 8705 §2.1
      */
     #[Test]
     public function aClientRecognisedByItsCertificateRegistersWhatNamesItInIt(): void
@@ -596,10 +579,6 @@ final class ClientRegistrationTest extends TestCase
         );
     }
 
-    /**
-     * The other way round: a method that reads nothing of a certificate is registered with nothing about
-     * one, so that a registration never carries a rule nobody applies.
-     */
     #[Test]
     public function aClientAuthenticatedOtherwiseRegistersNothingOfACertificate(): void
     {
@@ -620,8 +599,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 8705 §2.2: the self-signed method reads the keys of the client, as "private_key_jwt" does, and
-     * a registration that publishes none cannot work either.
+     * RFC 8705 §2.2
      */
     #[Test]
     public function aClientAuthenticatedByASelfSignedCertificatePublishesIt(): void
@@ -642,8 +620,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * A client that publishes keys without registering a method that uses them is not refused: RFC 7591
-     * §2 lets a client publish keys for more than one purpose.
+     * RFC 7591 §2
      */
     #[Test]
     public function aClientMayPublishKeysWithoutAuthenticatingWithThem(): void
@@ -664,8 +641,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * OIDC Registration §2 "request_uris": compared byte for byte, like every other URL a client
-     * registers, and registered twice is registered once.
+     * OIDC Registration §2
      */
     #[Test]
     public function aRegisteredRequestUriIsMatchedByteForByte(): void
@@ -684,8 +660,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: what a client may ask a token for is a closed list, compared byte for byte like
-     * every other URI it registers, and registered twice is registered once.
+     * RFC 8707 §2
      */
     #[Test]
     public function aRegisteredResourceIsMatchedByteForByte(): void
@@ -704,7 +679,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: a client that registered no resource may ask for none.
+     * RFC 8707 §2
      */
     #[Test]
     public function aClientRegisteredForNoResourceAsksForNone(): void
@@ -717,8 +692,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 9396 §11: what a client may ask for beyond its scopes is a closed list, compared byte for byte
-     * like every other name it registers, and registered twice is registered once.
+     * RFC 9396 §11
      */
     #[Test]
     public function aRegisteredAuthorizationDetailTypeIsMatchedByteForByte(): void
@@ -736,8 +710,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 9396 §11: a client that registered no type may ask for none, and one registered for a type may
-     * not ask for another.
+     * RFC 9396 §11
      */
     #[Test]
     public function aClientAsksForNoAuthorizationDetailTypeItDidNotRegister(): void
@@ -757,9 +730,6 @@ final class ClientRegistrationTest extends TestCase
         static::assertFalse($none->registration->allowsAuthorizationDetails(AuthorizationDetailTypes::details()));
     }
 
-    /**
-     * A closed list of a client holds names, and the empty string is not one.
-     */
     #[Test]
     public function itRefusesAnEmptyAuthorizationDetailTypeName(): void
     {
@@ -772,8 +742,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: a token of this client is addressed to one of the resources it registered, or to the
-     * client itself when the request named none.
+     * RFC 8707 §2
      *
      * @param list<string> $audience
      */
@@ -801,8 +770,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 7591 §2: a client whose request objects are verified against a key of its own publishes that
-     * key, and a registration that names an algorithm without publishing one fails at boot.
+     * RFC 7591 §2
      */
     #[Test]
     public function aClientRegisteringARequestObjectAlgorithmPublishesItsKeys(): void
@@ -824,8 +792,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * Decision 0006: a client whose objects carry no signature has no key to publish, and registering
-     * "none" is therefore no reason to ask it for one.
+     * Decision 0006
      */
     #[Test]
     public function aClientSendingUnsignedRequestObjectsPublishesNothing(): void
@@ -846,9 +813,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 9101 §10.5: the provider rejects a request object of a client held to signed ones when it uses
-     * "alg": "none", so such a client registers nothing under which an unsigned object is read. With the
-     * two together, an object nobody signed would meet a requirement that says signed.
+     * RFC 9101 §10.5
      */
     #[Test]
     public function aClientHeldToSignedRequestObjectsRegistersNothingThatReadsThemUnsigned(): void
@@ -871,8 +836,7 @@ final class ClientRegistrationTest extends TestCase
     }
 
     /**
-     * RFC 9101 §10.5, OIDC Registration §2: a client held to signed request objects registers the one
-     * algorithm it signs them with, or no algorithm and has them read under any the provider verifies.
+     * RFC 9101 §10.5, OIDC Registration §2
      */
     #[Test]
     #[DataProvider('provideSignedRequestObjectRegistrations')]

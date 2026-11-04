@@ -12,12 +12,12 @@ use PHPUnit\Framework\TestCase;
 use function sprintf;
 
 /**
- * I-7 and section 7: six bounds, each with a default and a ceiling, never a switch that removes a check.
+ * I-7, section 7
  */
 final class LimitsTest extends TestCase
 {
     /**
-     * Section 7: the defaults.
+     * Section 7
      */
     #[Test]
     public function itHoldsTheDefaultsOfSection7(): void
@@ -35,7 +35,7 @@ final class LimitsTest extends TestCase
     }
 
     /**
-     * Section 7: a bound may be raised up to its ceiling.
+     * Section 7
      */
     #[Test]
     #[DataProvider('provideCeilings')]
@@ -49,7 +49,7 @@ final class LimitsTest extends TestCase
     }
 
     /**
-     * Section 5.2: a value over the ceiling is a programming error.
+     * Section 5.2
      */
     #[Test]
     #[DataProvider('provideCeilings')]
@@ -64,7 +64,7 @@ final class LimitsTest extends TestCase
     }
 
     /**
-     * Section 5.2: a value under 1 is a programming error, and never a switch that removes the check.
+     * Section 5.2
      */
     #[Test]
     #[DataProvider('provideCeilings')]

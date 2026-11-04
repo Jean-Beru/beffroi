@@ -28,17 +28,6 @@ use function sprintf;
 use function str_replace;
 use function substr_count;
 
-/**
- * The response fixtures of sections 9.2 and 9.3 (story #7), each a variant of one valid response with the one change
- * that the case names, signed with the test keys of tests/saml2-model/Fixture/keys/ through Dsig's Signer wherever the attack
- * needs a valid signature, then written as files under tests/saml2-model/Fixture/ (hostile/response-*, behaviour/response-*).
- * RSA PKCS#1 v1.5 is deterministic: the same keys build the same bytes, which the test of this class checks against
- * the committed files. The command that writes them is in tests/saml2-model/Fixture/hostile/response-README.md.
- *
- * The valid response answers the request _request of the service provider https://sp.example.com/saml at its
- * assertion consumer service https://sp.example.com/saml/acs, from the identity provider https://idp.example.com/saml,
- * at 2026-09-30T11:59:59Z, the assertion issued a second earlier; the tests freeze the clock at 12:00:00Z.
- */
 final class ResponseFixtureBuilder
 {
     private const string DSIG = 'http://www.w3.org/2000/09/xmldsig#';
@@ -47,9 +36,6 @@ final class ResponseFixtureBuilder
 
     private const string SUCCESS = '<samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/>';
 
-    /**
-     * The response's own Issuer, told from the assertion's by its indentation.
-     */
     private const string RESPONSE_ISSUER = "\n  <saml:Issuer>https://idp.example.com/saml</saml:Issuer>";
 
     private const string ASSERTION_ISSUER = '<saml:Issuer>https://idp.example.com/saml</saml:Issuer>';
@@ -61,18 +47,13 @@ final class ResponseFixtureBuilder
     private const string CONFIRMATION_IN_RESPONSE_TO = 'Recipient="https://sp.example.com/saml/acs" InResponseTo="_request"';
 
     /**
-     * Every fixture, its path under tests/saml2-model/Fixture/ mapped to its bytes.
-     *
-     * @return array<string, string>
+     * @return array<string, string> path under tests/saml2-model/Fixture/ to bytes
      */
     public static function fixtures(): array
     {
         return [...self::behaviour(), ...self::wrapping(), ...self::envelope(), ...self::status()];
     }
 
-    /**
-     * Writes every fixture under $directory, tests/saml2-model/Fixture/ of the repository.
-     */
     public static function write(string $directory): void
     {
         foreach (self::fixtures() as $path => $bytes) {
@@ -83,7 +64,7 @@ final class ResponseFixtureBuilder
     }
 
     /**
-     * §9.3: the three coverages of M-2, and the responses the validator accepts.
+     * §9.3, M-2
      *
      * @return array<string, string>
      */
@@ -144,7 +125,7 @@ final class ResponseFixtureBuilder
     }
 
     /**
-     * §9.2 rows 1 to 11: the message-level wrapping corpus, and the keys of M-3.
+     * §9.2 rows 1 to 11, M-3
      *
      * @return array<string, string>
      */
@@ -225,7 +206,7 @@ final class ResponseFixtureBuilder
     }
 
     /**
-     * §9.2 rows 12 to 17, 22, 25, 26 and 29, section 6.1 steps 2 and 6: the envelope around the assertion.
+     * §9.2 rows 12 to 17, 22, 25, 26 and 29, section 6.1 steps 2 and 6
      *
      * @return array<string, string>
      */
@@ -377,7 +358,7 @@ final class ResponseFixtureBuilder
     }
 
     /**
-     * §9.2 row 22, §9.3 row 14, M-13, section 6.1 steps 2 and 4: the status, and the responses that carry a failure.
+     * §9.2 row 22, §9.3 row 14, M-13, section 6.1 steps 2 and 4
      *
      * @return array<string, string>
      */
@@ -439,8 +420,7 @@ final class ResponseFixtureBuilder
     }
 
     /**
-     * §9.2 rows 1 to 4: $response with its assertion moved into a samlp:Extensions before its status, and $inPlace
-     * where the assertion was.
+     * §9.2 rows 1 to 4
      */
     private static function inExtensions(string $response, string $inPlace): string
     {
@@ -454,7 +434,7 @@ final class ResponseFixtureBuilder
     }
 
     /**
-     * §9.2 rows 12 and 13: the valid response with the Destination $url, the assertion and the response signed.
+     * §9.2 rows 12 and 13
      */
     private static function destination(string $url): string
     {
@@ -465,8 +445,7 @@ final class ResponseFixtureBuilder
     }
 
     /**
-     * §9.3 row 14: the valid response with a status Responder, AuthnFailed at the second level, a StatusMessage and a
-     * StatusDetail, and no assertion (SAML Profiles §4.1.4.2), unsigned.
+     * §9.3 row 14, SAML Profiles §4.1.4.2
      */
     private static function failure(): string
     {
@@ -491,18 +470,11 @@ final class ResponseFixtureBuilder
         );
     }
 
-    /**
-     * The failure with $search replaced by $replace, unsigned.
-     */
     private static function failureWith(string $search, string $replace): string
     {
         return self::unsigned(self::replace($search, $replace, self::failure()));
     }
 
-    /**
-     * The valid response, unsigned: one assertion of a persistent NameID, a bearer confirmation, one audience, an
-     * authentication statement and one attribute; the XML declaration is written by the serializer.
-     */
     private static function base(): string
     {
         return <<<'XML'
@@ -539,18 +511,11 @@ final class ResponseFixtureBuilder
             XML;
     }
 
-    /**
-     * The document, loaded then serialized as the serializer writes it, unsigned.
-     */
     private static function unsigned(string $xml): string
     {
         return new Serializer()->serialize(SamlLoader::create()->load($xml));
     }
 
-    /**
-     * The bytes of a document the loader refuses, or one whose signature no longer holds, with the XML declaration
-     * the serializer writes in front of the others.
-     */
     private static function declared(string $xml): string
     {
         return preg_match('~\A<\?xml ~', $xml) === 1
@@ -559,13 +524,10 @@ final class ResponseFixtureBuilder
     }
 
     /**
-     * The document with an enveloped signature over each element of $ids, in order, after its saml:Issuer when it
-     * has one and first otherwise (SAML Core §5.4.1): an assertion before the response that carries it.
+     * SAML Core §5.4.1
      *
-     * @param list<string> $ids
-     * @param 'idp'|'sp' $key the identity provider's test key, or the service provider's, which the metadata of the
-     *                        identity provider does not list
-     * @param ?string $certificatePem the certificate the signatures carry in their KeyInfo, none by default
+     * @param list<string> $ids signed in this order, an assertion before its response
+     * @param 'idp'|'sp' $key
      */
     private static function signed(string $xml, array $ids, string $key = 'idp', ?string $certificatePem = null): string
     {
@@ -586,10 +548,7 @@ final class ResponseFixtureBuilder
     }
 
     /**
-     * §9.3 row 4: the assertion's signature of $signed made again with an InclusiveNamespaces naming the prefix xs
-     * on its exclusive transform, the digest computed over the assertion where it stands, where the response declares
-     * xs: Signer writes no PrefixList (dsig.md section 6.2 step 5), so the reference, its digest and the signature
-     * over SignedInfo are made here, with Core's canonicalizer and the test key.
+     * §9.3 row 4: Signer writes no PrefixList (dsig.md section 6.2 step 5), so this signature is made by hand.
      */
     private static function prefixListed(string $signed): string
     {
@@ -601,7 +560,7 @@ final class ResponseFixtureBuilder
             ),
             $signed,
         );
-        // each Document is held while its elements are read: Core finds the document of a node through it
+        // Each Document is held while its elements are read: Core finds the document of a node through it.
         $document = SamlLoader::create()->load($listed);
         $assertion = Children::one($document->root(), new Name(Saml::ASSERTION, 'Assertion'));
         $canonicalizer = new Canonicalizer();
@@ -635,10 +594,6 @@ final class ResponseFixtureBuilder
         );
     }
 
-    /**
-     * The first element $qualifiedName of $xml, from its start tag to its end tag, as written: never one that holds
-     * another of its name.
-     */
     private static function element(string $xml, string $qualifiedName): string
     {
         $name = preg_quote($qualifiedName, '~');
@@ -649,9 +604,6 @@ final class ResponseFixtureBuilder
         return $match[0];
     }
 
-    /**
-     * The text of the first element $qualifiedName of $xml, as written.
-     */
     private static function text(string $xml, string $qualifiedName): string
     {
         $name = preg_quote($qualifiedName, '~');
@@ -662,10 +614,6 @@ final class ResponseFixtureBuilder
         return $match[1];
     }
 
-    /**
-     * $subject with $search replaced, which occurs exactly $count times: a variant that changes nothing is a
-     * mistake of the builder, never a fixture.
-     */
     private static function replace(string $search, string $replace, string $subject, int $count = 1): string
     {
         if (substr_count($subject, $search) !== $count) {

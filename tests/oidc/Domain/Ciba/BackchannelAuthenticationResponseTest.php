@@ -10,12 +10,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * CIBA Core §7.3: what the client is answered, and nothing else.
+ * CIBA Core §7.3
  */
 final class BackchannelAuthenticationResponseTest extends TestCase
 {
     /**
-     * §7.3: the identifier, the lifetime and the interval, and no token anywhere (§10.3 is not served).
+     * CIBA Core §7.3
      */
     #[Test]
     public function itAnswersTheIdentifierTheLifetimeAndTheInterval(): void
@@ -34,9 +34,6 @@ final class BackchannelAuthenticationResponseTest extends TestCase
         );
     }
 
-    /**
-     * A lifetime already spent is no answer a client could use.
-     */
     #[Test]
     public function itAnswersALifetimeOfAtLeastOneSecond(): void
     {
@@ -48,9 +45,6 @@ final class BackchannelAuthenticationResponseTest extends TestCase
         new BackchannelAuthenticationResponse('the-auth-req-id', 0, 5);
     }
 
-    /**
-     * An interval of no seconds is not an interval.
-     */
     #[Test]
     public function itAnswersAnIntervalOfAtLeastOneSecond(): void
     {

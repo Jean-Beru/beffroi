@@ -15,10 +15,6 @@ use Beffroi\Core\Tests\Fixture\Totps;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * What the home of the account says of the second factor of a user: the authenticator app it holds, or none.
- * How many backup codes are left is on the page of the second factor, where they can be renewed.
- */
 final class TwoFactorSectionTest extends TestCase
 {
     #[Test]

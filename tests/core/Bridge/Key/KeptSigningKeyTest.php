@@ -20,9 +20,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Architecture §3.3, decisions 0018 and 0020: a key the tenant keeps out of its JWK Set and signs with, the SAML key
- * of a tenant among them, is the active key of its algorithm, opened by the KMS once per process as the keys of the
- * set are.
+ * Architecture §3.3, Decisions 0018 and 0020
  */
 final class KeptSigningKeyTest extends TestCase
 {
@@ -42,9 +40,6 @@ final class KeptSigningKeyTest extends TestCase
         $this->provider = new SealedKeyProvider($this->keys, $this->opened);
     }
 
-    /**
-     * What signs is the active key of the algorithm, its private half opened.
-     */
     #[Test]
     public function theActiveKeyOfTheAlgorithmSigns(): void
     {
@@ -59,7 +54,7 @@ final class KeptSigningKeyTest extends TestCase
     }
 
     /**
-     * Decision 0018: the KMS is asked once per key and per process, never at every message signed.
+     * Decision 0018
      */
     #[Test]
     public function theKeyIsOpenedOncePerProcess(): void
@@ -75,9 +70,6 @@ final class KeptSigningKeyTest extends TestCase
         static::assertSame($first, $second);
     }
 
-    /**
-     * A tenant that holds no active key of the algorithm signs nothing with it.
-     */
     #[Test]
     public function noActiveKeySignsNothing(): void
     {
@@ -90,7 +82,7 @@ final class KeptSigningKeyTest extends TestCase
     }
 
     /**
-     * RFC 7517 §4.2: the use is asserted and not deduced from the caller, a key of another use never signs.
+     * RFC 7517 §4.2
      */
     #[Test]
     public function aKeyOfAnotherUseSignsNothing(): void
@@ -106,9 +98,6 @@ final class KeptSigningKeyTest extends TestCase
         $this->provider->activeKeptSigningKey($this->tenant, new KeptSigning(KeyUse::Encryption));
     }
 
-    /**
-     * A rotation seen by a worker: the key it signed with before leaves the process.
-     */
     #[Test]
     public function theKeyARotationReplacedLeavesTheProcess(): void
     {
@@ -126,9 +115,6 @@ final class KeptSigningKeyTest extends TestCase
         static::assertNotSame($opened, $this->opened->open($this->tenant, $previous));
     }
 
-    /**
-     * The material of a pair of the suite under the algorithm a test names, its public JWK saying so.
-     */
     private function activeKey(KeyAlgorithmInterface $algorithm, GeneratedKeyPair $pair): TenantKey
     {
         $key = new TenantKey(

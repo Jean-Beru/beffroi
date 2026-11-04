@@ -15,9 +15,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 7591 §1.2, decision 0009: what a tenant hands to whoever may register a client for it. It keeps
- * the digest and never the value, it is worth a number of registrations, it expires, and the tenant can
- * take it back.
+ * RFC 7591 §1.2, Decision 0009
  */
 final class InitialAccessTokenTest extends TestCase
 {
@@ -79,9 +77,6 @@ final class InitialAccessTokenTest extends TestCase
         static::assertFalse($token->isSpent());
     }
 
-    /**
-     * A token worth one registers one: what it was worth is what it has served.
-     */
     #[Test]
     public function aTokenWorthOneAuthorisesNothingOnceItHasServedOne(): void
     {
@@ -120,9 +115,6 @@ final class InitialAccessTokenTest extends TestCase
         static::assertFalse($token->authorisesARegistration(Fixtures::now()));
     }
 
-    /**
-     * A token taken back once is taken back at that instant: a second call says nothing new.
-     */
     #[Test]
     public function aTokenKeepsTheInstantItWasFirstTakenBack(): void
     {
@@ -147,10 +139,6 @@ final class InitialAccessTokenTest extends TestCase
         static::assertTrue($token->authorisesARegistration(Fixtures::now()));
     }
 
-    /**
-     * Every secret comparison of this provider goes through hash_equals(), the store having answered by
-     * a digest it was given.
-     */
     #[Test]
     public function aTokenIsTheOneItsDigestNames(): void
     {
@@ -171,9 +159,6 @@ final class InitialAccessTokenTest extends TestCase
         static::assertFalse($token->belongsTo(Fixtures::tenant('other', 'https://id.other.example')));
     }
 
-    /**
-     * What a store that lost the claim reads back: the count it holds, on the copy the caller has.
-     */
     #[Test]
     public function aTokenRecordsWhatTheStoreHolds(): void
     {

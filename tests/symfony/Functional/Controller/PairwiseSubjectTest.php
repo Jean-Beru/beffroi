@@ -14,10 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * OIDC Core §8.1, modules oidcc-registration-sector-uri and -sector-bad: what a sector sees of a user, end
- * to end. Three clients of the test kernel and two sectors: two clients whose sector is the host of their
- * redirection URI, on two hosts, and a third that registers the document of the first one's host and is
- * therefore of the first one's sector.
+ * OIDC Core §8.1
  */
 final class PairwiseSubjectTest extends BrowserTestCase
 {
@@ -39,10 +36,6 @@ final class PairwiseSubjectTest extends BrowserTestCase
         self::signingKey();
     }
 
-    /**
-     * The property pairwise identifiers exist for: two clients of two sectors hold two strings for one
-     * person and cannot find out by comparing them.
-     */
     #[Test]
     public function twoSectorsSeeOneUserUnderTwoIdentifiers(): void
     {
@@ -58,8 +51,7 @@ final class PairwiseSubjectTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Registration §5: what a sector identifier document is for. A client that registers the document
-     * of another host belongs to that host's sector, so one user is one account to both of them.
+     * OIDC Registration §5
      */
     #[Test]
     public function twoClientsOfOneSectorSeeOneUserUnderOneIdentifier(): void
@@ -76,9 +68,7 @@ final class PairwiseSubjectTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0002: a client that registers no kind sees the subject the core keeps, which is what every
-     * client of this provider has seen so far. The two are read side by side, of the same user, in the same
-     * session.
+     * Decision 0002
      */
     #[Test]
     public function aPublicClientSeesTheSubjectTheCoreKeepsAndAPairwiseOneDoesNot(): void
@@ -97,8 +87,7 @@ final class PairwiseSubjectTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §5.3.2: every document written for a client says the same thing about who it is about. The
-     * access token, the UserInfo answer and the ID token of one client carry one identifier.
+     * OIDC Core §5.3.2
      */
     #[Test]
     public function everyDocumentWrittenForAClientCarriesItsOwnIdentifier(): void
@@ -119,10 +108,6 @@ final class PairwiseSubjectTest extends BrowserTestCase
         static::assertSame($subject, self::json($this->browser->getResponse())['sub']);
     }
 
-    /**
-     * The way back, through the store: a token whose "sub" is a string no row of the users carries is
-     * introspected, and the user it names is found for the client that holds it.
-     */
     #[Test]
     public function anAccessTokenOfAPairwiseClientIsIntrospectedAndItsUserFound(): void
     {
@@ -152,9 +137,7 @@ final class PairwiseSubjectTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §4.6: the shape the client registered changes who reads the token back and nothing else.
-     * An opaque token of a pairwise client is introspected to the identifier its client sees, and the
-     * introspection is what a client holding one has instead of reading it.
+     * Architecture §4.6
      */
     #[Test]
     public function anOpaqueTokenOfAPairwiseClientIsIntrospectedToTheIdentifierItsClientSees(): void
@@ -182,10 +165,6 @@ final class PairwiseSubjectTest extends BrowserTestCase
         static::assertSame($subject, $members['sub']);
     }
 
-    /**
-     * What makes the answer above possible: the identifier was written down when the documents were, and
-     * the row names the user the sector of that client sees, and nobody to another sector.
-     */
     #[Test]
     public function theIdentifierIsWrittenDownForTheSectorAndForNoOther(): void
     {
@@ -207,8 +186,7 @@ final class PairwiseSubjectTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §3.1.2.1 id_token_hint (issue #838): the ID token a client of pairwise subjects was given names
-     * the person signed in, so prompt=none is answered with a code and not with login_required.
+     * OIDC Core §3.1.2.1
      */
     #[Test]
     public function theIdTokenOfAPairwiseClientNamesThePersonSignedInAtTheAuthorizationEndpoint(): void
@@ -230,8 +208,7 @@ final class PairwiseSubjectTest extends BrowserTestCase
     }
 
     /**
-     * RP-Initiated Logout 1.0 §2 (issue #838): the same ID token presented at the end session endpoint names the
-     * session the browser holds, which therefore ends without a question.
+     * RP-Initiated Logout 1.0 §2
      */
     #[Test]
     public function theIdTokenOfAPairwiseClientEndsTheSessionWithoutAQuestion(): void
@@ -252,9 +229,7 @@ final class PairwiseSubjectTest extends BrowserTestCase
     }
 
     /**
-     * CIBA Core §4: the three ways of saying which sector a client is of are wired, and the third is what
-     * answers for a client that registers no redirection URI. What no unit test can say is that they are
-     * really tagged and composed in the container of a deployment, which is what this reads.
+     * CIBA Core §4
      */
     #[Test]
     public function theSectorOfABackchannelClientIsTheHostOfItsKeys(): void
@@ -270,8 +245,7 @@ final class PairwiseSubjectTest extends BrowserTestCase
     }
 
     /**
-     * And a client that registers a redirection URI is of the host it comes back to, whatever its keys
-     * say: the source of CIBA Core §4 answers of a client that registered none, and of no other.
+     * CIBA Core §4
      */
     #[Test]
     public function theSectorOfAnOrdinaryClientIsStillTheHostItComesBackTo(): void
@@ -287,8 +261,7 @@ final class PairwiseSubjectTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Discovery §3: the document names both kinds, because the provider is wired with both. The two
-     * modules that judge a sector skip themselves unless it does.
+     * OIDC Discovery §3
      */
     #[Test]
     public function theDocumentAnnouncesBothKinds(): void

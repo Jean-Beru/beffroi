@@ -20,9 +20,7 @@ use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Issue #448, architecture §5.7: a visitor asks the pages to be read in a language this deployment serves.
- * The choice is kept for their browser and recorded on the journey in progress, and it never appears in a
- * URL. What the choice does to the order the language is read in is InteractionLocaleTest.
+ * Architecture §5.7
  */
 final class LocaleChoiceTest extends BrowserTestCase
 {
@@ -156,14 +154,7 @@ final class LocaleChoiceTest extends BrowserTestCase
     }
 
     /**
-     * Issue #471: a person who is signed in has told this provider which language they read, and the
-     * claim of their account is what it writes to them in when no request of theirs is there to read one
-     * from (UserLocale).
-     */
-    /**
-     * Issue #485: a page of somebody who is signed in speaks the language their record names, whatever
-     * their browser asks for, and nothing is offered to them to choose: they change it where the record
-     * is changed (§5.2).
+     * Architecture §5.2
      */
     #[Test]
     public function aPageOfSomebodySignedInSpeaksTheLanguageTheirRecordNames(): void
@@ -184,10 +175,6 @@ final class LocaleChoiceTest extends BrowserTestCase
         static::assertCount(0, $page->filter('form[data-locale="choice"]'));
     }
 
-    /**
-     * Issue #485: and a record that names no language leaves the chain of a visitor nobody knows in
-     * place, which is most people, so the control is there for them.
-     */
     #[Test]
     public function aRecordThatNamesNoLanguageLeavesTheBrowserToAnswer(): void
     {
@@ -204,10 +191,6 @@ final class LocaleChoiceTest extends BrowserTestCase
         static::assertCount(1, $page->filter('form[data-locale="choice"]'));
     }
 
-    /**
-     * Issue #485: a language the record names that this deployment does not serve changes nothing, as it
-     * changes nothing anywhere else.
-     */
     #[Test]
     public function aLanguageTheRecordNamesAndNobodyServesChangesNothing(): void
     {
@@ -274,11 +257,6 @@ final class LocaleChoiceTest extends BrowserTestCase
         return $reread;
     }
 
-    /**
-     * Issue #573: the page establishes the session of the browser, the choice writes the preferences of the
-     * browser, and neither sets a third cookie. The count is what holds the rule, a preference added beside
-     * the language being a slot of the second and never a cookie of its own.
-     */
     #[Test]
     public function aPageOfAnInteractionSetsTheSessionOfTheBrowserAndThePreferencesOfTheBrowserAndNothingElse(): void
     {
@@ -292,8 +270,6 @@ final class LocaleChoiceTest extends BrowserTestCase
         ]);
 
         // Then
-        // the name the mock file storage of the test kernel gives the session; a deployment names it
-        // "__Host-beffroi_session" (apps/op/config/packages/framework.yaml)
         static::assertSame(['MOCKSESSID'], $ofThePage);
         static::assertSame([BrowserPreferences::COOKIE], self::cookiesSetBy($this->browser->getResponse()));
     }
@@ -303,10 +279,6 @@ final class LocaleChoiceTest extends BrowserTestCase
         return $this->browser->request('GET', '/login');
     }
 
-    /**
-     * The token of the form, read from a page asked before the journey is written: the session this page
-     * establishes is the one the pending interaction lands in, and the token is bound to it.
-     */
     private function token(): string
     {
         return self::string($this->loginPage()->filter('form[data-locale="choice"] input[name="_token"]')->attr('value'));
@@ -321,8 +293,6 @@ final class LocaleChoiceTest extends BrowserTestCase
     }
 
     /**
-     * The names of the cookies a response sets, in the order it sets them.
-     *
      * @return list<string>
      */
     private static function cookiesSetBy(Response $response): array
@@ -330,11 +300,6 @@ final class LocaleChoiceTest extends BrowserTestCase
         return array_values(array_map(static fn (Cookie $cookie): string => $cookie->getName(), $response->headers->getCookies()));
     }
 
-    /**
-     * The whole value of the cookie of the preferences and not the slot of the language alone: what a
-     * response of this page carries is one cookie with a slot per preference, so a slot that appeared
-     * beside the language reads here.
-     */
     private static function preferencesIn(Response $response): ?string
     {
         $cookies = array_values(array_filter(

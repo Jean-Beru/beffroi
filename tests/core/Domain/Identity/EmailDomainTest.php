@@ -13,13 +13,12 @@ use function sprintf;
 use function str_repeat;
 
 /**
- * Decision 0029, spec/saml.md S-44 and S-60: an e-mail domain an upstream provider answers for, a name of the DNS kept
- * in lower case, and the one reading of the domain of an address.
+ * Decision 0029, spec/saml.md S-44 and S-60
  */
 final class EmailDomainTest extends TestCase
 {
     /**
-     * S-44, RFC 4343: a domain is read without regard to case and kept in lower case, so that two spellings are one.
+     * S-44, RFC 4343
      */
     #[Test]
     public function aDomainIsKeptInLowerCase(): void
@@ -29,7 +28,7 @@ final class EmailDomainTest extends TestCase
     }
 
     /**
-     * S-44, RFC 1035 §2.3.4, RFC 1123 §2.1, RFC 5890 §2.3.2.1: a name of the DNS of two labels at least.
+     * S-44, RFC 1035 §2.3.4, RFC 1123 §2.1, RFC 5890 §2.3.2.1
      */
     #[Test]
     #[DataProvider('provideDomains')]
@@ -53,7 +52,7 @@ final class EmailDomainTest extends TestCase
     }
 
     /**
-     * S-44: what is no name of the DNS of two labels at least is refused.
+     * S-44
      */
     #[Test]
     #[DataProvider('provideWhatIsNoDomain')]
@@ -86,9 +85,8 @@ final class EmailDomainTest extends TestCase
         yield 'an underscore' => ['ac_me.example'];
         yield 'a wildcard' => ['*.acme.example'];
         yield 'a name outside ASCII' => ['bücher.example'];
-        // an A-label the IDNA does not read back: a domain no address could ever be of
         yield 'a broken A-label' => ['xn--a.example'];
-        // UTS #46 §4.1: two hyphens at the third and fourth characters are an A-label's, or nothing
+        // UTS #46 §4.1: two hyphens at the third and fourth characters are an A-label's, or nothing.
         yield 'two hyphens at the third and fourth characters' => ['ab--cd.example'];
         yield 'a name of 254 characters' => [self::longName(62)];
         yield 'an IPv4 address' => ['192.0.2.1'];
@@ -99,8 +97,7 @@ final class EmailDomainTest extends TestCase
     }
 
     /**
-     * S-44, UTS #46: the domain of an address is written as a declared domain is, in lower case and as its A-label, the
-     * part after the last "@" taken, so that it is compared with a declared domain as one.
+     * S-44, UTS #46
      */
     #[Test]
     #[DataProvider('provideAddresses')]
@@ -122,13 +119,11 @@ final class EmailDomainTest extends TestCase
         yield 'an A-label' => ['alice@xn--bcher-kva.example', 'xn--bcher-kva.example'];
         yield 'a sharp s, kept by the non-transitional processing' => ['alice@faß.example', 'xn--fa-hia.example'];
         yield 'the last "@"' => ['"alice@home"@acme.example', 'acme.example'];
-        // the whole part after the "@": a subdomain is a domain of its own, and never its parent
         yield 'a subdomain' => ['alice@eu.acme.example', 'eu.acme.example'];
     }
 
     /**
-     * S-44: an address without a domain after an "@" is refused, and never taken for an address of no federated
-     * domain.
+     * S-44
      */
     #[Test]
     #[DataProvider('provideAddressesWithoutADomain')]
@@ -152,7 +147,7 @@ final class EmailDomainTest extends TestCase
     }
 
     /**
-     * S-44, UTS #46: a domain the IDNA cannot convert is refused, the address not named.
+     * S-44, UTS #46
      */
     #[Test]
     #[DataProvider('provideDomainsTheIdnaRefuses')]
@@ -178,8 +173,7 @@ final class EmailDomainTest extends TestCase
     }
 
     /**
-     * S-44: a domain the IDNA converts that is no name of the DNS of two labels at least is refused, the address not
-     * named.
+     * S-44
      */
     #[Test]
     #[DataProvider('provideDomainsTheRuleRefuses')]
@@ -202,9 +196,6 @@ final class EmailDomainTest extends TestCase
         yield 'a final dot' => ['alice@acme.example.'];
     }
 
-    /**
-     * Three labels of 63 characters, then a last one of the length given.
-     */
     private static function longName(int $last): string
     {
         return str_repeat('a', 63) . '.' . str_repeat('b', 63) . '.' . str_repeat('c', 63) . '.' . str_repeat('d', $last);

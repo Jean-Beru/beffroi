@@ -7,8 +7,6 @@ namespace App\Doctrine\Type;
 use Beffroi\Core\Domain\Identity\Subject;
 
 /**
- * The "sub" of a user (OIDC Core §2), stored as is.
- *
  * @extends StringObjectType<Subject>
  */
 final class SubjectType extends StringObjectType

@@ -14,8 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Decision 0002, issue #782: the groups of a tenant in beffroi_group, found by the name the console created
- * them under and the declaration of an upstream provider maps to.
+ * Decision 0002
  */
 final class GroupsTest extends DatabaseTestCase
 {
@@ -57,10 +56,6 @@ final class GroupsTest extends DatabaseTestCase
         yield 'another name' => ['sales'];
     }
 
-    /**
-     * The race the lookup cannot see: a second group of the same name reaches the table, and the unique
-     * constraint refuses it under the name of the refusal the lookup gives.
-     */
     #[Test]
     public function aSecondGroupOfTheSameNameIsRefusedByTheTable(): void
     {

@@ -16,10 +16,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * The second step of a rotation by hand (architecture §3.3): what the scheduled step does once the staging
- * delay elapsed, for an operator who knows every relying party has seen the key.
- */
 #[AsCommand(
     name: 'beffroi:keys:activate',
     description: 'Make a staged key the active one of its algorithm before its staging delay elapsed; the key it takes over from starts retiring.',

@@ -29,9 +29,7 @@ use Webauthn\PublicKeyCredentialRpEntity;
 use Webauthn\PublicKeyCredentialUserEntity;
 
 /**
- * What the two ceremonies share: the relying party and the origin are the tenant's (WebAuthn Level 3
- * §5.4.2, §13.4.9), the options travel as the JSON the browser parses (§5.1.8), and the FIDO metadata of
- * the store is what an attestation asked for is checked against (§7.1 step 22).
+ * WebAuthn Level 3 §5.4.2, §13.4.9, §5.1.8, §7.1 step 22
  */
 final class WebauthnCeremoniesTest extends TestCase
 {
@@ -93,8 +91,7 @@ final class WebauthnCeremoniesTest extends TestCase
     }
 
     /**
-     * §7.1 step 22 with the metadata: the status reports of the authenticator say it is compromised, the
-     * self attestation it sends when asked for one is refused.
+     * §7.1 step 22
      */
     #[Test]
     public function anAttestationAskedForIsRefusedWhenTheMetadataSayTheAuthenticatorIsCompromised(): void
@@ -119,10 +116,6 @@ final class WebauthnCeremoniesTest extends TestCase
         $ceremonies->attestationValidator(Fixtures::tenant())->check($credential->response, $options, 'id.acme.example');
     }
 
-    /**
-     * An authenticator the metadata do not describe passes on a self attestation: the metadata refuse,
-     * they never vouch (the spike README: an attestation is never required).
-     */
     #[Test]
     public function anAttestationAskedForPassesWhenTheMetadataDoNotKnowTheAuthenticator(): void
     {
@@ -146,8 +139,7 @@ final class WebauthnCeremoniesTest extends TestCase
     }
 
     /**
-     * The options a ceremony that wants an attestation draws (§5.4.7, "direct"); the provider's own
-     * enrolment never does, see WebauthnPasskeyRegistrarTest.
+     * §5.4.7
      */
     private static function creationOptionsAskingForAnAttestation(): PublicKeyCredentialCreationOptions
     {

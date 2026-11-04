@@ -15,15 +15,14 @@ use PHPUnit\Framework\TestCase;
 use function str_replace;
 
 /**
- * Section 5.4, M-1: a received samlp:LogoutRequest before any verification, its root checked and its Issuer read to
- * choose the peer, nothing else.
+ * Section 5.4, M-1
  */
 final class UnverifiedLogoutRequestTest extends TestCase
 {
     private const string REQUEST = 'behaviour/logout-request-written-for-http-redirect.xml';
 
     /**
-     * Section 5.4: the Issuer, and the document held for the validator.
+     * Section 5.4
      */
     #[Test]
     public function itReadsTheIssuer(): void
@@ -39,8 +38,7 @@ final class UnverifiedLogoutRequestTest extends TestCase
     }
 
     /**
-     * Section 5.4, SAML Core §3.2.1: the Issuer the schema leaves optional is read as null; the validator refuses its
-     * absence (SAML Profiles §4.4.4.1).
+     * Section 5.4, SAML Core §3.2.1, SAML Profiles §4.4.4.1
      */
     #[Test]
     public function itReadsNoIssuerAsNull(): void
@@ -53,7 +51,7 @@ final class UnverifiedLogoutRequestTest extends TestCase
     }
 
     /**
-     * Section 5.4: another root, a LogoutResponse among them, is not a LogoutRequest.
+     * Section 5.4
      */
     #[Test]
     #[DataProvider('provideOtherRoots')]
@@ -80,7 +78,7 @@ final class UnverifiedLogoutRequestTest extends TestCase
     }
 
     /**
-     * Section 5.4, M-4: two Issuers leave the consumer two peers to choose from.
+     * Section 5.4, M-4
      */
     #[Test]
     public function itRefusesTwoIssuers(): void
@@ -97,8 +95,7 @@ final class UnverifiedLogoutRequestTest extends TestCase
     }
 
     /**
-     * Section 5.4, M-6: an Issuer that is not a URI is refused before it chooses anything; the message carries nothing
-     * of it (M-16).
+     * Section 5.4, M-6, M-16
      */
     #[Test]
     public function itRefusesAnIssuerThatIsNotAUri(): void

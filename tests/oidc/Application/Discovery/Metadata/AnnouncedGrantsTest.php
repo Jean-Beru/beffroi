@@ -13,8 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * OIDC Discovery §3, RFC 8414 §2: "grant_types_supported" is what the token endpoint serves, the grants
- * tagged into it.
+ * OIDC Discovery §3, RFC 8414 §2
  */
 final class AnnouncedGrantsTest extends TestCase
 {
@@ -37,8 +36,7 @@ final class AnnouncedGrantsTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.5, RFC 8414 §2: a grant nobody wrote a line of this provider for is announced because
-     * it is wired, under the name it gives itself.
+     * RFC 6749 §4.5, RFC 8414 §2
      */
     #[Test]
     public function aGrantTheProviderGainsIsAnnouncedByBeingWired(): void

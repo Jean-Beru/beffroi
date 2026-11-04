@@ -14,8 +14,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
 
 /**
- * Decision 0014: the budget of a client is counted by tenant and by client, because two tenants may
- * register the same identifier and one bucket for both would make either pay for the other.
+ * Decision 0014
  */
 final class RateLimitedClientLoadTest extends TestCase
 {

@@ -15,9 +15,7 @@ use Beffroi\Oidc\Port\ServedGrantsInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * CIBA Core §10.1: the client asks the token endpoint for the request it is waiting on, and is told to
- * wait until the user this provider reached has answered. The hop repeats, as the polled hop of the
- * device flow does.
+ * CIBA Core §10.1
  */
 final readonly class PollForTheTokensOfABackchannelFlow implements DrivenHopInterface
 {

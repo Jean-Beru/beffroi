@@ -14,16 +14,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * A person asks for everything this provider holds about them (RGPD article 15, issue #453).
- *
- * **It builds nothing.** The row is written, the act is announced, and the archive is assembled off this
- * request by whatever carries the events (BuildThePersonalArchiveHandler): seven tables read and one file
- * sealed is not work a browser waits for, and the page it comes back to says where the file has got to.
- *
- * It answers with a redirection and never the page itself (issue #481), so that a browser reloading does
- * not ask for a second archive.
- */
 #[AsController]
 final readonly class AccountArchiveRequestController implements ReachedOnTheSessionAloneInterface
 {

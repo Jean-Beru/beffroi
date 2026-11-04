@@ -16,7 +16,7 @@ use function preg_replace;
 use function strlen;
 
 /**
- * E-11, E-14: one PEM block in memory, read strictly, and written again from its bytes.
+ * E-11, E-14
  */
 final class PemTest extends TestCase
 {
@@ -35,7 +35,7 @@ final class PemTest extends TestCase
     }
 
     /**
-     * E-11: a block of another type, two blocks, text around the block, no content, content that is not base64.
+     * E-11
      */
     #[Test]
     #[TestWith(["-----BEGIN PUBLIC KEY-----\nAAAA\n-----END PUBLIC KEY-----\n"], 'another type')]

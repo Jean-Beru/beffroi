@@ -21,8 +21,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * What the provider hands one client, written once for the three documents that travel that way
- * (OIDC Core §3.1.3.7, §5.3.2, JARM §2.1): what the two steps refuse, and when.
+ * OIDC Core §3.1.3.7, §5.3.2, JARM §2.1
  */
 final class ClientDocumentIssuerTest extends TestCase
 {
@@ -36,10 +35,6 @@ final class ClientDocumentIssuerTest extends TestCase
         $this->jwts = new Jwts($this->tenant);
     }
 
-    /**
-     * A document a client registered neither a signature nor an encryption for is handed over as it is by
-     * its caller, and asking for it here is a fault of the caller and not of the client.
-     */
     #[Test]
     public function aDocumentThatIsNeitherSignedNorEncryptedIsNotMintedHere(): void
     {
@@ -56,10 +51,6 @@ final class ClientDocumentIssuerTest extends TestCase
         ]);
     }
 
-    /**
-     * A shape that encrypts nothing goes to no key, so nothing the client publishes is read for it: a
-     * client that publishes no key at all is addressed a signed document.
-     */
     #[Test]
     public function aShapeThatEncryptsNothingIsAddressedWithoutReadingAKey(): void
     {
@@ -74,11 +65,6 @@ final class ClientDocumentIssuerTest extends TestCase
         static::assertSame($format, $addressed->format);
     }
 
-    /**
-     * The registration of a client is checked when it is read, so a set that no longer holds a key the
-     * document can be addressed to is a client that changed its keys since: it is said with the client and
-     * the algorithm when the document is addressed, and no document leaves.
-     */
     #[Test]
     public function aClientWhosePublishedKeysNoLongerFitIsToldSoAndNothingLeaves(): void
     {
@@ -99,10 +85,6 @@ final class ClientDocumentIssuerTest extends TestCase
         $documents->address($client, ResponseFormat::signed(null, ClientEncryption::registration()));
     }
 
-    /**
-     * What the client publishes behind its "jwks_uri" is read when the document is addressed, so a set that
-     * cannot be read right now is said then, before anything is struck.
-     */
     #[Test]
     public function aClientWhoseKeysCannotBeReadIsToldSoWhenTheDocumentIsAddressed(): void
     {
@@ -120,10 +102,6 @@ final class ClientDocumentIssuerTest extends TestCase
         $documents->address($client, ResponseFormat::signed(null, ClientEncryption::registration()));
     }
 
-    /**
-     * Striking a document reads nothing of the client (issue #836): one addressed while the keys of its
-     * client could be read is struck for the key that was read, whatever the client serves by then.
-     */
     #[Test]
     public function aDocumentIsStruckForTheKeyReadWhenItWasAddressed(): void
     {
@@ -144,8 +122,7 @@ final class ClientDocumentIssuerTest extends TestCase
     }
 
     /**
-     * Architecture §4.5 (issue #870): the key of the tenant a document is signed with is opened when the
-     * document is addressed, so a KMS that does not answer is said then, before anything is struck.
+     * Architecture §4.5
      */
     #[Test]
     public function aKmsThatDoesNotAnswerIsToldWhenTheDocumentIsAddressed(): void
@@ -162,10 +139,6 @@ final class ClientDocumentIssuerTest extends TestCase
         $documents->address($client, ResponseFormat::signed());
     }
 
-    /**
-     * Striking a document asks nothing of the KMS (issue #870): one addressed while the KMS answered is signed
-     * with the key opened then, whatever the KMS answers by the time it is struck.
-     */
     #[Test]
     public function aDocumentIsSignedWithTheKeyOpenedWhenItWasAddressed(): void
     {

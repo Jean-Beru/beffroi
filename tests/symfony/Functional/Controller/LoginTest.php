@@ -30,19 +30,14 @@ use Symfony\Component\Uid\Uuid;
 use function unserialize;
 
 /**
- * Architecture §5.4, the acceptance criterion of the security of the provider: a user created outside of
- * the browser signs in on the form of the login page, the firewall opens the session of the core and
- * binds the browser to it, and an interaction begun in another HTTP session cannot be resumed, before
- * or after a login. The firewall is the one of tests/symfony/config/config_test.yml, declared as an
- * application declares it.
+ * Architecture §5.4
  */
 final class LoginTest extends BrowserTestCase
 {
     private const string PASSWORD = 'correct horse battery staple';
 
     /**
-     * Architecture §5.4: the login of the firewall sends the browser back to the login page of the
-     * interaction, which resumes it.
+     * Architecture §5.4
      */
     #[Test]
     public function aSuccessfulLoginGoesBackToTheLoginPageOfTheInteraction(): void
@@ -62,8 +57,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §2 (auth_time, amr), RFC 8176 §2, architecture §3.2 and §3.5: the session of the core
-     * says who, since when, how, from where.
+     * OIDC Core §2, RFC 8176 §2, Architecture §3.2, §3.5
      */
     #[Test]
     public function aSuccessfulLoginOpensASessionOfTheCore(): void
@@ -91,9 +85,6 @@ final class LoginTest extends BrowserTestCase
         static::assertSame('1', $session->authenticationContextClass()->value);
     }
 
-    /**
-     * The token of the firewall calls recent what the session calls auth_time (symfony/symfony#66014).
-     */
     #[Test]
     public function theTokenOfTheFirewallCarriesTheAuthTimeOfTheSession(): void
     {
@@ -130,7 +121,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §3.5: the core is told once; a hash the policy produces is not rehashed.
+     * Architecture §3.5
      */
     #[Test]
     public function aSuccessfulLoginIsAnnouncedOnce(): void
@@ -149,9 +140,6 @@ final class LoginTest extends BrowserTestCase
         static::assertSame([], self::events(PasswordRehashed::class));
     }
 
-    /**
-     * The interaction the browser began goes on with the session: consent is next.
-     */
     #[Test]
     public function theInteractionGoesOnWithTheSession(): void
     {
@@ -172,7 +160,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §4.3: an interaction is resumed by the browser that began it and by no other.
+     * Architecture §4.3
      */
     #[Test]
     public function anotherBrowserCannotSeeTheLoginPageOfAnInteraction(): void
@@ -190,10 +178,6 @@ final class LoginTest extends BrowserTestCase
         static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
     }
 
-    /**
-     * Nor is its form for another browser, whatever it posts: the firewall refuses a form token it did
-     * not give this browser.
-     */
     #[Test]
     public function anotherBrowserCannotPostTheLoginFormOfAnInteraction(): void
     {
@@ -230,9 +214,6 @@ final class LoginTest extends BrowserTestCase
         static::assertSame([], self::events(UserAuthenticated::class));
     }
 
-    /**
-     * Signed in on an interaction of its own, a browser still cannot touch one begun elsewhere.
-     */
     #[Test]
     #[DataProvider('providePagesOfAnInteraction')]
     public function aBrowserSignedInOnItsOwnInteractionCannotResumeAnotherOne(string $path): void
@@ -280,7 +261,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0006 and architecture §3.4: a wrong password sends the browser back to the form.
+     * Decision 0006, Architecture §3.4
      */
     #[Test]
     public function aWrongPasswordGoesBackToTheLoginPage(): void
@@ -316,7 +297,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §3.4: the audit trail gets the reason and the request context.
+     * Architecture §3.4
      */
     #[Test]
     public function aWrongPasswordIsRecordedWithItsReason(): void
@@ -338,7 +319,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0006: the user gets one message whatever the reason, the username kept.
+     * Decision 0006
      */
     #[Test]
     public function afterAWrongPasswordTheFormShowsOneMessageAndKeepsTheUsername(): void
@@ -373,8 +354,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0006: an unknown user, a disabled user and a user without a password are refused exactly
-     * like a wrong password.
+     * Decision 0006
      *
      * @param callable(): ?User $user
      */
@@ -402,7 +382,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0006: only the audit trail tells them apart.
+     * Decision 0006
      *
      * @param callable(): ?User $user
      */
@@ -458,8 +438,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0006 and architecture §3.4: five attempts a minute on a user, counted before the hash is
-     * verified; the sixth is refused whatever the password, the right one included.
+     * Decision 0006, Architecture §3.4
      */
     #[Test]
     public function theSixthAttemptInAMinuteOpensNoSessionWhateverThePassword(): void
@@ -484,7 +463,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §3.4: the audit trail says the attempt was refused before the password was looked at.
+     * Architecture §3.4
      */
     #[Test]
     public function aRefusedAttemptIsRecordedWithItsReason(): void
@@ -509,7 +488,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0006: the user is told "failed" and nothing more, as after any other refusal.
+     * Decision 0006
      */
     #[Test]
     public function aRefusedAttemptIsShownLikeAnyOtherFailure(): void
@@ -529,9 +508,6 @@ final class LoginTest extends BrowserTestCase
         static::assertSame('authentication_failed', $crawler->filter('p[data-error]')->attr('data-error'));
     }
 
-    /**
-     * The count is per user and never per address: what was tried on alice does not count for bob.
-     */
     #[Test]
     public function theAttemptsOnOneUserDoNotCountForAnother(): void
     {
@@ -551,8 +527,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §3.4: a password the firewall accepted empties the count of the user, so that four
-     * mistakes before a login do not count against the next one.
+     * Architecture §3.4
      */
     #[Test]
     public function aSuccessfulLoginEmptiesTheCountOfTheUser(): void
@@ -581,9 +556,6 @@ final class LoginTest extends BrowserTestCase
         static::assertCount(1, self::sessionsOf('alice'));
     }
 
-    /**
-     * A form posted without the token of this browser is refused.
-     */
     #[Test]
     public function aFormWithoutItsTokenIsRefused(): void
     {
@@ -602,9 +574,6 @@ final class LoginTest extends BrowserTestCase
         static::assertSame('authentication_failed', $this->loginPage($interaction)->filter('p[data-error]')->attr('data-error'));
     }
 
-    /**
-     * A form posted without its token is not an attempt on an account: nothing opened, nothing recorded.
-     */
     #[Test]
     public function aFormWithoutItsTokenRecordsNothing(): void
     {
@@ -622,12 +591,6 @@ final class LoginTest extends BrowserTestCase
         static::assertSame([], self::events(UserAuthenticated::class));
     }
 
-    /**
-     * Fetch Standard, "append a request `Origin` header": a browser that sends no "Sec-Fetch-Site" posts the form
-     * of a page served under "Referrer-Policy: no-referrer" with "Origin: null" and no "Referer". The token of the
-     * login is the one its session holds, whatever the application declares stateless for the forms of Symfony
-     * (config_test.yml, issue #891), so the login is not left to a double submit that only a script completes.
-     */
     #[Test]
     public function aLoginPostedWithoutOriginOrRefererOpensASession(): void
     {
@@ -646,8 +609,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §3.4: a hash weaker than the policy of the core is replaced on the login that verified
-     * it; the password itself did not change.
+     * Architecture §3.4
      */
     #[Test]
     public function aHashWeakerThanThePolicyIsRehashedOnLogin(): void
@@ -667,7 +629,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §3.4: the core is told of the rehash, with the request context.
+     * Architecture §3.4
      */
     #[Test]
     public function aRehashOnLoginIsAnnounced(): void
@@ -686,9 +648,6 @@ final class LoginTest extends BrowserTestCase
         static::assertSame('127.0.0.1', $rehashes[0]->context->ipAddress);
     }
 
-    /**
-     * The new hash opens the session next time too, and is not rehashed again.
-     */
     #[Test]
     public function theRehashedPasswordOpensTheSessionNextTime(): void
     {
@@ -707,7 +666,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §3.1.2.1 (prompt=login): the login page tells the signed-in user a fresh login is asked.
+     * OIDC Core §3.1.2.1
      */
     #[Test]
     public function theLoginPageSaysWhenAFreshLoginIsAsked(): void
@@ -728,8 +687,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §3.1.2.1 (prompt=login) and architecture §3.2: a fresh login asked by a client records a
-     * proof on the session the browser has, it does not open a second one.
+     * OIDC Core §3.1.2.1, Architecture §3.2
      */
     #[Test]
     public function aFreshLoginAskedByTheClientRecordsAProofOnTheExistingSession(): void
@@ -779,9 +737,6 @@ final class LoginTest extends BrowserTestCase
         );
     }
 
-    /**
-     * The interaction goes on: the login is fresh.
-     */
     #[Test]
     public function theInteractionGoesOnAfterAFreshLogin(): void
     {
@@ -806,8 +761,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §3.2: two users do not share a cookie. Someone else signing in on a bound browser
-     * opens their own session.
+     * Architecture §3.2
      */
     #[Test]
     public function anotherUserSigningInOnABoundBrowserOpensTheirOwnSession(): void
@@ -834,7 +788,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §3.2: someone else signing in on a bound browser ends the session of the first user.
+     * Architecture §3.2
      */
     #[Test]
     public function anotherUserSigningInOnABoundBrowserEndsTheSessionOfTheFirst(): void
@@ -863,9 +817,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §3.1.2.1 id_token_hint, §3.1.2.6 (issue #854): the client names bob by the ID token it holds of him,
-     * and alice signs in on the login page of the interaction. The page is not shown again: the client is answered
-     * login_required where it asked to be answered.
+     * OIDC Core §3.1.2.1, §3.1.2.6
      */
     #[Test]
     public function aLoginAsAnotherPersonThanTheIdTokenHintNamesIsAnsweredLoginRequired(): void
@@ -892,8 +844,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §5.2: the protocol plane sits outside of the firewall, no cookie is read there and no
-     * session started, whatever the request.
+     * Architecture §5.2
      */
     #[Test]
     #[DataProvider('provideProtocolRequests')]
@@ -921,7 +872,7 @@ final class LoginTest extends BrowserTestCase
     /**
      * @param array<string, string|null> $parameters
      *
-     * @return string the identifier of the interaction the browser was sent to the login page with
+     * @return string the identifier of the interaction
      */
     private function authorize(array $parameters = []): string
     {
@@ -953,9 +904,6 @@ final class LoginTest extends BrowserTestCase
         return $token;
     }
 
-    /**
-     * Fills and posts the form of the login page, as a user does.
-     */
     private function submitLogin(string $interaction, string $username, string $password): void
     {
         $form = $this->loginPage($interaction)->selectButton('Sign in')->form();
@@ -964,9 +912,6 @@ final class LoginTest extends BrowserTestCase
         $this->browser->submit($form);
     }
 
-    /**
-     * Posts the login form without reading the page, with the token given.
-     */
     private function postLogin(string $interaction, string $username, string $password, string $token): void
     {
         $this->browser->request('POST', '/login?interaction=' . $interaction, [
@@ -986,9 +931,6 @@ final class LoginTest extends BrowserTestCase
         );
     }
 
-    /**
-     * The session of the core the browser is bound to, read from the rows.
-     */
     private function boundSession(): AuthenticationSession
     {
         $id = $this->readHttpSession()->get(BrowserSession::AUTHENTICATION_SESSION_KEY);
@@ -1001,9 +943,6 @@ final class LoginTest extends BrowserTestCase
         );
     }
 
-    /**
-     * The token the firewall stored in the HTTP session of the browser.
-     */
     private function securityToken(): TokenInterface
     {
         $serialized = $this->readHttpSession()->get('_security_beffroi_interaction');
@@ -1015,9 +954,7 @@ final class LoginTest extends BrowserTestCase
     }
 
     /**
-     * The active sessions of a user, from the rows.
-     *
-     * @return list<AuthenticationSession>
+     * @return list<AuthenticationSession> the active ones
      */
     private static function sessionsOf(string $username): array
     {

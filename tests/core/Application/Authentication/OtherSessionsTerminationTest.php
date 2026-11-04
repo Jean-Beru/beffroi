@@ -18,7 +18,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Architecture §5.2: every session of a person but the one they are reading from, ended in one act.
+ * Architecture §5.2
  */
 final class OtherSessionsTerminationTest extends TestCase
 {
@@ -65,8 +65,7 @@ final class OtherSessionsTerminationTest extends TestCase
     }
 
     /**
-     * Decision 0031: reaching its expiry ended nothing, so what was issued under a session past it lives
-     * on, and the session is ended with the others for that to be taken back with theirs.
+     * Decision 0031
      */
     #[Test]
     public function aSessionPastItsExpiryIsEndedAsWell(): void
@@ -82,9 +81,6 @@ final class OtherSessionsTerminationTest extends TestCase
         static::assertSame(SessionEnd::User, $expired->endedBy);
     }
 
-    /**
-     * The person reading the page is not signed out by the button that signs out everything else.
-     */
     #[Test]
     public function itSaysHowManyItEnded(): void
     {
@@ -96,10 +92,6 @@ final class OtherSessionsTerminationTest extends TestCase
         static::assertSame(2, $this->termination->endEveryOther($this->kept, Fixtures::context($this->clock->now())));
     }
 
-    /**
-     * Each one leaves the trace every ended session leaves, which is what reaches the relying parties it
-     * opened for: a statement that closed them all at once would be the one end nobody is told about.
-     */
     #[Test]
     public function eachEndIsAnnouncedAsTheEndOfASession(): void
     {
@@ -116,9 +108,6 @@ final class OtherSessionsTerminationTest extends TestCase
         static::assertSame(SessionEnd::User, $elsewhere->endedBy);
     }
 
-    /**
-     * A person signed in nowhere else has nothing ended and nothing announced.
-     */
     #[Test]
     public function aPersonSignedInNowhereElseHasNothingEnded(): void
     {
@@ -130,10 +119,6 @@ final class OtherSessionsTerminationTest extends TestCase
         static::assertSame([], $this->events->events);
     }
 
-    /**
-     * The sessions of another person are not this person's to end: what is read is what is open in the
-     * name of the one whose session is kept.
-     */
     #[Test]
     public function theSessionsOfSomebodyElseAreLeftAlone(): void
     {

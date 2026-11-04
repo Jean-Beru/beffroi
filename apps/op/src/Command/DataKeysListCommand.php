@@ -15,17 +15,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * The data keys of the tenant: one scope per family of columns, the keys of each oldest first, and for
- * every key when it was minted, which master key wraps it and which KMS client can open it (decisions
- * 0011 and 0018).
- *
- * A command that reads is not the command that writes: nothing here mints, moves or erases a key, and it
- * never opens one. The material of a key is not shown and is not read, the store holding it wrapped.
- *
- * A tenant with no key is not an error. A data key is minted at the first write of its family, so a scope
- * that is absent is a family nothing has sealed yet, which is what this says in place of a table.
- */
 #[AsCommand(
     name: 'beffroi:data-keys:list',
     description: 'List the data keys of the tenant by scope, with when each was minted, the master key that wraps it and the KMS client that opens it; reads only, and never opens a key.',
@@ -74,8 +63,7 @@ final readonly class DataKeysListCommand
     }
 
     /**
-     * The keys of one scope, the last row marked: `DataKeyStore::current()` takes the greatest reference
-     * of the scope, and a reference is a UUIDv7, so the newest is the last of this listing.
+     * The last row is marked: DataKeyStore::current() takes the greatest reference, and a reference is a UUIDv7.
      *
      * @param list<StoredDataKeyDescription> $keys
      *

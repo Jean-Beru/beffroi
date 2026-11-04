@@ -10,21 +10,17 @@ use Beffroi\Oidc\Domain\Client\ClientUri;
 use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
 use Beffroi\Oidc\Port\ClientJwksFetcherInterface;
 
-/**
- * A "jwks_uri" that answers what the test told it to, one answer per read, and counts the reads. Never
- * leaves the test suite.
- */
 final class FakeClientJwksFetcher implements ClientJwksFetcherInterface
 {
     /**
-     * @var list<ClientUri> the URIs read, in order
+     * @var list<ClientUri>
      */
     public private(set) array $fetched = [];
 
     public ?ClientKeysUnavailableException $failure = null;
 
     /**
-     * @param list<ClientJwks> $answers the sets it answers, in order; the last one is answered again
+     * @param list<ClientJwks> $answers in order, the last one answered again
      */
     public function __construct(
         private array $answers,

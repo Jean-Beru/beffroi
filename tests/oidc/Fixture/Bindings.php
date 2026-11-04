@@ -11,11 +11,6 @@ use Beffroi\Oidc\Application\Token\Confirmations;
 use Beffroi\Oidc\Domain\Token\CertificateConfirmationKind;
 use Beffroi\Oidc\Domain\Token\KeyConfirmationKind;
 
-/**
- * The two ways this provider binds a token, wired as the provider wires them: the certificate of the
- * handshake and the key of a proof. A test that reads a "cnf" back, or that asks what schemes a
- * resource serves and what their challenges say of them, takes them as a deployment has them.
- */
 final class Bindings
 {
     public static function wired(): Confirmations
@@ -32,8 +27,7 @@ final class Bindings
     }
 
     /**
-     * What the challenge of each scheme says whatever the refusal: under "DPoP", the algorithms of the
-     * fixture of the core, the ones a proof may be signed with (RFC 9449 §7.1).
+     * RFC 9449 §7.1
      *
      * @return array<non-empty-string, array<non-empty-string, non-empty-string>>
      */

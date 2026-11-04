@@ -33,8 +33,7 @@ use Symfony\Component\Clock\MockClock;
 use Beffroi\Oidc\Tests\Fixture\Shapes;
 
 /**
- * "self_signed_tls_client_auth" (RFC 8705 §2.2): the client presents a certificate it signed itself, and
- * the provider authenticates it when that certificate is one of those the client publishes.
+ * RFC 8705 §2.2
  */
 final class SelfSignedTlsClientAuthTest extends TestCase
 {
@@ -63,9 +62,7 @@ final class SelfSignedTlsClientAuthTest extends TestCase
     }
 
     /**
-     * RFC 8705 §2.2: the certificate presented is the one the client publishes in the "x5c" of a key of
-     * its JWK Set (RFC 7517 §4.7). No chain is built and no authority is asked: what is trusted is what
-     * the client published.
+     * RFC 8705 §2.2, RFC 7517 §4.7
      */
     #[Test]
     public function itAuthenticatesACertificateTheClientPublishes(): void
@@ -78,8 +75,7 @@ final class SelfSignedTlsClientAuthTest extends TestCase
     }
 
     /**
-     * RFC 7517 §4.9: a key may name its certificate by thumbprint instead of carrying it, which is the
-     * same certificate said in fewer bytes.
+     * RFC 7517 §4.9
      */
     #[Test]
     public function itAuthenticatesACertificateTheClientNamesByItsThumbprint(): void
@@ -95,11 +91,6 @@ final class SelfSignedTlsClientAuthTest extends TestCase
         static::assertSame($client, $authenticated->client);
     }
 
-    /**
-     * The certificate is what is compared, not the key inside it: the same names signed again are
-     * another certificate, and one the client never published. A client that rotates its certificate
-     * publishes the new one first, as it does for a signing key.
-     */
     #[Test]
     public function theSameCertificateReissuedIsRefused(): void
     {
@@ -124,8 +115,7 @@ final class SelfSignedTlsClientAuthTest extends TestCase
     }
 
     /**
-     * RFC 8705 §3: the tokens of a request authenticated this way are bound to the certificate that
-     * authenticated it, self-signed or not.
+     * RFC 8705 §3
      */
     #[Test]
     public function theTokensOfTheRequestAreBoundToTheCertificatePresented(): void
@@ -141,8 +131,7 @@ final class SelfSignedTlsClientAuthTest extends TestCase
     }
 
     /**
-     * RFC 7591 §2: a client may publish its keys behind a "jwks_uri"; a client whose keys cannot be read
-     * back authenticates nobody, and the audit trail says why.
+     * RFC 7591 §2
      */
     #[Test]
     public function aClientWhoseKeysCannotBeReadBackIsRefused(): void
@@ -175,7 +164,7 @@ final class SelfSignedTlsClientAuthTest extends TestCase
     }
 
     /**
-     * RFC 8705 §2.2: the method is announced under the name a client registers.
+     * RFC 8705 §2.2
      */
     #[Test]
     public function itAnnouncesItselfUnderTheNameOfTheSpecification(): void

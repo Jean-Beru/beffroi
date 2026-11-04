@@ -8,16 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * The opaque access tokens whose subject was named by what the client presented (RFC 8693 §2.1,
- * RFC 7523 §2.1): a token exchange and an assertion of a trusted issuer both hand out a token about somebody
- * the provider did not sign in, so the row keeps the "sub" as it was named, the sign-in the presented token
- * named as it named it, and the chain of actors that holds it.
- *
- * The session is a column and not a row: what named it is a token, which carries a "sid" and not a session.
- * Each kind of stored token keeps the columns of its own kind, so this is a table of its own beside the one of
- * a sign-in and the one of a client acting for itself.
- */
 final class Version20260927090000 extends AbstractMigration
 {
     public function getDescription(): string

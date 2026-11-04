@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.4, B-7: an input over its bound, refused with the rest of what the package refuses.
+ * Section 5.4, B-7
  */
 final class LimitExceededTest extends TestCase
 {

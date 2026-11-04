@@ -20,7 +20,7 @@ use PHPUnit\Framework\TestCase;
 final class TokenResponseTest extends TestCase
 {
     /**
-     * RFC 6749 §5.1: the members in order, "token_type" always Bearer (RFC 6750), "scope" always given.
+     * RFC 6749 §5.1, RFC 6750
      */
     #[Test]
     public function itWritesTheMembersOfRfc6749Section51InOrder(): void
@@ -43,8 +43,7 @@ final class TokenResponseTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.2.1: the response of an exchange names the type of the token it issued, beside what every
-     * other response carries.
+     * RFC 8693 §2.2.1
      */
     #[Test]
     public function aResponseOfAnExchangeNamesTheTypeOfTheTokenItIssued(): void
@@ -74,8 +73,7 @@ final class TokenResponseTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: the response says what it granted beyond its scopes, so that a client can compare it with
-     * what it asked for, a provider being free to grant less.
+     * RFC 9396 §7
      */
     #[Test]
     public function aResponseThatGrantedDetailsSaysWhichOnesItGranted(): void
@@ -112,7 +110,7 @@ final class TokenResponseTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: a response that granted none writes no member, as it writes no "issued_token_type".
+     * RFC 9396 §7
      */
     #[Test]
     public function aResponseThatGrantedNoDetailWritesNoMember(): void
@@ -125,7 +123,7 @@ final class TokenResponseTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.1: a response no exchange produced has no type to name, and names none.
+     * RFC 6749 §5.1
      */
     #[Test]
     public function aResponseNoExchangeProducedNamesNoIssuedTokenType(): void
@@ -187,7 +185,7 @@ final class TokenResponseTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: "error" and "error_description" as JSON, 400.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function anErrorIsWrittenAsRfc6749Section52Says(): void
@@ -210,7 +208,7 @@ final class TokenResponseTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.1 and §5.2: the headers that keep the credentials out of every cache, on the error too.
+     * RFC 6749 §5.1, §5.2
      */
     #[Test]
     public function anErrorIsNotCached(): void
@@ -229,7 +227,7 @@ final class TokenResponseTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: 401 and WWW-Authenticate when the client used the Authorization header.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function anInvalidClientCarriesItsChallenge(): void

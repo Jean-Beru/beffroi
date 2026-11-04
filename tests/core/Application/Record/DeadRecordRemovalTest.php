@@ -11,10 +11,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
-/**
- * Issue #177: the step that drops what can no longer do anything asks each store what it may drop, knows
- * no table, and bounds a run per store.
- */
 final class DeadRecordRemovalTest extends TestCase
 {
     #[Test]
@@ -33,10 +29,6 @@ final class DeadRecordRemovalTest extends TestCase
         static::assertSame(1, $second->asked);
     }
 
-    /**
-     * A store with nothing to drop is not a step that failed, and a step that dropped nothing says so with
-     * a number rather than with a store that answered differently.
-     */
     #[Test]
     public function aRunThatFindsNothingDropsNothing(): void
     {
@@ -50,10 +42,6 @@ final class DeadRecordRemovalTest extends TestCase
         static::assertSame(0, $forgotten);
     }
 
-    /**
-     * The budget is per store and not for the whole run: a table with a backlog cannot keep the ones after
-     * it from being swept.
-     */
     #[Test]
     public function eachStoreGetsTheWholeBudget(): void
     {
@@ -69,9 +57,6 @@ final class DeadRecordRemovalTest extends TestCase
         static::assertSame(2, $second->limitAsked);
     }
 
-    /**
-     * What one run leaves the next takes, the step being recurring and idempotent.
-     */
     #[Test]
     public function whatARunLeavesTheNextOneTakes(): void
     {
@@ -89,10 +74,6 @@ final class DeadRecordRemovalTest extends TestCase
         static::assertSame(0, $store->left());
     }
 
-    /**
-     * One instant for the whole run, read from the clock and not from each store: two stores that read a
-     * clock of their own would sweep two different presents.
-     */
     #[Test]
     public function everyStoreIsAskedOfTheSameInstant(): void
     {

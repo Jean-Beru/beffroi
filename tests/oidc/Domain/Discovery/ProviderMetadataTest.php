@@ -13,16 +13,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * The document itself: what it was handed, how long a client may keep it, and the two locations it is
- * published at. What it announces is the business of the capabilities that contribute the members
- * (MetadataContributorInterface); nothing here knows a single member name.
- */
 final class ProviderMetadataTest extends TestCase
 {
-    /**
-     * The document is what the capabilities contributed, in their order, and nothing is added to it.
-     */
     #[Test]
     public function itCarriesTheMembersItWasGivenInTheirOrder(): void
     {
@@ -55,9 +47,6 @@ final class ProviderMetadataTest extends TestCase
         );
     }
 
-    /**
-     * The cache lifetime is a number of seconds, zero meaning "revalidate every time".
-     */
     #[Test]
     public function aLifetimeOfZeroRevalidatesEveryTime(): void
     {
@@ -85,8 +74,7 @@ final class ProviderMetadataTest extends TestCase
     }
 
     /**
-     * OIDC Discovery §4.1 appends the well-known path to the issuer; RFC 8414 §3 inserts it between the
-     * host and the path of the issuer. Both are the same location when the issuer has no path.
+     * OIDC Discovery §4.1, RFC 8414 §3
      */
     #[Test]
     public function theWellKnownLocationsOfAnIssuerWithoutPathCoincide(): void
@@ -124,9 +112,7 @@ final class ProviderMetadataTest extends TestCase
     }
 
     /**
-     * The JSON a client reads: booleans as JSON booleans (oidc_login compares
-     * "authorization_response_iss_parameter_supported" to true with ===), lists as JSON arrays, the
-     * issuer byte for byte (OIDC Discovery §4.3).
+     * OIDC Discovery §4.3
      */
     #[Test]
     #[DataProvider('provideWhatTheJsonCarriesAsItIs')]

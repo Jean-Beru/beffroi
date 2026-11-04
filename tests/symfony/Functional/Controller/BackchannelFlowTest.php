@@ -12,11 +12,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Transport\TransportInterface;
 
-/**
- * CIBA Core and BCP 10027 over HTTP, end to end: a client asks for a user it names, that user finds the
- * request on a page of the provider and answers it, and the client comes back to the token endpoint for
- * what it was waiting on. One step per test.
- */
 final class BackchannelFlowTest extends BrowserTestCase
 {
     private const string CLIENT_ID = 'terminal-app';
@@ -32,7 +27,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     private const string PASSWORD = 'correct horse battery staple';
 
     /**
-     * §7.3: the identifier, the lifetime and the interval, and no token anywhere.
+     * CIBA Core §7.3
      */
     #[Test]
     public function aClientIsAnsweredAnIdentifierALifetimeAndAnInterval(): void
@@ -51,7 +46,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     }
 
     /**
-     * §7.3: the identifier is a credential of one use and no cache holds it.
+     * CIBA Core §7.3
      */
     #[Test]
     public function theAnswerIsNeverCached(): void
@@ -66,8 +61,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     }
 
     /**
-     * §7: the user the request names is told that something is waiting for them, on the lane and not in
-     * the request the client is waiting on.
+     * CIBA Core §7
      */
     #[Test]
     public function theUserIsToldOnTheLane(): void
@@ -85,7 +79,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     }
 
     /**
-     * §11: while the user has not answered, the client is told "not yet" and nothing else.
+     * CIBA Core §11
      */
     #[Test]
     public function aRequestNobodyAnsweredIsPending(): void
@@ -103,7 +97,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     }
 
     /**
-     * §11: a client asking faster than the interval it was given is told to slow down.
+     * CIBA Core §11
      */
     #[Test]
     public function aRequestFasterThanTheIntervalIsToldToSlowDown(): void
@@ -120,7 +114,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     }
 
     /**
-     * §11: an identifier past its lifetime grants nothing.
+     * CIBA Core §11
      */
     #[Test]
     public function aRequestAfterTheLifetimeIsToldItExpired(): void
@@ -137,8 +131,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     }
 
     /**
-     * BCP 10027 §5.2: what is waiting is found by who is signed in, with the provider that is asking, the
-     * client that asked, the message it wrote and every scope of the request.
+     * BCP 10027 §5.2
      */
     #[Test]
     public function thePageNamesTheRequestAndWhatItAsksFor(): void
@@ -169,7 +162,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     }
 
     /**
-     * §7.1: a request made for somebody else is waiting for nobody here.
+     * CIBA Core §7.1
      */
     #[Test]
     public function aRequestOfSomebodyElseIsNotInTheList(): void
@@ -188,9 +181,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §5.2: the page offers the way back to the home of the account, whether the browser
-     * reached it from there or from a notification, so that a user who answered, or who had nothing to
-     * answer, is not left on a page with no way out.
+     * Architecture §5.2
      */
     #[Test]
     public function thePageOffersTheWayBackToTheHomeOfTheAccount(): void
@@ -207,9 +198,6 @@ final class BackchannelFlowTest extends BrowserTestCase
         static::assertSame('/account', $crawler->filter('nav a[data-back]')->attr('href'));
     }
 
-    /**
-     * The page needs a signed-in user, and brings the browser back to it once the login is done.
-     */
     #[Test]
     public function thePageAsksForALoginFirst(): void
     {
@@ -223,8 +211,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     }
 
     /**
-     * §10.1: the whole flow. The user approves, and the client that comes back gets its tokens, the ones
-     * of an authorization and nothing new.
+     * CIBA Core §10.1
      */
     #[Test]
     public function anApprovedRequestReleasesTheTokensToTheClient(): void
@@ -253,7 +240,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     }
 
     /**
-     * §11: a user who refuses ends the request, and the client learns it rather than waiting on.
+     * CIBA Core §11
      */
     #[Test]
     public function aRefusalEndsTheRequestAndTheClientLearnsIt(): void
@@ -273,7 +260,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     }
 
     /**
-     * §10.1: an identifier is spent once, and presented again is worth nothing.
+     * CIBA Core §10.1
      */
     #[Test]
     public function anIdentifierSpentOnceIsRefusedAfterThat(): void
@@ -295,7 +282,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     }
 
     /**
-     * BCP 10027 §5.2: a request is answered once, and the page then has nothing left to answer.
+     * BCP 10027 §5.2
      */
     #[Test]
     public function aRequestIsAnsweredOnce(): void
@@ -314,8 +301,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     }
 
     /**
-     * §10.2: a client that registered to be called back is told that the request is over, on the lane,
-     * and comes to the token endpoint for the tokens like a poller.
+     * CIBA Core §10.2
      */
     #[Test]
     public function aPingedClientIsToldOnTheLaneAndComesForItsTokens(): void
@@ -340,9 +326,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     }
 
     /**
-     * §10.2, §11: a client that registered to be called back comes when it is told, which is sooner than
-     * the interval it was given to poll at, and the one request it makes then is answered. "slow_down"
-     * is a variant of "authorization_pending" and says nothing about a request that has an answer.
+     * CIBA Core §10.2, §11
      */
     #[Test]
     public function aPingedClientIsServedOnTheRequestItMakesWhenItIsCalledBack(): void
@@ -364,8 +348,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     }
 
     /**
-     * §10.2, §11: the refusal is on the same clock as the acceptance, a client called back about a
-     * request the user ended being told that they ended it.
+     * CIBA Core §10.2, §11
      */
     #[Test]
     public function aPingedClientCalledBackOnARefusalIsToldTheUserRefused(): void
@@ -385,7 +368,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     }
 
     /**
-     * §7.1: a request that names no user, or names two, is refused.
+     * CIBA Core §7.1
      */
     #[Test]
     public function aRequestThatDoesNotNameItsUserOnceIsRefused(): void
@@ -402,8 +385,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0006, §13: a request naming a stranger is answered exactly as every other one, and the
-     * client then waits for an answer that never comes.
+     * Decision 0006, CIBA Core §13
      */
     #[Test]
     public function aRequestNamingAStrangerIsAnsweredLikeEveryOther(): void
@@ -444,8 +426,7 @@ final class BackchannelFlowTest extends BrowserTestCase
     }
 
     /**
-     * A request of the client that registered to be called back (§7.1): it sends the token the provider
-     * will present back to it.
+     * CIBA Core §7.1
      */
     private function askToBeCalledBack(): Response
     {

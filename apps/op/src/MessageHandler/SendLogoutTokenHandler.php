@@ -13,12 +13,7 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
- * Carries one logout token to its client and says what became of it (Back-Channel Logout 1.0 §2.8). A
- * client that answered is done. A client that refused is given up on at once, with an event: retrying a
- * 400 gets a 400. A client that could not be reached makes this throw, so that Messenger brings the
- * message back later under the retry policy of its transport; when that policy runs out, the worker says
- * so and LogoutTokenGivenUpListener writes the same event. Nothing of this reaches the user: the session
- * is already closed.
+ * Back-Channel Logout 1.0 §2.8
  */
 #[AsMessageHandler(bus: 'command.bus')]
 final readonly class SendLogoutTokenHandler

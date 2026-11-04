@@ -17,12 +17,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3: a samlp:LogoutResponse, whose values are of their lexical form whoever builds it (M-6, M-15).
+ * Section 5.3, M-6, M-15
  */
 final class LogoutResponseTest extends TestCase
 {
     /**
-     * Section 5.3, SAML Core §3.7.2: the fields the rules of section 6.4 read and the writer writes.
+     * Section 5.3, SAML Core §3.7.2, section 6.4
      */
     #[Test]
     public function itKeepsItsFields(): void
@@ -54,8 +54,7 @@ final class LogoutResponseTest extends TestCase
     }
 
     /**
-     * M-6, M-15: an ID, a Destination and an InResponseTo that the reader would refuse are refused whoever builds
-     * them.
+     * M-6, M-15
      */
     #[Test]
     #[DataProvider('provideValuesRefused')]

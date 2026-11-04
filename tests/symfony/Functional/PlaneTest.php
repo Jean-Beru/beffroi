@@ -10,12 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DependencyInjection\Exception\RuntimeException;
 
 /**
- * Architecture §5.2 and §6: BEFFROI_PLANE restricts a process to one plane; the routes of the other plane get
- * the 404 an unknown path gets, the routes of the application are never touched. The plane is read
- * from the environment when the process starts, on the same compiled container.
- *
- * A route that is served answers what its controller answers: 200 for the JWK Set, 400 for a login page
- * reached without an interaction; a route that is refused answers 404, the same as an unknown path.
+ * Architecture §5.2, §6
  */
 final class PlaneTest extends DatabaseTestCase
 {
@@ -25,7 +20,7 @@ final class PlaneTest extends DatabaseTestCase
 
     protected function setUp(): void
     {
-        // the browser is created by the test, after the plane is set
+        // The browser is created by the test, after the plane is set.
     }
 
     protected function tearDown(): void
@@ -69,9 +64,6 @@ final class PlaneTest extends DatabaseTestCase
         static::assertSame($status, $browser->getResponse()->getStatusCode());
     }
 
-    /**
-     * A plane that does not exist is not "all": the process refuses to serve at all.
-     */
     #[Test]
     public function anUnknownPlaneIsRefused(): void
     {

@@ -10,9 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * beffroi/saml, spec/saml.md S-23, model.md M-11: the store of the assertions and of the logout messages the model accepted forgets a message
- * once the window in which the model would accept it again has closed, the rows past it deleted before each insertion,
- * and never one whose window is still open.
+ * beffroi/saml spec/saml.md S-23, model.md M-11
  */
 final class DoctrineReplayStoreTest extends DatabaseTestCase
 {
@@ -27,8 +25,7 @@ final class DoctrineReplayStoreTest extends DatabaseTestCase
     }
 
     /**
-     * S-23, M-11: a message whose window has closed is forgotten at the next insertion, so that the same message is
-     * remembered again as new.
+     * S-23, M-11
      */
     #[Test]
     public function aMessageWhoseWindowHasClosedIsRememberedAgain(): void
@@ -45,8 +42,7 @@ final class DoctrineReplayStoreTest extends DatabaseTestCase
     }
 
     /**
-     * S-23: the deletion before an insertion leaves the row of a message whose window is still open, so that the same
-     * message, a second before its window closes, is still refused.
+     * S-23
      */
     #[Test]
     public function aMessageWhoseWindowIsStillOpenSurvivesTheDeletion(): void
@@ -63,7 +59,7 @@ final class DoctrineReplayStoreTest extends DatabaseTestCase
     }
 
     /**
-     * The end of the window of a message received at the instant of the test, the 480 seconds of S-23 at most.
+     * S-23
      */
     private static function endOfWindow(): DateTimeImmutable
     {

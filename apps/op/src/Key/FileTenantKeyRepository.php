@@ -42,18 +42,8 @@ use function unlink;
 use function usort;
 
 /**
- * The keys of a tenant as files (architecture §3.3), one JSON document per key under
- * "<storage>/<tenant slug>/<kid>.json", written through a sibling file renamed into place. What the key
- * is published for is what its algorithm says, so the document names the algorithm and nothing else.
- *
- * A file whose algorithm is dormant, the key of a capability the deployment turned off after the tenant
- * drew it (DormantKeyAlgorithms), is read past: no method answers it, and it is read again as it was
- * once the capability is turned back on.
- *
- * One material is the key of one algorithm: the "kid" is the thumbprint of the public half, so the key of
- * another algorithm under the same "kid" is the same material, and it is refused rather than written over
- * the file that holds it. For the keys the upstream SAML identity providers encrypt for, one algorithm per
- * provider, that is what keeps the key of one provider from being the key of another (spec/saml.md S-64).
+ * A key under the "kid" of a file naming another algorithm is refused, never written over it: the "kid" is the
+ * thumbprint of the material, which keeps the key of one upstream provider from being another's (spec/saml.md S-64).
  */
 final readonly class FileTenantKeyRepository implements TenantKeyRepositoryInterface
 {
@@ -149,9 +139,6 @@ final readonly class FileTenantKeyRepository implements TenantKeyRepositoryInter
         }
     }
 
-    /**
-     * Oldest first, the order the port asks for.
-     */
     public function findAll(Tenant $tenant): array
     {
         $paths = glob($this->tenantDirectory($tenant) . '/*.json');
@@ -175,12 +162,6 @@ final readonly class FileTenantKeyRepository implements TenantKeyRepositoryInter
         return $keys;
     }
 
-    /**
-     * A file that is not what this repository writes is a fault of the storage, not a missing key. The
-     * transitions are replayed in order with their dates: the file holds facts, the key holds the rules.
-     *
-     * @return TenantKey|null null for the key of a dormant algorithm, which is left as it is
-     */
     private function read(Tenant $tenant, string $path, string $json): ?TenantKey
     {
         try {
@@ -248,9 +229,6 @@ final readonly class FileTenantKeyRepository implements TenantKeyRepositoryInter
         return $key;
     }
 
-    /**
-     * The algorithm a key file names, null when it names none or is not a key document.
-     */
     private static function algorithmOf(string $json): ?string
     {
         try {

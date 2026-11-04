@@ -9,19 +9,6 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 use function sprintf;
 
-/**
- * The embeddables of the mapping become one column each, read back by the DBAL type of their object
- * (issue #440).
- *
- * What a session had proven at a grant: `authenticated_at`, `amr` and `acr` become `authentication` on the
- * three tables that embedded it, the JSON document `beffroi_authentication_snapshot` reads back and which
- * three other tables already carried that way. The hash of a password credential: `hash_algorithm`,
- * `hash_encoded` and `hash_parameters` become `hash`, which `beffroi_password_hash` reads back with the
- * algorithm resolved as the class the wiring holds for its name.
- *
- * No row is moved. There is no deployment before this spike, so the old columns are dropped and the new
- * one is added; a schema that held rows would have to write them across first, and none does.
- */
 final class Version20261009130000 extends AbstractMigration
 {
     private const array TABLES = [
@@ -51,8 +38,7 @@ final class Version20261009130000 extends AbstractMigration
         $this->addSql('ALTER TABLE beffroi_password_credential DROP hash_parameters');
         $this->addSql('ALTER TABLE beffroi_password_credential ADD hash JSONB NOT NULL');
 
-        // The index of the column comes first: an index and a table share one namespace, and the lineage
-        // is about to become a table of the name that index carries.
+        // Renamed first: an index and a table share one namespace, and the new table takes the name of this index.
         $this->addSql('ALTER INDEX beffroi_refresh_token_family RENAME TO beffroi_refresh_token_family_id');
         $this->addSql('DROP INDEX beffroi_refresh_token_granting_record');
         $this->addSql('CREATE TABLE beffroi_refresh_token_family (id UUID NOT NULL, tenant_id UUID NOT NULL, granting_record_hash CHAR(64) NOT NULL, grant_id UUID NOT NULL, started_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, expires_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY (id))');

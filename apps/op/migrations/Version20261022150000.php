@@ -9,10 +9,7 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * The search of an address on its blind index within a tenant (issue #781): the first sign-in through an
- * upstream provider asks whether another person of the tenant holds the address it gave, and the username,
- * the other column a search matches on, is indexed by its unique constraint already. An index and not a
- * constraint: two local persons may share an address.
+ * An index and not a constraint: two local persons may share an address.
  */
 final class Version20261022150000 extends AbstractMigration
 {

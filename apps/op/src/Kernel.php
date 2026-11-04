@@ -14,7 +14,7 @@ class Kernel extends BaseKernel
     use BeffroiKernelTrait;
 
     /**
-     * @return list<string> An array of allowed values for APP_ENV
+     * @return list<string>
      */
     private function getAllowedEnvs(): array
     {

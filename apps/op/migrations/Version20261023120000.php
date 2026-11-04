@@ -9,10 +9,7 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * The replay store of beffroi/saml named for what it holds (issue #784): the assertions of the upstream identity
- * providers are remembered in it beside the logout messages, so the table, its index, its key and its constraint take
- * the name of a remembered message. Renamed, not created again: a row is the window in which a message would be
- * accepted again, and a table emptied by an upgrade would accept every message of that window a second time.
+ * Renamed, not recreated: an emptied replay store would accept every message of its window a second time.
  */
 final class Version20261023120000 extends AbstractMigration
 {

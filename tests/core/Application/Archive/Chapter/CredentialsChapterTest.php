@@ -16,12 +16,6 @@ use function json_encode;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Issue #453: the archive holds the credentials of a person without their secrets. The chapter names the
- * fields it writes and asks a credential for nothing else, so a kind that gains a field gains nothing
- * here: a hash of a password, a TOTP secret and a backup code are what a serializer would have put in a
- * file a person downloads and sends on.
- */
 final class CredentialsChapterTest extends TestCase
 {
     #[Test]
@@ -51,10 +45,6 @@ final class CredentialsChapterTest extends TestCase
         );
     }
 
-    /**
-     * The criterion of the issue, held against the document and not against a field: whatever a kind
-     * carries, what reaches the file is what this chapter named.
-     */
     #[Test]
     public function noSecretOfACredentialReachesTheArchive(): void
     {
@@ -72,10 +62,6 @@ final class CredentialsChapterTest extends TestCase
         static::assertStringNotContainsString(Totps::BACKUP_CODES[0], $written);
     }
 
-    /**
-     * A password is replaced and not revoked, so it carries no date of a revocation: what a kind can do,
-     * it says by an interface and not by a field left empty everywhere else.
-     */
     #[Test]
     public function aKindThatCannotBeRevokedCarriesNoRevocation(): void
     {
@@ -106,9 +92,7 @@ final class CredentialsChapterTest extends TestCase
     }
 
     /**
-     * A credential ID is what the authenticator issued (WebAuthn Level 3 §6.3.2), octets and not text, so
-     * it reaches the document in the alphabet the column holding it uses. A document is JSON: octets that
-     * are not text are what leaves a person with no document at all.
+     * WebAuthn Level 3 §6.3.2
      */
     #[Test]
     public function theIdentifierAPartyPresentsIsWrittenInTheAlphabetItsColumnUses(): void

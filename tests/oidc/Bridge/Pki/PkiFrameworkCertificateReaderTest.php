@@ -12,8 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 5280 §4.1.2.6 and §4.2.1.6 read with pki-framework: what of a certificate names the client, and
- * nothing else of it.
+ * RFC 5280 §4.1.2.6, §4.2.1.6
  */
 final class PkiFrameworkCertificateReaderTest extends TestCase
 {
@@ -35,8 +34,7 @@ final class PkiFrameworkCertificateReaderTest extends TestCase
     }
 
     /**
-     * RFC 8705 §2.1.2: the four kinds of subject alternative name a client may be registered under, each
-     * one read as the value a registration compares against.
+     * RFC 8705 §2.1.2
      */
     #[Test]
     public function itReadsEveryKindOfSubjectAlternativeNameRfc8705Names(): void
@@ -51,9 +49,6 @@ final class PkiFrameworkCertificateReaderTest extends TestCase
         static::assertSame(['ops@client.example.com'], $subject->emailAddresses);
     }
 
-    /**
-     * A certificate carrying no subject alternative name names the client by its subject alone.
-     */
     #[Test]
     public function aCertificateWithoutAlternativeNamesCarriesNone(): void
     {
@@ -68,9 +63,7 @@ final class PkiFrameworkCertificateReaderTest extends TestCase
     }
 
     /**
-     * RFC 8705 §2.1.2 asks for a predictable treatment of distinguished names: a name registered as the
-     * tools of a deployment print it is written back the way the name of a certificate is, so that what
-     * is compared is two names written by the same hand.
+     * RFC 8705 §2.1.2
      */
     #[Test]
     public function aRegisteredNameIsWrittenTheWayTheOneOfACertificateIs(): void

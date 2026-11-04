@@ -16,7 +16,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 9449 §4.3: what makes a proof a proof of this request, made by the holder of the key it carries.
+ * RFC 9449 §4.3
  */
 final class DpopProofVerifierTest extends TestCase
 {
@@ -32,8 +32,7 @@ final class DpopProofVerifierTest extends TestCase
     }
 
     /**
-     * RFC 9449 §6.1: what comes back is the key of the proof, named by its JWK thumbprint, which is
-     * what a token is bound to.
+     * RFC 9449 §6.1
      */
     #[Test]
     public function itAnswersTheKeyThatSignedTheProof(): void
@@ -48,9 +47,6 @@ final class DpopProofVerifierTest extends TestCase
         static::assertEquals(Proofs::thumbprintOf(Proofs::key()), $key);
     }
 
-    /**
-     * A client that binds no token sends no proof, and nothing of this is asked of it.
-     */
     #[Test]
     #[DataProvider('provideNoProof')]
     public function aRequestWithoutProofProvesNoKey(?string $header): void
@@ -60,9 +56,7 @@ final class DpopProofVerifierTest extends TestCase
     }
 
     /**
-     * RFC 9449 §4.3: the proof names the method and the endpoint of the request it was made for, and
-     * the provider compares them with the endpoint it publishes, never with what a header of the
-     * request says.
+     * RFC 9449 §4.3
      */
     #[Test]
     #[DataProvider('provideOtherRequests')]
@@ -80,7 +74,7 @@ final class DpopProofVerifierTest extends TestCase
     }
 
     /**
-     * RFC 9449 §4.3: the query and the fragment are no part of the endpoint a proof names.
+     * RFC 9449 §4.3
      */
     #[Test]
     public function theQueryOfTheUrlIsNoPartOfWhatAProofNames(): void
@@ -96,10 +90,7 @@ final class DpopProofVerifierTest extends TestCase
     }
 
     /**
-     * RFC 9449 §4.3 compares URLs, and RFC 3986 §6.2.2 and §6.2.3 say what two URLs being the same
-     * means: the scheme and the host are case insensitive, and a port that is the default of its scheme
-     * is the same URL as no port at all. A provider that compared bytes would refuse a client that
-     * wrote its own address in a shape the specification calls identical.
+     * RFC 9449 §4.3, RFC 3986 §6.2.2, §6.2.3
      */
     #[Test]
     #[DataProvider('provideEquivalentUrls')]
@@ -127,8 +118,7 @@ final class DpopProofVerifierTest extends TestCase
     }
 
     /**
-     * RFC 3986 §6.2.2.1: the path is case sensitive, and a provider that lowercased it would take a
-     * proof made for another endpoint.
+     * RFC 3986 §6.2.2.1
      */
     #[Test]
     public function theCaseOfThePathIsPartOfWhatAProofNames(): void
@@ -145,8 +135,7 @@ final class DpopProofVerifierTest extends TestCase
     }
 
     /**
-     * RFC 9449 §11.1: a proof is used once. Whoever takes one off the wire and sends it again is
-     * refused, however fresh it still is.
+     * RFC 9449 §11.1
      */
     #[Test]
     public function aProofPresentedTwiceIsRefused(): void
@@ -164,7 +153,7 @@ final class DpopProofVerifierTest extends TestCase
     }
 
     /**
-     * RFC 9449 §4.3: a proof stands for the window the provider accepts, both ways.
+     * RFC 9449 §4.3
      */
     #[Test]
     #[DataProvider('provideTimes')]
@@ -181,10 +170,6 @@ final class DpopProofVerifierTest extends TestCase
         $this->verifier->verify($proof, 'POST', self::ENDPOINT, $this->now());
     }
 
-    /**
-     * The window is what is allowed of the clock of a client, and its edges are inside it: a proof made
-     * exactly a leeway ahead, or exactly at the end of its life, is still this request's.
-     */
     #[Test]
     #[DataProvider('provideEdgesOfTheWindow')]
     public function aProofOnTheEdgeOfTheWindowIsTaken(string $made): void
@@ -200,8 +185,7 @@ final class DpopProofVerifierTest extends TestCase
     }
 
     /**
-     * RFC 9449 §7.1: a proof presented with an access token names that token, and a proof made for
-     * another token does not open this one.
+     * RFC 9449 §7.1
      */
     #[Test]
     public function aProofNamesTheAccessTokenItAccompanies(): void
@@ -232,8 +216,7 @@ final class DpopProofVerifierTest extends TestCase
     }
 
     /**
-     * RFC 9449 §4.2: a proof carries what tells it from another JWT the same client signs (RFC 8725
-     * §3.11), the claims of the section, and nothing else is read as one.
+     * RFC 9449 §4.2, RFC 8725 §3.11
      */
     #[Test]
     #[DataProvider('provideMalformedProofs')]
@@ -248,8 +231,7 @@ final class DpopProofVerifierTest extends TestCase
     }
 
     /**
-     * RFC 9449 §4.3: the signature is verified against the key of the header and against no other, so a
-     * proof whose key is not the one that signed it proves nothing.
+     * RFC 9449 §4.3
      */
     #[Test]
     public function aProofSignedByAnotherKeyThanTheOneItCarriesIsRefused(): void
@@ -275,8 +257,7 @@ final class DpopProofVerifierTest extends TestCase
     }
 
     /**
-     * RFC 9449 §4.3: a private key in the header is not a public key, and a provider that used the
-     * public half of what a client sent by mistake would let that pass unsaid.
+     * RFC 9449 §4.3
      */
     #[Test]
     public function aProofCarryingAPrivateKeyIsRefused(): void
@@ -302,8 +283,7 @@ final class DpopProofVerifierTest extends TestCase
     }
 
     /**
-     * RFC 9449 §8: a provider that asks for a nonce hands one back with its refusal, and takes the
-     * proof made again with it.
+     * RFC 9449 §8
      */
     #[Test]
     public function aProofWithoutTheNonceTheProviderAsksForIsRefusedWithAFreshOne(): void

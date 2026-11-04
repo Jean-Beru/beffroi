@@ -11,8 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.4: a BindingRefused is a RefusedXml of Core, so that a consumer catching that base class catches everything
- * the stack refuses, the package's refusals with those of Core, Dsig and the model.
+ * Section 5.4
  */
 final class BindingRefusedTest extends TestCase
 {

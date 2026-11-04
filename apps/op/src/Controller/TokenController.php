@@ -19,7 +19,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The token endpoint (RFC 6749 §3.2), POST only; success and errors are JSON (§5.1, §5.2).
+ * RFC 6749 §3.2
  */
 #[AsController]
 final readonly class TokenController

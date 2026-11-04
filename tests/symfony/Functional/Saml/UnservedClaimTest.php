@@ -10,21 +10,14 @@ use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
- * beffroi/saml, spec/saml.md S-16, section 6.2 step 1: a deployment whose configuration maps an attribute from a claim
- * the provider does not serve (config_test_unserved_claim.yml) fails the build of its container, and not its first
- * refresh or its first login.
+ * beffroi/saml, spec/saml.md S-16, section 6.2 step 1
  */
 final class UnservedClaimTest extends KernelTestCase
 {
-    /**
-     * The environment whose configuration maps that claim.
-     */
     private const string UNSERVED_CLAIM = 'test_unserved_claim';
 
     /**
-     * S-16, section 6.2 step 1: the boot that compiles the container fails, the warmer that runs right after the
-     * compilation refusing the mapping with the failure of the configuration, which names the service provider, the
-     * attribute and the claim.
+     * S-16, section 6.2 step 1
      */
     #[Test]
     public function theBootThatCompilesTheContainerFails(): void
@@ -33,7 +26,7 @@ final class UnservedClaimTest extends KernelTestCase
         $kernel = self::createKernel([
             'environment' => self::UNSERVED_CLAIM,
         ]);
-        // a container a previous run wrote is read back without the warmer: this boot compiles its own
+        // A container left by a previous run is read back without the warmer: this boot compiles its own.
         new Filesystem()->remove($kernel->getBuildDir());
 
         // Then

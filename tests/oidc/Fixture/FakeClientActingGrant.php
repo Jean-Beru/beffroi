@@ -13,8 +13,7 @@ use Beffroi\Oidc\Domain\Token\IssuedTokens;
 use LogicException;
 
 /**
- * A grant that declares a client uses it for itself, with nobody signed in behind it (RFC 6749 §4.4),
- * which is what the client credentials grant declares, and grants nothing.
+ * RFC 6749 §4.4
  */
 final readonly class FakeClientActingGrant implements ActsForTheClientItselfInterface
 {

@@ -18,10 +18,7 @@ use Webauthn\Exception\InvalidDataException;
 use Webauthn\PublicKeyCredentialRequestOptions;
 
 /**
- * "/assertion/options" of the FIDO2 server API (ServerPublicKeyCredentialGetOptionsRequest): the options
- * the authentication of the core draws for the user the tools name (WebAuthn Level 3 §5.5: their
- * passkeys allowed), with the user verification and the extensions the tools ask for, kept by their
- * challenge for the assertion that comes back.
+ * FIDO2 server API, ServerPublicKeyCredentialGetOptionsRequest
  */
 #[AsController]
 final readonly class AssertionOptionsController
@@ -57,9 +54,6 @@ final readonly class AssertionOptionsController
     }
 
     /**
-     * The options of the product (the challenge, the relying party, the passkeys allowed) with what the
-     * tools ask for.
-     *
      * @throws ServerRequestException
      * @throws InvalidDataException
      */

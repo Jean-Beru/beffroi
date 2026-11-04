@@ -20,8 +20,7 @@ use function sprintf;
 use Throwable;
 
 /**
- * Section 5.1 and 6.1 step 2, E-1: RSA-OAEP with one hash, read from the EncryptionMethod of an EncryptedKey;
- * PKCS#1 v1.5, key wrapping, key agreement and an rsa-oaep whose hashes differ refused by name.
+ * Section 5.1 and 6.1 step 2, E-1
  */
 final class KeyTransportTest extends TestCase
 {
@@ -34,7 +33,7 @@ final class KeyTransportTest extends TestCase
     private const string SHA512 = 'http://www.w3.org/2001/04/xmlenc#sha512';
 
     /**
-     * Section 5.1: SHA-1 for the mask and for MGF1, what every interoperability target produces and accepts.
+     * Section 5.1
      */
     #[Test]
     public function itsMgf1pIsSha1(): void
@@ -48,7 +47,7 @@ final class KeyTransportTest extends TestCase
     }
 
     /**
-     * §9.3 row 13: rsa-oaep-mgf1p for SHA-1, rsa-oaep otherwise.
+     * §9.3 row 13
      */
     #[Test]
     public function itWritesTheUriOfItsHash(): void
@@ -61,8 +60,7 @@ final class KeyTransportTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 2, E-1: every EncryptionMethod the namespace reads, with the hash it names; §9.1 row 4 the
-     * DigestMethod of SHA-1 Shibboleth and ADFS write under rsa-oaep-mgf1p, §9.1 row 5 the rsa-oaep of SHA-256.
+     * Section 6.1 step 2, E-1, §9.1 row 4, §9.1 row 5
      */
     #[Test]
     #[DataProvider('provideAcceptedMethods')]
@@ -129,8 +127,7 @@ final class KeyTransportTest extends TestCase
     }
 
     /**
-     * §9.2 rows 3 to 9, E-1, E-5: every EncryptionMethod the namespace refuses, with the rule named and never the
-     * input (E-12).
+     * §9.2 rows 3 to 9, E-1, E-5, E-12
      *
      * @param class-string<Throwable> $exception
      */
@@ -318,7 +315,7 @@ final class KeyTransportTest extends TestCase
     }
 
     /**
-     * §9.2 row 35, Core I-4: an EncryptionMethod of a document parsed outside the loader.
+     * §9.2 row 35, Core I-4
      */
     #[Test]
     public function itRefusesAnElementOfAForeignDocument(): void
@@ -335,7 +332,7 @@ final class KeyTransportTest extends TestCase
     }
 
     /**
-     * §9.2 row 35, E-5: an element of another name, whatever it holds.
+     * §9.2 row 35, E-5
      */
     #[Test]
     public function itRefusesAnElementThatIsNotAnEncryptionMethod(): void
@@ -351,9 +348,6 @@ final class KeyTransportTest extends TestCase
         KeyTransport::of($document->root());
     }
 
-    /**
-     * An EncryptionMethod of an EncryptedKey, alone in a document, with the three namespaces its children use.
-     */
     private function method(?string $algorithm, string $children): Document
     {
         return Loaded::document(sprintf(

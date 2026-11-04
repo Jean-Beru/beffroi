@@ -12,10 +12,6 @@ use Beffroi\Oidc\Domain\Exchange\TokenTypeIdentifier;
 use Beffroi\Oidc\Exception\InvalidRequestException;
 use SensitiveParameter;
 
-/**
- * A type of token the exchange is wired to read, which reads what the test put in it: the values it answers
- * for, by the string they were presented as, and a refusal for anything else.
- */
 final readonly class FakePresentedTokenType implements PresentedTokenTypeInterface
 {
     /**

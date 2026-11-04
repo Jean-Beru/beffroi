@@ -16,10 +16,6 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * A browser of the signed-in user stops being pushed to, from the page of their account (architecture
- * §5.2): it is reached by nobody again and its row stays. Somebody else's browser is not found.
- */
 #[AsController]
 final readonly class PushSubscriptionRevocationController implements ReachedOnTheSessionAloneInterface
 {

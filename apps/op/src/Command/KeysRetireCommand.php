@@ -20,10 +20,6 @@ use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * The end of a retirement window by hand (architecture §3.3): every key past its date with --due, what the
- * scheduled step does; one key before its date with --force, and the trail says so.
- */
 #[AsCommand(
     name: 'beffroi:keys:retire',
     description: 'Take a retiring key out of the JWK Set: one key by its identifier, before its retirement date with --force; or every key past its date with --due.',
@@ -80,7 +76,6 @@ final readonly class KeysRetireCommand
         }
 
         try {
-            // two named acts and not a flag: the trail says which decision was taken (RetirementReason)
             $key = $force
                 ? $this->retirement->retireBeforeItsDate($tenant, $kid, $context)
                 : $this->retirement->retire($tenant, $kid, $context);

@@ -9,9 +9,6 @@ use function is_string;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
-/**
- * The host whose listener asks for a client certificate (RFC 8705 §5): the endpoints of that host are announced beside the ordinary ones, and nothing of the provider reads a certificate from anywhere else.
- */
 final readonly class MutualTlsSection extends ConfigurationSection
 {
     public function name(): string

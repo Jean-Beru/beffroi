@@ -7,14 +7,6 @@ namespace App\Profiler;
 use function array_any;
 use Symfony\Contracts\Service\ResetInterface;
 
-/**
- * What the provider did during the request being served, as the observers of this namespace record it.
- * One instance per request: a worker resets it between two of them, which is what the kernel does to
- * every resettable service.
- *
- * An observation nobody would tell from one already recorded is dropped: a client resolved twice in the
- * same request is one client, and a panel that says so twice says nothing more.
- */
 final class OpProfile implements ResetInterface
 {
     /**
@@ -32,10 +24,6 @@ final class OpProfile implements ResetInterface
         $this->observations[] = $observation;
     }
 
-    /**
-     * Said once per request that reached an endpoint of the provider; nothing is reported for a request
-     * that reached none, whatever an observer happened to see.
-     */
     public function touch(): void
     {
         $this->touched = true;

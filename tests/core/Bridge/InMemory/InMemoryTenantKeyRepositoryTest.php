@@ -120,9 +120,6 @@ final class InMemoryTenantKeyRepositoryTest extends TestCase
         static::assertSame([], $this->repository->findInService($this->acme));
     }
 
-    /**
-     * TenantKeyRepositoryInterface::findInService(): in creation order, whatever the order of the writes.
-     */
     #[Test]
     public function thePublishedKeysComeInCreationOrder(): void
     {
@@ -145,8 +142,7 @@ final class InMemoryTenantKeyRepositoryTest extends TestCase
     }
 
     /**
-     * Beffroi/saml S-64: one material is the key of one algorithm, so the key of another algorithm under a "kid" the
-     * store holds is refused rather than written over it.
+     * beffroi/saml S-64
      */
     #[Test]
     public function theKeyOfAnotherAlgorithmUnderAKidHeldAlreadyIsRefused(): void

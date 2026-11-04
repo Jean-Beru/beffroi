@@ -15,16 +15,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Every session of the signed-in user but this browser's, ended from the page of the account (architecture
- * §5.2): one act for what a person would otherwise do one line at a time, and the browser they are reading
- * from stays signed in.
- *
- * There is no identifier in the request: what is kept is the session the reader presents, so no list of
- * what to end travels and nothing of somebody else is reachable from here.
- *
- * **A session alone reaches it** (ReachedOnTheSessionAloneInterface): ending the sessions somebody fears
- * is not taking a credential away, and a proof asked first would be a password typed on the browser they
- * are worried about.
+ * Reached on the session alone: asking for a proof first would mean typing a password on a browser one fears.
  */
 #[AsController]
 final readonly class AccountOtherSessionsRevocationController implements ReachedOnTheSessionAloneInterface

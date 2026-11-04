@@ -19,18 +19,14 @@ use PHPUnit\Framework\TestCase;
 use function strlen;
 
 /**
- * Section 5.2, section 6.1 steps 1 to 11, section 6.2 steps 1 to 6, B-2, B-5, B-12: one query string or one form read
- * whole, the unverified message, RelayState, the binding and, over a signed query string, the detached signature whose
- * octets are those of that very query string; a form carries none, and a response travels in a form only. SAML
- * Bindings §3.4.4.1, §3.5.4.
+ * Section 5.2, section 6.1 steps 1 to 11, section 6.2 steps 1 to 6, B-2, B-5, B-12, SAML Bindings §3.4.4.1, §3.5.4
  */
 final class ReceptionTest extends TestCase
 {
     use ReceptionFixtures;
 
     /**
-     * B-2, B-5, SAML Bindings §3.4.4.1: the octets of the signature a reception holds are those of the query string
-     * whose message it read, its RelayState decoded, over HTTP-Redirect.
+     * B-2, B-5, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itReadsAQueryStringWhole(): void
@@ -54,7 +50,7 @@ final class ReceptionTest extends TestCase
     }
 
     /**
-     * B-5, SAML Bindings §3.4.4.1: an unsigned query string gives a reception without detached signature.
+     * B-5, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itHasNoSignatureWithoutOne(): void
@@ -71,8 +67,7 @@ final class ReceptionTest extends TestCase
     }
 
     /**
-     * §9.2 row 23, B-7, section 6.1 step 1, SAML Bindings §3.4.4: the query string is bounded by the bound it is given,
-     * named in the refusal.
+     * §9.2 row 23, B-7, section 6.1 step 1, SAML Bindings §3.4.4
      */
     #[Test]
     public function itBoundsTheQueryStringByTheBoundItIsGiven(): void
@@ -89,8 +84,7 @@ final class ReceptionTest extends TestCase
     }
 
     /**
-     * B-12, section 5.2, SAML Profiles §4.1.2: the reception of a query string at the assertion consumer service, which
-     * would read a response over HTTP-Redirect, is a programming error, refused before the query string is read.
+     * B-12, section 5.2, SAML Profiles §4.1.2
      */
     #[Test]
     public function itNeverReadsAResponseFromAQueryString(): void
@@ -107,8 +101,7 @@ final class ReceptionTest extends TestCase
     }
 
     /**
-     * B-5, section 6.2 steps 1 to 6, SAML Bindings §3.5.4: a form read whole is the unverified message it carries, its
-     * RelayState as given, over HTTP-POST, and no detached signature.
+     * B-5, section 6.2 steps 1 to 6, SAML Bindings §3.5.4
      */
     #[Test]
     public function itReadsAFormWhole(): void
@@ -134,8 +127,7 @@ final class ReceptionTest extends TestCase
     }
 
     /**
-     * §9.2 row 23, B-7, section 6.2 step 2: the message field of a form is bounded by the bound it is given, named in
-     * the refusal.
+     * §9.2 row 23, B-7, section 6.2 step 2
      */
     #[Test]
     public function itBoundsTheMessageFieldByTheBoundItIsGiven(): void

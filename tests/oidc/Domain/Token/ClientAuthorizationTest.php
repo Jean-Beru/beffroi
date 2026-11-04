@@ -36,8 +36,7 @@ final class ClientAuthorizationTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4: what the authorization stands on is the registration of the client itself, and the
-     * response narrows it.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function itStandsOnWhatTheClientRegistered(): void
@@ -57,8 +56,7 @@ final class ClientAuthorizationTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: the access token is addressed to the resources the request named, and never to the
-     * client that asked for it.
+     * RFC 8707 §2
      */
     #[Test]
     public function theAccessTokenIsAddressedToTheResourcesAsked(): void
@@ -71,8 +69,7 @@ final class ClientAuthorizationTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: the store is handed the record of the kind the authorization is, and recognises
-     * no kind of its own; for this one it is the record of a token nobody signed in for.
+     * Architecture §4.6
      */
     #[Test]
     public function itIsKeptAsATokenNobodySignedInFor(): void
@@ -89,17 +86,13 @@ final class ClientAuthorizationTest extends TestCase
         static::assertSame([Clients::CALENDAR], $record->resources?->values());
     }
 
-    /**
-     * As the store asks for it, seeing an authorization and not which kind it is.
-     */
     private static function keptBy(AuthorizationInterface $authorization): StoredAccessToken
     {
         return $authorization->storedUnder(str_repeat('a', 64), Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
     }
 
     /**
-     * RFC 6749 §4.4: this grant authenticates the client, so a public client has no authorization of this
-     * kind to be granted.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function itRefusesAPublicClient(): void
@@ -116,7 +109,7 @@ final class ClientAuthorizationTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.3.
+     * RFC 6749 §3.3
      */
     #[Test]
     public function itRefusesAScopeTheClientDidNotRegister(): void
@@ -130,7 +123,7 @@ final class ClientAuthorizationTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2.1.
+     * RFC 8707 §2.1
      */
     #[Test]
     public function itRefusesAResourceTheClientDidNotRegister(): void
@@ -144,8 +137,7 @@ final class ClientAuthorizationTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: a client that registered no resource has no resource to be addressed to, so there is no
-     * authorization of this kind for it at all.
+     * RFC 8707 §2
      */
     #[Test]
     public function itRefusesAClientThatRegisteredNoResource(): void

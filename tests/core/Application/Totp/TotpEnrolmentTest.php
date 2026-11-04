@@ -36,8 +36,7 @@ use function rawurlencode;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Architecture §3.4: a TOTP enrolled in two steps from a session the user already holds, the credential
- * existing only once a first code was verified (RFC 6238 §5.2).
+ * Architecture §3.4, RFC 6238 §5.2
  */
 final class TotpEnrolmentTest extends TestCase
 {
@@ -78,10 +77,6 @@ final class TotpEnrolmentTest extends TestCase
         );
     }
 
-    /**
-     * The Key Uri Format: the tenant is the issuer, the username the account, the secret the one of the
-     * provisioning in base32.
-     */
     #[Test]
     public function theProvisioningNamesTheTenantTheUserAndAFreshSecret(): void
     {
@@ -259,9 +254,6 @@ final class TotpEnrolmentTest extends TestCase
         static::assertSame(0, $this->hasher->hashed);
     }
 
-    /**
-     * Two enrolments begun side by side: the second one to complete finds the first one's credential.
-     */
     #[Test]
     public function aSecondActiveTotpIsRefusedAtCompletion(): void
     {
@@ -296,10 +288,6 @@ final class TotpEnrolmentTest extends TestCase
         static::assertCount(0, $this->credentials->findByUser($bob));
     }
 
-    /**
-     * Issue #327: a tenant that signs its users in by passkey admits no one-time code, and nothing of the
-     * enrolment is drawn: a secret to scan that would prove no login here is not shown to anybody.
-     */
     #[Test]
     public function aTenantThatAdmitsNoCodeShowsNoSecretToScan(): void
     {
@@ -315,8 +303,7 @@ final class TotpEnrolmentTest extends TestCase
     }
 
     /**
-     * Decision 0029, spec/saml.md S-63: no secret is drawn for a person of an e-mail domain the tenant federates to an
-     * upstream provider, through which alone they sign in.
+     * Decision 0029, spec/saml.md S-63
      */
     #[Test]
     public function aPersonOfAFederatedDomainIsShownNoSecretToScan(): void

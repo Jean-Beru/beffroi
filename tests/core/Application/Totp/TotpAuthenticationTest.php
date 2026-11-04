@@ -34,8 +34,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Architecture §3.4: a code verified for a user who named themself, accepted once within one step of
- * drift (RFC 6238 §5.2), or a backup code spent once; the attempts counted first.
+ * Architecture §3.4, RFC 6238 §5.2
  */
 final class TotpAuthenticationTest extends TestCase
 {
@@ -63,7 +62,6 @@ final class TotpAuthenticationTest extends TestCase
         $this->attempts = new FakeAttemptLimiter(5);
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-20T12:00:15+00:00');
-        // enrolled an hour ago: the step of its first code is long past
         $this->totp = Totps::credential(
             $this->alice,
             $this->hasher,
@@ -105,9 +103,6 @@ final class TotpAuthenticationTest extends TestCase
         static::assertEquals($this->clock->now(), $this->totp->lastUsedAt);
     }
 
-    /**
-     * The in-memory repository holds the very object, so a save is only seen through a mock.
-     */
     #[Test]
     #[DataProvider('provideAcceptedCodes')]
     public function anAcceptedCodeSavesTheCredential(string $code): void
@@ -163,7 +158,7 @@ final class TotpAuthenticationTest extends TestCase
     }
 
     /**
-     * RFC 6238 §5.2: the same code is not accepted twice.
+     * RFC 6238 §5.2
      */
     #[Test]
     public function theSameCodeTwiceIsRefusedAsReplayed(): void
@@ -181,8 +176,7 @@ final class TotpAuthenticationTest extends TestCase
     }
 
     /**
-     * RFC 6238 §5.2: the accepted step moves forward, never back; after the code of the next step, the
-     * code of this one is refused although it is in the window.
+     * RFC 6238 §5.2
      */
     #[Test]
     public function aCodeOfAnEarlierStepIsRefusedAfterALaterOne(): void
@@ -198,7 +192,7 @@ final class TotpAuthenticationTest extends TestCase
     }
 
     /**
-     * RFC 6238 §5.2: one step of clock drift on each side.
+     * RFC 6238 §5.2
      */
     #[Test]
     #[DataProvider('provideDriftsInTheWindow')]
@@ -287,9 +281,6 @@ final class TotpAuthenticationTest extends TestCase
         static::assertTrue($this->totp->backupCodes[0]->isSpent());
     }
 
-    /**
-     * Every unspent backup code is compared, whatever the first one that matches.
-     */
     #[Test]
     public function everyUnspentBackupCodeIsComparedTo(): void
     {
@@ -315,8 +306,7 @@ final class TotpAuthenticationTest extends TestCase
     }
 
     /**
-     * Decision 0006: five attempts a minute, the sixth refused before anything is verified, a right code
-     * included; the limit is read, not counted, on a refusal.
+     * Decision 0006
      */
     #[Test]
     public function theSixthAttemptIsRefusedWhateverTheCode(): void
@@ -335,9 +325,6 @@ final class TotpAuthenticationTest extends TestCase
         static::assertCount(5, $this->attempts->attempts);
     }
 
-    /**
-     * Issue #128: the limit bounds the calls to the KMS as well; past it, the secret is not opened.
-     */
     #[Test]
     public function theSixthAttemptIsRefusedBeforeTheKmsIsAsked(): void
     {
@@ -359,10 +346,6 @@ final class TotpAuthenticationTest extends TestCase
         }
     }
 
-    /**
-     * Issue #128: a KMS that does not open the secret is the KMS's refusal, not the user's; it goes on as
-     * it came.
-     */
     #[Test]
     public function aCodeTheKmsCannotOpenIsTheFailureOfTheKms(): void
     {
@@ -377,10 +360,6 @@ final class TotpAuthenticationTest extends TestCase
         $authentication->authenticate($this->alice, Totps::codeAt($this->clock->now()), Fixtures::context($this->clock->now()));
     }
 
-    /**
-     * Issue #128: nothing is counted against the user, nothing is announced, nothing is recorded; the
-     * same code is tried again once the KMS is back.
-     */
     #[Test]
     public function aCodeTheKmsCannotOpenCostsTheUserNothing(): void
     {
@@ -399,9 +378,6 @@ final class TotpAuthenticationTest extends TestCase
         static::assertNull($this->totp->lastUsedAt);
     }
 
-    /**
-     * A backup code is compared to its hashes: the secret stays sealed, the KMS is not asked.
-     */
     #[Test]
     public function aBackupCodeDoesNotOpenTheSecret(): void
     {
@@ -500,9 +476,6 @@ final class TotpAuthenticationTest extends TestCase
         static::assertSame(Totps::stepAt($this->clock->now()->modify('-1 hour')), $this->totp->lastAcceptedStep);
     }
 
-    /**
-     * The authentication of setUp() on another sealer, everything else shared.
-     */
     private function authenticationWith(SecretSealerInterface $sealer): TotpAuthentication
     {
         return new TotpAuthentication(

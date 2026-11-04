@@ -15,10 +15,6 @@ use Beffroi\Core\Tests\Fixture\Algorithms;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * The two registries a JWE is made and opened with, filled by the wiring and read by the document, by the
- * registrations of the clients and by the decrypter alike.
- */
 final class EncryptionAlgorithmsTest extends TestCase
 {
     #[Test]
@@ -28,10 +24,6 @@ final class EncryptionAlgorithmsTest extends TestCase
         static::assertSame(Algorithms::a256Gcm(), Algorithms::contentEncryption()->named('A256GCM'));
     }
 
-    /**
-     * A name nothing is wired with is refused, and the refusal says what is wired, because a registration
-     * is read at boot and an operator has to know what to write instead.
-     */
     #[Test]
     public function aContentEncryptionNothingIsWiredWithIsRefusedWithTheWiredOnes(): void
     {
@@ -43,9 +35,6 @@ final class EncryptionAlgorithmsTest extends TestCase
         Algorithms::contentEncryption()->named('A128CBC-HS256');
     }
 
-    /**
-     * A deployment that encrypts nothing says that, rather than listing nothing.
-     */
     #[Test]
     public function aProviderThatEncryptsNoPayloadSaysSo(): void
     {
@@ -68,10 +57,6 @@ final class EncryptionAlgorithmsTest extends TestCase
         new JoseContentEncryptionAlgorithms([new A256Gcm(), new A256Gcm()]);
     }
 
-    /**
-     * The manager a builder and a reader of JWE are given holds both lists, so the provider cannot mint
-     * what it could not open.
-     */
     #[Test]
     public function theManagerHoldsTheKeyManagementAndTheContentEncryptionAlgorithms(): void
     {

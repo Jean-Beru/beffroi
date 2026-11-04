@@ -18,17 +18,7 @@ use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * One hop taken for real (issue #462): the call is made to this provider, over HTTP, as any client
- * would make it, and both halves of it are written into the trace, the request as it was sent and the
- * answer as it came back. Nothing else reaches the trace, which is what makes a drawing of it unable to
- * show a payload that did not travel.
- *
- * The call carries the user agent of the demonstration, which is how the recorder of the provider's
- * side knows to leave this hop to the demonstration rather than record it a second time.
- *
- * A client that holds a secret authenticates with it (RFC 6749 §2.3.1) and that header is not drawn: a
- * picture of a flow is not a place to read a secret from. A public client names itself in the request,
- * where it really is, and that is drawn with the rest.
+ * The secret of a client authenticates its calls and is never written into the trace.
  */
 final readonly class TakenHop
 {
@@ -43,9 +33,6 @@ final readonly class TakenHop
         [$requestHop, $answerHop] = $driven->hops();
         $fields = $call->fields;
         if ($client->secret === null && $call->bearer === null) {
-            // RFC 6749 §3.2.1: a client with no secret names itself in the request it authenticates
-            // in. A call that presents a token authenticates nothing and names nobody: what it carries
-            // is the token (RFC 6750 §2.1).
             $fields['client_id'] = $client->id;
         }
         $payload = http_build_query($fields);
@@ -86,7 +73,6 @@ final readonly class TakenHop
             'Accept' => 'application/json',
         ];
         if ($call->bearer !== null) {
-            // RFC 6750 §2.1: the token is presented in the header, which is the one way this provider reads one
             $headers['Authorization'] = sprintf('Bearer %s', $call->bearer);
         }
 
@@ -94,10 +80,6 @@ final readonly class TakenHop
     }
 
     /**
-     * What an answer that refuses says (RFC 6749 §5.2), and null for one that does not: the error and,
-     * where there is one, the description beside it. It is what a hop that failed is drawn with, the
-     * "authorization_pending" of a flow still waiting among them.
-     *
      * @param array<array-key, mixed> $answer
      */
     private static function refusal(array $answer): ?string

@@ -23,23 +23,10 @@ use function preg_match;
 use function sort;
 
 /**
- * Decision 0011: "Toute colonne à venir qui porte une donnée personnelle, par construction : un test
- * énumère les colonnes du schéma et refuse une colonne qui n'est ni déclarée hors données personnelles,
- * ni d'un type chiffré. Une colonne nouvelle est classée ou le test est rouge."
- *
- * The classification is the model's own, field by field, in the package that owns the entity
- * (`ClassifiedFieldsInterface`); `ClassifiedModel` reads it against the mappings and `ClassifiedSchema` is
- * the walk. This holds the two against the schema Doctrine builds, and shows on a model of its own what
- * each kind of line refuses.
+ * Decision 0011
  */
 final class SchemaClassificationTest extends DatabaseTestCase
 {
-    /**
-     * How many tables and columns the schema holds, written out so that a table added whole, or a column
-     * added to one, is a figure to change here and a line to add on the class that holds the field. All
-     * but one are described by a mapping of the provider; the last is the table of the data key store, which
-     * the listener of the ORM bridge puts in the schema the ORM assembles (decisions 0011 and 0018).
-     */
     private const int TABLES = 35;
 
     private const int COLUMNS = 358;
@@ -65,10 +52,6 @@ final class SchemaClassificationTest extends DatabaseTestCase
         static::assertSame(self::COLUMNS, $model->columnCount());
     }
 
-    /**
-     * The one table of the schema no class of the model holds a field of, classified by the provider that
-     * puts it there: it is in the walk like any other, and the figures above count it.
-     */
     #[Test]
     public function theTableOfTheDataKeyStoreIsClassifiedToo(): void
     {
@@ -79,11 +62,6 @@ final class SchemaClassificationTest extends DatabaseTestCase
         );
     }
 
-    /**
-     * A column of an entity whose field no line names, named with the field the line goes on: nothing is
-     * deduced from a name, so the column of a field somebody added and did not classify is red the day it
-     * is mapped.
-     */
     #[Test]
     public function aColumnTheSchemaDeclaresAndTheModelDoesNotClassifyIsRefused(): void
     {
@@ -110,10 +88,6 @@ final class SchemaClassificationTest extends DatabaseTestCase
         );
     }
 
-    /**
-     * A table added whole is every one of its columns classified by nobody, and no field of the model
-     * behind any of them, so it is refused column by column.
-     */
     #[Test]
     public function aTableTheSchemaDeclaresAndNoClassOfTheModelHoldsIsRefused(): void
     {
@@ -172,11 +146,6 @@ final class SchemaClassificationTest extends DatabaseTestCase
         );
     }
 
-    /**
-     * A field seals under its own table, the family being the name of the table without the prefix of the
-     * provider: a field sealed under another family is a value written into the scope of a table that is not
-     * its own, which no destruction of its tenant's keys for that table would reach.
-     */
     #[Test]
     public function aFieldDeclaredSealedUnderAnotherTableIsRefused(): void
     {
@@ -197,11 +166,6 @@ final class SchemaClassificationTest extends DatabaseTestCase
         );
     }
 
-    /**
-     * And the shape of the mapping that produces it without showing it: an embeddable fixes the type of
-     * each of its fields once for the whole model, so a second entity embedding an object whose field
-     * seals lands that field's column, with that type, on a table of another family.
-     */
     #[Test]
     public function aFieldSealedUnderTheFamilyOfAnotherTableIsRefused(): void
     {
@@ -242,10 +206,6 @@ final class SchemaClassificationTest extends DatabaseTestCase
         );
     }
 
-    /**
-     * A tag is matched as it was written, so sealing it would leave the column it indexes with no way of
-     * being looked up at all.
-     */
     #[Test]
     public function aBlindIndexFoundSealedIsRefused(): void
     {
@@ -266,10 +226,6 @@ final class SchemaClassificationTest extends DatabaseTestCase
         );
     }
 
-    /**
-     * A line the schema gives no column: the field was renamed or dropped, and the line that was written
-     * for it cannot outlive it.
-     */
     #[Test]
     public function aLineNoColumnOfTheSchemaCarriesIsRefused(): void
     {
@@ -292,10 +248,6 @@ final class SchemaClassificationTest extends DatabaseTestCase
         );
     }
 
-    /**
-     * And the same for the table the provider classifies by the column, which has no field to be named by:
-     * a line of it the table does not carry is refused as any other.
-     */
     #[Test]
     public function aLineWhoseColumnTheSchemaNoLongerDeclaresIsRefused(): void
     {
@@ -317,8 +269,7 @@ final class SchemaClassificationTest extends DatabaseTestCase
     }
 
     /**
-     * Decision 0011 gives the reasons a column stays readable, and a reason is read by a person: it is a
-     * sentence, and not the name of a category.
+     * Decision 0011
      */
     #[Test]
     public function theReasonOfEveryReadableColumnIsASentence(): void
@@ -335,8 +286,7 @@ final class SchemaClassificationTest extends DatabaseTestCase
     }
 
     /**
-     * The four reasons decision 0011 writes down, each of them the whole truth of at least one column of
-     * the schema as it stands.
+     * Decision 0011
      */
     #[Test]
     #[DataProvider('provideReasonsOfDecision0011')]
@@ -370,12 +320,6 @@ final class SchemaClassificationTest extends DatabaseTestCase
         yield 'names no person' => [Reason::NAMES_NO_PERSON];
     }
 
-    /**
-     * Every family the provider declares seals at least one column of the schema. A family is a scope, and a
-     * scope is a data key per tenant: one that no column seals under is a key minted for nothing, or a
-     * declaration left behind by a column that moved. The count is read from the declaration of the types
-     * and the families from what the model declares, so neither can be the only one to know.
-     */
     #[Test]
     public function everyFamilyTheProviderDeclaresSealsAColumn(): void
     {
@@ -403,10 +347,6 @@ final class SchemaClassificationTest extends DatabaseTestCase
         );
     }
 
-    /**
-     * The "known" list of CONFORMANCE_PLANS carries the issue that closes each gap, and so does an owed
-     * line: one with no issue is a column nobody has undertaken to seal.
-     */
     #[Test]
     public function everyOwedColumnNamesTheIssueThatSealsIt(): void
     {

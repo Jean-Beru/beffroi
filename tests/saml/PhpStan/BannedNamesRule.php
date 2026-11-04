@@ -21,18 +21,16 @@ use function sprintf;
 use function strtolower;
 
 /**
- * Section 8 of the specification: the classes and the constants never used, in src/ and in tests/, those of the DOM
- * and of the parsers model.md section 8 bans, so that no XML reaches the identity provider but through the one loader
- * of xml-security. ekino/phpstan-banned-code bans function names and whole node types; this rule reads every name
- * written inside a class, an enum, an interface or a trait, and every name a use statement imports, whatever its case.
- * The classes of the Reflection API are BannedCallsRule's, which follows what extends them.
+ * Section 8, model.md section 8
+ *
+ * ekino/phpstan-banned-code bans function names and whole node types; this rule reads every name, whatever its case.
  *
  * @implements Rule<Node>
  */
 final class BannedNamesRule implements Rule
 {
     /**
-     * @var array<string, string> the banned names, lowercased, mapped to the spelling of the configuration
+     * @var array<string, string> lowercased name => spelling of the configuration
      */
     private array $names = [];
 

@@ -120,8 +120,7 @@ final class InteractionTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.2.1: a login done during the interaction is one whose latest proof is at or after the instant
-     * the interaction began, compared exactly.
+     * OIDC Core §3.1.2.1
      */
     #[Test]
     #[DataProvider('provideLatestProofs')]
@@ -206,9 +205,6 @@ final class InteractionTest extends TestCase
         static::assertSame($consent, $interaction->consent);
     }
 
-    /**
-     * A consent recorded for one user does not carry over to a session of another.
-     */
     #[Test]
     public function aSessionOfAnotherUserDropsTheRecordedConsent(): void
     {
@@ -225,8 +221,6 @@ final class InteractionTest extends TestCase
     }
 
     /**
-     * Acceptance of #6: an interaction cannot be resumed after expiry.
-     *
      * @param callable(self, Interaction): void $resume
      */
     #[Test]
@@ -281,8 +275,6 @@ final class InteractionTest extends TestCase
     }
 
     /**
-     * Acceptance of #6: an interaction cannot be resumed twice.
-     *
      * @param callable(self, Interaction): void $resume
      */
     #[Test]
@@ -439,8 +431,7 @@ final class InteractionTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: a consent recorded on an interaction covers the authorization details of the request as
-     * it covers its scopes, or the answer would be a code for something nobody agreed to.
+     * RFC 9396 §7
      */
     #[Test]
     public function itRefusesAConsentThatDoesNotCoverTheDetailsOfTheRequest(): void

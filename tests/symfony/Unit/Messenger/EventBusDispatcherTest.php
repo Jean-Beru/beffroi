@@ -17,8 +17,7 @@ use Symfony\Component\Messenger\Stamp\DispatchAfterCurrentBusStamp;
 final class EventBusDispatcherTest extends TestCase
 {
     /**
-     * Architecture §5.6: replayed on the event bus, to leave once the handler that announced it has
-     * committed; PSR-14 asks for the event back.
+     * Architecture §5.6, PSR-14
      */
     #[Test]
     public function itReplaysTheEventOnTheBusAfterTheCurrentOne(): void

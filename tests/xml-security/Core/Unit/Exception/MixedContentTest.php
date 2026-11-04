@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.7: a text that cannot be read whole (I-12). A consumer catches the base class when it does not care which rule fired.
+ * Section 5.7, I-12
  */
 final class MixedContentTest extends TestCase
 {

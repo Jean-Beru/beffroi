@@ -16,9 +16,6 @@ use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * A user of the tenant (architecture §3.1, §5.5); the subject is generated unless an import brings one (decision 0002).
- */
 #[AsCommand(
     name: 'beffroi:user:create',
     description: 'Create a user of the tenant; give them a password with beffroi:user:set-password.',

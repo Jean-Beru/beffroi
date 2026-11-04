@@ -25,22 +25,8 @@ use function sprintf;
 use function strlen;
 use function unlink;
 
-/**
- * The first success criterion of spike 8: a dump of the database gives nothing away.
- *
- * One row of every family the classification seals is written, and then the database is searched byte by
- * byte for every value that went in. It searches the file and not the rows, because a backup carries the
- * indexes, the pages a row was deleted from and the journal as much as it carries the columns.
- *
- * This half says the types seal. It does not say what the database of a deployment holds: the suite runs on
- * SQLite, and PostgreSQL stores a sealed column as `BYTEA` with its own pages and its own write-ahead log.
- * The walk against the running stack is what answers that, and the two are not interchangeable.
- */
 final class DumpGivesNothingAwayTest extends DatabaseTestCase
 {
-    /**
-     * The criterion itself.
-     */
     #[Test]
     public function aDumpOfTheDatabaseGivesNoneOfTheValuesTheFixtureWroteAway(): void
     {
@@ -54,11 +40,6 @@ final class DumpGivesNothingAwayTest extends DatabaseTestCase
         static::assertSame([], $findings, implode("\n", $findings));
     }
 
-    /**
-     * What makes the criterion mean something: a value added to a sealed column later is searched for
-     * without anyone remembering to add it, because the model is what says which columns are
-     * sealed and this holds the fixture to what it declares.
-     */
     #[Test]
     public function theFixtureWritesAValueIntoEveryColumnTheClassificationSeals(): void
     {
@@ -86,11 +67,6 @@ final class DumpGivesNothingAwayTest extends DatabaseTestCase
         static::assertSame($sealed, $written, 'a column sealed with no value written into it is a column no dump is searched for.');
     }
 
-    /**
-     * The other half of what makes the criterion mean something: the search is only worth what the fixture
-     * wrote. A row that failed to save leaves the dump with nothing of that family in it, and a search that
-     * finds nothing in an empty table is green for the worst reason there is.
-     */
     #[Test]
     public function theFixtureLeavesARowInEverySealedTable(): void
     {
@@ -112,10 +88,6 @@ final class DumpGivesNothingAwayTest extends DatabaseTestCase
         );
     }
 
-    /**
-     * A sealed column holds bytes indistinguishable from random, so a short value turns up in one by chance
-     * and the run fails for nothing. The floor is what keeps a red run meaning a leak.
-     */
     #[Test]
     public function noValueSearchedIsShortEnoughToTurnUpByChance(): void
     {
@@ -136,10 +108,6 @@ final class DumpGivesNothingAwayTest extends DatabaseTestCase
         );
     }
 
-    /**
-     * The proof that the search is not vacuous: a value in a column no type seals is found, and the finding
-     * names the column it sits in.
-     */
     #[Test]
     public function aValueInAColumnNoTypeSealsIsFoundAndItsColumnNamed(): void
     {
@@ -157,10 +125,6 @@ final class DumpGivesNothingAwayTest extends DatabaseTestCase
         }
     }
 
-    /**
-     * A value inside a document is escaped before it is stored, so a search for its bytes alone passes on a
-     * column it should have failed.
-     */
     #[Test]
     public function aValueEscapedAsJsonIsFoundToo(): void
     {
@@ -177,9 +141,6 @@ final class DumpGivesNothingAwayTest extends DatabaseTestCase
         static::assertStringContainsString('escaped as JSON', $findings[0]);
     }
 
-    /**
-     * A dump is the file and whatever the engine has not folded back into it yet.
-     */
     #[Test]
     public function theSearchCoversTheDatabaseItself(): void
     {

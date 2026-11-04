@@ -13,8 +13,7 @@ use Beffroi\Oidc\Domain\Token\IssuedTokens;
 use LogicException;
 
 /**
- * A grant that declares its user is asked somewhere other than in the client's own browser (RFC 8628
- * §3.3), which is what the device code grant declares, and grants nothing.
+ * RFC 8628 §3.3
  */
 final readonly class FakeUserOnAnotherDeviceGrant implements AsksTheUserOnAnotherDeviceInterface
 {

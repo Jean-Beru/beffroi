@@ -19,8 +19,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The introspection endpoint (RFC 7662 §2), POST only: JSON, or the signed JWT of RFC 9701 when the
- * Accept header asks for it (§4).
+ * RFC 7662 §2, RFC 9701 §4
  */
 #[AsController]
 final readonly class IntrospectionController

@@ -16,10 +16,6 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Uid\Uuid;
 use function trim;
 
-/**
- * Revokes a credential of a user by the identifier beffroi:user:show lists (architecture §5.5): it never
- * authenticates again and its row stays. A kind that is not revocable, the password, is replaced instead.
- */
 #[AsCommand(
     name: self::NAME,
     description: 'Revoke a credential of a user by its identifier; the credential stays listed as revoked.',

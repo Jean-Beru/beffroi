@@ -13,11 +13,6 @@ use function implode;
 use function sprintf;
 use Symfony\Contracts\Service\ResetInterface;
 
-/**
- * The tenant of the current request or message: the row Doctrine manages, checked against the
- * configuration. An entity is not a service: the instance is forgotten when the kernel resets or the
- * entity manager is cleared.
- */
 final class TenantProvider implements AmbientTenantInterface, ResetInterface
 {
     private ?Tenant $tenant = null;
@@ -71,19 +66,11 @@ final class TenantProvider implements AmbientTenantInterface, ResetInterface
         return $this->tenant = $tenant;
     }
 
-    /**
-     * What a person may change of themselves, in one line, for the refusal above to say which of the two
-     * is which; a tenant that opens nothing says so rather than saying an empty line.
-     */
     private static function describedClaims(SelfServedClaims $claims): string
     {
         return $claims->names === [] ? 'none' : implode(' ', $claims->names);
     }
 
-    /**
-     * The look of a tenant in one line, for the refusal above to say which of the two is which; nothing
-     * else reads it, which is why it is here and not on the value object.
-     */
     private static function described(TenantLook $look): string
     {
         if (! $look->isDeclared()) {

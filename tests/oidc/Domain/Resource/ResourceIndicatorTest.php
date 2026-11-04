@@ -11,14 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * One resource a client asks a token for (RFC 8707 §2): an absolute URI of RFC 3986 §4.3, without a
- * fragment component.
+ * RFC 8707 §2, RFC 3986 §4.3
  */
 final class ResourceIndicatorTest extends TestCase
 {
     /**
-     * RFC 8707 §2: an identifier, which may be a locator; a query component is allowed, the section
-     * recognising that it is sometimes what scopes the request.
+     * RFC 8707 §2
      */
     #[Test]
     #[DataProvider('provideAbsoluteUris')]
@@ -88,11 +86,6 @@ final class ResourceIndicatorTest extends TestCase
         yield 'a control character' => ["https://api.example.com/\n"];
     }
 
-    /**
-     * Compared byte for byte, as every other URI a client registers is.
-     *
-     * @param bool $equal whether the two name the same resource
-     */
     #[Test]
     #[DataProvider('provideComparisons')]
     public function itComparesItselfByteForByte(string $one, string $other, bool $equal): void

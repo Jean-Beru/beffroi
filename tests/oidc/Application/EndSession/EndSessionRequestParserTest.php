@@ -55,9 +55,7 @@ final class EndSessionRequestParserTest extends TestCase
     }
 
     /**
-     * OIDC RP-Initiated Logout 1.0 §2: the hint identifies the client by "aud" and the session by
-     * "sid"; §3: post_logout_redirect_uri is honoured for that client when registered; "state",
-     * "logout_hint" and "ui_locales" are carried as given.
+     * OIDC RP-Initiated Logout 1.0 §2, §3
      */
     #[Test]
     public function itReadsARequestWithAHint(): void
@@ -85,8 +83,7 @@ final class EndSessionRequestParserTest extends TestCase
     }
 
     /**
-     * §2: every parameter is optional. A bare logout link is a request that names nobody and redirects
-     * nowhere; a parameter without a value is treated as omitted (RFC 6749 §3.1).
+     * OIDC RP-Initiated Logout 1.0 §2, RFC 6749 §3.1
      *
      * @param array<string, mixed> $parameters
      */
@@ -125,7 +122,7 @@ final class EndSessionRequestParserTest extends TestCase
     }
 
     /**
-     * §2 "aud" is a string or a list: the client is the first audience that is a client of the tenant.
+     * OIDC RP-Initiated Logout 1.0 §2
      */
     #[Test]
     public function itFindsTheClientAmongTheAudiencesOfTheHint(): void
@@ -140,8 +137,7 @@ final class EndSessionRequestParserTest extends TestCase
     }
 
     /**
-     * §2 "client_id": the client, when the request names it, with or without a hint; with a hint, it
-     * must be one of its audiences.
+     * OIDC RP-Initiated Logout 1.0 §2
      *
      * @param array<string, string> $parameters
      */
@@ -184,8 +180,7 @@ final class EndSessionRequestParserTest extends TestCase
     }
 
     /**
-     * §3: a redirect is honoured for a client identified by client_id alone too; the confirmation the
-     * handler then requires is what §2 asks for a request without a hint.
+     * OIDC RP-Initiated Logout 1.0 §3
      */
     #[Test]
     public function itAcceptsARegisteredRedirectForAClientNamedByClientIdAlone(): void
@@ -203,9 +198,7 @@ final class EndSessionRequestParserTest extends TestCase
     }
 
     /**
-     * §2, §3, §4: a request the provider cannot honour is refused and shown, never redirected. The
-     * descriptions are the ones the page shows. A hint that is not even a signed JWT is one of them; a
-     * signed JWT the provider cannot verify is not (itReadsAHintItCannotVerifyAsAnInvalidHint).
+     * OIDC RP-Initiated Logout 1.0 §2, §3, §4
      *
      * @param array<string, mixed> $parameters
      */
@@ -359,9 +352,7 @@ final class EndSessionRequestParserTest extends TestCase
     }
 
     /**
-     * §2, §6: a signed JWT the provider cannot verify (signed by a key it retired, or by nobody it
-     * knows) is not an error of the request but an invalid hint: it identifies no client, proves no
-     * session, and the request goes on for the handler to ask the user.
+     * OIDC RP-Initiated Logout 1.0 §2, §6
      */
     #[Test]
     public function itReadsAHintItCannotVerifyAsAnInvalidHint(): void
@@ -380,8 +371,7 @@ final class EndSessionRequestParserTest extends TestCase
     }
 
     /**
-     * §3: the provider never redirects on the word of a token it did not verify; the URI an invalid
-     * hint came with is dropped, not refused, so that the user is asked (§2) instead of shown an error.
+     * OIDC RP-Initiated Logout 1.0 §3
      */
     #[Test]
     public function itDropsTheRedirectThatCameWithAnInvalidHint(): void
@@ -399,8 +389,7 @@ final class EndSessionRequestParserTest extends TestCase
     }
 
     /**
-     * §2: beside an invalid hint, client_id alone identifies the client, and §3 honours the redirect
-     * that client registered, after the confirmation the handler asks for.
+     * OIDC RP-Initiated Logout 1.0 §2, §3
      */
     #[Test]
     public function itFindsTheClientByClientIdBesideAnInvalidHint(): void
@@ -419,8 +408,7 @@ final class EndSessionRequestParserTest extends TestCase
     }
 
     /**
-     * §2: the hint is verified against the keys of the tenant the request reaches, not any tenant; one
-     * of another tenant is an invalid hint here.
+     * OIDC RP-Initiated Logout 1.0 §2
      */
     #[Test]
     public function itVerifiesTheHintAgainstTheKeysOfTheTenant(): void

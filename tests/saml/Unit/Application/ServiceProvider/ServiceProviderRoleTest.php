@@ -19,14 +19,12 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * spec/saml.md section 6.2: the role of the service providers reads the metadata of a service provider and of nothing
- * else.
+ * spec/saml.md section 6.2
  */
 final class ServiceProviderRoleTest extends TestCase
 {
     /**
-     * Section 6.2: a peer of another role handed to the role of the service providers is a programming error, refused
-     * before anything is read.
+     * Section 6.2
      */
     #[Test]
     public function aPeerOfAnotherRoleIsRefused(): void

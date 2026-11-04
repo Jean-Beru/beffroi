@@ -14,9 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Issue #603: the value a column holds a PKCE challenge as (RFC 7636 §4.3), read back without a
- * connection. The method is read back as the class the wiring holds for that name, so the wiring is an
- * argument and a challenge this deployment is not wired to verify is refused rather than guessed.
+ * RFC 7636 §4.3
  */
 final class StoredCodeChallengeTest extends TestCase
 {

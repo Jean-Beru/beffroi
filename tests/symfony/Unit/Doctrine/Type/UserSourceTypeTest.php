@@ -11,8 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Decision 0002: the source that created a person, one JSON column, and a null column for a local one,
- * which is what every person the table held before the column came reads as.
+ * Decision 0002
  */
 final class UserSourceTypeTest extends TestCase
 {

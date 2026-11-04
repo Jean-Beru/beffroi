@@ -32,8 +32,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Sections 5.7 and 6.6, M-2, M-15: a samlp:Response and its assertion written and signed by the identity provider,
- * and read back by the validator of the service provider; the response rows of section 9.1.
+ * Sections 5.7, 6.6 and 9.1, M-2, M-15
  */
 final class ResponseWriterTest extends TestCase
 {
@@ -42,10 +41,8 @@ final class ResponseWriterTest extends TestCase
     private const string ASSERTION = 'urn:oasis:names:tc:SAML:2.0:assertion';
 
     /**
-     * Section 9.1 rows "a response with its signed assertion" and "with the response signed too", M-2, M-15, SAML
-     * Profiles §4.1.4.5: written and signed with the identity provider's test key, serialized with Core, loaded again
-     * with SamlLoader::create(), accepted by the validator with its clock frozen at the IssueInstant, the assertion as
-     * it was written, under the coverage asked.
+     * Section 9.1 rows "a response with its signed assertion" and "with the response signed too", M-2, M-15,
+     * SAML Profiles §4.1.4.5
      */
     #[Test]
     #[DataProvider('provideResponses')]
@@ -118,9 +115,7 @@ final class ResponseWriterTest extends TestCase
     }
 
     /**
-     * Section 5.7, section 6.6 step 3, SAML Core §2.3.3, §5.4.1, dsig.md section 6.2: by default the assertion alone
-     * is signed, its Signature the child after its Issuer, over its ID, with no InclusiveNamespaces, the certificate
-     * of the key in its KeyInfo when given; the response carries none.
+     * Section 5.7, section 6.6 step 3, SAML Core §2.3.3, §5.4.1, dsig.md section 6.2
      */
     #[Test]
     public function itSignsTheAssertionAloneByDefault(): void
@@ -159,9 +154,7 @@ final class ResponseWriterTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 3, dsig.md section 5.5, SAML Core §3.2.1: for SignedParts::AssertionAndResponse, the response is
-     * signed too, its Signature the child after its Issuer, over its ID, without KeyInfo when the Signing carries no
-     * certificate, and the assertion keeps its own.
+     * Section 6.6 step 3, dsig.md section 5.5, SAML Core §3.2.1
      */
     #[Test]
     public function itSignsTheResponseOnRequest(): void
@@ -194,8 +187,7 @@ final class ResponseWriterTest extends TestCase
     }
 
     /**
-     * dsig.md section 5.5, M-2: the response is signed over the document the assertion's signing returned, so that its
-     * digest covers the assertion's Signature: without it, the response's signature no longer holds.
+     * dsig.md section 5.5, M-2
      */
     #[Test]
     public function itSignsTheResponseOverTheSignatureOfItsAssertion(): void
@@ -221,7 +213,7 @@ final class ResponseWriterTest extends TestCase
     }
 
     /**
-     * Section 5.7: both signatures are made with the algorithm of the Signing.
+     * Section 5.7
      */
     #[Test]
     public function itSignsWithTheAlgorithmItIsGiven(): void
@@ -246,8 +238,7 @@ final class ResponseWriterTest extends TestCase
     }
 
     /**
-     * Section 9.1 row "a failure", M-13, SAML Profiles §4.1.4.1: a failure Responder / AuthnFailed written without
-     * assertion, unsigned or signed, is reported by the validator as UnsuccessfulResponse carrying both codes.
+     * Section 9.1 row "a failure", M-13, SAML Profiles §4.1.4.1
      */
     #[Test]
     #[DataProvider('provideFailureSignings')]
@@ -279,8 +270,7 @@ final class ResponseWriterTest extends TestCase
     }
 
     /**
-     * Section 5.7, SAML Core §3.2.1: a failure is signed when a Signing is given, its Signature the child after its
-     * Issuer, over its ID; unsigned otherwise.
+     * Section 5.7, SAML Core §3.2.1
      */
     #[Test]
     public function itSignsAFailureOnRequest(): void
@@ -304,7 +294,7 @@ final class ResponseWriterTest extends TestCase
     }
 
     /**
-     * Section 5.7: a failure written without Signing carries no Signature.
+     * Section 5.7
      */
     #[Test]
     public function itWritesAFailureUnsignedWithoutSigning(): void
@@ -319,8 +309,7 @@ final class ResponseWriterTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 1, section 5.8, M-15: what the validator of the service provider would refuse of the response
-     * and its assertion together is a programming error of the caller, refused before anything is built.
+     * Section 6.6 step 1, section 5.8, M-15
      */
     #[Test]
     #[DataProvider('provideResponsesTheValidatorRefuses')]
@@ -404,9 +393,7 @@ final class ResponseWriterTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 1, Core §2.5.1.2, issue #721: windows that end a second after the assertion is issued, its
-     * Conditions, its bearer confirmation and its session, are written, and the validator of the service provider
-     * accepts them at that issue.
+     * Section 6.6 step 1, SAML Core §2.5.1.2
      */
     #[Test]
     public function itWritesWindowsThatEndASecondAfterTheIssue(): void
@@ -427,8 +414,7 @@ final class ResponseWriterTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 1, M-15: a window of less than a second that spans a second is written as one second, which the
-     * service provider reads as a window.
+     * Section 6.6 step 1, M-15
      */
     #[Test]
     public function itWritesAWindowThatSpansASecond(): void
@@ -459,8 +445,7 @@ final class ResponseWriterTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 1, section 5.8, SAML Profiles §4.1.4.1: a response whose status is Success, or one without
-     * Destination, is not a failure writeFailure() writes: a programming error of the caller.
+     * Section 6.6 step 1, section 5.8, SAML Profiles §4.1.4.1
      */
     #[Test]
     #[DataProvider('provideFailuresTheWriterRefuses')]
@@ -490,9 +475,7 @@ final class ResponseWriterTest extends TestCase
     }
 
     /**
-     * Section 9.1: the responses the writer signed with the identity provider's test key, committed as
-     * behaviour/response-written-*.xml and verified by xmlsec1 (tests/saml2-model/Fixture/oracle/README.md), are accepted by the
-     * validator with its clock frozen at their IssueInstant, under the coverage they were written with.
+     * Section 9.1
      */
     #[Test]
     #[DataProvider('provideResponsesXmlsec1Verified')]
@@ -533,9 +516,7 @@ final class ResponseWriterTest extends TestCase
     }
 
     /**
-     * Section 9.1, M-13: the failure the writer signed, committed as
-     * behaviour/response-written-failure-signed-refused.xml and verified by xmlsec1, is reported by the validator as
-     * UnsuccessfulResponse with both its codes.
+     * Section 9.1, M-13
      */
     #[Test]
     public function itWroteTheFailureXmlsec1Verified(): void
@@ -556,25 +537,16 @@ final class ResponseWriterTest extends TestCase
         }
     }
 
-    /**
-     * The identity provider's test key, without certificate.
-     */
     private function signing(): Signing
     {
         return new Signing(MetadataFixtures::signingKey('idp'));
     }
 
-    /**
-     * The URI of the one Reference of a ds:Signature.
-     */
     private function reference(Element $signature): string
     {
         return Attributes::required($this->path($signature, ['SignedInfo', 'Reference']), new Name(null, 'URI'));
     }
 
-    /**
-     * The Algorithm of the SignatureMethod of a ds:Signature.
-     */
     private function signatureMethod(Element $signature): string
     {
         return Attributes::required(
@@ -584,7 +556,7 @@ final class ResponseWriterTest extends TestCase
     }
 
     /**
-     * @param list<string> $path the local names of XML Signature from $element down
+     * @param list<string> $path
      */
     private function path(Element $element, array $path): Element
     {
@@ -596,7 +568,7 @@ final class ResponseWriterTest extends TestCase
     }
 
     /**
-     * @return list<Element> the elements under $element whose local name is $local
+     * @return list<Element>
      */
     private function descendantsNamed(Element $element, string $local): array
     {

@@ -11,16 +11,14 @@ use Beffroi\Xml\Core\Name;
 use Dom\Element;
 
 /**
- * What the KeyInfo of each signature of a document carries (spec/saml.md S-37), read as a peer that wants the hint
- * reads it: the X509Certificate elements of its one X509Data.
+ * spec/saml.md S-37
  */
 final readonly class SignatureCertificates
 {
     private const string DSIG = 'http://www.w3.org/2000/09/xmldsig#';
 
     /**
-     * @return list<list<string>> for each ds:Signature of the document, in document order, the text of each
-     *                            X509Certificate of its KeyInfo
+     * @return list<list<string>> per ds:Signature in document order, the text of each X509Certificate
      */
     public static function of(Document $document): array
     {

@@ -18,9 +18,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Issue #453: the record itself, in the archive a person asks for. The names are those of OIDC Core §5.1,
- * which is what RGPD article 20 means by a commonly used format: a person who takes this file to another
- * provider hands it a document that provider already reads.
+ * OIDC Core §5.1, RGPD article 20
  */
 final class ProfileChapterTest extends TestCase
 {
@@ -62,10 +60,6 @@ final class ProfileChapterTest extends TestCase
         );
     }
 
-    /**
-     * A claim this deployment offers on no page is a claim this provider holds all the same, and article
-     * 15 asks for what is held: the chapter reads the record and not what is wired.
-     */
     #[Test]
     public function theChapterHoldsWhatThePersonSaidOfThemselves(): void
     {
@@ -83,7 +77,7 @@ final class ProfileChapterTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.1.1: the address member by member, as the userinfo endpoint serves it.
+     * OIDC Core §5.1.1
      */
     #[Test]
     public function theAddressIsWrittenMemberByMember(): void
@@ -120,8 +114,7 @@ final class ProfileChapterTest extends TestCase
     }
 
     /**
-     * An attribute that is absent carries no verification flag either, as OIDC Core §5.1 has it: a flag
-     * on nothing would say something was not verified where there is nothing to verify.
+     * OIDC Core §5.1
      */
     #[Test]
     public function anAbsentAttributeCarriesNoVerification(): void
@@ -151,10 +144,6 @@ final class ProfileChapterTest extends TestCase
         static::assertTrue($lines[0]['email_verified']);
     }
 
-    /**
-     * The chapter that holds exactly one record answers a list of one, because a chapter that is sometimes
-     * an object and sometimes a list is a document a reader has to know in advance.
-     */
     #[Test]
     public function theChapterIsAListOfOne(): void
     {
@@ -163,8 +152,7 @@ final class ProfileChapterTest extends TestCase
     }
 
     /**
-     * Decision 0002: the source that created the record is held of that person, sealed as a personal datum,
-     * so article 15 asks for it: the provider and what it holds.
+     * Decision 0002, RGPD article 15
      */
     #[Test]
     public function theProviderThatCreatedTheRecordIsNamedWithWhatItHolds(): void

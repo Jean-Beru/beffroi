@@ -20,32 +20,16 @@ use Symfony\Component\HttpKernel\KernelEvents;
 use Twig\Environment;
 
 /**
- * Issue #926, CSP Level 3 §6.1: the logo of the tenant is on every page of the plane (_brand.html.twig), and a
- * deployment may serve it from another host than its issuer. So every page that shows it names the origin it is
- * served from in the "img-src" of the policy its deployment writes, the provider completing that directive once the
- * policy is written (ImageSource), and no deployment names that origin by hand.
- *
- * The tenant of this environment serves its logo from a host of its own (config_test_tenant_logo.yml). The kernel of
- * this suite writes no policy of its own, so the listener below stands in for the one an application writes, as it
- * does in FormTargetTest: every image is served by the provider and no other host.
+ * CSP Level 3 §6.1
  */
 final class TenantLogoOriginTest extends BrowserTestCase
 {
-    /**
-     * The environment whose tenant serves its logo from another origin than its issuer.
-     */
     private const string WITH_A_LOGO_ELSEWHERE = 'test_tenant_logo';
 
     private const string DEPLOYMENT_POLICY = "default-src 'none'; img-src 'self'; frame-ancestors 'none'";
 
-    /**
-     * What the policy of a page that shows the logo becomes: the host of the logo beside this provider.
-     */
     private const string POLICY_WITH_THE_LOGO = "default-src 'none'; img-src 'self' https://brand.test; frame-ancestors 'none'";
 
-    /**
-     * The client consent is required of, the one declared with a logo of its own (config_test.yml).
-     */
     private const string CONSENT_CLIENT_ID = 'consent-app';
 
     private const string CONSENT_REDIRECT_URI = 'https://consent.test/callback';
@@ -62,9 +46,7 @@ final class TenantLogoOriginTest extends BrowserTestCase
         return static function (ContainerInterface $container): void {
             $dispatcher = $container->get('event_dispatcher');
             static::assertInstanceOf(EventDispatcherInterface::class, $dispatcher);
-            // where the policy of an application is written: after the controller that answered, before the
-            // directive of a page is completed, and on the pages the provider computes no policy for, as
-            // App\Http\DeploymentPolicyPrevails leaves them
+            // Stands in for the policy an application writes: after the controller, before "img-src" is completed.
             $dispatcher->addListener(
                 KernelEvents::RESPONSE,
                 static function (ResponseEvent $event): void {
@@ -82,9 +64,6 @@ final class TenantLogoOriginTest extends BrowserTestCase
         };
     }
 
-    /**
-     * The page the browser of an authorization request lands on, before anybody signed in.
-     */
     #[Test]
     public function theLoginPageMayLoadItFromTheHostThatServesIt(): void
     {
@@ -101,9 +80,6 @@ final class TenantLogoOriginTest extends BrowserTestCase
         static::assertSame(self::POLICY_WITH_THE_LOGO, $this->policyOfTheAnswer());
     }
 
-    /**
-     * The pages a person reads once signed in are pages of the same layout, the logo above them.
-     */
     #[Test]
     #[DataProvider('providePagesOfASignedInPerson')]
     public function aPageOfASignedInPersonMayLoadItFromTheHostThatServesIt(string $path): void
@@ -128,9 +104,6 @@ final class TenantLogoOriginTest extends BrowserTestCase
         yield 'the page a device code is typed on (RFC 8628 §3.3)' => ['/device'];
     }
 
-    /**
-     * An error page is framed by the same layout, so a refusal shows the logo too.
-     */
     #[Test]
     public function anErrorPageMayLoadItFromTheHostThatServesIt(): void
     {
@@ -145,8 +118,7 @@ final class TenantLogoOriginTest extends BrowserTestCase
     }
 
     /**
-     * The consent page shows two logos, the one of the client that asks and the one of its tenant, and names the
-     * origin of each (OIDC Registration §2).
+     * OIDC Registration §2
      */
     #[Test]
     public function theConsentPageMayLoadTheLogoOfTheClientAndTheOneOfTheTenant(): void
@@ -170,11 +142,6 @@ final class TenantLogoOriginTest extends BrowserTestCase
         );
     }
 
-    /**
-     * A page rendered by a sub-request, the error page of an exception the kernel caught among them, leaves as the
-     * answer of the main request, and that answer is the one whose policy is completed: the origin is named for the
-     * main request, whichever request the template was rendered for.
-     */
     #[Test]
     public function aTemplateRenderedForASubRequestNamesTheOriginForTheAnswerOfTheMainOne(): void
     {
@@ -199,8 +166,6 @@ final class TenantLogoOriginTest extends BrowserTestCase
     }
 
     /**
-     * The interaction an authorization request began, read where the browser was sent.
-     *
      * @param array<string, string> $parameters
      */
     private function interactionOf(array $parameters): string

@@ -13,8 +13,7 @@ use Beffroi\Oidc\Domain\Token\IssuedTokens;
 use LogicException;
 
 /**
- * A grant that declares its user is reached by the provider itself, on a device they already hold (CIBA
- * Core §7), which is what the backchannel authentication grant declares, and grants nothing.
+ * CIBA Core §7
  */
 final readonly class FakeBackchannelGrant implements AsksTheUserThroughABackchannelInterface
 {

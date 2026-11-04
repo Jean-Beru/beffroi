@@ -7,10 +7,6 @@ namespace App\Doctrine\Type;
 use Beffroi\Core\Domain\Tenant\TenantLook;
 
 /**
- * What a tenant shows of itself on the pages of its provider (issue #449) as a JSON column. What the
- * document holds, and what it leaves out when the tenant declared nothing, is the look's own
- * (`TenantLook::toDocument()`).
- *
  * @extends JsonObjectType<TenantLook>
  */
 final class TenantLookType extends JsonObjectType

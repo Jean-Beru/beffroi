@@ -13,12 +13,7 @@ use Symfony\Contracts\Translation\LocaleAwareInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * The translator of the test kernel refuses what the translator of an application hides: a message no
- * catalogue of the requested language defines fails the request instead of showing its key, or its
- * English (architecture §5.7: every string a user reads is translated, in every locale the provider ships).
- * A parent locale is a catalogue of the same language ("fr" for "fr_CA") and is looked at; the fallback
- * to the default locale of the deployment is not: that is the one that hides a missing French sentence
- * behind the English one.
+ * Architecture §5.7
  */
 final readonly class StrictTranslator implements TranslatorInterface, TranslatorBagInterface, LocaleAwareInterface
 {

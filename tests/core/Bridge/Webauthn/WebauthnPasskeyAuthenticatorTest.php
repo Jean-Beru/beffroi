@@ -30,8 +30,7 @@ use Symfony\Component\Uid\Uuid;
 use Webauthn\PublicKeyCredentialDescriptor;
 
 /**
- * The authentication ceremony of WebAuthn Level 3 §7.2 on webauthn-lib, answered by a software
- * authenticator enrolled through the registrar.
+ * WebAuthn Level 3 §7.2
  */
 final class WebauthnPasskeyAuthenticatorTest extends TestCase
 {
@@ -55,7 +54,7 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     }
 
     /**
-     * §5.5: the relying party of the tenant, user verification preferred, the allow list as given.
+     * §5.5
      */
     #[Test]
     public function theRequestOptionsAreThoseOfTheTenant(): void
@@ -74,7 +73,7 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     }
 
     /**
-     * §5.5: no allow list for a discoverable credential, the authenticator picks (§6.3.2.1).
+     * §5.5, §6.3.2.1
      */
     #[Test]
     public function theRequestOptionsForADiscoverableCredentialAllowEveryCredential(): void
@@ -98,7 +97,7 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     }
 
     /**
-     * §7.2: the passkey of the tenant the response names, and the authenticator data it signed.
+     * §7.2
      */
     #[Test]
     #[DataProvider('provideAuthenticators')]
@@ -131,7 +130,7 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     }
 
     /**
-     * Decision 0033: the signature of a passkey of an algorithm the provider offers is verified with it.
+     * Decision 0033
      */
     #[Test]
     #[DataProvider('provideKeysOfTheOfferedAlgorithms')]
@@ -160,8 +159,7 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     }
 
     /**
-     * Decision 0033: a passkey of ES384, which the provider neither offers nor verifies, does not sign in, the
-     * refusal being the one of any assertion that does not hold.
+     * Decision 0033
      */
     #[Test]
     public function anAssertionOfAPasskeyOfEs384IsRefused(): void
@@ -180,7 +178,7 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     }
 
     /**
-     * The allow list of a user who named themself (§7.2, step 5).
+     * §7.2, step 5
      */
     #[Test]
     public function anAssertionOfAPasskeyOnTheAllowListIsVerified(): void
@@ -214,8 +212,7 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     }
 
     /**
-     * The sign count is the core's business (architecture §3.2): the library does not refuse it here, and the
-     * core refuses it after the signature (decision 0034).
+     * Architecture §3.2, Decision 0034
      */
     #[Test]
     public function anAssertionWhoseSignCountDidNotGrowIsVerifiedForTheCoreToRefuse(): void
@@ -234,9 +231,6 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
         static::assertTrue($passkey->signCountRegresses($assertion->authenticatorData));
     }
 
-    /**
-     * Revoked or not, the passkey is found: the core refuses it after the signature.
-     */
     #[Test]
     public function anAssertionOfARevokedPasskeyIsVerifiedForTheCoreToRefuse(): void
     {
@@ -254,10 +248,7 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §6.1.3: the comparison with the enrolment is the core's, after the signature, as the
-     * sign count is, so that the refusal names the passkey; webauthn-lib, which refuses an assertion whose
-     * BE flag is not the one of the record it is handed (CheckBackupEligibilityIsUnchanged), is handed the
-     * record without it.
+     * WebAuthn Level 3 §6.1.3
      */
     #[Test]
     public function anAssertionWhoseBackupEligibilityChangedIsVerifiedForTheCoreToRefuse(): void
@@ -362,7 +353,7 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     }
 
     /**
-     * §7.2, step 12: the challenge of the response is the one of the options.
+     * §7.2, step 12
      */
     #[Test]
     public function anAssertionOfAnotherChallengeIsRefused(): void
@@ -382,7 +373,7 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     }
 
     /**
-     * §7.2, step 20: the signature is checked against the public key of the record.
+     * §7.2, step 20
      */
     #[Test]
     public function anAssertionSignedByAnotherKeyIsRefused(): void
@@ -453,9 +444,6 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
         $this->authenticator->verifyAssertion($this->tenant, $options, '[]');
     }
 
-    /**
-     * A passkey of the device, enrolled through the registrar and saved in the repository.
-     */
     private function enrol(SoftwareAuthenticator $device, ?WebauthnCeremonies $ceremonies = null): PasskeyCredential
     {
         $ceremonies ??= $this->ceremonies;

@@ -19,29 +19,17 @@ use function strtolower;
 use function strtoupper;
 use function ucfirst;
 
-/**
- * The languages this deployment has (architecture §5.7): "framework.enabled_locales" with the default
- * locale in front of them, canonical, and the reading of a tag against that list.
- *
- * It is one object and not a rule each caller writes because a tag nobody serves is not a locale of this
- * deployment, whoever asks: a page of the interaction plane reads "ui_locales" and "Accept-Language"
- * against it (InteractionLocale), a message the provider sends a user out of any request of theirs reads
- * a claim against it (UserLocale), and a translator asked for a language that has no catalogue answers in
- * the source language whichever of the two got it wrong.
- */
 final readonly class ServedLocales
 {
     /**
-     * Canonical, the default locale first.
-     *
-     * @var list<string>
+     * @var list<string> canonical, the default locale first
      */
     public array $all;
 
     public string $default;
 
     /**
-     * @param list<string> $enabledLocales "framework.enabled_locales"
+     * @param list<string> $enabledLocales
      */
     public function __construct(array $enabledLocales, string $defaultLocale)
     {
@@ -51,9 +39,6 @@ final readonly class ServedLocales
     }
 
     /**
-     * The first locale of this deployment a tag matches, in the order the tags are given; null when none
-     * of them names one.
-     *
      * @param list<string> $tags most preferred first
      */
     public function match(array $tags): ?string
@@ -78,10 +63,9 @@ final readonly class ServedLocales
     }
 
     /**
-     * RFC 5646 §2.2 read the way Request reads an Accept-Language: language, script and region, most
-     * specific first; the rest is ignored.
+     * RFC 5646 §2.2
      *
-     * @return list<string>
+     * @return list<string> most specific first
      */
     private static function candidates(string $tag): array
     {

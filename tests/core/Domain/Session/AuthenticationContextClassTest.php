@@ -21,7 +21,7 @@ use function str_repeat;
 final class AuthenticationContextClassTest extends TestCase
 {
     /**
-     * Decision 0010: a class is a name on a predicate of the provider; it is satisfied when its predicate is.
+     * Decision 0010
      */
     #[Test]
     public function aClassIsSatisfiedWhenItsPredicateHolds(): void
@@ -44,9 +44,6 @@ final class AuthenticationContextClassTest extends TestCase
         static::assertFalse($class->isSatisfiedBy([AuthenticationMethod::password()]));
     }
 
-    /**
-     * The four classes of the default policy, each on its predicate, which names itself.
-     */
     #[Test]
     #[DataProvider('provideDefaultClasses')]
     public function eachClassOfTheDefaultPolicyHasItsConstructor(AuthenticationContextClass $class, string $value, string $predicate): void
@@ -123,8 +120,7 @@ final class AuthenticationContextClassTest extends TestCase
     }
 
     /**
-     * OIDC Core §2 forbids a registered name in another sense than its own, and the class is where that is
-     * refused: a pairing the policy would never accept is not built either.
+     * OIDC Core §2
      */
     #[Test]
     #[DataProvider('provideRegisteredNamesOutOfTheirMeaning')]
@@ -152,9 +148,6 @@ final class AuthenticationContextClassTest extends TestCase
         yield 'phrh on the phishing-resistant predicate that admits software' => ['phrh', new PhishingResistant()];
     }
 
-    /**
-     * "phr" keeps its meaning on either phishing-resistant predicate: a hardware key is phishing resistant.
-     */
     #[Test]
     public function phrMayBeNamedOnTheHardwarePredicate(): void
     {
@@ -165,9 +158,6 @@ final class AuthenticationContextClassTest extends TestCase
         static::assertSame(PhishingResistantHardware::NAME, $class->predicate->name());
     }
 
-    /**
-     * A policy names each class once: the name is the identity.
-     */
     #[Test]
     public function twoClassesAreEqualByName(): void
     {

@@ -11,17 +11,12 @@ use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Port\ClaimsProviderInterface;
 
-/**
- * A claims provider that serves exactly what a test names, to say what the document announces of a
- * deployment whose integration lists this and not the standard set, and what several of them wired
- * together answer.
- */
 final readonly class FakeClaimsProvider implements ClaimsProviderInterface
 {
     /**
      * @param list<string> $scopes
      * @param list<string> $claims
-     * @param array<string, mixed> $values what this provider puts on a claim of a user, empty when the test only asks what it serves
+     * @param array<string, mixed> $values
      */
     private function __construct(
         private array $scopes,
@@ -45,9 +40,6 @@ final readonly class FakeClaimsProvider implements ClaimsProviderInterface
         return $this->values;
     }
 
-    /**
-     * Each claim it names stands for each scope it names.
-     */
     public function claimsOf(Scopes $scopes): array
     {
         return array_any($this->scopes, static fn (string $scope): bool => $scopes->has(new Scope($scope))) ? $this->claims : [];

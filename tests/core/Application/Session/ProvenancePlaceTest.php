@@ -13,10 +13,6 @@ use Beffroi\Core\Tests\Fixture\GeoLocatorOfPlaces;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Issue #473: the one reading of where an address came from, which both the journal and the sessions go
- * through.
- */
 final class ProvenancePlaceTest extends TestCase
 {
     #[Test]
@@ -33,9 +29,6 @@ final class ProvenancePlaceTest extends TestCase
         static::assertSame([Fixtures::IP_ADDRESS], $locator->asked);
     }
 
-    /**
-     * A deployment that holds no database answers no place, and that is the whole of what it costs.
-     */
     #[Test]
     public function aDeploymentThatLocatesNothingAnswersNoPlace(): void
     {
@@ -46,10 +39,6 @@ final class ProvenancePlaceTest extends TestCase
         static::assertNull($found);
     }
 
-    /**
-     * A console and a timed step carry a provenance with no address: there is nothing to ask, and not
-     * asking is what this exists for.
-     */
     #[Test]
     public function aProvenanceWithNoAddressAsksNothing(): void
     {
@@ -64,9 +53,6 @@ final class ProvenancePlaceTest extends TestCase
         static::assertSame([], $locator->asked);
     }
 
-    /**
-     * An enrichment that already ran is an answer already written down: the database is not read again.
-     */
     #[Test]
     public function aProvenanceThatAlreadyCarriesAPlaceKeepsItWithoutAsking(): void
     {

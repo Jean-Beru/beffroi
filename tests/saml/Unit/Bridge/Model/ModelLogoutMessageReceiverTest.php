@@ -54,11 +54,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * spec/saml.md section 6.5 step 1, S-22, S-23, S-27: a logout request of a declared service provider received over
- * either binding, validated by the model at the URL of the single logout service of the tenant, remembered once, and
- * the single logout service its answer goes to resolved among those of the accepted metadata. Section 6.6 step 4, S-33:
- * the logout response of the request an open chain waits for, validated the same way under the metadata of the
- * service provider that request went to. Anything else refused without a SAML answer.
+ * spec/saml.md section 6.5 step 1, S-22, S-23, S-27, section 6.6 step 4, S-33
  */
 final class ModelLogoutMessageReceiverTest extends TestCase
 {
@@ -87,7 +83,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     private InMemoryLogoutChains $chains;
 
     /**
-     * The secret of the browser the chains of the test are bound to (S-32).
+     * S-32
      */
     private LogoutChainSecret $secret;
 
@@ -106,8 +102,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-22, B-2, S-27: a request signed over its query string is accepted, its NameID, its session indexes and its
-     * RelayState as they were sent, its answer going to the single logout service of the metadata on HTTP-Redirect.
+     * S-22, B-2, S-27
      */
     #[Test]
     public function aRequestSignedOverHttpRedirectIsAccepted(): void
@@ -129,8 +124,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-22, M-2, S-27, SAML Metadata §2.2.2: a request signed in its XML over HTTP-POST is accepted, its answer going to
-     * the ResponseLocation of the single logout service on HTTP-POST.
+     * S-22, M-2, S-27, SAML Metadata §2.2.2
      */
     #[Test]
     public function aRequestSignedOverHttpPostIsAnsweredAtTheResponseLocation(): void
@@ -146,7 +140,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-27: without a single logout service on the binding of the request, the answer goes to the first one listed.
+     * S-27
      */
     #[Test]
     public function withoutAServiceOnTheBindingOfTheRequestTheFirstListedAnswers(): void
@@ -162,7 +156,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-27: the first single logout service listed on the binding of the request answers, not a later one.
+     * S-27
      */
     #[Test]
     public function theFirstServiceOnTheBindingOfTheRequestAnswers(): void
@@ -182,8 +176,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-22, S-27: a service provider whose metadata list no single logout service is refused: its answer could go
-     * nowhere.
+     * S-22, S-27
      */
     #[Test]
     public function aServiceProviderWithoutSingleLogoutServiceIsRefused(): void
@@ -200,7 +193,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-23, M-11, issue #708: the same request received twice is refused the second time.
+     * S-23, M-11
      */
     #[Test]
     public function theSameRequestIsRefusedTheSecondTime(): void
@@ -218,8 +211,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-23, M-11: the store of the tenant remembers the issuer and the ID of the request until its IssueInstant plus
-     * maxMessageAge and the skew.
+     * S-23, M-11
      */
     #[Test]
     public function theRequestIsRememberedUnderTheTenant(): void
@@ -235,7 +227,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-22, M-2, SAML Profiles §4.4.4.1: a request whose query string carries no signature, and none in its XML.
+     * S-22, M-2, SAML Profiles §4.4.4.1
      */
     #[Test]
     public function anUnsignedRequestOverHttpRedirectIsRefused(): void
@@ -252,7 +244,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-22, M-2: a request posted without its XML signature, from a provider that signs nothing else either.
+     * S-22, M-2
      */
     #[Test]
     public function anUnsignedRequestOverHttpPostIsRefused(): void
@@ -269,7 +261,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-22, section 6.3 step 1: an issuer nobody declared.
+     * S-22, section 6.3 step 1
      */
     #[Test]
     public function anIssuerNobodyDeclaredIsRefused(): void
@@ -286,7 +278,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-22, section 6.3 step 1: a service provider declared whose metadata were never accepted.
+     * S-22, section 6.3 step 1
      */
     #[Test]
     public function aServiceProviderWithoutAcceptedMetadataIsRefused(): void
@@ -303,8 +295,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-33, B-2, section 6.6 step 4: the LogoutResponse of the request a chain waits for, signed over its query string
-     * by the service provider that request went to, is accepted as the answer of that chain, Success.
+     * S-33, B-2, section 6.6 step 4
      */
     #[Test]
     public function theAnswerOfTheRequestAwaitedOverHttpRedirectIsAccepted(): void
@@ -320,8 +311,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-33, M-2, model.md section 6.4: the answer signed in its XML over HTTP-POST, its status other than Success, is
-     * an answer and not a refusal.
+     * S-33, M-2, model.md section 6.4
      */
     #[Test]
     public function anAnswerOverHttpPostThatIsNotSuccessIsAccepted(): void
@@ -338,7 +328,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-33: an answer naming no request is refused before any key is read.
+     * S-33
      */
     #[Test]
     public function anAnswerNamingNoRequestIsRefused(): void
@@ -360,8 +350,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-33, S-32: an answer naming a request no chain waits for, and the answer of a chain past its ten minutes, are
-     * refused before any key is read.
+     * S-33, S-32
      */
     #[Test]
     #[DataProvider('provideAnswersNobodyWaitsFor')]
@@ -397,8 +386,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-32, S-33: the answer of the request a chain waits for, carried by a client that presents no secret of a chain
-     * or the secret of another, is refused before any key is read.
+     * S-32, S-33
      */
     #[Test]
     #[DataProvider('provideSecretsOfAnotherClient')]
@@ -425,8 +413,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-32, S-33, M-11: an answer refused to another client is not remembered, so that the browser the chain is bound
-     * to, carrying the same answer, has it accepted.
+     * S-32, S-33, M-11
      */
     #[Test]
     public function anAnswerRefusedToAnotherClientIsAcceptedFromTheBrowserOfTheChain(): void
@@ -447,8 +434,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-33, M-8: an answer whose Issuer is another service provider than the one the request went to, signed by a key
-     * of that other one, is refused.
+     * S-33, M-8
      */
     #[Test]
     public function anAnswerOfAnotherIssuerIsRefused(): void
@@ -473,7 +459,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-33, M-2, SAML Profiles §4.4.4.2: an answer whose query string carries no signature, and none in its XML.
+     * S-33, M-2, SAML Profiles §4.4.4.2
      */
     #[Test]
     public function anUnsignedAnswerIsRefused(): void
@@ -491,7 +477,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-33, M-11: the same answer received twice is refused the second time, by the store of S-23.
+     * S-33, M-11, S-23
      */
     #[Test]
     public function theSameAnswerIsRefusedTheSecondTime(): void
@@ -510,8 +496,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * S-33, section 6.3 step 1: the service provider the request went to, its metadata no longer accepted, cannot
-     * verify an answer.
+     * S-33, section 6.3 step 1
      */
     #[Test]
     public function anAnswerOfAServiceProviderWithoutAcceptedMetadataIsRefused(): void
@@ -528,7 +513,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * B-1: what the binding refuses of a query string is refused before anything else.
+     * B-1
      */
     #[Test]
     public function aQueryStringTheBindingRefusesIsRefused(): void
@@ -542,7 +527,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * B-1: what the binding refuses of a form is refused before anything else.
+     * B-1
      */
     #[Test]
     public function aFormTheBindingRefusesIsRefused(): void
@@ -556,8 +541,6 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * The metadata of the signed service provider accepted for the tenant, listing the single logout services given.
-     *
      * @param list<Endpoint> $singleLogoutServices
      */
     private function accept(array $singleLogoutServices): void
@@ -585,9 +568,6 @@ final class ModelLogoutMessageReceiverTest extends TestCase
         return new PostSender()->logoutRequest(self::request(), self::signing(), 'state-1')->fields;
     }
 
-    /**
-     * An open chain of the tenant waiting for the answer of the request AWAITED, sent to $serviceProvider.
-     */
     private function awaiting(string $serviceProvider = ServiceProviderDocuments::SIGNED): LogoutChain
     {
         $chain = new LogoutChain(
@@ -621,7 +601,7 @@ final class ModelLogoutMessageReceiverTest extends TestCase
     }
 
     /**
-     * The message received, a request as the tests of section 6.5 step 1 expect it.
+     * Section 6.5 step 1
      */
     private static function acceptedRequest(SignOutRequest|SignOutAnswer $received): SignOutRequest
     {

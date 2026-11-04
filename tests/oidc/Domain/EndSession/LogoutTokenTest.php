@@ -23,7 +23,7 @@ final class LogoutTokenTest extends TestCase
     private const string JTI = '0199a0f2-7c3e-7000-8000-0000000000b2';
 
     /**
-     * Back-Channel Logout 1.0 §2.4: the claims a logout token carries, and the "sub" the client sees.
+     * Back-Channel Logout 1.0 §2.4
      */
     #[Test]
     public function itCarriesTheClaimsOfASessionThatEnded(): void
@@ -42,8 +42,7 @@ final class LogoutTokenTest extends TestCase
     }
 
     /**
-     * Back-Channel Logout 1.0 §2.4: one member, named by the event URI, whose value is an empty JSON
-     * object and not an empty array, which is what a client looks for to tell a logout from any other SET.
+     * Back-Channel Logout 1.0 §2.4
      */
     #[Test]
     public function itAnnouncesTheOneBackChannelLogoutEvent(): void
@@ -56,8 +55,7 @@ final class LogoutTokenTest extends TestCase
     }
 
     /**
-     * Back-Channel Logout 1.0 §2.4: a "nonce" is forbidden, so that a logout token can never be taken
-     * for an ID token, and nothing of an ID token that §2.4 does not list is carried either.
+     * Back-Channel Logout 1.0 §2.4
      */
     #[Test]
     #[DataProvider('provideForbiddenClaims')]
@@ -81,8 +79,7 @@ final class LogoutTokenTest extends TestCase
     }
 
     /**
-     * Back-Channel Logout 1.0 §2.4 requires a "sub" or a "sid"; the provider sends both, so that a client
-     * finds the session whether it kept one per subject or one per "sid".
+     * Back-Channel Logout 1.0 §2.4
      */
     #[Test]
     public function itNamesBothTheSubjectAndTheSession(): void
@@ -96,7 +93,7 @@ final class LogoutTokenTest extends TestCase
     }
 
     /**
-     * The payload is a JSON object whose members are those of §2.4 and no others.
+     * Back-Channel Logout 1.0 §2.4
      */
     #[Test]
     public function itCarriesNothingElse(): void

@@ -27,7 +27,7 @@ use Beffroi\Oidc\Tests\Fixture\Subjects;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Back-Channel Logout 1.0 §2.6: who is told that a session ended, and who is not.
+ * Back-Channel Logout 1.0 §2.6
  */
 final class BackChannelLogoutTest extends TestCase
 {
@@ -59,7 +59,7 @@ final class BackChannelLogoutTest extends TestCase
     }
 
     /**
-     * §2.6: every client the session signed in that registered a URI, and one token each.
+     * Back-Channel Logout 1.0 §2.6
      */
     #[Test]
     public function everyClientOfTheSessionThatRegisteredAUriIsTold(): void
@@ -80,8 +80,7 @@ final class BackChannelLogoutTest extends TestCase
     }
 
     /**
-     * §2.6: a client that registered no back-channel logout URI has nowhere to be told, and no token is
-     * minted for it; the clients that come after it are told all the same.
+     * Back-Channel Logout 1.0 §2.6
      */
     #[Test]
     public function aClientWithoutABackChannelLogoutUriIsNotTold(): void
@@ -101,7 +100,7 @@ final class BackChannelLogoutTest extends TestCase
     }
 
     /**
-     * §2.6: a session and a client, one token, whatever the number of grants the client obtained in it.
+     * Back-Channel Logout 1.0 §2.6
      */
     #[Test]
     public function aClientIsToldOnceWhateverTheNumberOfItsGrants(): void
@@ -119,7 +118,7 @@ final class BackChannelLogoutTest extends TestCase
     }
 
     /**
-     * §2.6: a code still waiting at the token endpoint gave the client no session to end.
+     * Back-Channel Logout 1.0 §2.6
      */
     #[Test]
     public function aClientThatNeverExchangedItsCodeIsNotTold(): void
@@ -136,8 +135,7 @@ final class BackChannelLogoutTest extends TestCase
     }
 
     /**
-     * A session of another browser keeps its clients: the announcement is per session, which is what
-     * "sid" names in the token (§2.4).
+     * Back-Channel Logout 1.0 §2.4
      */
     #[Test]
     public function theClientsOfAnotherSessionAreNotTold(): void
@@ -157,8 +155,7 @@ final class BackChannelLogoutTest extends TestCase
     }
 
     /**
-     * The event carries what the sender needs and nothing it would have to decide: the URI of the client
-     * and the compact JWS (architecture §5.6).
+     * Architecture §5.6
      */
     #[Test]
     public function theEventCarriesTheUriAndTheTokenToPostThere(): void
@@ -178,9 +175,6 @@ final class BackChannelLogoutTest extends TestCase
         static::assertStringStartsWith('eyJ', $event->token);
     }
 
-    /**
-     * A client that obtained a token in the session: a grant of the session, exchanged.
-     */
     private function signedIn(Client $client, string $code = 'code-of-the-client'): void
     {
         $grant = Tokens::code($code . '-' . $client->registration->clientId, $client, $this->session, Fixtures::now());

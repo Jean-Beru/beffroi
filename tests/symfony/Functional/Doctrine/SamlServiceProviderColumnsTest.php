@@ -15,9 +15,7 @@ use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
 
 /**
- * beffroi/saml, spec/saml.md S-8, decision 0011: the metadata document accepted for a service provider is sealed under
- * the data key of its tenant, in the family of its own table, since its md:ContactPerson names people; the entity ID it
- * is found by stays in the clear.
+ * beffroi/saml spec/saml.md S-8, Decision 0011
  */
 final class SamlServiceProviderColumnsTest extends DatabaseTestCase
 {

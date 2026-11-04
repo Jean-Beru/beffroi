@@ -15,9 +15,6 @@ use Webauthn\AuthenticatorData;
 use Webauthn\PublicKeyCredentialDescriptor;
 use Webauthn\PublicKeyCredentialRequestOptions;
 
-/**
- * An authentication ceremony that trusts the test: the assertion is verified as prepared, or refused.
- */
 final class FakePasskeyAuthenticator implements PasskeyAuthenticatorInterface
 {
     /**

@@ -9,8 +9,7 @@ use Beffroi\Oidc\Exception\UseDpopNonceException;
 use Beffroi\Oidc\Port\DpopNonceInterface;
 
 /**
- * A provider that asks for one nonce and always the same one, so that a test can say what it hands back
- * and what it takes (RFC 9449 §8).
+ * RFC 9449 §8
  */
 final readonly class FakeDpopNonce implements DpopNonceInterface
 {

@@ -33,16 +33,12 @@ use function str_repeat;
 use function str_starts_with;
 
 /**
- * Section 6.1, D-1 to D-10: verification in the order that bounds the cost, against the vectors an independent
- * implementation produced (section 9.1) and the wrapping and mismatch variants of section 9.2.
+ * Section 6.1, D-1 to D-10, section 9.1, section 9.2
  */
 final class VerifierTest extends TestCase
 {
     private const string DSIG = 'http://www.w3.org/2000/09/xmldsig#';
 
-    /**
-     * The bytes the HTTP-Redirect binding signs: SAMLRequest, RelayState and SigAlg, in that order.
-     */
     private const string REDIRECT_QUERY = 'SAMLRequest=fZJNT8MwDIbv%2BRVR7m3SbhOIaJ2QEBISHIBx4BZrs&RelayState=%2Fhome&SigAlg=http%3A%2F%2Fwww.w3.org%2F2001%2F04%2Fxmldsig-more%23rsa-sha256';
 
     private Verifier $verifier;
@@ -56,8 +52,7 @@ final class VerifierTest extends TestCase
     }
 
     /**
-     * §9.1, §9.3 row 1, D-10: every vector verifies, and what comes back is the reload of the hashed bytes: one
-     * root, the claimed element without its Signature, the algorithm the signer used, the key that verified.
+     * §9.1, §9.3 row 1, D-10
      */
     #[Test]
     #[DataProvider('provideVectors')]
@@ -155,8 +150,7 @@ final class VerifierTest extends TestCase
     }
 
     /**
-     * §9.1, section 6.1 step 8: the comment inside the signed text is not in the hashed bytes, whatever the
-     * transform says, since the node-set of a same-document reference omits comments (XML Signature 1.1 §4.4.3.3).
+     * §9.1, section 6.1 step 8, XML Signature 1.1 §4.4.3.3
      */
     #[Test]
     public function itsCanonicalBytesOmitTheCommentsWhateverTheTransformSays(): void
@@ -173,8 +167,7 @@ final class VerifierTest extends TestCase
     }
 
     /**
-     * §9.1, D-10: the response of a doubly signed response is verified over bytes that hold the assertion's
-     * Signature, as SAML wants.
+     * §9.1, D-10
      */
     #[Test]
     public function itsCanonicalBytesOfAResponseHoldTheAssertionsSignature(): void
@@ -197,8 +190,7 @@ final class VerifierTest extends TestCase
     }
 
     /**
-     * §9.1, section 13: a PSS vector on a build without PHP 8.5 and OpenSSL 3.1 is refused by name, before any
-     * key is touched.
+     * §9.1, section 13
      */
     #[Test]
     public function itRefusesPssWhereTheBuildCannotVerifyIt(): void
@@ -219,7 +211,7 @@ final class VerifierTest extends TestCase
     }
 
     /**
-     * §9.3 row 2, D-7: the verifier tries each trusted key and stops at the first that verifies.
+     * §9.3 row 2, D-7
      */
     #[Test]
     public function itVerifiesWithTheSecondKeyWhenTheFirstIsAStranger(): void
@@ -240,7 +232,7 @@ final class VerifierTest extends TestCase
     }
 
     /**
-     * §9.3 row 2, D-7: with the right key absent, nothing verifies, and the message names no key.
+     * §9.3 row 2, D-7
      */
     #[Test]
     public function itRefusesWhenNoTrustedKeyVerifies(): void
@@ -258,8 +250,7 @@ final class VerifierTest extends TestCase
     }
 
     /**
-     * §9.3 row 3, D-1, D-10: an unsigned assertion elsewhere in the document changes nothing, and the element the
-     * consumer passed keeps its Signature and is untouched.
+     * §9.3 row 3, D-1, D-10
      */
     #[Test]
     public function itReadsNothingOfTheDocumentButTheClaimedElementAndItsSignature(): void
@@ -279,7 +270,7 @@ final class VerifierTest extends TestCase
     }
 
     /**
-     * §9.2 row 13, D-8: a DigestValue split by a comment verifies, SignedInfo being canonicalized without comments.
+     * §9.2 row 13, D-8
      */
     #[Test]
     public function itVerifiesADigestValueSplitByAComment(): void
@@ -295,8 +286,7 @@ final class VerifierTest extends TestCase
     }
 
     /**
-     * §9.2 row 1, Core I-8: the signed assertion moved into Extensions and an unsigned one with the same ID in its
-     * place, the first wrapping of 2012, refused at load before anything is verified.
+     * §9.2 row 1, Core I-8
      */
     #[Test]
     public function itsLoaderRefusesTheWrappingThatDuplicatesTheId(): void
@@ -313,8 +303,7 @@ final class VerifierTest extends TestCase
     }
 
     /**
-     * §9.2 rows 2, 4, 5, 6, 14, 15, 16, 17, 37 and 38, D-1, D-2, D-7, D-8: the wrapping and mismatch variants, each
-     * refused by its named rule.
+     * §9.2 rows 2, 4, 5, 6, 14, 15, 16, 17, 37 and 38, D-1, D-2, D-7, D-8
      *
      * @param class-string<Throwable> $exception
      */
@@ -405,8 +394,7 @@ final class VerifierTest extends TestCase
     }
 
     /**
-     * §9.2 row 37, D-8: a PKCS#1 v1.5 signature claimed as PSS is a mismatch where PSS can be verified, and an
-     * unavailable algorithm where it cannot.
+     * §9.2 row 37, D-8
      */
     #[Test]
     public function itRefusesAPkcs1SignatureClaimedAsPss(): void
@@ -425,7 +413,7 @@ final class VerifierTest extends TestCase
     }
 
     /**
-     * §9.2 row 40, Core I-4: the claimed element from a document parsed outside the loader.
+     * §9.2 row 40, Core I-4
      */
     #[Test]
     public function itRefusesAnElementOfAForeignDocument(): void
@@ -442,8 +430,7 @@ final class VerifierTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 6: the salt of a PSS signature is not constrained, openssl_verify() recovering its length; a
-     * salt of no byte verifies, which RFC 6931 does not name and which weakens nothing.
+     * Section 6.1 step 6
      */
     #[Test]
     public function itVerifiesAPssSignatureWhateverTheLengthOfItsSalt(): void
@@ -462,8 +449,7 @@ final class VerifierTest extends TestCase
     }
 
     /**
-     * §9.3 row 21, section 6.4: bytes signed by PrivateKey::sign(), as the HTTP-Redirect binding signs its query
-     * string, verify under each scheme the build offers; the key that verified comes back, the right one second.
+     * §9.3 row 21, section 6.4
      */
     #[Test]
     #[DataProvider('provideDetachedSchemes')]
@@ -499,8 +485,7 @@ final class VerifierTest extends TestCase
     }
 
     /**
-     * §9.3 row 22, section 6.4, D-8, D-14: other bytes, a key the consumer does not trust, and a signature whose
-     * length is outside the bound, before any key is touched.
+     * §9.3 row 22, section 6.4, D-8, D-14
      *
      * @param class-string<Throwable> $exception
      */
@@ -559,7 +544,7 @@ final class VerifierTest extends TestCase
     }
 
     /**
-     * §9.3 row 22, section 13: a PSS scheme where the build cannot verify it is refused by name, before any key.
+     * §9.3 row 22, section 13
      */
     #[Test]
     public function itRefusesADetachedPssSignatureWhereTheBuildCannotVerifyIt(): void

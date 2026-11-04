@@ -9,23 +9,15 @@ use LogicException;
 use function preg_match;
 
 /**
- * An origin as a page names it in its Content-Security-Policy (CSP Level 3 §2.3.1): a scheme (RFC 3986 §3.1), "://", a
- * host of the core's rule (Host), letters, digits, hyphens and dots or an IPv6 literal between brackets, and an
- * optional port of digits.
- *
- * What a page names is written into the header as it is, so anything else is refused where the page names it rather
- * than pasted into the policy: a ";" in a host would end the directive and start one of its own, "sandbox" freezing
- * the page, a "," would start a policy of its own, and whitespace a source of its own (beffroi/saml S-36). What a page
- * names comes from a rule that refuses such a value first, the reading of the metadata of a service provider (beffroi/saml
- * S-11) and the URIs a client registers (ClientUri), so meeting one is a rule broken upstream: a LogicException, the page not served, rather
- * than the origin left out in silence.
+ * An origin a page names in its Content-Security-Policy (CSP Level 3 §2.3.1), checked because it is written into the
+ * header as it is: a ";", a "," or whitespace would start a directive, a policy or a source of its own.
  */
 final readonly class SourceOrigin
 {
     private const string ORIGIN = '~^[A-Za-z][A-Za-z0-9+.-]*://' . Host::PATTERN . '(?::[0-9]{1,5})?\z~';
 
     /**
-     * @throws LogicException when the value is not an origin
+     * @throws LogicException
      */
     public static function of(string $origin): string
     {

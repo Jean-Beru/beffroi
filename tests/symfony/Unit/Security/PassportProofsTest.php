@@ -29,8 +29,7 @@ use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
 use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPassport;
 
 /**
- * Decision 0010 and architecture §5.4: what the logins of the firewall prove is read from the logins
- * that are tagged, both for the session that is opened and for what the discovery announces.
+ * Decision 0010, Architecture §5.4
  */
 final class PassportProofsTest extends TestCase
 {
@@ -59,7 +58,7 @@ final class PassportProofsTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §6.1: the flags of the assertion, not what the passkey could prove.
+     * WebAuthn Level 3 §6.1
      */
     #[Test]
     public function aPasskeyProvesWhatTheFlagsOfItsAssertionSay(): void
@@ -76,7 +75,7 @@ final class PassportProofsTest extends TestCase
     }
 
     /**
-     * Architecture §5.4: the session is opened only at the second step, so the badge carries both.
+     * Architecture §5.4
      */
     #[Test]
     public function aCodeProvesWhatTheFirstStepProvedAndTheCode(): void
@@ -107,7 +106,7 @@ final class PassportProofsTest extends TestCase
     }
 
     /**
-     * Decision 0010: "acr_values_supported" is derived from this list.
+     * Decision 0010
      */
     #[Test]
     public function whatIsAnnouncedIsEveryMethodOfTheTaggedLoginsEachOnce(): void
@@ -119,10 +118,6 @@ final class PassportProofsTest extends TestCase
         static::assertSame(['pwd', 'hwk', 'swk', 'user', 'mfa', 'otp'], self::values($methods));
     }
 
-    /**
-     * Issue #327: a tenant that signs its users in by passkey announces no password and no code, the floor
-     * of its logins reading neither, and announces everything a passkey proves.
-     */
     #[Test]
     public function aTenantAnnouncesNothingItsFloorForbids(): void
     {
@@ -133,10 +128,6 @@ final class PassportProofsTest extends TestCase
         static::assertSame(['hwk', 'swk', 'user', 'mfa'], self::values($methods));
     }
 
-    /**
-     * Issue #327: the floor is asked of a login and not of a method, so a passkey that proves "user" and
-     * "mfa" beside its key is admitted whole or not at all.
-     */
     #[Test]
     public function aFloorNoWiredLoginProvesLeavesTheProviderWithNothingToAnnounce(): void
     {
@@ -151,10 +142,6 @@ final class PassportProofsTest extends TestCase
         $proofs->provableMethods(Fixtures::hardenedTenant());
     }
 
-    /**
-     * The point of reading the tagged logins: a firewall that offers the form login only announces a
-     * password and nothing a passkey would prove.
-     */
     #[Test]
     public function aFirewallThatOffersOneLoginAnnouncesThatOneOnly(): void
     {

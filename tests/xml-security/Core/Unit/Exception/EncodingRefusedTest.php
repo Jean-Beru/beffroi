@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.7: not UTF-8, a UTF-16 or UTF-32 byte order mark, a declared encoding other than UTF-8 (I-5). A consumer catches the base class when it does not care which rule fired.
+ * Section 5.7, I-5
  */
 final class EncodingRefusedTest extends TestCase
 {

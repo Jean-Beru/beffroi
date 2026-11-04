@@ -35,8 +35,7 @@ final class PushedAuthorizationRecordTest extends TestCase
     }
 
     /**
-     * RFC 9126 §2.2: the record is bound to the client that pushed it, and a store keeps the name of
-     * that client beside the tenant it belongs to.
+     * RFC 9126 §2.2
      */
     #[Test]
     public function itTakesItsTenantAndItsClientNameFromItsClient(): void
@@ -86,7 +85,7 @@ final class PushedAuthorizationRecordTest extends TestCase
     }
 
     /**
-     * RFC 9126 §2.2: "expires_in" is the seconds the reference still has.
+     * RFC 9126 §2.2
      */
     #[Test]
     public function itAnswersTheSecondsItStillHas(): void
@@ -99,8 +98,7 @@ final class PushedAuthorizationRecordTest extends TestCase
     }
 
     /**
-     * RFC 9126 §2.2 asks for a positive integer; a record read after its lifetime is refused elsewhere,
-     * and never described as already gone.
+     * RFC 9126 §2.2
      */
     #[Test]
     public function theSecondsItStillHasAreNeverBelowOne(): void
@@ -113,7 +111,7 @@ final class PushedAuthorizationRecordTest extends TestCase
     }
 
     /**
-     * RFC 9126 §4: one use.
+     * RFC 9126 §4
      */
     #[Test]
     public function consumingItMarksItUsed(): void
@@ -130,10 +128,6 @@ final class PushedAuthorizationRecordTest extends TestCase
         static::assertSame($now, $request->usedAt);
     }
 
-    /**
-     * The repository claims the record and calls consume() on the winner alone; calling it twice is a
-     * programming error and not the replay of a reference.
-     */
     #[Test]
     public function consumingItTwiceIsAProgrammingError(): void
     {
@@ -149,9 +143,6 @@ final class PushedAuthorizationRecordTest extends TestCase
         $request->consume(new DateTimeImmutable(self::NOW));
     }
 
-    /**
-     * A repository whose claim was lost writes the instant the store holds into its copy.
-     */
     #[Test]
     public function itRecordsTheConsumptionTheStoreHolds(): void
     {
@@ -167,7 +158,7 @@ final class PushedAuthorizationRecordTest extends TestCase
     }
 
     /**
-     * RFC 9126 §4: "An expired request_uri MUST be rejected as invalid", the instant it expires included.
+     * RFC 9126 §4
      */
     #[Test]
     #[DataProvider('provideInstants')]
@@ -191,7 +182,7 @@ final class PushedAuthorizationRecordTest extends TestCase
     }
 
     /**
-     * RFC 9126 §2.2: the reference is bound to the client that posted it.
+     * RFC 9126 §2.2
      */
     #[Test]
     public function itBelongsToTheClientThatPushedItAndToNoOther(): void
@@ -204,9 +195,6 @@ final class PushedAuthorizationRecordTest extends TestCase
         static::assertFalse($request->belongsTo(Clients::public($this->tenant)));
     }
 
-    /**
-     * A client of the same name in another tenant is another client.
-     */
     #[Test]
     public function itBelongsToNoClientOfAnotherTenant(): void
     {

@@ -13,9 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The algorithms a password hash may have been made with are what the deployment is wired with
- * (decision 0002), not a set a specification closes: an import brings the ones of wherever the users
- * came from, and a name nothing accounts for is refused rather than guessed.
+ * Decision 0002
  */
 final class WiredPasswordAlgorithmsTest extends TestCase
 {
@@ -32,9 +30,6 @@ final class WiredPasswordAlgorithmsTest extends TestCase
         static::assertInstanceOf(Bcrypt::class, $algorithm);
     }
 
-    /**
-     * What a new hash is made with, and what the console shows first.
-     */
     #[Test]
     public function theFirstWiredAlgorithmIsWhatANewHashIsMadeWith(): void
     {

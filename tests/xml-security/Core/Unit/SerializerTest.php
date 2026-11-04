@@ -28,13 +28,13 @@ use function str_ends_with;
 use function substr;
 
 /**
- * Section 6.5, I-15: the whole document, formatOutput false, an XML declaration and UTF-8, whitespace kept, nothing
- * reformatted afterwards, the four shapes that would not survive saveXml() then a parser refused first, and so are the
- * shapes no parser accepts.
+ * Section 6.5, I-15
  */
 final class SerializerTest extends TestCase
 {
-    /** Where a built document can hold a string a consumer chose: what saveXml() writes as it is (section 13). */
+    /**
+     * Section 13
+     */
     private const array PLACES = [
         'text',
         'CDATA section',
@@ -52,8 +52,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * §9.3 row 16: the declaration on the first line, the root with its namespace declaration on the second, no
-     * indentation.
+     * §9.3 row 16
      */
     #[Test]
     public function itSerializesACreatedDocumentWithTheDeclarationThenTheRoot(): void
@@ -85,8 +84,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * §9.3 row 11, I-15: a loaded document with whitespace between elements, serialized, is the same bytes, the
-     * declaration aside and the line feed after the root aside, which the parser never kept.
+     * §9.3 row 11, I-15
      */
     #[Test]
     public function itSerializesALoadedDocumentByteForByteDeclarationAside(): void
@@ -103,7 +101,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * I-15: formatOutput stays false, whatever a consumer set on the Dom\XMLDocument it can reach.
+     * I-15
      */
     #[Test]
     public function itNeverPrettyPrints(): void
@@ -122,7 +120,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * §9.2 row 26, I-4: a Document built by hand around a document parsed outside the loader.
+     * §9.2 row 26, I-4
      */
     #[Test]
     public function itRefusesADocumentTheBrickDidNotProduce(): void
@@ -141,9 +139,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * §9.3 row 17: every serialized document of the fixtures is either refused by a rule of section 6.5, or loads
-     * again through the Loader without refusal and canonicalizes to the same bytes as before serialization. What
-     * the serializer lets out is the canonical form that was signed.
+     * §9.3 row 17, section 6.5
      */
     #[Test]
     #[DataProvider('provideLoadableFixtures')]
@@ -187,12 +183,11 @@ final class SerializerTest extends TestCase
                 if ($directory === 'hostile' && ! str_ends_with($name, '-loads.xml')) {
                     continue;
                 }
-                // 512 declarations over 10 000 elements: seconds of inclusive canonicalization (section 13),
-                // round-tripped exclusively in its own test
+                // Seconds of inclusive canonicalization (section 13): its own test round-trips it exclusively.
                 if ($name === 'at-the-six-default-bounds-loads.xml') {
                     continue;
                 }
-                // at the byte bound: the declaration the serializer adds pushes them over maxBytes on the way back
+                // The declaration the serializer adds pushes a fixture at the byte bound over maxBytes on reload.
                 if (filesize($path) > (1_048_576 - 40)) {
                     continue;
                 }
@@ -206,8 +201,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * §9.3 row 17, section 7: the document at the six default bounds round-trips too, exclusively, since its
-     * inclusive canonical form costs seconds with 512 declarations in scope over 10 000 elements (section 13).
+     * §9.3 row 17, section 7, section 13
      */
     #[Test]
     public function itsOutputOfTheDocumentAtTheSixBoundsLoadsAgainAndCanonicalizesToTheSameBytes(): void
@@ -228,8 +222,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * §9.3 row 20, section 6.5: the four shapes measured not to survive saveXml() then a parser, each in a loaded
-     * fixture, each refused with its rule named (I-16).
+     * §9.3 row 20, section 6.5, I-16
      */
     #[Test]
     #[DataProvider('provideShapesThatWouldNotRoundTrip')]
@@ -270,9 +263,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * §9.3 row 20, section 6.5, measured: the namespace fix-up of saveXml() drops the prefix of an element whose
-     * namespace is the default namespace in force where it starts, whichever element declared it and whatever the
-     * element declares itself.
+     * §9.3 row 20, section 6.5
      */
     #[Test]
     #[DataProvider('provideAPrefixBoundToTheInScopeDefaultNamespace')]
@@ -305,8 +296,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * §9.3 row 9, section 6.5: two prefixes bound to one namespace name are written as they are, so a second
-     * prefix is not the shape saveXml() drops.
+     * §9.3 row 9, section 6.5
      */
     #[Test]
     public function itKeepsASecondPrefixBoundToTheSameNamespace(): void
@@ -325,8 +315,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * §9.3 row 21, section 6.5, measured: a carriage return in any character data node is written as the byte
-     * itself, and a parser normalises it to a line feed, in a comment or a processing instruction too.
+     * §9.3 row 21, section 6.5
      */
     #[Test]
     #[DataProvider('provideCharacterDataNodeTypes')]
@@ -363,7 +352,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * Section 6.5: a comment or a processing instruction outside the root is walked too.
+     * Section 6.5
      */
     #[Test]
     public function itRefusesACarriageReturnInACommentOutsideTheRoot(): void
@@ -384,8 +373,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * §9.3 row 21, section 6.5, measured: a built child without a prefix is written with its namespace declared, so
-     * a prefixed grandchild in the same namespace is written without its prefix.
+     * §9.3 row 21, section 6.5
      */
     #[Test]
     public function itRefusesAPrefixedGrandchildUnderABuiltChildInTheSameDefaultNamespace(): void
@@ -409,8 +397,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * §9.3 row 21, section 6.5: an ampersand in the namespace of a built element, which no declaration attribute
-     * carries yet; libxml's canonical form writes it raw (measured, section 13).
+     * §9.3 row 21, section 6.5, section 13
      */
     #[Test]
     public function itRefusesAnAmpersandInTheNamespaceOfABuiltElement(): void
@@ -431,7 +418,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * Section 6.5: an ampersand in the namespace of a built attribute.
+     * Section 6.5
      */
     #[Test]
     public function itRefusesAnAmpersandInTheNamespaceOfABuiltAttribute(): void
@@ -449,8 +436,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * Section 6.5: a CDATA section whose data came to hold the end marker after its creation, which
-     * createCDATASection() refuses but appendData() does not.
+     * Section 6.5
      */
     #[Test]
     public function itRefusesABuiltCdataSectionWhoseDataHoldsTheEndMarker(): void
@@ -473,8 +459,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * Section 6.5: two built CDATA sections stay two, and a carriage return, a line feed or a tab in an attribute
-     * value is written as a character reference, so neither is a shape the serializer refuses (measured, section 13).
+     * Section 6.5, section 13
      */
     #[Test]
     public function itSerializesWhatSurvivesARoundTrip(): void
@@ -500,8 +485,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * §9.3 row 22, section 6.5, XML 1.0 §2.2: saveXml() writes a character outside the Char production as it is,
-     * wherever it sits, and no parser accepts it (measured, section 13).
+     * §9.3 row 22, section 6.5, XML 1.0 §2.2, section 13
      */
     #[Test]
     #[DataProvider('provideCharactersOutsideTheCharProductionInEachPlace')]
@@ -539,7 +523,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * §9.3 row 22, section 6.5, XML 1.0 §2.2: a comment outside the root is scanned too.
+     * §9.3 row 22, section 6.5, XML 1.0 §2.2
      */
     #[Test]
     public function itRefusesACharacterOutsideTheCharProductionOutsideTheRoot(): void
@@ -560,8 +544,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * §9.3 row 22, section 6.5, XML 1.0 §2.2: bytes that are not UTF-8, a surrogate encoded on its own among them,
-     * are written as they are, wherever they sit, and no parser accepts them (measured, section 13).
+     * §9.3 row 22, section 6.5, XML 1.0 §2.2, section 13
      */
     #[Test]
     #[DataProvider('provideBytesThatAreNotUtf8InEachPlace')]
@@ -597,7 +580,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * Section 6.5, XML 1.0 §2.2: the characters at each bound of the Char production are written and load again.
+     * Section 6.5, XML 1.0 §2.2
      */
     #[Test]
     #[DataProvider('provideCharactersAtTheBoundsOfTheCharProduction')]
@@ -629,8 +612,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * §9.3 row 22, section 6.5, measured: the DOM truncates a value at a NUL byte when it is set, before the brick
-     * sees it, so what is serialized is what the node holds and is well-formed; the serializer accepts it.
+     * §9.3 row 22, section 6.5
      */
     #[Test]
     #[DataProvider('providePlaces')]
@@ -657,8 +639,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * §9.3 row 22, section 6.5, XML 1.0 §2.5: a comment holding two adjacent hyphens, or ending with one, is written
-     * as it is, inside the root or outside it, and no parser accepts it.
+     * §9.3 row 22, section 6.5, XML 1.0 §2.5
      */
     #[Test]
     #[DataProvider('provideCommentsTheProductionForbids')]
@@ -697,7 +678,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * Section 6.5, XML 1.0 §2.5: a hyphen that neither follows another nor ends the comment is allowed.
+     * Section 6.5, XML 1.0 §2.5
      */
     #[Test]
     public function itSerializesACommentHoldingSingleHyphens(): void
@@ -713,8 +694,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * §9.3 row 22, section 6.5, XML 1.0 §2.6: the target xml is reserved whatever its case, and saveXml() writes it
-     * as it is, inside the root or outside it.
+     * §9.3 row 22, section 6.5, XML 1.0 §2.6
      */
     #[Test]
     #[DataProvider('provideReservedTargets')]
@@ -752,7 +732,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * Section 6.5, XML 1.0 §2.6: a target that only starts with xml is not the reserved one.
+     * Section 6.5, XML 1.0 §2.6
      */
     #[Test]
     public function itSerializesAProcessingInstructionWhoseTargetStartsWithXml(): void
@@ -772,8 +752,7 @@ final class SerializerTest extends TestCase
     }
 
     /**
-     * §9.3 row 22, section 6.5, XML 1.0 §2.6: a processing instruction whose data came to hold the sequence that
-     * ends one, which createProcessingInstruction() refuses but appendData() does not.
+     * §9.3 row 22, section 6.5, XML 1.0 §2.6
      */
     #[Test]
     public function itRefusesAProcessingInstructionWhoseDataHoldsTheEndMarker(): void
@@ -795,9 +774,6 @@ final class SerializerTest extends TestCase
         $this->serializer->serialize($document);
     }
 
-    /**
-     * A document built by the factory whose root holds $value in one place.
-     */
     private static function documentHolding(string $place, string $value): Document
     {
         $document = new DocumentFactory()->create(new Name('urn:a', 'a'));

@@ -12,15 +12,10 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The stretch of time a table of the account is read over (architecture §5.2): two days, either of them
- * alone, or none at all.
+ * Architecture §5.2
  */
 final class PeriodTest extends TestCase
 {
-    /**
-     * The ends are days and what they mean is the whole of both: a reader who asks for today means today
-     * until midnight, not today until the instant they asked.
-     */
     #[Test]
     public function thePeriodIsTheWholeOfBothDays(): void
     {
@@ -51,9 +46,6 @@ final class PeriodTest extends TestCase
         static::assertNull(Period::ofDays(null, null));
     }
 
-    /**
-     * A table that answered nothing to a question nobody can have meant would be a page somebody reloads.
-     */
     #[Test]
     public function aPeriodCannotEndBeforeItStarts(): void
     {
@@ -65,9 +57,6 @@ final class PeriodTest extends TestCase
         Period::ofDays(new DateTimeImmutable('2026-10-03 08:15:00'), new DateTimeImmutable('2026-10-01 11:30:00'));
     }
 
-    /**
-     * One day is a period of that day: from its first second to its last, and not an empty stretch.
-     */
     #[Test]
     public function oneDayIsThatDayWhole(): void
     {
@@ -80,10 +69,6 @@ final class PeriodTest extends TestCase
         static::assertSame('2026-10-01 23:59:59.999999', $period->to?->format('Y-m-d H:i:s.u'));
     }
 
-    /**
-     * What a store in memory asks of a period: an end nobody named holds everything on that side, and the
-     * two ends are the whole of both days.
-     */
     #[Test]
     #[DataProvider('provideMomentsAndWhatHoldsThem')]
     public function itSaysWhetherItHoldsAMoment(?string $from, ?string $to, string $moment, bool $held): void

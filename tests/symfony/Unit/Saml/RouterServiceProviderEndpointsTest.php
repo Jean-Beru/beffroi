@@ -23,16 +23,12 @@ use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * beffroi/saml, spec/saml.md S-38, S-39 and section 6.9 step 3: the endpoints of the SAML service provider of a tenant
- * are the routes of the provider under the origin of its issuer, never under the request that asked for them, and its
- * entity ID is its own.
+ * spec/saml.md S-38, S-39, section 6.9 step 3
  */
 final class RouterServiceProviderEndpointsTest extends TestCase
 {
     /**
-     * S-39, section 6.9 step 3: the request came in on another host, scheme and port than the issuer names; the
-     * metadata and the assertion consumer service are still under the origin of the issuer, and the entity ID is the
-     * URL of the metadata.
+     * S-39, section 6.9 step 3
      */
     #[Test]
     public function theHostOfTheRequestIsIgnored(): void
@@ -51,7 +47,7 @@ final class RouterServiceProviderEndpointsTest extends TestCase
     }
 
     /**
-     * S-38: the entity ID the deployment names is the one the service provider goes by.
+     * S-38
      */
     #[Test]
     public function theEntityIdTheDeploymentNamesIsTheOneItGoesBy(): void
@@ -67,8 +63,7 @@ final class RouterServiceProviderEndpointsTest extends TestCase
     }
 
     /**
-     * S-38: an entity ID equal to the one of the identity provider, which an environment variable kept from the
-     * compilation of the container, is refused at the first use of the service provider.
+     * S-38
      */
     #[Test]
     public function theEntityIdOfTheIdentityProviderIsRefused(): void
@@ -85,8 +80,7 @@ final class RouterServiceProviderEndpointsTest extends TestCase
     }
 
     /**
-     * S-38, M-6: an entity ID that is no URI of the model, which an environment variable kept from the compilation of
-     * the container, is refused at the first use of the service provider rather than at the writer of its metadata.
+     * S-38, M-6
      */
     #[Test]
     public function anEntityIdThatIsNoUriOfTheModelIsRefused(): void
@@ -103,8 +97,7 @@ final class RouterServiceProviderEndpointsTest extends TestCase
     }
 
     /**
-     * Section 6.9 step 3: the routes are not mounted under the path of the issuer, so the metadata would name a URL
-     * where nothing is served; a configuration fault, refused rather than announced.
+     * Section 6.9 step 3
      */
     #[Test]
     public function routesMountedElsewhereThanTheIssuerAreRefused(): void
@@ -121,8 +114,7 @@ final class RouterServiceProviderEndpointsTest extends TestCase
     }
 
     /**
-     * S-52, section 6.9 step 3: the route of the assertion consumer service mounted elsewhere than the issuer names it
-     * would be announced where nothing answers; a configuration fault, refused rather than announced.
+     * S-52, section 6.9 step 3
      */
     #[Test]
     public function anAssertionConsumerServiceMountedElsewhereThanTheIssuerIsRefused(): void
@@ -139,9 +131,7 @@ final class RouterServiceProviderEndpointsTest extends TestCase
     }
 
     /**
-     * S-65: the URL of the metadata given to an upstream identity provider, which a command prints where no request
-     * names a host, is under the origin of the issuer, its last segment the entity ID in base64url, whatever host the
-     * context of the router names.
+     * S-65
      */
     #[Test]
     public function theMetadataGivenToAnIdentityProviderAreUnderTheOriginOfTheIssuer(): void
@@ -157,9 +147,7 @@ final class RouterServiceProviderEndpointsTest extends TestCase
     }
 
     /**
-     * S-65, section 6.9 step 3: the route of the metadata given to an upstream identity provider mounted elsewhere than
-     * the issuer names it would hand that provider a URL where nothing answers; a configuration fault, refused rather
-     * than printed.
+     * S-65, section 6.9 step 3
      */
     #[Test]
     public function theMetadataGivenToAnIdentityProviderMountedElsewhereThanTheIssuerAreRefused(): void

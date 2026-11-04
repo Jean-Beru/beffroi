@@ -10,14 +10,7 @@ use Beffroi\Oidc\Application\PushedAuthorization\PushedAuthorizationRequestResol
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * The two resolvers of the authorization endpoint, in the one order the protocol gives them. A request
- * the client pushed is read from the record and not from the query, which carries nothing but the client
- * and the reference to it (RFC 9126 §4); a request carried in a JWT is read before anything of the query
- * is, the object deciding the parameters of the request and the query nothing but which client signed it
- * (RFC 9101 §6.1). A pushed request was read at the endpoint it was pushed to and carries no object.
- *
- * The order is a rule of the protocol and not of a controller, so it is written here once, for the
- * endpoint and for whoever wants to know how a request reached it.
+ * RFC 9126 §4, RFC 9101 §6.1
  */
 final readonly class AuthorizationRequestReader implements AuthorizationRequestReaderInterface
 {
@@ -35,8 +28,7 @@ final readonly class AuthorizationRequestReader implements AuthorizationRequestR
         $parameters = $pushed === null ? $parameters : PushedAuthorizationRequestResolver::parametersOf($pushed);
         $object = $this->requestObjects->resolve($tenant, $parameters);
 
-        // A request object the client signed was read at the endpoint it pushed to, and the record is
-        // what answers for it here (RFC 9126 §4): what carried the request is the record's to say.
+        // The object of a pushed request was read where it was pushed: its record says whether one carried it.
         return new ReceivedAuthorizationRequest(
             $object->parameters ?? $parameters,
             $pushed !== null,

@@ -30,19 +30,13 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The acceptance of issue #90 on the login side (architecture §5.4): a passkey enrolled from a password
- * session signs in alone on the firewall of the interaction pages, the session of the core carries what
- * the assertion proved, the ID token carries the same; what is not a passkey of this tenant, signed for
- * this origin, over the challenge this browser got, is refused. The firewall is the one of
- * tests/symfony/config/config_test.yml, the authenticator of the browser a software one.
+ * Architecture §5.4
  */
 final class PasskeyLoginTest extends PasskeyTestCase
 {
     /**
-     * The first success criterion of the spike: enrol from a password account, sign out, sign in with
-     * the passkey alone. RFC 8176 §2 for the methods, architecture §3.2 for the classes.
-     */
-    /**
+     * RFC 8176 §2, Architecture §3.2
+     *
      * @param list<string> $methods
      */
     #[Test]
@@ -100,9 +94,8 @@ final class PasskeyLoginTest extends PasskeyTestCase
     }
 
     /**
-     * OIDC Core §2: "amr" and "acr" of the ID token are those of the session.
-     */
-    /**
+     * OIDC Core §2
+     *
      * @param list<string> $methods
      */
     #[Test]
@@ -143,9 +136,6 @@ final class PasskeyLoginTest extends PasskeyTestCase
         static::assertSame($this->boundSession()->authenticatedAt()->getTimestamp(), $claims['auth_time']);
     }
 
-    /**
-     * The token of the firewall calls recent what the session proved (symfony/symfony#66064).
-     */
     #[Test]
     public function theTokenOfTheFirewallCarriesTheProofsOfThePasskey(): void
     {
@@ -170,7 +160,7 @@ final class PasskeyLoginTest extends PasskeyTestCase
     }
 
     /**
-     * Architecture §3.5 and WebAuthn Level 3 §7.2 step 26: the use is recorded on the passkey and announced.
+     * Architecture §3.5, WebAuthn Level 3 §7.2 step 26
      */
     #[Test]
     public function aPasskeyLoginIsRecordedOnThePasskeyAndAnnounced(): void
@@ -197,8 +187,7 @@ final class PasskeyLoginTest extends PasskeyTestCase
     }
 
     /**
-     * Architecture §3.2 and decision 0034: a sign count that did not grow is refused after the signature, with
-     * the passkey and its holder in the trail, and the passkey keeps the count it had.
+     * Architecture §3.2, Decision 0034
      */
     #[Test]
     public function aSignCountThatDidNotGrowIsRefused(): void
@@ -227,8 +216,7 @@ final class PasskeyLoginTest extends PasskeyTestCase
     }
 
     /**
-     * OIDC Core §3.1.2.1 (prompt=login) and architecture §3.2: a passkey re-authenticates a password
-     * session as a password does, its proofs recorded on the session the browser has, "auth_time" moved.
+     * OIDC Core §3.1.2.1, Architecture §3.2
      */
     #[Test]
     public function aFreshLoginWithAPasskeyRecordsItsProofsOnThePasswordSession(): void
@@ -282,9 +270,7 @@ final class PasskeyLoginTest extends PasskeyTestCase
     }
 
     /**
-     * WebAuthn Level 3 §6.1.3: the BE flag of a credential is set when it is created and never changes, so
-     * an assertion that claims another one is refused after the signature, with the key the passkey was
-     * enrolled as in the trail, and the row keeps that flag.
+     * WebAuthn Level 3 §6.1.3
      */
     #[Test]
     public function anAssertionWhoseBackupEligibilityChangedIsRefused(): void
@@ -309,9 +295,6 @@ final class PasskeyLoginTest extends PasskeyTestCase
         static::assertTrue(self::passkeyOf($alice, $device)->backupEligible);
     }
 
-    /**
-     * The state of the account is checked after the signature, as after the password (UserChecker).
-     */
     #[Test]
     public function aDisabledUserIsRefusedAfterTheSignature(): void
     {
@@ -338,9 +321,6 @@ final class PasskeyLoginTest extends PasskeyTestCase
         static::assertTrue($failures[0]->user?->id->equals($alice->id));
     }
 
-    /**
-     * A passkey is a credential of one tenant (CredentialRepositoryInterface::findByExternalId()).
-     */
     #[Test]
     public function aPasskeyOfAnotherTenantIsRefused(): void
     {
@@ -383,9 +363,8 @@ final class PasskeyLoginTest extends PasskeyTestCase
     }
 
     /**
-     * WebAuthn Level 3 §7.2, steps 13 and 15: the origin and the relying party of the assertion.
-     */
-    /**
+     * WebAuthn Level 3 §7.2, steps 13 and 15
+     *
      * @param callable(SoftwareAuthenticator): SoftwareAuthenticator $forge
      */
     #[Test]
@@ -423,7 +402,7 @@ final class PasskeyLoginTest extends PasskeyTestCase
     }
 
     /**
-     * WebAuthn Level 3 §13.4.3: a challenge is answered once.
+     * WebAuthn Level 3 §13.4.3
      */
     #[Test]
     public function anAssertionIsAnsweredOnce(): void
@@ -466,11 +445,6 @@ final class PasskeyLoginTest extends PasskeyTestCase
         $this->assertRefused($interaction);
     }
 
-    /**
-     * Fetch Standard, "append a request `Origin` header": the assertion is posted as a form of the login page, under
-     * its "Referrer-Policy: no-referrer", so a browser that sends no "Sec-Fetch-Site" posts it with "Origin: null" and
-     * no "Referer". The token is the one the session holds (config_test.yml, issue #891).
-     */
     #[Test]
     public function aPasskeyLoginPostedWithoutOriginOrRefererOpensASession(): void
     {
@@ -516,7 +490,7 @@ final class PasskeyLoginTest extends PasskeyTestCase
     }
 
     /**
-     * WebAuthn Level 3 §5.5: no user named, no allow list, the relying party of the tenant.
+     * WebAuthn Level 3 §5.5
      */
     #[Test]
     public function theOptionsOfTheLoginPageAreForADiscoverableCredential(): void
@@ -561,9 +535,6 @@ final class PasskeyLoginTest extends PasskeyTestCase
         );
     }
 
-    /**
-     * The password still signs in on the same page: the passkey changes nothing for the form.
-     */
     #[Test]
     public function thePasswordStillSignsInNextToThePasskey(): void
     {
@@ -583,9 +554,6 @@ final class PasskeyLoginTest extends PasskeyTestCase
         static::assertSame(['pwd'], $this->boundSession()->methodReferences());
     }
 
-    /**
-     * Back to the login page with the one message, no session bound.
-     */
     private function assertRefused(string $interaction): void
     {
         $response = $this->browser->getResponse();
@@ -595,9 +563,6 @@ final class PasskeyLoginTest extends PasskeyTestCase
         static::assertCount(1, $this->loginPage($interaction)->filter('p[data-error="authentication_failed"]'));
     }
 
-    /**
-     * Options another provider drew: what the device answers with is no passkey of this tenant.
-     */
     private function creationOptionsOfAnotherProvider(): string
     {
         return (

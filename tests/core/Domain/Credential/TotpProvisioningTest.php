@@ -11,9 +11,6 @@ use Beffroi\Core\Tests\Fixture\Totps;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * What a TOTP enrolment issues: the secret, the URI and the ten backup codes, nothing stored.
- */
 final class TotpProvisioningTest extends TestCase
 {
     #[Test]

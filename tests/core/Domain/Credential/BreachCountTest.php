@@ -10,8 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The three answers a list of compromised passwords has, told apart here rather than at every call site
- * (decision 0006): counted, not counted, and nothing asked.
+ * Decision 0006
  */
 final class BreachCountTest extends TestCase
 {
@@ -38,9 +37,6 @@ final class BreachCountTest extends TestCase
         static::assertFalse($count->isBreached());
     }
 
-    /**
-     * A deployment that names no list cannot read as one that looked and found nothing.
-     */
     #[Test]
     public function nothingAskedIsNeitherOfTheTwo(): void
     {

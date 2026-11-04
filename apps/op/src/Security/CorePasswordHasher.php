@@ -21,10 +21,6 @@ use SensitiveParameter;
 use Symfony\Component\PasswordHasher\Exception\InvalidPasswordException;
 use Symfony\Component\PasswordHasher\PasswordHasherInterface;
 
-/**
- * The password hasher of Symfony bridged to the hasher of the core (architecture §5.4). The string the
- * component sees is the JSON of a typed hash (decision 0002), written and read here only.
- */
 final readonly class CorePasswordHasher implements PasswordHasherInterface
 {
     public function __construct(
@@ -78,8 +74,7 @@ final readonly class CorePasswordHasher implements PasswordHasherInterface
     }
 
     /**
-     * Null when the string is not one encode() wrote: no algorithm is guessed, and a name nothing wired
-     * accounts for reads as no hash at all rather than as a hash of something else.
+     * No algorithm is guessed: a name nothing wired accounts for reads as no hash at all.
      */
     public function decode(string $encoded): ?PasswordHash
     {

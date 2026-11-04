@@ -10,15 +10,6 @@ use Beffroi\Oidc\Domain\Client\ClientSecretInterface;
 use LogicException;
 
 /**
- * The secret the provider handed a client that registered itself, in the one column that keeps it
- * (RFC 7591 §3.2.1). One column, so that the day a deployment encrypts it at rest is the day one column
- * changes and nothing else (spike 8). What the document holds, and which of the two shapes of a secret it
- * says, is the module's own (`StoredClientSecret`).
- *
- * The handoff through a static is the Doctrine half: Doctrine builds a type from a class name, so nothing
- * can be injected here; what reads the document takes the wiring as an argument, and this hands it the one
- * the provider gave it when it booted.
- *
  * @extends JsonObjectType<ClientSecretInterface>
  */
 final class ClientSecretType extends JsonObjectType implements NeedsPasswordAlgorithmsInterface

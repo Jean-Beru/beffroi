@@ -39,7 +39,7 @@ final class InMemoryAuthenticationSessionRepositoryTest extends TestCase
     }
 
     /**
-     * Decision 0031: a session past its expiry has not ended, and stays among those something can end.
+     * Decision 0031
      */
     #[Test]
     public function itListsTheUnendedSessionsOfAUserThoseExpiredIncluded(): void
@@ -86,8 +86,7 @@ final class InMemoryAuthenticationSessionRepositoryTest extends TestCase
     }
 
     /**
-     * Decision 0011 (issue #884): the person a session names, by the subject their account carries, kept beside the
-     * session as a database keeps it, in a column of its own and in the clear.
+     * Decision 0011
      */
     #[Test]
     public function itNamesThePersonOfASavedSessionByTheirSubject(): void

@@ -15,12 +15,7 @@ use Beffroi\Oidc\Port\ServedGrantsInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * RFC 7009 §2.1: the client gives the token back, and is answered the same way whatever the token was.
- * The last hop of every picture.
- *
- * The refresh token is the one given back where the run holds one, because that is the token a client
- * gives back to end what it was granted: a self-contained access token cannot be revoked at all, it
- * expires on its own (§2.2.1), and a flow that holds nothing else is drawn being told so.
+ * RFC 7009 §2.1
  */
 final readonly class GiveTheTokenBack implements DrivenHopInterface
 {

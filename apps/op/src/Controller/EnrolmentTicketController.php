@@ -12,23 +12,11 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * The page where a person poses their first passkey without a session (architecture §5.2, issue #613):
- * reached from the URL an administrator handed them, it names the account it opens and holds the one
- * ceremony it is for.
- *
- * A ticket that opens nothing gets the refusal every page of this provider gets, in one flat sentence
- * whatever the reason (decision 0006): an identifier nothing answers, a wrong value, a ticket already
- * spent or out of time are the same answer with the same status.
- */
 #[AsController]
 final readonly class EnrolmentTicketController
 {
     public const string ROUTE = 'beffroi_interaction_enrolment_ticket';
 
-    /**
-     * The one the page of a refused ticket explains.
-     */
     public const string REFUSED = 'enrolment_ticket_refused';
 
     public function __construct(

@@ -27,9 +27,7 @@ use Symfony\Component\Clock\MockClock;
 use function sprintf;
 
 /**
- * spec/saml.md section 6.10, S-42, S-43, S-6: the metadata of an upstream identity provider registered the first time
- * and refreshed every time after, by the procedure the service providers are refreshed with, the declarations of the
- * configuration, the reader of the model and a fetcher of the test, at 2026-09-15T10:00:00Z.
+ * spec/saml.md section 6.10, S-42, S-43, S-6
  */
 final class UpstreamIdentityProviderMetadataRefreshTest extends TestCase
 {
@@ -54,8 +52,7 @@ final class UpstreamIdentityProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * The acceptance of issue #779: the SimpleSAMLphp identity provider of the judge is registered from its metadata,
-     * the bytes that were read kept in the row of the upstream identity providers (S-8, S-42).
+     * S-8, S-42
      */
     #[Test]
     public function theIdentityProviderOfTheJudgeIsRegisteredFromItsMetadata(): void
@@ -80,7 +77,7 @@ final class UpstreamIdentityProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * Section 6.10 step 5, section 6.2 step 6: the same bytes read again write nothing.
+     * Section 6.10 step 5, section 6.2 step 6
      */
     #[Test]
     public function theSameDocumentReadAgainWritesNothing(): void
@@ -101,7 +98,7 @@ final class UpstreamIdentityProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * Section 6.10 step 5: a newer document takes the place of the accepted one.
+     * Section 6.10 step 5
      */
     #[Test]
     public function aNewerDocumentIsAccepted(): void
@@ -122,7 +119,7 @@ final class UpstreamIdentityProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-42, S-6, the acceptance of issue #779: an expired document is refused, the accepted one kept.
+     * S-42, S-6
      */
     #[Test]
     public function anExpiredDocumentIsRefusedAndTheAcceptedOneKept(): void
@@ -149,9 +146,7 @@ final class UpstreamIdentityProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-42, S-6, the acceptance of issue #779: a document read under the signers the declaration pins that is older
-     * than the one accepted is refused, the accepted one kept, an older document signed by the same key verifying as
-     * well.
+     * S-42, S-6
      */
     #[Test]
     public function aSignedDocumentOlderThanTheAcceptedOneIsRefusedAndTheAcceptedOneKept(): void
@@ -178,8 +173,7 @@ final class UpstreamIdentityProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-42, the acceptance of issue #779: a document without an identity provider role, the metadata of the service
-     * provider of a SimpleSAMLphp installation, is refused.
+     * S-42
      */
     #[Test]
     public function aDocumentWithoutAnIdentityProviderRoleIsRefused(): void
@@ -205,7 +199,7 @@ final class UpstreamIdentityProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-42: the metadata of another entity than the one declared are refused.
+     * S-42
      */
     #[Test]
     public function theMetadataOfAnotherEntityAreRefused(): void
@@ -228,7 +222,7 @@ final class UpstreamIdentityProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-43: an identity provider whose metadata hold no key for signing is refused at its registration.
+     * S-43
      */
     #[Test]
     public function anIdentityProviderWithoutAKeyForSigningIsRefused(): void
@@ -249,8 +243,7 @@ final class UpstreamIdentityProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-42: the accepted document of an upstream identity provider is forgotten by the operator, through the
-     * forgetting of its role, and the next refresh registers it as a first one.
+     * S-42
      */
     #[Test]
     public function aForgottenIdentityProviderIsRegisteredAgain(): void

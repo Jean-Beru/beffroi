@@ -44,8 +44,7 @@ use Symfony\Component\Uid\Uuid;
 use Beffroi\Oidc\Tests\Fixture\Shapes;
 
 /**
- * Architecture §4.6, §5.3: a record keyed by the hash of a value it never keeps, found by that value,
- * removed one at a time, by grant and by session.
+ * Architecture §4.6, §5.3
  */
 final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
 {
@@ -87,8 +86,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * RFC 7800 §3.1: what a token is bound to is stored as the members of a "cnf" and read back by the
-     * kinds the provider is wired with, which the provider hands to the type when it boots.
+     * RFC 7800 §3.1
      *
      * @param non-empty-string $thumbprint
      */
@@ -161,7 +159,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: the tokens of a grant go together, in issuance order, and are told.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function theTokensOfAGrantAreRevokedTogether(): void
@@ -195,8 +193,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Architecture §4.6, §5.3, RFC 6749 §4.4: a token nobody signed in for is kept in the table of its own
-     * kind, which has no session to point at, and is found by its value like any other.
+     * Architecture §4.6, §5.3, RFC 6749 §4.4
      */
     #[Test]
     public function aTokenNobodySignedInForComesBackFromTheTableOfItsKind(): void
@@ -222,7 +219,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * RFC 7009 §2.1: a token nobody signed in for is taken back like any other, from the table of its kind.
+     * RFC 7009 §2.1
      */
     #[Test]
     public function aTokenNobodySignedInForIsRevokedLikeAnyOther(): void
@@ -242,8 +239,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Architecture §4.9, RFC 6749 §4.4: a logout revokes the tokens of the session that ended, and a token
-     * nobody signed in for has no session to have ended, so it stays and is not listed as revoked.
+     * Architecture §4.9, RFC 6749 §4.4
      */
     #[Test]
     public function aLogoutLeavesTheTokensNobodySignedInFor(): void
@@ -265,8 +261,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: a grant is revoked with every token descending from it, in whichever table its
-     * kind keeps them.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function aGrantIsRevokedAcrossTheTablesOfEveryKind(): void
@@ -302,9 +297,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Architecture §4.3: the tokens a client holds for a user go with the consent that user takes back.
-     * Those of another client, those of another user, and the one the client holds for itself, which
-     * descends from no user at all (RFC 6749 §4.4), stay.
+     * Architecture §4.3, RFC 6749 §4.4
      */
     #[Test]
     public function theTokensOfAConsentAreRevokedTogether(): void
@@ -342,7 +335,7 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Architecture §4.9: the tokens of a session go together; those of another session stay.
+     * Architecture §4.9
      */
     #[Test]
     public function theTokensOfASessionAreRevokedTogether(): void
@@ -365,10 +358,6 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         static::assertNotNull(self::tokens()->find($elsewhere));
     }
 
-    /**
-     * A token of a client removed from the configuration is not a token: not found, and removed with
-     * the others without being told.
-     */
     #[Test]
     public function aTokenOfAnUnregisteredClientIsNeitherFoundNorTold(): void
     {
@@ -458,10 +447,6 @@ final class DoctrineAccessTokenRepositoryTest extends DatabaseTestCase
         return self::service('test.beffroi.access_tokens_store', AccessTokenRepositoryInterface::class);
     }
 
-    /**
-     * A token of the shape the authorization is, drawn where every value this provider hands out is drawn
-     * and kept by the store under its digest.
-     */
     private static function issued(AuthorizationInterface $authorization, DateTimeImmutable $issuedAt, DateTimeImmutable $expiresAt): string
     {
         $value = Secrets::draw();

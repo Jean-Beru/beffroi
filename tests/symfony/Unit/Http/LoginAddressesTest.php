@@ -22,9 +22,7 @@ use Twig\Environment;
 use function sprintf;
 
 /**
- * beffroi/saml S-61: the step of the address of the login a page of the provider asks for is asked again for the next
- * page that asks for one, whatever was typed for the login before. S-68: the address of a federated domain is kept for
- * the sign-on of that login alone, taken once.
+ * beffroi/saml S-61, S-68
  */
 final class LoginAddressesTest extends TestCase
 {
@@ -47,7 +45,7 @@ final class LoginAddressesTest extends TestCase
     }
 
     /**
-     * S-68: the address sent on for a login is what its sign-on takes.
+     * S-68
      */
     #[Test]
     public function theSignOnTakesTheAddressSentOn(): void
@@ -62,7 +60,7 @@ final class LoginAddressesTest extends TestCase
     }
 
     /**
-     * S-68: an address is taken once, and a second sign-on of the same login takes none.
+     * S-68
      */
     #[Test]
     public function anAddressIsTakenOnce(): void
@@ -79,7 +77,7 @@ final class LoginAddressesTest extends TestCase
     }
 
     /**
-     * S-68: the address of one login is not taken by the sign-on of another, whose address is its own.
+     * S-68
      */
     #[Test]
     public function eachLoginKeepsItsOwnAddress(): void
@@ -99,8 +97,7 @@ final class LoginAddressesTest extends TestCase
     }
 
     /**
-     * S-68, section 7: a browser keeps the addresses of eight logins at most, the oldest forgotten first, the address
-     * sent on again for a login counting as the newest.
+     * S-68, section 7
      */
     #[Test]
     public function eightAddressesAreKeptAtMost(): void
@@ -127,7 +124,7 @@ final class LoginAddressesTest extends TestCase
     }
 
     /**
-     * S-68: back to the step of the address, the address sent on for that login is forgotten with what was typed.
+     * S-68
      */
     #[Test]
     public function theAddressSentOnIsForgottenWithTheStep(): void
@@ -145,7 +142,7 @@ final class LoginAddressesTest extends TestCase
     }
 
     /**
-     * S-68: what the HTTP session holds under the key of the addresses and is no address of a login is read as none.
+     * S-68
      */
     #[Test]
     #[DataProvider('provideStoredValuesThatAreNoAddresses')]
@@ -171,8 +168,7 @@ final class LoginAddressesTest extends TestCase
     }
 
     /**
-     * S-68, section 7: the address kept for a sign-on waits as long as a request for a login, and is taken by no
-     * sign-on once that wait is over.
+     * S-68, section 7
      */
     #[Test]
     #[DataProvider('provideWaits')]
@@ -197,8 +193,7 @@ final class LoginAddressesTest extends TestCase
     }
 
     /**
-     * S-68: an address whose wait is over leaves the HTTP session when the addresses of the browser are written next,
-     * its sign-on never reached.
+     * S-68
      */
     #[Test]
     public function anAddressPastItsWaitLeavesTheSession(): void
@@ -219,7 +214,7 @@ final class LoginAddressesTest extends TestCase
     }
 
     /**
-     * S-68: the page that waited for a login served, the address kept for the sign-on of that login leaves with it.
+     * S-68
      */
     #[Test]
     public function thePageServedTakesTheAddressOfItsLoginWithIt(): void

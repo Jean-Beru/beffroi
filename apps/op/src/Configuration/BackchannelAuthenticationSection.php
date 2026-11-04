@@ -10,15 +10,8 @@ use Beffroi\Oidc\Application\Ciba\UserHints;
 use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 
-/**
- * What a backchannel authentication request of this tenant may name its user by, and what one call back to a client may cost (CIBA Core §7.1, §10.2). Which delivery modes the provider serves is the wiring and not this: a mode is a tagged service, and what is tagged is what is announced.
- */
 final readonly class BackchannelAuthenticationSection extends ConfigurationSection
 {
-    /**
-     * Seconds one call to a client notification endpoint is given, connection included. Nobody is waiting
-     * on it, but a client that hangs must not hold a worker.
-     */
     public const float DEFAULT_NOTIFICATION_TIMEOUT = 3.0;
 
     public function name(): string

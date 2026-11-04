@@ -16,8 +16,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * spec/saml.md S-26: each service provider's part in a session recorded from the event single sign-on announces, for a
- * session that still exists.
+ * spec/saml.md S-26
  */
 final class SessionParticipantsTest extends TestCase
 {
@@ -36,7 +35,7 @@ final class SessionParticipantsTest extends TestCase
     }
 
     /**
-     * S-26: the row names the tenant, the session, the service provider and the instant of the sign-on.
+     * S-26
      */
     #[Test]
     public function aSignOnIsRecordedForItsSession(): void
@@ -53,7 +52,7 @@ final class SessionParticipantsTest extends TestCase
     }
 
     /**
-     * S-26: a session that no longer exists, purged since the sign-on, is not recorded.
+     * S-26
      */
     #[Test]
     public function aSessionThatIsGoneIsNotRecorded(): void
@@ -69,7 +68,7 @@ final class SessionParticipantsTest extends TestCase
     }
 
     /**
-     * S-26: a session of another tenant than the event's is not recorded under it.
+     * S-26
      */
     #[Test]
     public function aSessionOfAnotherTenantIsNotRecorded(): void

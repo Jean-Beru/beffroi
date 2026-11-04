@@ -72,10 +72,6 @@ final class InMemoryClientRepositoryTest extends TestCase
         ];
     }
 
-    /**
-     * Issue #334: what this source holds for a tenant, which is what every question about the set of the
-     * clients of that tenant is answered from, in the order it was given them.
-     */
     #[Test]
     public function itHoldsTheRegistrationsOfItsTenant(): void
     {

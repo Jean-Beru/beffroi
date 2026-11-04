@@ -23,8 +23,7 @@ use PHPUnit\Framework\TestCase;
 use function sprintf;
 
 /**
- * Section 6.1 steps 5 and 6 on documents parsed outside the loader: the rules I-1 and I-3 stop earlier through
- * load() are reached here, so that every branch of the second layer is tested (section 10).
+ * Section 6.1 steps 5 and 6, I-1, I-3, section 10
  */
 final class InspectorTest extends TestCase
 {
@@ -36,7 +35,7 @@ final class InspectorTest extends TestCase
     }
 
     /**
-     * I-1: a parsed document whose doctype is not null is refused, whatever the byte scan missed.
+     * I-1
      */
     #[Test]
     public function itRefusesADoctypeNode(): void
@@ -53,7 +52,7 @@ final class InspectorTest extends TestCase
     }
 
     /**
-     * I-1: an entity reference node is refused, here with the doctype node removed from the tree.
+     * I-1
      */
     #[Test]
     public function itRefusesAnEntityReferenceNode(): void
@@ -73,7 +72,7 @@ final class InspectorTest extends TestCase
     }
 
     /**
-     * I-5, §9.2 row 14: XML 1.1, once libxml's warning is out of the way.
+     * I-5, §9.2 row 14
      */
     #[Test]
     public function itRefusesAnXmlVersionOtherThan10(): void
@@ -90,7 +89,7 @@ final class InspectorTest extends TestCase
     }
 
     /**
-     * I-5: a declared encoding other than UTF-8, compared case-insensitively.
+     * I-5
      */
     #[Test]
     public function itRefusesADeclaredEncodingOtherThanUtf8(): void
@@ -107,7 +106,7 @@ final class InspectorTest extends TestCase
     }
 
     /**
-     * I-5, section 6.1 step 5: an absent declaration reads as UTF-8, a lowercase utf-8 declaration passes.
+     * I-5, section 6.1 step 5
      */
     #[Test]
     #[DataProvider('provideUtf8Declarations')]
@@ -134,7 +133,7 @@ final class InspectorTest extends TestCase
     }
 
     /**
-     * Section 6.1: a document without a root element cannot be the brick's.
+     * Section 6.1
      */
     #[Test]
     public function itRefusesADocumentWithoutARootElement(): void
@@ -154,7 +153,7 @@ final class InspectorTest extends TestCase
     }
 
     /**
-     * I-6: the parser keeps a prefix it could not bind inside the local name of an element (section 13).
+     * I-6, section 13
      */
     #[Test]
     public function itRefusesAnElementWhosePrefixIsUnbound(): void
@@ -171,7 +170,7 @@ final class InspectorTest extends TestCase
     }
 
     /**
-     * I-6: the same for an attribute.
+     * I-6
      */
     #[Test]
     public function itRefusesAnAttributeWhosePrefixIsUnbound(): void
@@ -188,8 +187,7 @@ final class InspectorTest extends TestCase
     }
 
     /**
-     * I-6, section 6.1: an empty namespace is allowed for xmlns itself only; the parser drops xmlns:x="" with a
-     * diagnostic, so the declaration is added to the tree here.
+     * I-6, section 6.1
      */
     #[Test]
     public function itRefusesAPrefixBoundToAnEmptyNamespace(): void
@@ -209,7 +207,7 @@ final class InspectorTest extends TestCase
     }
 
     /**
-     * I-6: a namespace name is an absolute URI, a scheme followed by a colon (RFC 3986 §3.1).
+     * I-6, RFC 3986 §3.1
      */
     #[Test]
     #[DataProvider('provideRelativeNamespaces')]
@@ -239,8 +237,7 @@ final class InspectorTest extends TestCase
     }
 
     /**
-     * I-6: the empty undeclaration of the default namespace is accepted; a scheme with digits, plus, dot and
-     * hyphen is absolute.
+     * I-6
      */
     #[Test]
     #[DataProvider('provideAcceptedNamespaces')]
@@ -268,7 +265,7 @@ final class InspectorTest extends TestCase
     }
 
     /**
-     * I-8, section 6.2: a registered attribute with a null element namespace applies to any element.
+     * I-8, section 6.2
      */
     #[Test]
     public function itIndexesARegisteredAttributeOnAnyElementWhenNoNamespaceIsGiven(): void
@@ -286,7 +283,7 @@ final class InspectorTest extends TestCase
     }
 
     /**
-     * Section 5.3: a namespaced ID attribute such as xml:id gets the same index once registered.
+     * Section 5.3
      */
     #[Test]
     public function itIndexesANamespacedAttributeOnceRegistered(): void
@@ -305,7 +302,7 @@ final class InspectorTest extends TestCase
     }
 
     /**
-     * Section 5.3: a registered attribute applies to the elements of its namespace only.
+     * Section 5.3
      */
     #[Test]
     public function itIgnoresARegisteredAttributeOnAnElementOfAnotherNamespace(): void
@@ -322,7 +319,7 @@ final class InspectorTest extends TestCase
     }
 
     /**
-     * Section 6.1: the traversal is in document order, so the index maps a value to the element that carries it.
+     * Section 6.1
      */
     #[Test]
     public function itMapsEachIdToItsElementInDocumentOrder(): void
@@ -342,7 +339,7 @@ final class InspectorTest extends TestCase
     }
 
     /**
-     * Section 5.3, §9.2 row 25: an ID attribute nobody registered is not an ID.
+     * Section 5.3, §9.2 row 25
      */
     #[Test]
     public function itIndexesNothingWhenNothingIsRegistered(): void

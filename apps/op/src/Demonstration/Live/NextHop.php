@@ -11,25 +11,12 @@ use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Beffroi\Oidc\Port\ServedGrantsInterface;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
-/**
- * The next hop of a run the demonstration takes itself (issue #462), read from the picture and from what
- * the trace already holds: the first hop of the picture that is still to be taken.
- *
- * A hop no driven hop claims is skipped: it is a hop a browser takes, and the run goes on to what the
- * client does next, which for a device flow is to poll and be told to wait. A hop the picture says
- * repeats is taken again while the answer to it says the flow is not ready; a hop that does not repeat
- * is taken once, failed or not, so a flow that broke is read on the screen rather than tried for ever.
- */
 final readonly class NextHop
 {
-    /**
-     * The tag the wiring puts on every hop the demonstration takes itself (config/packages/demonstration.yaml).
-     */
     public const string HOPS = 'app.demonstration.hop';
 
     /**
-     * @param iterable<DrivenHopInterface> $hops one class per hop the demonstration takes itself,
-     *                                           collected by the tag the wiring puts on them
+     * @param iterable<DrivenHopInterface> $hops
      */
     public function __construct(
         #[AutowireIterator(self::HOPS)]
@@ -56,10 +43,6 @@ final readonly class NextHop
     }
 
     /**
-     * Whether a page of the demonstration can open this flow at all: its first hop is one the
-     * demonstration takes itself. A flow that opens in a browser navigating away is replayed and not
-     * driven.
-     *
      * @throws InvalidArgumentException
      */
     public function opens(FlowPicture $picture): bool

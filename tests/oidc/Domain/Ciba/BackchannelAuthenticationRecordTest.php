@@ -25,8 +25,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * CIBA Core §7, §10.1, §11: the record waits for the user it named, who answers it once, and for the
- * client, which spends it once and is told to slow down when it asks faster than it was told to.
+ * CIBA Core §7, §10.1, §11
  */
 final class BackchannelAuthenticationRecordTest extends TestCase
 {
@@ -62,7 +61,7 @@ final class BackchannelAuthenticationRecordTest extends TestCase
     }
 
     /**
-     * CIBA Core §7.3: the lifetime the client is told is the one the record has, never a longer one.
+     * CIBA Core §7.3
      */
     #[Test]
     public function theLifetimeItAnnouncesIsTheOneItHas(): void
@@ -76,7 +75,7 @@ final class BackchannelAuthenticationRecordTest extends TestCase
     }
 
     /**
-     * CIBA Core §7.1: the request named a user, and that user is the only one who may answer it.
+     * CIBA Core §7.1
      */
     #[Test]
     public function onlyTheUserItNamedMayAnswerIt(): void
@@ -90,8 +89,7 @@ final class BackchannelAuthenticationRecordTest extends TestCase
     }
 
     /**
-     * A request whose hint named nobody is answerable by nobody, and stays until it expires
-     * (decision 0006).
+     * Decision 0006
      */
     #[Test]
     public function aRequestThatNamedNobodyIsAnsweredByNobody(): void
@@ -105,8 +103,7 @@ final class BackchannelAuthenticationRecordTest extends TestCase
     }
 
     /**
-     * CIBA Core §10.1: what the user approved with is frozen on the record, so that the tokens the client
-     * comes for descend from the approval.
+     * CIBA Core §10.1
      */
     #[Test]
     public function anApprovalFreezesTheSessionAndWhatItHadProven(): void
@@ -127,7 +124,7 @@ final class BackchannelAuthenticationRecordTest extends TestCase
     }
 
     /**
-     * CIBA Core §7.1: somebody else's session approves nothing, whatever it proves.
+     * CIBA Core §7.1
      */
     #[Test]
     public function aSessionOfAnotherUserApprovesNothing(): void
@@ -145,7 +142,7 @@ final class BackchannelAuthenticationRecordTest extends TestCase
     }
 
     /**
-     * CIBA Core §11: a refusal is an answer and ends the request.
+     * CIBA Core §11
      */
     #[Test]
     public function aRefusalIsAnAnswer(): void
@@ -162,9 +159,6 @@ final class BackchannelAuthenticationRecordTest extends TestCase
         static::assertFalse($record->isApproved());
     }
 
-    /**
-     * Nobody is asked twice about the same request; whoever answers reads isAnswered() first.
-     */
     #[Test]
     public function aRequestIsAnsweredOnce(): void
     {
@@ -181,8 +175,7 @@ final class BackchannelAuthenticationRecordTest extends TestCase
     }
 
     /**
-     * CIBA Core §11: a client polling faster than the interval it was given is told so, and the interval
-     * grows by five seconds for that request and every one after it.
+     * CIBA Core §11
      */
     #[Test]
     public function pollingFasterThanTheIntervalGrowsIt(): void
@@ -199,8 +192,7 @@ final class BackchannelAuthenticationRecordTest extends TestCase
     }
 
     /**
-     * CIBA Core §11: every poll is recorded, the refused ones included; asking again does not buy a
-     * faster answer.
+     * CIBA Core §11
      */
     #[Test]
     public function aPollThatWasRefusedIsStillAPoll(): void
@@ -215,7 +207,7 @@ final class BackchannelAuthenticationRecordTest extends TestCase
     }
 
     /**
-     * §10.1: of any number of requests presenting the same identifier at once, exactly one is served.
+     * CIBA Core §10.1
      */
     #[Test]
     public function anIdentifierIsSpentOnce(): void
@@ -232,9 +224,6 @@ final class BackchannelAuthenticationRecordTest extends TestCase
         $record->consume($this->issuedAt);
     }
 
-    /**
-     * The identifier is kept as its digest, as every value this provider hands out is.
-     */
     #[Test]
     public function itIsStoredAsTheDigestOfTheIdentifierItAnsweredWith(): void
     {
@@ -260,9 +249,6 @@ final class BackchannelAuthenticationRecordTest extends TestCase
         );
     }
 
-    /**
-     * A record of a user of another tenant is not a record at all.
-     */
     #[Test]
     public function theUserItNamesBelongsToTheTenantOfItsClient(): void
     {
@@ -274,9 +260,6 @@ final class BackchannelAuthenticationRecordTest extends TestCase
         $this->record(user: Fixtures::user(Fixtures::tenant('other', 'https://id.other.example')));
     }
 
-    /**
-     * A request that expires before it was asked for is no request.
-     */
     #[Test]
     public function itExpiresAfterItWasAskedFor(): void
     {
@@ -289,7 +272,7 @@ final class BackchannelAuthenticationRecordTest extends TestCase
     }
 
     /**
-     * CIBA Core §7.3: an interval of no seconds is not an interval.
+     * CIBA Core §7.3
      */
     #[Test]
     public function itAnnouncesAnIntervalOfAtLeastOneSecond(): void
@@ -303,7 +286,7 @@ final class BackchannelAuthenticationRecordTest extends TestCase
     }
 
     /**
-     * CIBA Core §11: an interval a client is asked to respect is one it can respect.
+     * CIBA Core §11
      */
     #[Test]
     public function itAnnouncesAnIntervalOfAtMostItsBound(): void
@@ -317,8 +300,7 @@ final class BackchannelAuthenticationRecordTest extends TestCase
     }
 
     /**
-     * CIBA Core §7.3, §11: a request is made with an interval of a second at least and of the bound at most,
-     * both ends included.
+     * CIBA Core §7.3, §11
      */
     #[Test]
     #[DataProvider('provideIntervalsARequestIsMadeWith')]
@@ -340,10 +322,6 @@ final class BackchannelAuthenticationRecordTest extends TestCase
         yield 'the bound' => [BackchannelAuthenticationRecord::MAX_INTERVAL];
     }
 
-    /**
-     * The message the user is shown is the one the client sent, and the resolved client is held by the
-     * record itself (ResolvesItsClientInterface).
-     */
     #[Test]
     public function itCarriesTheMessageItsUserWillBeShown(): void
     {

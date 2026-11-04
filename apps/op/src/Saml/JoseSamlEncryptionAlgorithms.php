@@ -10,18 +10,8 @@ use Beffroi\Core\Bridge\JwtLibrary\JoseKeyAlgorithmInterface;
 use Beffroi\Core\Exception\UnsupportedAlgorithmException;
 use Beffroi\Saml\Domain\Key\SamlEncryptionAlgorithmInterface;
 
-/**
- * The family of the keys the upstream identity providers encrypt for (beffroi/saml, spec/saml.md S-64): one algorithm
- * per provider, each tagged by what declares the provider, under the schedule of the SAML signing key (S-12). What it
- * holds is what the key commands draw, rotate and read back; a key of a provider nothing tags any more is read past by
- * the key files (DormantKeyAlgorithms), neither served nor rotated.
- */
 final readonly class JoseSamlEncryptionAlgorithms implements JoseAlgorithmRegistryInterface
 {
-    /**
-     * The tag an extension of a deployment wires the algorithm of the key of an upstream identity provider by, beside
-     * those of the providers the configuration declares (SamlSection::encryptionAlgorithms()).
-     */
     public const string TAG = 'beffroi.saml_encryption_algorithm';
 
     /**
@@ -30,7 +20,7 @@ final readonly class JoseSamlEncryptionAlgorithms implements JoseAlgorithmRegist
     private WiredAlgorithms $wired;
 
     /**
-     * @param iterable<JoseKeyAlgorithmInterface&SamlEncryptionAlgorithmInterface> $algorithms in the order they are wired
+     * @param iterable<JoseKeyAlgorithmInterface&SamlEncryptionAlgorithmInterface> $algorithms
      */
     public function __construct(iterable $algorithms)
     {

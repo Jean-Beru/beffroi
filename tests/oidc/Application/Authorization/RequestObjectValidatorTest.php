@@ -37,7 +37,7 @@ final class RequestObjectValidatorTest extends TestCase
     }
 
     /**
-     * RFC 9101 §4: an object of the client, for this provider, valid now.
+     * RFC 9101 §4
      */
     #[Test]
     public function itAcceptsAnObjectOfTheClientAddressedToThisProvider(): void
@@ -59,8 +59,7 @@ final class RequestObjectValidatorTest extends TestCase
     }
 
     /**
-     * RFC 7519 §4.1.3: "aud" is read as the list it may be, so a client that addresses several providers
-     * at once still addresses this one.
+     * RFC 7519 §4.1.3
      */
     #[Test]
     public function anAudienceListNamingThisProviderIsAccepted(): void
@@ -81,7 +80,7 @@ final class RequestObjectValidatorTest extends TestCase
     }
 
     /**
-     * RFC 9101 §4, §10.2 and OIDC Core §6.1, each rule with its own message.
+     * RFC 9101 §4, §10.2, OIDC Core §6.1
      *
      * @param array<string, mixed> $claims
      */
@@ -214,9 +213,6 @@ final class RequestObjectValidatorTest extends TestCase
         ];
     }
 
-    /**
-     * The clock of a client is allowed the leeway of the deployment, both ways.
-     */
     #[Test]
     #[DataProvider('provideClocksInsideTheLeeway')]
     public function theClockOfAClientIsAllowedTheLeeway(int $notBefore, int $expiresAt): void
@@ -247,9 +243,7 @@ final class RequestObjectValidatorTest extends TestCase
     }
 
     /**
-     * OIDC Core §6.1 and decision 0006: an object that carries no signature proves nothing, so the
-     * claims that bound a proof are not asked of it; the client the query named is the client, and the
-     * conformance client that registered "none" sends exactly such an object (issue #142).
+     * OIDC Core §6.1, decision 0006
      */
     #[Test]
     public function anUnsignedObjectIsNotAskedForTheClaimsThatBoundAProof(): void
@@ -269,8 +263,7 @@ final class RequestObjectValidatorTest extends TestCase
     }
 
     /**
-     * OIDC Core §6.1: the client_id inside the object is the one the request names outside it, whether
-     * the object is signed or not; what the query named is what the provider looked up.
+     * OIDC Core §6.1
      */
     #[Test]
     public function anUnsignedObjectNamingAnotherClientIsRefused(): void

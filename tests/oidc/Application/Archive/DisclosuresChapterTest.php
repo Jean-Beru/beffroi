@@ -22,11 +22,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issues #453 and #590: what every application was given of this person, in the archive they ask for. It
- * is the other half of what the journal says, and the answer to the question a person asks of a consent
- * they have since taken back.
- */
 final class DisclosuresChapterTest extends TestCase
 {
     #[Test]
@@ -73,10 +68,6 @@ final class DisclosuresChapterTest extends TestCase
         static::assertSame([], new DisclosuresChapter($disclosures)->of($alice));
     }
 
-    /**
-     * Read in pages, the identifier of a row being a UUIDv7: a person with years of it is not a query that
-     * holds the table, and the chapter walks past the last row it read.
-     */
     #[Test]
     public function aRegisterLongerThanOnePageIsReadWhole(): void
     {

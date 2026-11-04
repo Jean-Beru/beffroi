@@ -12,15 +12,8 @@ use Beffroi\Oidc\Tests\Fixture\Grants;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * The picture of a flow (issue #462): the hops it is made of, and the actors read from them.
- */
 final class FlowPictureTest extends TestCase
 {
-    /**
-     * A flow is drawn between the parties its own hops speak to: a client asking a token endpoint for
-     * itself has no browser in its picture, and nothing gives it a column for one.
-     */
     #[Test]
     public function theActorsAreTheOnesItsHopsSpeakTo(): void
     {
@@ -37,10 +30,6 @@ final class FlowPictureTest extends TestCase
         static::assertSame([Actor::Client, Actor::Provider], $actors);
     }
 
-    /**
-     * The order of the row is the order the drawing declares the actors in, and not the order a hop
-     * happened to name them: the same four columns, wherever a flow starts.
-     */
     #[Test]
     public function theActorsAreInTheOrderTheDrawingDeclaresThem(): void
     {

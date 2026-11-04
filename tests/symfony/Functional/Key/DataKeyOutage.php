@@ -26,25 +26,14 @@ use Symfony\Component\KeyManagement\EncrypterInterface;
 use Symfony\Component\KeyManagement\Exception\RuntimeException;
 
 /**
- * The KMS of the test kernel not answering for the data keys of the families of columns a test names, and
- * answering for everything else: what a worker meets when the KMS stopped answering after the worker opened the
- * keys that sign and before it opened the data key a column of those families is sealed under (decision 0018).
- * The store of the data keys asks the client the keys are opened with, so what tells a data key from the rest is
- * what the client is asked to unwrap, the key material of a row of the store, read back from its table at every
- * unwrap. A refused key fails as KmsOutage fails, as a KMS a bridge cannot reach. It takes the place of the client
- * the configuration names on every boot, before anything asks for that client, so it is taken over before
- * KmsOutage, which does.
+ * Decision 0018
  */
 final class DataKeyOutage implements DataKeyGeneratorInterface, DecrypterInterface, EncrypterInterface
 {
-    /**
-     * The client the test kernel names, "test" (config_test.yml), as the configuration of KeyManagementBundle
-     * registers it.
-     */
     private const string CLIENT = 'key_management.test';
 
     /**
-     * @var list<string> the families whose data keys the KMS does not open, none by default
+     * @var list<string>
      */
     public array $families = [];
 
@@ -93,9 +82,6 @@ final class DataKeyOutage implements DataKeyGeneratorInterface, DecrypterInterfa
         return $this->kms()->decrypt($ciphertext, $aad);
     }
 
-    /**
-     * Whether what the client is asked to unwrap is the data key of a row of a family named here.
-     */
     private function refuses(Ciphertext $wrapped): bool
     {
         if ($this->families === []) {
@@ -113,9 +99,6 @@ final class DataKeyOutage implements DataKeyGeneratorInterface, DecrypterInterfa
         return false;
     }
 
-    /**
-     * What follows the slug of the tenant in a scope (TenantScopedEncrypter::scope()).
-     */
     private static function familyOf(string $scope): string
     {
         return substr($scope, strlen(TenantScopedEncrypter::slugOf($scope)) + strlen(TenantScopedEncrypter::SEPARATOR));

@@ -36,11 +36,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 9.4, section 9.5: what Keycloak 26.7.4 wrote in the exchange with the model of 30 September 2026
- * (tests/saml2-model/Interop/keycloak/README.md), bytes as received, each validated with a clock frozen at its IssueInstant: the
- * broker of realm sp configured from the model's identity provider metadata, which signs its requests and posts them,
- * and realm idp answering the model's service provider. The model's own roles are the ones its metadata described in
- * that run, with the test keys of tests/saml2-model/Fixture/keys/; the IDs of the model's requests are those the run printed.
+ * Section 9.4, section 9.5
  */
 final class KeycloakDocumentsTest extends TestCase
 {
@@ -63,9 +59,7 @@ final class KeycloakDocumentsTest extends TestCase
     private const string MODEL_SP_SLO = 'https://sp.saml2-model.test/slo';
 
     /**
-     * Section 6.5, M-3: the metadata of the broker configured from the model's (WantAuthnRequestsSigned="true"),
-     * which publishes the signing key its unsigned default left out, and makes its HTTP-POST consumer service the
-     * default one.
+     * Section 6.5, M-3
      */
     #[Test]
     public function itReadsTheMetadataOfTheBrokerThatSigns(): void
@@ -105,8 +99,7 @@ final class KeycloakDocumentsTest extends TestCase
     }
 
     /**
-     * Section 6.2, M-2, M-9, finding F1 of tests/saml2-model/Interop/keycloak/README.md: the AuthnRequest the broker posted to the
-     * model's single sign-on service, signed in XML, asking for its response over HTTP-POST, accepted by validate().
+     * Section 6.2, M-2, M-9, finding F1 of tests/saml2-model/Interop/keycloak/README.md
      */
     #[Test]
     public function itAcceptsTheSignedRequestOfTheBroker(): void
@@ -148,9 +141,7 @@ final class KeycloakDocumentsTest extends TestCase
     }
 
     /**
-     * Section 6.3, M-2, finding F2 of tests/saml2-model/Interop/keycloak/README.md: the LogoutRequest the broker posted to the
-     * model's single logout service, signed in XML, naming the subject and the session of the model's assertion,
-     * accepted by validate().
+     * Section 6.3, M-2, finding F2 of tests/saml2-model/Interop/keycloak/README.md
      */
     #[Test]
     public function itAcceptsTheSignedLogoutRequestOfTheBroker(): void
@@ -189,8 +180,7 @@ final class KeycloakDocumentsTest extends TestCase
     }
 
     /**
-     * Section 6.1, M-2: the response realm idp posted to the model's assertion consumer service, answering the model's
-     * signed AuthnRequest, the response signed and not the assertion, with Keycloak's six attributes named Role.
+     * Section 6.1, M-2
      */
     #[Test]
     public function itAcceptsTheResponseOfRealmIdpToTheModel(): void
@@ -236,8 +226,7 @@ final class KeycloakDocumentsTest extends TestCase
     }
 
     /**
-     * Section 6.4, M-2, M-10: the LogoutResponse realm idp posted to the model's single logout service, signed,
-     * answering the model's signed LogoutRequest, accepted by validate().
+     * Section 6.4, M-2, M-10
      */
     #[Test]
     public function itAcceptsTheLogoutResponseOfRealmIdpToTheModel(): void
@@ -277,10 +266,6 @@ final class KeycloakDocumentsTest extends TestCase
         );
     }
 
-    /**
-     * The model's identity provider as its metadata described it in the exchange: signed requests wanted, HTTP-POST
-     * services only.
-     */
     private function modelIdentityProvider(): IdentityProvider
     {
         return new IdentityProvider(
@@ -294,9 +279,6 @@ final class KeycloakDocumentsTest extends TestCase
         );
     }
 
-    /**
-     * The model's service provider as its metadata described it in the exchange.
-     */
     private function modelServiceProvider(): ServiceProvider
     {
         return new ServiceProvider(
@@ -325,9 +307,6 @@ final class KeycloakDocumentsTest extends TestCase
         );
     }
 
-    /**
-     * A metadata of the same run, read by readTrusted() at the time of the run.
-     */
     private function metadata(string $file): EntityDescriptor
     {
         return $this->reader()->readTrusted(MetadataFixtures::load('real/' . $file));

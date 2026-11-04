@@ -14,17 +14,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * What a client certificate looks like once it has crossed the edge (issue #157, architecture §6):
- * the one endpoint of the development stack that says whether the certificate a client presented at the
- * TLS handshake reached PHP, and what its thumbprint is. It is the measurement everything mTLS waits on,
- * and it is not an API of the product: the route file that carries it is imported by this application in
- * the development environment only, as the endpoints of the FIDO conformance tools are, and the class is a
- * service there alone (config/packages/lab.yaml), the image leaving src/Lab/ out (issue #922).
- *
- * Three answers, one per thing the deployment has to get right: "present" with the thumbprint RFC 8705
- * §3.1 binds a token to, "absent" when the request went through the listener without a certificate, which
- * must serve and not fail at the handshake, and "refused" when the request tried to carry a certificate
- * in a header.
+ * A development endpoint that says whether the client certificate of the handshake reached PHP, and its thumbprint.
  */
 #[AsController]
 final readonly class ClientCertificateController

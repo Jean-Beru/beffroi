@@ -12,8 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The logo of a model of authenticator: an image of a data: URL (RFC 2397), which a page shows without fetching
- * anything, one for a light page and one for a dark page.
+ * RFC 2397
  */
 final class AuthenticatorLogoTest extends TestCase
 {

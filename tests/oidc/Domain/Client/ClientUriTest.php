@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 final class ClientUriTest extends TestCase
 {
     /**
-     * RFC 6749 §3.1.2, Back-Channel Logout 1.0 §2.2: an absolute URI, which may carry a query component.
+     * RFC 6749 §3.1.2, Back-Channel Logout 1.0 §2.2
      */
     #[Test]
     #[DataProvider('provideAcceptedUris')]
@@ -71,11 +71,7 @@ final class ClientUriTest extends TestCase
     }
 
     /**
-     * RFC 7591 §2, RFC 3986 §3.2.2, the security review of 20 October 2026: the host of a URI a client registers is a
-     * name of letters, digits, hyphens and dots or an IP address. Its origin is named in the Content-Security-Policy
-     * of the pages that send a browser to it, frame it or show its logo, where a ";" would end a directive and start
-     * one of its own ("sandbox" freezing the front-channel logout page of every session the client is part of) and a
-     * "," a policy of its own; a name outside ASCII is registered by its A-label.
+     * RFC 7591 §2, RFC 3986 §3.2.2
      */
     #[Test]
     #[DataProvider('provideUrisWhoseHostIsNoHost')]
@@ -117,8 +113,7 @@ final class ClientUriTest extends TestCase
     }
 
     /**
-     * RFC 3986 §2.1: every value is percent-encoded, and the registered query is kept before them
-     * (RFC 6749 §4.1.2 for a response, Front-Channel Logout 1.0 §2 for a logout).
+     * RFC 3986 §2.1, RFC 6749 §4.1.2, Front-Channel Logout 1.0 §2
      */
     #[Test]
     #[DataProvider('provideUrisAndParameters')]
@@ -141,8 +136,7 @@ final class ClientUriTest extends TestCase
     }
 
     /**
-     * RFC 6454 §3.2: the scheme, the host and the port, which a Content-Security-Policy source
-     * expression names; never the path nor the query (Form Post Response Mode §2).
+     * RFC 6454 §3.2
      */
     #[Test]
     #[DataProvider('provideOrigins')]

@@ -12,9 +12,6 @@ use Beffroi\Core\Port\GroupRepositoryInterface;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 
 /**
- * The groups of a tenant, in beffroi_group (decision 0002), found by tenant and name as the unique constraint
- * of the table holds them. The name is in clear, a group naming an organisational unit and not a person.
- *
  * @extends DoctrineRepository<Group>
  */
 final readonly class DoctrineGroupRepository extends DoctrineRepository implements GroupRepositoryInterface
@@ -32,11 +29,6 @@ final readonly class DoctrineGroupRepository extends DoctrineRepository implemen
         ]);
     }
 
-    /**
-     * The unique constraint on (tenant, name) is what refuses a name a concurrent creation wrote after the
-     * lookup; the group is the one row the write holds, so the violation is its own. The failed flush closes
-     * the manager, which the registry replaces (EntityManagers).
-     */
     public function save(Group $group): void
     {
         try {

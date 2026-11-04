@@ -13,15 +13,6 @@ use LogicException;
 use function sprintf;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * The ways of answering the authorization endpoint is wired with, one per response mode (architecture
- * §4.3): the single source the parser, the discovery document and the retirement of a signing key read, so
- * that a mode the provider announces is a mode it can render and no other is accepted (issue #98).
- *
- * It knows no mode of its own. Each way of answering names itself and declares what it does beside
- * delivering by the interfaces it implements, so a mode the provider gains is a class tagged here and
- * nothing edited: no enumeration of modes exists to add a case to.
- */
 final readonly class AuthorizationResponseRenderers implements ServedResponseModesInterface
 {
     /**
@@ -32,7 +23,7 @@ final readonly class AuthorizationResponseRenderers implements ServedResponseMod
     /**
      * @param iterable<AuthorizationResponseRendererInterface> $renderers at least one
      *
-     * @throws LogicException when the wiring does not hold together
+     * @throws LogicException
      */
     public function __construct(iterable $renderers)
     {
@@ -79,7 +70,7 @@ final readonly class AuthorizationResponseRenderers implements ServedResponseMod
     }
 
     /**
-     * @throws LogicException when no renderer answers in that mode, which the parser makes unreachable
+     * @throws LogicException when no renderer answers in that mode
      */
     public function render(string $mode, AuthorizationAnswer $answer): Response
     {
@@ -89,11 +80,7 @@ final readonly class AuthorizationResponseRenderers implements ServedResponseMod
     }
 
     /**
-     * JARM §2.1: the way of answering the alias resolves to, null when the wiring has none. A wiring where
-     * two of them answer it has two answers to one question and is refused here, where the wiring is
-     * collected.
-     *
-     * @throws LogicException
+     * @throws LogicException when two renderers answer the alias
      */
     private function aliased(): ?AnswersTheJwtAliasInterface
     {

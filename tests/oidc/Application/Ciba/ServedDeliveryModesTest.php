@@ -14,8 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * CIBA Core §4: the modes the wiring gave the provider, in the order they are wired, read by the document
- * that announces them and by the registration that names one.
+ * CIBA Core §4
  */
 final class ServedDeliveryModesTest extends TestCase
 {
@@ -33,9 +32,6 @@ final class ServedDeliveryModesTest extends TestCase
         static::assertInstanceOf(PingDelivery::class, DeliveryModes::served()->named('ping'));
     }
 
-    /**
-     * A name nothing is wired with is refused where a registration is read, at boot.
-     */
     #[Test]
     public function itRefusesANameNothingIsWiredWith(): void
     {
@@ -47,9 +43,6 @@ final class ServedDeliveryModesTest extends TestCase
         DeliveryModes::served()->named('push');
     }
 
-    /**
-     * Two places that must agree are one place: a mode wired twice is a wiring that does not hold.
-     */
     #[Test]
     public function itRefusesAModeWiredTwice(): void
     {
@@ -64,9 +57,6 @@ final class ServedDeliveryModesTest extends TestCase
         $modes->servedDeliveryModes();
     }
 
-    /**
-     * A deployment that serves no such flow serves no mode, which is what the document then announces.
-     */
     #[Test]
     public function aProviderWiredWithNoneServesNone(): void
     {

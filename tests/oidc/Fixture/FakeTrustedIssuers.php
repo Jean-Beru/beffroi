@@ -8,10 +8,6 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Oidc\Domain\Trust\TrustedIssuer;
 use Beffroi\Oidc\Port\TrustedIssuersInterface;
 
-/**
- * The issuers a tenant trusts, held for the life of the process: what the tests wire where a deployment wires
- * the ones its configuration declares.
- */
 final class FakeTrustedIssuers implements TrustedIssuersInterface
 {
     /**

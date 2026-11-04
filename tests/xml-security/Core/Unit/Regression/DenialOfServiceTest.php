@@ -15,14 +15,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 3, denial of service: deep, wide or huge documents, and many namespace declarations that make inclusive
- * canonicalization expensive. The rule: six bounds with defaults and ceilings, the byte bound before parsing,
- * LIBXML_PARSEHUGE never set (I-7).
+ * Section 3, I-7
  */
 final class DenialOfServiceTest extends TestCase
 {
     /**
-     * I-7: each shape is refused with the bound named, or by libxml before the traversal runs.
+     * I-7
      *
      * @param class-string<RefusedXml> $exception
      */

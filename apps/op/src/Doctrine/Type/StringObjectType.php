@@ -13,9 +13,6 @@ use Beffroi\Oidc\Exception\InvalidArgumentException as OidcInvalidArgumentExcept
 use function is_string;
 
 /**
- * A value object that is one validated string, read back through its constructor so that a row edited by
- * hand fails at load.
- *
  * @template T of object
  */
 abstract class StringObjectType extends Type

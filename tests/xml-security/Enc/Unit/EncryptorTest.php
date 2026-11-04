@@ -55,9 +55,7 @@ use function strlen;
 use function substr;
 
 /**
- * Section 6.2: encryption in order, the element canonicalized with comments (E-9), fresh randomness (E-8), a
- * prefixed xenc:EncryptedData returned unattached in the element's document, decrypted by the decryptor of this
- * namespace and by xmlsec1 (tests/xml-security/Enc/Fixture/behaviour/README.md).
+ * Section 6.2, E-8, E-9
  */
 final class EncryptorTest extends TestCase
 {
@@ -87,8 +85,7 @@ final class EncryptorTest extends TestCase
     }
 
     /**
-     * §9.3 row 3, E-9: encrypt() then decrypt() on a built assertion, under each content algorithm and SHA-1: the
-     * root's exclusive canonical form with comments is the plaintext that was encrypted.
+     * §9.3 row 3, E-9
      */
     #[Test]
     #[DataProvider('provideContentAlgorithms')]
@@ -126,8 +123,7 @@ final class EncryptorTest extends TestCase
     }
 
     /**
-     * §9.3 row 4, section 13: under rsa-oaep with a SHA-2 hash, the EncryptionMethod names the hash twice and the
-     * decryptor decrypts, on PHP 8.5; AlgorithmUnavailable on 8.4, before anything is encrypted.
+     * §9.3 row 4, section 13
      */
     #[Test]
     #[TestWith([OaepHash::Sha256], 'SHA-256')]
@@ -159,7 +155,7 @@ final class EncryptorTest extends TestCase
     }
 
     /**
-     * §9.3 row 5, E-8: two calls on the same element draw two session keys and two IVs.
+     * §9.3 row 5, E-8
      */
     #[Test]
     public function itDrawsFreshRandomnessForEveryCall(): void
@@ -182,8 +178,7 @@ final class EncryptorTest extends TestCase
     }
 
     /**
-     * §9.3 row 6: the element comes back in the document of the assertion, unattached; put under an
-     * EncryptedAssertion in place of the assertion, the response serializes with Core, loads again and decrypts.
+     * §9.3 row 6
      */
     #[Test]
     public function itReturnsAnUnattachedElementOfTheGivenDocument(): void
@@ -217,8 +212,7 @@ final class EncryptorTest extends TestCase
     }
 
     /**
-     * §9.3 row 7: with a certificate, the key's KeyInfo/X509Data/X509Certificate holds its base64; without, the
-     * key has no KeyInfo.
+     * §9.3 row 7
      */
     #[Test]
     public function itCarriesTheCertificateWhenGiven(): void
@@ -245,9 +239,7 @@ final class EncryptorTest extends TestCase
     }
 
     /**
-     * §9.3 row 8, E-9: an element with a comment and inherited declarations: the plaintext is its exclusive
-     * canonical form with comments, the comment kept and the declaration of saml rendered on the assertion, so that
-     * it parses on its own.
+     * §9.3 row 8, E-9
      */
     #[Test]
     public function itEncryptsTheCanonicalFormWithComments(): void
@@ -273,8 +265,7 @@ final class EncryptorTest extends TestCase
     }
 
     /**
-     * §9.3 row 9: a signed assertion (the signer of Dsig) encrypted, decrypted, verified by Dsig: the round trip of
-     * the stack.
+     * §9.3 row 9
      */
     #[Test]
     public function itEncryptsASignedAssertionTheStackVerifiesAfterDecryption(): void
@@ -305,8 +296,7 @@ final class EncryptorTest extends TestCase
     }
 
     /**
-     * §9.3 row 10: what the encryptor produced once, decrypted by xmlsec1 (tests/xml-security/Enc/Fixture/behaviour/README.md),
-     * decrypts here too to the built assertion.
+     * §9.3 row 10
      */
     #[Test]
     #[TestWith(['encrypted-by-the-encryptor-aes256-gcm.xml'], 'aes256-gcm')]
@@ -326,8 +316,7 @@ final class EncryptorTest extends TestCase
     }
 
     /**
-     * §9.3 row 11: a built element whose default namespace is undeclared is refused by Core's canonicalizer (core.md
-     * section 6.3, whose message this asserts), before anything is encrypted.
+     * §9.3 row 11, core.md section 6.3
      */
     #[Test]
     public function itRefusesABuiltElementWhoseDefaultNamespaceIsUndeclared(): void
@@ -348,7 +337,7 @@ final class EncryptorTest extends TestCase
     }
 
     /**
-     * Section 6.3: an element detached from its document.
+     * Section 6.3
      */
     #[Test]
     public function itRefusesADetachedElement(): void
@@ -367,7 +356,7 @@ final class EncryptorTest extends TestCase
     }
 
     /**
-     * Core I-4: an element of a document parsed outside the loader.
+     * Core I-4
      */
     #[Test]
     public function itRefusesAForeignElement(): void
@@ -385,8 +374,7 @@ final class EncryptorTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 6: both cipher values are base64 in lines of 76 characters, the last one shorter, no line
-     * break at the end, as the interoperability targets write it.
+     * Section 6.2 step 6
      */
     #[Test]
     public function itWritesBase64InLinesOfSeventySixCharacters(): void
@@ -415,8 +403,7 @@ final class EncryptorTest extends TestCase
     }
 
     /**
-     * §9.2 row 40, E-14: a certificate hint that is not exactly one certificate is refused before anything is
-     * canonicalized, a private key first, the one thing that must never reach the peer.
+     * §9.2 row 40, E-14
      */
     #[Test]
     #[DataProvider('provideHintsThatAreNotOneCertificate')]
@@ -451,8 +438,7 @@ final class EncryptorTest extends TestCase
     }
 
     /**
-     * §9.3 row 18, E-9: a prefix a value names, declared on an ancestor, is declared in the plaintext, so that the
-     * element decrypted alone still resolves it.
+     * §9.3 row 18, E-9
      */
     #[Test]
     public function itRendersThePrefixAQnameValueNames(): void
@@ -473,8 +459,7 @@ final class EncryptorTest extends TestCase
     }
 
     /**
-     * §9.3 row 19, E-9: a namespace name holding an ampersand, which C14N() writes raw, gives a plaintext no parser
-     * accepts: Core refuses it before anything is encrypted.
+     * §9.3 row 19, E-9
      */
     #[Test]
     public function itRefusesAPlaintextNoParserAccepts(): void
@@ -494,8 +479,7 @@ final class EncryptorTest extends TestCase
     }
 
     /**
-     * §9.3 row 20, E-9: the plaintext is held to the consumer's limits, not to the defaults: an element of more than
-     * the default maxBytes of Core is encrypted with a loader at the ceiling.
+     * §9.3 row 20, E-9
      */
     #[Test]
     public function itHoldsThePlaintextToTheConsumersLimits(): void
@@ -516,7 +500,7 @@ final class EncryptorTest extends TestCase
     }
 
     /**
-     * The exclusive canonical form with comments, the content a decryption gives back (E-9).
+     * E-9
      */
     private function canonical(Element $element): string
     {
@@ -524,7 +508,7 @@ final class EncryptorTest extends TestCase
     }
 
     /**
-     * What the encryptor encrypts: the same form, every prefix in scope on its PrefixList (E-9).
+     * E-9
      */
     private function plaintext(Element $element): string
     {
@@ -540,9 +524,6 @@ final class EncryptorTest extends TestCase
         )->bytes;
     }
 
-    /**
-     * The AttributeValue of the assertion of the built response.
-     */
     private function attributeValue(Element $assertion): Element
     {
         return Children::one(
@@ -554,9 +535,6 @@ final class EncryptorTest extends TestCase
         );
     }
 
-    /**
-     * The response with its assertion replaced by an EncryptedAssertion holding $encrypted, what the consumer does.
-     */
     private function wrapped(Document $document, Element $encrypted): Document
     {
         $assertion = Built::assertionOf($document);

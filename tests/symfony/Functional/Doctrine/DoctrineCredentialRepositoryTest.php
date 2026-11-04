@@ -30,9 +30,7 @@ use Symfony\Component\KeyManagement\Envelope;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §3.4, §5.3: the credentials of a user, one table per kind, the password with a hash that
- * names its algorithm and keeps the parameters of an import (decision 0002), the passkeys with their
- * record, the TOTP with its secret sealed.
+ * Architecture §3.4, §5.3, Decision 0002
  */
 final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
 {
@@ -207,7 +205,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * WebAuthn Level 3 §7.1, step 26: one credential ID per tenant.
+     * WebAuthn Level 3 §7.1, step 26
      */
     #[Test]
     public function aSecondPasskeyWithTheSameCredentialIdIsRefusedByTheTable(): void
@@ -290,8 +288,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Architecture §3.3: the secret in the row is an envelope of the KMS and nothing else, neither the
-     * bytes nor their base32 (the sibling of the test that greps the key files for a private member).
+     * Architecture §3.3
      */
     #[Test]
     public function theRowHoldsTheSecretAsAnEnvelopeAndNothingElse(): void
@@ -318,8 +315,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * A TOTP on the seed of RFC 6238, sealed by the sealer of the kernel, its backup codes hashed by the
-     * hasher of the test suite.
+     * RFC 6238
      */
     private static function totp(User $user): TotpCredential
     {
@@ -329,8 +325,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * A device-bound passkey, with a handle of its own, or a synced one, which is eligible for backup and
-     * not backed up yet (WebAuthn Level 3 §6.1.3).
+     * WebAuthn Level 3 §6.1.3
      */
     private static function passkey(User $user, ?string $credentialId = null, ?DateTimeImmutable $createdAt = null, bool $synced = false): PasskeyCredential
     {

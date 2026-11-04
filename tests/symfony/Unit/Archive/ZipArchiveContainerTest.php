@@ -15,10 +15,6 @@ use function tempnam;
 use function unlink;
 use ZipArchive;
 
-/**
- * Issue #483: the archive of a person wrapped in a zip whose single entry is encrypted with AES-256, and
- * what that container does and does not hide.
- */
 final class ZipArchiveContainerTest extends TestCase
 {
     private const string DOCUMENT = '{"profile":[{"username":"ada-lovelace","email":"ada@example.org"}]}';
@@ -38,11 +34,6 @@ final class ZipArchiveContainerTest extends TestCase
         static::assertSame(self::DOCUMENT, self::read($wrapped, $passphrase->value));
     }
 
-    /**
-     * The whole point of the container: what a person downloaded says nothing of them to whoever ends up
-     * holding it. The entry is encrypted, so the bytes carry neither the values nor the names of the
-     * document.
-     */
     #[Test]
     public function theWrappedFileCarriesNothingOfTheDocumentInTheClear(): void
     {
@@ -68,10 +59,6 @@ final class ZipArchiveContainerTest extends TestCase
         static::assertFalse($read);
     }
 
-    /**
-     * What a zip leaves readable is the name of its entry, which is the name of the archive and names no
-     * person: it is a line of the page for whoever reads one and not a defect to hide.
-     */
     #[Test]
     public function theNameOfTheEntryStaysReadableAndNamesNoPerson(): void
     {
@@ -98,10 +85,6 @@ final class ZipArchiveContainerTest extends TestCase
         return new ArchivePassword('correct horse battery staple');
     }
 
-    /**
-     * The entry read back the way whoever downloaded the file reads it, by a tool that knows the format
-     * and the passphrase, and false when that passphrase does not open it.
-     */
     private static function read(string $wrapped, string $passphrase): string|false
     {
         $path = tempnam(sys_get_temp_dir(), 'beffroi-read-');
@@ -123,10 +106,6 @@ final class ZipArchiveContainerTest extends TestCase
         }
     }
 
-    /**
-     * The upper bound of a passphrase is not a bound on the document: an archive of a person who has a
-     * long history is megabytes, and the container writes it.
-     */
     #[Test]
     public function aLongDocumentIsWrappedAndReadBack(): void
     {

@@ -14,7 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The keys a client publishes (RFC 7517 §5, RFC 7591 §2), read as they are given and nothing more.
+ * RFC 7517 §5, RFC 7591 §2
  */
 final class ClientJwksTest extends TestCase
 {
@@ -51,8 +51,7 @@ final class ClientJwksTest extends TestCase
     }
 
     /**
-     * RFC 7517 §4.2 and §4.4: the key a JWE is addressed to is the one the client says it is. A key is
-     * taken at its word, and a key that says it signs is never taken.
+     * RFC 7517 §4.2, §4.4
      *
      * @param list<array<string, mixed>> $published
      */
@@ -178,8 +177,7 @@ final class ClientJwksTest extends TestCase
     }
 
     /**
-     * RFC 8705 §2.2 and RFC 7517 §4.7: the certificate a client publishes is the first one of the "x5c"
-     * of a key of its set, and presenting it is what authenticates the client.
+     * RFC 8705 §2.2, RFC 7517 §4.7
      */
     #[Test]
     public function itPublishesTheCertificateOfTheX5cOfAKey(): void
@@ -192,7 +190,7 @@ final class ClientJwksTest extends TestCase
     }
 
     /**
-     * RFC 7517 §4.9: a key may name its certificate by its thumbprint rather than carry it.
+     * RFC 7517 §4.9
      */
     #[Test]
     public function itPublishesTheCertificateNamedByTheThumbprintOfAKey(): void
@@ -205,8 +203,7 @@ final class ClientJwksTest extends TestCase
     }
 
     /**
-     * The certificate is compared and not the key inside it: the same names signed again are another
-     * certificate, and it binds tokens to another thumbprint (RFC 8705 §3.1).
+     * RFC 8705 §3.1
      */
     #[Test]
     public function aCertificateReissuedIsNotTheOnePublished(): void
@@ -218,10 +215,6 @@ final class ClientJwksTest extends TestCase
         static::assertFalse($keys->publishes(Certificates::reissued()));
     }
 
-    /**
-     * A client that publishes a public key and no certificate publishes no certificate; nothing is
-     * derived from the key to make one.
-     */
     #[Test]
     public function aKeyWithoutACertificatePublishesNone(): void
     {
@@ -232,10 +225,6 @@ final class ClientJwksTest extends TestCase
         static::assertFalse($keys->publishes(Certificates::selfSigned()));
     }
 
-    /**
-     * What a client publishes is read as it is given: an "x5c" that is not base64 of a certificate names
-     * nobody, and is worth no exception in the middle of an authentication.
-     */
     #[Test]
     public function anUnreadableCertificateChainPublishesNothing(): void
     {

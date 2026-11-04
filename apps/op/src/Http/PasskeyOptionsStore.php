@@ -11,10 +11,7 @@ use Webauthn\PublicKeyCredentialCreationOptions;
 use Webauthn\PublicKeyCredentialRequestOptions;
 
 /**
- * The options of a passkey ceremony between the two requests it takes (architecture §5.2): drawn for the
- * browser, kept in its HTTP session, read back once when the response comes, so that a challenge is
- * answered at most once (WebAuthn Level 3 §13.4.3) and by the browser it was drawn for. One ceremony of
- * each kind at a time per browser; the creation options remember the user they were drawn for.
+ * Read back once, so that a challenge is answered once and by the browser it was drawn for (WebAuthn Level 3 §13.4.3).
  */
 final readonly class PasskeyOptionsStore
 {
@@ -30,9 +27,6 @@ final readonly class PasskeyOptionsStore
         ]);
     }
 
-    /**
-     * The creation options drawn for this user, or null when none were, or they were for someone else.
-     */
     public function takeCreation(SessionInterface $session, Uuid $userId): ?PublicKeyCredentialCreationOptions
     {
         $stored = $session->remove(self::CREATION_KEY);

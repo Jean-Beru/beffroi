@@ -32,12 +32,7 @@ use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
- * Architecture §3.3: the provider the kernel holds is one object for the life of the process, which in
- * a FrankenPHP worker is every request the worker serves. A rotation is done by another process, a
- * console command or a scheduled step, that shares nothing with the worker but the key files. The
- * worker must see it without a restart: the provider reads which key is active on each call and keeps
- * only the opened material, by "kid". Proven here with a second repository on the same directory, as
- * another process would have; the kernel is not rebooted between the steps.
+ * Architecture §3.3
  */
 final class SealedKeyProviderTest extends DatabaseTestCase
 {
@@ -68,10 +63,6 @@ final class SealedKeyProviderTest extends DatabaseTestCase
         new Filesystem()->remove($this->directory);
     }
 
-    /**
-     * The key that signs is the one another process activated, seen by the provider that had already
-     * opened the previous one.
-     */
     #[Test]
     public function aRotationDoneByAnotherProcessIsSeenWithoutARestart(): void
     {
@@ -87,9 +78,6 @@ final class SealedKeyProviderTest extends DatabaseTestCase
         static::assertSame($rotated->kid, $active->key->kid);
     }
 
-    /**
-     * What the worker signs after the rotation names the new key, through the signer the modules use.
-     */
     #[Test]
     public function theWorkerSignsWithTheNewKeyAtOnce(): void
     {
@@ -105,10 +93,6 @@ final class SealedKeyProviderTest extends DatabaseTestCase
         static::assertStringContainsString($rotated->kid, self::header($jws));
     }
 
-    /**
-     * The JWK Set the worker serves after the rotation carries both keys, the retiring one and the new
-     * one, without a restart.
-     */
     #[Test]
     public function theWorkerPublishesBothKeysAtOnce(): void
     {
@@ -123,10 +107,6 @@ final class SealedKeyProviderTest extends DatabaseTestCase
         static::assertSame([$previous->kid, $rotated->kid], array_map(static fn (TenantKey $key): string => $key->kid, $published->keys));
     }
 
-    /**
-     * The provider keeps the opened material of the key that signs and no other: the previous one is
-     * out of the memory of the worker once the rotation is seen.
-     */
     #[Test]
     public function theWorkerForgetsThePreviousKeyOnceTheRotationIsSeen(): void
     {
@@ -141,10 +121,6 @@ final class SealedKeyProviderTest extends DatabaseTestCase
         static::assertNotSame($previous, $this->opened->open(self::tenant(), $previous->key));
     }
 
-    /**
-     * A rotation as a console command does it: a repository of its own on the same files, the steps of the
-     * life of a key of its own, nothing shared with the provider under test but the directory.
-     */
     private function rotateFromAnotherProcess(): TenantKey
     {
         $keys = new FileTenantKeyRepository($this->directory, Algorithms::all());
@@ -171,9 +147,6 @@ final class SealedKeyProviderTest extends DatabaseTestCase
         )->rotate(self::tenant(), Algorithms::rs256(), self::context());
     }
 
-    /**
-     * The protected header of a compact JWS, decoded.
-     */
     private static function header(string $compactJws): string
     {
         $decoded = base64_decode(strtr(explode('.', $compactJws)[0], '-_', '+/'), true);

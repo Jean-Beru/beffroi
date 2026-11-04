@@ -13,7 +13,7 @@ use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
 /**
- * What the console downloads for the passkeys: one GET, its answer whole, and no redirect followed (decision 0006).
+ * Decision 0006
  */
 final class DocumentDownloadTest extends TestCase
 {

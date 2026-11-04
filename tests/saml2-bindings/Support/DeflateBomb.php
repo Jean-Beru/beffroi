@@ -13,17 +13,14 @@ use const ZLIB_FINISH;
 use const ZLIB_SYNC_FLUSH;
 
 /**
- * A DEFLATE bomb (§9.2 row 22): a raw DEFLATE stream (RFC 1951) of zeros, about a thousandth of what it inflates to,
- * built without ever holding what it inflates to. zlib deflates one mebibyte of zeros, flushed to a byte boundary, then
- * a second one, which, its window full of zeros already, every later mebibyte would deflate to the same bytes: the
- * stream is the first, the second repeated, and an empty final block. 1 GiB is 1 060 867 bytes of it.
+ * §9.2 row 22, RFC 1951
  */
 final readonly class DeflateBomb
 {
     private const int MEBIBYTE = 1_048_576;
 
     /**
-     * @param positive-int $mebibytes what the stream inflates to, in mebibytes of zeros
+     * @param positive-int $mebibytes
      */
     public static function inflatingTo(int $mebibytes): string
     {

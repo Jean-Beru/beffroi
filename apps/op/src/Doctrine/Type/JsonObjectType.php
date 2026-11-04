@@ -21,23 +21,11 @@ use const JSON_UNESCAPED_UNICODE;
 use JsonException;
 
 /**
- * A value object stored as a JSON document; a document that does not look like it is a conversion error, never a guess.
- *
- * It keeps the Doctrine half and nothing else: the name the mapping uses, the declaration of the column on
- * each platform, the JSON, and the refusals of DBAL. **What the document looks like is the object's**, in
- * the package that owns it, so that a round trip costs no connection and a second reader of those rows
- * reads them through the same object (issue #603); here, what that object refuses becomes the
- * `ValueNotConvertible` of Doctrine, naming the column it was read out of.
- *
  * @template T of object
  */
 abstract class JsonObjectType extends Type
 {
     /**
-     * What the column holds, as a JSON document. Keyed by names where the value is a record of them, and a
-     * list where the value is a set: an empty list of backup codes and a tenant that lets a person change
-     * nothing of themselves both write "[]", which is what that value is and not a document with no keys.
-     *
      * @param T $value
      *
      * @throws CoreInvalidArgumentException

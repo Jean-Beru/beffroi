@@ -10,10 +10,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * The script of the two WebAuthn ceremonies (architecture §5.2): what the login page and the page of the
- * account run to hand the options to the authenticator of the browser and post back what it signed.
- */
 #[AsController]
 final readonly class PasskeyScriptController
 {

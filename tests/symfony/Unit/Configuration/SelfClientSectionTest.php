@@ -15,18 +15,12 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 
-/**
- * Issue #282: the application signs its users in with the values it declared itself with, which its firewall names as
- * container parameters rather than writing them a second time; they are read from what was written under "beffroi"
- * before any extension is loaded, SecurityBundle coming before this provider in an application.
- */
 final class SelfClientSectionTest extends TestCase
 {
     private const string SECRET = '%env(APP_OIDC_SECRET)%';
 
     /**
-     * OIDC Core §3.1.2.1, RFC 6749 §2.3.1: the issuer the application signs in at, the identifier it is known by and
-     * the secret it authenticates with.
+     * OIDC Core §3.1.2.1, RFC 6749 §2.3.1
      */
     #[Test]
     public function theFirewallOfTheApplicationNamesWhatItWasDeclaredWith(): void
@@ -45,10 +39,6 @@ final class SelfClientSectionTest extends TestCase
         );
     }
 
-    /**
-     * The files are read as the tree reads them, the last that writes a value winning: what the firewall names is
-     * what the client was declared with, in every environment.
-     */
     #[Test]
     public function aValueALaterFileWritesIsTheOneExposed(): void
     {
@@ -83,8 +73,7 @@ final class SelfClientSectionTest extends TestCase
     }
 
     /**
-     * Decision 0006: the secret is read from the environment, so that the parameter the firewall names carries the
-     * name of a variable and never the secret, and no file of the application holds it.
+     * Decision 0006
      */
     #[Test]
     #[DataProvider('provideSecretsWrittenInTheFile')]
@@ -112,9 +101,6 @@ final class SelfClientSectionTest extends TestCase
         yield 'two variables' => ['%env(APP_OIDC_SECRET)%%env(APP_OIDC_PEPPER)%'];
     }
 
-    /**
-     * What a processor of the environment reads is still the environment: the variable is exposed as it is written.
-     */
     #[Test]
     #[DataProvider('provideSecretsReadFromTheEnvironment')]
     public function aSecretReadFromTheEnvironmentIsExposedAsItIsWritten(string $secret): void
@@ -136,10 +122,6 @@ final class SelfClientSectionTest extends TestCase
         yield 'two processors' => ['%env(trim:file:APP_OIDC_SECRET_FILE)%'];
     }
 
-    /**
-     * The provider sets them before any extension is loaded, which is when the firewall of an application resolves what
-     * it names.
-     */
     #[Test]
     public function theProviderExposesThemBeforeAnyExtensionIsLoaded(): void
     {
@@ -160,8 +142,6 @@ final class SelfClientSectionTest extends TestCase
     }
 
     /**
-     * What an application writes under "beffroi" when it declares itself, nothing else of the tenant than its issuer.
-     *
      * @return array<string, mixed>
      */
     private static function declared(string $secret = self::SECRET): array

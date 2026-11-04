@@ -13,14 +13,11 @@ use function file_get_contents;
 use function preg_replace;
 
 /**
- * The fixtures the metadata tests share: the test keys of tests/saml2-model/Fixture/keys/ (section 9.1) and the files of
- * tests/saml2-model/Fixture/, read as bytes and loaded with the one loader (M-14).
+ * Section 9.1, M-14
  */
 final class MetadataFixtures
 {
     /**
-     * The base64 of the certificate of a test key, on one line, as an X509Certificate carries it.
-     *
      * @param 'idp'|'sp'|'idp-b'|'rsa-1024' $key
      */
     public static function certificate(string $key): string
@@ -57,16 +54,13 @@ final class MetadataFixtures
         return new VerificationKeys([VerificationKey::fromCertificatePem(self::certificatePem($key))]);
     }
 
-    /**
-     * The bytes of a file of tests/saml2-model/Fixture/, as they are on disk.
-     */
     public static function bytes(string $path): string
     {
         return (string) file_get_contents(__DIR__ . '/../../Fixture/' . $path);
     }
 
     /**
-     * A file of tests/saml2-model/Fixture/ loaded with SamlLoader::create() (M-14).
+     * M-14
      */
     public static function load(string $path): Document
     {

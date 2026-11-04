@@ -25,16 +25,12 @@ use const T_CONSTANT_ENCAPSED_STRING;
 use const T_ENCAPSED_AND_WHITESPACE;
 
 /**
- * Section 8 of the specification, the layer under PHPStan: the tokens never written in src/, including the property
- * reads static analysis cannot ban (textContent, nodeValue, innerHTML), and the calls confined to one class each.
- * Comments and string literals are not code and are not scanned: a refusal message may name the rule it enforces.
- *
- * I-2, I-4, I-9, I-11, I-13, I-14, I-15.
+ * Section 8, I-2, I-4, I-9, I-11, I-13, I-14, I-15
  */
 final class SourceGuardTest extends TestCase
 {
     /**
-     * Section 8 (I-2, I-4, I-9, I-11, section 6.6) and the security stance: never written in src/.
+     * Section 8, I-2, I-4, I-9, I-11, section 6.6
      */
     #[Test]
     #[DataProvider('provideBannedTokens')]
@@ -53,7 +49,7 @@ final class SourceGuardTest extends TestCase
     public static function provideBannedTokens(): iterable
     {
         $tokens = [
-            // one parser, one DOM (I-4)
+            // One parser, one DOM (I-4).
             'DOMDocument',
             'DOMXPath',
             'DOMImplementation',
@@ -63,7 +59,7 @@ final class SourceGuardTest extends TestCase
             'xml_parser_create',
             'XMLReader',
             'XMLWriter',
-            // no entity loader, no flag that loads a DTD or substitutes entities (I-2)
+            // No entity loader, no flag that loads a DTD or substitutes entities (I-2).
             'libxml_set_external_entity_loader',
             'libxml_disable_entity_loader',
             'LIBXML_NOENT',
@@ -75,13 +71,13 @@ final class SourceGuardTest extends TestCase
             'LIBXML_NOBLANKS',
             'LIBXML_NOCDATA',
             'xinclude(',
-            // lookup by index, never by query (I-9, I-11, I-14)
+            // Lookup by index, never by query (I-9, I-11, I-14).
             'getElementById(',
             'setIdAttribute',
             'getElementsByTagName',
             'querySelector',
             'XPath',
-            // the doors closed for good (section 8)
+            // Closed for good (section 8).
             'createFromFile(',
             'C14NFile(',
             'saveXmlFile(',
@@ -90,11 +86,11 @@ final class SourceGuardTest extends TestCase
             'createEntityReference(',
             'schemaValidate',
             'relaxNgValidate',
-            // the property reads Text::of() replaces (section 6.4)
+            // Read through Text::of() instead (section 6.4).
             'textContent',
             'nodeValue',
             'innerHTML',
-            // the security stance: no silencing, no reflection, no eval, no dynamic call, no file, no network
+            // No silencing, reflection, eval, dynamic call, file or network access.
             'error_reporting(',
             'Reflection',
             'eval(',
@@ -112,8 +108,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * Section 8 (I-4, I-13, I-15): createFromString() in Loader, createEmpty() in DocumentFactory, C14N() in
-     * Canonicalizer, saveXml() in Serializer, exactly once each and nowhere else under src/, whatever the namespace.
+     * Section 8, I-4, I-13, I-15
      */
     #[Test]
     #[DataProvider('provideConfinedCalls')]
@@ -150,9 +145,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * The files of src/ holding the token in their code, comments and string literals left aside, each with its count.
-     *
-     * @return array<string, int>
+     * @return array<string, int> count of $token per file of src/ holding it
      */
     private function occurrences(string $token): array
     {
@@ -169,7 +162,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * @return array<string, string> the code of every PHP file of src/, keyed by its path relative to src/
+     * @return array<string, string> code with comments and strings blanked, keyed by the path relative to src/
      */
     private function sourceFiles(): array
     {

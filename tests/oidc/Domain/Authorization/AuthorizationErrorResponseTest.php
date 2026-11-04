@@ -24,8 +24,7 @@ use Beffroi\Oidc\Tests\Fixture\Shapes;
 final class AuthorizationErrorResponseTest extends TestCase
 {
     /**
-     * RFC 6749 §4.1.2.1: error, error_description and state in the query component of the redirect URI;
-     * RFC 9207 §2: iss in every authorization response, the error ones included.
+     * RFC 6749 §4.1.2.1, RFC 9207 §2
      */
     #[Test]
     public function itRedirectsWithErrorStateAndIssuer(): void
@@ -49,7 +48,7 @@ final class AuthorizationErrorResponseTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2.1: state is present in the response only when it was in the request.
+     * RFC 6749 §4.1.2.1
      */
     #[Test]
     public function itOmitsTheStateWhenTheRequestHadNone(): void
@@ -65,8 +64,7 @@ final class AuthorizationErrorResponseTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2.1: the state comes back as the client sent it, whatever it contains; what encodes
-     * it is the mode that delivers the response (RedirectUri::withParameters for the default one).
+     * RFC 6749 §4.1.2.1
      */
     #[Test]
     public function itCarriesTheStateAsTheClientSentIt(): void
@@ -93,8 +91,7 @@ final class AuthorizationErrorResponseTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2.1 and RFC 9700 §4.1: an error raised before the client and its redirect URI were
-     * validated is shown to the user; turning it into a redirect is a programming error.
+     * RFC 6749 §4.1.2.1, RFC 9700 §4.1
      */
     #[Test]
     public function itRefusesToRedirectAnErrorThatMustBeShown(): void

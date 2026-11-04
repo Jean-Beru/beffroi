@@ -29,17 +29,14 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
- * beffroi/saml, spec/saml.md sections 6.1 and 9: the metadata of the SAML identity provider of the tenant, served on
- * the protocol plane, its key drawn and rotated by the key commands as every key of the tenant.
+ * beffroi/saml, spec/saml.md sections 6.1 and 9
  */
 final class IdentityProviderMetadataTest extends ConsoleTestCase
 {
     private const string METADATA = '/saml/metadata';
 
     /**
-     * Section 6.1, S-4: the metadata served is read back by saml2-model's MetadataReader, its entity ID the URL of the
-     * metadata under the issuer, both services at their URL on both bindings, WantAuthnRequestsSigned true as the
-     * tenant left it, the certificate of its one key.
+     * Section 6.1, S-4
      */
     #[Test]
     public function theMetadataOfTheTenantIsReadBackByTheModel(): void
@@ -79,8 +76,7 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-4, section 6.1 step 3: a request that names another host is served the metadata of the tenant, its entity ID
-     * and its services under the issuer, never under the Host header of the request.
+     * S-4, section 6.1 step 3
      */
     #[Test]
     public function theEndpointsAreUnderTheIssuerNotUnderTheRequestHost(): void
@@ -110,8 +106,7 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * Section 6.1 step 6: served as SAML metadata, cacheable for the max-age of the keys of the tenant, two minutes in
-     * this kernel, so that a service provider that fetches it finds the next certificate within minutes of its staging.
+     * Section 6.1 step 6
      */
     #[Test]
     public function itIsServedAsSamlMetadataForTheMaxAgeOfTheKeys(): void
@@ -135,7 +130,7 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-3, section 6.1 step 2: the certificate served is around the public half of the SAML key the tenant holds.
+     * S-3, section 6.1 step 2
      */
     #[Test]
     public function theCertificateIsAroundTheSamlKeyOfTheTenant(): void
@@ -154,7 +149,7 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-1: the SAML key the tenant holds is not in its JWK Set.
+     * S-1
      */
     #[Test]
     public function theJwkSetDoesNotCarryTheSamlKey(): void
@@ -170,15 +165,14 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-2: a rotation of the SAML key stages the next one, whose certificate is served beside the current one's before
-     * the staged key signs anything.
+     * S-2
      */
     #[Test]
     public function aRotationPublishesTheNextCertificateBeforeItSigns(): void
     {
         // Given
         $current = self::generate();
-        // a key created later, so that the creation order of the two is the order they were drawn in
+        // So that the creation order of the two keys is the order they were drawn in.
         self::aSecondLater();
         $rotation = self::console('beffroi:keys:rotate', [
             '--algorithm' => SamlSigning::NAME,
@@ -200,9 +194,7 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-12, issue #738: a key is staged for the staging delay of its family, seven days for the SAML key, while a key of
-     * the JWK Set waits what it always waited, the max-age of the JWK Set plus the 60 s refetch cooldown of oidc_login:
-     * 180 s on the 120 s max-age of this kernel, 360 s on the default one.
+     * S-12
      */
     #[Test]
     #[DataProvider('provideFamilies')]
@@ -231,9 +223,7 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-2, S-12, the acceptance of issue #738: the next certificate is in the metadata for the whole staging delay of
-     * the SAML key before that key signs anything, the scheduled step leaving it staged a second before its week
-     * ends.
+     * S-2, S-12
      */
     #[Test]
     public function theNextCertificateIsPublishedForTheWholeStagingDelayBeforeItSigns(): void
@@ -260,7 +250,7 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-12: once its week has passed, the scheduled step makes the staged SAML key the one that signs.
+     * S-12
      */
     #[Test]
     public function theScheduledStepActivatesTheSamlKeyAtTheEndOfItsStagingDelay(): void
@@ -279,9 +269,7 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-12, the acceptance of issue #738: the metadata says how long a service provider may keep it, and that is
-     * shorter than the window the next SAML key was staged with, so that a service provider that honours it fetches
-     * the next certificate before that key signs.
+     * S-12
      */
     #[Test]
     public function theCacheDurationOfTheMetadataIsShorterThanTheStagingDelayOfTheSamlKey(): void
@@ -301,8 +289,7 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-41: the service provider of the tenant left off, as this kernel leaves it, serves no metadata, though the
-     * tenant holds a SAML key in service for its identity provider.
+     * S-41
      */
     #[Test]
     public function theServiceProviderLeftOffServesNoMetadata(): void
@@ -318,8 +305,7 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-41, S-51: the service provider of the tenant left off, as this kernel leaves it, starts no sign-on at an
-     * upstream identity provider, though the tenant holds a SAML key in service for its identity provider.
+     * S-41, S-51
      */
     #[Test]
     public function theServiceProviderLeftOffStartsNoSignOn(): void
@@ -338,7 +324,7 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-41, S-65: the service provider of the tenant left off gives no upstream identity provider its metadata.
+     * S-41, S-65
      */
     #[Test]
     public function theServiceProviderLeftOffGivesNoProviderItsMetadata(): void
@@ -354,7 +340,7 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * Section 6.1 step 1: a tenant that holds no SAML key has no metadata to serve.
+     * Section 6.1 step 1
      */
     #[Test]
     public function aTenantWithoutASamlKeyServesNoMetadata(): void
@@ -366,9 +352,6 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
         static::assertSame(Response::HTTP_NOT_FOUND, $this->browser->getResponse()->getStatusCode());
     }
 
-    /**
-     * The first SAML key of the tenant, drawn by the command an operator runs and active at once.
-     */
     private static function generate(): TenantKey
     {
         $tester = self::console('beffroi:keys:generate', [
@@ -379,9 +362,6 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
         return self::keys()->findInService(self::tenant())[0] ?? static::fail('The command drew no key.');
     }
 
-    /**
-     * A rotation as an operator asks for one, which stages the next key of the algorithm beside the active one.
-     */
     private static function rotate(string $algorithm): TenantKey
     {
         $rotation = self::console('beffroi:keys:rotate', [
@@ -397,9 +377,6 @@ final class IdentityProviderMetadataTest extends ConsoleTestCase
         );
     }
 
-    /**
-     * What the worker does on a tick: the recurring message of the life of the keys, on the command bus.
-     */
     private static function tick(): void
     {
         self::service('test.beffroi.command_bus', MessageBusInterface::class)->dispatch(new AdvanceKeyLifecycle());

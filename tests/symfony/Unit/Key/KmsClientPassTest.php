@@ -11,10 +11,6 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Exception\LogicException;
 use Symfony\Component\KeyManagement\EncrypterInterface;
 
-/**
- * Issue #208: the provider seals with a KMS client KeyManagementBundle registers, and the pass is what turns
- * a name nothing answers to into a failure an operator can read.
- */
 final class KmsClientPassTest extends TestCase
 {
     #[Test]
@@ -67,10 +63,6 @@ final class KmsClientPassTest extends TestCase
         new KmsClientPass()->process($container);
     }
 
-    /**
-     * A container the provider was not loaded into has no alias to check, and the pass has nothing to say
-     * about it.
-     */
     #[Test]
     public function aContainerWithoutTheProviderIsLeftAlone(): void
     {

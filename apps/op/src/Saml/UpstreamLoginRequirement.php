@@ -19,18 +19,6 @@ use Beffroi\Oidc\Exception\OAuth2Exception;
 use DateTimeImmutable;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * What a login at an upstream identity provider is asked, read from the rule the login page reads,
- * AuthenticationRequirement of beffroi/oidc, and never from a slice of it written again (beffroi/saml, spec/saml.md
- * S-49, S-58, S-59): whether the request the service provider sends forces a login, and what the client still asks once
- * the provider has answered.
- *
- * What the client asks is read against the session the login leaves the browser with, built here and never kept: the
- * session the browser holds when it is that person's, these proofs recorded on it, a new one otherwise, every proof
- * dated by the AuthnInstant and never later than now, as the session the login opens will date it (S-57). So a login
- * during the interaction satisfies prompt=login, a max_age and a step-up, an earlier one does not, and an id_token_hint
- * naming another person asks still, each as the login page would say it of that session.
- */
 final readonly class UpstreamLoginRequirement
 {
     public function __construct(
@@ -39,16 +27,11 @@ final readonly class UpstreamLoginRequirement
     }
 
     /**
-     * S-49: whether the request forces a login, one rule for an interaction and for a page. A browser that holds a
-     * session forces one when the login is asked of it anyway: a page waits for it, which asks a person signed in for a
-     * fresh proof or for one more, or the interaction asks more of that session than it holds, prompt=login, a max_age
-     * it exceeds, a step-up, an id_token_hint naming another person, prompt=select_account. A browser that holds none
-     * forces one for prompt=login alone.
+     * beffroi/saml S-49
      *
-     * @param Interaction|null $interaction the interaction the login serves, null for the login a page waits for
+     * @param Interaction|null $interaction null for the login a page waits for
      *
-     * @throws OAuth2Exception when the authorization request is one the login page answers with an error, a hint whose
-     *                         signature is not ours or that names nobody, or an essential class nobody can prove
+     * @throws OAuth2Exception when the authorization request is one the login page answers with an error
      */
     public function forcesALogin(?Interaction $interaction, ?AuthenticationSession $session, DateTimeImmutable $now): bool
     {
@@ -63,11 +46,9 @@ final readonly class UpstreamLoginRequirement
     }
 
     /**
-     * S-58: what the authorization request of the interaction still asks once that person signed in at the provider
-     * with these methods at that instant, null when it asks nothing more.
+     * beffroi/saml S-58
      *
      * @param non-empty-list<AuthenticationMethod> $methods
-     * @param AuthenticationSession|null $held the session the browser holds
      *
      * @throws OAuth2Exception when the authorization request is one the login page answers with an error
      */
@@ -86,8 +67,7 @@ final readonly class UpstreamLoginRequirement
     }
 
     /**
-     * S-59: whether the login proves one of the classes of the step-up a page asked for, as the session it leaves the
-     * browser with satisfies it under the policy of the tenant.
+     * beffroi/saml S-59
      *
      * @param non-empty-list<AuthenticationMethod> $methods
      */

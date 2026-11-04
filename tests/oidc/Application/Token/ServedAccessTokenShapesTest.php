@@ -39,7 +39,7 @@ final class ServedAccessTokenShapesTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: the registration of the client picks the issuer, and that one alone mints.
+     * Architecture §4.6
      */
     #[Test]
     public function aClientRegisteredForJwtGetsItsTokenFromTheJwtIssuer(): void
@@ -72,8 +72,7 @@ final class ServedAccessTokenShapesTest extends TestCase
     }
 
     /**
-     * Architecture §4.6 (issue #870): the registration of the client picks the issuer that addresses its token,
-     * as it picks the one that mints it, so the key opened is the key of the shape the token is written in.
+     * Architecture §4.6
      */
     #[Test]
     public function theTokenOfAClientIsAddressedByTheIssuerOfItsShape(): void
@@ -89,10 +88,6 @@ final class ServedAccessTokenShapesTest extends TestCase
         static::assertSame([], $this->jwt->addressed);
     }
 
-    /**
-     * Issue #876: the token of an authorization that exists before anything is spent is addressed by the issuer
-     * of the shape its client registered, which is the one that knows what that token carries sealed.
-     */
     #[Test]
     public function theTokenOfAnAuthorizationIsAddressedByTheIssuerOfItsShape(): void
     {
@@ -107,10 +102,6 @@ final class ServedAccessTokenShapesTest extends TestCase
         static::assertSame([], $this->jwt->addressedFor);
     }
 
-    /**
-     * Issue #239: a shape is added by a class and a line in the wiring, and the token endpoint mints in
-     * it without anything here knowing its name.
-     */
     #[Test]
     public function anInventedShapeIsMintedByTheIssuerThatNamesIt(): void
     {
@@ -127,10 +118,6 @@ final class ServedAccessTokenShapesTest extends TestCase
         static::assertSame([], $this->jwt->issued);
     }
 
-    /**
-     * What a client may register is the wired list, in the order it is wired, and the first of them is
-     * what a client that registers none takes.
-     */
     #[Test]
     public function theWiredShapesAreNamedInTheOrderTheyAreWired(): void
     {
@@ -144,10 +131,6 @@ final class ServedAccessTokenShapesTest extends TestCase
         ));
     }
 
-    /**
-     * A deployment that writes one shape only boots, which is what an enumeration demanding an issuer
-     * for every case made impossible (issue #239).
-     */
     #[Test]
     public function aProviderThatWritesOneShapeServesIt(): void
     {
@@ -189,10 +172,6 @@ final class ServedAccessTokenShapesTest extends TestCase
         $shapes->servedAccessTokenShapes();
     }
 
-    /**
-     * A registration built against another wiring, which nothing here writes: the refusal names what is
-     * wired rather than what was asked for.
-     */
     #[Test]
     public function aShapeNoIssuerWritesIsRefusedWithTheWiredOnes(): void
     {

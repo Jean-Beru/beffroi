@@ -25,10 +25,7 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * beffroi/saml, spec/saml.md S-63, decision 0029: in a deployment whose tenant federates example.org to the SimpleSAMLphp
- * identity provider of the judge (tests/symfony/config/config_test_service_provider.yml), the pages of the account
- * offer a person of that domain no password, passkey or authenticator app, and refuse each posted by hand, here with
- * the token a page rendered before the address of the person moved into that domain.
+ * beffroi/saml, spec/saml.md S-63, Decision 0029
  */
 final class FederatedAccountTest extends PasskeyTestCase
 {
@@ -42,7 +39,7 @@ final class FederatedAccountTest extends PasskeyTestCase
     }
 
     /**
-     * S-63: the page of the passkeys offers a person of a federated domain no passkey, and says why.
+     * S-63
      */
     #[Test]
     public function thePasskeysPageOffersAPersonOfAFederatedDomainNoPasskey(): void
@@ -58,8 +55,7 @@ final class FederatedAccountTest extends PasskeyTestCase
     }
 
     /**
-     * S-63: a passkey posted by hand for a person of a federated domain is refused before the ceremony goes on, and
-     * nothing is enrolled.
+     * S-63
      */
     #[Test]
     public function aPasskeyPostedForAPersonOfAFederatedDomainIsRefused(): void
@@ -86,7 +82,7 @@ final class FederatedAccountTest extends PasskeyTestCase
     }
 
     /**
-     * S-63: the page of the second factor offers a person of a federated domain no authenticator app, and says why.
+     * S-63
      */
     #[Test]
     public function theTwoFactorPageOffersAPersonOfAFederatedDomainNoApp(): void
@@ -102,8 +98,7 @@ final class FederatedAccountTest extends PasskeyTestCase
     }
 
     /**
-     * S-63: the page of the second factor offers a person of a federated domain who set up an app before their domain was
-     * federated no new backup codes, and says why.
+     * S-63
      */
     #[Test]
     public function theTwoFactorPageOffersAPersonOfAFederatedDomainNoBackupCodes(): void
@@ -119,7 +114,7 @@ final class FederatedAccountTest extends PasskeyTestCase
     }
 
     /**
-     * S-63: backup codes renewed by hand for a person of a federated domain are refused, and none is drawn.
+     * S-63
      */
     #[Test]
     public function backupCodesRenewedForAPersonOfAFederatedDomainAreRefused(): void
@@ -144,7 +139,7 @@ final class FederatedAccountTest extends PasskeyTestCase
     }
 
     /**
-     * S-63: an authenticator app set up by hand for a person of a federated domain is refused before a secret is drawn.
+     * S-63
      */
     #[Test]
     public function anAppSetUpForAPersonOfAFederatedDomainIsRefused(): void
@@ -168,8 +163,7 @@ final class FederatedAccountTest extends PasskeyTestCase
     }
 
     /**
-     * S-63: the page of the password offers a person of a federated domain no form, though they held a password before
-     * their domain was federated, and says why.
+     * S-63
      */
     #[Test]
     public function thePasswordPageOffersAPersonOfAFederatedDomainNoForm(): void
@@ -185,7 +179,7 @@ final class FederatedAccountTest extends PasskeyTestCase
     }
 
     /**
-     * S-63: a password posed by hand for a person of a federated domain is refused, and the one they held is kept.
+     * S-63
      */
     #[Test]
     public function aPasswordPosedForAPersonOfAFederatedDomainIsRefused(): void
@@ -212,9 +206,6 @@ final class FederatedAccountTest extends PasskeyTestCase
         );
     }
 
-    /**
-     * A person with an authenticator app set up an hour ago.
-     */
     private function userWithTotp(string $username): User
     {
         $user = self::user($username);
@@ -264,9 +255,6 @@ final class FederatedAccountTest extends PasskeyTestCase
         return $refusal->count() === 0 ? null : $refusal->attr('data-error');
     }
 
-    /**
-     * The person given a mailbox of example.org, the domain the provider of the judge answers for.
-     */
     private static function federated(User $user): User
     {
         $users = self::service('test.beffroi.users', UserRepositoryInterface::class);
@@ -278,8 +266,6 @@ final class FederatedAccountTest extends PasskeyTestCase
     }
 
     /**
-     * The credentials of that kind the person holds, read from the rows.
-     *
      * @param class-string<PasskeyCredential|PasswordCredential> $kind
      *
      * @return list<array{string, string}>

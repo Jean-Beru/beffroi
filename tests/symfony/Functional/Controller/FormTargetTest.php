@@ -29,43 +29,20 @@ use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * CSP Level 3 §6.1, §6.3.2 on a deployment that writes a policy for its pages: a page of the interaction
- * plane says what it adds to that policy and the directive it names is completed once the policy is
- * written (PolicyCompletion). A page that may send the browser to a client names the origin of that
- * client among the targets of a submission (FormTarget), a browser checking the directive over the whole
- * redirect chain of one and the last hop of that chain being the answer carried to the client, so a page
- * that names only this provider is a page whose login never reaches the client that asked for it; the
- * consent page names the hosts of the images it shows as well (ImageSource).
- *
- * The kernel of this suite writes no policy of its own: what every page of the plane carries is the floor
- * of the plane, which restricts no submission (architecture §5.2). The listener below stands in for the
- * one an application writes (apps/op config/packages/nelmio_security.yaml), so that what is read here is
- * what a browser reads there.
+ * CSP Level 3 §6.1, §6.3.2
  */
 final class FormTargetTest extends PasskeyTestCase
 {
     private const string PASSWORD = 'correct horse battery staple';
 
-    /**
-     * What a deployment writes on the pages of this plane, the two directives of this test among the ones
-     * it names: every form of these pages comes back to the provider and nothing else may be posted to,
-     * every image is served by the provider and no other host.
-     */
     private const string DEPLOYMENT_POLICY = "default-src 'none'; script-src 'self'; img-src 'self'; form-action 'self'; frame-ancestors 'none'";
 
-    /**
-     * The client of the walks below, and the origin it is answered at.
-     */
     private const string CLIENT_ID = 'oidc-demo';
 
     private const string REDIRECT_URI = 'https://demo.test/login/check';
 
     private const string CLIENT_ORIGIN = 'https://demo.test';
 
-    /**
-     * The client consent is required of, the one declared with a logo (config_test.yml), and the two
-     * origins its consent page names: where it is answered, and where that logo is served from.
-     */
     private const string CONSENT_CLIENT_ID = 'consent-app';
 
     private const string CONSENT_REDIRECT_URI = 'https://consent.test/callback';
@@ -75,7 +52,7 @@ final class FormTargetTest extends PasskeyTestCase
     private const string CONSENT_LOGO_ORIGIN = 'https://cdn.consent.test';
 
     /**
-     * The origin of the single logout service of the SAML service provider of the suite (beffroi/saml S-36).
+     * beffroi/saml S-36
      */
     private const string SERVICE_PROVIDER_ORIGIN = 'https://sp.example.org';
 
@@ -84,9 +61,9 @@ final class FormTargetTest extends PasskeyTestCase
         return static function (ContainerInterface $container): void {
             $dispatcher = $container->get('event_dispatcher');
             static::assertInstanceOf(EventDispatcherInterface::class, $dispatcher);
-            // where the policy of an application is written: after the controller that answered, before
-            // the directive of a page is completed with what it may answer (FormTarget), and on the pages
-            // the provider computes no policy for, as App\Http\DeploymentPolicyPrevails leaves them
+            // Writes the policy as an application does: before the directive of a page is completed (FormTarget),
+            // and only on the pages the provider computes no policy for, as App\Http\DeploymentPolicyPrevails
+            // leaves them.
             $dispatcher->addListener(
                 KernelEvents::RESPONSE,
                 static function (ResponseEvent $event): void {
@@ -104,10 +81,6 @@ final class FormTargetTest extends PasskeyTestCase
         };
     }
 
-    /**
-     * The page the browser of an authorization request lands on: the login it asks for ends with the code
-     * carried to the client, so the client is named.
-     */
     #[Test]
     public function theLoginPageOfAnAuthorizationRequestNamesTheOriginOfTheClient(): void
     {
@@ -123,8 +96,7 @@ final class FormTargetTest extends PasskeyTestCase
     }
 
     /**
-     * The second step of the same login (architecture §5.4): the code page belongs to the interaction as
-     * the login page does, and the code it asks for is what ends the login.
+     * Architecture §5.4
      */
     #[Test]
     public function theCodePageOfAnAuthorizationRequestNamesTheOriginOfTheClient(): void
@@ -148,8 +120,7 @@ final class FormTargetTest extends PasskeyTestCase
     }
 
     /**
-     * RP-Initiated Logout §2: a confirmed logout sends the browser where the client asked to be sent
-     * back, so the page that asks for the confirmation names it.
+     * RP-Initiated Logout §2
      */
     #[Test]
     public function theLogoutConfirmationNamesWhereTheClientAskedToBeSentBack(): void
@@ -169,11 +140,6 @@ final class FormTargetTest extends PasskeyTestCase
         static::assertSame(self::policyNaming(self::CLIENT_ORIGIN), $this->policyOfTheAnswer());
     }
 
-    /**
-     * Issue #584: the consent page extends the layout of its deployment, so it carries the policy of that
-     * deployment and not one of its own, with the client it may answer in the "form-action" and the host
-     * serving the logo it shows in the "img-src".
-     */
     #[Test]
     public function theConsentPageNamesTheClientItMayAnswerAndTheHostOfTheLogoItShows(): void
     {
@@ -202,9 +168,7 @@ final class FormTargetTest extends PasskeyTestCase
     }
 
     /**
-     * beffroi/saml S-36: a confirmed logout goes through the single logout service of each SAML service
-     * provider of the session before the client that asked, redirections of the same submission, so the
-     * page that asks for the confirmation names them after the client.
+     * beffroi/saml S-36
      */
     #[Test]
     public function theLogoutConfirmationNamesTheSingleLogoutServicesOfTheSession(): void
@@ -224,8 +188,7 @@ final class FormTargetTest extends PasskeyTestCase
     }
 
     /**
-     * beffroi/saml S-36: the button of the sessions page that ends the session of the browser is answered
-     * with the same chain, so that page names the single logout services of that session.
+     * beffroi/saml S-36
      */
     #[Test]
     public function theSessionsPageNamesTheSingleLogoutServicesOfTheSessionOfTheBrowser(): void
@@ -240,10 +203,6 @@ final class FormTargetTest extends PasskeyTestCase
         static::assertSame(self::policyNaming(self::SERVICE_PROVIDER_ORIGIN), $this->policyOfTheAnswer());
     }
 
-    /**
-     * A page of the account answers no client and sends the browser nowhere: what a deployment wrote is
-     * what it carries.
-     */
     #[Test]
     public function aPageThatAnswersNoClientNamesNoOrigin(): void
     {
@@ -258,8 +217,7 @@ final class FormTargetTest extends PasskeyTestCase
     }
 
     /**
-     * Alice signed in, her session signed in at the SAML service provider of the configuration of the
-     * suite too, whose accepted metadata list a single logout service (beffroi/saml S-26, S-30).
+     * beffroi/saml S-26, S-30
      */
     private function signedInAtTheServiceProvider(): AuthenticationSession
     {
@@ -291,9 +249,6 @@ final class FormTargetTest extends PasskeyTestCase
         ]);
     }
 
-    /**
-     * The user of the walk with a second factor, so that the login takes the code page on its way.
-     */
     private function userWithTotp(string $username, string $password): User
     {
         $user = self::userWithPassword($username, $password);

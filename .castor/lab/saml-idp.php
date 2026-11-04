@@ -2,33 +2,6 @@
 
 declare(strict_types=1);
 
-/*
- * The service provider of the stack judged by an upstream identity provider that is not this project's (sub-spike 9d,
- * issue #788): SimpleSAMLphp 2.5.3.1, from the image of the judges of 9b (tests/saml2-bindings/Interop/simplesamlphp),
- * served on https://saml-idp.localhost by the "saml-idp" service of compose.yaml behind the Caddy of op and configured
- * by docker/saml-idp/: two people, alice and bob, a persistent NameID, its responses, assertions and metadata signed by
- * a key drawn here, and the metadata of the service provider of the stack read from the provider.
- *
- * What it serves is judged before anything signs in: its metadata, fetched over https under the root of the certificate
- * of the stack, are verified by xmlsec1, which is not the provider and not SimpleSAMLphp, under the certificate they
- * publish, and read by the model the provider reads an upstream identity provider with (tests/demo/saml-idp-model.php),
- * readTrusted() and then readSigned() under the certificate drawn here.
- *
- * Then the provider federates it the way an operator federates one: the declaration of apps/op/config/packages/
- * dev/beffroi.yaml (beffroi.saml.identity_providers) names the file its metadata are written to, which
- * "beffroi:saml:identity-provider:refresh" reads, its key to encrypt for is drawn (spec/saml.md S-64) and the group of
- * the tenant its mapping names is created. And the walk signs people in as a browser and a client of OpenID Connect do,
- * one request at a time: the client is oidc-demo, whose code the walk spends itself, the demonstration not being needed
- * for it. alice twice, her request over HTTP-Redirect from the address she types and over HTTP-POST from the address
- * her client hints, the first sign-in creating her and the second creating nothing; then bob, his assertion encrypted
- * for the key of this provider, and his group; then carol, whom SimpleSAMLphp signs in and refuses, its Response saying
- * AuthnFailed, which the provider answers the client access_denied for. Then what the provider refuses: the response of
- * bob posted again, and a response SimpleSAMLphp sends unasked (decision 0029). Every request of the provider is verified by the OpenSSL command
- * line and Python (the detached signature of HTTP-Redirect) or by xmlsec1 (the XML signature of HTTP-POST), every
- * response by xmlsec1, under the certificates of the metadata of their signer. Every document of a run is in
- * var/saml-idp/captured/.
- */
-
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
 use function Castor\context;
@@ -40,34 +13,16 @@ use Symfony\Contracts\HttpClient\Exception\ExceptionInterface as HttpClientExcep
 
 const SAML_IDP_URL = 'https://saml-idp.localhost';
 
-/**
- * The entity ID of the identity provider, the URL of its metadata, as docker/saml-idp/metadata/saml20-idp-hosted.php
- * names it and as the declaration of the provider is keyed.
- */
 const SAML_IDP_ENTITY_ID = SAML_IDP_URL . '/simplesaml/module.php/saml/idp/metadata';
 
-/**
- * Under the ignored var/ of the repository, mounted into the saml-idp service: the key and the certificate of the
- * identity provider, the root of the certificate of the stack it verifies the provider with, the two files that say
- * which binding it publishes and whether it encrypts, and every document of a run.
- */
 const SAML_IDP_DIRECTORY = 'var/saml-idp';
 
 const SAML_IDP_CAPTURED = SAML_IDP_DIRECTORY . '/captured';
 
-/**
- * The metadata the declaration of the provider names, mounted at /saml-idp-metadata/ in op and the worker.
- */
 const SAML_IDP_METADATA_FILE = SAML_IDP_DIRECTORY . '/metadata/idp-metadata.xml';
 
-/**
- * The people of the identity provider and their attributes, the file its authentication source reads.
- */
 const SAML_IDP_PEOPLE = 'docker/saml-idp/config/users.php';
 
-/**
- * The group of the tenant the declaration maps the value "beffroi-admins" to, created by the walk.
- */
 const SAML_IDP_GROUP = 'Administrators';
 
 const SAML_IDP_BINDINGS = [
@@ -193,10 +148,7 @@ function saml_idp(
 }
 
 /**
- * The identity provider up, behind Caddy, with a key and a certificate of its own, drawn here and not committed, as the
- * pair of the service provider of "castor saml-sp" is not: what a development stack generates stays under var/.
- *
- * @return string the root of the certificate of the stack, with which every request of the walk verifies it
+ * @return string the root of the certificate of the stack
  */
 function saml_idp_start(): string
 {
@@ -209,8 +161,8 @@ function saml_idp_start(): string
     foreach (glob(SAML_IDP_CAPTURED . '/*') ?: [] as $file) {
         unlink($file);
     }
-    // first, so that a stack that is not up is said before anything starts; read by www-data in the container, a
-    // certificate and no secret
+    // First, so that a stack that is down is reported before anything starts, and readable by www-data in the
+    // container: a certificate, no secret.
     $ca = caddy_ca(getcwd() . '/' . SAML_IDP_DIRECTORY . '/caddy-root.crt');
     chmod($ca, 0o644);
     $drawn = ! is_file(SAML_IDP_DIRECTORY . '/idp.pem') || ! is_file(SAML_IDP_DIRECTORY . '/idp.crt');
@@ -235,7 +187,7 @@ function saml_idp_start(): string
     }
     // Its owner's alone: the container reads it as root and hands www-data a copy of its own (compose.yaml).
     chmod(SAML_IDP_DIRECTORY . '/idp.pem', 0o600);
-    // both bindings published, nothing encrypted, until a journey says otherwise
+    // Empty: both bindings published and nothing encrypted, until a journey says otherwise.
     file_put_contents(SAML_IDP_DIRECTORY . '/sso-binding', '');
     file_put_contents(SAML_IDP_DIRECTORY . '/assertion-encryption', '');
     // A container that copied the key of an earlier pair holds it until it is created again.
@@ -259,10 +211,6 @@ function saml_idp_start(): string
     exit(1);
 }
 
-/**
- * The metadata of the identity provider, over https under the certificate of the stack, captured, then judged by
- * xmlsec1 and by the model.
- */
 function saml_idp_metadata(string $ca): void
 {
     $cookies = [];
@@ -289,12 +237,7 @@ function saml_idp_metadata(string $ca): void
 }
 
 /**
- * The identity provider federated the way an operator federates one: its key to encrypt for drawn when the tenant holds
- * none (spec/saml.md S-64), the group its mapping names created, its metadata written to the file the declaration names
- * and read by "beffroi:saml:identity-provider:refresh"; then the metadata of the service provider for it, which the
- * provider serves to it alone (S-65), read as SimpleSAMLphp reads them.
- *
- * @return array{entityId: string, acs: string} the service provider of the tenant, as its metadata name it
+ * @return array{entityId: string, acs: string} the service provider of the tenant
  */
 function saml_idp_federate(string $issuer, string $ca): array
 {
@@ -342,12 +285,10 @@ function saml_idp_federate(string $issuer, string $ca): array
 }
 
 /**
- * The metadata of the identity provider as it serves them with one binding of its single sign-on service, or both,
- * written to the file the declaration names and read by the provider: it sends its request over HTTP-Redirect whenever
- * the metadata list it (spec/saml.md S-48), so HTTP-POST is played from metadata that list it alone, which the
- * identity provider itself publishes (docker/saml-idp/metadata/saml20-idp-hosted.php), and not from a document edited.
+ * The provider sends over HTTP-Redirect whenever the metadata list it (spec/saml.md S-48), so HTTP-POST is played
+ * from metadata that list it alone.
  *
- * @param ''|'redirect'|'post' $binding
+ * @param ''|'redirect'|'post' $binding '' for both
  */
 function saml_idp_publish(string $binding, string $ca): void
 {
@@ -368,9 +309,8 @@ function saml_idp_publish(string $binding, string $ca): void
 }
 
 /**
- * The walk proves that a first sign-in creates a person, and that the group of bob is the mapping's, which a database
- * that holds one of the three people already cannot show: no command deletes a person, so a run on such a database is
- * refused, with how to empty it, rather than taken for a proof.
+ * Refuses a database that holds one of the three people: no command deletes a person, and the walk proves that a
+ * first sign-in creates one.
  */
 function saml_idp_nobody_yet(): void
 {
@@ -398,9 +338,6 @@ function saml_idp_nobody_yet(): void
 }
 
 /**
- * What the provider holds of a person, from "beffroi:user:show", the username of a person an upstream provider created
- * being their address: null when it holds nobody of that name.
- *
  * @return array{subject: string, created: string, source: string, groups: list<array{group: string, source: string, added: string}>}|null
  */
 function saml_idp_person_at_the_provider(string $username): ?array
@@ -413,9 +350,6 @@ function saml_idp_person_at_the_provider(string $username): ?array
     $read = static fn (string $name): string => preg_match(sprintf('/^\s*%s\s{2,}(.+?)\s*$/m', preg_quote($name, '/')), $output, $matches) === 1
         ? $matches[1]
         : '';
-    // the table of the section "Groups", one row per membership: the name of the group, the source of the membership
-    // (local, upstream_claims or scim, the core's GroupSource) and when it was added; the section says "The user is in
-    // no group." otherwise
     $groups = [];
     $section = (string) preg_replace('/\A.*?^\s*Groups\s*$/ms', '', $output, 1);
     preg_match_all('/^\s*(\S.*?)\s{2,}(local|upstream_claims|scim)\s{2,}(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s*$/m', $section, $rows, \PREG_SET_ORDER);
@@ -436,9 +370,6 @@ function saml_idp_person_at_the_provider(string $username): ?array
 }
 
 /**
- * A person of the identity provider, from the file its authentication source reads: their password, which goes into
- * the form of SimpleSAMLphp and nowhere else, and the attributes it asserts of them.
- *
  * @return array{password: string, attributes: array<string, list<string>>}
  */
 function saml_idp_person(string $username): array
@@ -459,13 +390,6 @@ function saml_idp_person(string $username): array
 }
 
 /**
- * One sign-in through the identity provider, in a browser of its own: oidc-demo asks for an authorization, the login
- * page of the provider asks for the address first (spec/saml.md S-61), or skips it for the address the client hints
- * (S-62), and sends the browser to the sign-on of this provider (S-51), whose AuthnRequest goes over the binding the
- * metadata the provider holds publish; SimpleSAMLphp signs the person in and posts its Response from its site to the
- * assertion consumer service, which posts it again from its own origin (S-52), takes it (S-53) and resumes the
- * authorization (S-59); the client gets its code, spends it, and reads UserInfo.
- *
  * @param array{issuer: string, ca: string, secret: string, serviceProvider: array{entityId: string, acs: string}} $client
  * @param 'redirect'|'post' $binding
  * @return array{claims: array<string, mixed>, userinfo: array<string, mixed>, cookies: array<string, array<string, string>>, acs: array{action: string, fields: array<string, string>}}
@@ -481,7 +405,6 @@ function saml_idp_sign_in(array $client, string $username, string $binding, bool
     $asked = saml_idp_ask($client, $cookies, $address, $binding, $hinted, $capture);
     ['login' => $login, 'state' => $state, 'nonce' => $nonce, 'verifier' => $verifier] = $asked;
 
-    // SimpleSAMLphp signs the person in
     [$status, $location, $page] = saml_idp_log_in($cookies, $ca, $asked['status'], $asked['location'], $username, $person['password']);
     demo_expect($status === 200, sprintf(
         '%s signs in at SimpleSAMLphp, which answers with the page that posts its Response (got %d %s)',
@@ -498,7 +421,6 @@ function saml_idp_sign_in(array $client, string $username, string $binding, bool
     file_put_contents(SAML_IDP_CAPTURED . '/' . $capture . '-response.xml', $response);
     saml_idp_response_on_the_wire($response, $encrypted);
 
-    // the assertion consumer service, posted from the site of SimpleSAMLphp, then from the origin of the provider
     $again = saml_sp_posted_from_another_site($acs['action'], $acs['fields'], $ca);
     [$status, $location, $page] = demo_request($cookies, $ca, 'POST', $again['url'], $again['fields']);
     parse_str((string) parse_url($login, \PHP_URL_QUERY), $interaction);
@@ -512,7 +434,6 @@ function saml_idp_sign_in(array $client, string $username, string $binding, bool
         ),
     );
 
-    // the authorization answered, the code spent
     [$status, $location] = demo_resume($cookies, $ca, $issuer, $location);
     demo_expect(
         $status === 302 && str_starts_with($location, DEMO_URL . '/oidc/callback?'),
@@ -548,11 +469,6 @@ function saml_idp_sign_in(array $client, string $username, string $binding, bool
 }
 
 /**
- * The half of a sign-in before the identity provider signs anybody in: oidc-demo asks for an authorization, the login
- * page of the provider asks for the address first (spec/saml.md S-61), or skips it for the address the client hints
- * (S-62), and sends the browser to the sign-on of this provider (S-51), whose AuthnRequest goes over the binding the
- * metadata the provider holds publish, captured. Returned is what the client holds and what SimpleSAMLphp answered.
- *
  * @param array{issuer: string, ca: string, secret: string, serviceProvider: array{entityId: string, acs: string}} $client
  * @param array<string, array<string, string>> $cookies host => name => value
  * @param 'redirect'|'post' $binding
@@ -562,7 +478,6 @@ function saml_idp_ask(array $client, array &$cookies, string $address, string $b
 {
     ['issuer' => $issuer, 'ca' => $ca] = $client;
 
-    // the client
     $base64url = static fn (string $bytes): string => rtrim(strtr(base64_encode($bytes), '+/', '-_'), '=');
     $verifier = $base64url(random_bytes(32));
     $state = $base64url(random_bytes(16));
@@ -589,7 +504,6 @@ function saml_idp_ask(array $client, array &$cookies, string $address, string $b
     $login = $location;
     $signOn = $issuer . '/saml/sp/sign-on?';
 
-    // the login page, its address first
     if ($hinted) {
         [$status, $location] = demo_request($cookies, $ca, 'GET', $login);
         demo_expect(
@@ -621,13 +535,11 @@ function saml_idp_ask(array $client, array &$cookies, string $address, string $b
     }
     parse_str((string) parse_url($location, \PHP_URL_QUERY), $query);
     demo_expect(($query['identity_provider'] ?? null) === SAML_IDP_ENTITY_ID, sprintf('of %s', SAML_IDP_ENTITY_ID));
-    // spec/saml.md S-51: the one-time reference the login page drew, without which the sign-on starts nothing
     demo_expect(
         is_string($query['reference'] ?? null) && preg_match('/^[A-Za-z0-9_-]{43}$/', $query['reference']) === 1,
         'under the one-time reference the login page drew for that sign-on',
     );
 
-    // the AuthnRequest, over the binding the metadata publish
     [$status, $location, $page] = demo_request($cookies, $ca, 'GET', $location);
     $sso = SAML_IDP_URL . '/simplesaml/module.php/saml/idp/singleSignOnService';
     if ($binding === 'redirect') {
@@ -684,9 +596,6 @@ function saml_idp_ask(array $client, array &$cookies, string $address, string $b
 }
 
 /**
- * The login of SimpleSAMLphp, from its answer to a request: its form opened, the username and the password posted, its
- * redirections on its own site followed. Returned is where that leaves the browser.
- *
  * @param array<string, array<string, string>> $cookies host => name => value
  * @return array{int, string, string} status, Location, body
  */
@@ -710,10 +619,8 @@ function saml_idp_log_in(array &$cookies, string $ca, int $status, string $locat
 }
 
 /**
- * The Response as SimpleSAMLphp sent it: signed, its assertion signed too and named by a persistent NameID when it is in
- * clear; encrypted for the key the provider gave this identity provider alone (spec/saml.md S-64, S-65), its session
- * key under rsa-oaep-mgf1p and its content under aes128-cbc, which the provider opens only because the signature of the
- * Response covers it (decision 0013), when it was asked to encrypt.
+ * SimpleSAMLphp encrypts the content under aes128-cbc, which the provider opens only because the signature of the
+ * Response covers it (decision 0013).
  */
 function saml_idp_response_on_the_wire(string $response, bool $encrypted): void
 {
@@ -749,8 +656,6 @@ function saml_idp_response_on_the_wire(string $response, bool $encrypted): void
 }
 
 /**
- * The ID token and UserInfo of a sign-in, as the client received them.
- *
  * @param array{claims: array<string, mixed>, userinfo: array<string, mixed>} $signedIn
  */
 function saml_idp_claims(string $title, array $signedIn): void
@@ -773,11 +678,8 @@ function saml_idp_claims(string $title, array $signedIn): void
 }
 
 /**
- * carol signs in at SimpleSAMLphp, which then refuses her (docker/saml-idp/metadata/saml20-idp-hosted.php): at her login
- * it shows its own error page and posts nothing; the next request the provider sends in the same browser finds her
- * signed in there and is answered with a Response whose status is Responder and AuthnFailed, with no assertion. The
- * assertion consumer service reads that status as the person authenticated by nobody and answers the client
- * access_denied at its redirection URI with its state (spec/saml.md S-58), creating nobody.
+ * SimpleSAMLphp posts nothing at the login of carol: the next request of the provider in that browser gets its
+ * AuthnFailed Response.
  *
  * @param array{issuer: string, ca: string, secret: string, serviceProvider: array{entityId: string, acs: string}} $client
  */
@@ -851,10 +753,6 @@ function saml_idp_failed_at_the_provider(array $client): void
 }
 
 /**
- * The Response of a sign-in posted again by the browser that posted it, from the origin of the provider and with its
- * cookies: the entry its RelayState named was forgotten when it was read (spec/saml.md S-53), so the second post finds
- * nothing and is refused before the response is read.
- *
  * @param array{cookies: array<string, array<string, string>>, acs: array{action: string, fields: array<string, string>}} $signedIn
  */
 function saml_idp_replayed(string $issuer, string $ca, array $signedIn): void
@@ -865,10 +763,6 @@ function saml_idp_replayed(string $issuer, string $ca, array $signedIn): void
 }
 
 /**
- * A Response SimpleSAMLphp sends unasked, its sign-on started at the identity provider for the service provider of the
- * tenant (Profiles §4.1.5), in the browser of bob, who is signed in there: it answers no request, carries no
- * InResponseTo and no RelayState the provider remembers, and is refused (decision 0029, spec/saml.md S-53).
- *
  * @param array{cookies: array<string, array<string, string>>} $signedIn
  * @param array{entityId: string, acs: string} $serviceProvider
  */
@@ -902,9 +796,6 @@ function saml_idp_unsolicited(string $issuer, string $ca, array $signedIn, array
     saml_idp_refused($status, $page, 'the provider refuses it, no request of this browser naming it (decision 0029)');
 }
 
-/**
- * The page of a refusal of the assertion consumer service, and the rule it gives, which names no value (M-16).
- */
 function saml_idp_refused(int $status, string $page, string $what): void
 {
     $description = preg_match('/data-description><code>[^<]*<\/code>: ([^<]+)/', $page, $matches) === 1 ? html_entity_decode($matches[1]) : '';
@@ -914,11 +805,6 @@ function saml_idp_refused(int $status, string $page, string $what): void
     );
 }
 
-/**
- * The AuthnRequests the provider sent over HTTP-Redirect, by the OpenSSL command line and Python's zlib, the oracle of
- * saml2-bindings, under the signing certificate of the metadata of its service provider: the signature over the query
- * string and the document it carries.
- */
 function saml_idp_verify_requests(): void
 {
     $urls = glob(SAML_IDP_CAPTURED . '/*-authn-request.url') ?: [];
@@ -936,14 +822,8 @@ function saml_idp_verify_requests(): void
 }
 
 /**
- * xmlsec1 on every XML signature of the documents captured, each under the certificate of the metadata of its signer,
- * both metadata among them (tests/saml2-model/Interop/simplesamlphp/xmlsec1-verify.sh): the request posted under the
- * service provider of the tenant, every Response and every assertion in clear under the identity provider; the signature
- * of an encrypted assertion is inside its ciphertext, which only the provider opens, so the signature of its Response,
- * over that ciphertext, is the one verified. The script lists and skips a document that carries no XML signature, which
- * two kinds of document may be and no other: a request redirected, whose signature is over its query string and which
- * OpenSSL verified (saml_idp_verify_requests()), and the metadata of the service provider, which the provider does not
- * sign. Any other document skipped lost its signature, and fails the walk.
+ * Only a redirected request, signed over its query string, and the metadata of the service provider, which the
+ * provider does not sign, may carry no XML signature: any other document the script skips fails the walk.
  */
 function saml_idp_xmlsec1(): void
 {

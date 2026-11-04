@@ -14,14 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Decision 0014 over HTTP: the budget of a client is consumed where its authentication succeeded, by
- * tenant and by client, and the request that finds the window full is refused in the same shape as
- * every other refusal for load. The budget of this kernel is one request and the budget of an origin is
- * left where the suite leaves it, so that what refuses here is the client's and nothing else; the
- * browser keeps its kernel so that the count of a window survives between two requests.
- *
- * The `client_credentials` grant is what makes this one request: a service asking for itself, with no
- * browser anywhere and nobody signed in (RFC 6749 §4.4).
+ * Decision 0014, RFC 6749 §4.4
  */
 final class ClientLoadBudgetTest extends BrowserTestCase
 {
@@ -34,8 +27,7 @@ final class ClientLoadBudgetTest extends BrowserTestCase
     private const string OTHER_SECRET = 'service-opaque-secret-of-at-least-32-chars';
 
     /**
-     * RFC 8628 §3.1: the appliance of the test kernel that registered no credentials at all, which names
-     * itself at the token endpoint and proves nothing.
+     * RFC 8628 §3.1
      */
     private const string PUBLIC_CLIENT_ID = 'appliance-public-app';
 
@@ -58,8 +50,7 @@ final class ClientLoadBudgetTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0014, RFC 6585 §4: what a client asks past its window is refused with the delay to wait,
-     * in the shape every refusal for load has.
+     * Decision 0014, RFC 6585 §4
      */
     #[Test]
     public function aClientPastItsBudgetIsRefused(): void
@@ -81,7 +72,7 @@ final class ClientLoadBudgetTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0014: the key is the client, so what one client spent is nothing to another.
+     * Decision 0014
      */
     #[Test]
     public function theBudgetIsCountedByClient(): void
@@ -97,9 +88,7 @@ final class ClientLoadBudgetTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0014: a client that only names itself proves no identifier, and a budget counted on an
-     * identifier that was merely claimed is emptied by naming somebody else's client. The appliance is
-     * refused for its device code, request after request, and never for a budget of its own.
+     * Decision 0014
      */
     #[Test]
     public function aClientThatOnlyNamesItselfTakesNothingOfTheBudget(): void
@@ -122,8 +111,7 @@ final class ClientLoadBudgetTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0014: a refusal reaches the audit trail with the budget that refused, the route asked for
-     * and the client the budget was counted on.
+     * Decision 0014
      */
     #[Test]
     public function aRefusalReachesTheAuditTrailWithItsClient(): void
@@ -142,9 +130,6 @@ final class ClientLoadBudgetTest extends BrowserTestCase
         static::assertSame(self::CLIENT_ID, $spent[0]->client);
     }
 
-    /**
-     * The requests this client is allowed, each served, which leave its window full.
-     */
     private function spendTheBudgetOf(string $clientId, string $secret): void
     {
         for ($request = 1; $request <= self::BUDGET; ++$request) {

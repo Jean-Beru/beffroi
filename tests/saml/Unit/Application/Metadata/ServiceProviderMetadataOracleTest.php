@@ -26,10 +26,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md section 9, S-39: the metadata of the service provider of a tenant holding an active and a staged SAML
- * key, written into the directory SAML_SP_METADATA_ORACLE names with what a reader must find in them, for SimpleSAMLphp's
- * own parser to read ("castor saml-simplesamlphp-parser", tests/saml/Interop/simplesamlphp/). The files are the input
- * of that judge, not fixtures: the test is skipped when the variable is not set.
+ * spec/saml.md section 9, S-39
  */
 #[RequiresEnvironmentVariable('SAML_SP_METADATA_ORACLE')]
 final class ServiceProviderMetadataOracleTest extends TestCase
@@ -37,8 +34,7 @@ final class ServiceProviderMetadataOracleTest extends TestCase
     private const string ISSUER = 'https://id.acme.example';
 
     /**
-     * S-39, S-40, section 6.9: the document, and its entity ID, its assertion consumer service and the certificates of
-     * its two keys, in creation order.
+     * S-39, S-40, section 6.9
      */
     #[Test]
     public function itWritesTheMetadataForSimpleSamlPhp(): void

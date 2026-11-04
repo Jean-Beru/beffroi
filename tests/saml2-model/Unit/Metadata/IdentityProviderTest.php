@@ -17,13 +17,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3: the identity provider role of an entity, under the rules of its values and the counts of section 7
- * (SAML Metadata §2.4.3).
+ * Section 5.3, section 7, SAML Metadata §2.4.3
  */
 final class IdentityProviderTest extends TestCase
 {
     /**
-     * Section 5.3: every field, kept as given.
+     * Section 5.3
      */
     #[Test]
     public function itKeepsItsFields(): void
@@ -67,7 +66,7 @@ final class IdentityProviderTest extends TestCase
     }
 
     /**
-     * Section 6.5 step 7: no single logout service, no format, and the requests not wanted signed, by default.
+     * Section 6.5 step 7
      */
     #[Test]
     public function itHasNoLogoutServiceNoFormatAndWantsNoSignedRequestByDefault(): void
@@ -84,7 +83,7 @@ final class IdentityProviderTest extends TestCase
     }
 
     /**
-     * Section 7: 64 single sign-on services, the bound itself.
+     * Section 7
      */
     #[Test]
     public function itAcceptsSixtyFourSingleSignOnServices(): void
@@ -97,7 +96,7 @@ final class IdentityProviderTest extends TestCase
     }
 
     /**
-     * M-17, §9.2 row 36, "one over each bound of section 7": 65 single sign-on services.
+     * M-17, §9.2 row 36
      */
     #[Test]
     public function itRefusesSixtyFiveSingleSignOnServices(): void
@@ -111,7 +110,7 @@ final class IdentityProviderTest extends TestCase
     }
 
     /**
-     * M-17: the rules the two roles share apply, here seventeen signing certificates.
+     * M-17
      */
     #[Test]
     public function itAppliesTheRulesOfARole(): void
@@ -130,7 +129,7 @@ final class IdentityProviderTest extends TestCase
     }
 
     /**
-     * M-3, section 5.3: the keys of its signing certificates, in their order, which verify what it signs.
+     * M-3, section 5.3
      */
     #[Test]
     public function itHasTheKeysOfItsSigningCertificates(): void
@@ -161,8 +160,7 @@ final class IdentityProviderTest extends TestCase
     }
 
     /**
-     * Section 5.3, M-3: a role without a signing certificate has no keys, null rather than an empty list, which Dsig
-     * refuses as a programming error.
+     * Section 5.3, M-3
      */
     #[Test]
     public function itHasNoKeysWithoutASigningCertificate(): void

@@ -21,7 +21,7 @@ use PHPUnit\Framework\TestCase;
 use function strlen;
 
 /**
- * Section 5.3, D-2, D-3, D-5, D-8, D-14: the one reference read strictly.
+ * Section 5.3, D-2, D-3, D-5, D-8, D-14
  */
 final class ReferenceTest extends TestCase
 {
@@ -45,7 +45,7 @@ final class ReferenceTest extends TestCase
     }
 
     /**
-     * §9.2 rows 7, 8 and 9, D-2: the URI is "#" and an NCName, nothing else.
+     * §9.2 rows 7, 8 and 9, D-2
      */
     #[Test]
     #[TestWith(['reference-uri-empty-refused.xml'], 'empty')]
@@ -66,7 +66,7 @@ final class ReferenceTest extends TestCase
     }
 
     /**
-     * §9.2 row 10, D-2: a Type, whatever it names.
+     * §9.2 row 10, D-2
      */
     #[Test]
     public function itRefusesAType(): void
@@ -84,7 +84,7 @@ final class ReferenceTest extends TestCase
     }
 
     /**
-     * §9.2 row 28, D-14: the prefixes of a PrefixList are bounded.
+     * §9.2 row 28, D-14
      */
     #[Test]
     public function itRefusesAPrefixListOverTheBound(): void
@@ -102,7 +102,7 @@ final class ReferenceTest extends TestCase
     }
 
     /**
-     * Core I-4: an element of a document parsed outside the loader.
+     * Core I-4
      */
     #[Test]
     public function itRefusesAnElementOfAForeignDocument(): void

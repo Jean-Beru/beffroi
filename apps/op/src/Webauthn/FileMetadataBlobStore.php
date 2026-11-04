@@ -23,10 +23,6 @@ use function sort;
 use function sprintf;
 use function unlink;
 
-/**
- * The FIDO metadata as files (architecture §3.4), one JSON document per source under "<storage>/<name>.json",
- * next to the sealed keys and written the same way, through a sibling file renamed into place.
- */
 final readonly class FileMetadataBlobStore implements MetadataBlobStoreInterface
 {
     /**

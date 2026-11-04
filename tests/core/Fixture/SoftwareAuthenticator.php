@@ -25,11 +25,7 @@ use function strlen;
 use Webauthn\AuthenticatorData;
 
 /**
- * A FIDO2 authenticator in software, for the tests (WebAuthn Level 3 §6): one key pair, P-256 unless the
- * test hands another (SoftwareCredentialKey), one credential, the flags chosen by the test. It answers the options as a browser hands them to it
- * (§5.1.8, the JSON of parseCreationOptionsFromJSON and parseRequestOptionsFromJSON) with the JSON a
- * browser hands back (§5.1, toJSON): an attestation object of format "none" at creation, a signed
- * assertion afterwards. A hardware key counts its signatures, a synced passkey keeps the count at zero.
+ * WebAuthn Level 3 §6
  */
 final class SoftwareAuthenticator
 {
@@ -38,20 +34,15 @@ final class SoftwareAuthenticator
     public readonly string $aaguid;
 
     /**
-     * @var non-empty-string the user handle the creation options carried, sent back with every assertion (§6.3.2.1)
+     * @var non-empty-string
      */
     public private(set) string $userHandle = '-';
 
     public private(set) int $signCount = 0;
 
     /**
-     * @param string $attestation the format of the attestation statement at creation (§8): "none", what a
-     *                            browser sends when the provider asked for none, or "packed" in self
-     *                            attestation (§8.2), what an authenticator may send anyway
-     * @param bool $forgesAttestation a packed statement whose signature does not hold: the test of a
-     *                                statement verified rather than skipped
-     * @param SoftwareCredentialKey $credentialKey the key pair of the credential, and so its algorithm
-     * @param string|null $aaguid the AAGUID it declares (§6), sixteen bytes, one drawn at random unless given
+     * @param string $attestation "none" or "packed"
+     * @param string|null $aaguid sixteen bytes
      */
     public function __construct(
         private string $origin,
@@ -69,9 +60,6 @@ final class SoftwareAuthenticator
         $this->aaguid = $aaguid ?? random_bytes(16);
     }
 
-    /**
-     * The same credential presented from another origin: the test of a phished assertion.
-     */
     public function atOrigin(string $origin): self
     {
         $clone = clone $this;
@@ -80,9 +68,6 @@ final class SoftwareAuthenticator
         return $clone;
     }
 
-    /**
-     * The same credential scoped to another relying party: the test of a wrong rpId.
-     */
     public function forRelyingParty(string $relyingPartyId): self
     {
         $clone = clone $this;
@@ -92,8 +77,7 @@ final class SoftwareAuthenticator
     }
 
     /**
-     * The same credential whose authenticator now says the key is bound to it: the BE flag §6.1.3 sets at
-     * the creation of a credential and forbids to change, claimed the other way round by a later assertion.
+     * WebAuthn Level 3 §6.1.3
      */
     public function withoutBackupEligibility(): self
     {
@@ -105,7 +89,7 @@ final class SoftwareAuthenticator
     }
 
     /**
-     * A later assertion with a count that did not grow: a cloned authenticator or a replay (§6.1.1).
+     * WebAuthn Level 3 §6.1.1
      */
     public function withSignCount(int $signCount): self
     {
@@ -116,10 +100,7 @@ final class SoftwareAuthenticator
     }
 
     /**
-     * The registration ceremony on the authenticator's side (§6.3.2): the attestation object with the new
-     * credential, of format "none".
-     *
-     * @param string $creationOptions the JSON the provider gave the browser
+     * WebAuthn Level 3 §6.3.2
      */
     public function create(string $creationOptions): string
     {
@@ -158,10 +139,7 @@ final class SoftwareAuthenticator
     }
 
     /**
-     * The authentication ceremony on the authenticator's side (§6.3.3): the authenticator data and the
-     * signature over them and the hash of the client data.
-     *
-     * @param string $requestOptions the JSON the provider gave the browser
+     * WebAuthn Level 3 §6.3.3
      */
     public function get(string $requestOptions): string
     {
@@ -191,7 +169,7 @@ final class SoftwareAuthenticator
     }
 
     /**
-     * The COSE_Key (RFC 9053 §7) of the public key, as the authenticator encodes it.
+     * RFC 9053 §7
      */
     public function cosePublicKey(): string
     {
@@ -199,8 +177,7 @@ final class SoftwareAuthenticator
     }
 
     /**
-     * §8.2, packed in self attestation: the signature over the same data as an assertion, with the
-     * credential key itself; nothing for "none" (§8.7).
+     * WebAuthn Level 3 §8.2, §8.7
      */
     private function attestationStatement(string $data): MapObject
     {
@@ -219,7 +196,7 @@ final class SoftwareAuthenticator
     }
 
     /**
-     * §6.1: rpIdHash, flags, signCount, then what the ceremony appends.
+     * WebAuthn Level 3 §6.1
      */
     private function authenticatorData(string $relyingPartyId, int $flags, string $trailer): string
     {
@@ -233,7 +210,7 @@ final class SoftwareAuthenticator
     }
 
     /**
-     * §5.8.1, as the browser writes it.
+     * WebAuthn Level 3 §5.8.1
      */
     private function clientDataJson(string $type, string $challenge): string
     {

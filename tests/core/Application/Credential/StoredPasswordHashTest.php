@@ -15,9 +15,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Issue #603: the one document a hash is kept as, read back without a connection. The algorithm is the
- * class the wiring holds for the name the document carries (decision 0002), so the wiring is an argument
- * and a name nothing wired accounts for is refused rather than guessed.
+ * Decision 0002
  */
 final class StoredPasswordHashTest extends TestCase
 {

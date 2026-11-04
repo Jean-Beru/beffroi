@@ -15,10 +15,6 @@ use function sprintf;
 use function str_starts_with;
 use function trim;
 
-/**
- * The files of this application as the tests of its image read them: by their path in the application, and by
- * the path the build of the image names them by, from the root of the monorepo it is built from (compose.yaml).
- */
 final class ApplicationFiles
 {
     public const string FROM_THE_ROOT = 'apps/op/';
@@ -29,8 +25,7 @@ final class ApplicationFiles
     }
 
     /**
-     * @return list<string> the lines of a file of this application that are neither empty nor a comment: the
-     *                      patterns of an ignore file, the variables of an environment file
+     * @return list<string> neither empty nor a comment
      */
     public static function linesOf(string $file): array
     {

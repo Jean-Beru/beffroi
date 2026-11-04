@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * E-7, E-13: base64 decoded strictly after whitespace removal, the text bounded before anything is decoded.
+ * E-7, E-13
  */
 final class Base64Test extends TestCase
 {
@@ -28,7 +28,7 @@ final class Base64Test extends TestCase
     }
 
     /**
-     * §9.2 row 15, E-7: a character outside the alphabet, padding out of place, or nothing at all.
+     * §9.2 row 15, E-7
      */
     #[Test]
     #[TestWith(['AA!C'], 'a character outside the alphabet')]
@@ -47,7 +47,7 @@ final class Base64Test extends TestCase
     }
 
     /**
-     * §9.2 row 16, E-13: the text is bounded before it is decoded.
+     * §9.2 row 16, E-13
      */
     #[Test]
     public function itRefusesATextOverTheBound(): void
@@ -64,7 +64,7 @@ final class Base64Test extends TestCase
     }
 
     /**
-     * E-13: a text of exactly the bound decodes.
+     * E-13
      */
     #[Test]
     public function itDecodesATextAtTheBound(): void

@@ -23,8 +23,7 @@ use PHPUnit\Framework\TestCase;
 use function array_map;
 
 /**
- * Section 5.6, M-2: the rule of a received protocol message, what authenticated it and the document to read it from;
- * M-1, M-3, M-4 on the way.
+ * Section 5.6, M-2, M-1, M-3, M-4
  */
 final class MessageAuthenticationTest extends TestCase
 {
@@ -33,9 +32,7 @@ final class MessageAuthenticationTest extends TestCase
     private const string UNSIGNED = 'behaviour/authentication-logout-request-unsigned.xml';
 
     /**
-     * M-2, M-1, D-10: a ds:Signature child of the root, verified under the keys of the peer's metadata, the message
-     * read from Verified::$document, the signed element without its Signature, whether the signature is required or
-     * optional.
+     * M-2, M-1, D-10
      */
     #[Test]
     #[DataProvider('provideSignatureRequiredOrNot')]
@@ -71,8 +68,7 @@ final class MessageAuthenticationTest extends TestCase
     }
 
     /**
-     * M-2, Profiles §4.1.6: a message whose signature is optional and absent was authenticated by nothing, and is read
-     * as received, whether the peer has signing keys or not.
+     * M-2, Profiles §4.1.6
      */
     #[Test]
     #[DataProvider('provideKeysOrNone')]
@@ -105,8 +101,7 @@ final class MessageAuthenticationTest extends TestCase
     }
 
     /**
-     * M-2, Profiles §4.4.4.1: a message the profile requires signed and that carries no ds:Signature as a direct child
-     * of its root is refused, one moved into samlp:Extensions included, which nothing searches (M-4).
+     * M-2, Profiles §4.4.4.1, M-4
      */
     #[Test]
     #[DataProvider('provideUnsignedMessages')]
@@ -139,8 +134,7 @@ final class MessageAuthenticationTest extends TestCase
     }
 
     /**
-     * M-3, section 5.3: a peer whose metadata holds no signing key cannot have signed the message, whether it carries a
-     * signature, required or optional, or carries none where one is required.
+     * M-3, section 5.3
      */
     #[Test]
     #[DataProvider('provideMessagesWithoutKeys')]
@@ -168,8 +162,7 @@ final class MessageAuthenticationTest extends TestCase
     }
 
     /**
-     * M-2, section 5.8: a signature that does not verify refuses the message with Dsig's refusal, as it is, whether it
-     * is required or optional.
+     * M-2, section 5.8
      *
      * @param class-string<RefusedXml> $exception
      */
@@ -218,7 +211,7 @@ final class MessageAuthenticationTest extends TestCase
     }
 
     /**
-     * M-5: a second ds:Signature as a direct child of the root, before any is verified.
+     * M-5
      */
     #[Test]
     #[DataProvider('provideSignatureRequiredOrNot')]
@@ -236,8 +229,7 @@ final class MessageAuthenticationTest extends TestCase
     }
 
     /**
-     * Section 6.8, SAML Bindings §3.4.4.1: a message the binding authenticated carries no ds:Signature, and is read as
-     * received.
+     * Section 6.8, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itAcceptsAMessageTheBindingAuthenticated(): void
@@ -256,8 +248,7 @@ final class MessageAuthenticationTest extends TestCase
     }
 
     /**
-     * Section 5.6, SAML Bindings §3.4.4.1: the HTTP-Redirect encoding removes the ds:Signature of the message, one that
-     * carries it did not come that way.
+     * Section 5.6, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesASignatureInAMessageTheBindingAuthenticated(): void
@@ -274,8 +265,7 @@ final class MessageAuthenticationTest extends TestCase
     }
 
     /**
-     * Section 6.8, M-3: the binding verifies the query string with the keys of the peer's metadata; a peer whose
-     * metadata holds none cannot have been verified so, and is refused as validate() refuses it.
+     * Section 6.8, M-3
      */
     #[Test]
     public function itRefusesAMessageTheBindingAuthenticatedFromAPeerWithoutKey(): void

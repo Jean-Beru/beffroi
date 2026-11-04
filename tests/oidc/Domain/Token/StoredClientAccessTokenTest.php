@@ -36,8 +36,7 @@ final class StoredClientAccessTokenTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4, issue #588: there is nobody behind it, so the acts it leads to name nobody rather
-     * than the client twice.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function itNamesNoPerson(): void
@@ -55,7 +54,7 @@ final class StoredClientAccessTokenTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4, issue #888: it descends from no session, so no session names a person for it either.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function itNamesNoSessionForAPerson(): void
@@ -73,8 +72,7 @@ final class StoredClientAccessTokenTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: the row keeps what the introspection of the token answers with, and nothing of a
-     * sign-in, there having been none (RFC 6749 §4.4).
+     * Architecture §4.6, RFC 6749 §4.4
      */
     #[Test]
     public function itRecordsWhatTheIntrospectionOfTheTokenAnswersWith(): void
@@ -104,7 +102,7 @@ final class StoredClientAccessTokenTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: the token is addressed to the resources it was asked for, never to its own client.
+     * RFC 8707 §2
      */
     #[Test]
     public function itIsAddressedToTheResourcesItWasAskedFor(): void

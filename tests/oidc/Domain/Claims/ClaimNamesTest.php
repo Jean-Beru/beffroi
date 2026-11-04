@@ -12,8 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * OIDC Core §5.1, §5.5: claims by their names, each once, as a request asks for them one by one, as a scope
- * stands for them and as a consent holds them.
+ * OIDC Core §5.1, §5.5
  */
 final class ClaimNamesTest extends TestCase
 {
@@ -29,9 +28,6 @@ final class ClaimNamesTest extends TestCase
         static::assertSame(['email', 'name'], iterator_to_array($claims));
     }
 
-    /**
-     * A set that holds no name is a set too: what a consent given for its scopes alone holds by name.
-     */
     #[Test]
     public function aSetMayHoldNoName(): void
     {
@@ -143,8 +139,6 @@ final class ClaimNamesTest extends TestCase
     }
 
     /**
-     * A row edited by hand is refused where it is read rather than coerced into a set it never was.
-     *
      * @param array<array-key, mixed> $document
      */
     #[Test]

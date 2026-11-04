@@ -31,8 +31,7 @@ use PHPUnit\Framework\TestCase;
 use function preg_replace_callback;
 
 /**
- * Sections 5.7, 6.6 step 3 and 6.7, §9.3 row 20, SAML Core §6.2: the assertion a response writer signed, encrypted for
- * the test key of the service provider, then the response signed over the ciphertext on request.
+ * Sections 5.7, 6.6 step 3 and 6.7, §9.3 row 20, SAML Core §6.2
  */
 final class ResponseWriterEncryptionTest extends TestCase
 {
@@ -43,8 +42,7 @@ final class ResponseWriterEncryptionTest extends TestCase
     private const string DSIG = 'http://www.w3.org/2000/09/xmldsig#';
 
     /**
-     * §9.3 row 20, section 6.7: the response holds one saml:EncryptedAssertion where its assertion stood, the last
-     * child, holding one xenc:EncryptedData, and no saml:Assertion.
+     * §9.3 row 20, section 6.7
      */
     #[Test]
     public function itPutsAnEncryptedAssertionInPlaceOfTheAssertion(): void
@@ -63,8 +61,7 @@ final class ResponseWriterEncryptionTest extends TestCase
     }
 
     /**
-     * §9.3 row 20, section 6.7, core.md section 6.5: the saml prefix is declared on the saml:EncryptedAssertion that
-     * introduces it under the samlp:Response, so that the response serializes and loads again.
+     * §9.3 row 20, section 6.7, core.md section 6.5
      */
     #[Test]
     public function itDeclaresTheSamlPrefixOnTheEncryptedAssertion(): void
@@ -80,8 +77,7 @@ final class ResponseWriterEncryptionTest extends TestCase
     }
 
     /**
-     * §9.3 row 20, section 5.7, enc.md E-1: the content algorithm and the key transport of the Encryption are the ones
-     * written, aes256-gcm under rsa-oaep-mgf1p by default.
+     * §9.3 row 20, section 5.7, enc.md E-1
      */
     #[Test]
     #[DataProvider('provideSchemes')]
@@ -120,8 +116,7 @@ final class ResponseWriterEncryptionTest extends TestCase
     }
 
     /**
-     * Section 6.7, enc.md section 5.3: the xenc:EncryptedKey sits inside the ds:KeyInfo of the xenc:EncryptedData and
-     * carries no KeyInfo of its own, the service provider decrypting with the key it holds.
+     * Section 6.7, enc.md section 5.3
      */
     #[Test]
     public function itWritesNoKeyInfoUnderTheEncryptedKey(): void
@@ -137,9 +132,7 @@ final class ResponseWriterEncryptionTest extends TestCase
     }
 
     /**
-     * §9.3 row 20, section 9.1, section 6.7, SAML Core §6.2, enc.md E-9: read back by a validator, the identity provider
-     * given the test key of the service provider (section 5.5), the assertion is the one written, signed by the identity provider and verified once
-     * decrypted, the response signed over the ciphertext when asked.
+     * §9.3 row 20, section 9.1, section 6.7, SAML Core §6.2, enc.md E-9, section 5.5
      */
     #[Test]
     #[DataProvider('provideSignedParts')]
@@ -172,8 +165,7 @@ final class ResponseWriterEncryptionTest extends TestCase
     }
 
     /**
-     * §9.3 row 20, section 6.6 step 3, SAML Core §6.2: on request, the response is signed after the assertion was
-     * encrypted, its Signature after its Issuer, and verifies under the identity provider's key.
+     * §9.3 row 20, section 6.6 step 3, SAML Core §6.2
      */
     #[Test]
     public function itSignsTheResponseOverTheEncryptedAssertion(): void
@@ -198,8 +190,7 @@ final class ResponseWriterEncryptionTest extends TestCase
     }
 
     /**
-     * §9.3 row 20, SAML Core §6.2, dsig.md section 5.5: the signature of the response covers the ciphertext, so that a
-     * byte of it changed is refused before anything is decrypted.
+     * §9.3 row 20, SAML Core §6.2, dsig.md section 5.5
      */
     #[Test]
     public function theSignatureOfTheResponseCoversTheCiphertext(): void
@@ -219,9 +210,6 @@ final class ResponseWriterEncryptionTest extends TestCase
         new Verifier(SamlLoader::create())->verify($altered->root(), MetadataFixtures::verificationKeys('idp'));
     }
 
-    /**
-     * A response of the fixtures written with its assertion encrypted for the service provider's test key.
-     */
     private function encrypted(SignedParts $parts): Document
     {
         return new ResponseWriter()->write(Fixtures::response(), $this->signing(), $parts, new Encryption(self::peer()));

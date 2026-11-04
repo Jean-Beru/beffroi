@@ -11,20 +11,16 @@ use Beffroi\Oidc\Domain\Client\Registration\StatementIssuer;
 use Jose\Component\Core\JWK;
 
 /**
- * The authority the tests pin the software statements of (RFC 7591 §2.3): one, signing ES256 with the key
- * of the suite, and the statements it signs.
+ * RFC 7591 §2.3
  */
 final readonly class SoftwareStatements
 {
     public const string ISSUER = 'https://store.example.com';
 
-    /**
-     * What the product the statement describes calls itself, the same across every installation of it.
-     */
     public const string SOFTWARE_ID = 'invoice-reader';
 
     /**
-     * @param list<non-empty-string>|null $signingAlgorithms what it signs with, ES256 unless the test says otherwise
+     * @param list<non-empty-string>|null $signingAlgorithms
      */
     public static function authority(?array $signingAlgorithms = null, string $issuer = self::ISSUER): StatementIssuer
     {
@@ -32,11 +28,7 @@ final readonly class SoftwareStatements
     }
 
     /**
-     * The claims of a statement: what it says about itself, and what it says about the client, which is
-     * client metadata under the names of RFC 7591 §2.
-     *
-     * Each one carries an identifier of its own, because one statement registers one client and the store
-     * that remembers them outlives a test: two statements minted in the same second are two statements.
+     * RFC 7591 §2
      *
      * @param array<string, mixed> $overrides
      *

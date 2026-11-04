@@ -9,10 +9,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * What a third party answers is read up to the bytes a document of its kind has any reason to be, and the read stops
- * at the first byte beyond.
- */
 final class ByteLimitTest extends TestCase
 {
     #[Test]

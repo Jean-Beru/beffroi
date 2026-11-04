@@ -30,21 +30,17 @@ use const T_CONSTANT_ENCAPSED_STRING;
 use const T_NEW;
 
 /**
- * §9.3 row 14, B-11: every message of an exception of src/, read on the source, ends with the rule that refused, in
- * parentheses, and is written in the code, a literal or the format of a sprintf() whose arguments are names and bounds,
- * never a value of the input. The exceptions read are the BindingRefused subclasses of src/Exception/ and the
- * programming errors of the caller (section 5.4, \InvalidArgumentException and \LogicException), since B-11 holds for
- * every exception the package throws. That no message carries a value of the input is asserted by every refusal test.
+ * §9.3 row 14, B-11
  */
 final class RefusalMessagesTest extends TestCase
 {
     /**
-     * The programming errors of the caller the package throws (section 5.4).
+     * Section 5.4
      */
     private const array PROGRAMMING_ERRORS = ['InvalidArgumentException', 'LogicException'];
 
     /**
-     * §9.3 row 14, B-11: the message of every exception src/ throws ends with "(B-n)." or "(section n).".
+     * §9.3 row 14, B-11
      */
     #[Test]
     public function everyRefusalNamesItsRule(): void
@@ -73,7 +69,7 @@ final class RefusalMessagesTest extends TestCase
     }
 
     /**
-     * B-11: the rule a message ends with, and what does not count as one.
+     * B-11
      */
     #[Test]
     #[TestWith(['A query string carries both message parameters (B-1).', true], 'an invariant')]
@@ -91,8 +87,6 @@ final class RefusalMessagesTest extends TestCase
     }
 
     /**
-     * The scan finds the messages of an exception, built as the source builds them, and marks one it cannot read.
-     *
      * @param list<string> $expected
      */
     #[Test]
@@ -126,9 +120,6 @@ final class RefusalMessagesTest extends TestCase
     }
 
     /**
-     * The messages the source gives an exception: the first argument of new <BindingRefused subclass>(...) or new
-     * <programming error>(...), a literal or the format of sprintf(); anything else is "<not a literal>".
-     *
      * @return list<string>
      */
     private function messages(string $source): array
@@ -149,10 +140,6 @@ final class RefusalMessagesTest extends TestCase
         return $messages;
     }
 
-    /**
-     * The last segment of a class name as written: InvalidArgumentException of \InvalidArgumentException,
-     * MalformedEncoding of Exception\MalformedEncoding.
-     */
     private function shortName(string $name): string
     {
         $last = strrchr($name, '\\');
@@ -161,8 +148,6 @@ final class RefusalMessagesTest extends TestCase
     }
 
     /**
-     * The message at $index, the first token of an argument: a literal, or the literal format of sprintf().
-     *
      * @param list<PhpToken> $tokens
      */
     private function argument(array $tokens, int $index): string
@@ -181,8 +166,6 @@ final class RefusalMessagesTest extends TestCase
     }
 
     /**
-     * The short names of the BindingRefused subclasses, the files of src/Exception/ but their base class.
-     *
      * @return list<string>
      */
     private function refusals(): array
@@ -197,7 +180,7 @@ final class RefusalMessagesTest extends TestCase
     }
 
     /**
-     * @return array<string, string> each PHP file of src/, its path relative to src/ to its source
+     * @return array<string, string> source keyed by its path relative to src/
      */
     private function sources(): array
     {

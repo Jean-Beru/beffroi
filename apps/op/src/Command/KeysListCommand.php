@@ -25,30 +25,12 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Throwable;
 
-/**
- * The keys of the tenant with what they are published for, their state and every date of their life
- * (architecture §3.3): the ones the JWK Set publishes, and the retired ones on request. On request too,
- * whether the KMS still opens the keys in use or about to be: a KMS that lost its master key leaves
- * envelopes nothing can open, which the first signature, or the first JWE, would be the one to find out.
- *
- * A key it cannot open is named with its algorithm, and so is the run that reaches it: a rotation reaches
- * one algorithm, and a tenant publishes one key per algorithm it serves, so a KMS that forgot its master
- * key leaves as many dead keys as the tenant has algorithms and as many rotations to do.
- *
- * **It also says when a key has worked past its age with nothing staged behind it** (issue #455), which is
- * what a planning that has stopped looks like from outside: the step that stages a successor runs every
- * minute, so an active key past its age and no staged key of its algorithm is a worker that is not
- * consuming, and nothing else. The age is the one of the family of the key (issue #738).
- */
 #[AsCommand(
     name: 'beffroi:keys:list',
     description: 'List the keys of the tenant with their use, status and dates: the published ones, or every key with --all; --check opens the keys in use, or about to be, with the KMS and fails on one it cannot open or that has worked past its age with nothing staged behind it.',
 )]
 final readonly class KeysListCommand
 {
-    /**
-     * @param RotationSchedulesInterface $schedules how long a key of each family works before the planning stages a successor
-     */
     public function __construct(
         private ConfiguredTenant $tenant,
         private TenantKeyRepositoryInterface $keys,
@@ -84,8 +66,6 @@ final readonly class KeysListCommand
         /** @var list<TenantKey> $overdue */
         $overdue = [];
         $now = $this->clock->now();
-        // read over every key given, so that a successor staged behind an old one is seen whichever list
-        // was asked for
         $awaited = self::algorithmsAwaiting($keys);
         foreach ($keys as $key) {
             $rows = self::describe($key);
@@ -164,9 +144,6 @@ final readonly class KeysListCommand
     }
 
     /**
-     * The algorithms a staged key is waiting for, which is what tells an active key past its age from one
-     * whose successor is already in the JWK Set.
-     *
      * @param list<TenantKey> $keys
      *
      * @return list<string>
@@ -184,9 +161,6 @@ final readonly class KeysListCommand
     }
 
     /**
-     * The algorithms of the keys the KMS cannot open, each once and in the order they were listed: one
-     * rotation reaches one algorithm, so two dead keys of the same one are one run and not two.
-     *
      * @param list<TenantKey> $dead
      *
      * @return list<string>
@@ -204,10 +178,6 @@ final readonly class KeysListCommand
         return $algorithms;
     }
 
-    /**
-     * Why the KMS does not open the key, or null when it does: the message of the sealer and of what it
-     * wraps (the bridge names the KMS it failed to reach or the key it does not know), never the material.
-     */
     private function failureToOpen(Tenant $tenant, TenantKey $key): ?string
     {
         try {
@@ -220,8 +190,6 @@ final readonly class KeysListCommand
     }
 
     /**
-     * The dates a key has, by the transitions it went through; a staged key says when it activates.
-     *
      * @return list<array<string, string>>
      */
     private static function describe(TenantKey $key): array

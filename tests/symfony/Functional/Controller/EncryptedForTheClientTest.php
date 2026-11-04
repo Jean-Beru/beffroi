@@ -21,19 +21,12 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The acceptance of issue #165 (OIDC Core §3.1.3.7 and §5.3.2): what the provider writes for a client
- * that asked to be written to in private. The client of the test kernel, "encrypted-app", publishes the
- * EC key of RFC 7515 appendix A.3 and registers an encryption for its ID tokens and a signature and an
- * encryption for its UserInfo answer; this test holds the private half and opens what it receives, the
- * way that client would.
- *
- * A client that registered nothing receives what it always received, which the last test of the file says
- * on the very same endpoints.
+ * OIDC Core §3.1.3.7, §5.3.2
  */
 final class EncryptedForTheClientTest extends BrowserTestCase
 {
     /**
-     * RFC 7515 appendix A.3.1: the private half of the key the client publishes.
+     * RFC 7515 appendix A.3.1
      */
     private const array PRIVATE_KEY = [
         'kty' => 'EC',
@@ -50,10 +43,6 @@ final class EncryptedForTheClientTest extends BrowserTestCase
         self::signingKey();
     }
 
-    /**
-     * The ID token is a JWE and not a JWS: five parts, and nothing of its claims readable before it is
-     * opened with the key of the client.
-     */
     #[Test]
     public function theIdTokenOfAClientThatRegisteredAnEncryptionIsAJwe(): void
     {
@@ -66,10 +55,6 @@ final class EncryptedForTheClientTest extends BrowserTestCase
         static::assertStringNotContainsString('encrypted-app', (string) $idToken);
     }
 
-    /**
-     * The client opens it with its private key, and what it finds inside is the ID token the tenant
-     * signed, which verifies against the published JWK Set as any other does.
-     */
     #[Test]
     public function theClientOpensTheIdTokenAndVerifiesTheSignatureInside(): void
     {
@@ -89,8 +74,7 @@ final class EncryptedForTheClientTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §5.3.2: the answer is served as "application/jwt", and the JWE carries the signed answer,
-     * with the "iss" and the "aud" a JWT answer names.
+     * OIDC Core §5.3.2
      */
     #[Test]
     public function theUserInfoAnswerOfThatClientIsAJwt(): void
@@ -115,10 +99,6 @@ final class EncryptedForTheClientTest extends BrowserTestCase
         static::assertArrayHasKey('sub', $claims);
     }
 
-    /**
-     * Nothing of this touches a client that did not ask: the demo client keeps receiving a signed ID
-     * token and a JSON UserInfo answer, on the same endpoints and in the same run.
-     */
     #[Test]
     public function aClientThatRegisteredNothingIsServedAsBefore(): void
     {
@@ -152,8 +132,6 @@ final class EncryptedForTheClientTest extends BrowserTestCase
     }
 
     /**
-     * The code flow of the client that is written to in private, signed in as alice.
-     *
      * @return array<string, mixed>
      */
     private function tokensOfTheEncryptedClient(): array
@@ -181,8 +159,6 @@ final class EncryptedForTheClientTest extends BrowserTestCase
     }
 
     /**
-     * What the client does with what it receives: open the JWE with its own key.
-     *
      * @return array{header: array<string, mixed>, payload: string}
      */
     private function open(string $compactJwe): array
@@ -199,8 +175,6 @@ final class EncryptedForTheClientTest extends BrowserTestCase
     }
 
     /**
-     * And then: verify the signature inside against the JWK Set the provider publishes.
-     *
      * @return array<string, mixed>
      */
     private function verified(string $compactJws): array

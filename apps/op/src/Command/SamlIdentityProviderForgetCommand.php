@@ -12,14 +12,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * The accepted metadata of an upstream identity provider forgotten, by hand (beffroi/saml, spec/saml.md S-6, S-42,
- * section 6.10). The newest document accepted is kept against a rollback, and an identity provider whose metadata are
- * read signed that went back to an earlier document is refused at every refresh, until its accepted document expires;
- * forgetting it is the operator's decision, and the next "beffroi:saml:identity-provider:refresh" registers the
- * identity provider again as a first one.
- *
- * It writes and reads nothing else. It forgets a row, whether the configuration still declares its identity provider
- * or not. An entity ID nothing is accepted for is refused, compared exactly, rather than reported forgotten.
+ * beffroi/saml S-6, S-42, section 6.10
  */
 #[AsCommand(
     name: self::NAME,

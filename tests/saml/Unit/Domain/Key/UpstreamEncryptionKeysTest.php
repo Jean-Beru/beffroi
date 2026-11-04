@@ -19,8 +19,7 @@ use function strpos;
 use function substr;
 
 /**
- * spec/saml.md S-64, S-65, section 6.12 step 1: the keys one upstream identity provider encrypts for, among the keys of
- * the tenant in service, the newest first, and one material the key of one provider only.
+ * spec/saml.md S-64, S-65, section 6.12 step 1
  */
 final class UpstreamEncryptionKeysTest extends TestCase
 {
@@ -36,8 +35,7 @@ final class UpstreamEncryptionKeysTest extends TestCase
     }
 
     /**
-     * S-65: the keys of the provider, the newest first, which is the order its metadata list their certificates in
-     * and the order they are tried in.
+     * S-65
      */
     #[Test]
     public function theKeysOfTheProviderComeNewestFirst(): void
@@ -55,8 +53,7 @@ final class UpstreamEncryptionKeysTest extends TestCase
     }
 
     /**
-     * S-64: the keys of another provider, the SAML signing key and the keys of any other algorithm, a key of another
-     * type among them, are not the provider's.
+     * S-64
      */
     #[Test]
     public function onlyTheKeysOfTheProviderAreItsOwn(): void
@@ -78,7 +75,7 @@ final class UpstreamEncryptionKeysTest extends TestCase
     }
 
     /**
-     * Section 6.13 step 1: a provider for which the tenant holds no key in service has none.
+     * Section 6.13 step 1
      */
     #[Test]
     public function aProviderWithoutAKeyHasNone(): void
@@ -94,10 +91,7 @@ final class UpstreamEncryptionKeysTest extends TestCase
     }
 
     /**
-     * S-64: a key of the provider whose modulus another key of the tenant in service holds, the key of another provider
-     * or the SAML signing key, is refused, whichever of the two is asked for, naming the two algorithms and not the
-     * material; one integer spelt otherwise, a leading zero octet or other trailing bits, is the same modulus, and a
-     * modulus that is not base64url, a line feed in it, is refused rather than compared as text.
+     * S-64
      *
      * @param list<TenantKey> $inService
      */
@@ -173,10 +167,6 @@ final class UpstreamEncryptionKeysTest extends TestCase
         ];
     }
 
-    /**
-     * The same base64url text but for the bits of its last character that encode no octet, which a decoder reads past:
-     * a modulus of 2 048 bits, 256 octets, ends on one octet in two characters, four of whose bits are such.
-     */
     private static function withOtherTrailingBits(string $modulus): string
     {
         $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
@@ -186,10 +176,6 @@ final class UpstreamEncryptionKeysTest extends TestCase
         return substr($modulus, 0, -1) . $alphabet[$last | 0b0001];
     }
 
-    /**
-     * The same key under another "kid", its modulus the one given or the one of the first pair of the providers: what a
-     * store that kept the material twice would hold.
-     */
     private static function sameMaterial(TenantKey $key, string $kid, ?string $modulus = null): TenantKey
     {
         return new TenantKey(

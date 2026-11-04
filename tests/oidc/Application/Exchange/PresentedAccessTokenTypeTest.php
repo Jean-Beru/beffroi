@@ -44,8 +44,7 @@ use Beffroi\Oidc\Tests\Fixture\Subjects;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 8693 §3 "urn:ietf:params:oauth:token-type:access_token": an access token of this provider read as the
- * subject or the actor of an exchange, by the questions every resource of this provider asks of one.
+ * RFC 8693 §3
  */
 final class PresentedAccessTokenTypeTest extends TestCase
 {
@@ -99,8 +98,7 @@ final class PresentedAccessTokenTypeTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1: what the exchange narrows is what the token says, read as every resource of this provider
-     * reads it.
+     * RFC 8693 §2.1
      */
     #[Test]
     public function itReadsWhatTheTokenSaysOfItsSubject(): void
@@ -120,9 +118,7 @@ final class PresentedAccessTokenTypeTest extends TestCase
     }
 
     /**
-     * Issue #588: the "sub" of the token is the name its first client holds (OIDC Core §8.1), so what the
-     * exchange carries beside it is the person the inspection read it back as, and the acts of the token
-     * it gets are written in the journal of that person.
+     * OIDC Core §8.1
      */
     #[Test]
     public function itReadsThePersonTheInspectionFoundBesideTheSubjectTheTokenNames(): void
@@ -138,8 +134,7 @@ final class PresentedAccessTokenTypeTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4: there is nobody behind a token a client holds for itself, so there is nobody for the
-     * exchange to write an act in the name of.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function itReadsNoPersonFromATokenOfAClientActingForItself(): void
@@ -157,9 +152,7 @@ final class PresentedAccessTokenTypeTest extends TestCase
     }
 
     /**
-     * Issue #831, RFC 7523 §2.1: a token issued on an assertion names the person the assertion was validated
-     * for though nobody signed in for it here, so what the exchange gets for it names that person too, and
-     * answers for them wherever it is presented in turn.
+     * RFC 7523 §2.1
      */
     #[Test]
     public function itReadsThePersonATokenOfAnAssertionNames(): void
@@ -174,10 +167,6 @@ final class PresentedAccessTokenTypeTest extends TestCase
         static::assertSame('alice-subject', $presented->person?->value);
     }
 
-    /**
-     * Issue #831: the token of an assertion whose person was disabled since is a token this provider refuses
-     * at its own resources, so a service that kept it cannot turn it into a fresh one.
-     */
     #[Test]
     public function itRefusesATokenOfAnAssertionWhosePersonWasDisabled(): void
     {
@@ -194,8 +183,7 @@ final class PresentedAccessTokenTypeTest extends TestCase
     }
 
     /**
-     * RFC 8693 §4.4: who may act for the subject of a token of this client, as its registration says it. One
-     * place decides, and the claim the self-contained shape carries is written from it.
+     * RFC 8693 §4.4
      */
     #[Test]
     public function itReadsWhoMayActForTheSubjectFromTheRegistrationOfTheClient(): void
@@ -218,8 +206,7 @@ final class PresentedAccessTokenTypeTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4: a token a client holds for itself names that client and no sign-in, and the exchange reads
-     * it as it reads any other.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function itReadsATokenOfAClientActingForItselfWithoutASignIn(): void
@@ -238,8 +225,7 @@ final class PresentedAccessTokenTypeTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: a token the provider would refuse at its own resources is a token it refuses to
-     * exchange, and what the caller is told is that the token is not good.
+     * Architecture §4.6
      */
     #[Test]
     public function itRefusesATokenOfASessionThatEnded(): void
@@ -296,8 +282,7 @@ final class PresentedAccessTokenTypeTest extends TestCase
     }
 
     /**
-     * RFC 7523 §2.1: an opaque token of the job runner for the person an assertion named, whose record keeps
-     * that person (issue #588) and no sign-in.
+     * RFC 7523 §2.1
      */
     private function tokenOfAnAssertion(): string
     {

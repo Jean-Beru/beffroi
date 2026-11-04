@@ -12,8 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 8628 §3.2, §3.3.1: what the client is answered, and the complete URI it may show as a link or a QR
- * code, which is the verification URI carrying the code.
+ * RFC 8628 §3.2, §3.3.1
  */
 final class DeviceAuthorizationResponseTest extends TestCase
 {
@@ -38,8 +37,7 @@ final class DeviceAuthorizationResponseTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.3.1: a verification URI that already carries a query gains the code beside what it
-     * carries, and never a second question mark.
+     * RFC 8628 §3.3.1
      */
     #[Test]
     public function theCompleteUriIsBuiltOnWhateverTheVerificationUriCarries(): void
@@ -52,8 +50,7 @@ final class DeviceAuthorizationResponseTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.2: a lifetime and an interval a client could not act on are refused where they are
-     * written, not where they are read.
+     * RFC 8628 §3.2
      */
     #[Test]
     #[DataProvider('provideNumbersNoClientCouldAct')]

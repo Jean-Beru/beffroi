@@ -9,8 +9,7 @@ use Beffroi\Xml\Core\Exception\MissingChild;
 use Beffroi\Xml\Enc\PlaintextReaderInterface;
 
 /**
- * A reading of section 5.2 that refuses every plaintext, as a consumer refuses a schema, a signature or an issuer
- * (E-16), and records that it was asked.
+ * Section 5.2, E-16
  *
  * @implements PlaintextReaderInterface<Document>
  */

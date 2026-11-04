@@ -31,8 +31,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * spec/saml.md section 6.1, S-2, S-4: the metadata of the identity provider of a tenant, written by saml2-model's
- * MetadataWriter and read back by its MetadataReader.
+ * spec/saml.md section 6.1, S-2, S-4
  */
 final class IdentityProviderMetadataHandlerTest extends TestCase
 {
@@ -49,9 +48,7 @@ final class IdentityProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * Section 6.1 steps 3 to 5, S-4: the entity ID is the URL of the metadata, each service is listed with
-     * HTTP-Redirect then HTTP-POST at its URL under the issuer, the certificate of the key is a signing one, the one
-     * NameID format is the persistent one of S-13, and WantAuthnRequestsSigned is true when the tenant says nothing.
+     * Section 6.1 steps 3 to 5, S-4, S-13
      */
     #[Test]
     public function itIsReadBackByTheMetadataReaderOfTheModel(): void
@@ -83,7 +80,7 @@ final class IdentityProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * S-4, model.md section 6.9: a tenant that turns WantAuthnRequestsSigned off says so in its metadata.
+     * S-4, model.md section 6.9
      */
     #[Test]
     public function itSaysWhatTheTenantSetOfSignedRequests(): void
@@ -99,8 +96,7 @@ final class IdentityProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * S-2: during a rotation, the certificate of the staged key is published beside the active one's before the
-     * staged key signs anything.
+     * S-2
      */
     #[Test]
     public function itPublishesTheNextCertificateBesideTheCurrentOne(): void
@@ -122,7 +118,7 @@ final class IdentityProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 1: a tenant that holds no SAML key in service has no metadata.
+     * Section 6.1 step 1
      */
     #[Test]
     public function aTenantWithoutASamlKeyHasNoMetadata(): void
@@ -136,7 +132,7 @@ final class IdentityProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 6, S-2: the metadata may be cached for the max-age of the keys of the tenant and no longer.
+     * Section 6.1 step 6, S-2
      */
     #[Test]
     public function itIsCachedForTheMaxAgeOfTheKeys(): void
@@ -157,8 +153,7 @@ final class IdentityProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 6: a lifetime that is not a number of seconds is refused when the handler is built, so that a
-     * deployment learns it at boot.
+     * Section 6.1 step 6
      */
     #[Test]
     public function itRefusesALifetimeThatIsNotANumberOfSeconds(): void
@@ -172,8 +167,7 @@ final class IdentityProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * S-12, section 6.1 step 5: unless the deployment says otherwise, a service provider may keep the metadata a day,
-     * written on the md:EntityDescriptor as the xs:duration of its seconds.
+     * S-12, section 6.1 step 5
      */
     #[Test]
     public function aServiceProviderMayKeepItADayByDefault(): void
@@ -194,7 +188,7 @@ final class IdentityProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * S-12: the shortest cacheDuration a deployment may set is one second, under a staging delay one second longer.
+     * S-12
      */
     #[Test]
     public function aCacheDurationOneSecondShortOfTheStagingDelayIsWritten(): void
@@ -210,8 +204,7 @@ final class IdentityProviderMetadataHandlerTest extends TestCase
     }
 
     /**
-     * S-12: a cacheDuration under one second, or one a service provider would still be inside when the next key signs,
-     * is refused when the handler is built, so that a deployment learns it at boot.
+     * S-12
      */
     #[Test]
     #[DataProvider('provideCacheDurationsRefused')]

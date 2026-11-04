@@ -15,9 +15,7 @@ use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
 /**
- * OIDC Core §3.1.2.1, CIBA Core §7.1: a side of the provider reads a "login_hint" the way the deployment names, a name
- * an environment variable may carry, held to the names the tree accepts when the container builds the readings of
- * that side (decision 0030).
+ * OIDC Core §3.1.2.1, CIBA Core §7.1, Decision 0030
  */
 final class LoginHintReadingsTest extends TestCase
 {
@@ -34,9 +32,6 @@ final class LoginHintReadingsTest extends TestCase
         $this->username = static::createStub(UserHintInterface::class);
     }
 
-    /**
-     * The readings a deployment tagged come first, then the one of the provider the configuration names.
-     */
     #[Test]
     #[DataProvider('provideReadingsOfTheProvider')]
     public function theReadingTheConfigurationNamesFollowsThoseTheDeploymentTagged(string $name): void
@@ -57,9 +52,6 @@ final class LoginHintReadingsTest extends TestCase
         yield 'the username' => ['username'];
     }
 
-    /**
-     * A deployment that tags a reading of its own names none of the provider, so that the parameter is read one way.
-     */
     #[Test]
     public function aDeploymentThatNamesNoneIsReadByWhatItTagged(): void
     {
@@ -70,9 +62,6 @@ final class LoginHintReadingsTest extends TestCase
         static::assertSame([$this->tagged], $readings);
     }
 
-    /**
-     * A name an environment variable carries is held to the names of the tree, which refuses any other written.
-     */
     #[Test]
     public function aNameNoReadingAnswersToIsRefused(): void
     {

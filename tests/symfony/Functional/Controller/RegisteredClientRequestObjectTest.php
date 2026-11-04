@@ -22,22 +22,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * OIDC Core §6.2, RFC 9101 §5.2: a client that registered itself publishes its request object at a URL it
- * registered, and the authorization endpoint reads it back. It is what the two modules of the Dynamic OP
- * plan that play an object by reference do, `oidcc-request-uri-unsigned` with an unsigned object and
- * `oidcc-request-uri-signed-rs256` with one signed under the algorithm it registered, and both must
- * complete the authorization. A third module sends an unsigned object by value
- * (`oidcc-ensure-request-object-with-redirect-uri`) and is refused for the same reason as the first.
- *
- * A run names neither refusal: an object that is refused is an object that was not read, so the answer is
- * a page and never a redirection (`RequestObjectResolver::resolve()`), the scripted browser of the suite
- * waits for a callback that never comes, and what the provider answered is in no artefact of the run
- * (issue #385). Here it is, one test per module: the page carries the code of the refusal and the
- * description that names its rule.
- *
- * The client of each test is registered through the endpoint, as the suite registers its own, with the
- * keys and the `request_uris` of the module. What it publishes behind that URL is answered by a mock, so
- * that what is seen is the endpoint and nothing of the network.
+ * OIDC Core §6.2, RFC 9101 §5.2
  */
 final class RegisteredClientRequestObjectTest extends BrowserTestCase
 {
@@ -46,15 +31,12 @@ final class RegisteredClientRequestObjectTest extends BrowserTestCase
     private const string REDIRECT_URI = 'https://registered.test/callback';
 
     /**
-     * OIDC Core §6.2: the URL the client registers carries the hash of what it publishes there, which is
-     * what `CreateRandomRequestUriWithFragment` gives both modules (issue #376). What is registered and
-     * what a request names is this whole string; what the provider reads is the URL without the fragment.
+     * OIDC Core §6.2
      */
     private const string REQUEST_URI = 'https://registered.test/request.jwt#kFmWcqLPIFIRMByyjGqWvVNRHCiVuIo3yPUL4R0ZmBw';
 
     /**
-     * What the client publishes behind the `request_uri` it registered, which the provider reads back with
-     * one GET (RFC 9101 §5.2).
+     * RFC 9101 §5.2
      */
     private string $published = '';
 
@@ -65,13 +47,6 @@ final class RegisteredClientRequestObjectTest extends BrowserTestCase
         };
     }
 
-    /**
-     * The whole way of `oidcc-request-uri-signed-rs256` when the object carries what a signature is bounded
-     * by: registered with `request_object_signing_alg: RS256` and an inline JWK Set, the object published
-     * behind the registered URL, read back from it, verified against the key the client published, and the
-     * flow started. Nothing of the registration, of the reading back or of the RS256 verification is what
-     * the module fails on.
-     */
     #[Test]
     public function anObjectSignedUnderTheRegisteredAlgorithmStartsTheFlow(): void
     {
@@ -98,15 +73,7 @@ final class RegisteredClientRequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * The object of `oidcc-request-uri-signed-rs256` as the suite builds it, read in the source of the
-     * suite at the tag `compose.yaml` pins: the parameters of the authorization request
-     * (`ConvertAuthorizationEndpointRequestToRequestObject`), then `aud` and `iss`
-     * (`AddAudToRequestObject`, `AddIssToRequestObject`), then the signature. RFC 9101 §4 asks no more of
-     * it, `iss` and `aud` being a SHOULD and neither `exp` nor `nbf` being named at all.
-     *
-     * Decision 0012 asks for the four: they bound what a signature proves, FAPI 2.0 Message Signing
-     * requires them, and no exemption on them for a signed object is open to any client. So this is the
-     * refusal the module reads as a browser that never reached its callback.
+     * Decision 0012, RFC 9101 §4
      */
     #[Test]
     public function theSignedObjectOfTheModuleIsRefusedForCarryingNoNbf(): void
@@ -129,15 +96,7 @@ final class RegisteredClientRequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * The object of `oidcc-request-uri-unsigned`, whose registration says nothing about
-     * `request_object_signing_alg` and which is serialized with `alg: none`
-     * (`SerializeRequestObjectWithNullAlgorithm`). A client that registered nothing is read under any
-     * algorithm the provider is wired with and never unsigned (`AnyRegisteredAlgorithm`): decision 0012
-     * has an unsigned object registered per client, never fallen into.
-     *
-     * The module does not skip itself, `skipTestIfNoneUnsupported()` reading
-     * `request_object_signing_alg_values_supported`, which carries `none` as soon as one client of the
-     * tenant registered it (`AnnouncedRequestObjects`). So this is the refusal it reads.
+     * Decision 0012
      */
     #[Test]
     public function theUnsignedObjectOfTheModuleIsRefusedForAnAlgorithmItsClientRegisteredNothingFor(): void
@@ -158,12 +117,7 @@ final class RegisteredClientRequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * The object of `oidcc-ensure-request-object-with-redirect-uri`, the third module of the plan to send an
-     * unsigned object: it sends it by value, with an invalid `redirect_uri` in the query beside the valid one
-     * the object carries, and asks the provider to honour the object's or to show an error page (OIDC Core
-     * §6.1). The refusal it gets is the algorithm its client registered nothing for, so the query is never
-     * read that far, which is why the module is written into the `known` list of the plan rather than
-     * captured from the browser: the page names an algorithm and not the redirect URI the module is about.
+     * OIDC Core §6.1
      */
     #[Test]
     public function theUnsignedObjectSentByValueIsRefusedBeforeTheRedirectUriOfTheQuery(): void
@@ -187,8 +141,7 @@ final class RegisteredClientRequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §6.2: the request names the client and the URL it published its object at, and nothing
-     * else; every parameter of the request is inside the object.
+     * OIDC Core §6.2
      */
     private function authorize(string $clientId): Crawler
     {
@@ -199,11 +152,7 @@ final class RegisteredClientRequestObjectTest extends BrowserTestCase
     }
 
     /**
-     * The claims the suite signs, which are the parameters of the authorization request plus `iss` and
-     * `aud`. The challenge is among them because the tenant of these tests exempts nobody from PKCE where
-     * the conformance tenant exempts the confidential clients it registers (decision 0017): what the two
-     * modules fail on is not PKCE, and an object that carries no challenge would be refused for that
-     * instead.
+     * With a challenge the module does not send: this tenant exempts nobody from PKCE (Decision 0017).
      *
      * @return array<string, mixed>
      */
@@ -223,21 +172,13 @@ final class RegisteredClientRequestObjectTest extends BrowserTestCase
         ];
     }
 
-    /**
-     * What the page of the refusal says: the code of the protocol and the description that names its rule
-     * (`error.html.twig`), which is what no run of the suite reports.
-     */
     private static function refusal(Crawler $page): string
     {
         return $page->filter('p[data-description]')->text();
     }
 
     /**
-     * The identifier the provider drew for the client, registered as the modules register theirs: the
-     * method that proves a key of its own, the RS256 keys the suite draws and sends inline, and the URL
-     * its object is published at.
-     *
-     * @param array<string, mixed> $metadata what the module adds to the registration request
+     * @param array<string, mixed> $metadata
      */
     private function register(array $metadata = []): string
     {

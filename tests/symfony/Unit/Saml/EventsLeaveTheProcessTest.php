@@ -22,11 +22,7 @@ use function sort;
 use function unserialize;
 
 /**
- * Architecture §5.6, spec/saml.md S-26: the events of beffroi/saml are handled asynchronously, so every one of them is
- * written to a queue and read back. Here and not in the suite of the package, whose code never calls unserialize()
- * (spec/saml.md section 8): the queue is the provider's.
- *
- * Each case is built the way the use case that raises it builds it.
+ * Architecture §5.6, spec/saml.md S-26
  */
 final class EventsLeaveTheProcessTest extends TestCase
 {
@@ -58,10 +54,6 @@ final class EventsLeaveTheProcessTest extends TestCase
         static::assertEquals($event, unserialize($written));
     }
 
-    /**
-     * An event this test does not carry to the queue is an event nothing says a broker can take, so the cases above
-     * are the events of the module and not a selection of them.
-     */
     #[Test]
     public function everyEventOfTheModuleIsWrittenToTheQueue(): void
     {

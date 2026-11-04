@@ -12,9 +12,7 @@ use App\Cache\SeenOnce;
 use function sprintf;
 
 /**
- * The "jti" of the client assertions already seen (RFC 7523 §3, §4), so that an assertion authenticates
- * once. What makes a "jti" unique is all this says; remembering it once is SeenOnce's, with the caveat
- * that goes with a pool.
+ * RFC 7523 §3, §4
  */
 final readonly class ClientAssertionReplayGuard implements ClientAssertionReplayGuardInterface
 {
@@ -29,8 +27,7 @@ final readonly class ClientAssertionReplayGuard implements ClientAssertionReplay
     }
 
     /**
-     * Per tenant and per client: RFC 7523 §3 makes a "jti" unique to the issuer of the assertion, and
-     * two clients may use the same one.
+     * Per tenant and per client: two clients may use the same "jti" (RFC 7523 §3).
      */
     private static function key(Client $client, string $jti): string
     {

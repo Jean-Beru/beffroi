@@ -21,9 +21,7 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * RFC 7591 §3.2.1: the provider assigns the identifier of a client that registers itself, so it is drawn
- * where every other value this provider hands out is drawn, and a draw any wired source already holds is
- * not served (issue #334).
+ * RFC 7591 §3.2.1
  */
 final class ClientIdentifierDrawerTest extends TestCase
 {
@@ -50,10 +48,6 @@ final class ClientIdentifierDrawerTest extends TestCase
         static::assertSame(Base64Url::encode(self::bytes("\x01")), $clientId);
     }
 
-    /**
-     * A draw a source already holds is not served: the identifier of a client is the name a tenant
-     * answers to it by, and a second is drawn rather than a registration refused.
-     */
     #[Test]
     public function aDrawnIdentifierASourceAlreadyHoldsIsDrawnAgain(): void
     {
@@ -69,10 +63,6 @@ final class ClientIdentifierDrawerTest extends TestCase
         static::assertSame(Base64Url::encode(self::bytes("\x02")), $clientId);
     }
 
-    /**
-     * A tenant of its own: the same identifier under another tenant is another client, and the draw of
-     * this one is not held back by it.
-     */
     #[Test]
     public function anIdentifierHeldUnderAnotherTenantIsFreeHere(): void
     {
@@ -88,10 +78,6 @@ final class ClientIdentifierDrawerTest extends TestCase
         static::assertSame($taken, $clientId);
     }
 
-    /**
-     * Three draws already held is not a thing a client did, and the registration of this one says so
-     * rather than serving a name that answers for somebody else.
-     */
     #[Test]
     public function itRefusesWhenEveryDrawIsAlreadyHeld(): void
     {

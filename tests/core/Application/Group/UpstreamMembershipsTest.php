@@ -23,9 +23,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Decision 0002, issue #782: at each sign-in through an upstream provider, the memberships of source
- * `upstream_claims` are replaced by the groups the provider asserts, mapped to the groups of the tenant by its
- * declaration; the memberships of another source are left as they are.
+ * Decision 0002
  */
 final class UpstreamMembershipsTest extends TestCase
 {
@@ -117,9 +115,6 @@ final class UpstreamMembershipsTest extends TestCase
         yield 'scim' => [GroupSource::Scim];
     }
 
-    /**
-     * A group is never created from what a provider sends, and neither is a membership.
-     */
     #[Test]
     public function anUnmappedValueCreatesNothing(): void
     {
@@ -130,10 +125,6 @@ final class UpstreamMembershipsTest extends TestCase
         static::assertSame([], $this->memberships->of($this->user));
     }
 
-    /**
-     * The table holds one membership per group and person, and the one a hand gave is not the provider's to
-     * take away later.
-     */
     #[Test]
     public function aMappedGroupThePersonHoldsLocallyStaysLocal(): void
     {
@@ -193,9 +184,6 @@ final class UpstreamMembershipsTest extends TestCase
         static::assertCount(1, $this->memberships->of($bob));
     }
 
-    /**
-     * GroupMembership refuses a group of another tenant, which a mapping wired for the wrong tenant leads to.
-     */
     #[Test]
     public function aMappingLeadingToAGroupOfAnotherTenantIsRefused(): void
     {
@@ -213,9 +201,6 @@ final class UpstreamMembershipsTest extends TestCase
         $this->upstream->replace($this->user, ['foreign-guid'], $mapping);
     }
 
-    /**
-     * The refusal comes before any write, so the person keeps what the last sign-in gave.
-     */
     #[Test]
     public function aMappingLeadingToAGroupOfAnotherTenantWritesNothing(): void
     {

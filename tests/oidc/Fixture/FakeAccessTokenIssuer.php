@@ -15,11 +15,6 @@ use Beffroi\Oidc\Domain\Token\UserAuthorizationInterface;
 use Beffroi\Oidc\Port\AccessTokenShapeIssuerInterface;
 use function sprintf;
 
-/**
- * An issuer whose tokens say who they were minted for, in clear, and live ten minutes. It names the
- * shape a test gives it, which is what makes an invented shape a fixture rather than a class of the
- * module. Never leaves the test suite: the real one, JwtAccessTokenIssuer, writes a signed at+jwt.
- */
 final class FakeAccessTokenIssuer implements AccessTokenShapeIssuerInterface
 {
     /**
@@ -33,20 +28,14 @@ final class FakeAccessTokenIssuer implements AccessTokenShapeIssuerInterface
     public private(set) array $addressed = [];
 
     /**
-     * The authorizations whose tokens were addressed once they existed, in order.
-     *
      * @var list<AuthorizationInterface>
      */
     public private(set) array $addressedFor = [];
 
-    /**
-     * What addressing a token throws while the KMS does not answer to open the key it is signed with, or to seal
-     * what it carries sealed, which a test sets and takes back; null while it answers.
-     */
     public ?KmsUnavailableException $kmsOutage = null;
 
     /**
-     * @param non-empty-string $name the shape this issuer writes
+     * @param non-empty-string $name
      */
     public function __construct(
         private readonly string $name = 'jwt',

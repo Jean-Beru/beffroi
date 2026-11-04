@@ -8,20 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * What a pairwise subject identifier needs written down (OIDC Core §8.1): the identifier one sector of a
- * tenant has seen a user under.
- *
- * The value itself is computed, from the sector, the user and the salt of the tenant, so nothing here
- * decides it and a restore of this table alone changes no identifier. What it is for is the way back: a
- * "sub" a client presents is a hash, hashing goes one way, and the only way to answer who it names is to
- * have written it down when the document was issued.
- *
- * Both unique indexes say the same rule from its two sides, one identifier per user in a sector and one
- * user per identifier in it, which is also what lets two workers issuing the first two tokens of a user at
- * once write one row between them. The salt is not here and is in no migration: it is a secret of the
- * deployment, drawn once and kept sealed beside the keys of its tenant.
- */
 final class Version20260930180000 extends AbstractMigration
 {
     public function getDescription(): string

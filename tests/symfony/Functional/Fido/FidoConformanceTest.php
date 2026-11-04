@@ -26,19 +26,14 @@ use Symfony\Component\Uid\Uuid;
 use Webauthn\MetadataService\Statement\AuthenticatorStatus;
 
 /**
- * The endpoints of the FIDO2 server API the FIDO Conformance Tools drive (architecture §7), imported by
- * the test kernel under /fido/conformance as an application imports them in development: the four
- * ceremonies of the tools on an enrolment and an authentication of the core of their own, which run on the
- * algorithms of the tools (decision 0033), with what the tools ask for. The tools themselves run by hand against the stack; what they check is played here with the
- * software authenticator.
+ * Architecture §7, Decision 0033
  */
 final class FidoConformanceTest extends BrowserTestCase
 {
     private const string ORIGIN = 'https://op.test';
 
     /**
-     * ServerPublicKeyCredentialCreationOptionsRequest: what the tools send, echoed in the options
-     * (WebAuthn Level 3 §5.4), the algorithms those of the tools (decision 0033), the user created on the way.
+     * WebAuthn Level 3 §5.4, Decision 0033
      */
     #[Test]
     public function theAttestationOptionsAreDrawnForTheUserTheToolsNameWithWhatTheyAskFor(): void
@@ -88,10 +83,6 @@ final class FidoConformanceTest extends BrowserTestCase
         static::assertSame('John Doe', $user?->profile->name);
     }
 
-    /**
-     * The two ceremonies of the tools end to end: the passkey enrolled to the user under the name of the
-     * tools, allowed by the assertion options, the assertion opening a session of the core.
-     */
     #[Test]
     public function aPasskeyEnrolledThroughTheToolsSignsInThroughTheTools(): void
     {
@@ -129,8 +120,7 @@ final class FidoConformanceTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0033: RS1, which only the options of the tools offer, enrols and signs in through the tools, the
-     * ceremonies of the tools verifying it with its weakness acknowledged.
+     * Decision 0033
      */
     #[Test]
     public function aPasskeyOfTheAlgorithmOnlyTheToolsAreOfferedEnrolsAndSignsInThroughTheTools(): void
@@ -158,7 +148,7 @@ final class FidoConformanceTest extends BrowserTestCase
     }
 
     /**
-     * §5.4, excludeCredentials: a second ceremony of the same user excludes the passkey enrolled.
+     * WebAuthn Level 3 §5.4
      */
     #[Test]
     public function theNextAttestationOptionsExcludeThePasskeyEnrolled(): void
@@ -217,9 +207,7 @@ final class FidoConformanceTest extends BrowserTestCase
     }
 
     /**
-     * §7.1 step 22 through the kernel: the tools ask for an attestation, the metadata of the store say the
-     * authenticator is compromised, the self attestation it sends is refused; the metadata are what
-     * beffroi:webauthn:mds-refresh stored.
+     * WebAuthn Level 3 §7.1 step 22
      */
     #[Test]
     public function anAttestationAskedForIsCheckedAgainstTheStoredMetadata(): void
@@ -264,7 +252,7 @@ final class FidoConformanceTest extends BrowserTestCase
     }
 
     /**
-     * §7.2 step 13: an assertion signed for another origin.
+     * WebAuthn Level 3 §7.2 step 13
      */
     #[Test]
     public function anAssertionFromAnotherOriginIsRefused(): void
@@ -294,7 +282,7 @@ final class FidoConformanceTest extends BrowserTestCase
     }
 
     /**
-     * §7.2 step 17: the tools ask for user verification, the authenticator did none.
+     * WebAuthn Level 3 §7.2 step 17
      */
     #[Test]
     public function anAssertionWithoutTheUserVerificationAskedForIsRefused(): void
@@ -322,7 +310,7 @@ final class FidoConformanceTest extends BrowserTestCase
     }
 
     /**
-     * §13.4.3: a challenge is answered once.
+     * WebAuthn Level 3 §13.4.3
      */
     #[Test]
     public function anAssertionIsAcceptedOnce(): void
@@ -344,10 +332,6 @@ final class FidoConformanceTest extends BrowserTestCase
         static::assertSame('No request options were drawn with this challenge, or they were answered already.', $answer['errorMessage']);
     }
 
-    /**
-     * The creation options of the tools for a user, as JSON, the way the tools hand them to their
-     * authenticator.
-     */
     private function creationOptions(string $username, string $attestation = 'none'): string
     {
         return json_encode($this->post('/fido/conformance/attestation/options', [
@@ -358,8 +342,6 @@ final class FidoConformanceTest extends BrowserTestCase
     }
 
     /**
-     * A request of the tools: a JSON body, a JSON answer.
-     *
      * @param array<string, mixed>|string $body
      *
      * @return array<string, mixed>
@@ -388,9 +370,6 @@ final class FidoConformanceTest extends BrowserTestCase
     }
 
     /**
-     * One member of every item of a list of the answer: the algorithms of the parameters, the ids of the
-     * descriptors.
-     *
      * @param array<string, mixed> $answer
      *
      * @return list<mixed>

@@ -34,8 +34,7 @@ final class StandardClaimsProviderTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.4: "profile" stands for the fourteen claims of §5.1 about the person, "updated_at"
-     * included, as a number of seconds; nothing of the other scopes leaks in.
+     * OIDC Core §5.4, §5.1
      */
     #[Test]
     public function theProfileScopeGivesTheProfileClaims(): void
@@ -66,8 +65,7 @@ final class StandardClaimsProviderTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.4 "email", "address", "phone"; §5.1.1: the address is an object with the members
-     * that have a value.
+     * OIDC Core §5.4, §5.1.1
      */
     #[Test]
     public function theEmailAddressAndPhoneScopesGiveTheirClaims(): void
@@ -95,8 +93,7 @@ final class StandardClaimsProviderTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.1: "email_verified" and "phone_number_verified" are JSON booleans, true or false,
-     * never strings (architecture §9).
+     * OIDC Core §5.1, Architecture §9
      */
     #[Test]
     public function theVerificationFlagsAreJsonBooleans(): void
@@ -115,8 +112,7 @@ final class StandardClaimsProviderTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.3.2: a claim the user has no value for is left out. A bare user with every scope
-     * gives "updated_at" alone.
+     * OIDC Core §5.3.2
      */
     #[Test]
     public function absentAttributesGiveNoClaim(): void
@@ -134,8 +130,7 @@ final class StandardClaimsProviderTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.3.2: the verification flag goes with the value it qualifies, and an empty address is
-     * no address.
+     * OIDC Core §5.3.2
      */
     #[Test]
     public function theVerificationFlagGoesWithTheValueItQualifies(): void
@@ -159,7 +154,7 @@ final class StandardClaimsProviderTest extends TestCase
     }
 
     /**
-     * OIDC Discovery §3 "scopes_supported": the provider announces the four scopes of OIDC Core §5.4.
+     * OIDC Discovery §3, OIDC Core §5.4
      */
     #[Test]
     public function itAnnouncesTheScopesItServes(): void
@@ -172,8 +167,7 @@ final class StandardClaimsProviderTest extends TestCase
     }
 
     /**
-     * OIDC Discovery §3 "claims_supported": the nineteen claims of §5.1 the scopes stand for, "sub"
-     * being the resolver's.
+     * OIDC Discovery §3, OIDC Core §5.1
      */
     #[Test]
     public function itAnnouncesTheClaimsItServes(): void
@@ -210,8 +204,7 @@ final class StandardClaimsProviderTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.4: the claims each scope stands for, in the order the scopes are asked for, which is what
-     * a claim asked for by name is held to.
+     * OIDC Core §5.4
      */
     #[Test]
     public function itSaysTheClaimsEachScopeStandsFor(): void
@@ -224,8 +217,7 @@ final class StandardClaimsProviderTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.4: "openid" stands for no claim of this provider, and neither does a scope it does not
-     * serve.
+     * OIDC Core §5.4
      *
      * @param list<string> $scopes
      */
@@ -237,10 +229,6 @@ final class StandardClaimsProviderTest extends TestCase
         static::assertSame([], $this->provider->claimsOf(self::scopes($scopes)));
     }
 
-    /**
-     * Every claim it announces is one a scope it announces stands for: no claim it serves is out of the reach
-     * of a client that registered the scope.
-     */
     #[Test]
     public function everyClaimItAnnouncesIsOneItsScopesStandFor(): void
     {
@@ -251,9 +239,6 @@ final class StandardClaimsProviderTest extends TestCase
         static::assertSame($this->provider->supportedClaims(), $claims);
     }
 
-    /**
-     * Every announced claim is one a full user actually gets, and nothing else.
-     */
     #[Test]
     public function aFullUserGetsEveryAnnouncedClaimAndNothingElse(): void
     {
@@ -265,8 +250,7 @@ final class StandardClaimsProviderTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.4: "openid" asks for no claim of its own ("sub" is the resolver's), and a scope
-     * outside the four of §5.4 asks for none either.
+     * OIDC Core §5.4
      *
      * @param list<string> $scopes
      */
@@ -290,10 +274,7 @@ final class StandardClaimsProviderTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5: a claim asked for by name is served without its scope being asked for, the caller
-     * having held what it asks for to the scopes of the client; "essential", "value" and "values" (§5.5.1)
-     * change nothing to what is served; a name the provider does not know gives nothing. Requested and scope
-     * claims come out once each, in the order of §5.1.
+     * OIDC Core §5.5, §5.5.1, §5.1
      */
     #[Test]
     public function claimsRequestedByNameAreServedWithoutTheirScope(): void

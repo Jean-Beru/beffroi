@@ -13,9 +13,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #482: what a claim of a person used to say, and what they made it say.
- */
 final class ClaimChangeTest extends TestCase
 {
     #[Test]
@@ -33,10 +30,6 @@ final class ClaimChangeTest extends TestCase
         static::assertTrue($change->tenant->equals($user->tenant));
     }
 
-    /**
-     * Null on either side is a claim that said nothing: a person filling one in for the first time, or
-     * taking back what they had said.
-     */
     #[Test]
     #[DataProvider('provideOneSide')]
     public function aClaimFilledInOrTakenBackIsAChange(?string $was, ?string $became): void

@@ -9,11 +9,6 @@ use Beffroi\Core\Port\DeadRecordsInterface;
 use DateTimeImmutable;
 use function min;
 
-/**
- * A store of dead rows, as a test reads it (issue #177): it holds a number of rows it may drop, drops at
- * most what it is given, and remembers what it was asked. A double of the port and not an adapter of the
- * Bridge, what a row of a real table is worth being the store's own answer and never this one's.
- */
 final class DeadRowsOfATable implements DeadRecordsInterface
 {
     public private(set) int $asked = 0;

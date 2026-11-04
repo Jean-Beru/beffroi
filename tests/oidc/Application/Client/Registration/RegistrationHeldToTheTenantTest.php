@@ -18,9 +18,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Decision 0009: a client that registers itself gets nothing a declared client does not get. What the
- * wiring does not already say is what the tenant hands out tokens for, which is what its document
- * announces (issues #278 and #920).
+ * Decision 0009
  */
 final class RegistrationHeldToTheTenantTest extends TestCase
 {
@@ -41,11 +39,6 @@ final class RegistrationHeldToTheTenantTest extends TestCase
         static::assertSame(['openid', 'profile'], $registration->allowedScopes->values());
     }
 
-    /**
-     * Issue #920: the scope of an API the deployment declares for the tenant is one the tenant hands out
-     * tokens for, so a client that registers itself may register it, where no client of the tenant
-     * registered it before.
-     */
     #[Test]
     public function aScopeTheDeploymentDeclaresHolds(): void
     {
@@ -63,11 +56,6 @@ final class RegistrationHeldToTheTenantTest extends TestCase
         static::assertSame(['openid', 'billing.read'], $registration->allowedScopes->values());
     }
 
-    /**
-     * A scope no claims provider serves, the deployment does not declare and no client of the tenant
-     * registered does not exist for that tenant: a client that registers itself cannot write it into the
-     * document by asking for it.
-     */
     #[Test]
     public function aScopeTheTenantDoesNotHandOutTokensForIsRefused(): void
     {
@@ -86,9 +74,6 @@ final class RegistrationHeldToTheTenantTest extends TestCase
         $this->offer()->assertHolds(Fixtures::tenant(), $registration, $metadata);
     }
 
-    /**
-     * The refusal names the member and where it came from, as every refusal of a registration does.
-     */
     #[Test]
     public function theRefusalNamesTheMemberAndItsSource(): void
     {
@@ -112,7 +97,7 @@ final class RegistrationHeldToTheTenantTest extends TestCase
     }
 
     /**
-     * @param list<string> $declared what the deployment declares for the tenant of the fixtures
+     * @param list<string> $declared
      */
     private function offer(array $declared = []): RegistrationHeldToTheTenant
     {

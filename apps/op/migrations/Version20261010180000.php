@@ -8,13 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * What a list of compromised passwords said of a password, on the password (issue #552).
- *
- * Two dates: when the list was last asked about it, and when it was found there. Both null for a password
- * nobody has asked about yet, which is every password this provider already holds, so the first login past
- * the delay is what asks about each of them.
- */
 final class Version20261010180000 extends AbstractMigration
 {
     public function getDescription(): string

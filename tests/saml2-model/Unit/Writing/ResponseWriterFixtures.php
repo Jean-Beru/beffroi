@@ -37,11 +37,7 @@ use DateTimeImmutable;
 use Dom\Element;
 
 /**
- * The responses the identity provider https://idp.example.com/saml writes to the service provider
- * https://sp.example.com/saml, at its assertion consumer service https://sp.example.com/saml/acs, answering the request
- * _4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b or none, issued at 2026-10-01T12:00:00Z, where the clock of the validator
- * is frozen (section 9.1); and what reads them back: the identity provider's metadata carrying its test key, the
- * validator of the service provider.
+ * Section 9.1
  */
 final class ResponseWriterFixtures
 {
@@ -57,9 +53,6 @@ final class ResponseWriterFixtures
 
     public const string CONTEXT_CLASS = 'urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport';
 
-    /**
-     * A response whose status is Success, carrying $assertion, to the request $inResponseTo or unsolicited.
-     */
     public static function response(
         ?Assertion $assertion = null,
         ?string $inResponseTo = self::REQUEST,
@@ -79,7 +72,7 @@ final class ResponseWriterFixtures
     }
 
     /**
-     * A failure Responder / AuthnFailed to the request, without assertion (M-13).
+     * M-13
      */
     public static function failure(
         ?SecondLevelStatusCode $secondLevel = SecondLevelStatusCode::AuthnFailed,
@@ -96,11 +89,6 @@ final class ResponseWriterFixtures
         );
     }
 
-    /**
-     * The assertion with the parts the profile requires only: an unspecified NameID, a confirmation without Address
-     * whose window ends five minutes after the issue, Conditions without window holding one AudienceRestriction of one
-     * Audience, an authentication statement without SessionNotOnOrAfter, no attribute; a test names the end it changes.
-     */
     public static function assertion(
         ?string $inResponseTo = self::REQUEST,
         ?string $sessionIndex = '_session',
@@ -129,11 +117,6 @@ final class ResponseWriterFixtures
         );
     }
 
-    /**
-     * The assertion with every optional part: a persistent NameID with its three qualifiers, a confirmation with its
-     * Address, Conditions with their window, two AudienceRestriction and OneTimeUse, a SessionNotOnOrAfter, and three
-     * attributes, one of each NameFormat, with a FriendlyName or without, with two values, one or none.
-     */
     public static function everything(?string $inResponseTo = self::REQUEST): Assertion
     {
         return new Assertion(
@@ -179,7 +162,7 @@ final class ResponseWriterFixtures
     }
 
     /**
-     * The metadata of the identity provider, its signing key the identity provider's test key (M-3).
+     * M-3
      */
     public static function identityProvider(): IdentityProvider
     {
@@ -191,9 +174,6 @@ final class ResponseWriterFixtures
         );
     }
 
-    /**
-     * The validator of the service provider, its clock frozen at the IssueInstant of the responses.
-     */
     public static function validator(): ResponseValidator
     {
         return new ResponseValidator(
@@ -204,9 +184,6 @@ final class ResponseWriterFixtures
         );
     }
 
-    /**
-     * What the service provider expects: an answer to the request $requestId, or an unsolicited response.
-     */
     public static function expected(?string $requestId = self::REQUEST): ExpectedResponse
     {
         if ($requestId === null) {
@@ -217,8 +194,7 @@ final class ResponseWriterFixtures
     }
 
     /**
-     * The document serialized with Core and loaded again with SamlLoader::create(), as the service provider receives
-     * it (section 9.1).
+     * Section 9.1
      */
     public static function reload(Document $document): UnverifiedResponse
     {
@@ -226,8 +202,6 @@ final class ResponseWriterFixtures
     }
 
     /**
-     * The qualified names of the element children of $element, in document order.
-     *
      * @param iterable<Element> $children
      *
      * @return list<string>
@@ -243,8 +217,6 @@ final class ResponseWriterFixtures
     }
 
     /**
-     * The attributes in no namespace, in document order, the namespace declarations left aside.
-     *
      * @return array<string, string>
      */
     public static function attributes(Element $element): array
@@ -261,9 +233,7 @@ final class ResponseWriterFixtures
     }
 
     /**
-     * The namespace declarations an element carries as attributes, prefix to namespace.
-     *
-     * @return array<string, string>
+     * @return array<string, string> prefix to namespace
      */
     public static function declarations(Element $element): array
     {
@@ -280,8 +250,6 @@ final class ResponseWriterFixtures
     }
 
     /**
-     * The texts of $elements, in document order.
-     *
      * @param list<Element> $elements
      *
      * @return list<string>

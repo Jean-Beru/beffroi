@@ -13,13 +13,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * Every client of the tenant, whatever holds it (decision 0009): the ones the deployment declared and the
- * ones that registered themselves, each saying which. Reads, writes nothing.
- *
- * What it shows is what is wired: a source of clients added to the deployment is in this list by being
- * wired, and this holds no list of how many there are (`ClientInventory`).
- */
 #[AsCommand(
     name: self::NAME,
     description: 'List the clients of the tenant: where each came from, when it was registered and when it was last used.',

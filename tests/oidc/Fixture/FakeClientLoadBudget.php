@@ -11,15 +11,10 @@ use Beffroi\Oidc\Port\ClientLoadBudgetInterface;
 use const PHP_INT_MAX;
 use function sprintf;
 
-/**
- * Counts what each client was consumed for and refuses past the number allowed, without a clock: a
- * window that never slides, enough to see that a client is counted where it authenticated and nowhere
- * else, and that a refusal comes out of the endpoint as it was thrown.
- */
 final class FakeClientLoadBudget implements ClientLoadBudgetInterface
 {
     /**
-     * @var list<string> the clients of every request counted, in order
+     * @var list<string>
      */
     public private(set) array $consumed = [];
 

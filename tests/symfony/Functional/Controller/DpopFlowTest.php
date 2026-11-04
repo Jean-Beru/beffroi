@@ -13,10 +13,7 @@ use function array_map;
 use function implode;
 
 /**
- * RFC 9449 end to end, through HTTP: an authorization request that reserves its code for a key, the code
- * exchanged by the holder of that key, the tokens bound to it, and the provider's own resource refusing
- * them to anybody else. A public client, because a client with no credentials is the one binding proves
- * the most for.
+ * RFC 9449
  */
 final class DpopFlowTest extends BrowserTestCase
 {
@@ -25,8 +22,7 @@ final class DpopFlowTest extends BrowserTestCase
     private const string REDIRECT_URI = 'https://dpop.test/callback';
 
     /**
-     * The origin of the issuer of the test kernel, which is what the provider publishes its endpoints
-     * under and what a proof names in its "htu" (RFC 9449 §4.3).
+     * RFC 9449 §4.3
      */
     private const string ISSUER = 'https://op.test';
 
@@ -36,8 +32,7 @@ final class DpopFlowTest extends BrowserTestCase
     private static int $proofs = 0;
 
     /**
-     * RFC 9449 §5: the response says the tokens are presented under the DPoP scheme, and §6.1: the
-     * "at+jwt" carries the thumbprint of the key in its "cnf".
+     * RFC 9449 §5, §6.1
      */
     #[Test]
     public function theTokensOfARequestThatProvedAKeyAreBoundToIt(): void
@@ -60,8 +55,7 @@ final class DpopFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9449 §7.1: the resource serves the token to the holder of the key, who proves it again for
-     * that very request and for that very token.
+     * RFC 9449 §7.1
      */
     #[Test]
     public function aBoundTokenIsServedToWhoeverProvesTheKeyAgain(): void
@@ -83,9 +77,6 @@ final class DpopFlowTest extends BrowserTestCase
         static::assertSame('alice-subject', self::json($response)['sub']);
     }
 
-    /**
-     * A token issued against one key and presented with a proof of another opens nothing.
-     */
     #[Test]
     public function aBoundTokenIsRefusedToAProofOfAnotherKey(): void
     {
@@ -107,8 +98,7 @@ final class DpopFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9449 §7.1: presented as a bearer token, the same token is refused, and the challenge names
-     * the scheme that would have worked.
+     * RFC 9449 §7.1
      */
     #[Test]
     public function aBoundTokenPresentedAsABearerTokenIsRefusedWithTheDpopChallenge(): void
@@ -130,9 +120,7 @@ final class DpopFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9449 §7.2: a token presented under the DPoP scheme is refused in the challenge of that scheme,
-     * whatever refused it. Expired, it is refused for its expiry under "DPoP", with the algorithms a proof
-     * may be signed with (§7.1).
+     * RFC 9449 §7.2, §7.1
      */
     #[Test]
     public function anExpiredBoundTokenPresentedUnderDpopIsRefusedUnderTheDpopChallenge(): void
@@ -159,9 +147,7 @@ final class DpopFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9449 §7.1: the "algs" of a challenge are the algorithms a proof may be signed with, which are
-     * the ones the document announces in "dpop_signing_alg_values_supported" (§5.1), never a list kept
-     * beside them.
+     * RFC 9449 §7.1, §5.1
      */
     #[Test]
     public function theChallengeNamesTheAlgorithmsTheDocumentAnnouncesForAProof(): void
@@ -182,8 +168,7 @@ final class DpopFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9449 §10.1: the code was reserved for the key the authorization request named, and a token
-     * request proving another key does not collect it.
+     * RFC 9449 §10.1
      */
     #[Test]
     public function aCodeReservedForAKeyIsNotExchangedByAnother(): void
@@ -205,7 +190,7 @@ final class DpopFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9449 §11.1: a proof taken off the wire and sent again is refused, however fresh it still is.
+     * RFC 9449 §11.1
      */
     #[Test]
     public function aProofPresentedTwiceIsRefused(): void
@@ -232,10 +217,6 @@ final class DpopFlowTest extends BrowserTestCase
         static::assertSame('invalid_dpop_proof', self::json($response)['error']);
     }
 
-    /**
-     * A client that sends no proof at all keeps working: nothing of this is asked of a client that does
-     * not bind its tokens.
-     */
     #[Test]
     public function aClientThatSendsNoProofIsServedAsBefore(): void
     {
@@ -257,8 +238,7 @@ final class DpopFlowTest extends BrowserTestCase
     }
 
     /**
-     * The code flow of a client that binds its tokens: the authorization request names the key
-     * ("dpop_jkt", RFC 9449 §10), and the code is exchanged with a proof of it.
+     * RFC 9449 §10
      *
      * @return array<string, mixed>
      */

@@ -18,8 +18,7 @@ use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use function sprintf;
 
 /**
- * beffroi/saml S-51, section 7, issue #820: the reference a sign-on at an upstream identity provider starts under,
- * drawn by the login page for one login and one provider, taken once and within its life.
+ * beffroi/saml S-51, section 7
  */
 final class UpstreamSignOnReferencesTest extends TestCase
 {
@@ -27,13 +26,10 @@ final class UpstreamSignOnReferencesTest extends TestCase
 
     private const string ANOTHER_PROVIDER = 'https://idp.example.org/saml';
 
-    /**
-     * The reference drawn, which a case of a data provider cannot know.
-     */
     private const string DRAWN = 'the reference drawn';
 
     /**
-     * S-51, section 7: a reference is 32 bytes of random_bytes() in base64url, another at each drawing.
+     * S-51, section 7
      */
     #[Test]
     public function aReferenceIsDrawnAnewForEachSignOn(): void
@@ -52,7 +48,7 @@ final class UpstreamSignOnReferencesTest extends TestCase
     }
 
     /**
-     * S-51: the sign-on of a login presented the reference drawn for it, at the provider it was drawn for, is taken.
+     * S-51
      */
     #[Test]
     public function theSignOnTakesTheReferenceDrawnForIt(): void
@@ -68,8 +64,7 @@ final class UpstreamSignOnReferencesTest extends TestCase
     }
 
     /**
-     * S-51: a reference that is not the one drawn, an empty one, or the one drawn presented at another provider, is
-     * refused.
+     * S-51
      */
     #[Test]
     #[DataProvider('provideReferencesNotDrawn')]
@@ -95,7 +90,7 @@ final class UpstreamSignOnReferencesTest extends TestCase
     }
 
     /**
-     * S-51: a reference starts one sign-on, and is refused the second time it is presented.
+     * S-51
      */
     #[Test]
     public function aReferenceIsTakenOnce(): void
@@ -111,8 +106,7 @@ final class UpstreamSignOnReferencesTest extends TestCase
     }
 
     /**
-     * S-51: a reference is forgotten at its first presentation whatever was presented, so that the reference drawn
-     * is refused once another was presented in its place.
+     * S-51
      */
     #[Test]
     public function aReferenceIsForgottenWhateverWasPresented(): void
@@ -128,8 +122,7 @@ final class UpstreamSignOnReferencesTest extends TestCase
     }
 
     /**
-     * S-51: the reference of the login a page waits for starts no sign-on of an interaction, whose own reference is
-     * kept apart, and stays the page's.
+     * S-51
      */
     #[Test]
     public function eachLoginKeepsItsOwnReference(): void
@@ -149,7 +142,7 @@ final class UpstreamSignOnReferencesTest extends TestCase
     }
 
     /**
-     * S-51: a login that draws another reference forgets the one it drew before.
+     * S-51
      */
     #[Test]
     public function aLoginDrawingAnotherReferenceForgetsTheOneBefore(): void
@@ -166,8 +159,7 @@ final class UpstreamSignOnReferencesTest extends TestCase
     }
 
     /**
-     * S-51, section 7: a browser keeps the references of eight logins at most, the oldest forgotten first, a reference
-     * drawn again for a login counting as the newest.
+     * S-51, section 7
      */
     #[Test]
     public function eightReferencesAreKeptAtMost(): void
@@ -194,8 +186,7 @@ final class UpstreamSignOnReferencesTest extends TestCase
     }
 
     /**
-     * S-51, section 7: a reference is taken within its life alone, the redirection that carries it being followed at
-     * once.
+     * S-51, section 7
      */
     #[Test]
     #[DataProvider('provideLives')]
@@ -226,8 +217,7 @@ final class UpstreamSignOnReferencesTest extends TestCase
     }
 
     /**
-     * S-51: a reference past its life leaves the HTTP session when the references of the browser are written next, its
-     * sign-on never reached.
+     * S-51
      */
     #[Test]
     public function aReferencePastItsLifeLeavesTheSession(): void
@@ -249,7 +239,7 @@ final class UpstreamSignOnReferencesTest extends TestCase
     }
 
     /**
-     * S-51: what the HTTP session holds under the key of the references and is no reference of a login starts nothing.
+     * S-51
      */
     #[Test]
     #[DataProvider('provideStoredValuesThatAreNoReferences')]

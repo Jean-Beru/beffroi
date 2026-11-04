@@ -7,8 +7,6 @@ namespace App\Doctrine\Type;
 use Beffroi\Oidc\Domain\Client\RedirectUri;
 
 /**
- * A redirect URI as the client presented it (RFC 6749 §3.1.2), byte for byte.
- *
  * @extends StringObjectType<RedirectUri>
  */
 final class RedirectUriType extends StringObjectType

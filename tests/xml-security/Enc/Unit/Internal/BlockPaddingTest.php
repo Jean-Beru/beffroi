@@ -11,12 +11,12 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * E-16, XML Encryption 1.1 §5.2: the padding of AES-CBC, read by its count, the last octet, from 1 to a block.
+ * E-16, XML Encryption 1.1 §5.2
  */
 final class BlockPaddingTest extends TestCase
 {
     /**
-     * §9.3 row 23, E-16: a count of 1 to 16 removes that many octets, whatever the others of the padding hold.
+     * §9.3 row 23, E-16
      */
     #[Test]
     #[DataProvider('provideCountsInRange')]
@@ -44,7 +44,7 @@ final class BlockPaddingTest extends TestCase
     }
 
     /**
-     * §9.3 row 23, E-16: a count of 0, or above 16, is no padding of a block of 16 octets.
+     * §9.3 row 23, E-16
      */
     #[Test]
     #[DataProvider('provideCountsOutOfRange')]

@@ -27,8 +27,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * "client_secret_jwt" (OIDC Core §9): the same assertion as "private_key_jwt", signed with the secret the
- * client registered, HS256 and nothing else.
+ * OIDC Core §9
  */
 final class ClientSecretJwtTest extends TestCase
 {
@@ -68,9 +67,6 @@ final class ClientSecretJwtTest extends TestCase
         static::assertSame($this->client, $client->client);
     }
 
-    /**
-     * The secret is what signs, so the hasher is never asked anything.
-     */
     #[Test]
     public function itVerifiesNothingAgainstAHash(): void
     {
@@ -100,7 +96,7 @@ final class ClientSecretJwtTest extends TestCase
     }
 
     /**
-     * RFC 7523 §4: an assertion authenticates once, whatever signs it.
+     * RFC 7523 §4
      */
     #[Test]
     public function itRefusesAnAssertionReplayedInsideItsValidity(): void
@@ -117,10 +113,6 @@ final class ClientSecretJwtTest extends TestCase
         $this->assertRefused(ClientAuthenticationFailureReason::ReplayedAssertion);
     }
 
-    /**
-     * The two assertion methods are told apart by what signs the assertion: a client registered for one
-     * and sending the other is refused like a client sending a secret it did not register.
-     */
     #[Test]
     public function aClientRegisteredForPrivateKeyJwtCannotSignWithASecretInstead(): void
     {

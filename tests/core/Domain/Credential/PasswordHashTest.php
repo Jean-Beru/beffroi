@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 final class PasswordHashTest extends TestCase
 {
     /**
-     * Decision 0002: no password hash without an identified algorithm.
+     * Decision 0002
      */
     #[Test]
     public function itAlwaysNamesItsAlgorithmAndMayCarryParameters(): void

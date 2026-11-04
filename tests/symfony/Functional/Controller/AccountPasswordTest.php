@@ -26,12 +26,7 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Architecture §5.2: a person replaces their own password from the page of their account, by proving who
- * they are a short while ago, typing the one in use, and posing another twice; every other browser signed
- * in as them is signed out.
- *
- * The list of compromised passwords of this kernel is a fixture that names nothing until a test names one
- * (config_test.yml): no test here reaches a host, and what is tested is the rule that reads the answer.
+ * Architecture §5.2
  */
 final class AccountPasswordTest extends BrowserTestCase
 {
@@ -53,9 +48,6 @@ final class AccountPasswordTest extends BrowserTestCase
         static::assertSame(Response::HTTP_UNAUTHORIZED, $this->browser->getResponse()->getStatusCode());
     }
 
-    /**
-     * Nothing visible changes when a password does, so the date is what the page has to show.
-     */
     #[Test]
     public function thePageSaysWhenThePasswordWasLastWritten(): void
     {
@@ -85,10 +77,6 @@ final class AccountPasswordTest extends BrowserTestCase
         static::assertCount(1, self::events(PasswordChanged::class));
     }
 
-    /**
-     * A password is replaced because the one before it is not trusted any more, and a session opened
-     * under it is exactly what should not outlive it. The browser it was asked from stays signed in.
-     */
     #[Test]
     public function replacingThePasswordSignsEveryOtherBrowserOut(): void
     {
@@ -106,8 +94,7 @@ final class AccountPasswordTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0031: a session past its expiry signs nobody in, and nothing ended it, so the tokens issued
-     * under it live on; replacing the password ends it with the others, and they are revoked with it.
+     * Decision 0031
      */
     #[Test]
     public function replacingThePasswordRevokesTheTokensOfASessionPastItsExpiry(): void
@@ -125,9 +112,6 @@ final class AccountPasswordTest extends BrowserTestCase
         self::assertTheTokensAreRevoked($tokens);
     }
 
-    /**
-     * A session somebody else took over does not get to replace the password it signed in with.
-     */
     #[Test]
     public function aPasswordInUseThatWasNotTypedIsRefusedAndSaidOnThePage(): void
     {
@@ -156,11 +140,6 @@ final class AccountPasswordTest extends BrowserTestCase
         static::assertCount(1, $this->afterTheForm()->filter('p[data-error="same_as_before"]'));
     }
 
-    /**
-     * What a password has to be is checked on the server, whatever a form said and whatever the meter in
-     * the browser showed, and the page says which rule pronounced it. A browser running no script at all
-     * posts through the same form and meets the same rules, which is what this does.
-     */
     #[Test]
     #[DataProvider('providePasswordsThatAreNoPassword')]
     public function aPasswordPosedThatIsNoPasswordIsRefusedAndSaidOnThePage(string $posed, string $error): void
@@ -184,10 +163,6 @@ final class AccountPasswordTest extends BrowserTestCase
         yield 'a word written twice' => ['passwordpassword', 'too_weak'];
     }
 
-    /**
-     * A password nobody can read back is a password nobody can check they typed right, and somebody who
-     * mistypes it has lost the account rather than changed it.
-     */
     #[Test]
     public function aPasswordPosedTwiceAndTypedDifferentlyIsRefusedAndSaidOnThePage(): void
     {
@@ -204,8 +179,7 @@ final class AccountPasswordTest extends BrowserTestCase
     }
 
     /**
-     * The rule NIST SP 800-63B §3.1.1.2 puts first, on this page: the page refuses the two the console
-     * refuses.
+     * NIST SP 800-63B §3.1.1.2
      */
     #[Test]
     public function aPasswordAListCountsIsRefusedAndSaidOnThePage(): void
@@ -224,7 +198,7 @@ final class AccountPasswordTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0006: an unknown is not a clean answer. Nothing is written and the page says so.
+     * Decision 0006
      */
     #[Test]
     public function aPasswordNoListCouldBeAskedAboutIsRefusedAndSaidOnThePage(): void
@@ -242,9 +216,6 @@ final class AccountPasswordTest extends BrowserTestCase
         static::assertTrue(self::hasher()->verify(self::passwordOf($alice)->hash, self::IN_USE));
     }
 
-    /**
-     * A deployment that names no list poses passwords all the same, which is every other test here.
-     */
     #[Test]
     public function aDeploymentThatNamesNoListPosesThePasswordAllTheSame(): void
     {
@@ -261,10 +232,6 @@ final class AccountPasswordTest extends BrowserTestCase
         static::assertSame([], self::breaches()->asked);
     }
 
-    /**
-     * A session is not a proof of presence: this is the form somebody else would use to lock its owner
-     * out of their account, so the proof is asked again at the login of the firewall.
-     */
     #[Test]
     public function aSessionThatProvedNothingRecentlyIsSentToTheLogin(): void
     {
@@ -279,9 +246,6 @@ final class AccountPasswordTest extends BrowserTestCase
         static::assertStringEndsWith('/login', self::string($this->browser->getResponse()->headers->get('Location')));
     }
 
-    /**
-     * A guard the form does not repeat is a guard a form post goes around.
-     */
     #[Test]
     public function aPasswordPostedOnASessionThatProvedNothingRecentlyIsNotWritten(): void
     {
@@ -304,10 +268,6 @@ final class AccountPasswordTest extends BrowserTestCase
         static::assertTrue(self::hasher()->verify(self::passwordOf($alice)->hash, self::IN_USE));
     }
 
-    /**
-     * What the lane found after the password was posed is read here, where the person can do something
-     * about it (issue #552).
-     */
     #[Test]
     public function aPasswordFoundInABreachIsSaidOnThePage(): void
     {
@@ -325,9 +285,6 @@ final class AccountPasswordTest extends BrowserTestCase
         static::assertCount(1, $page->filter('p[data-password-breached]'));
     }
 
-    /**
-     * Somebody who signs in by another means has nothing to replace, and is offered no form.
-     */
     #[Test]
     public function aPersonWhoHoldsNoPasswordIsOfferedNoForm(): void
     {
@@ -360,11 +317,6 @@ final class AccountPasswordTest extends BrowserTestCase
         static::assertTrue(self::hasher()->verify(self::passwordOf($alice)->hash, self::IN_USE));
     }
 
-    /**
-     * The meter asks nobody anything: the page hands the script the words and the floor, and the script
-     * reads the field it is pointed at. What is asserted here is what the page tells it; what it makes of
-     * a password is the core's vectors (PasswordStrengthTest).
-     */
     #[Test]
     public function thePageHandsTheMeterItsWordsAndItsFloor(): void
     {
@@ -384,10 +336,7 @@ final class AccountPasswordTest extends BrowserTestCase
     }
 
     /**
-     * Issue #625, NIST SP 800-63B §3.1.1.2: the length the form declares is the one the floor of the
-     * tenant asks of a password serving the logins it admits (PasswordLength), fifteen characters where
-     * the password is the whole of a login and eight where a second factor is read beside it. What the
-     * browser enforces and what the core refuses below are one number.
+     * NIST SP 800-63B §3.1.1.2
      */
     #[Test]
     #[DataProvider('provideFloorsAndTheLengthTheyAsk')]
@@ -416,8 +365,7 @@ final class AccountPasswordTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §5.2: a script of the provider, served by the provider, cacheable, and nothing is loaded
-     * from anywhere else.
+     * Architecture §5.2
      */
     #[Test]
     public function theScriptOfTheMeterIsServedByTheProvider(): void
@@ -454,9 +402,6 @@ final class AccountPasswordTest extends BrowserTestCase
         ]);
     }
 
-    /**
-     * The list of this kernel, armed by the test that wants the rule.
-     */
     private static function breaches(): BreachedPasswordsOfARecord
     {
         return self::service('test.beffroi.breached_passwords', BreachedPasswordsOfARecord::class);

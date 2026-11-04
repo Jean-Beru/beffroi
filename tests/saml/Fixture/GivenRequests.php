@@ -8,9 +8,6 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Saml\Domain\SingleSignOn\SignOnRequest;
 use Beffroi\Saml\Port\AuthnRequestReceiverInterface;
 
-/**
- * A receiver that accepts whatever arrives as the request a test gives it, over either binding.
- */
 final readonly class GivenRequests implements AuthnRequestReceiverInterface
 {
     public function __construct(

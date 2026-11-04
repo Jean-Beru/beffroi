@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.7: one of the six bounds, named (I-7). A consumer catches the base class when it does not care which rule fired.
+ * Section 5.7, I-7
  */
 final class LimitExceededTest extends TestCase
 {

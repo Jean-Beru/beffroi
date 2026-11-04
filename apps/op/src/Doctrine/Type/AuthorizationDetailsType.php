@@ -20,17 +20,6 @@ use const JSON_UNESCAPED_UNICODE;
 use JsonException;
 use LogicException;
 
-/**
- * What a user agreed to beyond the scopes (RFC 9396 §2), stored in the JSON of the wire: the same array a
- * token carries and an introspection renders (§7, §9), read back through the types the deployment is
- * wired with, which are the only things that know what any of it means.
- *
- * A row naming a type the deployment no longer serves fails to convert rather than loading as something
- * else: a detail nobody can describe is a detail nobody can honour.
- *
- * The column is JSONB on PostgreSQL, which the type declares as DBAL's own `JsonbType` does, so the mappings
- * ask the platform for nothing (doctrine/dbal#6939).
- */
 final class AuthorizationDetailsType extends Type implements NeedsAuthorizationDetailTypesInterface
 {
     public const string NAME = 'beffroi_authorization_details';

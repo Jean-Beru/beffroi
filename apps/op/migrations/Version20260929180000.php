@@ -9,12 +9,7 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * What a client reads, replaces and deletes itself with (RFC 7592 §2.3): one column on the row of a client
- * this provider registered, holding the digest of the token and never the token.
- *
- * Its default is the digest of nothing, sixty-four zeroes, which no value hashes to: a client registered
- * before the column existed was handed no such token, so it reads itself with none, and a column that had
- * to be nullable for those rows would have been a column every comparison has to remember can be null.
+ * The default, sixty-four zeroes, is a digest no value hashes to: the clients registered earlier hold no token.
  */
 final class Version20260929180000 extends AbstractMigration
 {

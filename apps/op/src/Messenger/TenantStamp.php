@@ -8,20 +8,13 @@ use Beffroi\Core\Exception\InvalidArgumentException;
 use Symfony\Component\Messenger\Stamp\StampInterface;
 
 /**
- * The scope a message was written under (decision 0020): the slug of the tenant, which the serializer puts
- * in a header of the transport so that a consumer knows which key to ask for before it touches the body,
- * and so that a message in the failure transport is read without being opened.
- *
- * **It says the scope and is never its authority.** What decides is the protected header of the sealed
- * body, which is the authenticated data of the JWE: a stamp swapped on a transport does not make a body
- * open under another scope, it makes the opening fail (the pattern of beffroi#436). Nothing of this
- * provider reads it to decide anything else.
+ * Never read to decide anything: the protected header of the sealed body decides the scope, and a swapped
+ * stamp only makes the opening fail.
  */
 final readonly class TenantStamp implements StampInterface
 {
     /**
-     * @throws InvalidArgumentException when it names no tenant: a message is written under a scope or it
-     *                                  is not written
+     * @throws InvalidArgumentException
      */
     public function __construct(
         public string $slug,

@@ -44,12 +44,7 @@ use function gzinflate;
 use function urldecode;
 
 /**
- * Section 9.4, section 9.5: what SimpleSAMLphp 2.5.3.1 sent the model in the exchange of story #11 on 30 September
- * 2026 (tests/saml2-model/Interop/simplesamlphp/README.md, section 4), bytes as received, validated with a clock frozen at their
- * IssueInstant: its identity provider's response and LogoutResponse to the model's service provider, its service
- * provider for-model's AuthnRequest and LogoutRequest to the model's identity provider, with the query strings
- * HTTP-Redirect carried them in, and the metadata of both parties as they were served. The model's two roles are
- * those the exchange wrote into its metadata (tests/saml2-model/Interop/simplesamlphp/exchange.php).
+ * Section 9.4, section 9.5
  */
 final class SimpleSamlPhpDocumentsTest extends TestCase
 {
@@ -64,9 +59,7 @@ final class SimpleSamlPhpDocumentsTest extends TestCase
     private const string MODEL = 'http://localhost:8083/model/';
 
     /**
-     * Section 9.5, section 6.1, M-2: the response of SimpleSAMLphp's identity provider to the model's AuthnRequest
-     * (_627d4a4e...), its response and its assertion signed, as by default, accepted under the identity provider's
-     * metadata with the attributes of the test user.
+     * Section 9.5, section 6.1, M-2
      */
     #[Test]
     public function itAcceptsTheResponseToTheModel(): void
@@ -113,9 +106,7 @@ final class SimpleSamlPhpDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.5, section 6.4, M-2, M-10: the LogoutResponse of SimpleSAMLphp's identity provider to the model's
-     * LogoutRequest (_4155d5bb...), signed in the XML since its entry for the model sets sign.logout (finding F-1),
-     * posted over HTTP-POST, accepted by validate().
+     * Section 9.5, section 6.4, M-2, M-10, finding F-1
      */
     #[Test]
     public function itAcceptsTheSignedLogoutResponseToTheModel(): void
@@ -147,9 +138,7 @@ final class SimpleSamlPhpDocumentsTest extends TestCase
     }
 
     /**
-     * Section 6.8, Bindings §3.4.4.1: the signature over the query string that carried each request of for-model to
-     * the model, the octets of SAMLRequest, RelayState and SigAlg as they appear in the URL, verified under the key of
-     * for-model's metadata, what saml2-bindings does before it calls validateAuthenticatedByBinding().
+     * Section 6.8, Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideQueryStrings')]
@@ -181,8 +170,7 @@ final class SimpleSamlPhpDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4: the XML of each request of for-model to the model is what its query string carried, base64-decoded
-     * and raw-inflated, byte for byte.
+     * Section 9.4
      */
     #[Test]
     #[DataProvider('provideRedirected')]
@@ -214,9 +202,7 @@ final class SimpleSamlPhpDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.5, section 6.2, M-9: the AuthnRequest of for-model to the model's identity provider, authenticated
-     * by its query string, accepted through the binding path, its assertion consumer service the HTTP-POST one of
-     * for-model's metadata.
+     * Section 9.5, section 6.2, M-9
      */
     #[Test]
     public function itAcceptsTheAuthnRequestToTheModelThroughTheBinding(): void
@@ -256,8 +242,7 @@ final class SimpleSamlPhpDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.5, section 6.3: the LogoutRequest of for-model to the model's identity provider, authenticated by its
-     * query string, accepted through the binding path, naming the transient NameID and the session the model issued.
+     * Section 9.5, section 6.3
      */
     #[Test]
     public function itAcceptsTheLogoutRequestToTheModelThroughTheBinding(): void
@@ -300,8 +285,7 @@ final class SimpleSamlPhpDocumentsTest extends TestCase
     }
 
     /**
-     * Section 6.5: the identity provider's metadata in the configuration of the exchange, where it publishes its
-     * single sign-on and single logout services for HTTP-POST next to HTTP-Redirect, at the same locations.
+     * Section 6.5
      */
     #[Test]
     public function itReadsTheBindingsTheIdentityProviderPublishesForTheExchange(): void
@@ -326,8 +310,7 @@ final class SimpleSamlPhpDocumentsTest extends TestCase
     }
 
     /**
-     * Section 6.5: for-model's metadata, its HTTP-Artifact assertion consumer service dropped, its single logout
-     * service published for HTTP-POST next to HTTP-Redirect, where the model answers.
+     * Section 6.5
      */
     #[Test]
     public function itReadsTheEndpointsOfTheServiceProviderForTheModel(): void
@@ -350,9 +333,7 @@ final class SimpleSamlPhpDocumentsTest extends TestCase
     }
 
     /**
-     * The parameters of a query string of tests/saml2-model/Fixture/real/, as they appear in the URL, not decoded.
-     *
-     * @return array<string, string>
+     * @return array<string, string> as they appear in the URL, not decoded
      */
     private function parameters(string $file): array
     {
@@ -375,9 +356,6 @@ final class SimpleSamlPhpDocumentsTest extends TestCase
         return $this->descriptor(self::SP_METADATA)->serviceProvider ?? throw new LogicException('The metadata holds a service provider.');
     }
 
-    /**
-     * A metadata of the exchange read by readTrusted() with a clock at its capture.
-     */
     private function descriptor(string $file): EntityDescriptor
     {
         return new MetadataReader(
@@ -386,10 +364,6 @@ final class SimpleSamlPhpDocumentsTest extends TestCase
         )->readTrusted(MetadataFixtures::load('real/' . $file));
     }
 
-    /**
-     * The model's identity provider as the exchange published it: the test key, HTTP-Redirect for its single
-     * sign-on and single logout services, where for-model sent its requests.
-     */
     private function modelIdentityProvider(): IdentityProvider
     {
         return new IdentityProvider(
@@ -403,10 +377,6 @@ final class SimpleSamlPhpDocumentsTest extends TestCase
         );
     }
 
-    /**
-     * The model's service provider as the exchange published it: the test key, HTTP-POST for its assertion consumer
-     * service and its single logout service.
-     */
     private function modelServiceProvider(): ServiceProvider
     {
         return new ServiceProvider(

@@ -21,8 +21,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 7591 §1.2, decision 0009: the mode built first. A registration is authorised by a token the tenant
- * issued, presented as a bearer credential, and spent in the same request.
+ * RFC 7591 §1.2, Decision 0009
  */
 final class InitialAccessTokenAuthorizationTest extends TestCase
 {
@@ -38,10 +37,6 @@ final class InitialAccessTokenAuthorizationTest extends TestCase
         $this->tenant = Fixtures::tenant();
     }
 
-    /**
-     * An initial access token says who may register, never what is registered: it puts nothing in front
-     * of the members the client sent.
-     */
     #[Test]
     public function aTokenOfTheTenantAuthorisesARegistrationAndAddsNothingToIt(): void
     {
@@ -55,10 +50,6 @@ final class InitialAccessTokenAuthorizationTest extends TestCase
         static::assertSame([], $sources);
     }
 
-    /**
-     * A token worth one registration registers one: what it was worth is spent in the request it
-     * authorised.
-     */
     #[Test]
     public function aTokenIsSpentByTheRegistrationItAuthorises(): void
     {
@@ -73,8 +64,7 @@ final class InitialAccessTokenAuthorizationTest extends TestCase
     }
 
     /**
-     * Decision 0006: whoever does not hold a token of this tenant learns nothing about the one they
-     * presented; the five refusals read the same.
+     * Decision 0006
      */
     #[Test]
     #[DataProvider('provideRefusedRequests')]
@@ -117,8 +107,7 @@ final class InitialAccessTokenAuthorizationTest extends TestCase
     }
 
     /**
-     * RFC 9110 §11.6.1: a scheme is compared without regard to case, so a client that spelled it its own
-     * way is authorised all the same.
+     * RFC 9110 §11.6.1
      */
     #[Test]
     public function theSchemeIsReadWithoutRegardToCase(): void
@@ -133,9 +122,6 @@ final class InitialAccessTokenAuthorizationTest extends TestCase
         static::assertSame([], $sources);
     }
 
-    /**
-     * The tokens of one tenant are no business of another: a token issued elsewhere opens nothing here.
-     */
     #[Test]
     public function aTokenOfAnotherTenantAuthorisesNothing(): void
     {

@@ -13,7 +13,7 @@ use Beffroi\Oidc\Domain\Token\IssuedTokens;
 use LogicException;
 
 /**
- * A grant that declares it spends a refresh token (RFC 6749 §6) and grants nothing.
+ * RFC 6749 §6
  */
 final readonly class FakeRefreshTokenSpendingGrant implements SpendsRefreshTokensInterface
 {

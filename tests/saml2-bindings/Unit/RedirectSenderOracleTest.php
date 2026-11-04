@@ -20,14 +20,7 @@ use PHPUnit\Framework\TestCase;
 use function sprintf;
 
 /**
- * Section 9.1, B-2, B-8: the signed URLs RedirectSender writes, an AuthnRequest, a LogoutRequest and a LogoutResponse
- * under every algorithm this build has, each without RelayState, with one of 80 bytes and with one of 1 024 bytes, and
- * an AuthnRequest to a Destination holding its own query, written into the directory REDIRECT_ORACLE names, each next
- * to the document the model's writer writes for it, unsigned and serialized once: the OpenSSL command line verifies
- * every signature over the octets it builds from the URL, and Python's zlib inflates every message, which must be that
- * document (tests/saml2-bindings/Fixture/oracle/README.md, castor saml2-bindings-oracle, the job Oracle of the CI). The files are the input
- * of the oracle, not fixtures, named after the signer whose certificate verifies them: the test is skipped when the
- * variable is not set. A PSS signature is random, so nothing here is pinned.
+ * Section 9.1, B-2, B-8
  *
  * @phpstan-import-type Message from SendingFixtures
  */
@@ -37,7 +30,7 @@ final class RedirectSenderOracleTest extends TestCase
     use SendingFixtures;
 
     /**
-     * Section 9.1: a signed URL, and the document its message must inflate to, for the OpenSSL oracle.
+     * Section 9.1
      *
      * @param Message $message
      */
@@ -97,8 +90,6 @@ final class RedirectSenderOracleTest extends TestCase
     }
 
     /**
-     * The document the model's writer writes for $message to $destination or to its own, unsigned, serialized once.
-     *
      * @param Message $message
      */
     private function written(string $message, ?string $destination): string
@@ -119,9 +110,6 @@ final class RedirectSenderOracleTest extends TestCase
         });
     }
 
-    /**
-     * @return int|false what file_put_contents() returns
-     */
     private function put(string $name, string $bytes): int|false
     {
         $directory = getenv('REDIRECT_ORACLE');

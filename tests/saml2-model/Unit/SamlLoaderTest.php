@@ -16,13 +16,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.1, M-14: one loader and one ID space over the SAML, XML Signature and XML Encryption ID attributes.
+ * Section 5.1, M-14
  */
 final class SamlLoaderTest extends TestCase
 {
     /**
-     * M-14, core.md section 5.3: ID on the elements of the three SAML namespaces, Id on those of XML Signature and XML
-     * Encryption, and nothing else.
+     * M-14, core.md section 5.3
      */
     #[Test]
     public function itRegistersTheIdAttributesOfTheSamlStack(): void
@@ -51,8 +50,7 @@ final class SamlLoaderTest extends TestCase
     }
 
     /**
-     * M-14: the loader indexes the ID of every SAML element and the Id of every XML Signature and XML Encryption
-     * element of the document.
+     * M-14
      */
     #[Test]
     #[DataProvider('provideIndexedIds')]
@@ -85,7 +83,7 @@ final class SamlLoaderTest extends TestCase
     }
 
     /**
-     * M-14, core.md section 5.3: an attribute outside the preset identifies nothing, whatever its name suggests.
+     * M-14, core.md section 5.3
      */
     #[Test]
     #[DataProvider('provideUnregisteredIds')]
@@ -114,8 +112,7 @@ final class SamlLoaderTest extends TestCase
     }
 
     /**
-     * M-14, section 3 (ID confusion across vocabularies), core.md I-8: an ID of one vocabulary equal to an ID of
-     * another is a duplicate, and the document is refused at load.
+     * M-14, section 3, core.md I-8
      */
     #[Test]
     #[DataProvider('provideDuplicatesAcrossVocabularies')]
@@ -149,7 +146,7 @@ final class SamlLoaderTest extends TestCase
     }
 
     /**
-     * Section 5.1, core.md section 7: the loader applies the bounds of Core the caller gives it.
+     * Section 5.1, core.md section 7
      */
     #[Test]
     public function itAppliesTheLimitsItIsGiven(): void

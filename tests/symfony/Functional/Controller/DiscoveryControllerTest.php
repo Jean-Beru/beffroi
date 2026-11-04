@@ -12,8 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * OIDC Discovery §4 and architecture §4.8, §5.2: the provider metadata at the well-known location, the
- * endpoints announced under the issuer whatever host the request came in with.
+ * OIDC Discovery §4, Architecture §4.8, §5.2
  */
 final class DiscoveryControllerTest extends BrowserTestCase
 {
@@ -39,8 +38,7 @@ final class DiscoveryControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8414 §3: the second well-known location, where a resource server looks for the metadata of its
-     * authorization server; the issuer of this kernel is an origin, so the path is appended to it.
+     * RFC 8414 §3
      */
     #[Test]
     public function theSameMetadataIsServedAtTheAuthorizationServerLocation(): void
@@ -72,7 +70,7 @@ final class DiscoveryControllerTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0006 and RFC 9207 §3: S256 only, and iss in every authorization response.
+     * Decision 0006, RFC 9207 §3
      */
     #[Test]
     public function theMetadataAnnouncesWhatTheProviderDoes(): void
@@ -87,12 +85,7 @@ final class DiscoveryControllerTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Discovery §3 "scopes_supported", issue #278: "openid" first, then what the wired claims
-     * providers serve, the four of OIDC Core §5.4 and the scope this kernel wires a provider of its own
-     * for, then what the deployment declares for the tenant, none here (issue #920), then the scopes the
-     * clients of the tenant registered, and "offline_access" last because the wired grants make it good
-     * (§11). None of it is enumerated anywhere: a scope is announced because a class serves it, because
-     * the deployment declares it or because a client registered it.
+     * OIDC Discovery §3 "scopes_supported", OIDC Core §5.4, §11
      */
     #[Test]
     public function theMetadataAnnouncesTheScopesTheWiringAndTheClientsOfTheTenantHold(): void
@@ -119,8 +112,7 @@ final class DiscoveryControllerTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Discovery §3 "claims_supported", issue #278: what the wired claims providers hold together,
-     * the claim this kernel wires a provider of its own for included.
+     * OIDC Discovery §3 "claims_supported"
      */
     #[Test]
     public function theMetadataAnnouncesTheClaimsTheWiredProvidersServe(): void
@@ -135,12 +127,7 @@ final class DiscoveryControllerTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §5.1, issue #626: a claim of the core names itself by the name the specification defines,
-     * which is the name this document announces and the name a tenant opens
-     * (`beffroi.tenant.self_served_claims`). The thirteen claims of the profile are described twice, by a
-     * class each in the core and by the map of the provider in the module, so the walk is here: a claim
-     * whose spelling drifts from the one announced is red before an operator reads a name their own
-     * metadata does not carry.
+     * OIDC Core §5.1
      */
     #[Test]
     public function everyClaimAPersonMaySayOfThemselvesIsAnnouncedUnderThatName(): void
@@ -160,9 +147,7 @@ final class DiscoveryControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8705 §3.3 and §5: the provider binds access tokens to certificates because the two mutual-TLS
-     * methods are wired, and it says where a client presenting one reaches the endpoints, on the host
-     * the deployment configured (architecture §5.2).
+     * RFC 8705 §3.3, §5, Architecture §5.2
      */
     #[Test]
     public function theMetadataAnnouncesWhereAClientPresentingACertificateGoes(): void
@@ -187,12 +172,7 @@ final class DiscoveryControllerTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Discovery §3 "response_modes_supported", issue #98: the ways of answering wired into the
-     * authorization endpoint, in the order they are wired, plus the "jwt" a signed one makes meaningful
-     * (JARM §2.1). Four come from the provider, the default one, the posted form (Form Post Response Mode §2)
-     * and the two deliveries of a signed document; the fifth is the one this kernel wires itself, which is
-     * what issue #240 is about: the document announces what is wired and nothing kept beside it. The
-     * response types stay "code" alone, in every mode (decision 0006).
+     * OIDC Discovery §3 "response_modes_supported", JARM §2.1, Form Post Response Mode §2, Decision 0006
      */
     #[Test]
     public function theMetadataAnnouncesTheResponseModesTheIntegrationWires(): void
@@ -210,8 +190,7 @@ final class DiscoveryControllerTest extends BrowserTestCase
     }
 
     /**
-     * JARM §3: a deployment that wires a signed mode says what it signs such an answer with, which is
-     * what it signs every other JWS with (issue #98).
+     * JARM §3
      */
     #[Test]
     public function theMetadataAnnouncesWhatASignedAnswerIsSignedWith(): void
@@ -225,9 +204,7 @@ final class DiscoveryControllerTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Discovery §3 and RFC 9101 §10.5: both ways a request object comes in are served, a
-     * "request_uri" is read back only from a URL its client registered, and "none" is announced beside
-     * the wired algorithms because a client of this tenant registered it (issue #98).
+     * OIDC Discovery §3, RFC 9101 §10.5
      */
     #[Test]
     public function theMetadataAnnouncesHowARequestObjectIsReadAndSignedFor(): void
@@ -244,8 +221,7 @@ final class DiscoveryControllerTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Discovery §3 "acr_values_supported", decision 0010: the classes of the policy of the tenant the
-     * logins of the firewall, a password and a passkey, can prove: the four of the default policy.
+     * OIDC Discovery §3 "acr_values_supported", Decision 0010
      */
     #[Test]
     public function theMetadataAnnouncesTheClassesThePasswordAndThePasskeyProve(): void
@@ -257,9 +233,6 @@ final class DiscoveryControllerTest extends BrowserTestCase
         static::assertSame(['phrh', 'phr', '2', '1'], self::json($this->browser->getResponse())['acr_values_supported']);
     }
 
-    /**
-     * The Host header of the request does not steer what is announced: the origin is the issuer's.
-     */
     #[Test]
     public function theEndpointsAreAnnouncedUnderTheIssuerNotUnderTheRequestHost(): void
     {
@@ -273,7 +246,7 @@ final class DiscoveryControllerTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §5.2: the endpoint locator the provider binds is the one of the router.
+     * Architecture §5.2
      */
     #[Test]
     public function theRouterLocatesTheEndpoints(): void

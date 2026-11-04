@@ -46,12 +46,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * beffroi/saml, spec/saml.md section 7 (Entra's SAML federation of guests) and section 6.4, the acceptance of issue
- * #736 short of Entra itself: a request shaped as Microsoft's documentation shows the one Entra sends, unsigned, its
- * Issuer the tenanted entity ID, a persistent NameIDPolicy and no AssertionConsumerServiceURL, from the service
- * provider declared unsigned with the metadata written by hand for it, is answered with a response holding what
- * Microsoft's documentation requires of the identity provider: the Audience and the Recipient, the persistent NameID,
- * the email address under its claim type, and an assertion signed.
+ * beffroi/saml, spec/saml.md section 7, section 6.4
  */
 final class EntraGuestFederationTest extends ConsoleTestCase
 {
@@ -87,9 +82,7 @@ final class EntraGuestFederationTest extends ConsoleTestCase
     }
 
     /**
-     * Section 7, S-9, S-14, S-16: the unsigned request over HTTP-Redirect is answered with an assertion for the
-     * tenanted entity ID at login.srf, its NameID persistent and qualified by that entity ID, and the email address
-     * under the claim type Entra requires.
+     * Section 7, S-9, S-14, S-16
      */
     #[Test]
     public function anUnsignedRequestOverHttpRedirectGetsTheAssertionEntraExpects(): void
@@ -124,8 +117,7 @@ final class EntraGuestFederationTest extends ConsoleTestCase
     }
 
     /**
-     * Section 7, S-15: the Conditions of the assertion Entra receives begin at its IssueInstant, their NotBefore,
-     * without which Entra answers AADSTS500089.
+     * Section 7, S-15
      */
     #[Test]
     public function theConditionsOfTheAssertionBeginAtItsIssue(): void
@@ -142,9 +134,7 @@ final class EntraGuestFederationTest extends ConsoleTestCase
     }
 
     /**
-     * Section 7, S-28: the same request posted from the site of Entra without the cookie of the provider, which
-     * Microsoft's documentation of the federation of a domain says Entra does, is posted again from the origin of the
-     * provider and answered from the session, both signed.
+     * Section 7, S-28
      */
     #[Test]
     public function anUnsignedRequestPostedFromEntraIsAnsweredFromTheSession(): void
@@ -161,8 +151,7 @@ final class EntraGuestFederationTest extends ConsoleTestCase
     }
 
     /**
-     * Section 7, S-15: the response and the assertion are each signed under RSA-SHA256 over a SHA-256 digest, with the
-     * two transforms Microsoft's documentation names, enveloped-signature then exclusive canonicalization.
+     * Section 7, S-15
      */
     #[Test]
     public function theResponseAndTheAssertionAreSignedAsMicrosoftDocumentsIt(): void
@@ -202,8 +191,7 @@ final class EntraGuestFederationTest extends ConsoleTestCase
     }
 
     /**
-     * Section 7, S-37: the signature of the response and the one of the assertion each carry, in their KeyInfo, the
-     * certificate the metadata of the tenant serve, without which Entra answers AADSTS5000810.
+     * Section 7, S-37
      */
     #[Test]
     public function eachSignatureCarriesTheCertificateOfTheMetadataServed(): void
@@ -221,9 +209,7 @@ final class EntraGuestFederationTest extends ConsoleTestCase
     }
 
     /**
-     * Section 7, S-36, section 12 (what login.srf does after the post): the page names no "form-action", so that the
-     * redirection by which login.srf sends the browser on to the client that asked Entra is followed, and keeps the
-     * rest of its policy.
+     * Section 7, S-36, section 12
      */
     #[Test]
     public function thePageLetsLoginSrfSendTheBrowserOn(): void
@@ -241,21 +227,12 @@ final class EntraGuestFederationTest extends ConsoleTestCase
         );
     }
 
-    /**
-     * The request as Entra redirects the browser with it, unsigned, to the path of the single sign-on service on the
-     * host of the browser.
-     */
     private function redirected(): void
     {
         $url = new RedirectSender()->authnRequest(self::request(), null);
         $this->browser->request('GET', parse_url($url, PHP_URL_PATH) . '?' . parse_url($url, PHP_URL_QUERY));
     }
 
-    /**
-     * The request of Microsoft's sample (Microsoft Entra Connect, "Use a SAML 2.0 Identity Provider for Single Sign
-     * On"), its Issuer the tenanted entity ID a new federation sends: an ID, an instant, the Issuer and a persistent
-     * NameIDPolicy, no AssertionConsumerServiceURL, which the default endpoint of the metadata answers.
-     */
     private static function request(): AuthnRequest
     {
         return new AuthnRequest(
@@ -272,10 +249,6 @@ final class EntraGuestFederationTest extends ConsoleTestCase
         return '_1e089e5c-a976-4881-af74-3b92c89e7e2c';
     }
 
-    /**
-     * The response the page posts, as the service provider validates it: under the certificate the metadata of the
-     * tenant publish, at login.srf, for the tenanted entity ID, answering its request.
-     */
     private function accepted(): AcceptedAssertion
     {
         $form = $this->form();
@@ -302,8 +275,6 @@ final class EntraGuestFederationTest extends ConsoleTestCase
     }
 
     /**
-     * The form of the page, as a browser reads it.
-     *
      * @return array{action: string, fields: array<string, string>}
      */
     private function form(): array

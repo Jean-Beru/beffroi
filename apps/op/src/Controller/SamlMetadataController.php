@@ -15,12 +15,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The metadata of the SAML identity provider of the tenant (beffroi/saml, spec/saml.md section 6.1): its entity ID,
- * the certificate of each of its signing keys in service and its endpoints. A tenant that holds no SAML key has none to
- * serve, and neither has any tenant of a deployment that does not enable "beffroi.saml.identity_provider", which wires
- * no handler (S-41): the SAML key its service provider keeps in service publishes no metadata of an identity provider,
- * and the key a tenant drew while either role was enabled is dormant once both are off, read by nothing
- * (DormantKeyAlgorithms).
+ * spec/saml.md section 6.1
  */
 #[AsController]
 final readonly class SamlMetadataController

@@ -13,13 +13,12 @@ use function str_split;
 use function strpos;
 
 /**
- * A drawer of user codes that draws the codes a test wrote, in the order it wrote them (RFC 8628 §6.1): the
- * bytes behind each one are the places of its characters in the alphabet, which the drawer spells back.
+ * RFC 8628 §6.1
  */
 final class UserCodes
 {
     /**
-     * @param list<string> $codes each of them a code of the shape this provider draws
+     * @param list<string> $codes
      */
     public static function drawer(array $codes = []): UserCodeDrawer
     {

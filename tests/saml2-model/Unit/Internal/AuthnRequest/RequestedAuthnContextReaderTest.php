@@ -19,8 +19,7 @@ use function sprintf;
 use function str_repeat;
 
 /**
- * Section 6.2 step 5: a samlp:RequestedAuthnContext read strictly (SAML Core §3.3.2.2.1), section 8 and M-5 on the
- * way.
+ * Section 6.2 step 5, SAML Core §3.3.2.2.1, section 8, M-5
  */
 final class RequestedAuthnContextReaderTest extends TestCase
 {
@@ -29,7 +28,7 @@ final class RequestedAuthnContextReaderTest extends TestCase
     private const string KERBEROS = 'urn:oasis:names:tc:SAML:2.0:ac:classes:Kerberos';
 
     /**
-     * SAML Core §3.3.2.2.1: the comparison, and the class references in order, each read with Text::of() (I-12).
+     * SAML Core §3.3.2.2.1, I-12
      */
     #[Test]
     public function itReadsTheComparisonAndTheClassReferences(): void
@@ -54,7 +53,7 @@ final class RequestedAuthnContextReaderTest extends TestCase
     }
 
     /**
-     * SAML Core §3.3.2.2.1: without Comparison, exact.
+     * SAML Core §3.3.2.2.1
      */
     #[Test]
     public function itReadsAnAbsentComparisonAsExact(): void
@@ -70,7 +69,7 @@ final class RequestedAuthnContextReaderTest extends TestCase
     }
 
     /**
-     * Section 7, M-17: sixteen class references, the bound, are read.
+     * Section 7, M-17
      */
     #[Test]
     public function itReadsSixteenClassReferences(): void
@@ -89,8 +88,7 @@ final class RequestedAuthnContextReaderTest extends TestCase
     }
 
     /**
-     * Section 7, M-17: seventeen class references, one over the bound, are refused before any is read, the last one
-     * holding an element that reading it would refuse otherwise.
+     * Section 7, M-17
      */
     #[Test]
     public function itRefusesSeventeenClassReferencesBeforeReadingThem(): void
@@ -111,7 +109,7 @@ final class RequestedAuthnContextReaderTest extends TestCase
     }
 
     /**
-     * Section 8: a saml:AuthnContextDeclRef is refused by name, next to class references or not.
+     * Section 8
      */
     #[Test]
     public function itRefusesADeclarationReference(): void
@@ -131,7 +129,7 @@ final class RequestedAuthnContextReaderTest extends TestCase
     }
 
     /**
-     * M-5: a class reference of another namespace is not one.
+     * M-5
      */
     #[Test]
     public function itRefusesAClassReferenceOfAnotherNamespace(): void

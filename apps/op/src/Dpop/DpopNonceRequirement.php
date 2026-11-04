@@ -8,16 +8,13 @@ use Beffroi\Oidc\Port\DpopNonceInterface;
 use Closure;
 
 /**
- * Whether this provider asks a proof to carry a nonce of its own (RFC 9449 §8), which is the deployment's to
- * decide, and the class it is wired with for it: the choice is made once, when the container builds the port,
- * and never read again at a request. It is made then and not when the container is compiled because an
- * environment variable is a value only once the container runs, and a deployment says it by one.
+ * Chosen when the container builds the port: at compile time an environment variable has no value yet.
  */
 final readonly class DpopNonceRequirement
 {
     /**
-     * @param Closure(): DpopNonceInterface $asked the nonce this provider issues and keeps
-     * @param Closure(): DpopNonceInterface $notAsked a provider that asks for none
+     * @param Closure(): DpopNonceInterface $asked
+     * @param Closure(): DpopNonceInterface $notAsked
      */
     public static function chosen(bool $required, Closure $asked, Closure $notAsked): DpopNonceInterface
     {

@@ -14,8 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 9126 §5: where a client pushes an authorization request, and whether the tenant takes one any
- * other way. The requirement is read from the clients of the tenant, never kept beside them.
+ * RFC 9126 §5
  */
 final class AnnouncedPushedAuthorizationTest extends TestCase
 {

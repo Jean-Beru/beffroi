@@ -3,24 +3,7 @@
 declare(strict_types=1);
 
 /*
- * The client side of "castor demo --register" (.castor/lab/demo.php, demo_register_check): a client this
- * provider had never seen writes its own registration, is answered credentials, signs a user in with them,
- * reads and changes itself at the URI it was handed, and deletes itself (RFC 7591, RFC 7592).
- *
- * It is the only client of the demonstration that is declared nowhere: every other one is a registration in
- * apps/op/config/packages/dev/beffroi.yaml, which is the assumption this walk breaks. What it proves is that a
- * client nobody named gets exactly what a declared client gets and exactly the same refusals.
- *
- * The task is what runs under castor, which loads no code of the monorepo; this script runs under the
- * autoloader of the monorepo for its HTTP client, and holds no state between invocations: the walk carries
- * what one phase hands the next, because the browser step in the middle is the walk's and not the client's.
- *
- * Reads one JSON object on stdin, whose "action" says which phase to play, and writes one JSON object on
- * stdout. The phases are "register" (the registrations, the authorization request each client builds for
- * itself, and one registration beyond what the initial access token allows), "exchange" (each code for
- * tokens, and the "sub" the client is given), "configure" (itself read back, one member changed, a member
- * the provider does not offer refused, and the same read with no token) and "delete" (itself deleted, and
- * the token it held refused after).
+ * The client of "castor demo --register": it registers, reads, changes and deletes itself (RFC 7591, RFC 7592).
  */
 
 use Symfony\Component\HttpClient\HttpClient;
@@ -31,10 +14,7 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 require __DIR__ . '/../../vendor/autoload.php';
 
 /**
- * A client that writes its own registration and lives at the URI the answer gave it.
- *
- * Nothing here is particular to this provider: the members are those of RFC 7591 §2, the credential is
- * presented as RFC 7591 §1.2 says, and the three operations on itself are those of RFC 7592 §2.
+ * RFC 7591 §1.2, §2, RFC 7592 §2
  */
 final readonly class SelfRegisteringClient
 {
@@ -44,8 +24,7 @@ final readonly class SelfRegisteringClient
     }
 
     /**
-     * RFC 7591 §3.1: the metadata posted as JSON, the initial access token presented as a bearer credential,
-     * and a 201 that carries the credentials and the URI this client is now at.
+     * RFC 7591 §3.1
      *
      * @param array<string, mixed> $metadata
      * @return array<string, mixed>
@@ -64,8 +43,7 @@ final readonly class SelfRegisteringClient
     }
 
     /**
-     * RFC 7592 §2.1: the client reads itself at its "registration_client_uri", presenting the
-     * "registration_access_token" the registration handed it and nothing else.
+     * RFC 7592 §2.1
      *
      * @return array<string, mixed>
      */
@@ -80,8 +58,7 @@ final readonly class SelfRegisteringClient
     }
 
     /**
-     * RFC 7592 §2.2: a replacement of the whole registration, which is why the metadata sent is everything
-     * the client wants to be true of it and not the one member that changed.
+     * RFC 7592 §2.2
      *
      * @param array<string, mixed> $metadata
      * @return array<string, mixed>
@@ -98,7 +75,7 @@ final readonly class SelfRegisteringClient
     }
 
     /**
-     * RFC 7592 §2.3: the client removes itself, and nothing it held is worth anything afterwards.
+     * RFC 7592 §2.3
      *
      * @return array<string, mixed>
      */
@@ -110,8 +87,7 @@ final readonly class SelfRegisteringClient
     }
 
     /**
-     * RFC 6749 §4.1.3 with PKCE (RFC 7636 §4.5): the code exchanged by the client the registration made,
-     * authenticating with the secret that registration was answered.
+     * RFC 6749 §4.1.3, RFC 7636 §4.5
      *
      * @return array<string, mixed>
      */
@@ -135,9 +111,6 @@ final readonly class SelfRegisteringClient
     }
 
     /**
-     * The status and the body of an answer, whatever it is: a refusal is a result here and never an
-     * exception, because every refusal this walk plays is asserted.
-     *
      * @return array<string, mixed>
      */
     private function answer(ResponseInterface $response): array
@@ -162,7 +135,7 @@ final readonly class SelfRegisteringClient
 }
 
 /**
- * RFC 7636 §4.1 and §4.2: the verifier the client keeps and the challenge it sends.
+ * RFC 7636 §4.1, §4.2
  *
  * @return array{verifier: string, challenge: string}
  */
@@ -177,8 +150,7 @@ function registration_pkce(): array
 }
 
 /**
- * The claims of a JWS, read and not verified: what this script needs of an ID token is the "sub" the
- * provider gave this client, and the walk compares two of them. A client that verifies is the ladder.
+ * Read and not verified: the walk only compares the "sub" of two ID tokens.
  *
  * @return array<string, mixed>
  */
@@ -194,9 +166,6 @@ function registration_claims(string $jwt): array
 }
 
 /**
- * A JSON object as the members it has: decoded, its keys are whatever they were written as, and a key made
- * of digits names no member.
- *
  * @param array<array-key, mixed> $decoded
  *
  * @return array<string, mixed>
@@ -222,8 +191,6 @@ function registration_text(array $input, string $member): string
 }
 
 /**
- * A member that is itself a JSON object; the empty one when it is absent, for the members that are optional.
- *
  * @param array<string, mixed> $input
  *
  * @return array<string, mixed>
@@ -236,9 +203,6 @@ function registration_map(array $input, string $member): array
 }
 
 /**
- * The two registrations, the authorization request each client builds for itself, and the ones the
- * credential does not buy: one beyond what it was issued for, and one presenting nothing at all.
- *
  * @param array<string, mixed> $input
  *
  * @return array<string, mixed>
@@ -259,8 +223,6 @@ function registration_phase_register(SelfRegisteringClient $client, array $input
         $pkce = registration_pkce();
         $state = bin2hex(random_bytes(16));
         $nonce = bin2hex(random_bytes(16));
-        // The client builds its own authorization request, which is what makes it a client: the walk
-        // plays only the browser that carries it (RFC 6749 §4.1.1, RFC 7636 §4.3).
         $authorization = is_string($body['client_id'] ?? null)
             ? $authorizationEndpoint
             . '?'
@@ -290,8 +252,6 @@ function registration_phase_register(SelfRegisteringClient $client, array $input
 }
 
 /**
- * Each code exchanged by the client the registration made, and the subject it is given.
- *
  * @param array<string, mixed> $input
  *
  * @return array<string, mixed>
@@ -331,8 +291,6 @@ function registration_phase_exchange(SelfRegisteringClient $client, array $input
 }
 
 /**
- * Itself read back, itself replaced, and the two reads no token of this client authorises.
- *
  * @param array<string, mixed> $input
  *
  * @return array<string, mixed>
@@ -353,8 +311,6 @@ function registration_phase_configure(SelfRegisteringClient $client, array $inpu
 }
 
 /**
- * Itself removed, and the token it held worth nothing afterwards.
- *
  * @param array<string, mixed> $input
  *
  * @return array<string, mixed>

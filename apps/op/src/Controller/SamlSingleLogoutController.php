@@ -21,30 +21,13 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The single logout service of the SAML identity provider of the tenant (beffroi/saml, spec/saml.md sections 6.5 and
- * 6.6), at the one URL its metadata publish for both bindings: HTTP-Redirect by GET, its raw query string read from
- * QUERY_STRING and never from the parsed query, whose octets the signature covers (B-2); HTTP-POST by POST, the fields
- * of a form and nothing else (spec/saml.md section 6.8), posted again from the origin of the provider when it came from
- * another site without the session cookie, before anything of the message is read (S-28). A message refused ends
- * nothing and gets the page of a refusal
- * and no SAML answer (S-22, S-23, S-33). A request accepted ends the sessions it names, then the other service
- * providers of those sessions are told, the page of Front-Channel Logout 1.0 first (S-35), before it is answered at
- * the single logout service of the metadata of its service provider (S-27, S-34); one that ended none is answered at
- * once. The answer of a service provider a chain waits for moves the chain on (section 6.6 step 4), read only with the
- * cookie of the browser the chain is bound to (LogoutChainCookie, S-32, S-33). Each step is a 302
- * over HTTP-Redirect with the caching headers of the binding (SAML Bindings §3.4.5.1), or the page that posts the form
- * over HTTP-POST (LogoutChainPages). A tenant whose SAML key cannot be opened, which is opened before the message is
- * read, ends nothing and remembers nothing, whatever the message: a 404 when it holds no active key, the 503 of
- * KmsUnavailableListener when the KMS does not answer (S-23, S-27).
+ * spec/saml.md sections 6.5 and 6.6
  *
- * The browser that held a session it ended finds none at its next request, the session of the core having ended.
+ * HTTP-Redirect is read from the raw QUERY_STRING, not the parsed query: the signature covers its octets (B-2).
  */
 #[AsController]
 final readonly class SamlSingleLogoutController
 {
-    /**
-     * The error code of the page a refused logout request is shown, which the template of the error explains.
-     */
     public const string REFUSED = 'saml_logout_refused';
 
     public function __construct(

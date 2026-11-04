@@ -8,20 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * The archive a person asks for of everything this provider holds about them (RGPD articles 15 and 20,
- * issue #453): one row from the moment they ask, the document written into it later, off the request.
- *
- * `content` and `built_at` are nullable because an archive is asked for before it exists: a row without
- * them is an archive still being built, and a page that says so is what a person gets instead of nothing.
- *
- * `content` is sealed under the data key of the tenant, in a scope of its own (decisions 0011 and 0018).
- * It is the one column of this schema where everything the other families seal stands in clear at once,
- * and it carries no exemption for that.
- *
- * `expires_at` is set when the person asks and never moved, so every row carries the date it goes away on
- * whatever happened to its build. The second index is what the timed step reads, which walks by that date.
- */
 final class Version20261008120000 extends AbstractMigration
 {
     public function getDescription(): string

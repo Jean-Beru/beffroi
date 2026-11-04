@@ -14,15 +14,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.1 step 3, M-1, M-2, M-3: the response's signature, when it carries one, verified with the keys of the
- * identity provider's metadata, and the response read from its verification from then on.
+ * Section 6.1 step 3, M-1, M-2, M-3
  */
 final class SignedResponseTest extends TestCase
 {
     use ResponseFixtures;
 
     /**
-     * Section 6.1 step 3: an unsigned response is read as it arrived, no verification made.
+     * Section 6.1 step 3
      */
     #[Test]
     public function itReadsAnUnsignedResponseAsItArrived(): void
@@ -38,7 +37,7 @@ final class SignedResponseTest extends TestCase
     }
 
     /**
-     * M-1, D-10: a signed response is read from the root of Verified::$document, never from the element received.
+     * M-1, D-10
      */
     #[Test]
     public function itReadsASignedResponseFromItsVerification(): void
@@ -56,7 +55,7 @@ final class SignedResponseTest extends TestCase
     }
 
     /**
-     * M-3, section 5.3: a signed response from an identity provider whose metadata holds no signing key.
+     * M-3, section 5.3
      */
     #[Test]
     public function itRefusesASignatureNoKeyOfTheMetadataCanVerify(): void

@@ -15,18 +15,14 @@ use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 /**
- * Spec/saml.md section 6.2 step 1: the service providers the configuration declares are built when the container is
- * compiled, from what the extension hands their service, so that a declaration that does not hold together fails the
- * build of the deployment and not its first refresh or its first login; the claim of a mapping is left to the warmer
- * the pass hands them to, which checks it right after, in the same build.
+ * spec/saml.md section 6.2 step 1
  */
 final class ServiceProvidersPassTest extends TestCase
 {
     private const string ENTITY_ID = 'https://sp.example.com/saml';
 
     /**
-     * Section 6.2 step 1: a declaration that does not hold together is refused when the container is compiled, naming
-     * the key of the configuration and the service provider, with the message of the constructor that refused it.
+     * Section 6.2 step 1
      *
      * @param array<array-key, mixed> $declaration
      */
@@ -79,7 +75,7 @@ final class ServiceProvidersPassTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 1: a declaration that holds together compiles, and reaches its service as it was written.
+     * Section 6.2 step 1
      */
     #[Test]
     public function aDeclarationThatHoldsTogetherCompiles(): void
@@ -105,9 +101,7 @@ final class ServiceProvidersPassTest extends TestCase
     }
 
     /**
-     * S-16, section 6.2 step 1: the claims the provider serves come from the claims providers the container builds, so
-     * a mapping of a claim no provider serves compiles, and its declaration is handed to the warmer, which checks the
-     * claim right after the compilation.
+     * S-16, section 6.2 step 1
      */
     #[Test]
     public function theClaimOfAMappingIsLeftToTheWarmer(): void
@@ -133,8 +127,7 @@ final class ServiceProvidersPassTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 1: what an environment variable says is known to the running deployment only, so a declaration
-     * that holds one is left to its first use.
+     * Section 6.2 step 1
      */
     #[Test]
     public function aDeclarationThatHoldsAnEnvironmentVariableIsLeftToItsFirstUse(): void
@@ -156,8 +149,7 @@ final class ServiceProvidersPassTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 1: a declaration that holds an environment variable is left to its first use by the warmer too,
-     * which is handed the others.
+     * Section 6.2 step 1
      */
     #[Test]
     public function aDeclarationThatHoldsAnEnvironmentVariableIsNotHandedToTheWarmer(): void
@@ -180,10 +172,6 @@ final class ServiceProvidersPassTest extends TestCase
         static::assertSame([self::ENTITY_ID], \array_keys(self::warmed($container)));
     }
 
-    /**
-     * The other declarations are built whatever one of them holds: a declaration that does not hold together beside
-     * one that waits for the environment still fails the compilation.
-     */
     #[Test]
     public function aDeclarationThatDoesNotHoldTogetherBesideOneOfTheEnvironmentFails(): void
     {
@@ -206,9 +194,6 @@ final class ServiceProvidersPassTest extends TestCase
         new ServiceProvidersPass()->process($container);
     }
 
-    /**
-     * A container without the service, which a kernel without this provider's services builds, has nothing to check.
-     */
     #[Test]
     public function aContainerWithoutTheServiceProvidersHasNothingToCheck(): void
     {
@@ -222,9 +207,6 @@ final class ServiceProvidersPassTest extends TestCase
         static::assertFalse($container->hasDefinition(ConfigurationServiceProviders::class));
     }
 
-    /**
-     * The pass is one of the provider's, run by every kernel that builds its container.
-     */
     #[Test]
     public function theProviderRunsThePass(): void
     {
@@ -243,8 +225,6 @@ final class ServiceProvidersPassTest extends TestCase
     }
 
     /**
-     * The container the extension builds from a configuration that declares these service providers.
-     *
      * @param array<array-key, mixed> $serviceProviders
      */
     private static function container(array $serviceProviders, ?ContainerBuilder $container = null): ContainerBuilder
@@ -283,8 +263,6 @@ final class ServiceProvidersPassTest extends TestCase
     }
 
     /**
-     * The declarations the pass handed the warmer.
-     *
      * @return array<array-key, mixed>
      */
     private static function warmed(ContainerBuilder $container): array

@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 final class ClientAuthenticationFailedTest extends TestCase
 {
     /**
-     * Architecture §3.5: every event says when, in which tenant and from which request.
+     * Architecture §3.5
      */
     #[Test]
     public function itIsADomainEventWithTheRequestContext(): void

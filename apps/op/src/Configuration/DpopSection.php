@@ -13,33 +13,15 @@ use Symfony\Component\Config\Definition\Builder\NodeBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service_closure;
 
-/**
- * What the provider allows of a proof of possession (RFC 9449 §11.1), and whether it asks a proof to carry a nonce of its own (§8).
- */
 final readonly class DpopSection extends ConfigurationSection
 {
-    /**
-     * RFC 9449 §11.1: how long a proof stands, from its "iat", before the leeway below is added. A proof
-     * is made for one request that is being sent; what the window has to cover is the time that request
-     * spends on the wire, and every second beyond it is a second a proof taken off that wire may be sent
-     * again.
-     */
     public const int DEFAULT_DPOP_PROOF_MAX_AGE = 60;
 
     /**
-     * What is allowed of the clock of a client, both ways. Thirty seconds and not five: a client whose
-     * clock runs ahead makes a proof dated after the request that carries it, and the conformance suite
-     * of FAPI 2 makes one ten seconds ahead and expects it taken (RFC 9449 §11.1 leaves the window to
-     * the provider). The other way is the age of a proof: a client whose clock runs behind dates a proof
-     * before it was made, so a proof is taken until "proof_max_age" plus the leeway after its "iat",
-     * ninety seconds by default.
+     * The FAPI 2 conformance suite sends a proof dated ten seconds ahead and expects it accepted.
      */
     public const int DEFAULT_DPOP_LEEWAY = 30;
 
-    /**
-     * Seconds a nonce this provider issues is accepted (RFC 9449 §8), for a deployment that asks for
-     * one; a client is handed a fresh one whenever it presents none or one this window has passed.
-     */
     public const int DEFAULT_DPOP_NONCE_TTL = 300;
 
     public function name(): string
@@ -92,8 +74,6 @@ final readonly class DpopSection extends ConfigurationSection
             named: 'dpop.proof_max_age',
         ))->arg('$leeway', self::bounded($dpop, 'leeway', named: 'dpop.leeway', minimum: 0));
         $services->get(CachedDpopNonce::class)->arg('$lifetime', self::bounded($nonces, 'ttl', named: 'dpop.nonce.ttl'));
-        // what the provider asks of a proof is a class it is wired with, never a flag read at every request;
-        // the flag is read once, when the port is built, so that an environment variable can carry it
         $services
             ->set(DpopNonceInterface::class)
             ->factory(DpopNonceRequirement::chosen(...))

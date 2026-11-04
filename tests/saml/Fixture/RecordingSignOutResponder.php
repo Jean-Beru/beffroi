@@ -11,10 +11,6 @@ use Beffroi\Saml\Domain\SingleLogout\RedirectedMessage;
 use Beffroi\Saml\Domain\SingleLogout\SignOutResponse;
 use Beffroi\Saml\Port\SignOutResponderInterface;
 
-/**
- * A responder that keeps what it was asked to write, and answers with a URL naming where it goes; or one whose key
- * cannot be opened, which then neither opens nor answers, as the responder of a tenant without its key does not.
- */
 final class RecordingSignOutResponder implements SignOutResponderInterface
 {
     public private(set) ?SignOutResponse $response = null;

@@ -17,22 +17,6 @@ use function ksort;
 use function sort;
 use function sprintf;
 
-/**
- * What the model declares of itself, read column by column: every entity answers for every field it
- * stores (`ClassifiedFieldsInterface`), the mappings of the provider say which column holds which field,
- * and the one table no class of the model holds a field of is classified by the provider that puts it in
- * the schema (`DataKeyColumns`).
- *
- * **An entity is asked for all of its fields**, the ones its parent's mapping declares included, which is
- * what makes a declaration something a use case can read whole: a class merges its parent's lines as it
- * inherits its mapping, and one that forgot to leaves the columns of that parent classified by nobody. A
- * column of an embeddable is asked of the object it comes from, which is the class whose mapping declares
- * the field.
- *
- * Nothing is inferred from a name. A column whose field no line names is named here with the field it
- * would have been declared on, and a line whose field no mapping gives a column is named here too, so
- * that `ClassifiedSchema` can refuse either without having to know how a field becomes a column.
- */
 final readonly class ClassifiedModel
 {
     /**
@@ -47,11 +31,6 @@ final readonly class ClassifiedModel
     ) {
     }
 
-    /**
-     * The declaration of the model resolved against the mappings: a field is asked of the class the
-     * mapping says declares it, which is the entity, the parent whose mapping the entity inherits, or the
-     * object a column of an embeddable comes from.
-     */
     public static function of(EntityManagerInterface $entityManager): self
     {
         $columns = [];
@@ -103,10 +82,7 @@ final readonly class ClassifiedModel
     }
 
     /**
-     * The lines of one table, by the column that holds them, which is how a test of that table reads what
-     * its own columns are declared as.
-     *
-     * @return array<string, FieldClassificationInterface>
+     * @return array<string, FieldClassificationInterface> by column
      */
     public function linesOf(string $table): array
     {
@@ -116,16 +92,13 @@ final readonly class ClassifiedModel
         return $lines;
     }
 
-    /**
-     * The field behind a column no line names, so that a finding says where the line goes.
-     */
     public function fieldBehind(string $table, string $column): ?string
     {
         return $this->unclassified[sprintf('%s.%s', $table, $column)] ?? null;
     }
 
     /**
-     * @return list<string> the lines no column of the schema carries, as "Class::$field"
+     * @return list<string> as "Class::$field"
      */
     public function linesWithNoColumn(): array
     {
@@ -133,7 +106,7 @@ final readonly class ClassifiedModel
     }
 
     /**
-     * @return list<string> the tables the model classifies, in alphabetical order
+     * @return list<string> in alphabetical order
      */
     public function tables(): array
     {
@@ -143,9 +116,6 @@ final readonly class ClassifiedModel
         return $tables;
     }
 
-    /**
-     * How many columns the model classifies, all tables together.
-     */
     public function columnCount(): int
     {
         $total = 0;

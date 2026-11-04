@@ -8,15 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * The newest metadata document accepted for each upstream identity provider of a tenant (beffroi/saml, issue #779):
- * one table, one row per identity provider, unique under its tenant by its entity ID, the table of a service provider
- * kept for the service providers.
- *
- * The document is sealed under the data key of its tenant, in the family of its own table (decisions 0011 and 0018),
- * so its column is the ciphertext and not the XML: an `md:ContactPerson` names people. The table is new, so it holds
- * no row to seal first.
- */
 final class Version20261022180000 extends AbstractMigration
 {
     public function getDescription(): string

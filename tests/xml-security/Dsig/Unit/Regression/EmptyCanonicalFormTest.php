@@ -15,16 +15,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 3, the empty canonical form: CVE-2025-66578, xmlseclibs hashed the empty string libxml returned when
- * canonicalization failed. The rule lives in Core (I-13) and Dsig inherits it (D-11): the canonical forms of
- * SignedInfo and of the element come from Canonicalizer, which refuses false and the empty string, so nothing here
- * ever hashes nothing.
+ * Section 3, CVE-2025-66578, Core I-13, D-11
  */
 final class EmptyCanonicalFormTest extends TestCase
 {
     /**
-     * CVE-2025-66578, §9.2 row 39: the bytes a verification hashed are never empty; an element always renders its
-     * start tag, and the case of a failing canonicalization is Core's, tested there.
+     * CVE-2025-66578, §9.2 row 39
      */
     #[Test]
     public function cve202566578TheHashedBytesAreNeverEmpty(): void

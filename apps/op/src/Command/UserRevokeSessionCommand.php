@@ -16,12 +16,6 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Uid\Uuid;
 use function trim;
 
-/**
- * Ends a session of a user by the identifier beffroi:user:sessions lists (architecture §5.5): it
- * authenticates nothing afterwards, and what it opened for a relying party is reached by the back-channel
- * exactly as a logout reaches it, the end of a session being one act of the core. The page of the account
- * calls the same use case.
- */
 #[AsCommand(
     name: self::NAME,
     description: 'End a session of a user by its identifier; the relying parties of that session are told by the back-channel.',

@@ -19,12 +19,6 @@ use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\EncryptedTypes;
 
-/**
- * What a kernel does for the provider: it registers the extension of the "beffroi:" tree and its passes
- * when the container is built, and it hands the Doctrine types their wiring when it boots. The kernel of
- * the application uses it, and so does the kernel of the suite of the integration (tests/symfony), so
- * that both boot the same provider.
- */
 trait BeffroiKernelTrait
 {
     protected function build(ContainerBuilder $container): void
@@ -34,16 +28,7 @@ trait BeffroiKernelTrait
     }
 
     /**
-     * The types that read a wiring back are told what the deployment is wired with, as soon as the
-     * container can answer: which algorithm a stored password hash names, which kind of confirmation a
-     * stored "cnf" names, what an "authorization_details" a user agreed to asks for, which method a stored
-     * PKCE challenge was made with, which predicate a stored "acr" policy and a stored login floor name. It
-     * goes to the class and not to an instance: Doctrine builds its types itself, when a connection is
-     * first made, so no instance of one exists while the kernel boots. A deployment has one wiring, and a
-     * kernel booted after another hands over the same one.
-     *
-     * Only the boot that boots does it: a kernel served by a worker is asked to boot at every request and
-     * returns at once from the second time on.
+     * The types are wired through their class: Doctrine instantiates them itself, when a connection is first made.
      */
     public function boot(): void
     {
@@ -79,18 +64,8 @@ trait BeffroiKernelTrait
     }
 
     /**
-     * The encrypted types of the columns that carry a personal datum (decisions 0011 and 0018,
-     * EncryptedColumnTypes), declared as one service because each one holds an encrypter, which a class
-     * DoctrineBundle instantiates with no argument cannot. Booting is where the bridge asks for it, and it
-     * is early enough for every entry point at once: the front controller, the console with its schema
-     * tool and its migrations, and the kernel of the suite. Registering twice is safe, which is what a
-     * rebooted kernel does.
-     *
-     * A connection is asked for first, and this is the ordering nobody can see from the call: an encrypted
-     * type resolves the type it decorates by name, in the global registry, at the moment it is registered,
-     * and fourteen of them decorate a type of BeffroiExtension::DBAL_TYPES, which DoctrineBundle only puts
-     * in that registry when a connection is first created (ConnectionFactory::initializeTypes). Asking
-     * opens nothing, a DBAL connection reaching the database on its first query and not before.
+     * A connection is asked for first: DoctrineBundle puts the types the encrypted ones decorate in the registry only
+     * when a connection is created (ConnectionFactory::initializeTypes), and asking for one opens nothing.
      */
     private function registerEncryptedTypes(): void
     {

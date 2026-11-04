@@ -7,9 +7,6 @@ namespace App\Doctrine\Type;
 use Beffroi\Core\Domain\Session\Device;
 
 /**
- * What a user agent parser said (architecture §3.5), as one JSON column. What the document holds is the
- * device's own (`Device::toDocument()`), which is also what the provenance of a request nests.
- *
  * @extends JsonObjectType<Device>
  */
 final class DeviceType extends JsonObjectType

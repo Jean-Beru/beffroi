@@ -15,15 +15,6 @@ use Beffroi\Oidc\Exception\OAuth2Exception;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * What the authorization endpoint decided, which is the one thing about a request that is nowhere in it:
- * the page the browser is sent to and why (OIDC Core §3.1.2.1), the classes a step-up is still short of
- * and the kinds of credential that would reach them (decision 0010), or the answer that goes back to the
- * client and the mode it goes back in.
- *
- * A refusal is said with the error of RFC 6749 §5.2 and its description, which is the sentence the
- * provider wrote and never anything the request chose.
- */
 final readonly class ProfilingAuthorizationResponder implements AuthorizationResponderInterface
 {
     public function __construct(

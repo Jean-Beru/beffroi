@@ -13,11 +13,7 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * RFC 9396: the "authorization_details" parameter over HTTP, end to end. A client registered for a type
- * asks for what it wants to do to what, the user reads it on the consent page and agrees, and the token
- * carries what they agreed to: in an "at+jwt" for the client registered for one shape, in the
- * introspection of the opaque token for the client registered for the other. One step per test, on the
- * test kernel, the "rar-app" and "rar-opaque-app" clients of its configuration and the one type it wires.
+ * RFC 9396
  */
 final class RichAuthorizationRequestFlowTest extends BrowserTestCase
 {
@@ -34,8 +30,7 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
     private const string OPAQUE_REDIRECT_URI = 'https://rar.test/opaque';
 
     /**
-     * RFC 9396 §2: the consent page says what the detail asks for, in the words of its own type, which is
-     * the part a user reads rather than recognises.
+     * RFC 9396 §2
      */
     #[Test]
     public function theConsentPageSaysWhatTheDetailAsksFor(): void
@@ -59,7 +54,7 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9396 §7: the access token carries the details the user agreed to.
+     * RFC 9396 §7
      */
     #[Test]
     public function theAccessTokenCarriesTheDetailsTheUserAgreedTo(): void
@@ -87,8 +82,7 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9396 §7: the response says what it granted, which is where a client holding an opaque access token
-     * learns it without introspecting its own token, and what any client compares with what it asked for.
+     * RFC 9396 §7
      */
     #[Test]
     public function theTokenResponseSaysWhatItGranted(): void
@@ -115,7 +109,7 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9396 §7: a response that granted nothing beyond its scopes writes no member at all.
+     * RFC 9396 §7
      */
     #[Test]
     public function aTokenResponseThatGrantedNoDetailSaysNothingOfThem(): void
@@ -131,8 +125,7 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9396 §7: a request that asks for nothing beyond its scopes gets a token that carries nothing of
-     * one, rather than carrying it empty.
+     * RFC 9396 §7
      */
     #[Test]
     public function aRequestThatAsksForNoDetailGetsATokenCarryingNone(): void
@@ -149,8 +142,7 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7662 §2.2, RFC 9396 §9: the introspection of an opaque token says what the claim of a
-     * self-contained one would, so that a resource server learns the same thing from either shape.
+     * RFC 7662 §2.2, RFC 9396 §9
      */
     #[Test]
     public function theIntrospectionOfAnOpaqueTokenSaysWhatTheUserAgreedTo(): void
@@ -186,9 +178,7 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9396 §5: a malformed array, an object naming no type, a type nobody serves, a type the client is
-     * not registered for and a detail its own type refuses are each "invalid_authorization_details", which
-     * reaches the client at its redirect URI.
+     * RFC 9396 §5
      */
     #[Test]
     #[DataProvider('provideRefusedAuthorizationDetails')]
@@ -222,7 +212,7 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9396 §11: a client that registered no type may ask for none, whatever the provider serves.
+     * RFC 9396 §11
      */
     #[Test]
     public function aClientRegisteredForNoTypeIsRefused(): void
@@ -242,7 +232,7 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9396 §7: a token request narrows the details of the authorization it spends.
+     * RFC 9396 §7
      */
     #[Test]
     public function aTokenRequestNarrowsTheDetailsOfTheAuthorization(): void
@@ -270,7 +260,7 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9396 §7: and never widens them, even towards a type the client is registered for.
+     * RFC 9396 §7
      */
     #[Test]
     public function aTokenRequestThatAsksForADetailTheAuthorizationDoesNotCarryIsRefused(): void
@@ -290,8 +280,7 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9396 §7: the refresh token is bound to the whole of what the user agreed to, so a refresh may
-     * ask for the detail the narrowed access token did not carry.
+     * RFC 9396 §7
      */
     #[Test]
     public function aRefreshAsksForADetailTheNarrowedAccessTokenDidNotCarry(): void
@@ -323,8 +312,7 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9396 §7: a request asking for more than the consent in force carries asks again, and the page
-     * shows what is being added.
+     * RFC 9396 §7
      */
     #[Test]
     public function aRequestAskingForMoreThanWasAgreedToAsksAgain(): void
@@ -341,9 +329,6 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
         static::assertStringStartsWith('/consent?interaction=', self::string($response->headers->get('Location')));
     }
 
-    /**
-     * A request asking for no more than the consent in force carries is answered without a page.
-     */
     #[Test]
     public function aRequestAskingForNoMoreThanWasAgreedToIsAnsweredAtOnce(): void
     {
@@ -360,8 +345,7 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9126 §2: a request pushed to /par is read by the very parser the authorization endpoint reads
-     * with, so the details it asks for travel with the record and reach the token.
+     * RFC 9126 §2
      */
     #[Test]
     public function aPushedRequestCarriesTheDetailsItAsksFor(): void
@@ -408,8 +392,7 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9396 §10: the document announces the types the wiring gave the provider, so that a client knows
-     * which "type" values exist at all.
+     * RFC 9396 §10
      */
     #[Test]
     public function theDocumentAnnouncesTheTypesTheProviderServes(): void
@@ -424,9 +407,6 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
         );
     }
 
-    /**
-     * The authorization request of the rich client, asking for the details given.
-     */
     private function authorizationUri(?string $authorizationDetails, string $clientId = self::CLIENT_ID, string $redirectUri = self::REDIRECT_URI): string
     {
         $parameters = [
@@ -454,9 +434,6 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
         ]);
     }
 
-    /**
-     * The code the rich client gets once alice signed in and allowed what the request asked for.
-     */
     private function codeAllowedByAlice(?string $authorizationDetails): string
     {
         $interaction = $this->beginAuthorization($authorizationDetails);
@@ -466,9 +443,6 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
         return self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client got no code.');
     }
 
-    /**
-     * The opaque client requires no consent, so its code comes back from the authorization endpoint at once.
-     */
     private function opaqueAccessTokenAskedFor(string $authorizationDetails): string
     {
         self::signingKey();
@@ -493,8 +467,6 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
     }
 
     /**
-     * The one detail of the invented type, as a token carries it and an introspection renders it.
-     *
      * @return list<array<string, mixed>>
      */
     private static function detailOf(string $account): array
@@ -508,9 +480,6 @@ final class RichAuthorizationRequestFlowTest extends BrowserTestCase
         ];
     }
 
-    /**
-     * Two details of the one type the kernel serves, as a request writes them.
-     */
     private static function twoDetails(): string
     {
         return '[{"type":"account_information","account":"acct-4711","actions":["read"]},{"type":"account_information","account":"acct-0815","actions":["read"]}]';

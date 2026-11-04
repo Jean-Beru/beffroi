@@ -17,8 +17,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Issue #471: the language a person told this provider they read, written on their account. It is the one
- * claim this provider needs in order to write to them at all (UserLocale, architecture §5.7).
+ * Architecture §5.7
  */
 final class LanguageRecordingTest extends TestCase
 {
@@ -36,10 +35,6 @@ final class LanguageRecordingTest extends TestCase
         static::assertSame('fr', $users->find($user->id)?->profile->locale);
     }
 
-    /**
-     * Saying the whole profile is what provisioning does, and it clears what it is not told; a person
-     * naming their language says one thing.
-     */
     #[Test]
     public function whatThePersonSaidOfThemselvesIsLeftAlone(): void
     {
@@ -72,8 +67,7 @@ final class LanguageRecordingTest extends TestCase
     }
 
     /**
-     * Decision 0002: a language the source of the person holds is the provider's to write, so the account
-     * is left as it was; the cookie of the browser keeps the choice.
+     * Decision 0002
      */
     #[Test]
     public function aLanguageTheSourceOfThePersonHoldsIsNotWritten(): void

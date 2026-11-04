@@ -12,11 +12,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * What happened to the account of the signed-in user (architecture §5.2, issues #454 and #571): what the
- * journal holds of their own acts, of the times somebody signed in as them and of the times somebody
- * tried.
- */
 #[AsController]
 final readonly class AccountActsController implements ReachedOnTheSessionAloneInterface
 {

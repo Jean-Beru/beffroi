@@ -10,11 +10,6 @@ use Beffroi\Core\Application\Credential\ActiveCredentials;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Identity\User;
 
-/**
- * The passkeys of the account, on the home page: how many of them still sign the user in. A revoked one is
- * on the page of the passkeys, where its date is, and is counted nowhere; which ones are left is the
- * question ActiveCredentials answers, here as at every login.
- */
 final readonly class PasskeysSection implements AccountSectionInterface
 {
     public function __construct(

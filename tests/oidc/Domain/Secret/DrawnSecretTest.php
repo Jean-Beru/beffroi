@@ -14,7 +14,7 @@ use function strlen;
 final class DrawnSecretTest extends TestCase
 {
     /**
-     * Architecture §4.6: stored as its SHA-256.
+     * Architecture §4.6
      */
     #[Test]
     public function aValueIsHashedWithSha256(): void
@@ -36,10 +36,6 @@ final class DrawnSecretTest extends TestCase
         static::assertNotSame(DrawnSecret::digestOf($value), DrawnSecret::digestOf($again));
     }
 
-    /**
-     * Every record that holds one checks the shape of what it was handed rather than trusting it: the
-     * digest of a value is not the value, and neither is anything else.
-     */
     #[Test]
     #[DataProvider('provideDigests')]
     public function itTellsADigestFromAnythingElse(string $candidate, bool $isDigest): void

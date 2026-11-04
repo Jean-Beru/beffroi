@@ -15,22 +15,12 @@ use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * Issue #130: the order of a login by password, played by the firewall. The use case of the core asks the
- * same of itself (TheOrderOfAPasswordLoginTest of the core suite), and the two read the same named steps
- * (TheOrderOfAPasswordLogin): this path hands the request to the verification of the core rather than
- * verifying a hash of its own, so a step added to one path is a case the other answers differently.
- *
- * What this path can be asked is what was announced, which is what a tenant reads of its audit trail: the
- * hash a refusal pays is what the core suite asks of the same steps.
- */
 final class TheOrderOfAPasswordLoginTest extends BrowserTestCase
 {
     protected function setUp(): void
     {
         parent::setUp();
         self::userWithPassword(TheOrderOfAPasswordLogin::USERNAME, TheOrderOfAPasswordLogin::PASSWORD);
-        // a person of the same tenant who holds no password at all
         self::user(TheOrderOfAPasswordLogin::WITHOUT_A_PASSWORD, 'bob-subject');
         $disabled = self::userWithPassword(TheOrderOfAPasswordLogin::DISABLED, TheOrderOfAPasswordLogin::PASSWORD);
         $disabled->disable(self::currentSecond());
@@ -52,11 +42,6 @@ final class TheOrderOfAPasswordLoginTest extends BrowserTestCase
         static::assertSame($reason, self::events(AuthenticationFailed::class)[0]->reason ?? null);
     }
 
-    /**
-     * The last step of the order, read on its own because what it leaves behind is a session and not a
-     * refusal: the password is announced as the act it is, the session as the outcome, and the browser is
-     * bound to it.
-     */
     #[Test]
     public function theRightPasswordOpensASessionAndSaysWhatProvedIt(): void
     {
@@ -69,10 +54,6 @@ final class TheOrderOfAPasswordLoginTest extends BrowserTestCase
         static::assertSame([], self::events(AuthenticationFailed::class));
     }
 
-    /**
-     * A form that carries no password is no attempt at one: nothing is counted, nothing is announced, and
-     * the page says what it says of every refusal.
-     */
     #[Test]
     public function aFormWithoutAPasswordIsNoAttemptOnAnAccount(): void
     {
@@ -83,11 +64,6 @@ final class TheOrderOfAPasswordLoginTest extends BrowserTestCase
         static::assertSame([], self::events(AuthenticationFailed::class));
     }
 
-    /**
-     * The one step the firewall adds to the order, and the reason it is first: a form posted without the
-     * token of the page is not an attempt on the account it names, so it costs that person no attempt, no
-     * hash and no act in their journal.
-     */
     #[Test]
     public function aFormWithoutItsTokenIsNoAttemptOnAnAccountEither(): void
     {
@@ -104,10 +80,6 @@ final class TheOrderOfAPasswordLoginTest extends BrowserTestCase
         static::assertSame([], self::events(UserAuthenticated::class));
     }
 
-    /**
-     * The form of the login page, filled and posted as a person does, where the page the browser was
-     * going to is its own account (LoginTarget).
-     */
     private function signInOnTheForm(string $username, string $password): void
     {
         $this->browser->request('GET', '/account');

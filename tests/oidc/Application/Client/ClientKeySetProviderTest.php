@@ -25,9 +25,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * The client's half of a published key set (RFC 7591 §2): the set its registration names, read by the
- * one class that reads a published set (PublishedKeySetProviderTest), and what being unable to read it
- * means for the method that was authenticating the client.
+ * RFC 7591 §2
  */
 final class ClientKeySetProviderTest extends TestCase
 {
@@ -52,7 +50,7 @@ final class ClientKeySetProviderTest extends TestCase
     }
 
     /**
-     * RFC 7591 §2: a client that wrote its keys down is answered them, and nothing is called.
+     * RFC 7591 §2
      */
     #[Test]
     public function theSetAClientWroteDownIsItsAnswer(): void
@@ -69,7 +67,7 @@ final class ClientKeySetProviderTest extends TestCase
     }
 
     /**
-     * RFC 7591 §2: a client that registered a "jwks_uri" has it read, and no other URL.
+     * RFC 7591 §2
      */
     #[Test]
     public function theSetOfAClientIsReadFromTheUrlItRegistered(): void
@@ -82,10 +80,6 @@ final class ClientKeySetProviderTest extends TestCase
         static::assertSame([self::JWKS_URI], array_map(static fn (ClientUri $uri): string => $uri->value, $this->fetcher->fetched));
     }
 
-    /**
-     * A client that publishes neither a set nor a URL publishes nothing to verify a signature against,
-     * and nothing is called to find out.
-     */
     #[Test]
     public function aClientThatPublishesNoKeyIsRefused(): void
     {
@@ -101,8 +95,7 @@ final class ClientKeySetProviderTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: keys that cannot be read are a refusal of the method that was authenticating the
-     * client and not an error of the endpoint.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function keysThatCannotBeReadRefuseTheMethodThatWasAuthenticating(): void

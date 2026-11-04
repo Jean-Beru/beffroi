@@ -22,8 +22,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * RFC 8292 §3.2, Push API §3.4: a browser says where it can be pushed to, and what it hands over is
- * recorded against the application server key it was handed.
+ * RFC 8292 §3.2, Push API §3.4
  */
 final class PushSubscriptionEnrolmentTest extends TestCase
 {
@@ -61,7 +60,7 @@ final class PushSubscriptionEnrolmentTest extends TestCase
     }
 
     /**
-     * §3.2: what the browser handed over, bound to the key it was handed.
+     * §3.2
      */
     #[Test]
     public function itRecordsWhatTheBrowserHandedOverAgainstTheActiveKey(): void
@@ -80,9 +79,6 @@ final class PushSubscriptionEnrolmentTest extends TestCase
         static::assertCount(1, $this->subscriptions->findActiveByUser($this->alice));
     }
 
-    /**
-     * A browser that subscribes again hands back the endpoint it already had: one browser, one row.
-     */
     #[Test]
     public function aBrowserThatSubscribesAgainKeepsItsRow(): void
     {
@@ -101,10 +97,6 @@ final class PushSubscriptionEnrolmentTest extends TestCase
         static::assertCount(1, $this->subscriptions->findActiveByUser($this->alice));
     }
 
-    /**
-     * A browser the user had taken out comes back in use when it subscribes again, and does not stay
-     * revoked beside itself.
-     */
     #[Test]
     public function aBrowserThatWasTakenOutComesBackWhenItSubscribesAgain(): void
     {
@@ -120,7 +112,7 @@ final class PushSubscriptionEnrolmentTest extends TestCase
     }
 
     /**
-     * Decision 0002: the browsers of one user are theirs, and a browser of somebody else is none of them.
+     * Decision 0002
      */
     #[Test]
     public function theBrowsersOfOneUserAreNotTheBrowsersOfAnother(): void
@@ -137,10 +129,6 @@ final class PushSubscriptionEnrolmentTest extends TestCase
         static::assertSame([], $waiting);
     }
 
-    /**
-     * A browser is recognised by its endpoint among the browsers of that user, so an endpoint of
-     * somebody else is one this user has never subscribed.
-     */
     #[Test]
     public function anEndpointOfSomebodyElseIsNoBrowserOfThisUser(): void
     {
@@ -156,8 +144,7 @@ final class PushSubscriptionEnrolmentTest extends TestCase
     }
 
     /**
-     * §3.2: a browser is handed a key before it subscribes, so a tenant that has none has nothing for a
-     * subscription to be recorded against.
+     * §3.2
      */
     #[Test]
     public function aTenantWithoutAnActiveKeyRecordsNothing(): void

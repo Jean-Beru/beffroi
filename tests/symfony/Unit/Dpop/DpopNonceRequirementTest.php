@@ -12,8 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 9449 §8: whether a proof carries a nonce of the provider is the deployment's to decide, and the port
- * is the class that decision is wired with; the other one is never built.
+ * RFC 9449 §8
  */
 final class DpopNonceRequirementTest extends TestCase
 {

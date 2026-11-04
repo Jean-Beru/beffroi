@@ -14,27 +14,17 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 /**
- * The entity ID a deployment names for the service provider of its tenant, checked when the container is compiled
- * (beffroi/saml, spec/saml.md S-38): a URI of M-6 as the model reads one, so that the metadata it names can be
- * written, and never the entity ID of the identity provider of the tenant, the issuer followed by the path of its
- * metadata, which RouterIdentityProviderEndpoints holds it to.
+ * beffroi/saml S-38
  *
- * Only a compiler pass tells a value from an environment variable, which only the running deployment knows: an entity
- * ID that holds one is left to RouterServiceProviderEndpoints, which applies both rules at its first use, and so is the
- * second rule when the issuer holds one. A deployment that names none goes by the URL of its metadata, which is a URI
- * and is not the identity provider's. The locator is wired in every image, whether the service provider is on or not,
- * the role being one a value of the environment may turn on (decision 0030), so an entity ID written is held to both
- * rules either way.
+ * A value that holds an environment variable is left to RouterServiceProviderEndpoints, which checks it at its
+ * first use.
  */
 final class ServiceProviderEntityIdPass implements CompilerPassInterface
 {
-    /**
-     * The key the entity ID is written under, which the failure names.
-     */
     public const string PATH = 'beffroi.saml.service_provider.entity_id';
 
     /**
-     * @throws InvalidConfigurationException when the entity ID is no URI of M-6, or is the one of the identity provider
+     * @throws InvalidConfigurationException
      */
     public function process(ContainerBuilder $container): void
     {

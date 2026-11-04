@@ -15,13 +15,6 @@ use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Throwable;
 
-/**
- * A budget of decision 0014 that is spent becomes the refusal of that decision, wherever it was
- * consumed: the budget of an origin, before the request was worked on at all, and the budget of a
- * client, inside the endpoint that authenticated it. The two meet here so that a refusal has one form
- * and reaches the audit trail once, with the context of the request, the route asked for, the budget
- * that refused and the client when one was authenticated.
- */
 #[AsEventListener(event: KernelEvents::EXCEPTION, priority: self::PRIORITY)]
 final readonly class LoadRefusalListener
 {
@@ -51,9 +44,6 @@ final readonly class LoadRefusalListener
         $event->setResponse($this->refusal->response(Plane::ofRoute($route), $spent->retryAfter, $request));
     }
 
-    /**
-     * The refusal itself or what wrapped it on its way up.
-     */
     private static function budgetBehind(Throwable $throwable): ?LoadBudgetSpentException
     {
         for ($cause = $throwable; $cause !== null; $cause = $cause->getPrevious()) {

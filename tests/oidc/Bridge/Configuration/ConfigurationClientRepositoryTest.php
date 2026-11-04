@@ -72,8 +72,6 @@ final class ConfigurationClientRepositoryTest extends TestCase
     ];
 
     /**
-     * A client that authenticates with a key of its own (OIDC Core §9), publishing its JWK Set inline.
-     *
      * @var array<string, mixed>
      */
     private const array GATEWAY = [
@@ -88,7 +86,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     ];
 
     /**
-     * A client that authenticates with a key of its own (OIDC Core §9), publishing its JWK Set inline.
+     * OIDC Core §9
      *
      * @var array<string, mixed>
      */
@@ -114,7 +112,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * RFC 7591 §2: a client that authenticates with a key of its own publishes its JWK Set inline.
+     * RFC 7591 §2
      */
     #[Test]
     public function aClientMayPublishItsKeysInline(): void
@@ -135,7 +133,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * RFC 7591 §2: or behind a "jwks_uri", read as every other URI a client registers.
+     * RFC 7591 §2
      */
     #[Test]
     public function aClientMayPublishItsKeysBehindAJwksUri(): void
@@ -158,8 +156,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * RFC 8705 §2.1.2: a client recognised by its certificate registers one of the five values, each one
-     * under the metadata name of the specification.
+     * RFC 8705 §2.1.2
      */
     #[Test]
     #[DataProvider('provideCertificateRegistrations')]
@@ -182,8 +179,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * RFC 8705 §2.1.2 asks for a predictable treatment of distinguished names: what a deployment
-     * registers is written back by the reader that will read the name of the certificate, once, at boot.
+     * RFC 8705 §2.1.2
      */
     #[Test]
     public function aRegisteredDistinguishedNameIsWrittenTheWayTheOneOfACertificateIs(): void
@@ -222,9 +218,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * OIDC Core §9: "client_secret_jwt" computes a MAC with the registered secret, so the secret is kept
-     * and not hashed; that is the method's own cost and the reason FAPI 2.0 Security Profile §5.3.2.1
-     * takes none.
+     * OIDC Core §9
      */
     #[Test]
     public function aClientThatSignsWithItsSecretKeepsTheSecretAndNotAHash(): void
@@ -248,9 +242,6 @@ final class ConfigurationClientRepositoryTest extends TestCase
         static::assertSame(0, $hasher->hashed);
     }
 
-    /**
-     * A client that names no method takes the first wired one (issue #98).
-     */
     #[Test]
     public function aClientThatNamesNoMethodTakesTheFirstWiredOne(): void
     {
@@ -269,10 +260,6 @@ final class ConfigurationClientRepositoryTest extends TestCase
         static::assertSame('client_secret_basic', $client->registration->authenticationMethod->name());
     }
 
-    /**
-     * The acceptance of the issue: a client declared in configuration is found by id in its tenant, with
-     * the defaults of a confidential client.
-     */
     #[Test]
     public function aConfiguredClientIsFoundByIdInItsTenantWithTheDefaults(): void
     {
@@ -298,9 +285,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * RFC 9396 §11: a client declares the types of authorization detail it may ask for, among the ones the
-     * provider is wired with; a name nothing serves fails at boot, and a deployment wired with none says so
-     * rather than naming an empty list.
+     * RFC 9396 §11
      */
     #[Test]
     public function aClientDeclaresTheAuthorizationDetailTypesItMayAskFor(): void
@@ -320,10 +305,6 @@ final class ConfigurationClientRepositoryTest extends TestCase
         static::assertSame([AuthorizationDetailTypes::INVENTED], $client->registration->authorizationDetailsTypes);
     }
 
-    /**
-     * A deployment wired with no type serves none, so a client that names one is refused at boot with what
-     * the provider actually holds.
-     */
     #[Test]
     public function aClientNamingATypeOfADeploymentWiredWithNoneFailsAtBoot(): void
     {
@@ -346,9 +327,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4: a client of a grant it uses for itself registers no redirect URI, there being no
-     * browser of anybody's to send anywhere, and it authenticates itself. What a registration of such a
-     * grant must carry and must not is read from what the wired grant declares.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function aClientOfAGrantItUsesForItselfRegistersNoRedirectUri(): void
@@ -375,10 +354,6 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * What a registration of a grant must carry and must not, read where the registration meets the
-     * wiring: only the wired grants say whether one of them sends a browser anywhere, or authenticates the
-     * client it serves (issue #98).
-     *
      * @param array<string, mixed> $definition
      */
     #[Test]
@@ -421,9 +396,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.1: a public client proves nothing, so a registration of it for a grant served only to
-     * a client that authenticates itself fails at boot rather than at its first request, whichever grant
-     * declares it.
+     * RFC 6749 §2.1
      *
      * @param array<string, mixed> $definition
      */
@@ -477,9 +450,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * OIDC Core §2, RFC 6749 appendix A.1: a client identifier may carry a space and a subject may not, so
-     * a client named that way cannot be the "sub" of a token it holds for itself, and is refused the grant
-     * at boot rather than at its first request.
+     * OIDC Core §2, RFC 6749 appendix A.1
      */
     #[Test]
     public function aClientNamedInAWayASubjectCannotBeIsRefusedThatGrant(): void
@@ -500,8 +471,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.5, RFC 7591 §2: a client registers the grants the provider serves, whatever their
-     * names, and a grant the provider gains needs no line here to be registrable.
+     * RFC 6749 §4.5, RFC 7591 §2
      */
     #[Test]
     public function aClientRegistersAGrantNothingHereKnowsTheNameOf(): void
@@ -526,9 +496,6 @@ final class ConfigurationClientRepositoryTest extends TestCase
         static::assertTrue($client->registration->allowsGrant(Grants::invented()));
     }
 
-    /**
-     * The secret is hashed by the real hasher.
-     */
     #[Test]
     public function theSecretIsHashedByTheHasherOfTheCore(): void
     {
@@ -548,9 +515,6 @@ final class ConfigurationClientRepositoryTest extends TestCase
         static::assertFalse($hasher->verify($demo->secret->hash, 'not ' . Clients::SECRET));
     }
 
-    /**
-     * Every option of a definition is read.
-     */
     #[Test]
     public function everyOptionOfADefinitionIsRead(): void
     {
@@ -605,10 +569,6 @@ final class ConfigurationClientRepositoryTest extends TestCase
         static::assertSame(1, $hasher->hashed);
     }
 
-    /**
-     * The integration may hold a tenant instance per request: each instance gets clients of its own,
-     * pointing at it.
-     */
     #[Test]
     public function anotherInstanceOfTheTenantGetsClientsOfItsOwn(): void
     {
@@ -629,9 +589,6 @@ final class ConfigurationClientRepositoryTest extends TestCase
         static::assertSame($second, self::find($repository, $again, 'oidc-demo'));
     }
 
-    /**
-     * The secret is still hashed once per process, whatever the tenant instances.
-     */
     #[Test]
     public function theSecretIsHashedOncePerProcess(): void
     {
@@ -688,7 +645,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.1: a public client has no secret and identifies itself with "none".
+     * RFC 6749 §2.1
      */
     #[Test]
     public function aPublicClientIsDeclaredWithNoneAndNoSecret(): void
@@ -707,7 +664,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * Decision 0008: requires_pkce is read like requires_consent, false only where the configuration says so.
+     * Decision 0008
      */
     #[Test]
     public function aConfidentialClientIsDeclaredWithoutThePkceRequirement(): void
@@ -728,8 +685,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * RFC 9126 §6: a client declares that the only way it starts an authorization request is by pushing
-     * it, which is what FAPI 2.0 asks of one; a client that says nothing starts an ordinary one.
+     * RFC 9126 §6
      */
     #[Test]
     public function aClientIsDeclaredAsOneThatOnlyPushesItsRequests(): void
@@ -752,8 +708,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * Back-Channel Logout 1.0 §2.2: a client says where to be told a session ended, and whether it reads
-     * the "sid" of the token.
+     * Back-Channel Logout 1.0 §2.2
      */
     #[Test]
     public function aClientDeclaresWhereItIsToldASessionEnded(): void
@@ -776,7 +731,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * Back-Channel Logout 1.0 §2.2: a client that declares nothing is told nothing.
+     * Back-Channel Logout 1.0 §2.2
      */
     #[Test]
     public function aClientIsToldOfNoLogoutUntilItDeclaresAUri(): void
@@ -795,8 +750,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * Front-Channel Logout 1.0 §2 and §3: a client says where the logout page loads it, and whether it
-     * reads the "iss" and the "sid" on that URI.
+     * Front-Channel Logout 1.0 §2, §3
      */
     #[Test]
     public function aClientDeclaresWhereTheLogoutPageLoadsIt(): void
@@ -819,7 +773,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * Front-Channel Logout 1.0 §3: a client that declares nothing is not loaded.
+     * Front-Channel Logout 1.0 §3
      */
     #[Test]
     public function aClientIsLoadedByNoLogoutPageUntilItDeclaresAUri(): void
@@ -838,8 +792,6 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * A wrong definition fails when the repository is built, not when the client first shows up.
-     *
      * @param array<string, mixed> $definition
      */
     #[Test]
@@ -862,8 +814,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * OIDC Registration §2 and JARM §3: what a client registers for each of the three documents it
-     * receives is read back on it, the algorithm it is signed with and the pair it is encrypted with.
+     * OIDC Registration §2, JARM §3
      */
     #[Test]
     public function aClientIsReadBackWithWhatItRegisteredForEachDocument(): void
@@ -893,10 +844,6 @@ final class ConfigurationClientRepositoryTest extends TestCase
         static::assertTrue($client->registration->authorizationResponse->isEncrypted());
     }
 
-    /**
-     * A client that registers nothing receives what every client receives: its ID tokens and its signed
-     * authorization responses signed with what the provider signs with, its UserInfo answer as JSON.
-     */
     #[Test]
     public function aClientThatRegistersNothingTakesTheOrdinaryShapes(): void
     {
@@ -1388,7 +1335,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.1: a public client has no secret, so there is nothing to hash.
+     * RFC 6749 §2.1
      */
     #[Test]
     public function aPublicDefinitionHasNoSecret(): void
@@ -1410,9 +1357,6 @@ final class ConfigurationClientRepositoryTest extends TestCase
         );
     }
 
-    /**
-     * Keeping the secret of a public definition is a programming error: the repository asks first.
-     */
     #[Test]
     public function aPublicDefinitionRefusesToKeepASecret(): void
     {
@@ -1449,8 +1393,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * OIDC Registration §2: what the client registered in "request_object_signing_alg" and in
-     * "request_uris" is read as it is written, the algorithm among those the provider is wired with.
+     * OIDC Registration §2
      */
     #[Test]
     public function aClientRegistersHowItSignsItsRequestObjectsAndWhereTheyArePublished(): void
@@ -1474,7 +1417,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: what a client may ask a token for is read as it is written.
+     * RFC 8707 §2
      */
     #[Test]
     public function aClientRegistersTheResourcesItMayAskATokenFor(): void
@@ -1495,10 +1438,6 @@ final class ConfigurationClientRepositoryTest extends TestCase
         static::assertFalse($client->registration->allowsResources(ResourceIndicators::of(['https://files.example.com/'])));
     }
 
-    /**
-     * Issue #334: what this source holds for a tenant, which is what every question about the set of the
-     * clients of that tenant is answered from, in the order the deployment declared them.
-     */
     #[Test]
     public function itHoldsTheRegistrationsItReadForItsTenant(): void
     {
@@ -1518,9 +1457,6 @@ final class ConfigurationClientRepositoryTest extends TestCase
         );
     }
 
-    /**
-     * The clients declared here are those of one tenant: another is answered as if there were none.
-     */
     #[Test]
     public function itHoldsNoRegistrationOfAnotherTenant(): void
     {
@@ -1534,8 +1470,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1, §4.4: what a client may do at the exchange is read as it is written, and so is who may
-     * act for the subject of a token issued to it.
+     * RFC 8693 §2.1, §4.4
      */
     #[Test]
     public function aClientRegistersWhatItMayExchangeAndWhoMayActForItsTokens(): void
@@ -1556,8 +1491,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1: a client that registers nothing there may exchange nothing, and one that registers
-     * nothing about who may act for its tokens says nothing.
+     * RFC 8693 §2.1
      */
     #[Test]
     public function aClientThatRegistersNoExchangeMayExchangeNothing(): void
@@ -1576,9 +1510,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * RFC 8693 §4.1, §4.4: the client is named where a subject is expected, in the "act" of the token it
-     * receives and in the comparison a "may_act" is read for, so an identifier a subject cannot be is refused
-     * at boot.
+     * RFC 8693 §4.1, §4.4
      */
     #[Test]
     public function aClientNamedInAWayASubjectCannotBeIsRefusedTheExchange(): void
@@ -1594,8 +1526,7 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1, §3: a registration the wiring of the exchange refuses fails at boot, and not at the
-     * first request.
+     * RFC 8693 §2.1, §3
      *
      * @param array<string, mixed> $definition
      */

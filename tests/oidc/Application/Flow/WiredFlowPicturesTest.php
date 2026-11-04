@@ -31,16 +31,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * The flows of this provider are drawn from the grants its token endpoint is wired with (issue #462):
- * one picture per wired grant, the opening its capabilities give it and the closings they give it.
- */
 final class WiredFlowPicturesTest extends TestCase
 {
-    /**
-     * The set of pictures is the set of wired grants, in the order they are wired: no list of flows is
-     * kept beside the wiring (issue #98).
-     */
     #[Test]
     public function thereIsOnePictureForEveryWiredGrant(): void
     {
@@ -57,9 +49,6 @@ final class WiredFlowPicturesTest extends TestCase
         );
     }
 
-    /**
-     * Unwiring a grant takes its picture away with it, and nothing else is edited for that to happen.
-     */
     #[Test]
     public function aGrantThatIsNotWiredHasNoPicture(): void
     {
@@ -74,8 +63,7 @@ final class WiredFlowPicturesTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.3: the hops of a flow come from the capability its grant declares, and from nothing
-     * that reads the name of that grant.
+     * RFC 8628 §3.3
      */
     #[Test]
     public function theOpeningOfAFlowIsTheCapabilityItsGrantDeclares(): void
@@ -106,8 +94,7 @@ final class WiredFlowPicturesTest extends TestCase
     }
 
     /**
-     * CIBA Core §7: the same wiring, another capability, another opening. The provider gains the flow
-     * by gaining the grant.
+     * CIBA Core §7
      */
     #[Test]
     public function aGrantWhoseUserIsReachedByTheProviderOpensOnTheBackchannel(): void
@@ -139,9 +126,7 @@ final class WiredFlowPicturesTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1: a flow that sends the user's browser back to the client is drawn between the four
-     * actors, the browser carrying the request and the response and the client spending the code where
-     * no browser goes.
+     * RFC 6749 §4.1
      */
     #[Test]
     public function aFlowThatSendsTheUserToTheClientIsDrawnBetweenTheFourActors(): void
@@ -157,10 +142,7 @@ final class WiredFlowPicturesTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1: the four hops of a flow that sends the user's browser back to the client, and no
-     * more: the client building the request and the browser landing at the redirect URI carry the same
-     * two payloads, and a drawing that showed them twice would say the flow exchanged twice what it
-     * exchanged once.
+     * RFC 6749 §4.1
      */
     #[Test]
     public function aFlowThatSendsTheUserToTheClientOpensInFourHops(): void
@@ -195,9 +177,7 @@ final class WiredFlowPicturesTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.4 and CIBA Core §10.1: the hops a client asks again until it is answered otherwise
-     * are the ones of a flow whose user is answering somewhere else. Every other hop is asked once, and
-     * what reads a trace reads that from the picture.
+     * RFC 8628 §3.4, CIBA Core §10.1
      *
      * @param list<string> $expected
      */
@@ -222,8 +202,7 @@ final class WiredFlowPicturesTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4: a grant a client uses for itself has nobody signed in behind it, so no browser is
-     * drawn in its picture and this provider is never asked who its user is.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function aFlowWithNobodyBehindItHasNoBrowserAndNoUserInfo(): void
@@ -240,8 +219,7 @@ final class WiredFlowPicturesTest extends TestCase
     }
 
     /**
-     * RFC 6749 §6: the flows that are drawn spending a refresh token are the ones whose grants declare
-     * they may answer with one.
+     * RFC 6749 §6
      */
     #[Test]
     public function onlyAFlowWhoseAnswerMayCarryARefreshTokenIsDrawnSpendingOne(): void
@@ -259,8 +237,7 @@ final class WiredFlowPicturesTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.5: a grant that declares none of the ways of asking a user carries its own
-     * authorization, and its picture opens at the token endpoint.
+     * RFC 6749 §4.5
      */
     #[Test]
     public function aGrantThatAsksNobodyAnythingOpensAtTheTokenEndpoint(): void
@@ -287,9 +264,6 @@ final class WiredFlowPicturesTest extends TestCase
         );
     }
 
-    /**
-     * The closings are appended in the order the shapes are wired, which is the order a flow is read in.
-     */
     #[Test]
     public function theClosingsComeInTheOrderTheyAreWired(): void
     {
@@ -310,10 +284,6 @@ final class WiredFlowPicturesTest extends TestCase
         static::assertSame(['opening', 'first', 'second'], $picture->hopNames());
     }
 
-    /**
-     * A grant that declares two ways of reaching a token is two flows and not one: the wiring is
-     * refused where it is collected, as a grant wired twice is.
-     */
     #[Test]
     public function aGrantTwoOpeningsClaimIsRefused(): void
     {
@@ -366,11 +336,8 @@ final class WiredFlowPicturesTest extends TestCase
     }
 
     /**
-     * Every shape reads the wiring for the grants it draws, and a shape no wired grant answers draws
-     * nothing: the capabilities decide, never a name.
-     *
      * @param class-string<FlowShapeInterface> $shape
-     * @param list<string>                                                    $expected
+     * @param list<string> $expected
      */
     #[Test]
     #[DataProvider('provideCapabilities')]
@@ -387,8 +354,7 @@ final class WiredFlowPicturesTest extends TestCase
     }
 
     /**
-     * CIBA Core §7 and RFC 8628 §3.3 again, from the other side: the two waiting flows are told apart by
-     * what their grants declare, so a wiring that holds one holds its picture and not the other's.
+     * CIBA Core §7, RFC 8628 §3.3
      */
     #[Test]
     public function aWiringHoldsThePictureOfTheCapabilitiesItWiredAndNoOther(): void

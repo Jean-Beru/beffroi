@@ -17,10 +17,6 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #453: the archive is handed to the person who asked for it and to nobody else. There is no
- * identifier to pass, so the refusal that matters most in this issue is one no caller can forget to write.
- */
 final class ArchiveHandoutTest extends TestCase
 {
     private const string DOCUMENT = '{"profile":[]}';
@@ -40,10 +36,6 @@ final class ArchiveHandoutTest extends TestCase
         static::assertSame($archive, $given);
     }
 
-    /**
-     * The act that matters most of the three: a file holding everything this provider knows of somebody
-     * left it, and the journal says when and from where.
-     */
     #[Test]
     public function givingTheArchiveAnnouncesTheAct(): void
     {
@@ -96,9 +88,6 @@ final class ArchiveHandoutTest extends TestCase
         static::assertNull(self::handing($archives, at: $archive->expiresAt)->givenTo($user, Fixtures::context()));
     }
 
-    /**
-     * Nothing to give announces nothing: a page that was opened is not an archive that left.
-     */
     #[Test]
     public function nothingToGiveAnnouncesNothing(): void
     {
@@ -112,10 +101,6 @@ final class ArchiveHandoutTest extends TestCase
         static::assertSame([], $events->events);
     }
 
-    /**
-     * The archive of another person is not refused here, it is not reachable from here: what is read is
-     * the last archive of the person who asks.
-     */
     #[Test]
     public function thePersonIsGivenTheirOwnArchiveAndNotAnother(): void
     {

@@ -11,8 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.4, B-1, B-3: the parameters or the fields the binding reads, refused with the rest of what the package
- * refuses.
+ * Section 5.4, B-1, B-3
  */
 final class MalformedParametersTest extends TestCase
 {

@@ -12,12 +12,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3, M-12: the name identifier formats, a closed vocabulary (SAML Core §8.3).
+ * Section 5.3, M-12, SAML Core §8.3
  */
 final class NameIdFormatTest extends TestCase
 {
     /**
-     * SAML Core §8.3.1 to §8.3.8, E60: the eight URIs, the unspecified one under 1.1.
+     * SAML Core §8.3.1 to §8.3.8, E60
      */
     #[Test]
     public function itHoldsTheEightFormatsOfSamlCore(): void
@@ -60,7 +60,7 @@ final class NameIdFormatTest extends TestCase
     }
 
     /**
-     * M-12, SAML Core §2.2.2 as corrected by E60: a NameID without Format is of the unspecified format.
+     * M-12, SAML Core §2.2.2 as corrected by E60
      */
     #[Test]
     public function itReadsAnAbsentFormatAsUnspecified(): void
@@ -70,7 +70,7 @@ final class NameIdFormatTest extends TestCase
     }
 
     /**
-     * §9.2 row 27, M-12: an unknown Format, compared byte for byte; the message carries nothing of it (M-16).
+     * §9.2 row 27, M-12, M-16
      */
     #[Test]
     #[DataProvider('provideUnknownFormats')]

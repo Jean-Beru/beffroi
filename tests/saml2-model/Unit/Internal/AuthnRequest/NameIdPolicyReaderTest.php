@@ -15,12 +15,12 @@ use PHPUnit\Framework\TestCase;
 use function sprintf;
 
 /**
- * Section 6.2 step 5: a samlp:NameIDPolicy read strictly (SAML Core §3.4.1.1), M-5 and M-6 on the way.
+ * Section 6.2 step 5, SAML Core §3.4.1.1, M-5, M-6
  */
 final class NameIdPolicyReaderTest extends TestCase
 {
     /**
-     * Section 6.2 step 5: the three attributes, AllowCreate in each of the forms of a boolean (M-6) or absent.
+     * Section 6.2 step 5, M-6
      */
     #[Test]
     #[DataProvider('providePolicies')]
@@ -53,7 +53,7 @@ final class NameIdPolicyReaderTest extends TestCase
     }
 
     /**
-     * M-5: NameIDPolicyType is empty, any element child is refused, a saml:Issuer as well as an extension.
+     * M-5
      */
     #[Test]
     #[DataProvider('provideChildren')]

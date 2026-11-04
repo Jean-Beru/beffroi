@@ -24,8 +24,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 8628 §3.2, §3.3, §3.5: the record waits for its user, who answers it once, and for the client, which
- * spends it once and is told to slow down when it asks faster than it was told to.
+ * RFC 8628 §3.2, §3.3, §3.5
  */
 final class DeviceAuthorizationRecordTest extends TestCase
 {
@@ -58,7 +57,7 @@ final class DeviceAuthorizationRecordTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.2: the lifetime the client is told is the one the record has, never a longer one.
+     * RFC 8628 §3.2
      */
     #[Test]
     public function theLifetimeItAnnouncesIsTheOneItHas(): void
@@ -72,8 +71,7 @@ final class DeviceAuthorizationRecordTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.3: the session the user approved with, and the class it had proven then, are frozen on
-     * the record: the tokens the client polls for descend from the approval.
+     * RFC 8628 §3.3
      */
     #[Test]
     public function anApprovalFreezesTheSessionItWasGivenWith(): void
@@ -94,7 +92,7 @@ final class DeviceAuthorizationRecordTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: a refusal is an answer, and the client learns "access_denied" from it.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aRefusalIsAnAnswerAndLeavesNoSession(): void
@@ -112,10 +110,6 @@ final class DeviceAuthorizationRecordTest extends TestCase
         static::assertNull($record->session);
     }
 
-    /**
-     * A request is answered once: nobody is asked twice about one code, and answering one twice is a
-     * programming error rather than a refusal.
-     */
     #[Test]
     #[DataProvider('provideSecondAnswers')]
     public function itRefusesToBeAnsweredTwice(string $first, string $second): void
@@ -147,9 +141,6 @@ final class DeviceAuthorizationRecordTest extends TestCase
         yield 'refused then refused' => ['deny', 'deny'];
     }
 
-    /**
-     * An approval binds a session of the tenant of the record and of no other.
-     */
     #[Test]
     public function itRefusesAnApprovalBySomebodyOfAnotherTenant(): void
     {
@@ -166,7 +157,7 @@ final class DeviceAuthorizationRecordTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: the first poll is never too soon, and one that respects the interval is not either.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aPollThatRespectsTheIntervalIsAnswered(): void
@@ -185,8 +176,7 @@ final class DeviceAuthorizationRecordTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: a client that polls sooner than the interval it was given is told to add five seconds,
-     * and what the record expects grows with it, so the two stay in step.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aPollSoonerThanTheIntervalGrowsIt(): void
@@ -203,9 +193,6 @@ final class DeviceAuthorizationRecordTest extends TestCase
         static::assertSame(10, $record->interval);
     }
 
-    /**
-     * Every poll is recorded, the refused ones included: asking again does not buy a faster answer.
-     */
     #[Test]
     public function aRefusedPollIsStillAPoll(): void
     {
@@ -222,9 +209,6 @@ final class DeviceAuthorizationRecordTest extends TestCase
         static::assertEquals($this->issuedAt->modify('+4 seconds'), $record->lastPolledAt);
     }
 
-    /**
-     * A record answers for itself rather than trusting what it was handed.
-     */
     #[Test]
     #[DataProvider('provideRecordsThatDoNotHoldTogether')]
     public function itRefusesWhatItCouldNotHaveWritten(string $deviceCodeHash, string $userCodeHash, string $expiresAt, int $interval, string $reason): void
@@ -298,8 +282,7 @@ final class DeviceAuthorizationRecordTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: a request is made with an interval of a second at least and of the bound at most, both
-     * ends included.
+     * RFC 8628 §3.5
      */
     #[Test]
     #[DataProvider('provideIntervalsARequestIsMadeWith')]

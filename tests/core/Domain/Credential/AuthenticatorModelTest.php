@@ -9,9 +9,6 @@ use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * The make and model of an authenticator as a source names them: a name, and the source that gave it.
- */
 final class AuthenticatorModelTest extends TestCase
 {
     #[Test]

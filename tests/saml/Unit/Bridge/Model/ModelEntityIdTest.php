@@ -12,13 +12,12 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * spec/saml.md S-38, M-6: the entity ID a deployment names for the service provider of its tenant is a URI as
- * saml2-model reads one, so that what the configuration accepts is what the writer of the metadata writes.
+ * spec/saml.md S-38, M-6
  */
 final class ModelEntityIdTest extends TestCase
 {
     /**
-     * S-38, M-6: an entity ID of 1024 characters, the longest, is read as it was written.
+     * S-38, M-6
      */
     #[Test]
     public function anEntityIdOfTheLongestLengthIsRead(): void
@@ -31,7 +30,7 @@ final class ModelEntityIdTest extends TestCase
     }
 
     /**
-     * S-38, M-6: an entity ID that is no URI of the model is refused, naming the rule and never the value (M-16).
+     * S-38, M-6, M-16
      */
     #[Test]
     #[DataProvider('provideEntityIdsRefused')]
@@ -46,7 +45,7 @@ final class ModelEntityIdTest extends TestCase
     }
 
     /**
-     * S-42, M-6: the entity ID an upstream identity provider is declared under is read as it was written.
+     * S-42, M-6
      */
     #[Test]
     public function theEntityIdOfAnIdentityProviderIsRead(): void
@@ -59,8 +58,7 @@ final class ModelEntityIdTest extends TestCase
     }
 
     /**
-     * S-42, M-6: the entity ID of an upstream identity provider that is no URI of the model is refused, naming the
-     * rule and never the value (M-16).
+     * S-42, M-6, M-16
      */
     #[Test]
     #[DataProvider('provideEntityIdsRefused')]

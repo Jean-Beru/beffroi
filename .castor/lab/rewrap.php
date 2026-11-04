@@ -2,22 +2,6 @@
 
 declare(strict_types=1);
 
-/*
- * The fourth success criterion of spike 8 (issue #410), the half only a stack that serves can answer: the
- * data keys of a tenant move from one KMS client to another while logins are being played, and no login
- * fails.
- *
- * What the suite proves beside this, deterministically and without a stack, is that every sealed column is
- * byte identical before and after the move, that a row whose data key was destroyed no longer opens and
- * names the key, and that a destruction reaches one tenant of two (DataKeysTest). Those needed two KMS
- * clients and a second tenant, which the test kernel has and which no configuration of one tenant shows.
- * What is left for here is the one word the criterion rests on, while it serves.
- *
- * The move is fast, a handful of rows and one call to the KMS per row, so what this proves is not a race:
- * it is that logins played before it, across it and after it all went through, that the keys ended up on
- * the other client, and that not one sealed value was read or rewritten on the way.
- */
-
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
 use function Castor\context;
@@ -26,27 +10,14 @@ use function Castor\load_dot_env;
 use function Castor\run;
 use Symfony\Component\Process\Process;
 
-/**
- * Where the internal CA of Caddy is copied for the PHP of the host, as the other walks copy it: the OP
- * serves a certificate of an authority that exists only inside the stack.
- */
 const REWRAP_CA_FILE = 'var/caddy-root.crt';
 
-/**
- * How many complete logins a run plays. Enough that some are before the move, some across it and some
- * after, and few enough that a walk taken by hand stays under a minute.
- */
 const REWRAP_LOGINS = 10;
 
-/**
- * After which login the move is started. Halfway, so that what follows it is as long as what precedes it.
- */
 const REWRAP_AFTER = 5;
 
 /**
- * The two clients the keys move between, as config/packages/key_management.yaml declares them. Which way
- * the move goes is not written here: a run leaves the keys on the client it moved them to, so the direction
- * of the next one is the one the previous one left available, read from the store (issue #442).
+ * In no particular order: the direction of a move is read from the store.
  */
 const REWRAP_CLIENTS = ['op', 'second'];
 
@@ -205,10 +176,6 @@ function rewrap_live(
 }
 
 /**
- * The direction the stack leaves available: from the client that wraps every data key of the tenant to the
- * other one of the pair. Written nowhere because a run of this walk changes it: holding a pair of names is
- * what made a second run in a row measure nothing, the keys being where the first one left them (#442).
- *
  * @param list<string> $holding the clients that wrap a key today, each once
  *
  * @return array{string, string} the client to move from, then the one to move to
@@ -246,8 +213,7 @@ function rewrap_direction(array $holding): array
 }
 
 /**
- * The move, started and not waited for: the point of the walk is that the provider keeps serving while it
- * runs, so the logins carry on in the caller.
+ * Not waited for: the logins carry on in the caller while the move runs.
  */
 function rewrap_start(string $from, string $to): Process
 {
@@ -283,9 +249,6 @@ function rewrap_check(Process $process): void
     exit(1);
 }
 
-/**
- * How many keys a dry run from the old client still lists, which is what says the move is complete.
- */
 function rewrap_dry_run(string $from, string $to): int
 {
     $output = op_console(
@@ -297,13 +260,11 @@ function rewrap_dry_run(string $from, string $to): int
         return (int) $matches[1];
     }
 
-    // The command says so in words when the tenant holds nothing wrapped by that client.
     return str_contains($output, 'holds no data key wrapped by') ? 0 : -1;
 }
 
 /**
- * The client that wraps each scope of the tenant, read in the table and not in a command: what a command
- * reports of the rows is what a command decides to report.
+ * Read in the table rather than through a command, which reports what it decides to report.
  *
  * @return array<string, string> the client, by scope
  */
@@ -319,13 +280,9 @@ function rewrap_keys(): array
 }
 
 /**
- * Every sealed value of beffroi_user as the database holds it, in hexadecimal.
+ * A sealed column is a binary one under PostgreSQL.
  *
- * The columns are the binary ones of the table, which is what a sealed column is under PostgreSQL, so a
- * column sealed later is compared without this walk being touched. The rows are named by their subject,
- * which is in the clear by construction and which no rewrap touches.
- *
- * @return array<string, string> the bytes, by "subject.column"
+ * @return array<string, string> the bytes in hexadecimal, by "subject.column"
  */
 function rewrap_sealed_columns(): array
 {
@@ -354,9 +311,7 @@ function rewrap_sealed_columns(): array
 }
 
 /**
- * One line per row, fields separated by a pipe, read with psql in the container of the database.
- *
- * @return list<string>
+ * @return list<string> one line per row, fields separated by a pipe
  */
 function rewrap_query(string $sql): array
 {

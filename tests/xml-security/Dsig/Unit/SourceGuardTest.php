@@ -41,14 +41,12 @@ use const T_VARIABLE;
 use function trim;
 
 /**
- * Section 8 of spec/dsig.md, read on the source of src/Dsig/ itself, next to the PHPStan rules: the tokens the
- * namespace never writes, the four OpenSSL calls confined to one file each and written once (D-15), base64
- * decoded strictly wherever it is decoded (D-8), and no digest nor signature compared with an operator.
+ * Section 8 of spec/dsig.md, D-8, D-15
  */
 final class SourceGuardTest extends TestCase
 {
     /**
-     * Section 8: tokens that never appear in src/Dsig/, comments and strings left aside.
+     * Section 8
      */
     #[Test]
     #[DataProvider('provideBannedTokens')]
@@ -96,7 +94,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * D-15: the four OpenSSL calls, one file each, written exactly once.
+     * D-15
      */
     #[Test]
     #[DataProvider('provideConfinedCalls')]
@@ -127,7 +125,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * D-8: every base64_decode() of the namespace is strict.
+     * D-8
      */
     #[Test]
     public function itDecodesBase64StrictlyEverywhere(): void
@@ -148,9 +146,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * Section 8: no digest and no signature of the namespace is compared with ==, ===, != or !==, which stop at the
-     * first differing byte; hash_equals() is the comparison. A comparison with null, true, false or [] compares no
-     * bytes and is left aside, and so is a value computed from the bytes, strlen() of a digest for instance.
+     * Section 8
      */
     #[Test]
     public function itComparesNoDigestAndNoSignatureWithAnOperator(): void
@@ -172,8 +168,6 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * The guard above finds what it looks for, and only that.
-     *
      * @param list<string> $expected
      */
     #[Test]
@@ -198,7 +192,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * @return array<string, int> the files of src/Dsig/ where $token appears, with the count, comments and strings aside
+     * @return array<string, int> count of $token per file of src/Dsig/ holding it
      */
     private function occurrences(string $token): array
     {
@@ -214,7 +208,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * @return array<string, string> each source file of src/Dsig/, relative path to code with comments and strings blanked
+     * @return array<string, string> relative path to code, comments and strings blanked
      */
     private function sources(): array
     {
@@ -235,10 +229,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * The comparisons of $source whose operand is a variable or a property named after a digest or a signature, each
-     * as "left operator right", the names read from the tokens.
-     *
-     * @return list<string>
+     * @return list<string> each as "left operator right"
      */
     private function byteComparisons(string $source): array
     {
@@ -265,9 +256,6 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * The value compared on the left of the operator at $index: a variable, the last property of a chain, a literal,
-     * or "" for anything computed (a call, an expression in parentheses).
-     *
      * @param list<PhpToken> $tokens
      */
     private function operandBefore(array $tokens, int $index): string
@@ -292,8 +280,6 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * The value compared on the right of the operator at $index, read as operandBefore() reads the left one.
-     *
      * @param list<PhpToken> $tokens
      */
     private function operandAfter(array $tokens, int $index): string
@@ -335,7 +321,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * @return array<string, string> each source file of src/Dsig/, relative path to its source as written
+     * @return array<string, string> relative path to source as written
      */
     private function files(): array
     {

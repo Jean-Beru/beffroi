@@ -34,17 +34,14 @@ use function array_map;
 use function preg_match;
 
 /**
- * Sections 5.7 and 6.6, M-15: an md:EntityDescriptor written, and read back by the metadata reader; the metadata
- * rows of section 9.1.
+ * Sections 5.7, 6.6 and 9.1, M-15
  */
 final class MetadataWriterTest extends TestCase
 {
     private const string DSIG = 'http://www.w3.org/2000/09/xmldsig#';
 
     /**
-     * Section 9.1, M-15: the metadata of an identity provider, of a service provider and of an entity in both roles,
-     * written, serialized with Core, loaded again with SamlLoader::create(), is read by readTrusted() as it was
-     * written.
+     * Section 9.1, M-15
      */
     #[Test]
     #[DataProvider('provideDescriptors')]
@@ -100,8 +97,7 @@ final class MetadataWriterTest extends TestCase
     }
 
     /**
-     * Section 9.1, M-2, M-15: the metadata written and signed with the test key of its role is read by readSigned()
-     * under that key, as it was written.
+     * Section 9.1, M-2, M-15
      */
     #[Test]
     #[DataProvider('provideSignedDescriptors')]
@@ -143,8 +139,7 @@ final class MetadataWriterTest extends TestCase
     }
 
     /**
-     * Section 9.1: the signed metadata the writer produced for xmlsec1, which verified it under the identity
-     * provider's certificate (commands in the story's record), is read by readSigned() under the same key.
+     * Section 9.1
      */
     #[Test]
     public function itReadsTheSignedMetadataXmlsec1Verified(): void
@@ -173,8 +168,7 @@ final class MetadataWriterTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 3, SAML Core §5.4.1, dsig.md section 6.2: the Signature is the first child of the root, over
-     * its ID, with no InclusiveNamespaces, the certificate of the key in its KeyInfo when given.
+     * Section 6.6 step 3, SAML Core §5.4.1, dsig.md section 6.2
      */
     #[Test]
     public function itSignsTheRootWithTheSignatureFirst(): void
@@ -213,8 +207,7 @@ final class MetadataWriterTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 2, M-15, SAML Core §1.3.4: the ID of the root is drawn anew by SamlId::generate() at every
-     * write.
+     * Section 6.6 step 2, M-15, SAML Core §1.3.4
      */
     #[Test]
     public function itDrawsANewIdAtEveryWrite(): void
@@ -241,7 +234,7 @@ final class MetadataWriterTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 2, core.md section 6.5: every element carries the prefix of its namespace, md or ds.
+     * Section 6.6 step 2, core.md section 6.5
      */
     #[Test]
     public function itWritesOnePrefixPerNamespace(): void
@@ -271,8 +264,7 @@ final class MetadataWriterTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 2, SAML Metadata §2.3.2: the cacheDuration its consumer gives is written on the root as the
-     * xs:duration of its seconds.
+     * Section 6.6 step 2, SAML Metadata §2.3.2
      */
     #[Test]
     public function itWritesTheCacheDurationAsADurationInSeconds(): void
@@ -293,7 +285,7 @@ final class MetadataWriterTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 2: no cacheDuration given, none written.
+     * Section 6.6 step 2
      */
     #[Test]
     public function itWritesNoCacheDurationWhenNoneIsGiven(): void
@@ -306,8 +298,7 @@ final class MetadataWriterTest extends TestCase
     }
 
     /**
-     * Section 6.5 step 3, M-15: the reader reads a document whose root carries a cacheDuration, and does not read the
-     * cacheDuration, which is its consumer's.
+     * Section 6.5 step 3, M-15
      */
     #[Test]
     public function itsReaderReadsTheMetadataAndNotItsCacheDuration(): void
@@ -328,7 +319,7 @@ final class MetadataWriterTest extends TestCase
     }
 
     /**
-     * Section 5.7: without Signing, the document holds no Signature.
+     * Section 5.7
      */
     #[Test]
     public function itWritesNoSignatureWithoutSigning(): void
@@ -341,8 +332,7 @@ final class MetadataWriterTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 1, section 5.8, M-15: the writer refuses what its reader refuses or drops, a programming
-     * error of the caller.
+     * Section 6.6 step 1, section 5.8, M-15
      */
     #[Test]
     #[DataProvider('provideDescriptorsRefused')]
@@ -430,7 +420,7 @@ final class MetadataWriterTest extends TestCase
     }
 
     /**
-     * Section 9.1: the written document serialized with Core and loaded again with SamlLoader::create().
+     * Section 9.1
      */
     private function reload(Document $document): Document
     {

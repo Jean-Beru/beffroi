@@ -8,12 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * The backchannel authentication requests (CIBA Core §7): the identifier the client comes back with as the
- * key, by its hash, the user the request named when it named one, what it asked for, the message that user
- * is shown, where the client asked from, and what the user answered. The two sealed columns are for a
- * client this provider has to call back and are null for every other.
- */
 final class Version20260926210000 extends AbstractMigration
 {
     public function getDescription(): string

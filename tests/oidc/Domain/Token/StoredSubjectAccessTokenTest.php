@@ -21,15 +21,12 @@ use function str_repeat;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The record of an opaque access token whose subject was named by what the client presented
- * (RFC 8693 §2.1, RFC 7523 §2.1, architecture §4.6).
+ * RFC 8693 §2.1, RFC 7523 §2.1, Architecture §4.6
  */
 final class StoredSubjectAccessTokenTest extends TestCase
 {
     /**
-     * Issue #593: the "sub" this row keeps is the one whoever named it named, a name of another client
-     * under a pairwise kind (OIDC Core §8.1), so the person is kept beside it, as the exchange resolved it
-     * where it read the presented token. The acts of this token are then written in their journal.
+     * OIDC Core §8.1
      */
     #[Test]
     public function itNamesThePersonItIsInTheNameOf(): void
@@ -49,8 +46,7 @@ final class StoredSubjectAccessTokenTest extends TestCase
     }
 
     /**
-     * Issues #593 and #888: the row keeps its person itself, beside the session the presented token named, so no
-     * session is asked who that person is; the session is the sign-in of the token it came from (RFC 9068 §2.2.1).
+     * RFC 9068 §2.2.1
      */
     #[Test]
     public function itNamesItsPersonItselfWhateverSessionItNames(): void
@@ -70,8 +66,7 @@ final class StoredSubjectAccessTokenTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4: a token a client holds for itself was never about a person, and neither is what an
-     * exchange of it issues. The act of its revocation names nobody, which is the honest answer.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function itNamesNobodyWhenNothingReadTheSubjectBackAsAPerson(): void
@@ -89,7 +84,7 @@ final class StoredSubjectAccessTokenTest extends TestCase
     }
 
     /**
-     * RFC 9068 §2.2.1: the sign-in the presented token named, read back as the pair the issuers write.
+     * RFC 9068 §2.2.1
      */
     #[Test]
     public function itReadsBackTheSignInThePresentedTokenNamed(): void
@@ -112,7 +107,7 @@ final class StoredSubjectAccessTokenTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4: a record that names no session names no sign-in either.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function aRecordThatNamesNoSessionNamesNoSignIn(): void
@@ -130,7 +125,7 @@ final class StoredSubjectAccessTokenTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: the token is addressed to the resources the request named, which its introspection renders.
+     * RFC 8707 §2
      */
     #[Test]
     public function itIsAddressedToTheResourcesItWasAskedFor(): void
@@ -149,7 +144,7 @@ final class StoredSubjectAccessTokenTest extends TestCase
     }
 
     /**
-     * RFC 9068 §2.2.1: half of a sign-in was never written here.
+     * RFC 9068 §2.2.1
      */
     #[Test]
     public function itRefusesASessionWithoutWhatThatSessionHadProven(): void
@@ -179,7 +174,7 @@ final class StoredSubjectAccessTokenTest extends TestCase
     }
 
     /**
-     * RFC 8693 §4.1: the chain of actors as it was written.
+     * RFC 8693 §4.1
      */
     #[Test]
     public function itKeepsTheChainOfActorsThatHoldsIt(): void

@@ -32,7 +32,7 @@ use Webauthn\PublicKeyCredentialDescriptor;
 use Webauthn\PublicKeyCredentialParameters;
 
 /**
- * The registration ceremony of WebAuthn Level 3 §7.1 on webauthn-lib, answered by a software authenticator.
+ * WebAuthn Level 3 §7.1
  */
 final class WebauthnPasskeyRegistrarTest extends TestCase
 {
@@ -53,9 +53,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     }
 
     /**
-     * §5.4: the relying party is the tenant, the user entity carries the handle, the algorithms of the provider
-     * from the strongest (decision 0033), a passkey is discoverable (§5.4.6), user verification preferred, no
-     * attestation asked for (§5.4.7).
+     * §5.4, §5.4.6, §5.4.7, Decision 0033
      */
     #[Test]
     public function theCreationOptionsAreThoseOfAPasskeyOfTheTenant(): void
@@ -111,7 +109,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     }
 
     /**
-     * §5.4, excludeCredentials: the passkeys given, with their transports.
+     * §5.4, excludeCredentials
      */
     #[Test]
     public function theExistingPasskeysAreExcluded(): void
@@ -135,7 +133,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     }
 
     /**
-     * §7.1: the record of the new credential, the flags of the authenticator data kept.
+     * §7.1
      */
     #[Test]
     #[DataProvider('provideAuthenticators')]
@@ -169,8 +167,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     }
 
     /**
-     * §7.1, step 21, and the spike README: an attestation statement the authenticator sends although none
-     * was asked for is verified, here a packed one in self attestation (§8.2).
+     * §7.1 step 21, §8.2
      */
     #[Test]
     public function anAttestationStatementSentAnywayIsVerified(): void
@@ -188,8 +185,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     }
 
     /**
-     * Decision 0033: a passkey of an algorithm the options offer enrols, its packed self attestation (§8.2)
-     * verified with that algorithm.
+     * Decision 0033, §8.2
      */
     #[Test]
     #[DataProvider('provideKeysOfTheOfferedAlgorithms')]
@@ -217,8 +213,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     }
 
     /**
-     * Decision 0033 and §7.1 (CheckAlgorithm): a passkey of an algorithm the options do not offer does not enrol
-     * through them, RS1 and ES384 among them, which the product neither offers nor verifies.
+     * Decision 0033, §7.1
      */
     #[Test]
     #[DataProvider('provideKeysOfTheAlgorithmsNotOffered')]
@@ -246,10 +241,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     }
 
     /**
-     * §5.4.7: the provider asks for no attestation, so the library consults no metadata (§7.1 step 22 is
-     * for an attestation asked for), and an authenticator the metadata say is compromised enrols all the
-     * same; the spike README: an attestation is never required. A policy that refuses is the hosted
-     * offer's, on the same metadata.
+     * §5.4.7, §7.1 step 22
      */
     #[Test]
     public function theMetadataAreNotConsultedWhenNoAttestationWasAskedFor(): void
@@ -303,7 +295,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     }
 
     /**
-     * §13.4.9: the origin is the whole of it, port included; the issuer of the tenant names it.
+     * §13.4.9
      */
     #[Test]
     public function anAttestationFromTheSameHostOnAnotherPortIsRefused(): void
@@ -336,7 +328,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     }
 
     /**
-     * §7.1, step 8: the challenge of the response is the one of the options.
+     * §7.1, step 8
      */
     #[Test]
     public function anAttestationOfAnotherChallengeIsRefused(): void
@@ -355,7 +347,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     }
 
     /**
-     * §7.1, step 14: a user must be present at creation.
+     * §7.1, step 14
      */
     #[Test]
     public function anAttestationWithoutUserPresenceIsRefused(): void

@@ -20,12 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * OIDC Core §4, the two modules of the 3rd Party-Init OP plan: the "initiate_login_uri" a client
- * registers, refused in plain HTTP, and the login this provider begins at that client.
- *
- * The route is the half the plan does not judge. Both modules register a client and read its
- * registration back, and neither ever visits the URI it registered, so what holds the flow itself is
- * here and nowhere else.
+ * OIDC Core §4
  */
 final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
 {
@@ -40,9 +35,7 @@ final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
     private const string ISSUED_BY_THIS_PROVIDER = '?iss=https%3A%2F%2Fop.test';
 
     /**
-     * OIDC Core §4: the browser is sent to the URI the named client registered, carrying the issuer of
-     * this provider, which is how that client knows which provider to have its user authenticate
-     * against.
+     * OIDC Core §4
      */
     #[Test]
     public function theBrowserIsSentToTheClientNamingThisProvider(): void
@@ -57,9 +50,7 @@ final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §5.2: a redirection of the interaction plane carries what every answer of that plane
-     * carries, the referrer above all, which would otherwise tell the client which page of this provider
-     * sent the browser.
+     * Architecture §5.2
      */
     #[Test]
     public function theRedirectionCarriesTheHeadersOfThePlane(): void
@@ -71,10 +62,6 @@ final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
         static::assertInteractionHeaders($this->browser->getResponse());
     }
 
-    /**
-     * The whole security of the route: a caller names a client, never a destination. A request carrying
-     * URLs of its own is answered the one the client registered and nothing of what it sent.
-     */
     #[Test]
     public function nothingOfTheRequestReachesTheClient(): void
     {
@@ -93,11 +80,6 @@ final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
         );
     }
 
-    /**
-     * A landing page registered by another client of the tenant is one this client never named, so it is
-     * left out as any other is: the set a "target_link_uri" is drawn from is the registration of the
-     * client being begun at.
-     */
     #[Test]
     public function aLandingPageOfAnotherClientIsLeftOut(): void
     {
@@ -114,8 +96,7 @@ final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §4: where the client is asked to land the user, carried because this client registered
-     * it, byte for byte (RFC 6749 §3.1.2.3).
+     * OIDC Core §4, RFC 6749 §3.1.2.3
      */
     #[Test]
     public function aLandingPageTheClientRegisteredIsCarried(): void
@@ -132,11 +113,6 @@ final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
         );
     }
 
-    /**
-     * There is nothing to begin, and which of the two reasons it was is not said: a client no tenant of
-     * this name holds, and one that registered no "initiate_login_uri", are one answer, so that asking
-     * tells nobody which clients exist.
-     */
     #[Test]
     #[DataProvider('provideNothingToBegin')]
     public function thereIsNoLoginToBegin(string $clientId): void
@@ -161,9 +137,7 @@ final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §4: a browser that holds no session gives no hint and is sent on all the same. The
-     * client is about to make an authorization request, and that request asks for whatever login it
-     * needs; a provider that demanded one here would ask for it twice.
+     * OIDC Core §4
      */
     #[Test]
     public function aBrowserWithNoSessionIsSentOnWithNoHint(): void
@@ -176,8 +150,7 @@ final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §8 "public": a client that registers no kind sees the identifier the core keeps, so that
-     * is what it is hinted with.
+     * OIDC Core §8
      */
     #[Test]
     public function theHintNamesTheSignedInUserAsTheClientSeesThem(): void
@@ -194,10 +167,7 @@ final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §8.1: a client that sees its users under a "sub" of its own sector is hinted with that
-     * one, and the store names the user back under it. A provider that put the stable identifier here
-     * would hand a pairwise client the one string pairwise exists to withhold, and would do it before
-     * the client had asked for anything at all.
+     * OIDC Core §8.1
      */
     #[Test]
     public function aPairwiseClientIsHintedWithTheIdentifierOfItsOwnSector(): void
@@ -218,10 +188,6 @@ final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
         static::assertSame($alice->subject->value, $named?->subject->value);
     }
 
-    /**
-     * OIDCC-3rd_party-init-login: the registration answers the "initiate_login_uri" the client sent, and
-     * the client configuration endpoint answers it again. Those two reads are the whole module.
-     */
     #[Test]
     public function theRegistrationAndTheConfigurationEndpointBothAnswerTheUri(): void
     {
@@ -243,12 +209,7 @@ final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
     }
 
     /**
-     * OIDCC-3rd_party-init-login-nohttps: OIDC Registration §2 makes it an "https" URL, and a
-     * registration that sends any other is refused with the error and the status of RFC 7591 §3.2.2.
-     *
-     * The module sends the URL of the run with its scheme replaced, and the suite runs on
-     * "localhost:8443": the member is held to "https" on the host a development stack is reached at as
-     * well as on a name, which is the rule of no environment (issue #377).
+     * OIDC Registration §2, RFC 7591 §3.2.2
      */
     #[Test]
     #[DataProvider('provideUrisInPlainHttp')]
@@ -280,10 +241,6 @@ final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
         yield 'on the loopback host the suite runs on' => ['http://localhost:8443/test/a/beffroi/initiate-login'];
     }
 
-    /**
-     * A client that registered itself is begun at like any other: what the route reads is a
-     * registration, whatever wrote it.
-     */
     #[Test]
     public function aClientThatRegisteredItselfIsBegunAtLikeAnyOther(): void
     {

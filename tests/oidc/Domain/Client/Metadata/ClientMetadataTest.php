@@ -13,9 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 7591 §2, §3.1.1: the metadata of a registration is read from an ordered set of sources, the first that
- * carries a member being the one that answers for it. It is what makes a source something added in front of
- * another rather than a branch in the reader (issue #335).
+ * RFC 7591 §2, §3.1.1
  */
 final class ClientMetadataTest extends TestCase
 {
@@ -56,10 +54,6 @@ final class ClientMetadataTest extends TestCase
         static::assertNull($metadata->value('logo_uri'));
     }
 
-    /**
-     * A configuration tree fills every option nobody wrote with null, and a body that sends a member as JSON
-     * null says nothing about it: either way the source behind it answers.
-     */
     #[Test]
     public function aMemberASourceCarriesAsNullIsAMemberItDoesNotCarry(): void
     {
@@ -99,10 +93,6 @@ final class ClientMetadataTest extends TestCase
         $metadata->sourceOf('logo_uri');
     }
 
-    /**
-     * What the reader checks its own names against: a member nobody reads is refused wherever it was
-     * written, so every source is asked.
-     */
     #[Test]
     public function everyMemberAnySourceCarriesIsNamedOnce(): void
     {

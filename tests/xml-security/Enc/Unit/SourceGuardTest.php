@@ -27,15 +27,12 @@ use const T_ENCAPSED_AND_WHITESPACE;
 use function trim;
 
 /**
- * Section 8 of spec/enc.md, read on the source of src/Enc/ itself, next to the PHPStan rules: the tokens the
- * namespace never writes, the four OpenSSL calls, the two key readers and the padding of AES-CBC confined to one file
- * each and written once (E-10, E-16), nothing of CBC where the namespace encrypts (E-15), and base64 decoded strictly
- * wherever it is decoded (E-7).
+ * Section 8 of spec/enc.md, E-7, E-10, E-15, E-16
  */
 final class SourceGuardTest extends TestCase
 {
     /**
-     * Section 8: tokens that never appear in src/Enc/, comments and strings left aside.
+     * Section 8
      */
     #[Test]
     #[DataProvider('provideBannedTokens')]
@@ -85,7 +82,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * E-10: the four OpenSSL calls and the two key readers, one file each, written exactly once.
+     * E-10
      */
     #[Test]
     #[DataProvider('provideConfinedCalls')]
@@ -128,8 +125,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * §9.3 row 25, E-15, section 8: what writes for the peer, Encryptor and PeerKey, names nothing of CBC, so that
-     * nothing is encrypted in CBC.
+     * §9.3 row 25, E-15, section 8
      */
     #[Test]
     #[DataProvider('provideWriters')]
@@ -154,7 +150,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * E-7: every base64_decode() of the namespace is strict.
+     * E-7
      */
     #[Test]
     public function itDecodesBase64StrictlyEverywhere(): void
@@ -175,7 +171,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * @return array<string, int> the files of src/Enc/ where $token appears, with the count, comments and strings aside
+     * @return array<string, int> count of $token per file of src/Enc/ holding it
      */
     private function occurrences(string $token): array
     {
@@ -191,7 +187,7 @@ final class SourceGuardTest extends TestCase
     }
 
     /**
-     * @return array<string, string> each source file of src/Enc/, relative path to code with comments and strings blanked
+     * @return array<string, string> relative path to code, comments and strings blanked
      */
     private function sources(): array
     {

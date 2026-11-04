@@ -20,20 +20,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\RequestContext;
 
 /**
- * The application, as a client of the provider it serves (issue #282): it names the routes it is
- * reached at, and the URLs it registers are what the router writes for them in the context of the issuer, its scheme,
- * its host and its port. A route that requires neither a scheme nor a host is its path under the origin of the issuer,
- * the application and the provider being served under the same host, and a route that requires one is written as it
- * requires. The host of the request being served plays no part, as it plays none for the endpoints of the provider
- * (RouterEndpointLocator); the base of the application is the one the router holds.
- *
- * What it declares is what a deployment would write for it under "clients", so the provider knows it as an ordinary
- * client: its URLs, its secret, and the consent a first-party application is the named exception of. Everything else
- * is what a declared client that writes nothing gets.
- *
- * Its secret is its own: the token request of the application arrives over HTTP like any other and carries it, so a
- * secret that is the secret of the kernel, which signs and seals what the application holds, is refused, whatever
- * variable carries it.
+ * The application itself, declared to the provider it serves as an ordinary client.
  */
 final readonly class SelfClient
 {
@@ -56,11 +43,9 @@ final readonly class SelfClient
     }
 
     /**
-     * The members of RFC 7591 §2 and the secret of this client, as ClientDefinition reads a declaration.
-     *
      * @throws InvalidConfigurationException when the router writes no URL for a route this client names
      *
-     * @return array<string, mixed>
+     * @return array<string, mixed> the members of RFC 7591 §2 and the secret of this client
      */
     public function declaration(): array
     {
@@ -75,10 +60,7 @@ final readonly class SelfClient
     }
 
     /**
-     * What the router writes for that route in the context of the issuer, the base of the application kept from the
-     * context the router holds, which it is given back: the router is shared with whatever else writes a URL.
-     *
-     * @throws InvalidConfigurationException when the router writes no URL for that route
+     * @throws InvalidConfigurationException
      */
     private function url(Issuer $issuer, string $key, string $route): string
     {
@@ -102,9 +84,6 @@ final readonly class SelfClient
         }
     }
 
-    /**
-     * The scheme, the host and the port of the issuer, which the Issuer has already held to an absolute URL.
-     */
     private static function contextOf(Issuer $issuer, RequestContext $context): RequestContext
     {
         $scheme = parse_url($issuer->value, PHP_URL_SCHEME);

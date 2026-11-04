@@ -22,10 +22,7 @@ use function trim;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Issue #451, architecture §4.3, §5.5: the console says what every application holds of a person, for an
- * administrator asked what one of them is worth. It reads what the page of the account reads
- * (ApplicationHoldings), and a command that reads is not the command that writes: taking one back is
- * "beffroi:user:revoke-consent", which the client identifier of these rows is the argument of.
+ * Architecture §4.3, §5.5
  */
 final class ApplicationsTest extends ConsoleTestCase
 {
@@ -46,8 +43,7 @@ final class ApplicationsTest extends ConsoleTestCase
     }
 
     /**
-     * OIDC Core §5.5: what the person agreed to by name is what the application holds beside its scopes, and
-     * the row says it.
+     * OIDC Core §5.5
      */
     #[Test]
     public function theClaimsAgreedToByNameAreListedBesideTheScopes(): void
@@ -127,10 +123,6 @@ final class ApplicationsTest extends ConsoleTestCase
         ]);
     }
 
-    /**
-     * What the row of the only application of these tests says it can renew: its fifth cell, the cells of a
-     * row of the console being what two spaces or more separate.
-     */
     private static function renewable(CommandTester $tester): string
     {
         $display = $tester->getDisplay();

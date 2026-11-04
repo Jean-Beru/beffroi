@@ -83,7 +83,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: ten minutes from issuance, as a compact JWS.
+     * Architecture §4.6
      */
     #[Test]
     public function itMintsACompactJwsForTenMinutes(): void
@@ -106,8 +106,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 9068 §2.1: header "typ" at+jwt, signed with the active key named by "kid". Verified by
-     * jwt-library against the published JWKS, the way a resource server does.
+     * RFC 9068 §2.1
      */
     #[Test]
     public function theHeaderNamesTheTypeAndTheActiveKey(): void
@@ -136,8 +135,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * Architecture §4.5 (issue #870): the key of the tenant the token is signed with is opened when the token
-     * is addressed, so a KMS that does not answer is said then, before the grant spends anything.
+     * Architecture §4.5
      */
     #[Test]
     public function aKmsThatDoesNotAnswerIsToldWhenTheTokenIsAddressed(): void
@@ -159,10 +157,6 @@ final class JwtAccessTokenIssuerTest extends TestCase
         $issuer->address($this->client);
     }
 
-    /**
-     * Striking the token asks nothing of the KMS (issue #870): one addressed while the KMS answered is signed
-     * with the key opened then, whatever the KMS answers once the grant has spent what the request presented.
-     */
     #[Test]
     public function aTokenIsSignedWithTheKeyOpenedWhenItWasAddressed(): void
     {
@@ -190,8 +184,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * Architecture §4.5 (issue #880): the salt the "sub" of a pairwise client is computed with is unsealed when
-     * the token is addressed, so a KMS that does not answer is said then, before the grant spends anything.
+     * Architecture §4.5
      */
     #[Test]
     public function aKmsThatDoesNotAnswerForThePairwiseSaltIsToldWhenTheTokenIsAddressed(): void
@@ -215,11 +208,6 @@ final class JwtAccessTokenIssuerTest extends TestCase
         $issuer->address(Clients::pairwise($this->session->tenant));
     }
 
-    /**
-     * Striking the token asks nothing of the KMS (issue #880): the token of a pairwise client addressed while the
-     * KMS answered names whoever signed in by the identifier of its sector, whatever the KMS answers once the
-     * grant has spent what the request presented.
-     */
     #[Test]
     public function aTokenOfAPairwiseClientNamesWhoeverSignedInByWhatWasOpenedWhenItWasAddressed(): void
     {
@@ -254,9 +242,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4 (issue #880): a token a client holds for itself names that client, so addressing it opens no
-     * kind of "sub" and the salt of a pairwise client is not asked for: a KMS that does not answer for it costs
-     * that token nothing.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function aTokenAPairwiseClientHoldsForItselfAsksNothingOfThePairwiseSalt(): void
@@ -289,10 +275,6 @@ final class JwtAccessTokenIssuerTest extends TestCase
         );
     }
 
-    /**
-     * Issue #876: the person a token whose subject the client named is about is sealed when the token is
-     * addressed, so a KMS that does not answer to seal it is said then, before the grant spends anything.
-     */
     #[Test]
     public function aKmsThatDoesNotSealThePersonIsToldWhenTheTokenIsAddressed(): void
     {
@@ -308,11 +290,6 @@ final class JwtAccessTokenIssuerTest extends TestCase
         $issuer->addressFor($authorization);
     }
 
-    /**
-     * Striking the token asks nothing of the KMS for the person either (issue #876): a token addressed while
-     * the KMS answered carries the person sealed then, whatever the KMS answers once the grant has spent what
-     * the request presented.
-     */
     #[Test]
     public function aTokenCarriesThePersonSealedWhenItWasAddressed(): void
     {
@@ -330,10 +307,6 @@ final class JwtAccessTokenIssuerTest extends TestCase
         static::assertSame($alice->subject->value, (string) $this->persons->of($this->session->tenant, $claims[JwtAccessTokenIssuer::PERSON] ?? null));
     }
 
-    /**
-     * A token whose person was not sealed when it was addressed is a fault of the grant that addressed it,
-     * said before a token about that person leaves without saying so.
-     */
     #[Test]
     public function aTokenWhosePersonWasNotSealedIsAFaultOfTheGrant(): void
     {
@@ -349,10 +322,6 @@ final class JwtAccessTokenIssuerTest extends TestCase
         $this->issuer->issue($authorization, $addressed, Fixtures::now());
     }
 
-    /**
-     * A token somebody signed in for carries no person, so addressing it seals nothing and it is struck while
-     * the KMS does not answer to seal.
-     */
     #[Test]
     public function aTokenSomebodySignedInForIsAddressedWithoutSealing(): void
     {
@@ -373,9 +342,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 9068 §2.2: "iss", "exp", "aud", "sub", "client_id", "iat", "jti"; §2.2.1: "auth_time", "amr";
-     * §2.2.3: "scope" as RFC 8693 §4.2 writes it; "sid" of the session and "grant_id" of the
-     * authorization code the token descends from (architecture §4.6).
+     * RFC 9068 §2.2, §2.2.1, §2.2.3, RFC 8693 §4.2, Architecture §4.6
      */
     #[Test]
     public function thePayloadCarriesTheClaimsOfRfc9068InOrder(): void
@@ -406,8 +373,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 9068 §2.2, RFC 6749 §4.4: a token a client holds for itself names that client in "sub" and says
-     * nothing of a sign-in, there having been none: no "sid", no "auth_time", no "acr", no "amr".
+     * RFC 9068 §2.2, RFC 6749 §4.4
      */
     #[Test]
     public function aTokenNobodySignedInForNamesTheClientAndCarriesNoSignIn(): void
@@ -436,9 +402,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.2.1, §4.1: a token somebody holds for its subject names the subject it was given and the
-     * chain of actors that holds it, the most recent actor outermost, and carries the sign-in the token it
-     * descends from named.
+     * RFC 8693 §2.2.1, §4.1
      */
     #[Test]
     public function aTokenExchangedForAnotherNamesItsSubjectAndWhoHoldsIt(): void
@@ -479,8 +443,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 8693 §1.3: an impersonation says nothing of anybody acting, which is what tells it from a
-     * delegation.
+     * RFC 8693 §1.3
      */
     #[Test]
     public function aTokenNobodyHoldsForItsSubjectCarriesNoActor(): void
@@ -508,9 +471,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * Issue #641: the "sub" of an exchanged token is the one the presented token carried, written for the
-     * client that token had been issued to (RFC 8693 §2.2.1), so the token says who it is about beside it,
-     * sealed, there being no record of it for the provider to read that from.
+     * RFC 8693 §2.2.1
      */
     #[Test]
     public function aTokenExchangedForAnotherSaysWhoItIsAbout(): void
@@ -530,9 +491,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * OIDC Core §8.1: the name the account carries is the one that links a person across sectors, and it is
-     * what a pairwise kind exists to keep from a client, so nothing a client holds carries it. What the
-     * provider wrote there it reads itself, and the holder of the token learns nothing from it.
+     * OIDC Core §8.1
      */
     #[Test]
     public function aTokenExchangedForAnotherNamesThePersonToNobodyHoldingIt(): void
@@ -549,8 +508,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * A token somebody signed in for carries a "sub" the client it was written for reads back
-     * (OIDC Core §8), so there is nothing beside it to write and no envelope to make on a sign-in.
+     * OIDC Core §8
      */
     #[Test]
     public function aTokenSomebodySignedInForCarriesNoPerson(): void
@@ -572,8 +530,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4: a token a client holds for itself is about nobody, and it says so by carrying nothing
-     * where a person would be named.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function aTokenAClientHoldsForItselfCarriesNoPerson(): void
@@ -597,8 +554,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: a token of a grant somebody agreed to details for carries the details of the response,
-     * the array as it travelled and as an introspection renders it.
+     * RFC 9396 §7
      */
     #[Test]
     public function aTokenOfAGrantWithDetailsCarriesThem(): void
@@ -621,10 +577,6 @@ final class JwtAccessTokenIssuerTest extends TestCase
         static::assertSame($details->toClaim(), $claims['authorization_details']);
     }
 
-    /**
-     * A grant nobody agreed to a detail for carries none, so the token says nothing of one rather than
-     * saying it empty.
-     */
     #[Test]
     public function aTokenOfAGrantWithoutDetailsCarriesNone(): void
     {
@@ -645,8 +597,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7: the token carries the details of the response and not the ones the grant stands on, so a
-     * request that narrowed them gets a token that carries the subset it asked for.
+     * RFC 9396 §7
      */
     #[Test]
     public function aTokenNarrowedToASubsetOfTheDetailsCarriesThatSubset(): void
@@ -672,8 +623,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 8693 §4.4: who may act for the subject of a token of this client, as its registration says it, so
-     * that a resource server verifying the token offline reads the rule the provider applies.
+     * RFC 8693 §4.4
      */
     #[Test]
     public function aTokenOfAClientThatNamesWhoMayActForItCarriesThatName(): void
@@ -706,9 +656,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: the token is addressed to the resources the request asked it for, and "client_id"
-     * goes on naming the client (RFC 9068 §2.2). One audience is written as a string and several as a
-     * list (RFC 7519 §4.1.3).
+     * RFC 8707 §2, RFC 9068 §2.2, RFC 7519 §4.1.3
      *
      * @param list<string> $resources
      * @param string|list<string> $audience
@@ -749,7 +697,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 7519 §4.1.7: two tokens never share a "jti".
+     * RFC 7519 §4.1.7
      */
     #[Test]
     public function twoTokensNeverShareAJti(): void
@@ -774,7 +722,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 9068 §2.2.1: "acr" as the session satisfies it, two factors here, "amr" with every method.
+     * RFC 9068 §2.2.1
      */
     #[Test]
     public function itWritesTheAuthenticationContextOfTheSession(): void
@@ -809,7 +757,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §6: the scope of a refresh response is the narrowed one.
+     * RFC 6749 §6
      */
     #[Test]
     public function theScopeIsTheOneOfTheResponse(): void
@@ -830,7 +778,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: the lifetime is a choice, ten minutes by default.
+     * Architecture §4.6
      */
     #[Test]
     public function theLifetimeIsConfigurable(): void
@@ -859,9 +807,6 @@ final class JwtAccessTokenIssuerTest extends TestCase
         static::assertSame(60, $token->expiresIn());
     }
 
-    /**
-     * A token is refused once past its lifetime.
-     */
     #[Test]
     public function aTokenIsRefusedOncePastItsLifetime(): void
     {
@@ -893,7 +838,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 9068 §4: "aud" is the client, so a token minted for one client fails the audience check of another.
+     * RFC 9068 §4
      */
     #[Test]
     public function theAudienceIsTheClient(): void
@@ -915,9 +860,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: the names asked for by "claims.userinfo" (OIDC Core §5.5) travel in the token
-     * as "userinfo_claims", in the order given, so that UserInfo serves them from the token alone; those
-     * of "claims.id_token" do not.
+     * Architecture §4.6, OIDC Core §5.5
      */
     #[Test]
     public function itCarriesTheNamesOfTheClaimsAskedForFromUserInfo(): void
@@ -949,9 +892,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 8705 §3.1: a token issued on a request that proved a certificate carries the thumbprint of
-     * that certificate in its "cnf" (RFC 7800 §3.1), which is what a resource server verifying the token
-     * offline asks its caller to present again.
+     * RFC 8705 §3.1, RFC 7800 §3.1
      */
     #[Test]
     public function itBindsTheTokenToWhatTheClientProved(): void
@@ -977,8 +918,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * A client that proved nothing but who it is gets a bearer token, and a token that says so by
-     * carrying no confirmation at all (RFC 6750 §2).
+     * RFC 6750 §2
      */
     #[Test]
     public function aTokenOfAClientThatProvedNoKeyCarriesNoConfirmation(): void
@@ -998,9 +938,6 @@ final class JwtAccessTokenIssuerTest extends TestCase
         static::assertArrayNotHasKey('cnf', $claims);
     }
 
-    /**
-     * Nothing is written when the request asked for the ID token only.
-     */
     #[Test]
     public function itCarriesNoUserinfoClaimsWhenTheRequestAskedForTheIdTokenOnly(): void
     {
@@ -1026,8 +963,7 @@ final class JwtAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.1: what a gateway is given for the subject of the token it presented, carrying the "sub"
-     * that token carried and the person the exchange resolved when it read it (issue #601).
+     * RFC 8693 §2.1
      */
     private function exchangedFor(Subject $person): SubjectAuthorization
     {
@@ -1044,9 +980,6 @@ final class JwtAccessTokenIssuerTest extends TestCase
         );
     }
 
-    /**
-     * The issuer of the tests, sealing the persons of its tokens with that sealer.
-     */
     private function issuerSealingWith(SecretSealerInterface $sealer): JwtAccessTokenIssuer
     {
         return new JwtAccessTokenIssuer(
@@ -1058,10 +991,6 @@ final class JwtAccessTokenIssuerTest extends TestCase
         );
     }
 
-    /**
-     * The sealer of the shared secrets in front of a KMS that cannot be reached, as a bridge of
-     * symfony/key-management reports it.
-     */
     private static function sealerBehindAnOutage(): SecretSealerInterface
     {
         return new EnvelopeSecretSealer(new EnvelopesThatThrow(new KeyManagementRuntimeException('Failed to reach the KMS.')), Keys::KMS_KEY_ID);

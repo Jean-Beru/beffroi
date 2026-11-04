@@ -17,8 +17,6 @@ use Beffroi\Oidc\Port\PairwiseSubjectRepositoryInterface;
 use function sprintf;
 
 /**
- * What each sector of a tenant has seen a user under, in beffroi_pairwise_subject (OIDC Core §8.1).
- *
  * @extends DoctrineRepository<PairwiseSubject>
  */
 final readonly class DoctrinePairwiseSubjectRepository extends DoctrineRepository implements PairwiseSubjectRepositoryInterface
@@ -38,11 +36,7 @@ final readonly class DoctrinePairwiseSubjectRepository extends DoctrineRepositor
     }
 
     /**
-     * One INSERT through the connection and not the unit of work, as an initial access token is spent:
-     * the same user and the same sector give the same identifier at every document written afterwards, so
-     * the row is written once and the writes that follow are asked to do nothing. Two workers issuing the
-     * first two tokens of a user at the same moment race into the unique index, where one of them loses
-     * and neither fails, which is what a flush of the unit of work could not promise.
+     * Not through the unit of work, whose flush would fail where two workers race into the unique index.
      */
     public function record(PairwiseSubject $assigned): void
     {

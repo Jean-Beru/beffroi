@@ -19,10 +19,9 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The options a browser on the login page of an interaction signs an assertion with (WebAuthn Level 3
- * §5.5, architecture §5.2): for a discoverable credential, no user named, no allow list, so that the
- * page reveals nothing about who has a passkey; drawn for this browser and kept in its session until the
- * assertion comes back.
+ * WebAuthn Level 3 §5.5
+ *
+ * No user named and no allow list, so that the page reveals nothing about who has a passkey.
  */
 #[AsController]
 final readonly class PasskeyLoginOptionsController

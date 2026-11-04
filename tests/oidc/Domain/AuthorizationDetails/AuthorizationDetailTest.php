@@ -11,8 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * One object of an "authorization_details" array (RFC 9396 §2), as the type that answers for it kept it.
- * What it is and whether two of them ask for the same thing are answered here and nowhere else.
+ * RFC 9396 §2
  */
 final class AuthorizationDetailTest extends TestCase
 {
@@ -38,7 +37,7 @@ final class AuthorizationDetailTest extends TestCase
     }
 
     /**
-     * RFC 9396 §2: a detail with no type is a detail nothing can answer for.
+     * RFC 9396 §2
      */
     #[Test]
     public function aDetailNamesItsType(): void
@@ -51,10 +50,6 @@ final class AuthorizationDetailTest extends TestCase
         new AuthorizationDetail('');
     }
 
-    /**
-     * The type is carried on its own, so a member of the same name would be a second answer to one
-     * question.
-     */
     #[Test]
     public function theMembersCarryNoTypeOfTheirOwn(): void
     {
@@ -69,7 +64,7 @@ final class AuthorizationDetailTest extends TestCase
     }
 
     /**
-     * RFC 9396 §7, §9: "type" first, because that is the member a resource server reads before any other.
+     * RFC 9396 §7, §9
      */
     #[Test]
     public function theClaimNamesTheTypeFirst(): void
@@ -104,8 +99,6 @@ final class AuthorizationDetailTest extends TestCase
     }
 
     /**
-     * What a consent was given for is what it covers, so anything that differs at all is another detail.
-     *
      * @param array<string, mixed> $members
      */
     #[Test]
@@ -156,10 +149,6 @@ final class AuthorizationDetailTest extends TestCase
         ];
     }
 
-    /**
-     * The rendering is what a page says of the detail and not what it is: two details that ask for the
-     * same thing are the same detail whatever a page would show of them.
-     */
     #[Test]
     public function theRenderingIsNotWhatADetailIs(): void
     {

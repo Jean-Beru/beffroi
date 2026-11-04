@@ -16,9 +16,7 @@ use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * Issue #573, architecture §5.7: the preferences of a browser travel on one cookie with a slot per
- * preference, read back through the preference that declared the slot. What the language serves is
- * LocalePreferenceTest, and what the choice of one does to the pages is LocaleChoiceTest.
+ * Architecture §5.7
  */
 final class BrowserPreferencesTest extends TestCase
 {
@@ -60,11 +58,6 @@ final class BrowserPreferencesTest extends TestCase
         static::assertNull(self::preferences()->read($request, 'colour'));
     }
 
-    /**
-     * No script reads it (HttpOnly), it does not leave the requests of this browser (SameSite=Lax), the
-     * issuer is served over TLS (Secure), and the "__Host-" prefix of the name is what has a browser check
-     * those three, the path and the absence of a Domain rather than a reviewer.
-     */
     #[Test]
     public function theCookieOfThePreferencesIsNotReadableByAScriptAndStaysOnThisBrowser(): void
     {
@@ -94,10 +87,6 @@ final class BrowserPreferencesTest extends TestCase
         static::assertSame('locale=fr&theme=light', $cookie->getValue());
     }
 
-    /**
-     * A slot the request carries and nobody serves is not carried over: the cookie that goes back holds
-     * what this deployment has, so a value that stopped being served stops being written.
-     */
     #[Test]
     public function writingOneSlotDropsWhatNobodyServes(): void
     {

@@ -12,14 +12,10 @@ use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Issue #453: the readings every chapter of an archive shares, so that two chapters writing the same fact
- * write it the same way and a reader of the file learns one shape.
- */
 final class ArchivedFactsTest extends TestCase
 {
     /**
-     * The shape of RFC 3339, which is what RGPD article 20 means by machine readable.
+     * RFC 3339, RGPD article 20
      */
     #[Test]
     public function aMomentIsWrittenInTheShapeOfTheSpecification(): void
@@ -47,10 +43,6 @@ final class ArchivedFactsTest extends TestCase
         static::assertSame('2026-09-15T10:00:00+00:00', $facts['received_at']);
     }
 
-    /**
-     * What the enrichment made of an address is in the file because it is a personal datum this provider
-     * holds, which is the whole question article 15 asks.
-     */
     #[Test]
     public function aProvenanceThatWasEnrichedCarriesWhereAndWhatFrom(): void
     {
@@ -87,10 +79,6 @@ final class ArchivedFactsTest extends TestCase
         );
     }
 
-    /**
-     * The enrichment is asynchronous, so a provenance a run of it never reached says so rather than
-     * saying nothing of where a request came from.
-     */
     #[Test]
     public function aProvenanceThatWasNotEnrichedCarriesNeither(): void
     {

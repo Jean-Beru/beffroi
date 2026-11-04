@@ -16,15 +16,10 @@ use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Stamp\RedeliveryStamp;
 
 /**
- * How long the provider goes on trying to hand a notification to the third party it is addressed to
- * (architecture §5.6, issue #155): the schedule the transport of the application follows, and the one a
- * signing key is held back for while a logout token it signed may still be on its way.
+ * Architecture §5.6
  */
 final class NotificationRetryPolicyTest extends TestCase
 {
-    /**
-     * Two seconds, then three times as long each time, one minute at most.
-     */
     #[Test]
     public function theWaitGrowsUntilItReachesTheCeiling(): void
     {
@@ -38,10 +33,6 @@ final class NotificationRetryPolicyTest extends TestCase
         static::assertSame([2000, 6000, 18000, 54000, 60000, 60000], $waits);
     }
 
-    /**
-     * Issue #915: the four numbers of the schedule are those of "beffroi.back_channel_logout", which an environment
-     * variable may carry, so the policy holds each to the floor the tree holds its node to when it is built.
-     */
     #[Test]
     #[DataProvider('provideNumbersBelowTheirFloor')]
     public function aNumberOfTheScheduleBelowTheFloorOfItsNodeIsRefused(int $retries, int $delay, int $multiplier, int $maxDelay, string $message): void
@@ -89,9 +80,6 @@ final class NotificationRetryPolicyTest extends TestCase
         ];
     }
 
-    /**
-     * A policy that never comes back is one the tree accepts: a deployment that gives up on the first send.
-     */
     #[Test]
     public function aPolicyOfNoRetryIsAPolicy(): void
     {
@@ -103,8 +91,7 @@ final class NotificationRetryPolicyTest extends TestCase
     }
 
     /**
-     * Back-Channel Logout 1.0 §2.8: beyond the schedule the client is not restarting, it is down, and the
-     * message is given up on instead of coming back for ever.
+     * Back-Channel Logout 1.0 §2.8
      */
     #[Test]
     #[DataProvider('provideRetryCounts')]
@@ -128,9 +115,6 @@ final class NotificationRetryPolicyTest extends TestCase
         yield 'more than the policy ever allowed' => [7, false];
     }
 
-    /**
-     * What a retirement window reads: the whole schedule at once, in seconds.
-     */
     #[Test]
     #[DataProvider('provideSchedules')]
     public function thePatienceOfTheSenderIsTheSumOfItsWaits(NotificationRetryPolicy $policy, int $waiting): void
@@ -151,9 +135,6 @@ final class NotificationRetryPolicyTest extends TestCase
         yield 'a schedule long enough to overflow a multiplication' => [new NotificationRetryPolicy(40, 2, 3, 60), 2 + 6 + 18 + 54 + (36 * 60)];
     }
 
-    /**
-     * The first send is one attempt, and each retry is another.
-     */
     #[Test]
     public function theSendsAreTheRetriesAndTheFirstOne(): void
     {

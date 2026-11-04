@@ -20,18 +20,6 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * A passkey of the signed-in user named again from the page of the account (architecture §5.2): what tells
- * one of their passkeys from another is a name they wrote, so correcting it is their own act. Someone
- * else's passkey is not found.
- *
- * It answers with a redirection whether the name was written or refused (issue #481): a browser reloading
- * the page it comes back to does not say the same thing again, and what was refused crosses the
- * redirection in the session (WhatWasRefused).
- *
- * **A session alone reaches it** (ReachedOnTheSessionAloneInterface): a name is read by the person and by
- * nothing that signs anybody in, so renaming a passkey neither adds a way in nor takes one away.
- */
 #[AsController]
 final readonly class PasskeyRenameController implements ReachedOnTheSessionAloneInterface
 {
@@ -79,8 +67,6 @@ final readonly class PasskeyRenameController implements ReachedOnTheSessionAlone
                 $this->contexts->fromRequest($request),
             );
         } catch (InvalidArgumentException) {
-            // what the name may be is the rule of the kind and it is read on the server: the page says
-            // the same thing for a name nobody typed and for one longer than a passkey holds
             $this->refusals->keep($request, self::INVALID_NAME);
         }
 

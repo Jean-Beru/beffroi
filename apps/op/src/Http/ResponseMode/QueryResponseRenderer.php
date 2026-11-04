@@ -9,8 +9,7 @@ use Beffroi\Oidc\Domain\Authorization\AuthorizationAnswer;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The default mode (RFC 6749 §4.1.2, Multiple Response Type Encoding Practices §2.1): the parameters in
- * the query of the redirect URI, the user agent sent there.
+ * RFC 6749 §4.1.2, OAuth 2.0 Multiple Response Type Encoding Practices §2.1
  */
 final readonly class QueryResponseRenderer implements AuthorizationResponseRendererInterface
 {

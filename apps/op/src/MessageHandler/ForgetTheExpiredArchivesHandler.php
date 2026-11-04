@@ -11,14 +11,6 @@ use Beffroi\Core\Application\Archive\ArchiveRetention;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
-/**
- * Forgets the archives that have expired (issue #453), in the shape every timed step of the provider has:
- * bounded by the store, so a backlog is worked through over several ticks, and silent when there was
- * nothing to forget.
- *
- * It is said out loud when it did something, where the retention of the journal says the same of an act:
- * a file holding everything this provider knows of a person going away is worth a line.
- */
 #[AsMessageHandler]
 final readonly class ForgetTheExpiredArchivesHandler
 {
@@ -34,8 +26,7 @@ final readonly class ForgetTheExpiredArchivesHandler
         try {
             $tenant = $this->tenants->provide();
         } catch (TenantNotSynchronizedException) {
-            // before the first provisioning nobody has asked for an archive, and a tick is not the place
-            // to say so
+            // Nothing to do before the first provisioning, and a tick is not the place to say so.
             return;
         }
         $forgotten = $this->retention->enforce($tenant);

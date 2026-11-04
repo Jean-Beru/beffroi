@@ -16,8 +16,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 7591 §3.2.1 and RFC 7592 §3: what the provider answers a client about itself, the two being the same
- * body.
+ * RFC 7591 §3.2.1, RFC 7592 §3
  */
 final class ClientInformationResponseTest extends TestCase
 {
@@ -45,8 +44,7 @@ final class ClientInformationResponseTest extends TestCase
     }
 
     /**
-     * RFC 7591 §3.2.1: "client_secret_expires_at" is required whenever a secret is answered, and 0 is what
-     * says the secret does not expire.
+     * RFC 7591 §3.2.1
      */
     #[Test]
     public function aSecretIsAnsweredWithTheDateItDoesNotExpireOn(): void
@@ -67,9 +65,6 @@ final class ClientInformationResponseTest extends TestCase
         static::assertSame(0, $parameters['client_secret_expires_at']);
     }
 
-    /**
-     * A client whose method proves no secret is answered none, and nothing of it expires.
-     */
     #[Test]
     public function aClientWithoutASecretIsAnsweredNone(): void
     {
@@ -85,8 +80,7 @@ final class ClientInformationResponseTest extends TestCase
     }
 
     /**
-     * RFC 7591 §3.2.1, RFC 7592 §3: a registration hands out the two credentials once, and the URI it hands
-     * with them is where the client will present the other.
+     * RFC 7591 §3.2.1, RFC 7592 §3
      */
     #[Test]
     public function aRegistrationAnswersTheTokenAndTheUriItWasDrawnFor(): void
@@ -109,8 +103,7 @@ final class ClientInformationResponseTest extends TestCase
     }
 
     /**
-     * RFC 7592 §2.3 permits rotating the token on every answer and does not require it, so a client that
-     * reads itself is answered the URI and keeps the token it was handed.
+     * RFC 7592 §2.3
      */
     #[Test]
     public function aClientThatReadsItselfIsAnsweredNoTokenAgain(): void

@@ -28,8 +28,7 @@ use function strtolower;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §3.1: the TOTP next to the password and the passkey in the identity model of decision
- * 0002, the secret sealed, a code accepted once (RFC 6238 §5.2).
+ * Architecture §3.1, Decision 0002, RFC 6238 §5.2
  */
 final class TotpCredentialTest extends TestCase
 {
@@ -74,7 +73,7 @@ final class TotpCredentialTest extends TestCase
     }
 
     /**
-     * RFC 8176 §2: "otp", for a code of the authenticator and for a backup code alike.
+     * RFC 8176 §2
      */
     #[Test]
     public function aCodeProvesAOneTimePassword(): void
@@ -84,8 +83,7 @@ final class TotpCredentialTest extends TestCase
     }
 
     /**
-     * Architecture §4.3: what an authentication with this credential may prove, "otp"; the password it
-     * follows is the password's to declare.
+     * Architecture §4.3
      */
     #[Test]
     public function anAuthenticationWithItMayProveAOneTimePassword(): void
@@ -97,9 +95,6 @@ final class TotpCredentialTest extends TestCase
         static::assertSame(['otp'], array_map(static fn (AuthenticationMethod $method): string => $method->value, $totp->provableMethods()));
     }
 
-    /**
-     * A revoked credential authenticates nobody: it may prove nothing, and a step-up does not count on it.
-     */
     #[Test]
     public function aRevokedOneMayProveNothing(): void
     {
@@ -111,10 +106,6 @@ final class TotpCredentialTest extends TestCase
         static::assertSame([], $totp->provableMethods());
     }
 
-    /**
-     * The secret is held sealed and under no other name: no property of the class, public or not, holds
-     * it in clear.
-     */
     #[Test]
     public function itHoldsTheSecretSealedAndNothingElseOfIt(): void
     {
@@ -170,7 +161,7 @@ final class TotpCredentialTest extends TestCase
     }
 
     /**
-     * RFC 6238 §5.2: the accepted step moves forward, never back; the same step is not accepted twice.
+     * RFC 6238 §5.2
      */
     #[Test]
     #[DataProvider('provideSteps')]

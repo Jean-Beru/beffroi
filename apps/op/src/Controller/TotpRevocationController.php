@@ -16,15 +16,6 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * The authenticator app of the signed-in user removed from the page of the account (architecture §5.2):
- * the TOTP is revoked, its row stays, and the password alone signs the user in again. Without an active
- * one there is nothing to remove. What becomes of the sessions it completed is the caller's policy
- * (§3.4): this one leaves them.
- *
- * **A session alone does not post it** (AsksForARecentProofInterface): taking the second factor away is
- * taking a factor away.
- */
 #[AsController]
 final readonly class TotpRevocationController implements AsksForARecentProofInterface
 {
@@ -41,9 +32,6 @@ final readonly class TotpRevocationController implements AsksForARecentProofInte
     ) {
     }
 
-    /**
-     * The page of the second factor, which holds the button this answers.
-     */
     public function comesBackTo(): string
     {
         return AccountTwoFactorController::ROUTE;

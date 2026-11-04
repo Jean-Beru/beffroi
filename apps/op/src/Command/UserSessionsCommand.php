@@ -15,11 +15,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * Says where a user is signed in (architecture §5.5): one row per session open in their name, what each
- * one proved, when it was opened, when it was last seen and from where. It reads and writes nothing;
- * ending one is "beffroi:user:revoke-session", and the page of the account shows the same rows.
- */
 #[AsCommand(
     name: self::NAME,
     description: 'List the sessions open in the name of a user, with what each one proved and where it was last seen.',

@@ -16,12 +16,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
- * A run started over (issue #462): the trace of that flow is emptied and the client of it holds nothing
- * again. What the previous run exchanged is gone, which is the only way a flow played twice is not read
- * as one flow played oddly.
- *
- * A flow the demonstration drives is opened as the client of the lab; a flow that is replayed is simply
- * forgotten, and shows nothing until it is played again.
+ * Starts a run over: the trace of the flow is emptied and its client holds nothing again.
  */
 #[AsController]
 final readonly class OpenController

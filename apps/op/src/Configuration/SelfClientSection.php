@@ -24,29 +24,10 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\inline_se
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
-/**
- * The application, declared as a client of the provider by the names of its routes (issue #282,
- * architecture §5.1). A section of its own beside "clients" and never a key inside it: "clients" is keyed by client
- * identifier, so a key there is a client of that name and nothing else.
- *
- * It is a source of clients of its own, holding one declaration, which the provider knows as an ordinary client: its
- * URLs are what the router writes for its routes in the context of the issuer, once a question about the clients of
- * the tenant first reaches the source (SelfClient), its consent is the named exception of a first-party application,
- * and its secret is read from the environment, its token requests arriving over HTTP like those of any other client.
- *
- * What the firewall that signs the users of the application in needs of it, the issuer, the identifier and the
- * secret, is exposed as container parameters, so that security.yaml names them instead of writing them again.
- */
 final readonly class SelfClientSection extends ConfigurationSection implements ExposesParametersInterface
 {
-    /**
-     * The source of clients that holds the client of the application.
-     */
     public const string SOURCE = 'beffroi.self_client';
 
-    /**
-     * The issuer the application signs in at, which an "oidc_login" firewall names as its "provider_uri".
-     */
     public const string ISSUER = 'beffroi.self_client.issuer';
 
     public const string CLIENT_ID = 'beffroi.self_client.client_id';
@@ -57,8 +38,7 @@ final readonly class SelfClientSection extends ConfigurationSection implements E
     public const string SECRET = 'beffroi.self_client.secret';
 
     /**
-     * One environment variable and nothing around it, through as many processors as it takes, its name and theirs
-     * written as Symfony accepts them (EnvPlaceholderParameterBag).
+     * A "%env()%" placeholder and nothing else, its processors and name as EnvPlaceholderParameterBag accepts them.
      */
     private const string ENVIRONMENT_VARIABLE = '/^%env\((?:[-.\w\\\\]*+:)*+\w++\)%$/D';
 
@@ -73,9 +53,7 @@ final readonly class SelfClientSection extends ConfigurationSection implements E
     }
 
     /**
-     * The issuer of the tenant, the identifier of the application and the variable its secret is read from, as the
-     * files wrote them; a secret written in a file is refused here, before any extension is loaded, because the tree
-     * only ever sees what a variable stands for.
+     * A secret written in a file is refused here: the tree only ever sees what a variable stands for.
      */
     public function parameters(array $configs): array
     {
@@ -103,7 +81,7 @@ final readonly class SelfClientSection extends ConfigurationSection implements E
     }
 
     /**
-     * @throws InvalidConfigurationException when a client "clients" declares carries the identifier the file writes
+     * @throws InvalidConfigurationException
      */
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
     {
@@ -116,7 +94,7 @@ final readonly class SelfClientSection extends ConfigurationSection implements E
         foreach (array_keys(self::section($config, 'clients')) as $declaredId) {
             $declared[] = (string) $declaredId;
         }
-        // an identifier written in the file is refused here, one the environment gives when the source is built
+        // An identifier from the environment is checked when the source is built.
         self::assertItsOwn($clientId, $declared);
         $tenant = self::section($config, 'tenant');
         $postLogoutRoute = $application['post_logout_route'] ?? null;
@@ -138,21 +116,14 @@ final readonly class SelfClientSection extends ConfigurationSection implements E
                 service(PasswordHasherInterface::class),
                 service(ClientMetadataReader::class),
             ])
-            // a third source beside the declared clients and the ones that registered themselves, asked last: no
-            // other source holds its identifier, the clients being refused it above and a registration being drawn
-            // one no source holds
             ->tag('beffroi.oidc.client_source')
             ->tag('beffroi.oidc.client_inventory');
     }
 
     /**
-     * The source of the client of the application, built once a question about the clients of the tenant first
-     * reaches it, which is when the router can write the URLs of its routes and the environment gives its secret.
+     * @param list<string> $declared
      *
-     * @param list<string> $declared the identifiers of the clients "clients" declares
-     *
-     * @throws InvalidConfigurationException when one of them is the identifier of the application, or when the router
-     *                                       writes no URL for a route the application names
+     * @throws InvalidConfigurationException
      */
     public static function source(
         string $tenantSlug,
@@ -175,12 +146,11 @@ final readonly class SelfClientSection extends ConfigurationSection implements E
     }
 
     /**
-     * One identifier is one client of the tenant: the source of the declared clients is asked first, so a client of
-     * "clients" under the identifier of the application would answer for it.
+     * The declared clients are asked first, so one under the identifier of the application would answer for it.
      *
      * @param list<string> $declared
      *
-     * @throws InvalidConfigurationException when one of them is the identifier of the application
+     * @throws InvalidConfigurationException
      */
     private static function assertItsOwn(string $clientId, array $declared): void
     {
@@ -222,11 +192,6 @@ final readonly class SelfClientSection extends ConfigurationSection implements E
         return $declaration;
     }
 
-    /**
-     * What the files wrote under "beffroi" that this section reads before the tree processes it: the issuer of the
-     * tenant and the declaration of the application, merged and normalized as the tree merges and normalizes them,
-     * and nothing else.
-     */
     private static function written(): NodeInterface
     {
         $written = new ArrayNodeDefinition('beffroi');

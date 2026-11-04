@@ -12,11 +12,7 @@ use function is_string;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * Which flow a page of the demonstration was asked for (issue #462), read from the query: a grant type
- * is named by an absolute URI often enough that it travels as a parameter and not as a path.
- *
- * A name no wired grant gives itself is a flow this provider does not serve, and the page is a 404: the
- * set of pages is the set of pictures, which is the set of wired grants.
+ * The flow is read from the query and not the path: a grant type is often an absolute URI.
  */
 final readonly class AskedFlow
 {
@@ -55,10 +51,6 @@ final readonly class AskedFlow
         return $this->picture($request)?->grantType;
     }
 
-    /**
-     * The client whose trace of that flow is asked for, and null when the page is asked for the flow
-     * alone: five rungs of a ladder are five clients of one flow.
-     */
     public function client(Request $request): ?string
     {
         $asked = $request->query->get(self::CLIENT_PARAMETER);

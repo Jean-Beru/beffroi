@@ -12,12 +12,7 @@ use function sprintf;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
- * The endpoints of the SAML identity provider of a tenant under the origin of its issuer, never under the Host header
- * of a request (spec/saml.md section 6.1 step 3, S-4), as RouterEndpointLocator locates those of the provider.
- *
- * The path of the metadata is the router's, compared with the one the issuer makes a reader expect: routes mounted
- * elsewhere are refused at the first request. The single sign-on service (issue #731) and the single logout service
- * (issue #734) are the router's too, under the same prefix.
+ * Locates the endpoints under the origin of the issuer, never the Host header of the request (beffroi/saml S-4).
  */
 final readonly class RouterIdentityProviderEndpoints implements IdentityProviderEndpointsInterface
 {

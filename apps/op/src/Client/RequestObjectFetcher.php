@@ -15,15 +15,9 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Throwable;
 
 /**
- * Reads back the request object a client publishes behind its "request_uri" (RFC 9101 §5.2, OIDC Core
- * §6.2): one GET, no cookie, no authentication, nothing sent but the request. No redirect is followed
- * (decision 0006): a "request_uri" names where the object is, and the provider does not let a third
- * party move it. The body is read in chunks and the read stops as soon as it is longer than a request
- * object has any reason to be, and the timeout is the fetcher's own, because the browser of a user is
- * waiting on this one: a client that hangs must not hold a worker.
+ * RFC 9101 §5.2, OIDC Core §6.2
  *
- * Nothing of the answer is trusted here, not even its content type: what comes back is a string, and
- * whether it is a request object this client signed is the resolver's to say.
+ * Follows no redirect, reads the body up to a bound and times out on its own: a hanging client holds no worker.
  */
 final readonly class RequestObjectFetcher implements RequestObjectFetcherInterface
 {

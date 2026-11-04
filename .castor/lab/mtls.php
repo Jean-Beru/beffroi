@@ -2,35 +2,16 @@
 
 declare(strict_types=1);
 
-/*
- * The infrastructure unknown of spike 5 (issue #157), measured against the running stack: a client
- * certificate has to cross Caddy and FrankenPHP and reach PHP, and what arrives has to be the bytes the
- * client presented and nothing a client could have written itself. Everything mTLS waits on the answer,
- * so it is driven here rather than described (architecture §6, §7).
- */
-
 use Castor\Attribute\AsOption;
 use Castor\Attribute\AsTask;
 use function Castor\context;
 use function Castor\io;
 use function Castor\run;
 
-/**
- * The endpoint of the application that says what it received, in development only
- * (apps/op/config/routes/mtls.yaml).
- */
 const MTLS_PATH = '/mtls/client-certificate';
 
-/**
- * One of the headers a proxy of somebody else carries a client certificate in, and which nothing in
- * front of this application sets (App\Http\Tls\EdgeClientCertificateResolver).
- */
 const MTLS_FORGED_HEADER = 'X-Client-Cert';
 
-/**
- * Where the internal CA of Caddy is copied for curl, the way "castor demo" copies it for the PHP of the
- * host: nothing on the machine trusts it, and the two hosts of the stack are served by it.
- */
 const MTLS_CA_FILE = 'var/caddy-root.crt';
 
 #[AsTask(
@@ -122,9 +103,7 @@ function mtls(
 }
 
 /**
- * One request to the endpoint, with curl because no HTTP client of the toolbox presents a client
- * certificate. curl resolves every name ending in ".localhost" to the loopback address itself, without
- * reading /etc/hosts, which is how both hosts of the stack are reached from the machine.
+ * With curl: no HTTP client of the toolbox presents a client certificate.
  *
  * @param list<string> $client  the "--cert" and "--key" of a client that presents one, empty otherwise
  * @param list<string> $headers the headers to carry, each given the PEM of the certificate as its value
@@ -162,10 +141,6 @@ function mtls_get(string $host, string $ca, array $client, array $headers = [], 
     return [$status, is_array($body) ? $body : []];
 }
 
-/**
- * A PEM on one line, the way a proxy that forwards a certificate in a header writes it: a header carries
- * no line break.
- */
 function mtls_one_line(string $pem): string
 {
     return (string) preg_replace('/\s+/', ' ', trim($pem));

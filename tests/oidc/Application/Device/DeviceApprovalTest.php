@@ -30,8 +30,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 8628 §3.3, §5.1: what the page a user goes to asks of the provider. A code that names no request
- * awaiting an answer is one refusal whatever the reason, so that a code tried at random teaches nothing.
+ * RFC 8628 §3.3, §5.1
  */
 final class DeviceApprovalTest extends TestCase
 {
@@ -73,7 +72,7 @@ final class DeviceApprovalTest extends TestCase
     }
 
     /**
-     * RFC 8628 §6.1: the code is looked up as the user typed it, separators and case included.
+     * RFC 8628 §6.1
      */
     #[Test]
     #[DataProvider('provideCodesAsTheyAreTyped')]
@@ -101,8 +100,7 @@ final class DeviceApprovalTest extends TestCase
     }
 
     /**
-     * RFC 8628 §5.1: one refusal for every reason a code names no request awaiting an answer, so that a code
-     * tried at random teaches nothing.
+     * RFC 8628 §5.1
      */
     #[Test]
     #[DataProvider('provideCodesThatNameNothingToAnswer')]
@@ -137,10 +135,6 @@ final class DeviceApprovalTest extends TestCase
         yield 'a code already spent' => ['spent'];
     }
 
-    /**
-     * A value that is not a code of this provider reaches no store: a form filled with anything is refused
-     * before a lookup is made on it.
-     */
     #[Test]
     #[DataProvider('provideValuesThatAreNotACode')]
     public function aValueThatIsNotACodeOfThisProviderFindsNothing(string $typed): void
@@ -166,9 +160,6 @@ final class DeviceApprovalTest extends TestCase
         yield 'a whole sentence' => ['give me a token please'];
     }
 
-    /**
-     * A request of one tenant is unknown to another, code and all.
-     */
     #[Test]
     public function aRequestOfAnotherTenantIsUnknown(): void
     {
@@ -183,8 +174,7 @@ final class DeviceApprovalTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.3: approving records the consent where every consent is recorded, freezes the session on
-     * the record and saves it, so the client learns it at its next poll.
+     * RFC 8628 §3.3
      */
     #[Test]
     public function approvingRecordsTheConsentAndFreezesTheSession(): void
@@ -203,8 +193,7 @@ final class DeviceApprovalTest extends TestCase
     }
 
     /**
-     * Architecture §4.3: what a user agreed to is announced once, with the context of the request that
-     * agreed.
+     * Architecture §4.3
      */
     #[Test]
     public function theConsentIsAnnouncedOnceWithTheRequestContext(): void
@@ -222,7 +211,7 @@ final class DeviceApprovalTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: a refusal ends the request and leaves no consent behind.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function refusingEndsTheRequestAndRecordsNoConsent(): void

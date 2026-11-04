@@ -14,9 +14,7 @@ use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 
 /**
- * CSP Level 3 §6.1: the answer of a page that shows an image served by a host a client named allows that
- * origin and no other, whatever policy the answer carries, and the answer of a page that shows no such
- * image allows none.
+ * CSP Level 3 §6.1
  */
 final class ImageSourceTest extends TestCase
 {
@@ -69,9 +67,7 @@ final class ImageSourceTest extends TestCase
     }
 
     /**
-     * CSP Level 3 §6.1: a fetch directive a policy leaves out is answered by "default-src", so a policy
-     * that refuses everything and never mentioned an image is completed with the directive written out of
-     * that one, rather than left to refuse the logo the page shows.
+     * CSP Level 3 §6.1
      */
     #[Test]
     public function theDirectiveIsWrittenOutOfTheOneItFallsBackToWhenThePolicyNamesThatOneAlone(): void
@@ -86,10 +82,6 @@ final class ImageSourceTest extends TestCase
         static::assertSame("default-src 'none'; script-src 'self'; img-src " . self::ORIGIN, $response->headers->get(self::ENFORCED));
     }
 
-    /**
-     * A policy that names neither directive restricts no image: the directive falls back to one that is
-     * not there either, so there is nothing to complete and the policy is the one the answer carried.
-     */
     #[Test]
     public function thePolicyOfAPageThatRestrictsNoImageIsTheOneTheAnswerCarried(): void
     {
@@ -103,10 +95,6 @@ final class ImageSourceTest extends TestCase
         static::assertSame($policy, $response->headers->get(self::ENFORCED));
     }
 
-    /**
-     * A client that registered no logo, on a tenant that declared none: the page shows no image of
-     * anybody's and the policy of its deployment is what it carries.
-     */
     #[Test]
     public function thePolicyOfAPageThatShowsNoImageOfAStrangerNamesNoOrigin(): void
     {
@@ -120,10 +108,6 @@ final class ImageSourceTest extends TestCase
         static::assertSame($policy, $response->headers->get(self::ENFORCED));
     }
 
-    /**
-     * A deployment that only reports gets the same answer: a report of an image the page is built to show
-     * would say nothing to anybody.
-     */
     #[Test]
     public function thePolicyThatOnlyReportsIsCompletedToo(): void
     {
@@ -134,10 +118,6 @@ final class ImageSourceTest extends TestCase
         static::assertSame("img-src 'self' " . self::ORIGIN, $response->headers->get(self::REPORTED));
     }
 
-    /**
-     * The logo of the client and the logo of the tenant are two origins, and the same host serving both is
-     * one: a page names what it shows, and a policy says what it allows one time.
-     */
     #[Test]
     public function aPageThatShowsTwoImagesAllowsBothOfTheirOriginsOnce(): void
     {

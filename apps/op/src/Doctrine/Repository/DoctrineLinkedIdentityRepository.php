@@ -18,14 +18,6 @@ use SortDirection;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 
 /**
- * The identities of a user at an upstream provider, in beffroi_linked_identity (architecture §3.1); a lookup is
- * scoped by the tenant and exact, as the unique constraint of the table is.
- *
- * Both columns of the pair are sealed, so neither matches: the format seals every value under a random
- * initialisation vector, and two writes of one subject give two ciphertexts. What the lookup matches is the
- * two blind indexes, in the sibling columns the write filled in the same statement, and those are the
- * columns the unique constraint is held on (decision 0011).
- *
  * @extends DoctrineRepository<LinkedIdentity>
  */
 final readonly class DoctrineLinkedIdentityRepository extends DoctrineRepository implements
@@ -39,10 +31,6 @@ final readonly class DoctrineLinkedIdentityRepository extends DoctrineRepository
         parent::__construct($managers, LinkedIdentity::class);
     }
 
-    /**
-     * The projections the tags are derived under are the ones the write used, there being one declaration
-     * for both sides.
-     */
     public function find(Tenant $tenant, string $provider, string $subject): ?LinkedIdentity
     {
         $providerColumn = BlindIndexedColumns::of(LinkedIdentity::class, 'provider');
@@ -55,10 +43,6 @@ final readonly class DoctrineLinkedIdentityRepository extends DoctrineRepository
         ]);
     }
 
-    /**
-     * The identities of one person, which is a walk of their rows and matches nothing: it asks for the
-     * person and not for a value, so no blind index is in it.
-     */
     public function of(User $user): array
     {
         /** @var list<LinkedIdentity> $identities */
@@ -73,12 +57,9 @@ final readonly class DoctrineLinkedIdentityRepository extends DoctrineRepository
     }
 
     /**
-     * The unique constraint on the pair is what refuses an identity another request linked between the lookup and
-     * this write, a first sign-in through an upstream provider racing another (beffroi/saml S-56): the violation
-     * becomes the exception of the core the unit answers, naming nothing. The failed flush closes the manager, which
-     * the registry replaces (EntityManagers).
+     * beffroi/saml S-56
      *
-     * @throws IdentityAlreadyLinkedException when the table refuses the identity at its unique constraint
+     * @throws IdentityAlreadyLinkedException
      */
     public function save(LinkedIdentity $identity): void
     {

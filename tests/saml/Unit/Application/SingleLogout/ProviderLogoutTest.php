@@ -41,8 +41,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * spec/saml.md section 6.6, S-29 to S-34: every service provider of the sessions a browser ended told in turn, the
- * chain kept by the provider and played once, and where it ends.
+ * spec/saml.md section 6.6, S-29 to S-34
  */
 final class ProviderLogoutTest extends TestCase
 {
@@ -75,7 +74,7 @@ final class ProviderLogoutTest extends TestCase
     private AuthenticationSession $session;
 
     /**
-     * The secret of the browser of the test, the one the last chain resumed was bound to (S-32).
+     * S-32
      */
     private LogoutChainSecret $held;
 
@@ -93,8 +92,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-30, section 6.6 step 1: the service providers of each session, session by session, each in the order of its
-     * first sign-on, the one that asked left out.
+     * S-30, section 6.6 step 1
      */
     #[Test]
     public function theServiceProvidersOfEachSessionAreLeftToTellButTheOneThatAsked(): void
@@ -117,7 +115,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 1: nothing to tell and nobody to answer ends at once where the starter said, nothing written.
+     * Section 6.6 step 1
      */
     #[Test]
     public function nothingToTellEndsAtOnce(): void
@@ -133,8 +131,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-32, section 6.6 step 1: the chain is written under the SHA-256 of a reference of 32 bytes in base64url,
-     * waiting for no answer, open ten minutes, for the sessions ended.
+     * S-32, section 6.6 step 1
      */
     #[Test]
     public function theChainIsWrittenUnderTheDigestOfItsReference(): void
@@ -152,8 +149,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-32, section 6.6 step 1: the chain is bound to the browser that ended the sessions by a secret of 32 bytes drawn
-     * for it, in base64url, which the chain started hands on, and of which the chain keeps the SHA-256 alone.
+     * S-32, section 6.6 step 1
      */
     #[Test]
     public function theChainIsBoundToASecretDrawnForTheBrowser(): void
@@ -170,7 +166,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-32, section 6.6 step 3: the chain written again at a step stays bound to the browser that began it.
+     * S-32, section 6.6 step 3
      */
     #[Test]
     public function theChainStaysBoundToTheBrowserThatBeganIt(): void
@@ -183,9 +179,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-30, S-31, section 6.6 step 3: the first service provider is sent a notice naming it, the persistent NameID of
-     * the user of the session at it, the ID of the session and the instant of the clock, by the identity provider of
-     * the tenant; what carries it is what the browser is given.
+     * S-30, S-31, section 6.6 step 3
      */
     #[Test]
     public function theFirstServiceProviderIsTold(): void
@@ -210,8 +204,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-32, section 6.6 step 3: the chain is written again under its reference, waiting for the answer of the request
-     * sent, from the service provider it went to, open ten minutes from now.
+     * S-32, section 6.6 step 3
      */
     #[Test]
     public function theChainWaitsForTheAnswerOfTheRequestSent(): void
@@ -237,8 +230,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-36, section 6.6 step 3: a request posted over HTTP-POST reaches the single logout service of the tenant, where
-     * its answer comes back, the single logout service of each service provider left to tell, and where the chain ends.
+     * S-36, section 6.6 step 3
      *
      * @param list<string> $ends
      */
@@ -271,7 +263,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-36: a service provider left to tell that the notifier cannot tell is not reached.
+     * S-36
      */
     #[Test]
     public function aRequestPostedDoesNotReachAServiceProviderThatCannotBeTold(): void
@@ -288,7 +280,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-32, section 6.6 step 2: a reference resumed once is not resumed again.
+     * S-32, section 6.6 step 2
      */
     #[Test]
     public function aReferenceIsResumedOnce(): void
@@ -306,8 +298,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-32, section 6.6 step 2: a reference nobody wrote, and the reference of a chain past its ten minutes, resume
-     * nothing.
+     * S-32, section 6.6 step 2
      */
     #[Test]
     #[DataProvider('provideReferencesThatResumeNothing')]
@@ -337,8 +328,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-32: a chain that waits for the answer of a service provider is not resumed by its reference, which would skip
-     * that answer.
+     * S-32
      */
     #[Test]
     public function aChainWaitingForAnAnswerIsNotResumedByItsReference(): void
@@ -365,9 +355,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-32, section 6.6 step 2: the reference of a chain presented by a client that holds no secret, or the secret of
-     * another chain, resumes nothing: the browser that began the chain holds the reference of the URL that resumes it,
-     * and so may an access log.
+     * S-32, section 6.6 step 2
      */
     #[Test]
     #[DataProvider('provideSecretsOfAnotherClient')]
@@ -395,8 +383,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-32, section 6.6 step 2: a reference refused to another client leaves the chain to the browser it is bound to,
-     * which resumes it.
+     * S-32, section 6.6 step 2
      */
     #[Test]
     public function aReferenceRefusedToAnotherClientIsLeftToTheBrowserThatBeganTheChain(): void
@@ -417,7 +404,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-30, section 6.6 step 3: a service provider the notifier cannot tell is passed over, and the next one told.
+     * S-30, section 6.6 step 3
      */
     #[Test]
     public function aServiceProviderThatCannotBeToldIsPassedOver(): void
@@ -436,8 +423,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-30, section 6.6 step 3: a service provider whose request cannot be written, a single logout service the sender
-     * refuses among the reasons, is passed over, and the next one told.
+     * S-30, section 6.6 step 3
      */
     #[Test]
     public function aServiceProviderWhoseRequestCannotBeWrittenIsPassedOver(): void
@@ -456,8 +442,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-30, S-34, Core §3.7.3.2: a service provider whose request could not be written counts as one that did not
-     * answer Success, the one that asked answered PartialLogout once the others answered Success.
+     * S-30, S-34, Core §3.7.3.2
      */
     #[Test]
     public function aServiceProviderWhoseRequestCannotBeWrittenMakesTheAnswerPartial(): void
@@ -474,8 +459,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-32, section 6.6 step 2: a step that fails once it took the chain, the KMS not answering, writes the chain back
-     * as it took it.
+     * S-32, section 6.6 step 2
      */
     #[Test]
     public function aStepThatFailsWritesTheChainBackAsItWasTaken(): void
@@ -496,9 +480,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-32, section 6.5 step 4, section 6.6 step 2: a chain that ends at the route that resumes it, where step 1 of
-     * section 6.5 does not run, has its answer open the key; a key that cannot be opened then fails the step after the
-     * chain was taken, and the chain is written back as it was taken.
+     * S-32, section 6.5 step 4, section 6.6 step 2
      */
     #[Test]
     public function aKeyThatCannotBeOpenedForTheAnswerWritesTheChainBack(): void
@@ -520,7 +502,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-32, section 6.6 step 2: the failure of a step resumed by its reference goes up, for the provider to answer.
+     * S-32, section 6.6 step 2
      */
     #[Test]
     public function theFailureOfAStepResumedByItsReferenceGoesUp(): void
@@ -538,7 +520,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-32, section 6.6 step 2: once the KMS answers, the same reference plays the step that failed.
+     * S-32, section 6.6 step 2
      */
     #[Test]
     public function aStepThatFailedIsPlayedAgainByTheSameReference(): void
@@ -560,9 +542,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-32, section 6.6 step 4: a next step that fails after an answer, which cannot be read again, hands the chain on
-     * under a new reference, bound to the same browser, the answer counted, waiting for nothing, its ten minutes
-     * unchanged.
+     * S-32, section 6.6 step 4
      */
     #[Test]
     public function aNextStepThatFailsAfterAnAnswerHandsTheChainOnUnderANewReference(): void
@@ -596,8 +576,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-32, S-35: the chain an answer handed on is resumed by its new reference once the KMS answers, the next service
-     * provider told.
+     * S-32, S-35
      */
     #[Test]
     public function theChainAnAnswerHandedOnIsResumedByItsNewReference(): void
@@ -616,7 +595,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-30, section 6.6 step 3: a session no longer stored is passed over: no NameID can be computed for it.
+     * S-30, section 6.6 step 3
      */
     #[Test]
     public function aSessionNoLongerStoredIsPassedOver(): void
@@ -636,7 +615,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-33, section 6.6 step 4: the answer of the service provider awaited moves the chain on to the next one.
+     * S-33, section 6.6 step 4
      */
     #[Test]
     public function anAnswerMovesTheChainOnToTheNextServiceProvider(): void
@@ -652,7 +631,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-32: a chain another request took first is not played again from an answer.
+     * S-32
      */
     #[Test]
     public function anAnswerToAChainAnotherRequestTookIsRefused(): void
@@ -671,7 +650,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-32, S-33: an answer carried by another browser than the one the chain is bound to moves nothing.
+     * S-32, S-33
      */
     #[Test]
     public function anAnswerCarriedByAnotherBrowserIsRefused(): void
@@ -688,7 +667,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-32, S-33: an answer refused to another browser leaves the chain as it was, waiting for the answer.
+     * S-32, S-33
      */
     #[Test]
     public function anAnswerRefusedToAnotherBrowserLeavesTheChainAsItWas(): void
@@ -708,8 +687,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-34, section 6.6 step 5: the last answer of a chain a service provider started ends it with the answer to that
-     * service provider, which the browser carries, nothing of the chain left.
+     * S-34, section 6.6 step 5
      */
     #[Test]
     public function theLastAnswerEndsTheChainWithTheAnswerToTheServiceProviderThatAsked(): void
@@ -729,7 +707,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-34, section 6.6 step 5: the last answer ends a chain that answers nobody where its starter said.
+     * S-34, section 6.6 step 5
      */
     #[Test]
     public function theLastAnswerEndsTheChainWhereItsStarterSaid(): void
@@ -747,8 +725,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-34, Core §3.7.3.2: the service provider that asked is answered at the end, Success when every other one
-     * answered Success, PartialLogout when one did not, or was passed over.
+     * S-34, Core §3.7.3.2
      */
     #[Test]
     #[DataProvider('provideOutcomes')]
@@ -789,7 +766,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * S-36: the single logout services a chain of the session would go to, the ones the notifier can tell.
+     * S-36
      */
     #[Test]
     public function theDestinationsAreTheServicesOfTheServiceProvidersThatCanBeTold(): void
@@ -802,8 +779,6 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * A session of the tenant, stored, that signed in at the service providers given, in that order.
-     *
      * @param list<string> $serviceProviders
      */
     private function sessionSignedInAt(array $serviceProviders): AuthenticationSession
@@ -817,9 +792,6 @@ final class ProviderLogoutTest extends TestCase
         return $session;
     }
 
-    /**
-     * The chain $begun resumed by its reference, by the browser it is bound to, whose secret the test keeps.
-     */
     private function resumed(PostedForm|RedirectedMessage|LogoutChainStarted|LogoutChainEnded $begun): PostedForm|RedirectedMessage|LogoutChainEnded
     {
         static::assertInstanceOf(LogoutChainStarted::class, $begun);
@@ -848,7 +820,7 @@ final class ProviderLogoutTest extends TestCase
     }
 
     /**
-     * The KMS that does not answer, as the notifier meets it opening the key that signs (S-32).
+     * S-32
      */
     private static function outage(): KmsUnavailableException
     {

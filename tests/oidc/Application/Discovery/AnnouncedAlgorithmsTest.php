@@ -17,10 +17,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * What the document names as algorithms is what the wiring gave the provider, and nothing else: no list
- * is kept beside the registries (issue #98).
- */
 final class AnnouncedAlgorithmsTest extends TestCase
 {
     #[Test]
@@ -33,10 +29,6 @@ final class AnnouncedAlgorithmsTest extends TestCase
         static::assertSame(['RS256', 'PS256', 'ES256', 'EdDSA'], $signing);
     }
 
-    /**
-     * Open by addition: an algorithm no line of the module knows about is announced because it is wired,
-     * and for no other reason.
-     */
     #[Test]
     public function anAlgorithmTheModuleKnowsNothingAboutIsAnnouncedBecauseItIsWired(): void
     {
@@ -51,8 +43,7 @@ final class AnnouncedAlgorithmsTest extends TestCase
     }
 
     /**
-     * What signs when nobody named an algorithm is the first one wired, and the document names that one
-     * alone where no client chooses (RFC 9701 §6, issue #839).
+     * RFC 9701 §6
      */
     #[Test]
     public function theDefaultSigningIsTheOneAlgorithmWiredFirst(): void
@@ -68,8 +59,7 @@ final class AnnouncedAlgorithmsTest extends TestCase
     }
 
     /**
-     * OIDC Discovery §3 and issue #164: the pair of members named after the document, the key management
-     * algorithms a client encrypts with and the content encryption ones.
+     * OIDC Discovery §3
      */
     #[Test]
     public function theEncryptionOfADocumentIsThePairOfMembersNamedAfterIt(): void
@@ -87,10 +77,6 @@ final class AnnouncedAlgorithmsTest extends TestCase
         );
     }
 
-    /**
-     * A deployment nobody encrypts to wires neither an "alg" nor an "enc", and announces neither rather
-     * than two empty lists a client would read as a promise.
-     */
     #[Test]
     #[DataProvider('provideIncompleteEncryptionWirings')]
     public function aProviderNobodyEncryptsToAnnouncesNeitherMember(
@@ -118,8 +104,7 @@ final class AnnouncedAlgorithmsTest extends TestCase
     }
 
     /**
-     * OIDC Core §9: what a client assertion may be signed with is what the methods that read one say,
-     * each algorithm once; a method that authenticates otherwise says nothing.
+     * OIDC Core §9
      */
     #[Test]
     public function whatAnAssertionMayBeSignedWithIsWhatTheMethodsSayEachOnce(): void
@@ -134,10 +119,6 @@ final class AnnouncedAlgorithmsTest extends TestCase
         static::assertSame(['RS256', 'PS256', 'ES256', 'EdDSA', 'HS256'], $algorithms);
     }
 
-    /**
-     * Open by addition once more: a method no line of the module knows about names what signs its own
-     * assertion, and that is what the document announces.
-     */
     #[Test]
     public function aMethodTheModuleKnowsNothingAboutNamesWhatSignsItsAssertion(): void
     {
@@ -148,9 +129,6 @@ final class AnnouncedAlgorithmsTest extends TestCase
         static::assertSame(['SM256'], $algorithms);
     }
 
-    /**
-     * A deployment whose methods read no assertion has none to sign.
-     */
     #[Test]
     public function aDeploymentThatReadsNoAssertionAnnouncesNoAlgorithmForOne(): void
     {

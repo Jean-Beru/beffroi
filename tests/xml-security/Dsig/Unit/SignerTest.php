@@ -38,9 +38,7 @@ use function str_starts_with;
 use function substr;
 
 /**
- * Section 6.2, D-12: signing on the loaded form of what was built, the Signature after the child the consumer
- * names, verified by the verifier of this namespace and, byte for byte, by what xmlsec1 verified once
- * (tests/xml-security/Dsig/Fixture/behaviour/README.md).
+ * Section 6.2, D-12
  */
 final class SignerTest extends TestCase
 {
@@ -69,8 +67,7 @@ final class SignerTest extends TestCase
     }
 
     /**
-     * §9.3 row 4: the assertion of a built response signed after its Issuer; the bytes are those xmlsec1 verified,
-     * and the verifier verifies them after a load.
+     * §9.3 row 4
      */
     #[Test]
     public function itSignsTheAssertionOfABuiltResponseAfterItsIssuer(): void
@@ -103,8 +100,7 @@ final class SignerTest extends TestCase
     }
 
     /**
-     * §9.3 row 5: sign() then sign() on the returned document, the assertion then the response; both verify, and
-     * the response's canonical bytes hold the assertion's Signature. The bytes are those xmlsec1 verified.
+     * §9.3 row 5
      */
     #[Test]
     public function itSignsTheResponseOverTheSignedAssertion(): void
@@ -139,9 +135,7 @@ final class SignerTest extends TestCase
     }
 
     /**
-     * §9.3 rows 6 and 7: on an entity descriptor with $after null, the Signature is the first child; with a
-     * certificate, KeyInfo/X509Data/X509Certificate holds its base64 without armour or whitespace. The bytes are
-     * those xmlsec1 verified, rsa-sha512 and sha512.
+     * §9.3 rows 6 and 7
      */
     #[Test]
     public function itSignsAnEntityDescriptorFirstWithTheCertificate(): void
@@ -175,8 +169,7 @@ final class SignerTest extends TestCase
     }
 
     /**
-     * §9.3 row 18, D-17: a certificate hint that is not exactly one certificate is refused before anything is
-     * serialized, a private key first, the one thing that must never reach the peer.
+     * §9.3 row 18, D-17
      */
     #[Test]
     #[DataProvider('provideHintsThatAreNotOneCertificate')]
@@ -217,8 +210,7 @@ final class SignerTest extends TestCase
     }
 
     /**
-     * §9.3 row 19, D-1: an element that already holds a Signature is not signed again, which would make a document
-     * the verifier refuses.
+     * §9.3 row 19, D-1
      */
     #[Test]
     public function itRefusesAnElementThatAlreadyHoldsASignature(): void
@@ -240,7 +232,7 @@ final class SignerTest extends TestCase
     }
 
     /**
-     * §9.3 row 8: without a certificate, no KeyInfo.
+     * §9.3 row 8
      */
     #[Test]
     public function itWritesNoKeyInfoWithoutACertificate(): void
@@ -259,7 +251,7 @@ final class SignerTest extends TestCase
     }
 
     /**
-     * §9.3 row 9: the given document is untouched, sign() returning a new one.
+     * §9.3 row 9
      */
     #[Test]
     public function itLeavesTheGivenDocumentUntouched(): void
@@ -277,8 +269,7 @@ final class SignerTest extends TestCase
     }
 
     /**
-     * §9.3 row 10: each scheme and each digest, exclusive and exclusive with comments, verified by the verifier of
-     * this namespace after a round trip.
+     * §9.3 row 10
      */
     #[Test]
     #[DataProvider('provideSchemes')]
@@ -354,8 +345,7 @@ final class SignerTest extends TestCase
     }
 
     /**
-     * §9.1, section 13: a PSS scheme on a build without PHP 8.5 and OpenSSL 3.1 is refused before anything is
-     * serialized.
+     * §9.1, section 13
      */
     #[Test]
     public function itRefusesPssWhereTheBuildCannotProduceIt(): void
@@ -381,7 +371,7 @@ final class SignerTest extends TestCase
     }
 
     /**
-     * §9.3 row 11: a document that would not round-trip is refused by Core's serializer before anything is signed.
+     * §9.3 row 11
      */
     #[Test]
     public function itsSerializerRefusesWhatWouldNotRoundTripBeforeSigning(): void
@@ -400,8 +390,7 @@ final class SignerTest extends TestCase
     }
 
     /**
-     * §9.3 row 12: a SigningKeyInterface that is not PrivateKey receives the canonical SignedInfo and the scheme,
-     * and what it answers is the SignatureValue.
+     * §9.3 row 12
      */
     #[Test]
     public function itSignsThroughThePort(): void
@@ -432,7 +421,7 @@ final class SignerTest extends TestCase
     }
 
     /**
-     * D-4: an inclusive canonicalization method is a programming error.
+     * D-4
      */
     #[Test]
     public function itRefusesAnInclusiveMethod(): void
@@ -449,7 +438,7 @@ final class SignerTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 3: an ID the loaded document does not hold.
+     * Section 6.2 step 3
      */
     #[Test]
     public function itRefusesAnUnknownId(): void
@@ -465,7 +454,7 @@ final class SignerTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 3: $after names no child of the element.
+     * Section 6.2 step 3
      */
     #[Test]
     public function itRefusesAnAfterThatNamesNoChild(): void
@@ -486,7 +475,7 @@ final class SignerTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 6: the Signature sits where the consumer said, and SignedInfo names what was asked.
+     * Section 6.2 step 6
      */
     #[Test]
     public function itWritesTheSignedInfoTheConsumerAskedFor(): void

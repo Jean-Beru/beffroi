@@ -54,9 +54,6 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
         $this->resolver = new PushedAuthorizationRequestResolver($this->requests, $this->clock, $this->events);
     }
 
-    /**
-     * An ordinary authorization request carries no reference, and what it carries stands.
-     */
     #[Test]
     public function aRequestThatWasNotPushedIsLeftAlone(): void
     {
@@ -72,8 +69,7 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
     }
 
     /**
-     * OIDC Core §6.2: a "request_uri" of another shape is a request object by reference, which the
-     * authorization endpoint answers for; nothing here looks it up, and nothing fetches it.
+     * OIDC Core §6.2
      */
     #[Test]
     #[DataProvider('provideForeignReferences')]
@@ -100,8 +96,7 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
     }
 
     /**
-     * RFC 9126 §4: the parameters of the record are the request, and every other parameter of the query
-     * is dropped, as it is for a request object (OIDC Core §6.1).
+     * RFC 9126 §4
      */
     #[Test]
     public function theParametersOfTheRecordReplaceTheOnesOfTheQuery(): void
@@ -138,9 +133,7 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
     }
 
     /**
-     * FAPI 2.0 Security Profile §5.3.1: the reference is spent when the request it carries is granted,
-     * which the authorization endpoint does, and reading it again before that is a user who came back to
-     * a page nobody has answered yet.
+     * FAPI 2.0 Security Profile §5.3.1
      */
     #[Test]
     public function aReferenceIsReadAgainUntilItIsSpent(): void
@@ -157,7 +150,7 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
     }
 
     /**
-     * RFC 9126 §4: once spent, it grants nothing.
+     * RFC 9126 §4
      */
     #[Test]
     public function aReferenceThatWasSpentIsRefused(): void
@@ -176,7 +169,7 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
     }
 
     /**
-     * RFC 9126 §4: "An expired request_uri MUST be rejected as invalid".
+     * RFC 9126 §4
      */
     #[Test]
     public function anExpiredReferenceIsRefused(): void
@@ -194,8 +187,7 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
     }
 
     /**
-     * RFC 9126 §2.2: "The request_uri value MUST be bound to the client that posted the authorization
-     * request".
+     * RFC 9126 §2.2
      */
     #[Test]
     public function aReferencePushedByOneClientIsRefusedToAnother(): void
@@ -218,10 +210,6 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
         );
     }
 
-    /**
-     * The audit trail says which client presented the reference and which one pushed it; the client
-     * reads the one error of the four.
-     */
     #[Test]
     public function theEventSaysWhichClientPushedTheReferenceAndWhichPresentedIt(): void
     {
@@ -249,10 +237,6 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
         static::assertSame($this->tenant, $event->tenant);
     }
 
-    /**
-     * A reference nobody ever issued, one that is past its lifetime and one already used are one answer
-     * to the client and three reasons in the audit trail.
-     */
     #[Test]
     #[DataProvider('provideRefusals')]
     public function everyRefusalNamesItsReasonInTheAuditTrail(string $case, PushedRequestRefusalReason $reason): void
@@ -280,10 +264,6 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
         yield 'a reference already used' => ['used', PushedRequestRefusalReason::AlreadyUsed];
     }
 
-    /**
-     * A record of another tenant is a record of another provider: it is not found, and the reason says
-     * the reference is not this client's.
-     */
     #[Test]
     public function aReferenceOfAnotherTenantIsRefused(): void
     {
@@ -298,9 +278,6 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
         $this->resolver->resolve(Fixtures::tenant('other', 'https://id.other.example'), self::query($requestUri), $this->context);
     }
 
-    /**
-     * A reference in the state the case names: never issued, past its lifetime, or already used.
-     */
     private function referenceThatIs(string $case): RequestUri
     {
         if ($case === 'unknown') {
@@ -311,8 +288,6 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
             $this->clock->modify('+61 seconds');
         }
         if ($case === 'used') {
-            // spent by the authorization endpoint that granted the request it carried, which is the one
-            // thing that spends a reference (FAPI 2.0 Security Profile §5.3.1)
             $record =
                 $this->requests->findByRequestUriHash(RequestUri::hashOf($requestUri->value)) ?? static::fail('The record of the reference was not stored.');
             $this->requests->consume($record, $this->clock->now());

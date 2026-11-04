@@ -14,9 +14,7 @@ use PHPUnit\Framework\TestCase;
 final class AuthorizationResponseTest extends TestCase
 {
     /**
-     * RFC 6749 §4.1.2: code and state; RFC 9207 §2: iss in every authorization response. How they reach
-     * the client is the response mode's business, not the response's (Multiple Response Type Encoding
-     * Practices §2.1).
+     * RFC 6749 §4.1.2, RFC 9207 §2
      */
     #[Test]
     public function itCarriesTheCodeTheStateAndTheIssuer(): void
@@ -41,7 +39,7 @@ final class AuthorizationResponseTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: state is present in the response only when it was in the request.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function itOmitsTheStateWhenTheRequestHadNone(): void

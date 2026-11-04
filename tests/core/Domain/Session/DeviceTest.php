@@ -12,15 +12,10 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Architecture §3.5: what the user agent of a request says of where it came from, for the pages that
- * show a person where they signed in.
+ * Architecture §3.5
  */
 final class DeviceTest extends TestCase
 {
-    /**
-     * Every browser built on Chromium says "Chrome" of itself, and a telephone on Android says "Linux":
-     * what is recognised is the most particular needle and never the first that matches anything.
-     */
     #[Test]
     #[DataProvider('provideAgentsAndWhatTheySay')]
     public function itNamesTheBrowserAndTheSystemAnAgentSays(string $userAgent, ?string $browser, ?string $platform, DeviceType $type): void
@@ -79,10 +74,6 @@ final class DeviceTest extends TestCase
         yield 'a program that names itself and its version' => ['curl/8.18.0', 'curl', null, DeviceType::Unknown];
     }
 
-    /**
-     * A reading that invented a name would be one nobody could tell from a true one, so an agent it
-     * recognises nothing in is nothing, and the caller shows the string as it stands.
-     */
     #[Test]
     #[DataProvider('provideAgentsThatSayNothing')]
     public function anAgentItRecognisesNothingInIsNothing(?string $userAgent): void
@@ -102,8 +93,6 @@ final class DeviceTest extends TestCase
     }
 
     /**
-     * The document a column holds a device as, which is also what the provenance of a request nests.
-     *
      * @param array<string, mixed> $document
      */
     #[Test]

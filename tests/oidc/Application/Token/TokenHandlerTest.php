@@ -159,8 +159,7 @@ final class TokenHandlerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.3 and §5.1 end to end, the way oidc_login sends it: client_secret_basic with the
-     * client_id repeated in the body.
+     * RFC 6749 §4.1.3, §5.1
      */
     #[Test]
     public function itExchangesACodeForTokens(): void
@@ -198,7 +197,7 @@ final class TokenHandlerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §6 end to end with client_secret_post.
+     * RFC 6749 §6
      */
     #[Test]
     public function itRefreshesTokens(): void
@@ -223,17 +222,14 @@ final class TokenHandlerTest extends TestCase
         // Then
         $parameters = $response->parameters();
         static::assertSame('id:post-client:alice-subject:-:' . $this->clock->now()->getTimestamp(), $parameters['id_token']);
-        // RFC 6749 §6, FAPI 2.0 Security Profile §5.3.2.1-9: the client authenticated, which is what
-        // tells its refresh token from a copy of itself, so the token stands and no new one is handed
-        // out; the client keeps the one it has.
+        // RFC 6749 §6, FAPI 2.0 Security Profile §5.3.2.1-9: a client that authenticates keeps its refresh token.
         static::assertArrayNotHasKey('refresh_token', $parameters);
         static::assertFalse($token->isRotated());
         static::assertCount(0, $this->events->of(RefreshTokenRotated::class));
     }
 
     /**
-     * RFC 6749 §3.2.1: the client is authenticated before anything else is read, so that a caller that
-     * is not a client learns nothing about the request.
+     * RFC 6749 §3.2.1
      */
     #[Test]
     public function itAuthenticatesTheClientBeforeReadingTheGrant(): void
@@ -259,9 +255,6 @@ final class TokenHandlerTest extends TestCase
         }
     }
 
-    /**
-     * A refused client consumes nothing and the failure is announced.
-     */
     #[Test]
     public function aRefusedClientConsumesNothingAndTheFailureIsAnnounced(): void
     {
@@ -289,7 +282,7 @@ final class TokenHandlerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.3, §6: "grant_type" is required.
+     * RFC 6749 §4.1.3, §6
      *
      * @param array<string, mixed> $parameters
      */
@@ -320,7 +313,7 @@ final class TokenHandlerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2 "unsupported_grant_type": the grants of decision 0006 only.
+     * RFC 6749 §5.2, Decision 0006
      */
     #[Test]
     #[DataProvider('provideGrantTypesNotServed')]
@@ -353,7 +346,7 @@ final class TokenHandlerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2 "unsupported_grant_type": only the grants the handler was given.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function itRefusesAGrantTypeTheHandlerWasNotGiven(): void
@@ -377,7 +370,7 @@ final class TokenHandlerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2 "unauthorized_client": the client is authenticated but not registered for the grant.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function itRefusesAGrantTheClientIsNotRegisteredFor(): void
@@ -414,9 +407,7 @@ final class TokenHandlerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.5: a grant the provider gains is served because it is wired and under the name it
-     * gives itself; nothing of this endpoint, of the registration or of the document knows that name,
-     * and the request reaches the grant all the same.
+     * RFC 6749 §4.5
      */
     #[Test]
     public function itServesAGrantItKnowsNothingAbout(): void
@@ -448,9 +439,7 @@ final class TokenHandlerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.1, §5.2: a grant served only to a client that authenticates itself refuses a public client,
-     * which proves nothing, with "invalid_client" and before the grant reads anything of the request,
-     * whichever grant declares it.
+     * RFC 6749 §2.1, §5.2
      */
     #[Test]
     #[DataProvider('provideGrantsThatRequireClientAuthentication')]
@@ -487,8 +476,7 @@ final class TokenHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9449 §5: a request that proves a key gets tokens bound to it, and says so in "token_type", so
-     * that a client knows to present them under the DPoP scheme (§7.1).
+     * RFC 9449 §5, §7.1
      */
     #[Test]
     public function aRequestThatProvesAKeyBindsTheTokensToIt(): void
@@ -512,8 +500,7 @@ final class TokenHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9449 §5: a client that sends no proof keeps getting bearer tokens, which is what every client
-     * that does not bind its tokens does.
+     * RFC 9449 §5
      */
     #[Test]
     public function aRequestThatProvesNothingGetsABearerToken(): void
@@ -530,9 +517,7 @@ final class TokenHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9449 §10.1: the code was reserved for a key at the authorization request, and a token request
-     * that proves another key does not collect it. A code taken on its way back through the browser is
-     * worth nothing to whoever does not hold the key.
+     * RFC 9449 §10.1
      */
     #[Test]
     public function aCodeReservedForAKeyIsNotExchangedByAnother(): void
@@ -555,10 +540,6 @@ final class TokenHandlerTest extends TestCase
         $this->handler->handle($this->tenant, null, $this->publicExchange(), $this->context, null, $this->proof());
     }
 
-    /**
-     * A token is bound to one thing. A request proving a certificate and a key at once leaves the
-     * provider to choose what the client meant, and is refused instead.
-     */
     #[Test]
     public function aRequestThatProvesACertificateAndAKeyIsRefused(): void
     {
@@ -589,9 +570,7 @@ final class TokenHandlerTest extends TestCase
     }
 
     /**
-     * FAPI 1.0 Advanced Final §5.2.2, RFC 8705 §3.4: the client of a profile that binds authenticates
-     * with an assertion and presents a certificate all the same, and the tokens it comes for are bound
-     * to that certificate.
+     * FAPI 1.0 Advanced Final §5.2.2, RFC 8705 §3.4
      */
     #[Test]
     public function aClientRegisteredForCertificateBoundTokensGetsThemBoundToTheCertificateItPresented(): void
@@ -607,10 +586,7 @@ final class TokenHandlerTest extends TestCase
     }
 
     /**
-     * FAPI 1.0 Advanced Final §5.2.2: a token request of such a client that proves no certificate gets
-     * no token at all, and is refused before anything is read of what it came to spend. The request
-     * below comes for a backchannel request nobody has answered, and is refused rather than told to
-     * come back later.
+     * FAPI 1.0 Advanced Final §5.2.2
      */
     #[Test]
     #[DataProvider('provideRequestsThatProveNoCertificate')]
@@ -644,8 +620,7 @@ final class TokenHandlerTest extends TestCase
     }
 
     /**
-     * CIBA Core §11: the rule above is about what the request proves and about nothing else. The same
-     * request presenting the certificate reaches the grant, and hears what the grant has to say.
+     * CIBA Core §11
      */
     #[Test]
     public function aRequestThatProvesItsCertificateIsToldToComeBackLaterWhileNobodyHasAnswered(): void
@@ -712,9 +687,6 @@ final class TokenHandlerTest extends TestCase
         ];
     }
 
-    /**
-     * The token endpoint of a provider serving the one grant a client of a FAPI-CIBA plan comes for.
-     */
     private function backchannelHandler(): TokenHandler
     {
         return new TokenHandler(
@@ -732,7 +704,7 @@ final class TokenHandlerTest extends TestCase
     }
 
     /**
-     * A backchannel request of that client that nobody has answered yet (CIBA Core §7).
+     * CIBA Core §7
      */
     private function unansweredBackchannelRequest(): BackchannelAuthenticationRecord
     {
@@ -754,7 +726,7 @@ final class TokenHandlerTest extends TestCase
     }
 
     /**
-     * The same request, approved by the user it named (CIBA Core §10.1).
+     * CIBA Core §10.1
      */
     private function approvedBackchannelRequest(): BackchannelAuthenticationRecord
     {
@@ -769,8 +741,7 @@ final class TokenHandlerTest extends TestCase
     }
 
     /**
-     * What that client sends to collect its tokens: the identifier of its request, and the assertion it
-     * authenticates with (CIBA Core §10.1, OIDC Core §9).
+     * CIBA Core §10.1, OIDC Core §9
      *
      * @return array<string, string>
      */
@@ -785,17 +756,11 @@ final class TokenHandlerTest extends TestCase
         ];
     }
 
-    /**
-     * A proof for the token endpoint of the tenant, made now.
-     */
     private function proof(?JWK $key = null): string
     {
         return Proofs::proof('POST', Endpoints::of($this->tenant)->token, $this->clock->now(), null, [], [], $key);
     }
 
-    /**
-     * What the tokens that left are bound to, as the event that announced them says.
-     */
     private function issuedConfirmation(): ?ConfirmationInterface
     {
         $issued = $this->events->of(TokensIssued::class);

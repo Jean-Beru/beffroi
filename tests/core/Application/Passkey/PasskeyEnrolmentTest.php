@@ -31,7 +31,7 @@ use function strlen;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Architecture §3.4: a passkey enrolled from a session the user already holds, WebAuthn Level 3 §7.1.
+ * Architecture §3.4, WebAuthn Level 3 §7.1
  */
 final class PasskeyEnrolmentTest extends TestCase
 {
@@ -81,7 +81,7 @@ final class PasskeyEnrolmentTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §14.6.1: one handle per user, whatever the number of passkeys.
+     * WebAuthn Level 3 §14.6.1
      */
     #[Test]
     public function aSecondPasskeyReusesTheHandleAndExcludesTheFirstEvenRevoked(): void
@@ -127,8 +127,7 @@ final class PasskeyEnrolmentTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §6.1.3: the model refuses a record whose backup flags contradict each other, and
-     * the enrolment refuses it as it refuses anything else, by the one exception its contract names.
+     * WebAuthn Level 3 §6.1.3
      */
     #[Test]
     public function aRecordTheModelRefusesFailsTheEnrolment(): void
@@ -185,7 +184,7 @@ final class PasskeyEnrolmentTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §7.1, step 26.
+     * WebAuthn Level 3 §7.1, step 26
      */
     #[Test]
     public function aCredentialIdKnownInTheTenantIsRefused(): void
@@ -219,11 +218,6 @@ final class PasskeyEnrolmentTest extends TestCase
         $this->enrolment->complete($this->alice, 'Pixel', $options, '{}', Fixtures::context());
     }
 
-    /**
-     * Issue #327: a tenant whose floor asks for a key held in hardware refuses a synced passkey, which
-     * proves "swk", and keeps the one bound to its authenticator, which proves "hwk". The question is asked
-     * of what the ceremony answered, the kind alone not saying which of the two a passkey is.
-     */
     #[Test]
     public function aSyncedPasskeyIsRefusedByATenantThatAsksForHardware(): void
     {
@@ -256,8 +250,7 @@ final class PasskeyEnrolmentTest extends TestCase
     }
 
     /**
-     * Decision 0029, spec/saml.md S-63: no passkey is posed for a person of an e-mail domain the tenant federates to
-     * an upstream provider, through which alone they sign in.
+     * Decision 0029, spec/saml.md S-63
      */
     #[Test]
     public function aPasskeyIsPosedForNobodyOfAFederatedDomain(): void

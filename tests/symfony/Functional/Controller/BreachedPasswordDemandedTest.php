@@ -14,13 +14,7 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Issue #579, architecture §5.2: a person whose password a list of compromised passwords has found is
- * asked to replace it at the next login that serves no authorization request. Being told on the pages of
- * their account is issue #552; this is the one step there is between a login and what it was for.
- *
- * The mark is written here rather than played, the lane that writes it being what
- * BreachedPasswordAtLoginTest covers: what this walks is what a login does with a mark that is already
- * there. The list of this kernel names nothing (config_test.yml), so no test here reaches a host.
+ * Architecture §5.2
  */
 final class BreachedPasswordDemandedTest extends BrowserTestCase
 {
@@ -28,10 +22,6 @@ final class BreachedPasswordDemandedTest extends BrowserTestCase
 
     private const string POSED = 'a horse walks into a bar';
 
-    /**
-     * The one login this interrupts: the one a page of this provider asked for, which is the login a
-     * browser that typed the issuer makes.
-     */
     #[Test]
     public function aLoginThatServesNoAuthorizationRequestLandsOnThePageOfThePassword(): void
     {
@@ -45,10 +35,6 @@ final class BreachedPasswordDemandedTest extends BrowserTestCase
         static::assertSame('/account/password', $this->browser->getResponse()->headers->get('Location'));
     }
 
-    /**
-     * A person is told why they are there rather than on the page they asked for, which is what this adds
-     * to a page that already says what was found.
-     */
     #[Test]
     public function thePageSaysWhyTheBrowserIsThere(): void
     {
@@ -63,10 +49,6 @@ final class BreachedPasswordDemandedTest extends BrowserTestCase
         static::assertCount(1, $page->filter('p[data-password-demanded]'));
     }
 
-    /**
-     * A person who went looking for the page reads what was found and nothing that was asked of them: the
-     * sentence says why that browser is there, so it is said to a browser a login sent there.
-     */
     #[Test]
     public function thePageSaysNothingOfTheSortToWhoeverWentLookingForIt(): void
     {
@@ -82,10 +64,6 @@ final class BreachedPasswordDemandedTest extends BrowserTestCase
         static::assertCount(0, $page->filter('p[data-password-demanded]'));
     }
 
-    /**
-     * Replacing it carries the browser on to the page the login was going to, which stayed remembered
-     * while the password was asked for.
-     */
     #[Test]
     public function replacingThePasswordSendsThemWhereTheyWereGoing(): void
     {
@@ -101,10 +79,6 @@ final class BreachedPasswordDemandedTest extends BrowserTestCase
         static::assertTrue(self::hasher()->verify(self::passwordOf($alice)->hash, self::POSED));
     }
 
-    /**
-     * The mark is what the demand reads, so a password replaced ends it by construction: the credential
-     * says nothing of a list any more, that list having spoken of the password that is gone.
-     */
     #[Test]
     public function aPasswordReplacedIsAskedForNoLongerAtTheNextLogin(): void
     {
@@ -121,10 +95,6 @@ final class BreachedPasswordDemandedTest extends BrowserTestCase
         static::assertSame('/account', $this->browser->getResponse()->headers->get('Location'));
     }
 
-    /**
-     * It is asked and never imposed: somebody who cannot replace their password now reaches their account
-     * all the same, or nothing of the account is reachable to the person who most needs it.
-     */
     #[Test]
     public function aPersonWhoLeavesThePageWithoutReplacingItReachesTheirAccount(): void
     {
@@ -139,10 +109,6 @@ final class BreachedPasswordDemandedTest extends BrowserTestCase
         static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
     }
 
-    /**
-     * What leaving the page costs: the demand comes back at the next login that serves no authorization
-     * request, which is the point.
-     */
     #[Test]
     public function theDemandComesBackAtTheNextSuchLogin(): void
     {
@@ -159,10 +125,6 @@ final class BreachedPasswordDemandedTest extends BrowserTestCase
         static::assertSame('/account/password', $this->browser->getResponse()->headers->get('Location'));
     }
 
-    /**
-     * A page of the account that asks for a proof given a short while ago is reached with the one this
-     * login just gave (issue #580): the demand lands on a page nothing sends the browser away from.
-     */
     #[Test]
     public function theProofOfTheLoginThatWasDivertedOpensThePage(): void
     {
@@ -177,9 +139,6 @@ final class BreachedPasswordDemandedTest extends BrowserTestCase
         static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
     }
 
-    /**
-     * A password marked as found, on a user who is signed in through the form of the firewall.
-     */
     private static function aPasswordThatWasFound(string $username): User
     {
         $user = self::userWithPassword($username, self::IN_USE);
@@ -190,10 +149,6 @@ final class BreachedPasswordDemandedTest extends BrowserTestCase
         return $user;
     }
 
-    /**
-     * Signs the user in on the login the home of the account asks for, which serves no authorization
-     * request.
-     */
     private function signInOnTheForm(string $username, string $password): void
     {
         $this->browser->request('GET', '/account');

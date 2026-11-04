@@ -33,31 +33,16 @@ use function sys_get_temp_dir;
 use function uniqid;
 
 /**
- * Issue #473: the databases of addresses downloaded, refused unless they are ones this provider reads,
- * and stored where the lane reads them. The weekly step of the schedule runs the same object. Issue #905:
- * MaxMind redirects every download to its storage, the one redirect an outbound request follows
- * (decision 0032). Issue #904: an edition unpacked and stored by stream.
+ * Decision 0032
  */
 final class GeoipRefreshCommandTest extends TestCase
 {
     private const string LICENSE_KEY = 'a-licence-key-of-the-account';
 
-    /**
-     * The signature of the presigned URLs of the storage of MaxMind in these tests.
-     */
     private const string SIGNATURE = '5d41402abc4b2a76';
 
-    /**
-     * What the database of a large archive is padded with: more than the city edition MaxMind built on
-     * 2026-10-23, a database of 50,659,116 bytes (issue #904). The archive is as large, its gzip stream
-     * being written without compression.
-     */
     private const int LARGE_DATABASE_PADDING = 67_108_864;
 
-    /**
-     * What a refresh of that archive may hold in memory at most, a quarter of it: holding the archive, the
-     * tar or the database whole holds more.
-     */
     private const int MEMORY_HELD_AT_MOST = 16_777_216;
 
     private string $directory;
@@ -76,11 +61,6 @@ final class GeoipRefreshCommandTest extends TestCase
         new Filesystem()->remove($this->directory);
     }
 
-    /**
-     * Both editions asked for at MaxMind under the licence key of the deployment, each fetched from the
-     * storage MaxMind redirects its download to, and stored under the name each one declares itself by
-     * rather than the name of the source.
-     */
     #[Test]
     public function bothEditionsAreDownloadedAndStoredUnderTheNameTheyDeclare(): void
     {
@@ -110,10 +90,6 @@ final class GeoipRefreshCommandTest extends TestCase
         static::assertSame(MaxMindDatabase::asn(), file_get_contents($this->databases->path(GeoLite2Databases::ASN) ?? ''));
     }
 
-    /**
-     * What a console writes is read again in a log and over a shoulder: the licence key of the deployment
-     * is not part of what it writes.
-     */
     #[Test]
     public function theLicenceKeyIsNotWrittenToTheConsole(): void
     {
@@ -130,11 +106,6 @@ final class GeoipRefreshCommandTest extends TestCase
         static::assertStringNotContainsString(self::LICENSE_KEY, $tester->getDisplay(true));
     }
 
-    /**
-     * The database says when it was built and how many networks it holds, which is what "it did
-     * something" means for a refresh, and the source it names is the download asked for, not the storage
-     * it was redirected to.
-     */
     #[Test]
     public function itSaysWhatTheStoredDatabaseHolds(): void
     {
@@ -155,10 +126,6 @@ final class GeoipRefreshCommandTest extends TestCase
         );
     }
 
-    /**
-     * The ETag of what is stored goes out with the next request, and a source that answers that nothing
-     * changed is a week that costs no download.
-     */
     #[Test]
     public function aSourceThatAnswersNothingChangedIsNotDownloadedAgain(): void
     {
@@ -187,10 +154,6 @@ final class GeoipRefreshCommandTest extends TestCase
         static::assertStringContainsString('is the one already stored, nothing was downloaded', self::flattened($tester));
     }
 
-    /**
-     * MaxMind's redirect carries no version and its storage answers with one: what is kept beside the
-     * database is what the storage answered, which is what the storage compares the next request with.
-     */
     #[Test]
     public function theVersionKeptIsTheOneTheStorageOfMaxMindAnswersWith(): void
     {
@@ -211,11 +174,6 @@ final class GeoipRefreshCommandTest extends TestCase
         static::assertSame('"the-version-of-the-storage"', $this->databases->version(GeoLite2Databases::CITY));
     }
 
-    /**
-     * A run that finds the versions it keeps, a second run before MaxMind publishes again: the version of
-     * each database goes out with the request that reaches the storage of MaxMind, which answers that
-     * nothing changed, and nothing is downloaded.
-     */
     #[Test]
     public function aRunThatFindsTheVersionsItKeepsAsksTheStorageOfMaxMindWithThemAndDownloadsNothing(): void
     {
@@ -248,10 +206,6 @@ final class GeoipRefreshCommandTest extends TestCase
         static::assertSame(2, substr_count(self::flattened($tester), 'is the one already stored, nothing was downloaded'));
     }
 
-    /**
-     * A deployment may hold a database a mirror serves or one it unpacked by hand, which is what --url
-     * names; the edition is read from the file and not from the name it was given.
-     */
     #[Test]
     public function aDatabaseNamedAsAFileIsStoredUnderTheEditionItDeclares(): void
     {
@@ -269,11 +223,6 @@ final class GeoipRefreshCommandTest extends TestCase
         static::assertNotNull($this->databases->path(GeoLite2Databases::ASN));
     }
 
-    /**
-     * Issue #904: an archive of the size MaxMind publishes is read, unpacked and stored by stream, so what
-     * the refresh holds in memory is a fraction of the archive and of its database, under the limit PHP
-     * gives a worker by default as under any other.
-     */
     #[Test]
     public function anArchiveTheSizeOfAnEditionOfMaxMindIsStoredWithoutBeingHeldInMemory(): void
     {
@@ -295,10 +244,6 @@ final class GeoipRefreshCommandTest extends TestCase
         static::assertLessThan(self::MEMORY_HELD_AT_MOST, $held);
     }
 
-    /**
-     * An edition the enrichment does not read is refused rather than stored: a file nothing reads is a
-     * file nobody notices is the wrong one.
-     */
     #[Test]
     public function anEditionTheEnrichmentDoesNotReadIsRefusedAndNothingIsStored(): void
     {
@@ -326,8 +271,7 @@ final class GeoipRefreshCommandTest extends TestCase
     }
 
     /**
-     * Decision 0006: a source other than MaxMind is followed through no redirect, and the URL it names is
-     * said instead.
+     * Decision 0006
      */
     #[Test]
     public function aSourceThatRedirectsIsRefusedWithTheUrlItNames(): void
@@ -349,8 +293,7 @@ final class GeoipRefreshCommandTest extends TestCase
     }
 
     /**
-     * Decision 0032 is MaxMind's: a mirror that redirects to the very storage MaxMind redirects to is
-     * refused as any other source that redirects, and the storage is not asked.
+     * Decision 0032
      */
     #[Test]
     public function aMirrorThatRedirectsToTheStorageOfMaxMindIsRefused(): void
@@ -374,8 +317,7 @@ final class GeoipRefreshCommandTest extends TestCase
     }
 
     /**
-     * Decision 0032 names one origin, over https: MaxMind redirecting a download anywhere else is refused,
-     * and the place it names is not asked.
+     * Decision 0032
      */
     #[Test]
     #[DataProvider('provideWhatIsNotTheStorageOfMaxMind')]
@@ -419,11 +361,6 @@ final class GeoipRefreshCommandTest extends TestCase
     }
 
     /**
-     * The reason of a refusal names every URL without its query, where the licence key of a download of
-     * MaxMind and the signature of a presigned URL of its storage travel, and a console is read again in a
-     * log. A client that cannot read a response whole names its URL in its own reason, as the client of the
-     * tests does when a response stops ("Idle timeout reached for").
-     *
      * @param Closure(string): MockResponse $answers
      */
     #[Test]
@@ -467,10 +404,6 @@ final class GeoipRefreshCommandTest extends TestCase
         ];
     }
 
-    /**
-     * One redirect and no more: the storage of MaxMind redirecting the download again is refused, and the
-     * place it names is not asked.
-     */
     #[Test]
     public function theStorageOfMaxMindRedirectingAgainIsRefused(): void
     {
@@ -495,10 +428,6 @@ final class GeoipRefreshCommandTest extends TestCase
         );
     }
 
-    /**
-     * A deployment that named no licence key has nothing to download, and is told what to write rather
-     * than left with a run that did nothing.
-     */
     #[Test]
     public function aDeploymentThatNamesNoLicenceKeyIsToldWhatToWrite(): void
     {
@@ -520,10 +449,6 @@ final class GeoipRefreshCommandTest extends TestCase
         ));
     }
 
-    /**
-     * MaxMind as it answers a download, a redirect to a presigned URL of its storage, and its storage
-     * answering that URL with what is given.
-     */
     private static function fromMaxMind(string $url, MockResponse $storage): MockResponse
     {
         return str_starts_with($url, GeoLite2Refresh::MAXMIND_DOWNLOAD) ? self::redirectedTo(self::presigned(self::editionOf($url))) : $storage;
@@ -539,18 +464,11 @@ final class GeoipRefreshCommandTest extends TestCase
         ]);
     }
 
-    /**
-     * Where the refresh asks MaxMind for an edition, under the licence key of the deployment.
-     */
     private static function download(string $edition): string
     {
         return sprintf('%s?edition_id=%s&license_key=%s&suffix=tar.gz', GeoLite2Refresh::MAXMIND_DOWNLOAD, $edition, self::LICENSE_KEY);
     }
 
-    /**
-     * A presigned URL of the storage of MaxMind for an edition, which is what MaxMind redirects a download
-     * to: an object and the signature that lets whoever holds the URL read it for a while.
-     */
     private static function presigned(string $edition): string
     {
         return sprintf(
@@ -573,8 +491,6 @@ final class GeoipRefreshCommandTest extends TestCase
     }
 
     /**
-     * The version a request carried, as the client of the tests normalized its headers.
-     *
      * @param array<mixed> $options
      */
     private static function versionSentWith(array $options): mixed

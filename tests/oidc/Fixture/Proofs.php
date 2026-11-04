@@ -26,9 +26,7 @@ use function json_encode;
 use const JSON_THROW_ON_ERROR;
 
 /**
- * The client side of DPoP (RFC 9449 §4.2): a key pair of its own, the claims of a proof and the compact
- * JWS a client would put in the header. Two keys, so that a proof of one can be presented against a
- * token bound to the other. Never leaves the test suite.
+ * RFC 9449 §4.2
  */
 final class Proofs
 {
@@ -36,17 +34,11 @@ final class Proofs
 
     private static ?JWK $otherKey = null;
 
-    /**
-     * The key the client proves possession of, ES256, as a client would generate it.
-     */
     public static function key(): JWK
     {
         return self::$key ??= Algorithms::es256()->generateKey();
     }
 
-    /**
-     * Another key, of another client or of whoever stole a token.
-     */
     public static function otherKey(): JWK
     {
         return self::$otherKey ??= Algorithms::es256()->generateKey();
@@ -58,12 +50,10 @@ final class Proofs
     }
 
     /**
-     * A proof for one request, as RFC 9449 §4.2 has it: the public key in the header, the method and the
-     * URL of the request in the claims, and the access token it accompanies when there is one.
+     * RFC 9449 §4.2
      *
-     * @param array<string, mixed> $overrides claims written over the ones of the specification, a null
-     *                                        value leaving the claim out
-     * @param array<string, mixed> $header what is written over the header
+     * @param array<string, mixed> $overrides a null value leaves the claim out
+     * @param array<string, mixed> $header
      */
     public static function proof(
         string $method,
@@ -109,17 +99,13 @@ final class Proofs
     }
 
     /**
-     * RFC 9449 §4.2 "ath": the base64url of the SHA-256 of the access token the proof accompanies.
+     * RFC 9449 §4.2
      */
     public static function accessTokenHash(string $accessToken): string
     {
         return Base64Url::encode(hash('sha256', $accessToken, true));
     }
 
-    /**
-     * The verifier as the provider wires it: the reader of every JWT a client signs, the algorithms of the
-     * provider, the proofs already seen in the memory of the test, and no nonce unless the test wires one.
-     */
     public static function verifier(?DpopNonceInterface $nonces = null, int $maximumAge = 60, int $leeway = 5): DpopProofVerifier
     {
         return new DpopProofVerifier(

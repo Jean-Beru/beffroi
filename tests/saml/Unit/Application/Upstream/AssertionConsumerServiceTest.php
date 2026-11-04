@@ -54,10 +54,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * spec/saml.md S-53 to S-57, section 6.14 steps 2 to 7: what the assertion consumer service makes of an assertion the
- * model accepted, the provider the request went to, an assertion in clear from a provider asked to encrypt, the
- * subject, the address, the claims, the telephone number, the groups and the methods, then the person, the core's
- * first sign-in on the adapters of its suite.
+ * spec/saml.md S-53 to S-57, section 6.14 steps 2 to 7
  */
 final class AssertionConsumerServiceTest extends TestCase
 {
@@ -87,8 +84,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-53: a provider the tenant no longer declares, since the request went to it, takes nothing, and the response is
-     * not read.
+     * S-53
      */
     #[Test]
     public function aProviderTheTenantNoLongerDeclaresIsRefused(): void
@@ -105,8 +101,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-53: the response is read for the provider the request went to and for that request, from the fields of the
-     * form as they came.
+     * S-53
      */
     #[Test]
     public function theResponseIsReadForTheProviderAndTheRequestRemembered(): void
@@ -123,7 +118,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-54, S-67, M-18: a provider asked to encrypt has its assertion in clear refused, whatever signatures held.
+     * S-54, S-67, M-18
      */
     #[Test]
     public function aClearAssertionOfAProviderAskedToEncryptIsRefused(): void
@@ -140,7 +135,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-54: an encrypted assertion of a provider asked to encrypt, and either of a provider that is not, are taken.
+     * S-54
      */
     #[Test]
     #[DataProvider('provideAssertionsTaken')]
@@ -167,7 +162,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-55, Core §8.3.7: the subject of a persistent NameID is its value, whatever attribute the declaration names.
+     * S-55, Core §8.3.7
      */
     #[Test]
     public function theSubjectOfAPersistentNameIdIsItsValue(): void
@@ -186,8 +181,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-55: a NameID of another format names the person by the one value of the attribute the declaration names, as
-     * Entra names one by its object identifier.
+     * S-55
      */
     #[Test]
     public function theSubjectOfAnotherNameIdIsTheAttributeTheDeclarationNames(): void
@@ -209,7 +203,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-55: a NameID that is not persistent and an attribute of the subject that holds not one value name nobody.
+     * S-55
      *
      * @param list<string> $values
      */
@@ -242,8 +236,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-55: a NameID that is not persistent from a provider whose declaration names no attribute of the subject, the
-     * address never standing for one, names nobody.
+     * S-55
      */
     #[Test]
     public function aNameIdThatIsNotPersistentWithoutAnAttributeOfTheSubjectIsRefused(): void
@@ -260,8 +253,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-55, decision 0029: a subject that is the address of the person, which a mailbox given again to another would
-     * hand them, is refused whatever names it and however it is spelt.
+     * S-55, decision 0029
      *
      * @param array<string, list<string>> $attributes
      */
@@ -294,7 +286,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-55: an address in a U-label the subject names is the same mailbox as the address in its A-label, and refused.
+     * S-55
      */
     #[Test]
     public function aSubjectThatIsTheAddressInAULabelIsRefused(): void
@@ -313,7 +305,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-55: a persistent NameID that holds an "@" and is another address than the person's is a subject as any other.
+     * S-55
      */
     #[Test]
     public function aSubjectThatIsAnotherAddressIsTaken(): void
@@ -329,8 +321,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-53, M-16: the refusal of an address the core refuses carries no exception of the core, whose message holds
-     * the address, since what the firewall logs is the whole chain.
+     * S-53, M-16
      */
     #[Test]
     public function theRefusalOfAnAddressCarriesNoValue(): void
@@ -349,8 +340,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-57, SAML Core §2.7.2: the SessionNotOnOrAfter of the authentication statement is handed on, the bound of the
-     * session the login opens.
+     * S-57, SAML Core §2.7.2
      */
     #[Test]
     public function theSessionNotOnOrAfterIsHandedOn(): void
@@ -367,8 +357,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-56, S-60, UTS #46: the address is written with its domain as its A-label in lower case, which the core's
-     * EmailAddress reads, the local part as the provider sent it.
+     * S-56, S-60, UTS #46
      */
     #[Test]
     #[DataProvider('provideSpellingsOfAnAddress')]
@@ -395,8 +384,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-56: an attribute of the e-mail that holds not one value, and an address whose domain the rule refuses, are
-     * refused.
+     * S-56
      *
      * @param list<string> $values
      */
@@ -431,8 +419,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-56, S-45: an attribute of the profile with one value fills its claim, one with several and one absent say
-     * nothing of it.
+     * S-56, S-45
      */
     #[Test]
     public function anAttributeOfTheProfileWithOneValueFillsItsClaim(): void
@@ -459,8 +446,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-56, S-45, S-60: the telephone number an attribute fills is handed apart, and is none of the claims of the core's
-     * provider.
+     * S-56, S-45, S-60
      */
     #[Test]
     public function theTelephoneNumberIsHandedApartFromTheClaims(): void
@@ -482,8 +468,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-56, S-45: the values of the groups attribute the declaration names, as the provider sent them; none when it
-     * names none.
+     * S-56, S-45
      *
      * @param list<string> $expected
      */
@@ -514,8 +499,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-57, OIDC Core §2: the AuthnInstant is when the person was authenticated, and the class of the authentication
-     * maps to the methods of RFC 8176 it names exactly.
+     * S-57, OIDC Core §2, RFC 8176
      */
     #[Test]
     public function theAuthnInstantAndTheMethodsAreThoseOfTheAuthenticationStatement(): void
@@ -535,8 +519,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * The acceptance of issue #784, S-56, issue #781: the person the assertion names is created at the first sign-in,
-     * with what the provider said of it, its telephone number unverified.
+     * S-56
      */
     #[Test]
     public function thePersonTheAssertionNamesIsCreated(): void
@@ -556,9 +539,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-56, S-45, issue #782: the groups the person joins are the groups of the tenant the declaration maps its values
-     * to, found by their names; a value the map does not name, and a name the tenant holds no group of, are none, and
-     * no group is created.
+     * S-56, S-45
      */
     #[Test]
     public function thePersonJoinsTheGroupsTheDeclarationMapsAndNoOther(): void
@@ -586,7 +567,7 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * S-56: a provider whose declaration maps no group writes no membership, and leaves those the person holds.
+     * S-56
      */
     #[Test]
     public function aProviderThatMapsNoGroupWritesNoMembership(): void
@@ -638,8 +619,6 @@ final class AssertionConsumerServiceTest extends TestCase
     }
 
     /**
-     * What the service provider made of an assertion of the provider of the suite, for the person tests write.
-     *
      * @param array<string, string> $claims
      * @param list<string> $groups
      */

@@ -16,7 +16,7 @@ use function str_repeat;
 final class CodeChallengeTest extends TestCase
 {
     /**
-     * RFC 7636 §4.2: code-challenge = 43*128unreserved, unreserved = ALPHA / DIGIT / "-" / "." / "_" / "~".
+     * RFC 7636 §4.2
      */
     #[Test]
     #[DataProvider('provideValidChallenges')]
@@ -68,9 +68,7 @@ final class CodeChallengeTest extends TestCase
     }
 
     /**
-     * RFC 7636 §4.6: the challenge asks the method it was made with, hands it what it holds and what the
-     * token endpoint received, and answers what the method answered. The transformation is the method's,
-     * and it is tested where it is written (Sha256CodeChallengeMethodTest).
+     * RFC 7636 §4.6
      */
     #[Test]
     public function itAsksTheMethodItWasMadeWith(): void
@@ -89,7 +87,7 @@ final class CodeChallengeTest extends TestCase
     }
 
     /**
-     * RFC 7636 §4.6: what the method refuses, the challenge refuses.
+     * RFC 7636 §4.6
      */
     #[Test]
     public function itRefusesWhatTheMethodRefuses(): void

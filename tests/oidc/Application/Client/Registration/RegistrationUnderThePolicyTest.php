@@ -29,9 +29,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 7591 §3.2.1: the provider assigns a secret exactly when the registered method proves one. The one
- * thing that reads a registration the provider is about to write is where that is decided, so a creation
- * and a replacement decide it the same way.
+ * RFC 7591 §3.2.1
  */
 final class RegistrationUnderThePolicyTest extends TestCase
 {
@@ -73,8 +71,7 @@ final class RegistrationUnderThePolicyTest extends TestCase
     }
 
     /**
-     * A client that already holds the secret its method proves keeps it: nothing is drawn, so nothing is
-     * answered, which is what makes a replacement leave a secret alone (RFC 7592 §2.2).
+     * RFC 7592 §2.2
      */
     #[Test]
     public function aClientThatAlreadyHoldsTheSecretItsMethodProvesKeepsIt(): void
@@ -92,10 +89,6 @@ final class RegistrationUnderThePolicyTest extends TestCase
         static::assertNull($kept->drawnSecret);
     }
 
-    /**
-     * A secret kept in a shape the registered method does not verify against is no secret for it, so one is
-     * drawn: a client that registers the method signing with its secret cannot sign with a hash.
-     */
     #[Test]
     public function aClientThatHoldsASecretOfAnotherShapeIsHandedOneItsMethodCanUse(): void
     {
@@ -114,9 +107,7 @@ final class RegistrationUnderThePolicyTest extends TestCase
     }
 
     /**
-     * RFC 7591 §3.1.1: what an authorisation put in front of the members the client sent is kept apart from
-     * them as well as among them, so that a replacement, read from what the client sends (RFC 7592 §2.2),
-     * reads it in front of them again.
+     * RFC 7591 §3.1.1, RFC 7592 §2.2
      */
     #[Test]
     public function whatAnAuthorisationPutInFrontOfTheMembersIsKeptApart(): void
@@ -143,10 +134,6 @@ final class RegistrationUnderThePolicyTest extends TestCase
         );
     }
 
-    /**
-     * And a registration nothing was put in front of keeps nothing apart, which is every mode that reads no
-     * statement.
-     */
     #[Test]
     public function aRegistrationNothingWasPutInFrontOfKeepsNothingApart(): void
     {
@@ -160,7 +147,7 @@ final class RegistrationUnderThePolicyTest extends TestCase
     }
 
     /**
-     * Decision 0017: a tenant that has no policy writes nothing on the registration it has none for.
+     * Decision 0017
      */
     #[Test]
     public function aTenantWithoutAPolicyWritesNothingOnTheRegistration(): void
@@ -175,9 +162,7 @@ final class RegistrationUnderThePolicyTest extends TestCase
     }
 
     /**
-     * RFC 7591 §2 (modules oidcc-refresh-token and -refresh-token-rp-key-rotation): the registration
-     * request of the plan carries no "scope" member at all, and what such a client is registered with is
-     * the set its tenant wrote, read from the policy that wrote it.
+     * RFC 7591 §2
      */
     #[Test]
     public function aRegistrationThatNamesNoScopeTakesWhatTheTenantWrote(): void
@@ -199,11 +184,6 @@ final class RegistrationUnderThePolicyTest extends TestCase
         );
     }
 
-    /**
-     * A client that named its own scopes keeps them, and the policy wrote nothing on it: the row keeps what
-     * the policy wrote in front of what the client sent, so a default written over a named scope would
-     * outlive the request that refused to take it.
-     */
     #[Test]
     public function aRegistrationThatNamesItsOwnScopeKeepsIt(): void
     {
@@ -222,9 +202,7 @@ final class RegistrationUnderThePolicyTest extends TestCase
     }
 
     /**
-     * Decision 0009: a default set of scopes is held to what the tenant hands out tokens for, like every
-     * scope a client registers, so a tenant that writes one it does not announce refuses every registration
-     * rather than granting one. The refusal names the policy as the source, there being no client to blame.
+     * Decision 0009
      */
     #[Test]
     public function aDefaultSetOfScopesTheTenantDoesNotOfferIsRefused(): void
@@ -243,12 +221,9 @@ final class RegistrationUnderThePolicyTest extends TestCase
     }
 
     /**
-     * OIDC Registration §5 (module oidcc-registration-sector-bad): a client that claims a sector publishes,
-     * on the host of that sector, the array of the redirection URIs of its clients, and every URI it
-     * registers is in it. The four ways that claim fails are one refusal, "invalid_client_metadata" naming
-     * the member, because a sector a client cannot back is a sector it could have taken from anybody.
+     * OIDC Registration §5
      *
-     * @param list<string> $document the redirection URIs the document lists
+     * @param list<string> $document
      */
     #[Test]
     #[DataProvider('provideSectorsThatDoNotHold')]
@@ -310,10 +285,7 @@ final class RegistrationUnderThePolicyTest extends TestCase
     }
 
     /**
-     * CIBA Core §4: a client of the backchannel flow registers no redirection URI, so what its sector is
-     * read from is its "jwks_uri", and that is what the document of a sector it claims must list. The
-     * document of OIDC Registration §5 holds the "jwks_uris" of its clients as it holds their
-     * "redirect_uris", and a client whose keys it does not name has not backed its claim.
+     * CIBA Core §4, OIDC Registration §5
      */
     #[Test]
     public function aBackchannelClientPublishesItsKeysInTheDocumentOfItsSector(): void
@@ -347,9 +319,7 @@ final class RegistrationUnderThePolicyTest extends TestCase
     }
 
     /**
-     * CIBA Core §4: a client registered for the backchannel grant and for a pairwise "sub" registers a
-     * "sector_identifier_uri" or a "jwks_uri", and one that registers neither is refused at registration
-     * rather than served a "sub" nobody can compute.
+     * CIBA Core §4
      */
     #[Test]
     public function aBackchannelClientThatSaysItsSectorNoWayIsRefused(): void
@@ -382,10 +352,6 @@ final class RegistrationUnderThePolicyTest extends TestCase
         ];
     }
 
-    /**
-     * The claim held: the document names what the client registers, so the registration is written and the
-     * sector is the host the document is served on.
-     */
     #[Test]
     public function aSectorTheDocumentBacksIsRegistered(): void
     {
@@ -408,10 +374,6 @@ final class RegistrationUnderThePolicyTest extends TestCase
         static::assertNull($kept->secret);
     }
 
-    /**
-     * A client that registers no "sector_identifier_uri" claims no sector, so nothing is read on its behalf:
-     * the provider makes no outbound request on a URL nobody wrote.
-     */
     #[Test]
     public function aClientThatClaimsNoSectorHasNothingRead(): void
     {
@@ -431,7 +393,7 @@ final class RegistrationUnderThePolicyTest extends TestCase
 
     /**
      * @param array<string, mixed> $members
-     * @param list<ClientMetadataSourceInterface> $inFront what an authorisation put in front of the members
+     * @param list<ClientMetadataSourceInterface> $inFront
      */
     private function read(
         array $members,

@@ -14,9 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Issue #451, architecture §4.3, §5.2: what one application holds of a person, behind each line of what
- * they agreed to. What taking it back revokes is the consent and everything issued under it, in one act,
- * which is ConsentRevocation and is tested where it lives; this page asks for it and says what it means.
+ * Architecture §4.3, §5.2
  */
 final class AccountApplicationTest extends BrowserTestCase
 {
@@ -115,15 +113,10 @@ final class AccountApplicationTest extends BrowserTestCase
         return self::string(self::redirectedQuery($this->browser->getResponse())['code'] ?? null);
     }
 
-    /**
-     * A confidential client is issued something to renew with without asking for "offline_access", which
-     * a public one has to ask for and this deployment offers to none of them (RefreshTokenDue).
-     */
     private function allowAndTakeTheTokens(User $user): void
     {
         self::signingKey();
         $code = $this->allow($user, self::CONFIDENTIAL, 'https://legacy.test/callback');
-        // this one names itself in the body (client_secret_post), which is its registered method
         $this->browser->request('POST', '/token', [
             'grant_type' => 'authorization_code',
             'code' => $code,

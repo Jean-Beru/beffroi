@@ -11,11 +11,6 @@ use Beffroi\Core\Application\Record\DeadRecordRemoval;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
-/**
- * Drops the rows that can no longer do anything (issue #177), in the shape every timed step of the provider
- * has: bounded by the stores, so a backlog is worked through over several ticks, and silent when there was
- * nothing to drop.
- */
 #[AsMessageHandler]
 final readonly class ForgetTheRecordsThatAreDeadHandler
 {
@@ -31,7 +26,7 @@ final readonly class ForgetTheRecordsThatAreDeadHandler
         try {
             $tenant = $this->tenants->provide();
         } catch (TenantNotSynchronizedException) {
-            // before the first provisioning there is no row to drop, and a tick is not the place to say so
+            // Nothing to do before the first provisioning, and a tick is not the place to say so.
             return;
         }
         $forgotten = $this->removal->removeDead($tenant);

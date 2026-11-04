@@ -14,13 +14,12 @@ use function strtr;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * RFC 7662 §2, RFC 9701 §4 and §5, architecture §4.12: the introspection endpoint over HTTP, with the
- * opaque tokens of a client registered for them, end to end from the code flow.
+ * RFC 7662 §2, RFC 9701 §4, §5, Architecture §4.12
  */
 final class IntrospectionControllerTest extends BrowserTestCase
 {
     /**
-     * RFC 7662 §2.1: POST only.
+     * RFC 7662 §2.1
      */
     #[Test]
     public function theIntrospectionEndpointIsPostOnly(): void
@@ -35,7 +34,7 @@ final class IntrospectionControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7662 §2.3, RFC 6749 §5.2: a caller that does not authenticate is invalid_client, 401, challenged.
+     * RFC 7662 §2.3, RFC 6749 §5.2
      */
     #[Test]
     public function aWrongSecretIsChallenged(): void
@@ -59,8 +58,7 @@ final class IntrospectionControllerTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §4.6: the token endpoint hands a client registered for opaque tokens a value with no
-     * dot, which opens UserInfo like a JWT would.
+     * Architecture §4.6
      */
     #[Test]
     public function aClientRegisteredForOpaqueTokensGetsOneThatOpensUserInfo(): void
@@ -81,7 +79,7 @@ final class IntrospectionControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7662 §2.2: the token described to the client it was issued to, as JSON, never cached.
+     * RFC 7662 §2.2
      */
     #[Test]
     public function anActiveTokenIsDescribedToItsClient(): void
@@ -115,7 +113,7 @@ final class IntrospectionControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7662 §2.2: to another client, the same token is inactive and nothing else.
+     * RFC 7662 §2.2
      */
     #[Test]
     public function toAnotherClientTheTokenIsInactive(): void
@@ -143,8 +141,7 @@ final class IntrospectionControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9701 §4 and §5: the Accept header asks for the signed response, served with its media type and
-     * verifiable against the JWK Set, with the members under "token_introspection".
+     * RFC 9701 §4, §5
      */
     #[Test]
     public function theResponseIsSignedWhenTheAcceptHeaderAsksForIt(): void
@@ -180,8 +177,7 @@ final class IntrospectionControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9701 §6 and §7: the provider determines what a signed response is signed with, and its document
-     * announces that algorithm, the one the response carries, and no other it could sign with (issue #839).
+     * RFC 9701 §6, §7
      */
     #[Test]
     public function theDocumentAnnouncesTheAlgorithmASignedResponseCarries(): void
@@ -210,7 +206,7 @@ final class IntrospectionControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7009 and RFC 7662 together: a token given back is inactive from then on, and UserInfo refuses it.
+     * RFC 7009, RFC 7662
      */
     #[Test]
     public function aRevokedTokenIsInactiveAndOpensNothing(): void
@@ -252,9 +248,7 @@ final class IntrospectionControllerTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §4.9 and issue #150: what a logout ends, it ends for an "at+jwt" too, and the
-     * endpoint that tells a resource server so is this one. The opaque token of the same session is
-     * inactive for the same reason, its record naming the session as the "sid" of a JWT does.
+     * Architecture §4.9
      */
     #[Test]
     public function aTokenOfASessionThatEndedIsInactive(): void
@@ -284,10 +278,6 @@ final class IntrospectionControllerTest extends BrowserTestCase
         );
     }
 
-    /**
-     * The access token of the demo client, which registers no format and therefore receives an "at+jwt"
-     * (architecture §4.6), from the code flow of the browser already signed in.
-     */
     private function jwtAccessToken(): string
     {
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));
@@ -309,9 +299,6 @@ final class IntrospectionControllerTest extends BrowserTestCase
         return self::string(self::json($response)['access_token']);
     }
 
-    /**
-     * The access token of the opaque client, from the code flow of alice.
-     */
     private function opaqueAccessToken(): string
     {
         self::signingKey();

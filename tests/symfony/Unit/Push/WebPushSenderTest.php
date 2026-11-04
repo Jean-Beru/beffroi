@@ -14,9 +14,7 @@ use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\HttpClient\MockHttpClient;
 
 /**
- * RFC 8292 §2.1: the "sub" of the token this provider signs for a push service is where that service reaches
- * the operator. The tree refuses an empty one written, and an environment variable is a value only once the
- * container runs, so the sender refuses one when it is built (issue #913).
+ * RFC 8292 §2.1
  */
 final class WebPushSenderTest extends TestCase
 {

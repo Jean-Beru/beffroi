@@ -10,7 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.4: the prefixes of an InclusiveNamespaces PrefixList (Exclusive XML Canonicalization §4).
+ * Section 5.4, Exclusive XML Canonicalization §4
  */
 final class InclusiveNamespacesTest extends TestCase
 {
@@ -32,7 +32,7 @@ final class InclusiveNamespacesTest extends TestCase
     }
 
     /**
-     * Section 5.4: whitespace-separated, as the PrefixList attribute carries it.
+     * Section 5.4
      *
      * @param list<string> $prefixes
      */

@@ -12,28 +12,12 @@ use Symfony\Component\Config\Definition\BaseNode;
 use Symfony\Component\Config\Definition\PrototypedArrayNode;
 
 /**
- * A list of the configuration that an environment variable may carry whole (decision 0030): an array node accepts no
- * placeholder in symfony/config 8.2, so this one is the node Symfony builds from its definition, its shape, its
- * defaults and its documentation unchanged, with one difference. While a placeholder stands for the list, the tree
- * checks nothing of it, a placeholder being a value only at runtime; the list is held to the same tree then, by the
- * service it reaches (EnvironmentListDefinition::normalized()). A list written in the file is checked as Symfony
- * checks it.
- *
- * It is built by copying the state of the node Symfony built, which is what keeps every rule of the definition
- * without restating one of them; it is the bridge until an array node of Symfony accepts a placeholder itself.
+ * Accepts a placeholder for the whole list, which an array node of symfony/config 8.2 refuses.
  */
 final class EnvironmentListNode extends PrototypedArrayNode
 {
-    /**
-     * Whether a string written in the file is the list of that one string. A placeholder is never wrapped: it stands
-     * for the list whole, whatever the environment carries.
-     */
     private bool $wrapsAString = false;
 
-    /**
-     * The node Symfony built, as a list the environment may carry: every property of the three classes copied, and
-     * the prototype made a child of the copy.
-     */
     public static function of(PrototypedArrayNode $built, bool $wrapsAString = false): self
     {
         $list = new ReflectionClass(self::class)->newInstanceWithoutConstructor();

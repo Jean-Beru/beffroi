@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.7: saveXml() returned false (section 6.5). A consumer catches the base class when it does not care which rule fired.
+ * Section 5.7, section 6.5
  */
 final class SerializationFailedTest extends TestCase
 {

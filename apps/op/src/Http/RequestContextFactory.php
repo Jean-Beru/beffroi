@@ -12,11 +12,6 @@ use Psr\Clock\ClockInterface;
 use function sprintf;
 use Symfony\Component\HttpFoundation\Request;
 
-/**
- * The RequestContext of the core (architecture §3.5): for an HTTP request, or for a process that is no
- * request, the console naming its command and the user of the shell, the scheduler naming its schedule,
- * in the place of a user agent and with no address. Nothing is enriched here.
- */
 final readonly class RequestContextFactory
 {
     public function __construct(
@@ -39,10 +34,6 @@ final readonly class RequestContextFactory
         return new RequestContext($this->clock->now(), null, sprintf('beffroi-scheduler/%s (%s)', $schedule, self::host()));
     }
 
-    /**
-     * Who typed the command: the user behind a sudo first, then the user of the shell, then the owner of
-     * the script as the last resort.
-     */
     private static function shellUser(): string
     {
         foreach (['SUDO_USER', 'USER', 'USERNAME'] as $variable) {

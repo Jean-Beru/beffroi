@@ -23,16 +23,6 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\StreamableInputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * The password of a user (architecture §5.5), asked on the terminal or read from the standard input;
- * never an argument nor an option.
- *
- * What a password has to be, and what a list of compromised passwords says of it, are the rules of the
- * core: this command gets them by construction (PlainPassword, UserProvisioner::setPassword()) rather
- * than by remembering them, and prints whichever of them pronounced in one flat line. A list that could
- * not be asked is one of them: an unknown is not a clean answer (decision 0006), so nothing is written
- * and the operator poses the password again.
- */
 #[AsCommand(
     name: 'beffroi:user:set-password',
     description: 'Set or replace the password of a user, asked on the terminal or read from the standard input.',
@@ -80,8 +70,6 @@ final readonly class UserSetPasswordCommand
                 new PlainPassword($password, PasswordLength::under($user->tenant->loginFloor)),
             );
         } catch (PasswordRefusedException|CredentialEnrolmentFailedException $exception) {
-            // what a password has to be, what a list of compromised passwords said of this one, and the
-            // tenant that holds no password at all (issue #327)
             $io->error($exception->getMessage());
 
             return Command::INVALID;
@@ -92,9 +80,6 @@ final readonly class UserSetPasswordCommand
         return Command::SUCCESS;
     }
 
-    /**
-     * The first line of the standard input.
-     */
     private static function fromStandardInput(InputInterface $input): string
     {
         $stream = $input instanceof StreamableInputInterface ? $input->getStream() : null;
@@ -103,9 +88,6 @@ final readonly class UserSetPasswordCommand
         return $contents === false ? '' : preg_replace('/\r?\n.*$/Ds', '', $contents) ?? '';
     }
 
-    /**
-     * Null when it could not be asked or was not confirmed, which is said.
-     */
     private static function fromTerminal(SymfonyStyle $io, InputInterface $input): ?string
     {
         if (! $input->isInteractive()) {

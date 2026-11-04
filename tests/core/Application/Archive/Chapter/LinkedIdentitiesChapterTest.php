@@ -15,11 +15,6 @@ use function array_column;
 use DateTimeImmutable;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #453: the identities a person has at upstream providers, in the archive they ask for. The claims
- * are in the file because they are what this provider holds of that person, received from somewhere else:
- * an answer that left out what a federation sent would be an answer about our own forms.
- */
 final class LinkedIdentitiesChapterTest extends TestCase
 {
     private const array CLAIMS = [
@@ -53,9 +48,6 @@ final class LinkedIdentitiesChapterTest extends TestCase
         );
     }
 
-    /**
-     * The most recently linked first, which is the order the port answers in.
-     */
     #[Test]
     public function theIdentitiesAreMostRecentlyLinkedFirst(): void
     {

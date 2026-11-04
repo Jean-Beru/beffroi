@@ -12,14 +12,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.5: what the validator of a response accepted, values the consumer reads without the document.
+ * Section 5.5
  */
 final class AcceptedAssertionTest extends TestCase
 {
     use AssertionFixtures;
 
     /**
-     * Section 5.5, M-18: the ID of the response, the assertion, its coverage and whether it arrived encrypted, as given.
+     * Section 5.5, M-18
      */
     #[Test]
     public function itKeepsItsValues(): void

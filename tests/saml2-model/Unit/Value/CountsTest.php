@@ -10,12 +10,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 7, M-17: the counts of the package in one place, which the readers and the objects both check (M-15).
+ * Section 7, M-17, M-15
  */
 final class CountsTest extends TestCase
 {
     /**
-     * M-17: a count at its bound passes.
+     * M-17
      */
     #[Test]
     public function itAcceptsACountAtItsBound(): void
@@ -32,7 +32,7 @@ final class CountsTest extends TestCase
     }
 
     /**
-     * §9.2 row 36, M-17: one over its bound is LimitExceeded, with the message the caller gives, which names the bound.
+     * §9.2 row 36, M-17
      */
     #[Test]
     public function itRefusesACountOverItsBound(): void

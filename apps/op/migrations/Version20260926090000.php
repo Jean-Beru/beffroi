@@ -8,12 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * The device authorization requests (RFC 8628 §3.2): the code a client polls with as the key, the code its
- * user types under a unique constraint, what the request asked for, where the appliance asked from, and
- * what the user answered. Beside them, the origin of a refresh token family, which is now a record read
- * once of either kind and no longer an authorization code alone.
- */
 final class Version20260926090000 extends AbstractMigration
 {
     public function getDescription(): string

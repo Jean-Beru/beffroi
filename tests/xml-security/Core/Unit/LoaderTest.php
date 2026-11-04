@@ -27,8 +27,7 @@ use SensitiveParameterValue;
 use function str_repeat;
 
 /**
- * Section 6.1, in order, against the hostile corpus of section 9.2: each fixture loaded with the SAML stack's
- * IdAttributes and the default Limits, each asserting the named exception and, where libxml gives one, the line.
+ * Section 6.1, section 9.2
  */
 final class LoaderTest extends TestCase
 {
@@ -40,11 +39,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 7: a Document holding the root and the index, recognised by owning().
-     */
-    /**
-     * Section 5: the bytes are a SensitiveParameter, so that the trace of a refusal never carries them, a decrypted
-     * plaintext among them.
+     * Section 5
      */
     #[Test]
     public function itKeepsTheBytesItRefusesOutOfTheTrace(): void
@@ -66,6 +61,9 @@ final class LoaderTest extends TestCase
         }
     }
 
+    /**
+     * Section 6.1 step 7
+     */
     #[Test]
     public function itLoadsADocumentAndIndexesItsIds(): void
     {
@@ -80,7 +78,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * Section 7, §9.5: a document at the six default bounds at once loads; every bound is a strict comparison.
+     * Section 7, §9.5
      */
     #[Test]
     public function itLoadsADocumentAtTheSixDefaultBounds(): void
@@ -93,7 +91,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * I-15, section 6.1: whitespace-only text nodes, CDATA sections and comments are kept exactly as parsed.
+     * I-15, section 6.1
      */
     #[Test]
     public function itKeepsWhitespaceCdataAndComments(): void
@@ -106,7 +104,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * I-5, section 12: a UTF-8 byte order mark is accepted, Entra's federation metadata starts with one.
+     * I-5, section 12
      */
     #[Test]
     public function itAcceptsAUtf8ByteOrderMark(): void
@@ -119,7 +117,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 5, I-2: an xi:include element is an ordinary element without the flag; nothing is included.
+     * §9.2 row 5, I-2
      */
     #[Test]
     public function itLoadsAnXincludeElementWithoutIncludingAnything(): void
@@ -137,7 +135,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 24, I-8: a letter is an NCName start character.
+     * §9.2 row 24, I-8
      */
     #[Test]
     public function itAcceptsALetterAsAnIdStartCharacter(): void
@@ -150,7 +148,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 25, section 5.3: unregistered attributes are not IDs, duplicated or not.
+     * §9.2 row 25, section 5.3
      */
     #[Test]
     public function itIgnoresAnIdAttributeInAnUnregisteredNamespace(): void
@@ -163,8 +161,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 rows 1 to 4, I-1: a DOCTYPE, wherever it sits, a comment or a CDATA section included, the entities it
-     * declares never read.
+     * §9.2 rows 1 to 4, I-1
      */
     #[Test]
     #[DataProvider('provideDoctypes')]
@@ -197,7 +194,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * Section 9.1, I-1: the originals of Canonical XML 1.0 §3 that carry a document type declaration.
+     * Section 9.1, I-1, Canonical XML 1.0 §3
      */
     #[Test]
     #[DataProvider('provideOriginalVectorsWithADoctype')]
@@ -229,7 +226,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * Section 9.1, I-5: the original of Canonical XML 1.0 §3.6 declares ISO-8859-1.
+     * Section 9.1, I-5, Canonical XML 1.0 §3.6
      */
     #[Test]
     public function itRefusesTheOriginalVectorThatDeclaresIso88591(): void
@@ -246,7 +243,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 6, I-7: one byte over maxBytes, before anything else reads the input.
+     * §9.2 row 6, I-7
      */
     #[Test]
     public function itRefusesOneByteOverMaxBytes(): void
@@ -263,7 +260,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 7, I-7: the root is at depth 1, an element at depth 65 is over the default.
+     * §9.2 row 7, I-7
      */
     #[Test]
     public function itRefusesDepth65(): void
@@ -280,7 +277,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 8, section 7: libxml refuses depth 256 during parsing, before the traversal runs.
+     * §9.2 row 8, section 7
      */
     #[Test]
     public function itRefusesDepth300AsMalformed(): void
@@ -297,7 +294,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 9, I-7 and I-8: one over each of the other bounds, the bound named.
+     * §9.2 row 9, I-7, I-8
      *
      * @param class-string<RefusedXml> $exception
      */
@@ -344,8 +341,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 10, I-5: a UTF-16 or UTF-32 byte order mark, before parsing; libxml would accept UTF-16 and report
-     * UTF-8 (section 13).
+     * §9.2 row 10, I-5, section 13
      */
     #[Test]
     #[DataProvider('provideByteOrderMarks')]
@@ -374,7 +370,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 11, I-5: libxml converts and parses a declared ISO-8859-1; the declaration is read after parsing.
+     * §9.2 row 11, I-5
      */
     #[Test]
     public function itRefusesADeclaredEncodingOtherThanUtf8(): void
@@ -391,7 +387,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 12, I-3: a declared UTF-16 over UTF-8 bytes, a mismatch libxml refuses itself (code 81).
+     * §9.2 row 12, I-3
      */
     #[Test]
     public function itRefusesADeclaredUtf16OverUtf8BytesAsMalformed(): void
@@ -408,7 +404,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 13, I-5: bytes that are not UTF-8, before parsing.
+     * §9.2 row 13, I-5
      */
     #[Test]
     #[DataProvider('provideInvalidUtf8')]
@@ -435,7 +431,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 14, I-3: XML 1.1 parses with a level-1 warning, and a warning is a refusal.
+     * §9.2 row 14, I-3
      */
     #[Test]
     public function itRefusesXml11AsADiagnostic(): void
@@ -452,8 +448,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 rows 15 to 17, I-3: an unbound prefix, an empty prefixed namespace, a rebound xml prefix and a reused
-     * xmlns namespace parse with a level-2 diagnostic, and a diagnostic is a refusal.
+     * §9.2 rows 15 to 17, I-3
      */
     #[Test]
     #[DataProvider('provideNamespaceDiagnostics')]
@@ -498,7 +493,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 18, I-6: a relative namespace URI, which libxml parses without a diagnostic.
+     * §9.2 row 18, I-6
      */
     #[Test]
     public function itRefusesARelativeNamespaceUri(): void
@@ -515,7 +510,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 rows 19 and 20, I-3, I-16: malformed input, with libxml's code, line and column and never its message.
+     * §9.2 rows 19 and 20, I-3, I-16
      */
     #[Test]
     #[DataProvider('provideMalformedInputs')]
@@ -564,7 +559,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 21, I-8: two saml:Assertion elements with the same ID refuse the whole document.
+     * §9.2 row 21, I-8
      */
     #[Test]
     public function itRefusesTwoAssertionsWithTheSameId(): void
@@ -581,7 +576,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 22, I-8, section 6.2: one ID space over every registered attribute at once.
+     * §9.2 row 22, I-8, section 6.2
      */
     #[Test]
     public function itRefusesAnAssertionIdEqualToASignatureId(): void
@@ -598,7 +593,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 row 23, I-8: an ID that is not an NCName (Namespaces in XML 1.0 §3).
+     * §9.2 row 23, I-8, Namespaces in XML 1.0 §3
      */
     #[Test]
     #[DataProvider('provideInvalidIds')]
@@ -627,7 +622,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 4: an empty input is refused before the parser is called, which would throw a ValueError.
+     * Section 6.1 step 4
      */
     #[Test]
     public function itRefusesAnEmptyInput(): void
@@ -641,7 +636,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * I-3: the internal-errors mode is restored after a load, on the success path.
+     * I-3
      */
     #[Test]
     public function itRestoresAnInternalErrorsModeOfFalseAfterALoad(): void
@@ -657,7 +652,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * I-3: the internal-errors mode is restored after a refusal, on the exception path.
+     * I-3
      */
     #[Test]
     public function itRestoresAnInternalErrorsModeOfFalseAfterARefusal(): void
@@ -676,8 +671,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * I-3, section 6.1 step 4: a full buffer is emptied by a load and the mode is kept; a host that reads the
-     * buffer reads it before calling the loader.
+     * I-3, section 6.1 step 4
      */
     #[Test]
     public function itEmptiesAFullBufferOnALoad(): void
@@ -694,7 +688,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * I-3: the buffer is emptied after a refusal too; the diagnostic that refused is not left behind.
+     * I-3
      */
     #[Test]
     public function itEmptiesTheBufferAfterARefusal(): void
@@ -714,8 +708,7 @@ final class LoaderTest extends TestCase
     }
 
     /**
-     * §9.2 rows 4, 6, 10 and 13, section 6.1 steps 1 to 3: the size, the bytes and the DOCTYPE are checked before
-     * parsing, which the untouched buffer of libxml shows.
+     * §9.2 rows 4, 6, 10 and 13, section 6.1 steps 1 to 3
      */
     #[Test]
     #[DataProvider('provideRefusalsBeforeParsing')]

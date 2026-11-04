@@ -18,13 +18,12 @@ use const ZLIB_STREAM_END;
 use const ZLIB_SYNC_FLUSH;
 
 /**
- * §9.2 row 22, B-7: the bomb the tests of the inflater are given is what it says, measured without the inflater under
- * test, by zlib itself, in chunks, none of them kept.
+ * §9.2 row 22, B-7
  */
 final class DeflateBombTest extends TestCase
 {
     /**
-     * §9.2 row 22, RFC 1951: about 1 MiB that inflates to 1 GiB, as one complete raw DEFLATE stream.
+     * §9.2 row 22, RFC 1951
      */
     #[Test]
     public function itInflatesAMebibyteToAGibibyte(): void

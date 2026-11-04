@@ -20,8 +20,7 @@ use Twig\Environment;
 use Twig\Loader\ArrayLoader;
 
 /**
- * Architecture §5.4: the check path of the passkey login, reached only when no firewall took the POST,
- * sends the browser back to the login page and verifies nothing.
+ * Architecture §5.4
  */
 final class PasskeyLoginControllerTest extends TestCase
 {

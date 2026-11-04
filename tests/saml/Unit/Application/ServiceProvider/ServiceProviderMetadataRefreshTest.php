@@ -28,9 +28,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * spec/saml.md section 6.2: the metadata of a service provider registered the first time and refreshed every time
- * after, by the declarations of the configuration, the reader of the model and a fetcher of the test, at
- * 2026-09-15T10:00:00Z.
+ * spec/saml.md section 6.2
  */
 final class ServiceProviderMetadataRefreshTest extends TestCase
 {
@@ -55,8 +53,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * The acceptance of issue #729: a SimpleSAMLphp service provider is registered from its metadata, the bytes that
-     * were read kept (S-8).
+     * S-8
      */
     #[Test]
     public function aServiceProviderIsRegisteredFromItsMetadata(): void
@@ -78,7 +75,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 6: the same bytes read again write nothing.
+     * Section 6.2 step 6
      */
     #[Test]
     public function theSameDocumentReadAgainWritesNothing(): void
@@ -100,7 +97,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 6: a newer document takes the place of the accepted one.
+     * Section 6.2 step 6
      */
     #[Test]
     public function aNewerDocumentIsAccepted(): void
@@ -123,7 +120,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-6, the acceptance of issue #729: an expired document is refused, the accepted one kept.
+     * S-6
      */
     #[Test]
     public function anExpiredDocumentIsRefusedAndTheAcceptedOneKept(): void
@@ -150,8 +147,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-6, the acceptance of issue #729: a document read under the signers the declaration pins that is older than the
-     * one accepted is refused, the accepted one kept, an older document signed by the same key verifying as well.
+     * S-6
      */
     #[Test]
     public function aSignedDocumentOlderThanTheAcceptedOneIsRefusedAndTheAcceptedOneKept(): void
@@ -175,10 +171,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-6, the security review of 20 October 2026 (finding B-1): a document its channel vouches for replaces the
-     * accepted one whatever its validUntil, so that a document a metadata host wrote with a far validUntil while it was
-     * held by somebody else gives way to the next one the service provider publishes there, the genuine SimpleSAMLphp
-     * file carrying none.
+     * S-6, finding B-1 of the security review of 20 October 2026
      */
     #[Test]
     #[DataProvider('provideDocumentsTrustedByTheirChannel')]
@@ -219,8 +212,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-6, section 6.2, forgotten: a service provider whose signed metadata went back to an earlier validUntil, refused
-     * for it, is registered again from them once an operator forgot the document accepted.
+     * S-6, section 6.2, forgotten
      */
     #[Test]
     public function aServiceProviderForgottenIsRegisteredAgainFromAnOlderSignedDocument(): void
@@ -240,8 +232,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-7, the acceptance of issue #729: a service provider asking for encryption without an encryption key in its
-     * metadata is refused at registration.
+     * S-7
      */
     #[Test]
     public function aServiceProviderAskingForEncryptionWithoutAKeyIsRefusedAtRegistration(): void
@@ -262,7 +253,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-7: a service provider asking for encryption whose metadata hold a key for it is registered.
+     * S-7
      */
     #[Test]
     public function aServiceProviderAskingForEncryptionWithAKeyIsRegistered(): void
@@ -278,7 +269,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-7: a refresh that drops the key for encryption is refused, the accepted document kept.
+     * S-7
      */
     #[Test]
     public function aRefreshThatDropsTheEncryptionKeyIsRefused(): void
@@ -297,8 +288,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-11, the acceptance of issue #730: Entra's guest federation, which publishes no key, declared without
-     * `signs_authn_requests: false` is refused at its registration.
+     * S-11
      */
     #[Test]
     public function aServiceProviderThatSignsWithoutAKeyInItsMetadataIsRefusedAtRegistration(): void
@@ -319,7 +309,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-11, S-9: Entra's guest federation declared unsigned, its metadata saying nothing of a signature, needs no key.
+     * S-11, S-9
      */
     #[Test]
     public function aServiceProviderDeclaredUnsignedNeedsNoKeyInItsMetadata(): void
@@ -335,8 +325,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-11, S-9: a provider declared unsigned whose metadata say `AuthnRequestsSigned="true"` needs a signature all the
-     * same, so a key to verify it by.
+     * S-11, S-9
      */
     #[Test]
     public function aServiceProviderDeclaredUnsignedWhoseMetadataSayItSignsIsRefusedWithoutAKey(): void
@@ -353,7 +342,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-11: a service provider that signs, whose metadata hold the key for it, is registered.
+     * S-11
      */
     #[Test]
     public function aServiceProviderThatSignsWithAKeyInItsMetadataIsRegistered(): void
@@ -369,7 +358,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-11: a refresh that drops the key for signing is refused, the accepted document kept.
+     * S-11
      */
     #[Test]
     public function aRefreshThatDropsTheSigningKeyIsRefused(): void
@@ -387,9 +376,6 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
         static::assertSame(ServiceProviderDocuments::simpleSamlPhp(), $this->acceptedSimpleSamlPhp()->document);
     }
 
-    /**
-     * A service provider that does not ask for encryption needs no key for it.
-     */
     #[Test]
     public function aServiceProviderThatAsksForNoEncryptionNeedsNoKeyForIt(): void
     {
@@ -404,7 +390,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-5: the metadata of another entity than the one declared are refused.
+     * S-5
      */
     #[Test]
     public function theMetadataOfAnotherEntityAreRefused(): void
@@ -430,7 +416,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 2: a location that cannot be read is a refusal, returned rather than thrown.
+     * Section 6.2 step 2
      */
     #[Test]
     public function aLocationThatCannotBeReadIsRefused(): void
@@ -444,8 +430,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-5: a declaration that pins a signer has its metadata read signed, and a document of the channel alone is
-     * refused.
+     * S-5
      */
     #[Test]
     public function aDeclarationThatPinsASignerRefusesAnUnsignedDocument(): void
@@ -468,7 +453,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * S-5: a document signed by the pinned key registers its service provider.
+     * S-5
      */
     #[Test]
     public function aDocumentSignedByThePinnedKeyIsRegistered(): void
@@ -491,7 +476,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * Section 6.2: every service provider the tenant declares is read, whatever one of them answers.
+     * Section 6.2
      */
     #[Test]
     public function everyServiceProviderIsReadWhateverOneOfThemAnswers(): void
@@ -522,9 +507,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 6: another process, the console and the hourly step at the same minute, registered the service
-     * provider between the reading of the accepted document and the write; the unique index keeps its row, and this
-     * reading is skipped rather than refused.
+     * Section 6.2 step 6
      */
     #[Test]
     public function aServiceProviderRegisteredByAnotherProcessMeanwhileIsSkipped(): void
@@ -557,8 +540,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * Section 6.2: a service provider whose reading throws what no rule refuses, a store or a fetcher that fails, does
-     * not stop the ones declared after it.
+     * Section 6.2
      */
     #[Test]
     public function aServiceProviderThatFailsDoesNotStopTheNextOne(): void
@@ -591,8 +573,7 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
     }
 
     /**
-     * Section 6.2, M-16: a failure is named by the class of what was thrown, never by its message, which may carry a
-     * value of the document or of a query.
+     * Section 6.2, M-16
      */
     #[Test]
     public function aFailureIsNamedByItsClassAndNotByItsMessage(): void
@@ -614,9 +595,6 @@ final class ServiceProviderMetadataRefreshTest extends TestCase
         );
     }
 
-    /**
-     * The declarations are those of one tenant: another has nothing to refresh.
-     */
     #[Test]
     public function anotherTenantHasNothingToRefresh(): void
     {

@@ -20,8 +20,7 @@ use Symfony\Component\Filesystem\Filesystem;
 use function uniqid;
 
 /**
- * OIDC Core §8.1: the salt a tenant computes its pairwise identifiers with, kept where its sealed keys are
- * kept and sealed like them (architecture §3.3).
+ * OIDC Core §8.1, Architecture §3.3
  */
 final class FilePairwiseSaltTest extends TestCase
 {
@@ -37,10 +36,6 @@ final class FilePairwiseSaltTest extends TestCase
         new Filesystem()->remove($this->directory);
     }
 
-    /**
-     * It is drawn on first use and never again: the second read is the first salt, so every identifier the
-     * tenant ever handed out stays the identifier it handed out.
-     */
     #[Test]
     public function itIsDrawnOnceAndReadBackAfterwards(): void
     {
@@ -56,10 +51,6 @@ final class FilePairwiseSaltTest extends TestCase
         static::assertSame($drawn, $again);
     }
 
-    /**
-     * It is a secret of its tenant: what a deployment keeps for one tenant computes nothing for another, so
-     * two tenants give the same user and the same sector two identifiers.
-     */
     #[Test]
     public function twoTenantsOfOneDeploymentDrawTwoSalts(): void
     {
@@ -74,9 +65,6 @@ final class FilePairwiseSaltTest extends TestCase
         static::assertNotSame($here, $there);
     }
 
-    /**
-     * It is never written in clear: what is on disk is the envelope the KMS of the tenant made of it.
-     */
     #[Test]
     public function whatIsOnDiskIsSealedForItsTenant(): void
     {
@@ -92,10 +80,6 @@ final class FilePairwiseSaltTest extends TestCase
         static::assertSame('sealed:acme:' . $drawn, base64_decode($kept, true));
     }
 
-    /**
-     * An envelope of another tenant does not open here, which is what a KMS of a deployment guarantees: the
-     * salt is refused rather than read as bytes that compute other identifiers.
-     */
     #[Test]
     public function anEnvelopeOfAnotherTenantIsRefused(): void
     {

@@ -10,8 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3, I-8: Namespaces in XML 1.0 §3, production NCName, over the character classes of XML 1.0 fifth
- * edition §2.3. The IDs of the loader and the references of Dsig are checked with it.
+ * Section 5.3, I-8, Namespaces in XML 1.0 §3, XML 1.0 fifth edition §2.3
  */
 final class NcNameTest extends TestCase
 {

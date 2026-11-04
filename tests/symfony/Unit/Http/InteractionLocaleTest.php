@@ -40,10 +40,7 @@ use Symfony\Component\Uid\Uuid;
 use Beffroi\Oidc\Tests\Fixture\Shapes;
 
 /**
- * Architecture §5.7: the locale of an interaction is what the visitor asked for (issue #448), then
- * "ui_locales" (OIDC Core §3.1.2.1), then "Accept-Language", then the default, each read against the
- * locales this deployment serves; never the URL. How a tag is read against that list is ServedLocales and
- * is tested there, and what the cookie of the preferences holds is BrowserPreferencesTest.
+ * Architecture §5.7, OIDC Core §3.1.2.1
  */
 final class InteractionLocaleTest extends TestCase
 {
@@ -62,7 +59,7 @@ final class InteractionLocaleTest extends TestCase
     ): void {
         // Given
         $locale = self::locale(new LocaleSwitcher($default, []), new ServedLocales($enabled, $default));
-        // Request::create() gives every request an English Accept-Language; the case says which header there is
+        // Request::create() sets an English Accept-Language; each case sets its own or none.
         $request = Request::create('/authorize');
         $request->headers->remove('Accept-Language');
         if ($acceptLanguage !== null) {
@@ -86,9 +83,6 @@ final class InteractionLocaleTest extends TestCase
         yield 'the default alone when the application serves no other locale' => [[], 'en', ['fr'], 'fr', 'en'];
     }
 
-    /**
-     * The request carries the locale for the response, the switcher for everything that translates.
-     */
     #[Test]
     public function whatTheVisitorChoseOutranksTheHintOfTheClient(): void
     {
@@ -165,11 +159,6 @@ final class InteractionLocaleTest extends TestCase
         static::assertSame('en', $switcher->getLocale());
     }
 
-    /**
-     * The listener chooses for the pages of the interaction plane before the controller runs, through
-     * the "_locale" attribute the LocaleListener of the kernel reads; the protocol plane and the routes
-     * of the application outside the two planes are not touched.
-     */
     #[Test]
     public function theListenerChoosesForThePagesOfTheInteractionPlane(): void
     {
@@ -248,11 +237,6 @@ final class InteractionLocaleTest extends TestCase
         return new Interaction(Secrets::draw(), $tenant, $request, $locale, $now, $now->modify('+10 minutes'));
     }
 
-    /**
-     * No session of the core and no tenant: what this reads of a visitor nobody knows (issue #485), which
-     * is every case below. What a page of somebody who is signed in speaks is played where a session
-     * exists, in the functional suite.
-     */
     private static function locale(LocaleSwitcher $switcher, ServedLocales $served): InteractionLocale
     {
         return new InteractionLocale(

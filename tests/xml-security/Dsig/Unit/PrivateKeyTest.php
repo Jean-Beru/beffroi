@@ -16,15 +16,12 @@ use PHPUnit\Framework\TestCase;
 use function strlen;
 
 /**
- * Section 5.2, D-15, D-16: the signing key on a PEM in memory, RSA of at least 2048 bits, the one openssl_sign()
- * of the namespace. Whether what it signs verifies is the business of SignerTest, through the verifier and
- * through xmlsec1.
+ * Section 5.2, D-15, D-16
  */
 final class PrivateKeyTest extends TestCase
 {
     /**
-     * §9.3 row 10: a PKCS#1 v1.5 signature of 256 bytes for an RSA-2048 key, the same twice, since the scheme is
-     * deterministic.
+     * §9.3 row 10
      */
     #[Test]
     #[DataProvider('providePkcs1Schemes')]
@@ -52,7 +49,7 @@ final class PrivateKeyTest extends TestCase
     }
 
     /**
-     * §9.3 row 10, section 13: a PSS signature differs from one call to the next, the salt being random.
+     * §9.3 row 10, section 13
      */
     #[Test]
     public function itSignsWithARandomSaltUnderPss(): void
@@ -73,7 +70,7 @@ final class PrivateKeyTest extends TestCase
     }
 
     /**
-     * §9.1, section 13: a PSS scheme on a build without PHP 8.5 and OpenSSL 3.1 is refused by name.
+     * §9.1, section 13
      */
     #[Test]
     public function itRefusesPssWhereTheBuildCannotProduceIt(): void
@@ -93,7 +90,7 @@ final class PrivateKeyTest extends TestCase
     }
 
     /**
-     * Section 5.2: a passphrase-protected PEM, with its passphrase.
+     * Section 5.2
      */
     #[Test]
     public function itReadsAnEncryptedPemWithItsPassphrase(): void
@@ -109,7 +106,7 @@ final class PrivateKeyTest extends TestCase
     }
 
     /**
-     * D-16: a wrong passphrase, no passphrase, a PEM without a key.
+     * D-16
      */
     #[Test]
     #[TestWith(['keys/encrypted-rsa-2048-key.pem', 'wrong'], 'a wrong passphrase')]
@@ -129,7 +126,7 @@ final class PrivateKeyTest extends TestCase
     }
 
     /**
-     * Section 5.2: a path is not a PEM, even one OpenSSL would open and read the key from.
+     * Section 5.2
      */
     #[Test]
     public function itRefusesAPathToAKeyFile(): void
@@ -146,7 +143,7 @@ final class PrivateKeyTest extends TestCase
     }
 
     /**
-     * §9.2 row 36, D-16: a private key of 1024 bits, then a DSA key, then an EC key.
+     * §9.2 row 36, D-16
      */
     #[Test]
     #[TestWith(['keys/weak-rsa-1024-key.pem'], 'RSA-1024')]
@@ -166,7 +163,7 @@ final class PrivateKeyTest extends TestCase
     }
 
     /**
-     * D-13: a refusal carries nothing of the PEM.
+     * D-13
      */
     #[Test]
     public function itsRefusalCarriesNothingOfThePem(): void

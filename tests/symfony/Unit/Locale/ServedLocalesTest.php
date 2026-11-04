@@ -10,8 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Architecture §5.7: the languages this deployment has, and the reading of a tag against them
- * (RFC 5646 §2.2). A tag nobody serves names no language of this deployment, whoever asked.
+ * Architecture §5.7, RFC 5646 §2.2
  */
 final class ServedLocalesTest extends TestCase
 {

@@ -45,8 +45,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 7591 §3.1, decision 0009: a client this provider has never seen asks to exist, and leaves with an
- * identifier, the metadata the provider registered and the secret the method it registered needs.
+ * RFC 7591 §3.1, Decision 0009
  */
 final class ClientRegistrationHandlerTest extends TestCase
 {
@@ -66,8 +65,7 @@ final class ClientRegistrationHandlerTest extends TestCase
     }
 
     /**
-     * Decision 0009: closed is the default, and a closed tenant has no endpoint at all rather than one
-     * that reads a request and refuses it. Nothing of the request is read for it.
+     * Decision 0009
      */
     #[Test]
     public function aTenantThatRegistersNobodyHasNoEndpoint(): void
@@ -98,8 +96,7 @@ final class ClientRegistrationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7591 §3.2.1: the provider assigns a secret exactly when the method the client registered
-     * proves one, and answers it once.
+     * RFC 7591 §3.2.1
      */
     #[Test]
     public function aClientWhoseMethodProvesASecretIsHandedOne(): void
@@ -115,9 +112,6 @@ final class ClientRegistrationHandlerTest extends TestCase
         static::assertInstanceOf(HashedClientSecret::class, $response->record->secret);
     }
 
-    /**
-     * A method that proves no shared secret gets none: the registration says so, and the row holds none.
-     */
     #[Test]
     public function aPublicClientIsHandedNoSecret(): void
     {
@@ -136,8 +130,7 @@ final class ClientRegistrationHandlerTest extends TestCase
     }
 
     /**
-     * OIDC Core §9: "client_secret_jwt" computes a MAC with the secret, so the row keeps it whole rather
-     * than a digest of it. Which of the two shapes is kept is the registered method's business.
+     * OIDC Core §9
      */
     #[Test]
     public function aClientThatSignsWithItsSecretKeepsItWhole(): void
@@ -156,8 +149,7 @@ final class ClientRegistrationHandlerTest extends TestCase
     }
 
     /**
-     * Decision 0017: the exemption is written on the registration at the moment the policy creates it,
-     * and the row keeps it beside what the client sent, never among it.
+     * Decision 0017
      */
     #[Test]
     public function thePolicyWritesThePkceExemptionOnAConfidentialClient(): void
@@ -178,8 +170,7 @@ final class ClientRegistrationHandlerTest extends TestCase
     }
 
     /**
-     * Decision 0017, RFC 9700 §2.1.1: a public client is never exempted, whatever the policy carries,
-     * and its registration is not refused for that; it asked for nothing.
+     * Decision 0017, RFC 9700 §2.1.1
      */
     #[Test]
     public function aPublicClientIsNeverExempted(): void
@@ -197,10 +188,6 @@ final class ClientRegistrationHandlerTest extends TestCase
         static::assertSame([], $response->record->assigned);
     }
 
-    /**
-     * The row keeps what the client sent, as it sent it: a member this provider learns to read tomorrow
-     * is read from the rows that already carry it.
-     */
     #[Test]
     public function theRowKeepsWhatTheClientSent(): void
     {
@@ -234,9 +221,7 @@ final class ClientRegistrationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7591 §1.3, decision 0009: the request the controlled mode refuses is the request the open mode
-     * registers. The handler runs the mode the policy of the tenant names, and reads the same metadata
-     * behind whichever of them ran.
+     * RFC 7591 §1.3, Decision 0009
      */
     #[Test]
     public function aTenantWhosePolicyIsOpenRegistersARequestThatPresentsNothing(): void
@@ -251,9 +236,7 @@ final class ClientRegistrationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7591 §1.2: a token worth one registration registers one, and what it was worth is spent in the
-     * request it authorised, whether the registration that followed it was written or refused on its
-     * metadata.
+     * RFC 7591 §1.2
      */
     #[Test]
     public function theTokenIsSpentEvenWhenTheMetadataThatFollowedItDoesNotHold(): void
@@ -275,8 +258,7 @@ final class ClientRegistrationHandlerTest extends TestCase
     }
 
     /**
-     * Decision 0009: a client that registers itself is held to what the tenant hands out tokens for, and
-     * nothing is written for a registration that is not.
+     * Decision 0009
      */
     #[Test]
     public function aScopeTheTenantDoesNotOfferRegistersNothing(): void
@@ -296,9 +278,7 @@ final class ClientRegistrationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7591 §3.1.1: a client registered on a software statement keeps what the statement signed apart from
-     * what it registered as well as among it, which is what a replacement reads in front of what the client
-     * sends (RFC 7592 §2.2).
+     * RFC 7591 §3.1.1, RFC 7592 §2.2
      */
     #[Test]
     public function aClientRegisteredOnAStatementKeepsWhatItSignedApart(): void
@@ -325,9 +305,6 @@ final class ClientRegistrationHandlerTest extends TestCase
         );
     }
 
-    /**
-     * And a client registered under a mode that puts nothing in front of what it sent keeps nothing apart.
-     */
     #[Test]
     public function aClientRegisteredOnAnInitialAccessTokenKeepsNothingApart(): void
     {

@@ -10,16 +10,10 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * RFC 9126 and architecture §4.2: the whole way through the stack, from the request a client pushes at
- * /par to the code the browser carries back, with the module behind Doctrine. The authorization request
- * never travels through the browser, which is the first requirement of FAPI 2.0.
+ * RFC 9126, Architecture §4.2
  */
 final class PushedAuthorizationTest extends BrowserTestCase
 {
-    /**
-     * The client of the test kernel that may still start an ordinary request, so that the two ways are
-     * told apart.
-     */
     private const string CLIENT = 'oidc-demo';
 
     private const string SECRET = 'demo-secret-of-at-least-32-characters-long';
@@ -27,7 +21,7 @@ final class PushedAuthorizationTest extends BrowserTestCase
     private const string REDIRECT_URI = 'https://demo.test/login/check';
 
     /**
-     * RFC 9126 §2: POST only.
+     * RFC 9126 §2
      */
     #[Test]
     public function theEndpointIsPostOnly(): void
@@ -40,7 +34,7 @@ final class PushedAuthorizationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9126 §2.2: a 201, the reference of the registered URN and its lifetime, never cached.
+     * RFC 9126 §2.2
      */
     #[Test]
     public function aPushedRequestIsAnsweredWithAReferenceThatIsNeverCached(): void
@@ -60,8 +54,7 @@ final class PushedAuthorizationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9126 §4: the reference and the client identifier are the whole authorization request, and the
-     * browser goes on as it would have from an ordinary one.
+     * RFC 9126 §4
      */
     #[Test]
     public function aPushedRequestIsUsedOnceAndSendsTheBrowserOn(): void
@@ -82,7 +75,7 @@ final class PushedAuthorizationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9126 §4: "the client MUST only use a request_uri value once", and the provider holds it to it.
+     * RFC 9126 §4
      */
     #[Test]
     public function aReferenceIsReadAgainWhileNobodyHasAnsweredTheRequest(): void
@@ -101,7 +94,7 @@ final class PushedAuthorizationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9126 §4: the reference is spent by the code it buys, and grants nothing afterwards.
+     * RFC 9126 §4
      */
     #[Test]
     public function aReferenceIsRefusedOnceTheRequestItCarriedWasGranted(): void
@@ -125,7 +118,7 @@ final class PushedAuthorizationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9126 §4: "An expired request_uri MUST be rejected as invalid".
+     * RFC 9126 §4
      */
     #[Test]
     public function aReferencePastItsLifetimeIsRefused(): void
@@ -142,8 +135,7 @@ final class PushedAuthorizationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9126 §2.2: "The request_uri value MUST be bound to the client that posted the authorization
-     * request".
+     * RFC 9126 §2.2
      */
     #[Test]
     public function aReferencePresentedByAnotherClientIsRefused(): void
@@ -162,8 +154,7 @@ final class PushedAuthorizationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9126 §4: the parameters the endpoint reads are the ones that were pushed; the query carries
-     * the client and the reference, and whatever else it carries is dropped.
+     * RFC 9126 §4
      */
     #[Test]
     public function theQueryNeverContradictsWhatWasPushed(): void
@@ -193,8 +184,7 @@ final class PushedAuthorizationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9126 §6: a client that only starts its requests by pushing them is refused an ordinary one,
-     * on a page, before anything of the request is read.
+     * RFC 9126 §6
      */
     #[Test]
     public function aClientThatMustPushIsRefusedAnOrdinaryRequest(): void
@@ -211,7 +201,7 @@ final class PushedAuthorizationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9126 §6: the very same request, pushed, is served.
+     * RFC 9126 §6
      */
     #[Test]
     public function theSameClientIsServedOnceItHasPushedItsRequest(): void
@@ -242,8 +232,7 @@ final class PushedAuthorizationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9126 §2.3: what the endpoint refuses is a JSON error, never a redirection, even when the
-     * request names a redirect URI the provider would otherwise have answered to.
+     * RFC 9126 §2.3
      */
     #[Test]
     public function aRefusalAtTheEndpointNeverRedirects(): void
@@ -261,8 +250,7 @@ final class PushedAuthorizationTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9126 §2: the client is authenticated exactly as at the token endpoint, and a wrong secret is
-     * refused with the challenge of RFC 6749 §5.2.
+     * RFC 9126 §2, RFC 6749 §5.2
      */
     #[Test]
     public function aClientThatDoesNotAuthenticateIsRefused(): void
@@ -285,8 +273,7 @@ final class PushedAuthorizationTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Discovery §3 and RFC 9126 §5: the document names the endpoint, and says the provider takes an
-     * ordinary request because a client of the tenant may still start one.
+     * OIDC Discovery §3, RFC 9126 §5
      */
     #[Test]
     public function theMetadataAnnouncesTheEndpoint(): void

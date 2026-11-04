@@ -17,27 +17,12 @@ use Beffroi\Core\Port\KeyBoundArtifactInterface;
 use Beffroi\Core\Port\KeyPairGeneratorInterface;
 use Psr\Clock\ClockInterface;
 
-/**
- * The four steps of the life of a key and the window they read, wired over one repository, one clock and
- * one dispatcher: a test of one step puts its key in the state it tests with the steps beside it, and all
- * of them say the same thing about the same tenant.
- */
 final readonly class KeyLifecycle
 {
-    /**
-     * The kinds of JWS the tenant issues under test: ten minutes and one hour, so that the longest wins.
-     */
     public const string LONGEST_LIFETIME = 'PT1H';
 
-    /**
-     * The staging window under test: six minutes, the JWKS max-age of five plus the refetch cooldown.
-     */
     public const string STAGING_DELAY = 'PT6M';
 
-    /**
-     * The age of a key under test: thirty days, longer than the hour the longest JWS of this tenant lives,
-     * which is what the succession requires of an age.
-     */
     public const string AGE = 'P30D';
 
     public InMemoryTenantKeyRepository $keys;
@@ -55,10 +40,8 @@ final readonly class KeyLifecycle
     public KeySuccession $succession;
 
     /**
-     * @param list<KeyBoundArtifactInterface>|null $artifacts the kinds of artifact bound to a key of the tenant; the two above when none is named
-     * @param string|null $age how long a key works before a successor is staged for it
-     * @param KeyPairGeneratorInterface|null $generator what draws the pairs; the two precomputed ones when none is named
-     * @param array<string, RotationSchedule> $families the schedule of the algorithms of that name, a family of their own; the staging delay and the age above for every other
+     * @param list<KeyBoundArtifactInterface>|null $artifacts
+     * @param array<string, RotationSchedule> $families by algorithm name
      */
     public function __construct(
         ClockInterface $clock,

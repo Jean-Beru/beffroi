@@ -19,13 +19,6 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\Uid\Uuid;
 use Webauthn\MetadataService\Statement\AuthenticatorStatus;
 
-/**
- * Issue #983: each row of the page of the passkeys names what holds the passkey, the make and model its
- * authenticator declared as the FIDO metadata and then the list of the community name them, with a logo for the
- * theme of the page and the certification of the model; it says whether the passkey is synced or bound to its
- * device and how it is reached, and that nothing verifies the model. What the sources say is what the console
- * stored, and the logos are data: URLs, so nothing is fetched while the page is served.
- */
 final class PasskeyAuthenticatorsTest extends PasskeyTestCase
 {
     private const string YUBIKEY = 'ee882879-721c-4913-9775-3dfcce97072a';
@@ -51,9 +44,6 @@ final class PasskeyAuthenticatorsTest extends PasskeyTestCase
         static::assertSame('FIDO Certified, level 1', $cell->filter('span[data-certification="FIDO_CERTIFIED_L1"]')->text());
     }
 
-    /**
-     * The passkey providers are named by the list of the community, a logo for a light page and one for a dark page.
-     */
     #[Test]
     public function aProviderTheListOfTheCommunityNamesIsShownWithTheLogoOfEachTheme(): void
     {
@@ -73,9 +63,6 @@ final class PasskeyAuthenticatorsTest extends PasskeyTestCase
         static::assertCount(0, $cell->filter('span[data-certification]'));
     }
 
-    /**
-     * A name the FIDO Alliance signed is never replaced by one nobody signed.
-     */
     #[Test]
     public function theFidoMetadataNameAModelBeforeTheListOfTheCommunity(): void
     {
@@ -111,7 +98,7 @@ final class PasskeyAuthenticatorsTest extends PasskeyTestCase
     }
 
     /**
-     * WebAuthn Level 3 §18.1.1: an AAGUID of zeros is what a client of Level 2 sent for no attestation.
+     * WebAuthn Level 3 §18.1.1
      */
     #[Test]
     public function anAaguidOfZerosIsAnUnknownAuthenticatorWhateverTheListSays(): void
@@ -130,7 +117,7 @@ final class PasskeyAuthenticatorsTest extends PasskeyTestCase
     }
 
     /**
-     * WebAuthn Level 3 §6.1.3: the BE flag of the enrolment and the BS flag of the latest ceremony, in words.
+     * WebAuthn Level 3 §6.1.3
      */
     #[Test]
     #[DataProvider('provideBackupStates')]
@@ -158,7 +145,7 @@ final class PasskeyAuthenticatorsTest extends PasskeyTestCase
     }
 
     /**
-     * WebAuthn Level 3 §5.8.4: the transports its authenticator declared, in words.
+     * WebAuthn Level 3 §5.8.4
      */
     #[Test]
     #[DataProvider('provideTransports')]
@@ -185,7 +172,7 @@ final class PasskeyAuthenticatorsTest extends PasskeyTestCase
     }
 
     /**
-     * WebAuthn Level 3 §6: "the AAGUID is not provably authentic without attestation", and the provider asks for none.
+     * WebAuthn Level 3 §6
      */
     #[Test]
     public function thePageSaysNothingVerifiesTheAuthenticatorItNames(): void
@@ -243,9 +230,6 @@ final class PasskeyAuthenticatorsTest extends PasskeyTestCase
         );
     }
 
-    /**
-     * The cell that says what holds that passkey, on the page as the browser reads it.
-     */
     private function authenticatorOf(Uuid $passkey): Crawler
     {
         $cell = $this->passkeysPage()->filter('tr[data-passkey="' . $passkey . '"] td[data-authenticator]');
@@ -254,17 +238,12 @@ final class PasskeyAuthenticatorsTest extends PasskeyTestCase
         return $cell;
     }
 
-    /**
-     * A device-bound key without a PIN, or a synced passkey, that declares the AAGUID given.
-     */
     private static function deviceOf(string $aaguid, bool $synced = false): SoftwareAuthenticator
     {
         return new SoftwareAuthenticator(self::ORIGIN, backupEligible: $synced, backedUp: $synced, aaguid: Uuid::fromString($aaguid)->toBinary());
     }
 
     /**
-     * The FIDO metadata as beffroi:webauthn:mds-refresh stores them, naming one model.
-     *
      * @param list<string> $statuses
      */
     private static function metadataNaming(string $aaguid, string $description, array $statuses): void
@@ -276,9 +255,6 @@ final class PasskeyAuthenticatorsTest extends PasskeyTestCase
             );
     }
 
-    /**
-     * The list of the community as beffroi:webauthn:aaguids-refresh stores it, naming one model.
-     */
     private static function listNaming(string $aaguid, string $name): void
     {
         self::service('test.beffroi.authenticator_list_store', AuthenticatorListStoreInterface::class)

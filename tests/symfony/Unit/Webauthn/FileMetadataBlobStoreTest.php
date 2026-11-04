@@ -16,7 +16,7 @@ use function sys_get_temp_dir;
 use function uniqid;
 
 /**
- * The FIDO metadata as files (architecture §3.4): one document per name, read in the order of the names.
+ * Architecture §3.4
  */
 final class FileMetadataBlobStoreTest extends TestCase
 {
@@ -91,10 +91,6 @@ final class FileMetadataBlobStoreTest extends TestCase
         static::assertSame([], $this->store->readAll());
     }
 
-    /**
-     * The list of the community lives in the "community" directory of the storage (WebauthnSection), and the
-     * ceremonies read no document of it.
-     */
     #[Test]
     public function aDocumentOfADirectoryInsideTheStorageIsNotRead(): void
     {

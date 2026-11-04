@@ -17,21 +17,12 @@ use function is_string;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 /**
- * The provisioning of a TOTP between the page that shows it and the code that confirms it (architecture
- * §5.2): kept in the HTTP session of the browser, for the user it was drawn for, sealed by the KMS of the
- * tenant like the secret will be once stored (§3.3), because a session store is a disk and the secret,
- * the URI that carries it and the backup codes exist in clear in memory only. One at a time per browser,
- * a new one replacing the old; read again on a wrong code, so that the QR code need not be scanned twice;
- * forgotten once a code confirmed it or once it expired. A KMS that does not answer forgets nothing: the
- * outage goes on as it came (KmsUnavailableException), the provisioning waits for the KMS to be back.
+ * Sealed by the KMS of the tenant: a session store is a disk, and the secret exists in clear in memory only.
  */
 final readonly class TotpProvisioningStore
 {
     public const string KEY = 'beffroi.totp.provisioning';
 
-    /**
-     * Ten minutes to install an app and scan a code.
-     */
     public const string LIFETIME = 'PT10M';
 
     public function __construct(
@@ -49,10 +40,7 @@ final readonly class TotpProvisioningStore
     }
 
     /**
-     * The provisioning drawn for this user and still valid, or null; one drawn for someone else, one that
-     * expired and one the KMS refuses as foreign or invalid are forgotten and null.
-     *
-     * @throws KmsUnavailableException when the KMS of the tenant does not answer; the provisioning is kept
+     * @throws KmsUnavailableException when the KMS does not answer, the provisioning being kept
      */
     public function provisioning(SessionInterface $session, User $user, DateTimeImmutable $now): ?TotpProvisioning
     {

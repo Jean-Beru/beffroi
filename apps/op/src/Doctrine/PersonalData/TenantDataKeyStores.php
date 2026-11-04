@@ -19,68 +19,27 @@ use Symfony\Component\KeyManagement\RewrappableDataKeyStoreInterface;
 use Symfony\Component\KeyManagement\StoredDataKey;
 
 /**
- * One data key store per tenant, behind one reader (decision 0018).
- *
- * `DataKeyStore` takes one client and one master key for the whole store, and `current()` and `rotate()`
- * wrap with them, so a master key per tenant is a store per tenant. `get()` does not: it reads the client
- * and the master key back from the row, so **a read resolves whatever wrote it** and needs no routing at
- * all, which is what keeps this small. Walking the rows and rewrapping them are reads of the same kind, so
- * they go to the same one reader; only what wraps is routed.
- *
- * The store of a tenant is built at its first use and held, keyed by slug, each one with the master key
- * `KmsKeyId` resolves for that slug, the one its signing keys are already sealed under.
- *
- * **A KMS that does not answer is an outage here as for every key of the provider** (`KeyManagementFailure`):
- * what opens or mints a data key fails with `KmsUnavailableException`, whatever asked for it, a sealed column or
- * a blind index, and a request is answered with the 503 it is served past once the KMS is back
- * (`KmsUnavailableListener`). What the component refuses, a row it cannot find or whose binding does not hold,
- * is thrown as the component threw it, which is what the contract of a store names.
- *
- * **Every store is given the same secrets.** A row is bound to its reference and its scope by an HMAC keyed
- * by its data key and by a secret of the store (`StoredDataKey::bindingFor()`), so a key that whoever
- * writes the table wrapped themselves opens nothing: the first secret writes the binding of a new row and
- * every one reads it back. A row is read by the one reader whatever tenant it belongs to, so the secrets of
- * a deployment are one list and not one per tenant, and a rewrap is what moves a row to the first of them.
- *
- * **Nothing here carries `kernel.reset`.** The component tags its own store with it, and `forget()`
- * releases every retained plaintext between two units of work; under FrankenPHP in worker mode that puts
- * the KMS back on the path of every request that touches a column, which the third success criterion of
- * the spike forbids. A thread keeps open what it has opened, as it already keeps an open signing key
- * (`SealedKeyProvider`), and what that costs is written in decision 0018 rather than discovered later.
+ * One store per tenant for what wraps, and one reader for every read, which takes the client and the master key from
+ * the row it reads.
  */
 final class TenantDataKeyStores implements RewrappableDataKeyStoreInterface
 {
-    /**
-     * The table the wrapped data keys of every tenant live in, owned by this provider and created by one of
-     * its migrations: the bridge is clear that a table carrying anything its store does not know about is
-     * a table the application declares itself, and this one carries exactly the six columns it names.
-     */
     public const string TABLE = 'beffroi_data_key';
 
-    /**
-     * How many bytes a data key holds, which is what AES-256-GCM takes.
-     */
     private const int KEY_BYTES = 32;
 
     /**
-     * @var array<string, DataKeyStore> by the slug of the tenant whose master key wraps what it writes
+     * @var array<string, DataKeyStore> by tenant slug
      */
     private array $stores = [];
 
-    /**
-     * The one store every read goes to, built at its first use.
-     */
     private ?DataKeyStore $reader = null;
 
     /**
-     * @param ContainerInterface $clients the KMS clients of the deployment, by the name the configuration
-     *                                    gives them
-     * @param string $client the name of the one this deployment seals with
-     * @param string $masterKeyId the pattern of the master key of a tenant, "{tenant}" standing for its
-     *                            slug, the same pattern the signing keys are sealed under
-     * @param non-empty-list<string> $secrets what binds a row to its reference and its scope, the first one
-     *                                        writing and every one reading
-     * @param int<0, max>|null $maxAgeSeconds the age past which a scope is given a new key, null never
+     * @param ContainerInterface $clients the KMS clients, by configured name
+     * @param string $masterKeyId a pattern, "{tenant}" standing for the slug
+     * @param non-empty-list<string> $secrets the first writes, every one reads
+     * @param int<0, max>|null $maxAgeSeconds null for never
      */
     public function __construct(
         private readonly Connection $connection,
@@ -95,7 +54,7 @@ final class TenantDataKeyStores implements RewrappableDataKeyStoreInterface
     }
 
     /**
-     * @throws KmsUnavailableException when the KMS does not answer to open or mint the key
+     * @throws KmsUnavailableException
      */
     public function current(string $scope): DataKeyHandle
     {
@@ -107,10 +66,7 @@ final class TenantDataKeyStores implements RewrappableDataKeyStoreInterface
     }
 
     /**
-     * The key of a scope retired and a new one minted, whatever the age of the one that was current: what
-     * the console asks for when a tenant has a reason not to wait for the age of its keys.
-     *
-     * @throws KmsUnavailableException when the KMS does not answer to mint the key
+     * @throws KmsUnavailableException
      */
     public function rotate(string $scope): DataKeyHandle
     {
@@ -122,7 +78,7 @@ final class TenantDataKeyStores implements RewrappableDataKeyStoreInterface
     }
 
     /**
-     * @throws KmsUnavailableException when the KMS does not answer to open the key
+     * @throws KmsUnavailableException
      */
     public function get(string $reference): DataKeyHandle
     {
@@ -143,18 +99,11 @@ final class TenantDataKeyStores implements RewrappableDataKeyStoreInterface
         $this->reader()->rewrap($row, $rewrapped, $client);
     }
 
-    /**
-     * A read of the row like the two above, so the reader answers: every store of this router binds the
-     * same context, the default of the bridge, whatever the tenant whose master key wraps the row.
-     */
     public function wrappingContextOf(StoredDataKey $row): string
     {
         return $this->reader()->wrappingContextOf($row);
     }
 
-    /**
-     * The store that wraps for the tenant a scope names, built once and held.
-     */
     private function of(string $scope): DataKeyStore
     {
         $slug = TenantScopedEncrypter::slugOf($scope);
@@ -172,13 +121,8 @@ final class TenantDataKeyStores implements RewrappableDataKeyStoreInterface
     }
 
     /**
-     * The one store every read goes to. Its master key is the pattern unresolved, which nothing on this
-     * path uses: `get()`, `all()` and `rewrap()` take the client and the master key of the row they read,
-     * and a reference belongs to no tenant until the row says so.
-     *
-     * It is public because it is also what declares the table in the schema the ORM assembles: the
-     * listener of the ORM bridge asks a `DataKeyStore` and not this router, and the table of a read is the
-     * table of every write.
+     * Its master key is the pattern unresolved, which no read uses. Public, because the listener of the ORM bridge
+     * declares the table through a DataKeyStore.
      */
     public function reader(): DataKeyStore
     {

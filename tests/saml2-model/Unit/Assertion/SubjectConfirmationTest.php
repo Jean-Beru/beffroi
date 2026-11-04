@@ -11,12 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3, M-6, M-10: the bearer confirmation, its Recipient a URI and its InResponseTo an ID (SAML Core §2.4.1.2).
+ * Section 5.3, M-6, M-10, SAML Core §2.4.1.2
  */
 final class SubjectConfirmationTest extends TestCase
 {
     /**
-     * Section 5.3: the four fields of a bearer confirmation, kept as given.
+     * Section 5.3
      */
     #[Test]
     public function itKeepsItsRecipientWindowRequestAndAddress(): void
@@ -45,8 +45,7 @@ final class SubjectConfirmationTest extends TestCase
     }
 
     /**
-     * M-10, SAML Profiles §4.1.5: an unsolicited response's confirmation answers no request, and the Address is
-     * optional.
+     * M-10, SAML Profiles §4.1.5
      */
     #[Test]
     public function itHoldsNeitherRequestNorAddressWhenNoneIsGiven(): void
@@ -64,7 +63,7 @@ final class SubjectConfirmationTest extends TestCase
     }
 
     /**
-     * §9.2 row 26, M-6, M-8: a Recipient that is not an absolute URI; the message carries nothing of it (M-16).
+     * §9.2 row 26, M-6, M-8, M-16
      */
     #[Test]
     public function itRefusesARecipientThatIsNotAUri(): void
@@ -78,7 +77,7 @@ final class SubjectConfirmationTest extends TestCase
     }
 
     /**
-     * M-6, M-10: an InResponseTo that is not an NCName.
+     * M-6, M-10
      */
     #[Test]
     public function itRefusesAnInResponseToThatIsNotAnId(): void
@@ -97,8 +96,7 @@ final class SubjectConfirmationTest extends TestCase
     }
 
     /**
-     * M-15: an address holding a NUL, which the DOM would cut the written value at, refused whoever builds the
-     * confirmation.
+     * M-15
      */
     #[Test]
     public function itRefusesAnAddressXmlDoesNotCarry(): void

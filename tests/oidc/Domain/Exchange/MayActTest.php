@@ -11,12 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Who a token says may act for its subject (RFC 8693 §4.4).
+ * RFC 8693 §4.4
  */
 final class MayActTest extends TestCase
 {
     /**
-     * RFC 8693 §4.4: the same shape as "act", of which this provider writes the "sub" and nothing else.
+     * RFC 8693 §4.4
      */
     #[Test]
     public function itIsWrittenAsTheSubjectItNames(): void
@@ -31,7 +31,7 @@ final class MayActTest extends TestCase
     }
 
     /**
-     * RFC 8693 §4.4: the party named here and nobody else.
+     * RFC 8693 §4.4
      */
     #[Test]
     public function itAllowsThePartyItNames(): void
@@ -48,8 +48,7 @@ final class MayActTest extends TestCase
     }
 
     /**
-     * RFC 8693 §4.1: the chain is read at its outermost member, which is the one about to act; the ones
-     * inside it have acted already.
+     * RFC 8693 §4.1
      */
     #[Test]
     public function itReadsTheChainAtItsOutermostActor(): void

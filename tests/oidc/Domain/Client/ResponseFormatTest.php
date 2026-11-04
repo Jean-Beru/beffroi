@@ -11,14 +11,10 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * OIDC Registration §2: the shape a client registered for one kind of document the provider hands it.
+ * OIDC Registration §2
  */
 final class ResponseFormatTest extends TestCase
 {
-    /**
-     * A client that registers nothing has the document signed with what the provider signs with, which is
-     * what a null algorithm says.
-     */
     #[Test]
     public function aSignedFormatWithoutAnAlgorithmTakesTheOneOfTheProvider(): void
     {
@@ -43,7 +39,7 @@ final class ResponseFormatTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.3.2: the UserInfo answer is the one document a client may receive without a signature.
+     * OIDC Core §5.3.2
      */
     #[Test]
     public function anUnsignedFormatWithoutAnEncryptionIsThePlainDocument(): void
@@ -57,8 +53,7 @@ final class ResponseFormatTest extends TestCase
     }
 
     /**
-     * §5.3.2 again: an answer may be encrypted without being signed, and what the JWE carries is then the
-     * document itself.
+     * OIDC Core §5.3.2
      */
     #[Test]
     public function anUnsignedFormatThatIsEncryptedIsNotPlain(): void

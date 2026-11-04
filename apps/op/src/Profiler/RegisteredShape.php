@@ -8,9 +8,7 @@ use Beffroi\Oidc\Domain\Client\ResponseFormat;
 use function sprintf;
 
 /**
- * How the panel says the shape a client registered for one of the documents the provider hands it
- * (OIDC Registration §2, JARM §3): signed, then encrypted, in the order the document is written in.
- * Written once, for the client that registered it and for the document that is issued in it.
+ * How the panel writes the algorithms a client registered for a document: signed, then encrypted.
  */
 final readonly class RegisteredShape
 {

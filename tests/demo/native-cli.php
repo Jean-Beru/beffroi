@@ -3,29 +3,7 @@
 declare(strict_types=1);
 
 /*
- * The CLI of "castor demo --native" (.castor/lab/demo.php, demo_native_check): a program installed on the
- * machine of whoever runs it, which receives the authorization response on the loopback interface
- * (RFC 8252 §7.3). It is a demonstration before it is a test: run by hand it prints the address to open in
- * a browser, and waits for that browser to come back to it.
- *
- * It is the one client of this provider whose redirection is not compared byte for byte, and it is what the
- * exception exists for: the operating system hands it a port when it starts, so it cannot register that port
- * in advance. Everything else about the redirection is compared as it is for every other client, the IP
- * literal included: "localhost" is a name, and a name is resolved by whatever answers for it on the machine
- * of the user (§8.3). It holds no secret, being a program on somebody's machine (§8.5), so PKCE is what ties
- * the code to the process that asked for it, and the exchange proves the verifier of the challenge it sent.
- *
- * Two streams, for the two readers it has. The trace a human follows goes to stderr; stdout carries one JSON
- * object per step, one per line, so that the task can open the address as soon as it is printed and assert on
- * every step afterwards:
- *
- *   {"step":"listening", "port", "redirect_uri", "authorization_url"}
- *   {"step":"redirected", "state_matches", "iss_matches", "code_present"}
- *   {"step":"tokens", "token_type", "scope", "expires_in", "id_token", "sub", "aud"}
- *   {"step":"error", "error"}                and exit 1
- *
- * Options: --issuer, --client-id, --scope, --port (0, the default, asks the operating system for one),
- * --cafile (the CA of the OP), --timeout.
+ * The client of "castor demo --native": a native app answered on the loopback interface (RFC 8252 §7.3).
  */
 
 use Symfony\Component\HttpClient\HttpClient;
@@ -35,11 +13,9 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 require __DIR__ . '/../../vendor/autoload.php';
 
 /**
- * The listener of a native client (RFC 8252 §7.3): bound on the loopback interface, on the port the
- * operating system hands over, and answering the one redirection it is waiting for.
+ * RFC 8252 §7.3
  *
- * It binds the IP literal and not a name, which is the whole point: what the client registered is
- * "http://127.0.0.1/callback", and the address it hands the provider differs from it by the port alone.
+ * Binds the IP literal and not a name: the registered redirect URI and the one it sends differ by the port alone.
  */
 final class LoopbackListener
 {
@@ -51,7 +27,7 @@ final class LoopbackListener
     public readonly int $port;
 
     /**
-     * @throws RuntimeException when nothing can be bound
+     * @throws RuntimeException
      */
     public function __construct(int $port = 0)
     {
@@ -65,19 +41,13 @@ final class LoopbackListener
         $this->port = (int) $bound;
     }
 
-    /**
-     * The path the provider sends the browser back to, on whatever port this listener was given.
-     */
     public function redirectUri(string $path): string
     {
         return sprintf('http://127.0.0.1:%d%s', $this->port, $path);
     }
 
     /**
-     * Waits for the browser to arrive with the authorization response, and answers it a page saying the
-     * window can be closed. What comes back is the query of that redirection, as it was sent.
-     *
-     * @throws RuntimeException when no browser arrives in time
+     * @throws RuntimeException
      *
      * @return array<string, string>
      */
@@ -136,9 +106,7 @@ final class LoopbackListener
 }
 
 /**
- * A public client that starts its flow in the browser of the user and is answered on its own loopback
- * listener: it draws a verifier, sends the challenge of it, and proves the verifier when it exchanges the
- * code (RFC 7636). Holding no secret, that proof is all it has.
+ * RFC 7636
  */
 final readonly class NativeClient
 {
@@ -152,8 +120,7 @@ final readonly class NativeClient
     }
 
     /**
-     * RFC 6749 §4.1.1, RFC 7636 §4.3: the address the user opens, carrying the challenge of the verifier this
-     * client keeps and the state it will compare on the way back.
+     * RFC 6749 §4.1.1, RFC 7636 §4.3
      */
     public function authorizationUrl(string $redirectUri, string $verifier, string $state, string $nonce): string
     {
@@ -174,10 +141,9 @@ final readonly class NativeClient
     }
 
     /**
-     * RFC 6749 §4.1.3, RFC 7636 §4.5: the code spent with the verifier of the challenge, and the redirection
-     * it was sent to, port included, which is what the provider compares it against.
+     * RFC 6749 §4.1.3, RFC 7636 §4.5
      *
-     * @throws RuntimeException when the exchange is refused
+     * @throws RuntimeException
      *
      * @return array<string, mixed>
      */
@@ -240,10 +206,7 @@ final readonly class NativeClient
 }
 
 /**
- * The options of the run, each one with what a development stack makes of it: no secret among them, a client
- * of this kind holding none (RFC 8252 §8.5).
- *
- * @throws RuntimeException when an option is given without a value
+ * @throws RuntimeException
  *
  * @return array<string, string>
  */
@@ -273,8 +236,6 @@ function native_cli_options(): array
 }
 
 /**
- * One step, on the two streams it belongs to: the line the task reads, and the sentence a human reads.
- *
  * @param array<string, mixed> $step
  */
 function native_cli_step(array $step, string $said): void
@@ -283,10 +244,6 @@ function native_cli_step(array $step, string $said): void
     fwrite(STDERR, $said . "\n");
 }
 
-/**
- * RFC 8252 §7.3: the path this client registered, the one thing of its redirection that is compared byte for
- * byte along with the host and the scheme.
- */
 const NATIVE_CALLBACK_PATH = '/callback';
 
 $options = native_cli_options();
@@ -305,8 +262,7 @@ $client = new NativeClient(
     $options['client-id'],
     $options['scope'],
 );
-// RFC 7636 §4.1: 43 to 128 characters of the unreserved set, drawn and never guessed; the state and the
-// nonce are drawn the same way, being what this client recognises its own flow by
+// RFC 7636 §4.1: 32 random octets give the 43 characters a verifier needs at least.
 $verifier = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
 $state = bin2hex(random_bytes(16));
 $nonce = bin2hex(random_bytes(16));
@@ -329,8 +285,7 @@ try {
     if (isset($response['error'])) {
         throw new RuntimeException(sprintf('%s: %s', $response['error'], $response['error_description'] ?? 'the authorization request was refused'));
     }
-    // RFC 6749 §10.12 and RFC 9207 §2.4: the response is this client's own flow, or it is somebody else's;
-    // both are compared before the code is worth anything
+    // RFC 6749 §10.12, RFC 9207 §2.4: the state and the issuer are compared before the code is worth anything.
     $stateMatches = isset($response['state']) && hash_equals($state, $response['state']);
     $issuerMatches = isset($response['iss']) && hash_equals($issuer, $response['iss']);
     native_cli_step(
@@ -353,8 +308,7 @@ try {
 
     $tokens = $client->exchange($response['code'], $redirectUri, $verifier);
     $accessToken = NativeClient::text($tokens, 'access_token');
-    // RFC 9068 §2.2: what the token says of itself, read here only to print it; a client is not a resource
-    // server and reads nothing of a token it merely carries
+    // Decoded only to print its RFC 9068 §2.2 claims: a client verifies nothing of a token it merely carries.
     $claims = [];
     $parts = explode('.', $accessToken);
     if (count($parts) === 3) {
@@ -383,8 +337,6 @@ try {
         ),
     );
 } catch (RuntimeException $exception) {
-    // the step is written for the task that reads these lines, then the exception ends the process: its
-    // code is what the task asserts on, as it does of the other programs of tests/demo/
     native_cli_step(
         [
             'step' => 'error',

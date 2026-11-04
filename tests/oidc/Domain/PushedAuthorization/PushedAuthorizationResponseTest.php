@@ -15,7 +15,7 @@ use PHPUnit\Framework\TestCase;
 final class PushedAuthorizationResponseTest extends TestCase
 {
     /**
-     * RFC 9126 §2.2: the two members of the answer, and no other.
+     * RFC 9126 §2.2
      */
     #[Test]
     public function itCarriesTheReferenceAndItsLifetime(): void
@@ -37,7 +37,7 @@ final class PushedAuthorizationResponseTest extends TestCase
     }
 
     /**
-     * RFC 9126 §2.2: one second is a lifetime, and the smallest the endpoint ever answers.
+     * RFC 9126 §2.2
      */
     #[Test]
     public function theSmallestLifetimeItAnswersIsOneSecond(): void
@@ -47,7 +47,7 @@ final class PushedAuthorizationResponseTest extends TestCase
     }
 
     /**
-     * RFC 9126 §2.2: "a positive integer".
+     * RFC 9126 §2.2
      */
     #[Test]
     #[DataProvider('provideLifetimesThatAreNotPositive')]

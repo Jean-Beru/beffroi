@@ -8,15 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * Single Logout started by the identity provider (beffroi/saml, issue #735): the chains of logout it plays through the
- * browser, one row per chain under the SHA-256 of its reference, found too by the ID of the request whose answer it
- * waits for, open ten minutes from its last step (spec/saml.md S-32).
- *
- * Nothing in it names a person: a digest, an ID drawn at random, and a document of session identifiers, service
- * providers and where the chain ends, read whole by one object and queried by nobody, so one JSON column. The table
- * is new, so it holds no row to seal or to fill.
- */
 final class Version20261015200000 extends AbstractMigration
 {
     public function getDescription(): string

@@ -12,12 +12,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.1, E-1: the hash of RSA-OAEP, for the OAEP mask and for MGF1 alike, and what each case knows of itself.
+ * Section 5.1, E-1
  */
 final class OaepHashTest extends TestCase
 {
     /**
-     * §9.3 row 12: each case round-trips through fromDigestUri().
+     * §9.3 row 12
      */
     #[Test]
     #[DataProvider('provideCases')]
@@ -28,7 +28,7 @@ final class OaepHashTest extends TestCase
     }
 
     /**
-     * Section 5.1: each case round-trips through its MGF URI of XML Encryption 1.1 §5.5.2.
+     * Section 5.1, XML Encryption 1.1 §5.5.2
      */
     #[Test]
     #[DataProvider('provideCases')]
@@ -49,7 +49,7 @@ final class OaepHashTest extends TestCase
     }
 
     /**
-     * Section 5.1: the MGF URIs, written as XML Encryption 1.1 §5.5.2 spells them.
+     * Section 5.1, XML Encryption 1.1 §5.5.2
      */
     #[Test]
     public function itSpellsTheMgfUris(): void
@@ -62,7 +62,7 @@ final class OaepHashTest extends TestCase
     }
 
     /**
-     * E-1: every other digest URI is refused by name.
+     * E-1
      */
     #[Test]
     #[DataProvider('provideRefusedDigestUris')]
@@ -91,7 +91,7 @@ final class OaepHashTest extends TestCase
     }
 
     /**
-     * E-1: every other MGF URI is refused by name.
+     * E-1
      */
     #[Test]
     #[DataProvider('provideRefusedMgfUris')]
@@ -119,7 +119,7 @@ final class OaepHashTest extends TestCase
     }
 
     /**
-     * Section 5.1: what the digest parameter of the two RSA functions takes on PHP 8.5.
+     * Section 5.1
      */
     #[Test]
     public function itKnowsItsOpensslName(): void
@@ -132,8 +132,7 @@ final class OaepHashTest extends TestCase
     }
 
     /**
-     * §9.3 row 14, section 13: SHA-1 is available on every build, the others where the RSA functions take a digest,
-     * PHP 8.5, the release that also defined OPENSSL_PKCS1_PSS_PADDING.
+     * §9.3 row 14, section 13
      */
     #[Test]
     public function itIsAvailableWhereTheBuildTakesADigest(): void

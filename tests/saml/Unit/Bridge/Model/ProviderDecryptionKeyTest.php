@@ -11,13 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-66, section 6.13 step 4: the keys of one provider tried in turn, in their order, the first session
- * key that unwraps answered, nothing when none does.
+ * spec/saml.md S-66, section 6.13 step 4
  */
 final class ProviderDecryptionKeyTest extends TestCase
 {
     /**
-     * S-66: the first key that unwraps answers, and the keys after it are not asked.
+     * S-66
      */
     #[Test]
     public function theFirstKeyThatUnwrapsAnswers(): void
@@ -35,7 +34,7 @@ final class ProviderDecryptionKeyTest extends TestCase
     }
 
     /**
-     * S-66, enc.md E-6: when no key of the provider unwraps, nothing is answered, never why.
+     * S-66, enc.md E-6
      */
     #[Test]
     public function noKeyThatUnwrapsAnswersNothing(): void
@@ -48,7 +47,7 @@ final class ProviderDecryptionKeyTest extends TestCase
     }
 
     /**
-     * S-66: each key is handed the wrapped session key and the hash it was wrapped under, as Enc's Decryptor hands them.
+     * S-66
      */
     #[Test]
     public function eachKeyIsHandedTheWrappedKeyAndItsHash(): void

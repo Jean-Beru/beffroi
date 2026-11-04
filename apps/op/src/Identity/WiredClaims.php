@@ -9,26 +9,15 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\ClaimsInterface;
 use function array_keys;
 
-/**
- * The claims a person may be able to say of themselves in this deployment (issue #452): what is wired,
- * which is the one source there is. A claim added is a class tagged and a line in the wiring, and nothing
- * here or on a page is edited.
- *
- * What a tenant opens is read against this list and never beside it: a name no wired claim answers is a
- * mistake of the configuration, refused where the configuration is read.
- *
- * A console that describes a person reads the same list (issue #846), and holds each claim of the profile it
- * says to the set of that claim, as the page of the account does.
- */
 final readonly class WiredClaims implements ClaimsInterface
 {
     /**
-     * @var array<string, ClaimInterface> by the name each claim gives itself
+     * @var array<string, ClaimInterface>
      */
     private array $byName;
 
     /**
-     * @param iterable<ClaimInterface> $claims in the order they are wired, which is the order a page offers them
+     * @param iterable<ClaimInterface> $claims
      */
     public function __construct(iterable $claims)
     {
@@ -53,10 +42,6 @@ final readonly class WiredClaims implements ClaimsInterface
     }
 
     /**
-     * What this person may say of themselves, in the order the claims are wired: what their tenant opens
-     * and the source that created them does not hold (`User::maySayOfThemselves()`), which says which names,
-     * this saying which claims answer them.
-     *
      * @return list<ClaimInterface>
      */
     public function openedTo(User $user): array

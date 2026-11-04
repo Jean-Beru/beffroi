@@ -9,23 +9,12 @@ use PHPUnit\Framework\Attributes\Test;
 use function str_contains;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * What this provider saw of a flow, written into the trace of the demonstration as it served it (issue
- * #462). It is what makes a replay possible at all: the call that matters most of an authorization code
- * flow, the token request, is made from one server to another and no browser is in it.
- *
- * The hops here are drawn from requests this provider refuses, because what is judged is the recording
- * and not the protocol: a hop is drawn as it was sent and as it was answered, refused or not, and the
- * three suites of the monorepo judge the answers themselves.
- */
 final class RecordedFlowsTest extends DemonstrationTestCase
 {
     private const string CLIENT_ID = 'a-client-this-provider-never-registered';
 
     /**
-     * RFC 6749 §3.2: the flow a call to the token endpoint belongs to is the "grant_type" it names,
-     * looked up among the wired grants, and the client is the one the call names. Both halves of the
-     * exchange are drawn, the request as it was sent and the answer as it came back.
+     * RFC 6749 §3.2
      */
     #[Test]
     public function aCallToTheTokenEndpointIsDrawnOnBothHalves(): void
@@ -47,7 +36,7 @@ final class RecordedFlowsTest extends DemonstrationTestCase
     }
 
     /**
-     * A hop that failed is drawn as it failed, with the reason the provider gave for it (RFC 6749 §5.2).
+     * RFC 6749 §5.2
      */
     #[Test]
     public function aHopThatFailedIsDrawnAsItFailed(): void
@@ -64,10 +53,6 @@ final class RecordedFlowsTest extends DemonstrationTestCase
         static::assertTrue(str_contains($trace->hops[1]->payload, 'invalid_client'));
     }
 
-    /**
-     * A trace begins at the first hop of its picture: a client that plays a flow again is a run of its
-     * own, and what the previous one exchanged is replaced rather than added to.
-     */
     #[Test]
     public function aFlowPlayedAgainIsARunOfItsOwn(): void
     {
@@ -84,10 +69,6 @@ final class RecordedFlowsTest extends DemonstrationTestCase
         static::assertNotSame($first->startedAt->format('U.u'), $second->startedAt->format('U.u'));
     }
 
-    /**
-     * A name the provider does not serve is a flow of no picture, and a hop of no trace: nothing is
-     * recorded against a grant type nobody is wired for.
-     */
     #[Test]
     public function aGrantTypeTheProviderDoesNotServeIsRecordedNowhere(): void
     {
@@ -101,10 +82,6 @@ final class RecordedFlowsTest extends DemonstrationTestCase
         static::assertNull(self::traces()->of('password', self::CLIENT_ID));
     }
 
-    /**
-     * Nothing of a page that is not an endpoint of this provider reaches the trace: the demonstration
-     * draws the flows of the provider and not the pages of the application.
-     */
     #[Test]
     public function aPageOfTheApplicationIsRecordedNowhere(): void
     {
@@ -115,11 +92,6 @@ final class RecordedFlowsTest extends DemonstrationTestCase
         static::assertSame([], self::traces()->clientsOf('authorization_code'));
     }
 
-    /**
-     * The authorization request a browser brings is drawn where it was brought, and the answer that
-     * sends it to a login is this provider still working on that request: a hop of the picture is the
-     * answer carried to the client, and this is not it.
-     */
     #[Test]
     public function anAnswerThatKeepsTheBrowserHereIsNotTheAuthorizationResponse(): void
     {

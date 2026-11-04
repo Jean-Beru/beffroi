@@ -15,8 +15,7 @@ use function str_repeat;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 8030 §2, RFC 8291 §3.1, RFC 8292 §3.2: what a browser hands over when it subscribes, and what this
- * provider refuses to keep as a subscription.
+ * RFC 8030 §2, RFC 8291 §3.1, RFC 8292 §3.2
  */
 final class PushSubscriptionTest extends TestCase
 {
@@ -27,8 +26,7 @@ final class PushSubscriptionTest extends TestCase
     private const string AUTH_SECRET = 'tBHItJI5svbpez7KI4CCXg';
 
     /**
-     * What the same browser hands over the next time it subscribes: a browser draws both afresh every time
-     * (RFC 8291 §3.1).
+     * RFC 8291 §3.1
      */
     private const string OTHER_PUBLIC_KEY = 'BCmti7ScyxVpXpWiRsw88Bt4pPqoQfOF7pwoSHnt4V8MwHbDb-3sQd7mpE4tCLnfbEvJ6VPwxQEO-zPlRrLW4tI';
 
@@ -42,7 +40,7 @@ final class PushSubscriptionTest extends TestCase
     }
 
     /**
-     * Decision 0002: the tenant of a subscription is the tenant of the user it belongs to, restated.
+     * Decision 0002
      */
     #[Test]
     public function itBelongsToTheTenantOfItsUser(): void
@@ -54,9 +52,6 @@ final class PushSubscriptionTest extends TestCase
         static::assertTrue($subscription->tenant->equals($this->alice->tenant));
     }
 
-    /**
-     * A browser is recognised by the digest of its endpoint, whatever its length.
-     */
     #[Test]
     public function itIsRecognisedByTheDigestOfItsEndpoint(): void
     {
@@ -65,7 +60,7 @@ final class PushSubscriptionTest extends TestCase
     }
 
     /**
-     * RFC 8030 §2: a push service takes a message over HTTPS, and nothing else is an endpoint.
+     * RFC 8030 §2
      */
     #[Test]
     public function anEndpointThatIsNotHttpsIsRefused(): void
@@ -79,7 +74,7 @@ final class PushSubscriptionTest extends TestCase
     }
 
     /**
-     * RFC 8291 §3.1: the two keys arrive base64url, and what is not is not a key of a browser.
+     * RFC 8291 §3.1
      */
     #[Test]
     #[DataProvider('provideKeysThatAreNotBase64Url')]
@@ -116,8 +111,7 @@ final class PushSubscriptionTest extends TestCase
     }
 
     /**
-     * RFC 8292 §3.2: a subscription is bound to the application server key it was made under, so one
-     * that names none is one nobody could sign a push for.
+     * RFC 8292 §3.2
      */
     #[Test]
     public function itNamesTheApplicationServerKeyItWasMadeUnder(): void
@@ -131,8 +125,7 @@ final class PushSubscriptionTest extends TestCase
     }
 
     /**
-     * RFC 8292 §4.2: a push signed by another key is refused by the push service, so the key a
-     * subscription names is the only one that may sign for it.
+     * RFC 8292 §4.2
      */
     #[Test]
     public function itIsBoundToOneKeyAndNotToAnother(): void
@@ -145,9 +138,6 @@ final class PushSubscriptionTest extends TestCase
         static::assertFalse($subscription->isBoundTo('another-key'));
     }
 
-    /**
-     * The row stays, as it does for every credential of a user, and the first revocation wins.
-     */
     #[Test]
     public function aRevokedSubscriptionKeepsTheDateOfTheFirstRevocation(): void
     {
@@ -164,8 +154,7 @@ final class PushSubscriptionTest extends TestCase
     }
 
     /**
-     * Push API §3.4, RFC 8291 §3.1: a browser that subscribes again draws its keys afresh and may have
-     * been handed another application server key since, and this row is what carries them.
+     * Push API §3.4, RFC 8291 §3.1
      */
     #[Test]
     public function aBrowserThatSubscribesAgainCarriesWhatItHandedThisTime(): void
@@ -184,7 +173,7 @@ final class PushSubscriptionTest extends TestCase
     }
 
     /**
-     * RFC 8030 §7.3: a browser the user had taken out says it is reachable again by subscribing again.
+     * RFC 8030 §7.3
      */
     #[Test]
     public function aBrowserTakenOutIsReachableAgainWhenItSubscribesAgain(): void
@@ -200,9 +189,6 @@ final class PushSubscriptionTest extends TestCase
         static::assertFalse($subscription->isRevoked());
     }
 
-    /**
-     * What the second way in records is what the first one accepts, and nothing else.
-     */
     #[Test]
     public function aBrowserThatSubscribesAgainWithAKeyThatIsNotBase64UrlIsRefused(): void
     {
@@ -218,7 +204,7 @@ final class PushSubscriptionTest extends TestCase
     }
 
     /**
-     * The name of a browser is its holder's, and theirs to correct: architecture §5.2.
+     * Architecture §5.2
      */
     #[Test]
     public function itIsNamedAgainByItsHolder(): void
@@ -233,10 +219,6 @@ final class PushSubscriptionTest extends TestCase
         static::assertSame('Alice at home', $subscription->label);
     }
 
-    /**
-     * What a browser may be called is the length of the column that holds it, and never nothing: a line
-     * nobody can tell from another is what naming one is for.
-     */
     #[Test]
     #[DataProvider('provideNamesABrowserDoesNotHold')]
     public function aNameABrowserDoesNotHoldIsRefused(string $label): void
@@ -262,9 +244,6 @@ final class PushSubscriptionTest extends TestCase
         yield 'longer than the column' => [str_repeat('a', PushSubscription::LABEL_MAX_LENGTH + 1)];
     }
 
-    /**
-     * Nothing of what a push is sent under moves when the name does.
-     */
     #[Test]
     public function namingItLeavesWhatTheBrowserHandedOver(): void
     {

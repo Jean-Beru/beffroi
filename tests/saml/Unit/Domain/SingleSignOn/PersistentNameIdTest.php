@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * spec/saml.md S-13, Core §8.3.7: one persistent identifier per service provider, computed, never the "sub".
+ * S-13, Core §8.3.7
  */
 final class PersistentNameIdTest extends TestCase
 {
@@ -23,7 +23,7 @@ final class PersistentNameIdTest extends TestCase
     private const string SALT = 'the salt of the tenant';
 
     /**
-     * S-13: the SHA-256 of the entity ID, the "sub" and the salt, each followed by a NUL, in base64url: 43 characters.
+     * S-13
      */
     #[Test]
     public function itIsTheHashOfTheServiceProviderTheSubjectAndTheSalt(): void
@@ -36,7 +36,7 @@ final class PersistentNameIdTest extends TestCase
     }
 
     /**
-     * S-13: the same user at the same service provider is the same identifier at every login.
+     * S-13
      */
     #[Test]
     public function itIsTheSameAtEveryDerivation(): void
@@ -49,7 +49,7 @@ final class PersistentNameIdTest extends TestCase
     }
 
     /**
-     * S-13: two service providers cannot relate the identifiers they hold.
+     * S-13
      */
     #[Test]
     public function anotherServiceProviderGetsAnotherIdentifier(): void
@@ -62,7 +62,7 @@ final class PersistentNameIdTest extends TestCase
     }
 
     /**
-     * S-13: whoever knows the "sub" and not the salt computes nothing.
+     * S-13
      */
     #[Test]
     public function anotherSaltGivesAnotherIdentifier(): void
@@ -75,7 +75,7 @@ final class PersistentNameIdTest extends TestCase
     }
 
     /**
-     * Core §8.3.7: at most 256 characters, and one at least.
+     * Core §8.3.7
      */
     #[Test]
     public function aValueOverTheLengthOfTheFormatIsRefused(): void
@@ -89,7 +89,7 @@ final class PersistentNameIdTest extends TestCase
     }
 
     /**
-     * Core §8.3.7: 256 characters are within the format.
+     * Core §8.3.7
      */
     #[Test]
     public function aValueOfTheLengthOfTheFormatIsKept(): void
@@ -99,7 +99,7 @@ final class PersistentNameIdTest extends TestCase
     }
 
     /**
-     * Core §8.3.7: an empty identifier names nobody.
+     * Core §8.3.7
      */
     #[Test]
     public function anEmptyValueIsRefused(): void

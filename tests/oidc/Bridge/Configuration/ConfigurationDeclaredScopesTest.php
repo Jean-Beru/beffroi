@@ -15,10 +15,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function sprintf;
 
-/**
- * The scopes a deployment declares for the tenant it declares (issue #920), read when the list is built: a deployment
- * that declares a value the tenant cannot hand out is told so there, and by no registration.
- */
 final class ConfigurationDeclaredScopesTest extends TestCase
 {
     #[Test]
@@ -34,10 +30,6 @@ final class ConfigurationDeclaredScopesTest extends TestCase
         static::assertSame(['invoices.read', 'invoices.pay'], $scopes);
     }
 
-    /**
-     * What one tenant hands out is no business of another: asked about a tenant this deployment does not declare,
-     * the list answers as a tenant that declares none.
-     */
     #[Test]
     public function anotherTenantIsDeclaredNone(): void
     {
@@ -52,8 +44,7 @@ final class ConfigurationDeclaredScopesTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.3: the scopes of a tenant are a set, so a scope declared twice is declared once, where it was
-     * first named.
+     * RFC 6749 §3.3
      */
     #[Test]
     public function aScopeDeclaredTwiceIsDeclaredOnce(): void
@@ -84,8 +75,7 @@ final class ConfigurationDeclaredScopesTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.3: a scope token is one or more of the printable characters of ASCII but the space, the double
-     * quote and the backslash, and nothing after it.
+     * RFC 6749 §3.3
      *
      * @return iterable<string, array{string}>
      */
@@ -99,9 +89,7 @@ final class ConfigurationDeclaredScopesTest extends TestCase
     }
 
     /**
-     * OIDC Core §11: "offline_access" asks for a refresh token, which the wired grants make good or do not. A
-     * deployment that declares it is told so when the list is built, rather than having the provider announce what
-     * its token endpoint may not issue.
+     * OIDC Core §11
      */
     #[Test]
     public function offlineAccessIsRefusedWhenTheListIsBuilt(): void
@@ -115,8 +103,6 @@ final class ConfigurationDeclaredScopesTest extends TestCase
     }
 
     /**
-     * The scopes of the tenant of the fixtures, as a deployment declares them.
-     *
      * @param list<string> $scopes
      */
     private static function declared(array $scopes): ConfigurationDeclaredScopes

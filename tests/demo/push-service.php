@@ -3,46 +3,15 @@
 declare(strict_types=1);
 
 /*
- * The push service of "castor demo --push" (.castor/lab/demo.php, demo_push_check): the third party of
- * RFC 8030, standing where a push service of Mozilla or of Google stands, so that a notification of this
- * provider is once carried by something that is not a double.
- *
- * It is a store and forward and nothing else (RFC 8030 §5): it takes what it is POSTed, hands it to the
- * walk whole, and answers what it was told to answer. It never decrypts anything, which is the point of
- * RFC 8291: what a push service holds of a message is its length.
- *
- * HTTPS, because the endpoint of a subscription is an absolute HTTPS URL (RFC 8030 §2) and this provider
- * refuses to record anything else. The certificate is given on the command line; the walk issues it and
- * makes the container that pushes trust it.
- *
- * Two streams, as every program of this directory has. The trace a human follows goes to stderr; stdout
- * carries one JSON object per step, one per line, so that the walk reads a push as it arrives:
- *
- *   {"step":"listening", "origin", "answer"}
- *   {"step":"push", "number", "answer", "method", "path", "head", "body", "at", "since_previous"}
- *   {"step":"answer", "answer"}          the status the next push will be answered, once told
- *
- * One JSON object per line on stdin tells it what to answer next: {"answer":410}. A push service that
- * says a subscription is gone, one that is having a bad minute and one that takes the message are the
- * three things this walk needs of it, and they are the same service on the same port: a subscription is
- * recognised by its endpoint, so telling this one to answer differently is not standing another one up.
- *
- * Options: --port, --cert, --key (required), --answer.
+ * The push service of "castor demo --push" (RFC 8030): it takes what it is sent and answers what it is told to.
  */
 
 require __DIR__ . '/../../vendor/autoload.php';
 
-/**
- * One HTTPS endpoint that takes messages for one browser. TLS is enabled per connection rather than by a
- * "tls://" server, so that a handshake nobody completes is one connection lost and not this program
- * ending.
- */
 final class LabPushService
 {
     /**
-     * The statuses this service may be told to answer, each one a fact of RFC 8030 the provider has to
-     * make something of: the message is taken (§5), the subscription is gone (§7.3), or the service
-     * cannot answer for it now (§5, a 5xx being what a retry exists for).
+     * RFC 8030 §5, §7.3
      */
     public const array ANSWERS = [
         201 => '201 Created',
@@ -61,15 +30,10 @@ final class LabPushService
 
     private ?float $previous = null;
 
-    /**
-     * Whether there is still somebody on the other end of stdin to be told by. A service started without
-     * one answers what it was started with, for ever: it is stopped by whoever started it, never by
-     * running out of instructions.
-     */
     private bool $listening = true;
 
     /**
-     * @throws RuntimeException when the port is not one this program may listen on
+     * @throws RuntimeException
      */
     public function __construct(
         int $port,
@@ -86,7 +50,7 @@ final class LabPushService
                 'ssl' => [
                     'local_cert' => $certificate,
                     'local_pk' => $privateKey,
-                    // a push service is not asked for anything by whoever pushes to it
+                    // Nobody who pushes presents a certificate, so there is no peer to verify.
                     'verify_peer' => false,
                     'verify_peer_name' => false,
                 ],
@@ -103,10 +67,6 @@ final class LabPushService
         $this->socket = $socket;
     }
 
-    /**
-     * Serves until this program is stopped: one push at a time, and whatever is written on stdin read
-     * between two of them.
-     */
     public function serve(): void
     {
         $stdin = \STDIN;
@@ -134,11 +94,6 @@ final class LabPushService
         fclose($this->socket);
     }
 
-    /**
-     * One connection: the handshake, the request, the answer this service was told to give, and what the
-     * walk is handed of it. The body is base64 so that a line of stdout carries what is, by RFC 8291, a
-     * string of random octets.
-     */
     private function take(): void
     {
         $connection = @stream_socket_accept($this->socket, 1.0);
@@ -146,8 +101,6 @@ final class LabPushService
             return;
         }
         if (@stream_socket_enable_crypto($connection, true, \STREAM_CRYPTO_METHOD_TLS_SERVER) !== true) {
-            // whoever connected does not trust this certificate, or speaks no TLS: there is nothing to
-            // take and nothing to say about it
             fclose($connection);
             push_service_step(null, 'A connection was closed before the handshake completed.');
 
@@ -182,8 +135,7 @@ final class LabPushService
     }
 
     /**
-     * One line of stdin: the status the next push is answered. False once there is nobody left to be told
-     * by, after which this service goes on answering what it last knew.
+     * Reads from stdin the status the next push is answered; false once stdin is closed.
      *
      * @param resource $stdin
      */
@@ -213,8 +165,6 @@ final class LabPushService
     }
 
     /**
-     * The request, headers and body, read until the body announced by "Content-Length" is in.
-     *
      * @param resource $connection
      */
     private static function read($connection): string
@@ -257,7 +207,7 @@ final class LabPushService
     }
 
     /**
-     * @return array{string, string} the method and the target of the request line
+     * @return array{string, string} the method and the target
      */
     private static function requestLineOf(string $head): array
     {
@@ -266,10 +216,7 @@ final class LabPushService
 }
 
 /**
- * One step for the walk on stdout, one line for a human on stderr; a step of null says something that is
- * nobody's business but the reader's.
- *
- * @param array<string, mixed>|null $step
+ * @param array<string, mixed>|null $step null for a line on stderr alone
  */
 function push_service_step(?array $step, string $said): void
 {
@@ -280,7 +227,7 @@ function push_service_step(?array $step, string $said): void
 }
 
 /**
- * @throws RuntimeException when an option is missing or names something that is not there
+ * @throws RuntimeException
  *
  * @return array{port: int, cert: string, key: string, answer: int}
  */
@@ -328,8 +275,6 @@ try {
     $service->serve();
     $service->close();
 } catch (RuntimeException $exception) {
-    // the reason is written for whoever reads these lines, then the exception ends the process: its code is
-    // what the walk asserts on, as it does of the other programs of tests/demo/
     fwrite(\STDERR, $exception->getMessage() . "\n");
 
     throw $exception;

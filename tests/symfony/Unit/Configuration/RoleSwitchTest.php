@@ -12,13 +12,12 @@ use PHPUnit\Framework\TestCase;
 use stdClass;
 
 /**
- * Decision 0030: a role the deployment plays is read once, when the container builds a service the role changes, and
- * what that service is handed then is the handler of the role or none.
+ * Decision 0030
  */
 final class RoleSwitchTest extends TestCase
 {
     /**
-     * Spec/saml.md S-40: the SAML key is the key of both SAML roles, so it is wanted while either is on.
+     * spec/saml.md S-40
      *
      * @param list<bool> $roles
      */
@@ -45,7 +44,7 @@ final class RoleSwitchTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-41: a role that is on hands over the service it builds.
+     * spec/saml.md S-41
      */
     #[Test]
     public function aRoleThatIsOnHandsOverItsService(): void
@@ -61,7 +60,7 @@ final class RoleSwitchTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-41: a role that is off hands over none, and builds nothing of what it would have handed over.
+     * spec/saml.md S-41
      */
     #[Test]
     public function aRoleThatIsOffHandsOverNoneAndBuildsNothing(): void

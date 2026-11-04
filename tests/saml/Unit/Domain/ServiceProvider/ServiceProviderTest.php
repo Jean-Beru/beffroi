@@ -20,15 +20,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-5, section 5.2, section 6.2 step 1: a service provider as the deployment declares it.
+ * spec/saml.md S-5, section 5.2, section 6.2 step 1
  */
 final class ServiceProviderTest extends TestCase
 {
     private const string ENTITY_ID = 'https://sp.example.com/saml';
 
     /**
-     * S-7 and issue #730: a declaration asks for no encryption and says its requests are signed unless it says
-     * otherwise, and its metadata are trusted by their channel unless it pins a signer.
+     * S-7
      */
     #[Test]
     public function aDeclarationAsksForNoEncryptionAndSignsItsRequestsUnlessItSaysOtherwise(): void
@@ -44,7 +43,7 @@ final class ServiceProviderTest extends TestCase
     }
 
     /**
-     * S-5: a declaration that pins a signer of its metadata has them verified, readSigned().
+     * S-5
      */
     #[Test]
     public function aDeclarationThatPinsASignerReadsItsMetadataSigned(): void
@@ -57,7 +56,7 @@ final class ServiceProviderTest extends TestCase
     }
 
     /**
-     * Section 7: sixteen signers and 256 attributes are within the bounds.
+     * Section 7
      */
     #[Test]
     public function aDeclarationAtItsBoundsIsAccepted(): void
@@ -71,8 +70,7 @@ final class ServiceProviderTest extends TestCase
     }
 
     /**
-     * Section 6.2 step 1, Core §8.3.6, the entityIDType of Metadata §2.2.1: an entity ID is at most 1024 characters,
-     * counted as characters and not as the bytes UTF-8 writes them in.
+     * Section 6.2 step 1, Core §8.3.6, Metadata §2.2.1
      */
     #[Test]
     #[DataProvider('provideEntityIdsOf1024Characters')]
@@ -137,9 +135,6 @@ final class ServiceProviderTest extends TestCase
         ];
     }
 
-    /**
-     * One claim sent under two names is two attributes of distinct names.
-     */
     #[Test]
     public function oneClaimMaySendTwoAttributes(): void
     {

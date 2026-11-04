@@ -17,9 +17,7 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * JWT Secured Authorization Response Mode §2.1 and §2.4, issue #163: a client that asks for a signed
- * answer gets one document, signed by the active key of its tenant, whichever way it is delivered; a
- * refusal is signed the same way, and "state" travels inside the document and nowhere else.
+ * JWT Secured Authorization Response Mode §2.1, §2.4
  */
 final class JarmResponseTest extends BrowserTestCase
 {
@@ -28,8 +26,7 @@ final class JarmResponseTest extends BrowserTestCase
     private const string REDIRECT_URI = 'https://jarm.test/callback';
 
     /**
-     * JARM §2.1: "jwt" names the signed mode the "code" response type defaults to, "query.jwt", so the
-     * document travels in the query as "response" and nothing else does.
+     * JARM §2.1
      */
     #[Test]
     public function theAnswerIsOneSignedDocumentInTheQuery(): void
@@ -48,8 +45,7 @@ final class JarmResponseTest extends BrowserTestCase
     }
 
     /**
-     * JARM §2.1: the parameters of the response are the claims of the document, "state" among them, with
-     * the issuer, the audience naming the client and an expiry.
+     * JARM §2.1
      */
     #[Test]
     public function theDocumentCarriesTheCodeTheStateAndTheIssuer(): void
@@ -73,7 +69,7 @@ final class JarmResponseTest extends BrowserTestCase
     }
 
     /**
-     * JARM §2.1: the client reads its answer in the document, so nothing of it is written beside it.
+     * JARM §2.1
      */
     #[Test]
     public function neitherTheStateNorTheCodeIsWrittenBesideTheDocument(): void
@@ -93,8 +89,7 @@ final class JarmResponseTest extends BrowserTestCase
     }
 
     /**
-     * JARM §2.4: a client that asked for a signed answer never gets an unsigned refusal; the error and
-     * the state are claims of the same document.
+     * JARM §2.4
      */
     #[Test]
     public function aRefusalIsASignedDocumentToo(): void
@@ -116,8 +111,7 @@ final class JarmResponseTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9700 §4.1: a failure of the first stage is not redirected at all, signed or not, the request
-     * having said nothing trustworthy about where to send anything.
+     * RFC 9700 §4.1
      */
     #[Test]
     public function anErrorOfTheFirstStageIsStillAPage(): void
@@ -137,8 +131,7 @@ final class JarmResponseTest extends BrowserTestCase
     }
 
     /**
-     * JARM §2.1: "form_post.jwt" posts the very same document by the page of Form Post Response Mode §2,
-     * which is one hidden field and no more.
+     * JARM §2.1, Form Post Response Mode §2
      */
     #[Test]
     public function theSignedFormPostDeliversTheSameDocumentInAPage(): void
@@ -162,8 +155,7 @@ final class JarmResponseTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §3.3: the key that signed a document stays published while the document can be
-     * verified, so a rotation between the answer and the moment the client reads it breaks nothing.
+     * Architecture §3.3
      */
     #[Test]
     public function aRotationDuringTheFlowDoesNotBreakTheDocument(): void
@@ -182,9 +174,6 @@ final class JarmResponseTest extends BrowserTestCase
         static::assertSame($key->kid, $header['kid']);
     }
 
-    /**
-     * A client that asks for nothing keeps the default mode, unchanged: the parameters in the query.
-     */
     #[Test]
     public function aClientThatAsksForNothingKeepsTheQuery(): void
     {
@@ -204,8 +193,7 @@ final class JarmResponseTest extends BrowserTestCase
     }
 
     /**
-     * The key the answers of "jarm-app" are signed with: it registered ES256, so the tenant needs an
-     * active key of that algorithm (JARM §3). Called again, it is a rotation.
+     * An ES256 key, the algorithm "jarm-app" registered (JARM §3); called again, it is a rotation.
      */
     private static function signedResponseKey(): TenantKey
     {
@@ -213,9 +201,6 @@ final class JarmResponseTest extends BrowserTestCase
     }
 
     /**
-     * A valid authorization request of "jarm-app" asking for a signed answer; "jarm-app" needs no
-     * consent, so the answer comes from the authorization endpoint itself.
-     *
      * @param array<string, string|null> $parameters
      *
      * @return array<string, string>
@@ -233,7 +218,7 @@ final class JarmResponseTest extends BrowserTestCase
     }
 
     /**
-     * The one parameter a signed answer carries (JARM §2.1).
+     * JARM §2.1
      */
     private static function document(Response $response): string
     {
@@ -241,9 +226,6 @@ final class JarmResponseTest extends BrowserTestCase
     }
 
     /**
-     * The signature against the JWK Set the provider publishes, which is what the client verifies it
-     * with, then the header and the claims.
-     *
      * @return array{header: array<string, mixed>, claims: array<string, mixed>}
      */
     private function verified(string $document): array
@@ -268,8 +250,6 @@ final class JarmResponseTest extends BrowserTestCase
     }
 
     /**
-     * The hidden fields of the form the page posts.
-     *
      * @return array<string, string>
      */
     private static function postedFields(Crawler $page): array

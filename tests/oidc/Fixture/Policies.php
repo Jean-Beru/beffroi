@@ -11,8 +11,7 @@ use Beffroi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
 use Beffroi\Oidc\Domain\Client\Registration\StatementIssuer;
 
 /**
- * The policy of a tenant of the tests, by the mode it names (decision 0009): the object the endpoint reads,
- * where RegistrationPolicies is the port a deployment wires behind it.
+ * Decision 0009
  */
 final class Policies
 {
@@ -27,7 +26,7 @@ final class Policies
     }
 
     /**
-     * @param list<StatementIssuer> $issuers the authorities this tenant pins; none is the mode closed
+     * @param list<StatementIssuer> $issuers none is the mode closed
      */
     public static function attested(array $issuers = []): ClientRegistrationPolicy
     {

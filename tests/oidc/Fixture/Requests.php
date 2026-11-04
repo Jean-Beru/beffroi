@@ -20,9 +20,6 @@ final class Requests
     public const string CHALLENGE = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';
 
     /**
-     * A request that passed both stages of the parser, for the first redirect URI of the client, with
-     * "openid" and whatever else is asked.
-     *
      * @param list<string> $scopes
      * @param list<Prompt> $prompts
      * @param list<string> $acrValues

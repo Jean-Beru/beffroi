@@ -10,8 +10,7 @@ use Beffroi\Saml\Port\ReplayStoreInterface;
 use DateTimeImmutable;
 
 /**
- * The store of spec/saml.md S-23 in the memory of one process, for the tests only: a message is keyed as the provider
- * keys it, and never forgotten, the tests reading when it expires instead.
+ * spec/saml.md S-23
  */
 final class InMemoryReplayStore implements ReplayStoreInterface
 {
@@ -31,9 +30,6 @@ final class InMemoryReplayStore implements ReplayStoreInterface
         return true;
     }
 
-    /**
-     * When the message may be forgotten, or null when it was never remembered.
-     */
     public function expiresAt(Tenant $tenant, string $issuer, string $id): ?DateTimeImmutable
     {
         return $this->remembered[RememberedMessage::keyOf($tenant, $issuer, $id)] ?? null;

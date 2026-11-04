@@ -10,9 +10,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
- * That a backchannel request was answered is a fact the audit reads; telling the client that made it is a
- * piece of work of its own (architecture §5.6). The hop is what keeps the two apart: the call is retried
- * on its own schedule and alone, and a retry never replays what else listens to an approval.
+ * A hop of its own, so that a retry of the call to the client never replays what else listens to an approval.
  */
 #[AsMessageHandler(bus: 'event.bus')]
 final readonly class QueueClientNotificationHandler

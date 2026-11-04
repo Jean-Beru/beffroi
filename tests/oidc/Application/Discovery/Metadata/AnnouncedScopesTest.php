@@ -16,9 +16,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * OIDC Discovery §3: "scopes_supported" is every scope the tenant hands out tokens for, read where that
- * set is assembled (`OfferedScopes`) so that what is announced and what a registration is held to are
- * one set and not two that must agree.
+ * OIDC Discovery §3
  */
 final class AnnouncedScopesTest extends TestCase
 {

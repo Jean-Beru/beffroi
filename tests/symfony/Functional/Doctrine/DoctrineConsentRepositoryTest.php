@@ -20,8 +20,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §4.3, §5.3: the consent in force between a user and a client is the active one granted
- * last; a superseded one stays, revoked.
+ * Architecture §4.3, §5.3
  */
 final class DoctrineConsentRepositoryTest extends DatabaseTestCase
 {
@@ -104,10 +103,6 @@ final class DoctrineConsentRepositoryTest extends DatabaseTestCase
         static::assertEquals(self::now()->modify('+1 hour'), self::entityManager()->find(Consent::class, $consent->id)?->revokedAt);
     }
 
-    /**
-     * What the page of the account reads: one line per client, the most recently granted first, the
-     * consents of another user left out.
-     */
     #[Test]
     public function theConsentsInForceAreListedForTheirUser(): void
     {
@@ -139,9 +134,6 @@ final class DoctrineConsentRepositoryTest extends DatabaseTestCase
         static::assertSame([], self::activeConsents()->activeOf($alice));
     }
 
-    /**
-     * A client the configuration no longer declares leaves rows behind; a consent of nobody is not one.
-     */
     #[Test]
     public function aConsentOfAClientNoLongerRegisteredIsNotListed(): void
     {

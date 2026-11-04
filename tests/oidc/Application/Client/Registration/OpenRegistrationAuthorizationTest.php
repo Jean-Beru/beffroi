@@ -13,15 +13,10 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 7591 §1.3, decision 0009: the mode built second. A registration is authorised by nothing at all,
- * which is what the `dynamic_client` variant of the conformance suite sends.
+ * RFC 7591 §1.3, Decision 0009
  */
 final class OpenRegistrationAuthorizationTest extends TestCase
 {
-    /**
-     * A mode that registers whoever asks has nothing to compare and nothing to spend: a credential
-     * presented to it is read by nothing, and it puts nothing in front of the members the client sent.
-     */
     #[Test]
     #[DataProvider('providePresentedCredentials')]
     public function aRequestIsAuthorisedWhateverItPresentsAndNothingIsAddedToIt(?string $header): void

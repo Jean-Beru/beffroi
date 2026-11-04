@@ -16,13 +16,6 @@ use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * A key for the tenant, sealed by the KMS and active at once (architecture §3.3, §5.5): what
- * "beffroi:keys:rotate --now" does, kept under this name for the first key of a tenant; run twice, a
- * rotation without a staging window. The algorithm names what the key is for: a JWS algorithm gives a key
- * that signs, a JWE key management algorithm a key a client encrypts to, and the two names of its own give
- * the keys the tenant keeps, the one browsers are handed and the one its messages are sealed to.
- */
 #[AsCommand(
     name: 'beffroi:keys:generate',
     description: 'Generate a key, seal it with the configured KMS and make it the active one of its algorithm at once; "beffroi:keys:rotate" is the rotation without an outage.',
@@ -41,10 +34,6 @@ final readonly class KeysGenerateCommand
     ) {
     }
 
-    /**
-     * What both this command and "beffroi:keys:rotate" offer, said once: the wiring is the one source of
-     * truth over the algorithms, so the option describes it the same way wherever it is offered.
-     */
     public const string ALGORITHM_OPTION = 'The algorithm the key pair is generated for, among those the provider is wired with: a JWS algorithm for a key that signs, a JWE key management one for a key clients encrypt to, and the name of one of the keys the tenant keeps rather than publishing: the one it hands to browsers, the one it seals its own messages to, its SAML signing key (SAML-SIGNING) and the key an upstream SAML identity provider encrypts for (SAML-ENCRYPTION: and the entity ID of that provider). The default signature algorithm when none is named.';
 
     public function __invoke(

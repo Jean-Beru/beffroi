@@ -22,14 +22,12 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * CIBA Core §7, §10.1, architecture §5.3: a backchannel authentication request keyed by the hash of the
- * identifier its client comes back with, found again by the user it was made for; a spent record stays.
+ * CIBA Core §7, §10.1, Architecture §5.3
  */
 final class DoctrineBackchannelAuthenticationRecordRepositoryTest extends DatabaseTestCase
 {
     /**
-     * §10.1: the claim is one conditional statement, so a second caller is told it lost, and it holds the
-     * date the first one wrote.
+     * CIBA Core §10.1
      */
     #[Test]
     public function onlyTheFirstCallerSpendsTheIdentifier(): void
@@ -50,10 +48,6 @@ final class DoctrineBackchannelAuthenticationRecordRepositoryTest extends Databa
         static::assertEquals(self::now(), $record->usedAt);
     }
 
-    /**
-     * What the token endpoint needs of a record comes back with it, the client of the configuration and
-     * the user it was made for included.
-     */
     #[Test]
     public function aRecordComesBackWithWhatTheGrantNeeds(): void
     {
@@ -85,8 +79,7 @@ final class DoctrineBackchannelAuthenticationRecordRepositoryTest extends Databa
     }
 
     /**
-     * §10.2: what is kept for a client this provider has to call back is kept sealed, and comes back as
-     * the bytes it was.
+     * CIBA Core §10.2
      */
     #[Test]
     public function whatIsKeptForAClientThatIsCalledBackComesBackAsItWasSealed(): void
@@ -112,8 +105,7 @@ final class DoctrineBackchannelAuthenticationRecordRepositoryTest extends Databa
     }
 
     /**
-     * §10.1: the approval is kept with the session it was given with and what that session had proven,
-     * which is what the tokens of the grant descend from.
+     * CIBA Core §10.1
      */
     #[Test]
     public function anApprovalComesBackWithItsSessionAndWhatItHadProven(): void
@@ -141,8 +133,7 @@ final class DoctrineBackchannelAuthenticationRecordRepositoryTest extends Databa
     }
 
     /**
-     * §10.1: the page where a user answers reads what is waiting for them, oldest first, and nothing that
-     * is waiting for somebody else.
+     * CIBA Core §10.1
      */
     #[Test]
     public function whatIsWaitingIsReadByTheUserItWasMadeFor(): void
@@ -168,9 +159,6 @@ final class DoctrineBackchannelAuthenticationRecordRepositoryTest extends Databa
         );
     }
 
-    /**
-     * A request that was answered, that was spent or that expired is waiting for nobody.
-     */
     #[Test]
     public function whatIsNoLongerWaitingIsNotRead(): void
     {
@@ -194,8 +182,7 @@ final class DoctrineBackchannelAuthenticationRecordRepositoryTest extends Databa
     }
 
     /**
-     * §10.1: a spent record stays, so that its second presentation is told from an identifier nobody
-     * issued.
+     * CIBA Core §10.1
      */
     #[Test]
     public function aSpentRecordStaysSpent(): void
@@ -216,9 +203,6 @@ final class DoctrineBackchannelAuthenticationRecordRepositoryTest extends Databa
         static::assertEquals(self::now()->modify('+90 seconds'), $found->usedAt);
     }
 
-    /**
-     * An identifier nobody issued is found by nothing, as one of a client no longer registered is.
-     */
     #[Test]
     public function anIdentifierThisProviderNeverAnsweredIsFoundByNothing(): void
     {

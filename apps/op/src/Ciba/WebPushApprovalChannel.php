@@ -20,20 +20,7 @@ use function sprintf;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * The one channel the provider ships (architecture §5.6): the browsers of the user, reached through their
- * own push services (RFC 8030). It is the one way of reaching somebody whose premise this provider
- * already holds, a browser they signed in with, rather than an application store or an address book, and
- * it is wired by a deployment like any other channel.
- *
- * What is sent is what a PendingApproval carries and nothing more: the provider that is asking, the
- * client that asked, what that client wrote, and the page where a user finds what is waiting for them.
- * No identifier of the request and no link that answers one (BCP 10027 §5.2): the notification says that
- * something is waiting, and the user goes to the provider they already know.
- *
- * Every browser of the user is pushed to, and what comes back is a fact about that browser: a push
- * service that says the subscription is gone has taken it out, and the row is revoked here rather than
- * tried again forever. What is left is the attempt, and the lane is told to come back only when no
- * browser at all was reached: one browser that got it is a user who was told.
+ * Sends no request identifier and no link that answers one: the notification only says something is waiting.
  */
 final readonly class WebPushApprovalChannel implements PendingApprovalChannelInterface
 {
@@ -54,8 +41,6 @@ final readonly class WebPushApprovalChannel implements PendingApprovalChannelInt
     {
         $subscriptions = $this->subscriptions->findActiveByUser($user);
         if ($subscriptions === []) {
-            // a user this deployment cannot reach is not a failure of anything: they find the request on
-            // the page where requests are answered, which is where this notification would send them
             return;
         }
         $message = $this->message($approval, $this->locales->of($user));
@@ -87,12 +72,6 @@ final readonly class WebPushApprovalChannel implements PendingApprovalChannelInt
         }
     }
 
-    /**
-     * The words of the notification, in the language that user reads (UserLocale): there is nobody in
-     * front of a browser to read an "Accept-Language" from and no interaction to take a "ui_locales"
-     * from, this being sent out of any request of theirs (§5.7), so what is left is what this provider
-     * knows of them.
-     */
     private function message(PendingApproval $approval, string $locale): PushMessage
     {
         $binding = $approval->bindingMessage;
@@ -130,8 +109,7 @@ final readonly class WebPushApprovalChannel implements PendingApprovalChannelInt
     }
 
     /**
-     * What a log line says of a subscription: which one it was and what came back, never its endpoint,
-     * which names a browser of somebody at their push service.
+     * Never the endpoint: it names the browser of a person at their push service.
      *
      * @return array<string, string>
      */

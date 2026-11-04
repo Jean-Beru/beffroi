@@ -77,40 +77,12 @@ use Beffroi\Saml\Tests\Fixture\IdentityProviderDocuments;
 use Beffroi\Saml\Tests\Fixture\ServiceProviderDocuments;
 use function str_replace;
 
-/**
- * One row of every family of columns the classification declares sealed, written with the values declared
- * here and nowhere else.
- *
- * It is shared rather than written per test because the two uses have to agree. A test that reads one table
- * asserts that its own values are not in its own row; the test that reads the whole database asserts that no
- * value the suite ever wrote is anywhere in the file. Written twice, the second list drifts from the first
- * and the dump passes for the wrong reason: it searched for values nothing had written.
- *
- * What it does not do is drive the application. These are the rows as the domain writes them, which is what
- * says the types seal; what a journey leaves behind is the business of the walk against the stack.
- */
 final readonly class SealedRows
 {
-    /**
-     * The shortest a declared value may be, in bytes.
-     *
-     * A sealed column holds bytes that are indistinguishable from random, so a short value is found in one
-     * by chance rather than by leaking. Over a database file of some hundreds of kilobytes, three bytes turn
-     * up about once every twelve runs and four about once in ten thousand, which is a test that fails for
-     * nothing; five bytes turn up about once in two million, which is never. Hence the floor, and hence a
-     * fixture value that reads a little longer than life: `family_name` is King-Noel, which Ada's was.
-     */
     public const int SHORTEST_VALUE = 5;
 
     /**
-     * One value each sealed column holds, by the table and the column it lands in.
-     *
-     * One value and not the whole of what the column holds: `claims` is a JSON document, `created_from` is a
-     * whole request context, and `parameters` is a pushed request. What those carry besides is declared in
-     * {@see ALSO_WRITTEN}. What this map is for is the other guarantee, that every column the classification
-     * declares sealed has a value written into it, which is checked per table by the tests that read one.
-     *
-     * @var array<string, array<string, string>>
+     * @var array<string, array<string, string>> table, then column, then one value the column holds
      */
     public const array VALUES = [
         'beffroi_user' => [
@@ -118,10 +90,7 @@ final readonly class SealedRows
             'email' => 'ada@example.org',
             'phone_number' => '+441632960541',
             'address' => '12 Grand Rue, Saint-Germain',
-            // The thirteen claims of a profile share one column and one type, so one of them exercises the
-            // path all thirteen take; the other twelve left with the columns they had (issue #440).
             'profile' => 'Augusta Ada King-Noel',
-            // the upstream provider that created her, the one her linked identity names (decision 0002)
             'source' => 'login.acme-federation.example',
         ],
         'beffroi_linked_identity' => [
@@ -143,27 +112,17 @@ final readonly class SealedRows
         'beffroi_device_authorization_request' => [
             'requested_from' => self::IP_ADDRESS,
         ],
-        // the provenance of one act of the journal (issue #454), which is what the request carried of a
-        // person and what a dump must not give away either
         'beffroi_journal' => [
             'context' => self::IP_ADDRESS,
         ],
-        // the archive a person asked for (issue #453): the one column in which everything the other
-        // families seal stands in clear at once, so what is searched for in the dump is the document and
-        // the two values of this fixture it holds
         'beffroi_personal_archive' => [
             'content' => '{"profile":[{"name":"Augusta Ada King-Noel","email":"ada@example.org"}]}',
         ],
-        // what a claim of a person used to say, and what they made it say (issue #482): two values of
-        // that person and the provenance of the request that changed them
         'beffroi_claim_change' => [
             'was' => 'Ada-of-the-notes',
             'became' => 'the-enchantress-of-numbers',
             'context' => self::USER_AGENT,
         ],
-        // what a client was given of a person at one act (issue #590): the scopes it may now obtain, what
-        // it had asked for by name and what it was given beyond them, which a dump of one row per act must
-        // not give away either
         'beffroi_disclosure' => [
             'scopes' => 'engine.notes.read',
             'claims' => 'the_nickname_of_ada',
@@ -180,30 +139,23 @@ final readonly class SealedRows
         'beffroi_pushed_authorization_request' => [
             'parameters' => 'ada@example.org',
         ],
-        // the metadata a service provider of the tenant published (beffroi/saml, issue #729), whose
-        // md:ContactPerson names the person who answers for it
         'beffroi_saml_service_provider' => [
             'document' => 'grace.hopper@sp.example.org',
         ],
-        // the metadata an upstream identity provider of the tenant published (beffroi/saml, issue #779), whose
-        // md:ContactPerson names the person who answers for it
         'beffroi_saml_upstream_identity_provider' => [
             'document' => 'katherine.johnson@idp.example.org',
         ],
         'beffroi_client' => [
             'metadata' => 'The Difference Engine',
             'assigned_metadata' => 'urn:example:scope:assigned-by-the-policy',
-            // the software a statement says the client is (RFC 7591 §2.3)
+            // The software a statement says the client is (RFC 7591 §2.3).
             'attested_metadata' => 'babbage-difference-engine',
             'secret' => 'a-shared-secret-this-provider-handed-over',
         ],
     ];
 
     /**
-     * What the fixture writes inside a column that holds more than one value, which a dump must not hold
-     * either.
-     *
-     * @var list<string>
+     * @var list<string> the other values written inside a column that holds several
      */
     public const array ALSO_WRITTEN = [
         'Augusta Ada King-Noel',
@@ -213,20 +165,10 @@ final readonly class SealedRows
         'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZGEtc3ViamVjdCJ9.sig',
     ];
 
-    /**
-     * The provenance every session, device request and backchannel request of the suite is written from.
-     *
-     * Public because {@see \App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase::context()} builds
-     * the context of the whole suite from these two, so that a row written by any test carries a value the
-     * search of the dump knows about by construction and not by coincidence.
-     */
     public const string IP_ADDRESS = '203.0.113.10';
 
     public const string USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0';
 
-    /**
-     * The snapshot the upstream provider returned, which is what the claims column holds whole.
-     */
     private const array CLAIMS = [
         'email' => 'ada@example.org',
         'email_verified' => true,
@@ -244,9 +186,7 @@ final readonly class SealedRows
     }
 
     /**
-     * Every value the fixture writes into a sealed column, each once.
-     *
-     * @return list<string>
+     * @return list<string> every value written into a sealed column, each once
      */
     public static function searchable(): array
     {
@@ -263,10 +203,6 @@ final readonly class SealedRows
         return array_values($values);
     }
 
-    /**
-     * One row of every family, in the order the foreign keys need: the user first, the client of the
-     * configuration being there already.
-     */
     public function all(Client $client): void
     {
         $user = $this->user();
@@ -287,11 +223,6 @@ final readonly class SealedRows
         $this->identityProviderMetadata();
     }
 
-    /**
-     * The metadata document accepted for a service provider (beffroi/saml, issue #729), sealed in a scope of its
-     * own: the one a SimpleSAMLphp service provider published, with the technical contact a deployment of it
-     * declares.
-     */
     public function serviceProviderMetadata(): AcceptedMetadata
     {
         $metadata = new AcceptedServiceProviderMetadata(
@@ -314,11 +245,6 @@ final readonly class SealedRows
         return $metadata;
     }
 
-    /**
-     * The metadata document accepted for an upstream identity provider (beffroi/saml, issue #779), sealed in a scope
-     * of its own: the one the SimpleSAMLphp identity provider of the judge publishes, with the technical contact a
-     * deployment of it declares.
-     */
     public function identityProviderMetadata(): AcceptedUpstreamMetadata
     {
         $metadata = new AcceptedUpstreamMetadata(
@@ -341,10 +267,6 @@ final readonly class SealedRows
         return $metadata;
     }
 
-    /**
-     * What one client was given of a person at one act (issue #590), sealed in a scope of its own: one row
-     * per act is what an application obtained of somebody day by day, which a dump must not read.
-     */
     public function disclosure(User $user, Client $client): Disclosure
     {
         $values = self::VALUES['beffroi_disclosure'];
@@ -367,10 +289,6 @@ final readonly class SealedRows
         return $disclosure;
     }
 
-    /**
-     * One act of the journal (issue #454), whose provenance is sealed in a scope of its own: it is what
-     * the request carried of a person, which a dump must not give away either.
-     */
     public function act(User $user): JournalEntry
     {
         $entry = new JournalEntry(
@@ -386,11 +304,6 @@ final readonly class SealedRows
         return $entry;
     }
 
-    /**
-     * The archive a person asked for and that was built (issue #453), whose document is sealed in a scope
-     * of its own: it is the one file in which everything this provider knows of somebody stands in clear
-     * at once, so a dump that gave it away would give away all of it.
-     */
     public function archive(User $user): PersonalArchive
     {
         $archive = PersonalArchive::asked(Uuid::v7(), $user, $this->now);
@@ -400,10 +313,6 @@ final readonly class SealedRows
         return $archive;
     }
 
-    /**
-     * One change of a claim of a person (issue #482), whose two values are sealed in a scope of their own:
-     * what that person used to be called is a personal datum as much as what they are called now.
-     */
     public function change(User $user): ClaimChange
     {
         $change = new ClaimChange(
@@ -594,14 +503,7 @@ final readonly class SealedRows
     }
 
     /**
-     * A client of the tenant, with the secret it was given or none, and attested by a software statement or
-     * not.
-     *
-     * Neither by default, because a sealed column that accepts a null holds a null and not the envelope of an
-     * empty value, and a test says so. {@see all()} gives it both, the dump having to be searched for them.
-     *
-     * @param bool $attested whether a statement signed what the client is, which the row then keeps among what
-     *                       the client registered and apart from it (RFC 7591 §3.1.1)
+     * RFC 7591 §3.1.1
      */
     public function client(?ClientSecretInterface $secret = null, bool $attested = false): ClientRecord
     {

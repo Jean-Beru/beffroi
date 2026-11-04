@@ -12,9 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The predicates an "acr" policy and a login floor may name are what the deployment is wired with
- * (decision 0010, issue #607), not a set an enumeration closes: a name nothing carries is refused with
- * the ones that are, as a password hash naming an algorithm nothing accounts for is.
+ * Decision 0010
  */
 final class WiredAuthenticationPredicatesTest extends TestCase
 {

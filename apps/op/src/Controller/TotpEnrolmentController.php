@@ -18,18 +18,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * The first code of a new authenticator app, posted by the enrolment page with the CSRF token
- * (architecture §5.2): verified by the enrolment of the core against the provisioning this browser holds
- * for this user; the credential exists from here, and the backup codes are shown, this once. A code that
- * does not match shows the same QR code again; without a provisioning, the page of the account says so.
- *
- * It answers with a redirection whether the step went through or was refused (issue #481), so that a
- * browser reloading does not post it again; what was refused crosses it in the session (WhatWasRefused).
- *
- * **A session alone does not post it** (AsksForARecentProofInterface): the credential exists from here,
- * and adding one is adding a way in.
- */
 #[AsController]
 final readonly class TotpEnrolmentController implements AsksForARecentProofInterface
 {
@@ -54,9 +42,6 @@ final readonly class TotpEnrolmentController implements AsksForARecentProofInter
     ) {
     }
 
-    /**
-     * The page of the enrolment, which holds the field the code is typed into.
-     */
     public function comesBackTo(): string
     {
         return AccountTwoFactorEnrolmentController::ROUTE;

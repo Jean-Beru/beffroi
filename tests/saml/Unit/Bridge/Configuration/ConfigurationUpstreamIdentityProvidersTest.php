@@ -14,15 +14,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-42, S-44, S-45, section 6.10 step 1: the upstream identity providers the configuration of the
- * deployment declares, keyed by entity ID, validated when they are built, those of one tenant.
+ * spec/saml.md S-42, S-44, S-45, section 6.10 step 1
  */
 final class ConfigurationUpstreamIdentityProvidersTest extends TestCase
 {
     private const string ENTRA = 'https://sts.windows.net/aaaabbbb-0000-cccc-1111-dddd2222eeee/';
 
     /**
-     * S-42, S-45: a declaration is read whole into its UpstreamIdentityProvider.
+     * S-42, S-45
      */
     #[Test]
     public function aDeclarationIsReadWhole(): void
@@ -66,8 +65,7 @@ final class ConfigurationUpstreamIdentityProvidersTest extends TestCase
     }
 
     /**
-     * S-44, the acceptance of issue #779: a domain two identity providers of the tenant declare is refused, naming it
-     * and both, whatever the case each writes it in.
+     * S-44
      */
     #[Test]
     public function aDomainDeclaredByTwoIdentityProvidersIsRefused(): void
@@ -88,7 +86,7 @@ final class ConfigurationUpstreamIdentityProvidersTest extends TestCase
     }
 
     /**
-     * S-44: two identity providers of distinct domains are both declared, a subdomain being a domain of its own.
+     * S-44
      */
     #[Test]
     public function twoIdentityProvidersOfDistinctDomainsAreDeclared(): void
@@ -108,8 +106,7 @@ final class ConfigurationUpstreamIdentityProvidersTest extends TestCase
     }
 
     /**
-     * S-45: an attribute filling a claim the profile of a person does not hold in this deployment is refused, the
-     * e-mail among them, which has its own attribute.
+     * S-45
      */
     #[Test]
     public function aClaimTheProfileDoesNotHoldIsRefused(): void
@@ -127,7 +124,7 @@ final class ConfigurationUpstreamIdentityProvidersTest extends TestCase
     }
 
     /**
-     * Section 6.10 step 1: a declaration that does not hold together is refused, naming the identity provider.
+     * Section 6.10 step 1
      */
     #[Test]
     #[DataProvider('provideDeclarationsThatDoNotHoldTogether')]
@@ -182,8 +179,7 @@ final class ConfigurationUpstreamIdentityProvidersTest extends TestCase
     }
 
     /**
-     * S-67: whether the assertions of an identity provider must arrive encrypted is read from its declaration, and
-     * they need not unless it says so.
+     * S-67
      *
      * @param array<string, mixed> $declared
      */
@@ -219,8 +215,7 @@ final class ConfigurationUpstreamIdentityProvidersTest extends TestCase
     }
 
     /**
-     * S-68: the parameter of the address of an identity provider is read from its declaration, and there is none unless
-     * it names one.
+     * S-68
      *
      * @param array<string, mixed> $declared
      */
@@ -256,7 +251,7 @@ final class ConfigurationUpstreamIdentityProvidersTest extends TestCase
     }
 
     /**
-     * S-42, M-6: a declaration under an entity ID that is no URI as the model reads one is refused, naming the rule.
+     * S-42, M-6
      */
     #[Test]
     public function aDeclarationUnderAnEntityIdThatIsNoUriIsRefused(): void
@@ -269,9 +264,6 @@ final class ConfigurationUpstreamIdentityProvidersTest extends TestCase
         new ConfigurationUpstreamIdentityProviders('acme', ['idp.acme.example' => self::declaration(['acme.example'])], new FixedProfileClaims());
     }
 
-    /**
-     * The declarations are those of one tenant, named by its slug: another tenant has none.
-     */
     #[Test]
     public function anotherTenantDeclaresNone(): void
     {
@@ -286,9 +278,6 @@ final class ConfigurationUpstreamIdentityProvidersTest extends TestCase
         static::assertSame([], $identityProviders->of(Fixtures::tenant('other')));
     }
 
-    /**
-     * The declarations are those of one tenant: another tenant finds none of them.
-     */
     #[Test]
     public function anotherTenantFindsNone(): void
     {
@@ -303,9 +292,6 @@ final class ConfigurationUpstreamIdentityProvidersTest extends TestCase
         static::assertNull($identityProviders->find(Fixtures::tenant('other'), 'https://idp.acme.example/saml'));
     }
 
-    /**
-     * An entity ID nobody declared is found nowhere.
-     */
     #[Test]
     public function anEntityIdNobodyDeclaredIsNotFound(): void
     {

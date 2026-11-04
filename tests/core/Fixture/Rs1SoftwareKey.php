@@ -20,8 +20,7 @@ use function openssl_sign;
 use OpenSSLAsymmetricKey;
 
 /**
- * An RSA key signing in RS1, RSASSA-PKCS1-v1_5 with SHA-1 (RFC 8812 §2, COSE -65535): what a TPM that still
- * signs with it creates, and what only the FIDO2 server API of the conformance tools offers.
+ * RFC 8812 §2
  */
 final readonly class Rs1SoftwareKey implements SoftwareCredentialKey
 {
@@ -54,7 +53,7 @@ final readonly class Rs1SoftwareKey implements SoftwareCredentialKey
             throw new LogicException('OpenSSL could not describe the key.');
         }
 
-        // RFC 8230 §4: kty RSA (1: 3), alg RS1 (3: -65535), n (-1), e (-2)
+        // RFC 8230 §4: kty RSA (1: 3), alg RS1 (3: -65535), n (-1), e (-2).
         return (string) MapObject::create([
             MapItem::create(UnsignedIntegerObject::create(1), UnsignedIntegerObject::create(3)),
             MapItem::create(UnsignedIntegerObject::create(3), NegativeIntegerObject::create($this->algorithm())),

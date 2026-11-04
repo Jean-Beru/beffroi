@@ -8,11 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * The opaque access tokens a client holds for itself (RFC 6749 §4.4). Nobody signed in for them, so the
- * table has no session to point at, nothing of an "auth_time", an "acr" or an "amr" to keep, and no claims
- * about a user to have been asked for; each kind of stored token keeps the columns of its own kind.
- */
 final class Version20260925180000 extends AbstractMigration
 {
     public function getDescription(): string

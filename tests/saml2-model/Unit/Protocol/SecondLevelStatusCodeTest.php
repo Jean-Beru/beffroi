@@ -11,12 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3: the second-level status codes of SAML Core §3.2.2.2, an open vocabulary read as null when unknown.
+ * Section 5.3, SAML Core §3.2.2.2
  */
 final class SecondLevelStatusCodeTest extends TestCase
 {
     /**
-     * SAML Core §3.2.2.2: the nineteen second-level codes the specification lists.
+     * SAML Core §3.2.2.2
      */
     #[Test]
     public function itHoldsTheNineteenSecondLevelCodesOfSamlCore(): void
@@ -73,8 +73,7 @@ final class SecondLevelStatusCodeTest extends TestCase
     }
 
     /**
-     * SAML Core §3.2.2.2: system entities define codes of their own; a code SAML Core does not list reads as null,
-     * compared byte for byte, and is never refused.
+     * SAML Core §3.2.2.2
      */
     #[Test]
     #[DataProvider('provideUnknownUris')]

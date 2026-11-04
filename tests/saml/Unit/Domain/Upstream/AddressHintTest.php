@@ -13,13 +13,12 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * spec/saml.md S-68, section 7: the address a person gave the login page, carried to a provider that reads one in a
- * parameter of its single sign-on service whose name is a token of the query and none of the parameters of the binding.
+ * S-68, section 7
  */
 final class AddressHintTest extends TestCase
 {
     /**
-     * S-68, RFC 3986 §2.3, section 7: a name of one to 64 unreserved characters is the parameter of the address.
+     * S-68, RFC 3986 §2.3, section 7
      */
     #[Test]
     #[DataProvider('provideParameters')]
@@ -42,7 +41,7 @@ final class AddressHintTest extends TestCase
     }
 
     /**
-     * S-68, RFC 3986 §2.3, section 7: a name that is not one to 64 unreserved characters is refused.
+     * S-68, RFC 3986 §2.3, section 7
      */
     #[Test]
     #[DataProvider('provideNamesThatAreNoToken')]
@@ -79,8 +78,7 @@ final class AddressHintTest extends TestCase
     }
 
     /**
-     * S-68, bindings.md B-1: a parameter of the binding is refused, whatever its case, which a provider that reads its
-     * query without regard to case would take for the parameter of the binding.
+     * S-68, bindings.md B-1
      */
     #[Test]
     #[DataProvider('provideParametersOfTheBinding')]
@@ -111,8 +109,7 @@ final class AddressHintTest extends TestCase
     }
 
     /**
-     * S-68, RFC 3986 §2.1: the hint goes into the query of the URL, after a "?" when it holds none and after a "&"
-     * when it holds one, before its fragment, the address percent-encoded outside the unreserved characters.
+     * S-68, RFC 3986 §2.1
      */
     #[Test]
     #[DataProvider('provideUrls')]

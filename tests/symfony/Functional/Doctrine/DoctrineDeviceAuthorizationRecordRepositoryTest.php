@@ -19,16 +19,14 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 8628 §3.2, architecture §5.3: a device authorization request keyed by the hash of the code its client
- * polls with, found again by the code its user types, with the approval it carries; a spent record stays.
+ * RFC 8628 §3.2, Architecture §5.3
  */
 final class DoctrineDeviceAuthorizationRecordRepositoryTest extends DatabaseTestCase
 {
     private const string USER_CODE = 'BCDFGHJK';
 
     /**
-     * RFC 8628 §3.5: the claim is one conditional statement, so a second caller is told it lost, and it holds
-     * the date the first one wrote.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function onlyTheFirstCallerSpendsTheDeviceCode(): void
@@ -49,9 +47,6 @@ final class DoctrineDeviceAuthorizationRecordRepositoryTest extends DatabaseTest
         static::assertEquals(self::now(), $record->usedAt);
     }
 
-    /**
-     * What the token endpoint needs of a record comes back with it, the client of the configuration included.
-     */
     #[Test]
     public function aRecordComesBackWithWhatTheGrantNeeds(): void
     {
@@ -81,8 +76,7 @@ final class DoctrineDeviceAuthorizationRecordRepositoryTest extends DatabaseTest
     }
 
     /**
-     * RFC 8628 §3.3: the approval is kept with the session it was given with and what that session had
-     * proven, which is what the tokens of the grant descend from.
+     * RFC 8628 §3.3
      */
     #[Test]
     public function anApprovalComesBackWithItsSessionAndWhatItHadProven(): void
@@ -108,9 +102,6 @@ final class DoctrineDeviceAuthorizationRecordRepositoryTest extends DatabaseTest
         static::assertEquals(self::now()->modify('+30 seconds'), $found->approvedAt);
     }
 
-    /**
-     * The page a user types on looks a record up by the code they typed.
-     */
     #[Test]
     public function aRecordIsFoundByTheCodeItsUserTypes(): void
     {
@@ -127,7 +118,7 @@ final class DoctrineDeviceAuthorizationRecordRepositoryTest extends DatabaseTest
     }
 
     /**
-     * RFC 8628 §3.5: a refusal is kept, so that the client is told the same thing at every poll after it.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aRefusalIsKept(): void
@@ -148,7 +139,7 @@ final class DoctrineDeviceAuthorizationRecordRepositoryTest extends DatabaseTest
     }
 
     /**
-     * RFC 8628 §3.5: a spent record stays, so that its second presentation is told from a code nobody issued.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aSpentRecordStaysSpent(): void
@@ -169,9 +160,6 @@ final class DoctrineDeviceAuthorizationRecordRepositoryTest extends DatabaseTest
         static::assertEquals(self::now()->modify('+90 seconds'), $found->usedAt);
     }
 
-    /**
-     * A code nobody issued is found by nothing, as a code of a client no longer registered is.
-     */
     #[Test]
     public function aCodeThisProviderNeverAnsweredIsFoundByNothing(): void
     {

@@ -31,8 +31,7 @@ use const ZLIB_FULL_FLUSH;
 use const ZLIB_SYNC_FLUSH;
 
 /**
- * B-7, B-8, section 6.1 step 8: raw DEFLATE (RFC 1951, SAML Bindings §3.4.4.1 step 2), inflated one byte at a time
- * under a bound, the stream complete and nothing after it, no warning of zlib reaching the caller.
+ * B-7, B-8, section 6.1 step 8, RFC 1951, SAML Bindings §3.4.4.1 step 2
  */
 final class InflaterTest extends TestCase
 {
@@ -41,8 +40,7 @@ final class InflaterTest extends TestCase
     private const string MESSAGE = 'behaviour/authn-request-unsigned.xml';
 
     /**
-     * B-8, RFC 1951: a raw DEFLATE stream is the message it encodes, whatever the blocks and the codes the deflater
-     * chose.
+     * B-8, RFC 1951
      */
     #[Test]
     #[DataProvider('provideRawStreams')]
@@ -70,7 +68,7 @@ final class InflaterTest extends TestCase
     }
 
     /**
-     * B-8, RFC 1951 §3.2.3: an empty final block is a complete stream, of nothing.
+     * B-8, RFC 1951 §3.2.3
      */
     #[Test]
     public function itInflatesAnEmptyStream(): void
@@ -83,7 +81,7 @@ final class InflaterTest extends TestCase
     }
 
     /**
-     * B-7, section 7: a message of exactly the bound is accepted.
+     * B-7, section 7
      */
     #[Test]
     public function itAcceptsAMessageOfExactlyTheBound(): void
@@ -99,8 +97,7 @@ final class InflaterTest extends TestCase
     }
 
     /**
-     * §9.2 row 22, B-7, B-11: a message one byte over the bound is refused, the bound named and nothing of the message
-     * carried.
+     * §9.2 row 22, B-7, B-11
      */
     #[Test]
     public function itRefusesAMessageOneByteOverTheBound(): void
@@ -117,7 +114,7 @@ final class InflaterTest extends TestCase
     }
 
     /**
-     * §9.2 row 22, B-7: a stream of about 1 MiB that inflates to 1 GiB is refused at the default bound of 64 KiB.
+     * §9.2 row 22, B-7
      */
     #[Test]
     public function itRefusesADeflateBomb(): void
@@ -134,9 +131,7 @@ final class InflaterTest extends TestCase
     }
 
     /**
-     * §9.2 row 22, B-7, section 6.1 step 8: the output is refused while inflation runs, never measured once whole: a
-     * bomb whose final block is replaced by a block of the reserved type is refused at the bound, before inflation
-     * reaches what it could not read.
+     * §9.2 row 22, B-7, section 6.1 step 8
      */
     #[Test]
     public function itRefusesTheOutputWhileInflationRuns(): void
@@ -153,13 +148,7 @@ final class InflaterTest extends TestCase
     }
 
     /**
-     * §9.2 row 22, B-7, section 6.1 step 8: the memory a bomb of 1 GiB costs before its refusal is the bound, plus the
-     * output of one byte of input, at most 1 032 bytes, plus zlib's fixed state: its inflate state, 8 416 bytes with
-     * its object, its window of 32 KiB, and the buffer of about 12 KiB inflate_add() takes for a step. The classes are
-     * loaded before the measure, which is the inflation alone. Measured on 1 October 2026, zlib 1.3.1, the same on PHP
-     * 8.5.10 and 8.4.25, Xdebug collecting coverage or not: the peak over the bound is 53 744 bytes at 1 KiB, 55 656 at
-     * 64 KiB and 57 968 at 1 MiB, where the bomb inflated whole would hold 1 073 741 824. The ceiling asserted is the
-     * bound, one byte's output and 64 KiB for zlib.
+     * §9.2 row 22, B-7, section 6.1 step 8
      */
     #[Test]
     #[DataProvider('provideBounds')]
@@ -189,8 +178,7 @@ final class InflaterTest extends TestCase
     }
 
     /**
-     * §9.2 row 24, B-8, B-11, RFC 1950, RFC 1952: what is not raw DEFLATE, a zlib or a gzip wrapper among it, is
-     * refused, and the refusal carries nothing of it.
+     * §9.2 row 24, B-8, B-11, RFC 1950, RFC 1952
      */
     #[Test]
     #[DataProvider('provideStreamsThatAreNotRawDeflate')]
@@ -218,7 +206,7 @@ final class InflaterTest extends TestCase
     }
 
     /**
-     * §9.2 row 24, B-8, RFC 1951 §3.2.3: a stream cut before its final block is refused.
+     * §9.2 row 24, B-8, RFC 1951 §3.2.3
      */
     #[Test]
     #[DataProvider('provideCutStreams')]
@@ -247,7 +235,7 @@ final class InflaterTest extends TestCase
     }
 
     /**
-     * §9.2 row 24, B-8, RFC 1951 §3.2.3: a byte after the final block is refused, whatever it is.
+     * §9.2 row 24, B-8, RFC 1951 §3.2.3
      */
     #[Test]
     #[DataProvider('provideStreamsFollowedByBytes')]
@@ -274,7 +262,7 @@ final class InflaterTest extends TestCase
     }
 
     /**
-     * B-8: zlib reports a stream it cannot read with a PHP warning, which never reaches the caller's error handler.
+     * B-8
      */
     #[Test]
     public function itLetsNoWarningOfZlibReachTheCaller(): void
@@ -300,8 +288,7 @@ final class InflaterTest extends TestCase
     }
 
     /**
-     * B-8: the error handler the inflater sets around each step is gone when it returns, whether it accepts or refuses,
-     * and the caller's is in place again.
+     * B-8
      */
     #[Test]
     #[DataProvider('provideStreamsAcceptedAndRefused')]
@@ -335,10 +322,6 @@ final class InflaterTest extends TestCase
         yield 'refused by zlib' => [self::wrapped(gzencode($message))];
     }
 
-    /**
-     * $deflated inflated under $bound, its refusal for exceeding the bound swallowed: what is measured is the state it
-     * leaves.
-     */
     private function inflateAndForget(string $deflated, int $bound): void
     {
         try {
@@ -348,7 +331,7 @@ final class InflaterTest extends TestCase
     }
 
     /**
-     * $bytes deflated by zlib, raw (RFC 1951), its last block flushed as $flush says.
+     * RFC 1951
      *
      * @param array<string, int> $options
      */
@@ -362,9 +345,6 @@ final class InflaterTest extends TestCase
         return self::wrapped(deflate_add($context, $bytes, $flush));
     }
 
-    /**
-     * $bytes deflated by zlib in one stream of two blocks, the first ended by a full flush.
-     */
     private static function inTwoBlocks(string $bytes): string
     {
         $context = deflate_init(ZLIB_ENCODING_RAW);
@@ -378,9 +358,6 @@ final class InflaterTest extends TestCase
         );
     }
 
-    /**
-     * What a function of zlib returned, a failure of zlib stopping the test.
-     */
     private static function wrapped(string|false $bytes): string
     {
         if ($bytes === false) {

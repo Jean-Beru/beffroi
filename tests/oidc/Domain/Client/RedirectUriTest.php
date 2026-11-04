@@ -12,10 +12,6 @@ use PHPUnit\Framework\TestCase;
 
 final class RedirectUriTest extends TestCase
 {
-    /**
-     * What may be registered at all is the rule of ClientUri, which this URI is one use of: a redirect
-     * URI that breaks it is refused where it is registered, not where it is used.
-     */
     #[Test]
     public function itIsAUriAClientMayRegister(): void
     {
@@ -39,8 +35,7 @@ final class RedirectUriTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.1.2.3: simple string comparison, so a different case, a trailing slash or a default port
-     * spelled out are different URIs.
+     * RFC 6749 §3.1.2.3
      */
     #[Test]
     #[DataProvider('provideCandidates')]
@@ -66,9 +61,7 @@ final class RedirectUriTest extends TestCase
     }
 
     /**
-     * RFC 8252 §8.3: a name in plain HTTP is not a loopback interface a native client may be sent back to.
-     * What may be registered in plain HTTP at all is the rule of ClientUri, which accepts a loopback name
-     * for a client of a developer machine; who may be sent back to one is the rule of the registration.
+     * RFC 8252 §8.3
      */
     #[Test]
     #[DataProvider('provideHostsThatAreNotLoopbackLiterals')]
@@ -94,10 +87,6 @@ final class RedirectUriTest extends TestCase
         yield 'another address of the loopback block' => ['http://127.0.0.2/callback'];
     }
 
-    /**
-     * Plain HTTP anywhere else is refused before this class sees it, by the rule of every URI a client
-     * registers (ClientUri): a redirection relaxes none of it.
-     */
     #[Test]
     #[DataProvider('provideHostsPlainHttpNeverReaches')]
     public function plainHttpElsewhereIsRefusedWhereEveryClientUriIs(string $value): void
@@ -120,7 +109,7 @@ final class RedirectUriTest extends TestCase
     }
 
     /**
-     * RFC 8252 §7.3: the two literals, with or without a port.
+     * RFC 8252 §7.3
      */
     #[Test]
     #[DataProvider('provideLoopbackLiterals')]
@@ -146,8 +135,7 @@ final class RedirectUriTest extends TestCase
     }
 
     /**
-     * RFC 8252 §7.3: the exception is the plain HTTP of a loopback literal. A client that registered HTTPS
-     * registered a host it controls, and the port with it.
+     * RFC 8252 §7.3
      */
     #[Test]
     #[DataProvider('provideUrisThatAreNotLoopback')]
@@ -173,8 +161,7 @@ final class RedirectUriTest extends TestCase
     }
 
     /**
-     * RFC 8252 §7.3: the port of a loopback redirection is what a native client cannot register in
-     * advance, and it is the only thing that may differ.
+     * RFC 8252 §7.3
      */
     #[Test]
     #[DataProvider('provideLoopbackCandidates')]
@@ -207,8 +194,7 @@ final class RedirectUriTest extends TestCase
     }
 
     /**
-     * RFC 8252 §7.3: the query a client registered is part of what matches exactly, the port being the
-     * only thing that varies.
+     * RFC 8252 §7.3
      */
     #[Test]
     public function aLoopbackUriWithAQueryKeepsIt(): void
@@ -233,7 +219,7 @@ final class RedirectUriTest extends TestCase
     }
 
     /**
-     * RFC 3986 §2.1: every value is percent-encoded.
+     * RFC 3986 §2.1
      */
     #[Test]
     public function itAppendsPercentEncodedResponseParameters(): void
@@ -252,7 +238,7 @@ final class RedirectUriTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.1.2: the response parameters are added to the query the client registered, which is kept.
+     * RFC 6749 §3.1.2
      */
     #[Test]
     public function itKeepsTheRegisteredQueryBeforeTheResponseParameters(): void

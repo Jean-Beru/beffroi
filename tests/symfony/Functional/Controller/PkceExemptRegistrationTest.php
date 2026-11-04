@@ -16,13 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Decision 0017: the rule of decision 0006 stands, and the registration policy of a tenant may write the
- * named exception of decision 0008 on the confidential clients it registers. It is written on the
- * registration at the moment the policy creates it, read back from the row that kept it, and nothing a
- * client sends grants it.
- *
- * The policy of the tenant is read from the environment at runtime, the way the load budgets are, so
- * that a tenant carrying the exemption is a kernel this test names before it boots one.
+ * Decision 0017
  */
 final class PkceExemptRegistrationTest extends BrowserTestCase
 {
@@ -43,8 +37,7 @@ final class PkceExemptRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §3.1.2.1 and decision 0017: a confidential client the policy registered signs in with no
-     * "code_challenge" at all, which is what the 22 modules of the Dynamic OP plan send.
+     * OIDC Core §3.1.2.1, Decision 0017
      */
     #[Test]
     public function aConfidentialClientThePolicyRegisteredSignsInWithoutAChallenge(): void
@@ -77,8 +70,7 @@ final class PkceExemptRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0017, RFC 9700 §2.1.1: a public client is never exempted, whatever the policy carries. Its
-     * registration is not refused for that, and its authorization is refused without a challenge.
+     * Decision 0017, RFC 9700 §2.1.1
      */
     #[Test]
     public function aPublicClientThePolicyRegisteredIsNeverExempted(): void
@@ -96,8 +88,7 @@ final class PkceExemptRegistrationTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0017: the exemption is read back from the row that kept it, so a client the policy
-     * registered is registered with it until that policy writes the registration again.
+     * Decision 0017
      */
     #[Test]
     public function theExemptionIsReadBackFromTheRowThatKeptIt(): void

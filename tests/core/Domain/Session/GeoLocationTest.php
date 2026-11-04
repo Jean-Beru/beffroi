@@ -79,8 +79,6 @@ final class GeoLocationTest extends TestCase
     }
 
     /**
-     * The document a column holds a place as, which is also what the provenance of a request nests.
-     *
      * @param array<string, mixed> $document
      */
     #[Test]
@@ -133,9 +131,6 @@ final class GeoLocationTest extends TestCase
         ];
     }
 
-    /**
-     * A whole JSON number decodes as an integer, and a latitude written "48" is the latitude 48.0.
-     */
     #[Test]
     public function aWholeCoordinateIsReadAsANumber(): void
     {

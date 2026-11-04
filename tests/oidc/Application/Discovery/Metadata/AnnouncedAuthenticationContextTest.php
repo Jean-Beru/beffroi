@@ -12,8 +12,7 @@ use Beffroi\Oidc\Tests\Fixture\Subjects;
 use PHPUnit\Framework\TestCase;
 
 /**
- * OIDC Discovery §3 and decision 0010: the classes the policy of the tenant can actually prove with the
- * methods the deployment wired, and the kinds of subject identifier the provider assigns one of.
+ * OIDC Discovery §3, Decision 0010
  */
 final class AnnouncedAuthenticationContextTest extends TestCase
 {
@@ -37,10 +36,7 @@ final class AnnouncedAuthenticationContextTest extends TestCase
     }
 
     /**
-     * OIDC Core §8: the kinds are the resolvers that are wired, so a deployment that wires the pairwise one
-     * announces it by the fact of assigning it, and one that does not announces "public" alone. The two
-     * modules that judge a sector skip themselves unless the document names "pairwise", so this line is what
-     * makes them run at all.
+     * OIDC Core §8
      */
     #[Test]
     public function theSubjectTypesAreTheKindsTheProviderIsWiredWith(): void
@@ -55,10 +51,6 @@ final class AnnouncedAuthenticationContextTest extends TestCase
         static::assertSame(['public', 'pairwise'], $members['subject_types_supported']);
     }
 
-    /**
-     * A deployment that wired a password alone proves the classes a password satisfies, and announces no
-     * other: the document says what the provider does.
-     */
     #[Test]
     public function aDeploymentThatOnlyTakesAPasswordAnnouncesWhatAPasswordProves(): void
     {

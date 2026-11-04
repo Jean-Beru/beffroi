@@ -23,20 +23,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * The language a visitor asks the pages to be read in (issue #448, architecture §5.7).
- *
- * It answers a form and no script, and it writes three things: the cookie that carries the choice for
- * this browser, the interaction of the journey in progress, when there is one, and the account of
- * whoever is signed in. The three, because they answer three different questions: the cookie is what the
- * next journey of this browser starts in, the interaction is what the next page of this one is read in,
- * which "InteractionLocale::resume()" applies and which would otherwise undo the choice at the following
- * step, and the claim is what this provider writes to that person in when no request of theirs is there
- * to read a language from (UserLocale).
- *
- * It comes back to the page the choice was made on, a path of this origin or the login page, and the
- * language never appears in the URL: a path that carries a locale is a second address for every page.
- */
 #[AsController]
 final readonly class ChooseLocaleController
 {
@@ -70,15 +56,10 @@ final readonly class ChooseLocaleController
         $response = new RedirectResponse(self::backTo($parameters));
         $asked = $parameters[self::PARAMETER] ?? null;
         $locale = is_string($asked) ? $this->served->match([$asked]) : null;
-        // a tag this deployment does not serve changes nothing, and says nothing: the pages carry the
-        // languages that have a catalogue, so what asks for another one is not a visitor of them
         if ($locale === null) {
             return $response;
         }
         $response->headers->setCookie($this->preferences->cookie($request, LocalePreference::SLOT, $locale));
-        // and on the account of whoever is signed in, which is the claim this provider writes to them in
-        // when no request of theirs is there to read a language from (UserLocale, issue #471); on the lane,
-        // nothing of this request waiting for it
         $session = $this->browser->authenticationSession($request, $this->tenants->provide());
         if ($session !== null) {
             $this->commandBus->dispatch(new RememberTheChosenLanguage($session->user->id, $locale));
@@ -87,7 +68,7 @@ final readonly class ChooseLocaleController
         $interaction = $this->browser->pending($request, $this->tenants->provide(), is_string($id) ? $id : null);
         if ($interaction !== null) {
             $interaction->readIn($locale);
-            // written in the request that asks for it, the next page of the journey reading it back
+            // Saved now: InteractionLocale::resume() would otherwise undo the choice at the next step.
             $this->interactions->save($interaction);
         }
 
@@ -95,8 +76,7 @@ final readonly class ChooseLocaleController
     }
 
     /**
-     * The page the choice was made on, which the form carries, and the login page for anything that is
-     * not a path of this origin: a choice of language does not send a browser elsewhere.
+     * A path of this origin, or the login page: a choice of language never sends a browser elsewhere.
      *
      * @param array<string, mixed> $parameters
      */

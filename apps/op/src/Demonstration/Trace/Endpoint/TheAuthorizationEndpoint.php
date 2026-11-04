@@ -14,8 +14,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Where a browser brings an authorization request (RFC 6749 §3.1) and is answered one. Both halves are
- * hops of the picture of the flow that sends the user back to the client.
+ * RFC 6749 §3.1
  */
 final readonly class TheAuthorizationEndpoint implements RecordedEndpointInterface
 {
@@ -36,8 +35,7 @@ final readonly class TheAuthorizationEndpoint implements RecordedEndpointInterfa
 
     public function hops(): array
     {
-        // the answer that carries the authorization response is recorded by the answer that leaves,
-        // wherever the interaction ended: a request parked at a login is answered from a page
+        // The answer is recorded where the browser leaves (TheBrowserSentBackToTheClient), which may be a login page.
         return [TheUserIsSentToTheClient::AUTHORIZATION_REQUEST, null];
     }
 }

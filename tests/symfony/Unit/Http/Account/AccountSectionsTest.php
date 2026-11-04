@@ -15,9 +15,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The pages of the account the home page offers (architecture §5.2): the ones that are wired, in the order
- * they are wired, each saying what the account holds there. The same list without what the account holds,
- * for a navigation of those pages, and what it holds in one of them.
+ * Architecture §5.2
  */
 final class AccountSectionsTest extends TestCase
 {
@@ -102,10 +100,6 @@ final class AccountSectionsTest extends TestCase
         );
     }
 
-    /**
-     * A navigation is on every page of the plane, where the home of the account is read once: it asks where
-     * the pages are, and never what the account holds in each of them.
-     */
     #[Test]
     public function aNavigationAsksNoSectionWhatTheAccountHolds(): void
     {

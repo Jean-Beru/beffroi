@@ -11,16 +11,10 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function strlen;
 
-/**
- * What the edge hands over, read into the leaf and its thumbprint: a PEM envelope carrying a certificate,
- * an empty envelope when the client presented none, and nothing else accepted.
- */
 final class ClientCertificateTest extends TestCase
 {
     /**
-     * A certificate of no authority, self-signed on a P-256 key, the shape a client presents for
-     * "self_signed_tls_client_auth" (RFC 8705 §2.2). Its thumbprint below is what "openssl x509 -outform
-     * DER | openssl dgst -sha256" gives for it.
+     * RFC 8705 §2.2
      */
     private const string PEM = <<<'PEM'
         -----BEGIN CERTIFICATE-----
@@ -41,7 +35,7 @@ final class ClientCertificateTest extends TestCase
     private const string X5T_S256 = 'kPiIukPNPlPrfFHgFmC5C23td-On7wYZ8lVaLFBT8h8';
 
     /**
-     * RFC 8705 §3.1: the thumbprint names the DER encoding of the certificate, not its PEM envelope.
+     * RFC 8705 §3.1
      */
     #[Test]
     public function itComputesTheThumbprintOfTheDerEncoding(): void
@@ -55,10 +49,6 @@ final class ClientCertificateTest extends TestCase
         static::assertSame(self::X5T_S256, $certificate->x5tS256());
     }
 
-    /**
-     * The listener asks for a certificate without requiring one, so the envelope it fills is empty
-     * whenever the client presented nothing: that is an answer, not a failure.
-     */
     #[Test]
     #[DataProvider('provideEmptyEnvelopes')]
     public function anEmptyEnvelopeIsNoCertificate(string $pem): void
@@ -91,10 +81,6 @@ final class ClientCertificateTest extends TestCase
         ClientCertificate::fromPem('MIICBzCCAaygAwIBAgI=');
     }
 
-    /**
-     * A misconfigured edge is said out loud rather than guessed at: a provider that bound a token to
-     * bytes nobody chose would bind it to nothing.
-     */
     #[Test]
     public function itRefusesAnEnvelopeThatIsNotBase64(): void
     {

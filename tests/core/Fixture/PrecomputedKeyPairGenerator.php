@@ -10,9 +10,6 @@ use Beffroi\Core\Domain\Key\KeyAlgorithmInterface;
 use Beffroi\Core\Exception\LogicException;
 use Beffroi\Core\Port\KeyPairGeneratorInterface;
 
-/**
- * Hands out pre-generated pairs: generating RSA keys in every test would cost seconds for nothing.
- */
 final class PrecomputedKeyPairGenerator implements KeyPairGeneratorInterface
 {
     /**

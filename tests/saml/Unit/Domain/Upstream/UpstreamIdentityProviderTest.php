@@ -22,8 +22,7 @@ use function sprintf;
 use function str_repeat;
 
 /**
- * spec/saml.md S-42, S-44, S-45, section 6.10 step 1: the declaration of an upstream identity provider holds together
- * or is refused.
+ * S-42, S-44, S-45, section 6.10 step 1
  */
 final class UpstreamIdentityProviderTest extends TestCase
 {
@@ -32,7 +31,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     private const string OBJECT_ID = 'http://schemas.microsoft.com/identity/claims/objectidentifier';
 
     /**
-     * S-42, S-45: a declaration holds what it was given, its subject and its groups when declared.
+     * S-42, S-45
      */
     #[Test]
     public function aDeclarationHoldsWhatItWasGiven(): void
@@ -63,8 +62,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * S-60: a declaration is the upstream provider of the core named by its entity ID, answering for its domains and
-     * filling the claims of its profile, so that every place that reads a domain reads it by the one rule of the core.
+     * S-60
      */
     #[Test]
     public function aDeclarationIsTheUpstreamProviderOfTheCoreItNames(): void
@@ -94,8 +92,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * S-60, S-45: a telephone number an attribute fills is no claim of the profile of the core, and the declaration that
-     * fills one is a provider of the core all the same, filling the claims of the profile it names.
+     * S-60, S-45
      */
     #[Test]
     public function aTelephoneNumberIsNoClaimOfTheProviderOfTheCore(): void
@@ -118,7 +115,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * S-45: the attribute of the subject and the groups are optional, the profile empty unless declared.
+     * S-45
      */
     #[Test]
     public function theSubjectTheProfileAndTheGroupsAreOptional(): void
@@ -133,7 +130,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * S-42: the metadata are read signed when the declaration pins a signer, and trusted by their channel otherwise.
+     * S-42
      */
     #[Test]
     public function theMetadataAreReadSignedWhenASignerIsPinned(): void
@@ -152,7 +149,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * S-42: no signer pinned, the metadata are trusted by their channel.
+     * S-42
      */
     #[Test]
     public function theMetadataAreTrustedByTheirChannelWithoutASigner(): void
@@ -162,7 +159,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * Section 7: sixteen signers of the metadata at most.
+     * Section 7
      */
     #[Test]
     public function seventeenSignersAreRefused(): void
@@ -182,7 +179,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * Section 7: sixteen signers of the metadata are pinned.
+     * Section 7
      */
     #[Test]
     public function sixteenSignersArePinned(): void
@@ -201,7 +198,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * S-44: an identity provider answers for one domain at least.
+     * S-44
      */
     #[Test]
     public function noDomainIsRefused(): void
@@ -215,7 +212,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * Section 7: 256 domains at most.
+     * Section 7
      */
     #[Test]
     public function moreThan256DomainsAreRefused(): void
@@ -229,7 +226,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * Section 7: 256 domains are declared.
+     * Section 7
      */
     #[Test]
     public function twoHundredAndFiftySixDomainsAreDeclared(): void
@@ -239,7 +236,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * S-44: a domain declared twice by one provider, in two spellings, is refused.
+     * S-44
      */
     #[Test]
     public function aDomainDeclaredTwiceIsRefused(): void
@@ -253,7 +250,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * S-45: the attributes of the e-mail and of the subject are names.
+     * S-45
      */
     #[Test]
     #[DataProvider('provideAttributesThatAreNoName')]
@@ -285,8 +282,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * S-45: the attribute of the subject is never the attribute of the e-mail, an address being given again to
-     * another person.
+     * S-45
      */
     #[Test]
     public function aSubjectNamedByTheAttributeOfTheEmailIsRefused(): void
@@ -300,7 +296,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * S-45: one attribute per claim of the profile.
+     * S-45
      */
     #[Test]
     public function twoAttributesFillingOneClaimAreRefused(): void
@@ -321,7 +317,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * S-45: an attribute fills the profile once.
+     * S-45
      */
     #[Test]
     public function oneAttributeFillingTwoClaimsIsRefused(): void
@@ -342,8 +338,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * S-42: an identity provider declared under the entity ID of the identity provider of the tenant is refused, the
-     * tenant never being upstream of itself.
+     * S-42
      */
     #[Test]
     public function theEntityIdOfTheIdentityProviderOfTheTenantIsRefused(): void
@@ -357,8 +352,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * S-42, S-38: an identity provider declared under the entity ID of the service provider of the tenant is refused,
-     * one entity ID never naming two roles.
+     * S-42, S-38
      */
     #[Test]
     public function theEntityIdOfTheServiceProviderOfTheTenantIsRefused(): void
@@ -372,8 +366,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * S-42: an entity ID that is none of the tenant's, or compared with entity IDs not known yet, is accepted.
-     *
+     * S-42
      */
     #[Test]
     #[DataProvider('provideEntityIdsOfAnother')]
@@ -397,8 +390,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * S-68: a declaration names no parameter of the address unless it says so, so that nothing is sent to a provider
-     * that does not read one.
+     * S-68
      */
     #[Test]
     public function noParameterOfTheAddressIsNamedUnlessDeclared(): void
@@ -411,8 +403,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * S-68, section 6.10 step 1: a parameter of the address that is a parameter of the binding is refused with the
-     * declaration.
+     * S-68, section 6.10 step 1
      */
     #[Test]
     public function aParameterOfTheAddressTheBindingHoldsIsRefused(): void
@@ -426,8 +417,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * S-68, section 6.10 step 1: a parameter of the address that is no token of a query is refused with the
-     * declaration.
+     * S-68, section 6.10 step 1
      */
     #[Test]
     public function aParameterOfTheAddressThatIsNoTokenIsRefused(): void
@@ -441,8 +431,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * S-68, S-60: the hint of an address of a domain the provider answers for is the parameter it declares and the
-     * address, its domain written as its A-label and its local part as it was given.
+     * S-68, S-60
      */
     #[Test]
     #[DataProvider('provideAddressesOfItsDomains')]
@@ -470,8 +459,7 @@ final class UpstreamIdentityProviderTest extends TestCase
     }
 
     /**
-     * S-68: no hint for a provider that names no parameter, without an address, for an address the core does not
-     * read, and for an address of a domain the provider does not answer for, a subdomain among them.
+     * S-68
      */
     #[Test]
     #[DataProvider('provideAddressesWithoutAHint')]

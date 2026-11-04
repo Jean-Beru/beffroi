@@ -18,14 +18,6 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #591, GDPR articles 15 and 12.3: whoever answers for the instance reads what happened in the name
- * of one person, over the stretch of time a request names, without asking that person to export their own
- * archive and without reading the database.
- *
- * It reads and writes nothing, as "beffroi:user:applications" and "beffroi:user:sessions" do of the
- * applications and the sessions of an account.
- */
 final class JournalTest extends ConsoleTestCase
 {
     #[Test]
@@ -44,10 +36,6 @@ final class JournalTest extends ConsoleTestCase
         static::assertMatchesRegularExpression('/tokens\.issued.+\n.+user\.authenticated/s', $tester->getDisplay());
     }
 
-    /**
-     * The client of each act, which is what makes the reading an answer to "which application did what in
-     * my name".
-     */
     #[Test]
     public function eachActSaysTheApplicationItWasDoneOnBehalfOf(): void
     {
@@ -94,9 +82,6 @@ final class JournalTest extends ConsoleTestCase
         static::assertStringNotContainsString('tokens.issued', $tester->getDisplay());
     }
 
-    /**
-     * The last day it names is held whole, which is what a day means (Period).
-     */
     #[Test]
     public function theLastDayOfThePeriodIsHeldWhole(): void
     {
@@ -148,11 +133,6 @@ final class JournalTest extends ConsoleTestCase
         static::assertStringNotContainsString('oidc-demo', $tester->getDisplay());
     }
 
-    /**
-     * A register that looks complete and is not is worse than one that says where it stops: a reading that
-     * reaches past the retention is answered with the duration this deployment keeps and the day it
-     * reaches.
-     */
     #[Test]
     public function aPeriodTheRetentionCannotCoverIsNamedAsSuch(): void
     {
@@ -184,10 +164,6 @@ final class JournalTest extends ConsoleTestCase
         static::assertStringContainsString('the whole of that period is inside it', self::flattened($tester));
     }
 
-    /**
-     * What a register is attached to is a file and not a terminal: the acts in the shape the journal
-     * chapter of an archive writes, with what the retention can answer for beside them.
-     */
     #[Test]
     public function theJsonFormatIsADocumentARequestCanBeAnsweredWith(): void
     {

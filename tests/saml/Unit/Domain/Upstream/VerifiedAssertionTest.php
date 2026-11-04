@@ -10,7 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-45, S-53: the values of an attribute of an accepted assertion, read by its name compared exactly.
+ * S-45, S-53
  */
 final class VerifiedAssertionTest extends TestCase
 {

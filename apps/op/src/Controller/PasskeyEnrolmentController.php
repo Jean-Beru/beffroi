@@ -21,19 +21,6 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 use function trim;
 
-/**
- * The attestation of a new passkey, posted by the page of the account with the name the user gave it and
- * the CSRF token (architecture §5.2): verified by the enrolment of the core against the options this
- * browser was given for this user; the page comes back with the passkey listed, or with what went wrong.
- *
- * It answers with a redirection whether the ceremony was completed or refused (issue #481): a browser
- * reloading the page it comes back to does not present the same thing again, and what was refused crosses
- * the redirection in the session (WhatWasRefused).
- *
- * **A session alone does not post it** (AsksForARecentProofInterface): adding a credential is adding a
- * way in, so a browser whose newest proof is older than the window is sent to the login of the firewall
- * and the ceremony is begun again from the page.
- */
 #[AsController]
 final readonly class PasskeyEnrolmentController implements AsksForARecentProofInterface
 {
@@ -51,9 +38,6 @@ final readonly class PasskeyEnrolmentController implements AsksForARecentProofIn
 
     public const string REFUSED = 'refused';
 
-    /**
-     * A person of a federated domain, for whom no passkey is posed (decision 0029, beffroi/saml S-63).
-     */
     public const string FEDERATED_DOMAIN = 'federated_domain';
 
     public function __construct(
@@ -67,9 +51,6 @@ final readonly class PasskeyEnrolmentController implements AsksForARecentProofIn
     ) {
     }
 
-    /**
-     * The page of the passkeys, which holds the ceremony this completes.
-     */
     public function comesBackTo(): string
     {
         return AccountPasskeysController::ROUTE;
@@ -83,8 +64,7 @@ final readonly class PasskeyEnrolmentController implements AsksForARecentProofIn
             return $session;
         }
         $user = $session->user;
-        // before the ceremony goes on: what the page offers nobody of a federated domain is refused to a post written
-        // by hand, which the enrolment of the core refuses too, and this says why
+        // The enrolment of the core refuses it too; this refusal says why.
         if (! $this->federated->admitsLocalCredentials($user)) {
             return $this->refused($request, self::FEDERATED_DOMAIN);
         }

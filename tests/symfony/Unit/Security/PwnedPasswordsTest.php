@@ -17,13 +17,6 @@ use function str_repeat;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
-/**
- * The list of compromised passwords read over the range endpoint (Pwned Passwords, range API): five
- * hexadecimal characters leave, the comparison of the thirty-five that are left is here.
- *
- * No test of any suite reaches the network: the client is a MockHttpClient, and the endpoint a deployment
- * does not name is the empty one, which asks nobody.
- */
 final class PwnedPasswordsTest extends TestCase
 {
     private const string ENDPOINT = 'https://list.example/range/';
@@ -35,14 +28,9 @@ final class PwnedPasswordsTest extends TestCase
 
     private const string PASSWORD_SUFFIX = '1E4C9B93F3F0682250B6CF8331B7EE68FD8';
 
-    /**
-     * The URL of the last request the client was asked for, null until one was made.
-     */
     private ?string $urlAsked = null;
 
     /**
-     * The headers of the last request, as the client normalised them.
-     *
      * @var list<string>
      */
     private array $headersAsked = [];
@@ -60,9 +48,6 @@ final class PwnedPasswordsTest extends TestCase
         static::assertSame('https://list.example/range/5BAA6', $this->urlAsked);
     }
 
-    /**
-     * The answer is asked padded, so that its length says nothing of the bucket either.
-     */
     #[Test]
     public function theAnswerIsAskedPadded(): void
     {
@@ -77,8 +62,7 @@ final class PwnedPasswordsTest extends TestCase
     }
 
     /**
-     * Decision 0006: no outbound request follows a redirect, and the client is told so, a redirect of the
-     * endpoint being then an answer that is not a success (`a redirection nobody followed` below).
+     * Decision 0006
      */
     #[Test]
     public function theEndpointIsAskedWithoutFollowingARedirect(): void
@@ -111,10 +95,6 @@ final class PwnedPasswordsTest extends TestCase
         static::assertTrue($count->isBreached());
     }
 
-    /**
-     * A bucket that holds other suffixes and not this one says the password is not in the list, which is
-     * an answer and not an unknown.
-     */
     #[Test]
     public function aBucketWithoutTheSuffixCountsNothing(): void
     {
@@ -130,9 +110,6 @@ final class PwnedPasswordsTest extends TestCase
         static::assertSame(0, $count->times);
     }
 
-    /**
-     * The padding entries of a padded answer are counted zero and are read as any other line.
-     */
     #[Test]
     public function aPaddingEntryCountedZeroIsNotABreach(): void
     {
@@ -146,10 +123,6 @@ final class PwnedPasswordsTest extends TestCase
         static::assertFalse($count->isBreached());
     }
 
-    /**
-     * A lower-case answer is the same answer: the endpoint writes upper case and nothing is refused for
-     * the case of what it wrote.
-     */
     #[Test]
     public function aLowerCaseAnswerIsReadAllTheSame(): void
     {
@@ -164,7 +137,7 @@ final class PwnedPasswordsTest extends TestCase
     }
 
     /**
-     * Decision 0006: an unknown is not a count of zero, and it is not a boolean this provider casts.
+     * Decision 0006
      */
     #[Test]
     #[DataProvider('provideAnswersThatAreNoRange')]
@@ -226,10 +199,6 @@ final class PwnedPasswordsTest extends TestCase
         $breaches->timesSeen(PasswordDigest::of(self::PASSWORD));
     }
 
-    /**
-     * A deployment that names no endpoint asks nobody: it poses passwords and signs people in on the
-     * rules of the core alone, as one that names no GeoIP licence key says an address and no place.
-     */
     #[Test]
     public function aDeploymentThatNamesNoEndpointLooksNothingUp(): void
     {
@@ -246,9 +215,6 @@ final class PwnedPasswordsTest extends TestCase
         static::assertFalse($count->wasAsked());
     }
 
-    /**
-     * An endpoint written with or without its trailing slash addresses the same bucket.
-     */
     #[Test]
     #[DataProvider('provideEndpoints')]
     public function theBucketIsAppendedToTheEndpointAsWritten(string $endpoint): void
@@ -285,9 +251,6 @@ final class PwnedPasswordsTest extends TestCase
         return new MockResponse(implode("\r\n", $lines));
     }
 
-    /**
-     * The bridge over a client that answers this and writes down what it was asked.
-     */
     private function breaches(MockResponse $response, string $endpoint = self::ENDPOINT): PwnedPasswords
     {
         $client = new MockHttpClient(function (string $method, string $url, array $options) use ($response): MockResponse {

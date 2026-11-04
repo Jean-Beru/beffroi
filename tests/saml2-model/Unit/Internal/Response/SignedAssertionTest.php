@@ -25,15 +25,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.1 step 5, section 6.7, M-1, M-2, M-4, M-5: the document the assertion is read from, its own signature
- * verified where the assertion arrived, or on the root of its decryption, or the response's.
+ * Section 6.1 step 5, section 6.7, M-1, M-2, M-4, M-5
  */
 final class SignedAssertionTest extends TestCase
 {
     use ResponseFixtures;
 
     /**
-     * M-2, section 6.1 step 5: an assertion signed under a signed response is read from its own verification.
+     * M-2, section 6.1 step 5
      */
     #[Test]
     public function itReadsASignedAssertionFromItsOwnVerification(): void
@@ -59,7 +58,7 @@ final class SignedAssertionTest extends TestCase
     }
 
     /**
-     * M-2, E26: an unsigned assertion is read from the verification of the response that covers it.
+     * M-2, E26
      */
     #[Test]
     public function itReadsAnUnsignedAssertionFromTheResponsesVerification(): void
@@ -82,7 +81,7 @@ final class SignedAssertionTest extends TestCase
     }
 
     /**
-     * §9.2 row 9, M-2: neither the response nor the assertion signed.
+     * §9.2 row 9, M-2
      */
     #[Test]
     public function itRefusesAnAssertionNoSignatureCovers(): void
@@ -100,8 +99,7 @@ final class SignedAssertionTest extends TestCase
     }
 
     /**
-     * M-4, M-5, D-10: two ds:Signature, or one before the Issuer, refused on the received assertion, whose
-     * verification would remove the one it verified from the document the reader reads.
+     * M-4, M-5, D-10
      */
     #[Test]
     #[DataProvider('provideSignaturesOutOfTheSchema')]
@@ -136,8 +134,7 @@ final class SignedAssertionTest extends TestCase
     }
 
     /**
-     * §9.3 row 4, section 6.1 step 5: an assertion signed with a PrefixList naming a prefix the response declares is
-     * verified where it arrived, the declaration in scope.
+     * §9.3 row 4, section 6.1 step 5
      */
     #[Test]
     public function itVerifiesTheAssertionWhereItArrived(): void
@@ -159,9 +156,7 @@ final class SignedAssertionTest extends TestCase
     }
 
     /**
-     * §9.3 row 4, dsig.md section 6.3: the same assertion verified inside the response's Verified::$document fails
-     * its digest, the declaration its PrefixList names not rendered by the response's exclusive form; this is why
-     * section 6.1 step 5 never verifies it there.
+     * §9.3 row 4, dsig.md section 6.3
      */
     #[Test]
     public function theSameAssertionFailsInsideTheResponsesReParse(): void
@@ -182,8 +177,7 @@ final class SignedAssertionTest extends TestCase
     }
 
     /**
-     * §9.3 row 23, M-2, section 6.7: a decrypted assertion that carries a signature is read from the verification of
-     * that signature, made on the root of the document its decryption gave.
+     * §9.3 row 23, M-2, section 6.7
      */
     #[Test]
     public function itReadsADecryptedAssertionFromItsOwnVerification(): void
@@ -203,8 +197,7 @@ final class SignedAssertionTest extends TestCase
     }
 
     /**
-     * §9.3 row 24, M-1, M-2, section 6.7: a decrypted assertion without a signature is read from the document of its
-     * decryption when the response's signature covered the ciphertext.
+     * §9.3 row 24, M-1, M-2, section 6.7
      */
     #[Test]
     public function itReadsAnUnsignedDecryptedAssertionWhoseCiphertextTheResponsesSignatureCovered(): void
@@ -223,8 +216,7 @@ final class SignedAssertionTest extends TestCase
     }
 
     /**
-     * §9.2 row 40, M-2, section 6.7: a decrypted assertion that no signature covers, its response unsigned, is refused:
-     * anyone encrypts for the key of the service provider.
+     * §9.2 row 40, M-2, section 6.7
      */
     #[Test]
     public function itRefusesADecryptedAssertionNoSignatureCovers(): void
@@ -242,9 +234,6 @@ final class SignedAssertionTest extends TestCase
         SignedAssertion::decrypted($decrypted, $response, self::identityProvider(), SamlLoader::create());
     }
 
-    /**
-     * The plaintext of the one saml:EncryptedAssertion of $response, decrypted by Enc with the service provider's key.
-     */
     private static function decrypted(SignedResponse $response): DecryptedAssertion
     {
         return DecryptedAssertion::of(new Decryptor(SamlLoader::create())->decrypt(

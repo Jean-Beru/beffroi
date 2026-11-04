@@ -10,19 +10,6 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/**
- * What this deployment is asked about when something does not work (architecture §5.5, issue #196).
- * Reads, writes nothing: it is the symmetric of `beffroi:user:show`, and it is the first thing support
- * asks for, so it must be safe on a provider serving traffic.
- *
- * What it looks at is what is wired: one point is one class tagged "beffroi.doctor_check", so a point
- * added is a class added and never a branch here. It looks at all of them before it answers, a doctor
- * that stops on the first thing that is broken being a doctor that never reaches the second, and it
- * fails when one of them is red so that a deployment pipeline can ask the question too.
- *
- * It says so when nothing is wired to look at this deployment: a run that answers for every point while
- * looking at none is the one answer worse than a red one.
- */
 #[AsCommand(
     name: self::NAME,
     description: 'Say whether this deployment holds together: one line per point looked at, and what to do about the ones it does not answer for. Reads and writes nothing.',
@@ -32,7 +19,7 @@ final readonly class DoctorCommand
     public const string NAME = 'beffroi:doctor';
 
     /**
-     * @param iterable<CheckInterface> $checks what is looked at, in the order it is wired
+     * @param iterable<CheckInterface> $checks
      */
     public function __construct(
         private iterable $checks,

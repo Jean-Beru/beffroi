@@ -12,8 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 9449 §4.2: what a proof says of itself, read strictly, because a proof is the one thing a request
- * brings that nobody else vouches for.
+ * RFC 9449 §4.2
  */
 final class DpopProofTest extends TestCase
 {
@@ -39,10 +38,6 @@ final class DpopProofTest extends TestCase
         static::assertSame('the-nonce', $proof->nonce());
     }
 
-    /**
-     * A proof made for a request that presents no token names none, and one made where the provider
-     * asks for no nonce carries none.
-     */
     #[Test]
     public function whatAProofDoesNotCarryIsNotRead(): void
     {
@@ -57,8 +52,7 @@ final class DpopProofTest extends TestCase
     }
 
     /**
-     * RFC 9110 §9.1: "htm" is a method, and a value that is not one was written by something that does
-     * not know what request it was making.
+     * RFC 9110 §9.1
      */
     #[Test]
     public function aMethodThatIsNotOneIsRefused(): void

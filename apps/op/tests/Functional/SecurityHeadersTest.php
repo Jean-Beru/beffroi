@@ -24,28 +24,14 @@ use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
 
-/**
- * What this provider tells a browser to do with its answers (config/packages/nelmio_security.yaml,
- * config/packages/nelmio_cors.yaml, config/packages/framework.yaml).
- *
- * A scanner says what is true of a deployment today. What is here is what stays true of the next one: the
- * two planes do not carry the same cross-origin headers, the pages a relying party drives keep the opener
- * the protocol needs, and the endpoints a browser-based client calls are the only ones that answer CORS.
- */
 final class SecurityHeadersTest extends BrowserTestCase
 {
     use SecurityHeadersAssertionsTrait;
 
-    /**
-     * The origin of a client running in a page, which no walk of this suite registers: what is read below
-     * is whether the endpoint answers a preflight at all, which it does before it knows the client.
-     */
     private const string BROWSER_ORIGIN = 'https://client.example.com';
 
     /**
-     * Whatever the plane, and whatever serves it: no sniffing of the content type (a JWK set read as a
-     * script is a JWK set executed), no framing (RFC 9700 §4.15), and no referrer, an authorization request
-     * carrying the client, the state and the scope in its query string.
+     * RFC 9700 §4.15
      */
     #[Test]
     #[DataProvider('provideAnswersOfEveryPlane')]
@@ -71,7 +57,7 @@ final class SecurityHeadersTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6797 §6.1: a year, every subdomain of the issuer, and the preload list.
+     * RFC 6797 §6.1
      */
     #[Test]
     public function itAsksForHttpsForAYearIncludingTheSubdomainsOfTheIssuer(): void
@@ -83,10 +69,6 @@ final class SecurityHeadersTest extends BrowserTestCase
         static::assertStrictTransportSecurity(maxAge: 31536000, includeSubDomains: true, preload: true);
     }
 
-    /**
-     * An answer of the protocol plane is JSON read by a program. CORP says who may embed it; COEP and COOP
-     * describe a browsing context, which an answer that is not a document never has.
-     */
     #[Test]
     public function itAnswersTheProtocolPlaneWithTheOneCrossOriginHeaderThatAppliesToIt(): void
     {
@@ -99,16 +81,6 @@ final class SecurityHeadersTest extends BrowserTestCase
         static::assertFalse($this->browser->getResponse()->headers->has('Cross-Origin-Opener-Policy'));
     }
 
-    /**
-     * The one place in this configuration where a header is deliberately not written, and the protocol is
-     * the reason: a client that opens the authorization request in a popup keeps the handle on it, and the
-     * page it lands on keeps its opener. "same-origin" swaps the browsing context group on the way in and
-     * severs both for good.
-     *
-     * Isolation is COOP and COEP together, so a group that cannot have the first is a group where the
-     * second isolates nothing and only refuses things. Both are absent, and what answers is what a browser
-     * does with neither.
-     */
     #[Test]
     #[DataProvider('providePagesARelyingPartyDrives')]
     public function itLeavesTheOpenerOfThePagesARelyingPartyDrives(string $path): void
@@ -132,13 +104,6 @@ final class SecurityHeadersTest extends BrowserTestCase
         yield 'the authorization endpoint itself, answering a request it refuses' => ['/authorize'];
     }
 
-    /**
-     * Nobody opens a page of the account in a popup to carry a step of the protocol, so the three headers
-     * hold together there and the document is cross-origin isolated: it owns its browsing context group,
-     * nothing cross-origin sits in its process that did not ask to, and what a CPU speculates on in that
-     * process is this provider's own. It is also what leaves a page opened from here no opener to navigate
-     * back.
-     */
     #[Test]
     public function itIsolatesThePagesOfTheAccount(): void
     {
@@ -152,10 +117,6 @@ final class SecurityHeadersTest extends BrowserTestCase
         static::assertIsIsolated();
     }
 
-    /**
-     * The logos of the authenticators the page of the passkeys names are images of data: URLs (issue #983),
-     * which the policy of that page admits, so that showing one fetches nothing.
-     */
     #[Test]
     public function itAdmitsOnThePageOfThePasskeysTheImagesOfDataUrls(): void
     {
@@ -171,13 +132,7 @@ final class SecurityHeadersTest extends BrowserTestCase
     }
 
     /**
-     * CSP Level 3 §6.1: everything is refused and then one directive per kind of thing a page of this
-     * deployment loads. Neither "unsafe-inline" nor "unsafe-eval" is one of them, the level 1 fallback that
-     * would add the first being off.
-     *
-     * On a page of the interaction plane as well, which is the one place two policies meet: the provider
-     * gives every one of them the floor a deployment that configures nothing still needs, and that floor
-     * gives way to this one (App\Http\DeploymentPolicyPrevails).
+     * CSP Level 3 §6.1
      */
     #[Test]
     #[DataProvider('provideAnswersTheDeploymentWritesThePolicyOf')]
@@ -205,10 +160,7 @@ final class SecurityHeadersTest extends BrowserTestCase
     }
 
     /**
-     * The two pages whose policy is part of the protocol compute their own, and theirs is the one that is
-     * sent: the page that posts the response of an authorization request to the redirect URI names the hash
-     * of the one script that submits the form and the origin it posts to, and nothing else runs or loads
-     * (OAuth 2.0 Form Post Response Mode §2, CSP Level 3 §6.6.2.2).
+     * OAuth 2.0 Form Post Response Mode §2, CSP Level 3 §6.6.2.2
      */
     #[Test]
     public function itLeavesThePolicyOfAPageThatComputesItsOwn(): void
@@ -224,14 +176,7 @@ final class SecurityHeadersTest extends BrowserTestCase
     }
 
     /**
-     * CSP Level 3 §6.1, §6.3.2: a page of the interaction plane that may send the browser to a client
-     * names the origin of that client among the form targets of the policy this deployment writes
-     * (App\Http\FormTarget), a browser checking the directive over the whole redirect chain of
-     * a submission and the last hop of that chain being the answer carried to the client.
-     *
-     * What is read here is the order of the two, which is what the page depends on: the policy of this
-     * deployment is written on the answer, and the page that may answer a client completes the directive
-     * it wrote. The pages themselves are walked by the suite of the provider, on a kernel of their own.
+     * CSP Level 3 §6.1, §6.3.2
      */
     #[Test]
     public function itNamesTheClientAPageMayAnswerAmongTheFormTargetsOfThePolicyItWrites(): void
@@ -254,13 +199,6 @@ final class SecurityHeadersTest extends BrowserTestCase
         );
     }
 
-    /**
-     * Issue beffroi-auth/beffroi#584: the consent page extends the layout of this application, so it is
-     * served the policy written here like every other page of the plane and not one of its own, which
-     * would be a page served without the directives above. What it adds to that policy is read on the
-     * page itself: the host serving the logo of the asking client in the "img-src", that client in the
-     * "form-action", and nothing a client registers anywhere else.
-     */
     #[Test]
     public function itServesTheConsentPageThePolicyOfThisDeploymentCompletedWithWhatThatPageAdds(): void
     {
@@ -285,11 +223,6 @@ final class SecurityHeadersTest extends BrowserTestCase
         );
     }
 
-    /**
-     * The interaction the authorization request began, read where the browser was sent (architecture
-     * §4.3): the page of an interaction is reached with the identifier the redirection names and with no
-     * other.
-     */
     private function interactionOfTheRedirection(): string
     {
         $response = $this->browser->getResponse();
@@ -303,9 +236,7 @@ final class SecurityHeadersTest extends BrowserTestCase
     }
 
     /**
-     * A directive left out of the header falls back to the allow list of the specification and not to a
-     * refusal, so the whole set is written and the two entries a passkey needs are what open, to this
-     * origin and to no other (WebAuthn §5.9).
+     * WebAuthn §5.9
      */
     #[Test]
     public function itOpensTheCredentialApiToItsOwnOriginAndClosesTheRest(): void
@@ -323,11 +254,7 @@ final class SecurityHeadersTest extends BrowserTestCase
     }
 
     /**
-     * RFC 9700 §6.3: the endpoints a public client running in a page calls are the ones that answer a
-     * preflight, and the answer names a star rather than the origin that asked, so that no cache in front
-     * of this provider has to be told to vary on it. The credentials are never allowed, which is what makes
-     * the star the right answer: a browser refuses the two together, and the session of this provider is
-     * read on the pages of the interaction plane and on none of these.
+     * RFC 9700 §6.3
      */
     #[Test]
     #[DataProvider('provideEndpointsABrowserBasedClientCalls')]
@@ -357,11 +284,6 @@ final class SecurityHeadersTest extends BrowserTestCase
         yield 'the pushed authorization request (RFC 9126 section 2)' => ['/par', 'POST', 'content-type, dpop', 'POST'];
     }
 
-    /**
-     * A browser arrives at the authorization endpoint by navigation, and a navigation is not subject to
-     * CORS: a header on it would say nothing to anybody. The endpoints no browser reaches answer none
-     * either, whatever a client holds.
-     */
     #[Test]
     #[DataProvider('provideEndpointsNoBrowserReads')]
     public function itAnswersNoCorsWhereNoBrowserReadsTheAnswer(string $path, string $method): void
@@ -385,17 +307,6 @@ final class SecurityHeadersTest extends BrowserTestCase
         yield 'the backchannel authentication request' => ['/backchannel_authentication', 'POST'];
     }
 
-    /**
-     * The one header of a provider that no bundle writes. The "__Host-" prefix is what makes the browser
-     * check the three attributes rather than this provider hope for them, and "lax" is what a provider
-     * cannot tighten: a browser arrives at the authorization endpoint by a cross-site navigation, and
-     * "strict" would drop the cookie on it and ask whoever sent it to sign in again.
-     *
-     * What is read is the configuration the kernel booted with and not a Set-Cookie of a response, because
-     * the session of this environment is held by the mock storage of symfony/http-foundation, which names
-     * its own cookie whatever the configuration says (session.storage.factory.mock_file). The cookie the
-     * test below reads is one this application writes itself.
-     */
     #[Test]
     public function itCarriesTheSessionOfABrowserOnAHostPrefixedCookie(): void
     {
@@ -412,11 +323,6 @@ final class SecurityHeadersTest extends BrowserTestCase
         static::assertArrayNotHasKey('cookie_domain', $options);
     }
 
-    /**
-     * The preferences of the browser, which this application writes a slot of and names no cookie of its
-     * own for (issue #573, App\Theme\ThemePreference): the same prefix and the same three attributes under
-     * it, a preference being read from a browser like anything else.
-     */
     #[Test]
     public function itKeepsThePreferencesOfABrowserOnAHostPrefixedCookieToo(): void
     {
@@ -433,11 +339,7 @@ final class SecurityHeadersTest extends BrowserTestCase
     }
 
     /**
-     * The request a browser sends before a call it is not allowed to make without asking (Fetch §3.2.3).
-     *
-     * @param string $headers the headers the call would carry, empty for a call that carries none of its
-     *                        own: a header the endpoint does not allow is what the preflight refuses, and
-     *                        asking for one nowhere near it would read as that refusal
+     * Fetch §3.2.3
      */
     private function preflight(string $path, string $method, string $headers): void
     {

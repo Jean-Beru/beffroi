@@ -15,16 +15,10 @@ use Beffroi\Oidc\Port\ServedGrantsInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * CIBA Core §7: the client names the user it is asking for, and is told the request was taken. What a
- * "login_hint" names is this provider's to decide (§7.1, §15), so the demonstration names the user the
- * way the lab is configured to and reads nothing into it.
+ * CIBA Core §7
  */
 final readonly class AskTheBackchannelAuthenticationEndpoint implements DrivenHopInterface
 {
-    /**
-     * What the user reads on the device this provider reaches them on (§7.1): the same message every
-     * run, so that what is being allowed is recognisable on the screen beside the picture.
-     */
     public const string BINDING_MESSAGE = 'The demonstration';
 
     public function flows(ServedGrantsInterface $served): array

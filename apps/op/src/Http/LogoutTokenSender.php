@@ -11,18 +11,12 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Throwable;
 
 /**
- * Carries one logout token to one relying party (Back-Channel Logout 1.0 §2.5): a POST of
- * "application/x-www-form-urlencoded" whose only parameter is "logout_token", no cookie, no
- * authentication, nothing read back but the status code. No redirect is followed (decision 0006): a
- * back-channel logout URI names where the token goes, and the provider does not let a third party move
- * it. The timeout is the sender's own, because a relying party that hangs must not hold a worker; it is
- * read from here by what says how long a logout token stays on its way (OutboundDeliveryBudget).
+ * Back-Channel Logout 1.0 §2.5
+ *
+ * No redirect is followed (decision 0006).
  */
 final readonly class LogoutTokenSender
 {
-    /**
-     * §2.5: the one parameter of the request.
-     */
     public const string PARAMETER = 'logout_token';
 
     public function __construct(
@@ -53,8 +47,9 @@ final readonly class LogoutTokenSender
     }
 
     /**
-     * §2.8: 2xx is done, 400 and 501 are final. A redirect is final too, for a reason of our own: it is
-     * the same answer every time and the provider does not follow it.
+     * Back-Channel Logout 1.0 §2.8
+     *
+     * A redirect is final too: it is not followed, so a retry gets the same answer.
      */
     private static function outcomeOf(int $status, ?string $location): OutboundDelivery
     {

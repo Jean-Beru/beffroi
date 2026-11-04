@@ -19,16 +19,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * M-5, M-13, SAML Core §3.2.2: the status of a response or a logout response, its two codes, and nothing the peer wrote
- * around them.
+ * M-5, M-13, SAML Core §3.2.2
  */
 final class StatusReaderTest extends TestCase
 {
     use AssertionFixtures;
 
     /**
-     * §9.3 row 14, SAML Core §3.2.2.2: the top-level code and the second-level one; the StatusMessage and the
-     * StatusDetail are not read.
+     * §9.3 row 14, SAML Core §3.2.2.2
      */
     #[Test]
     public function itReadsBothCodes(): void
@@ -47,7 +45,7 @@ final class StatusReaderTest extends TestCase
     }
 
     /**
-     * SAML Core §3.2.2.2: without a second-level code, or with one SAML Core does not list, the second level is null.
+     * SAML Core §3.2.2.2
      */
     #[Test]
     #[DataProvider('provideStatusesWithoutAKnownSecondLevel')]
@@ -76,8 +74,7 @@ final class StatusReaderTest extends TestCase
     }
 
     /**
-     * M-4, M-5, SAML Core §3.2.2.2: a top-level code of no SAML Core vocabulary, a code without Value, the
-     * StatusMessage before the StatusCode, two second-level codes, two third-level codes.
+     * M-4, M-5, SAML Core §3.2.2.2
      */
     #[Test]
     #[DataProvider('provideMalformedStatuses')]
@@ -126,9 +123,6 @@ final class StatusReaderTest extends TestCase
         ];
     }
 
-    /**
-     * The structure of the status checked, then its values read, as the envelope of a response reads it.
-     */
     private function readChecked(Element $status): void
     {
         StatusReader::structure($status);

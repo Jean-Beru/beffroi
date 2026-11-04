@@ -38,16 +38,7 @@ use LogicException;
 use function str_repeat;
 
 /**
- * What the tests of HTTP-Redirect and HTTP-POST sent share (sections 6.3, 6.4, 9.1, 9.2, 9.3): the messages the senders
- * write, as the model's message objects. Over HTTP-Redirect, each is the very message whose writer's unsigned document
- * is a fixture file, so that what the sender carries is compared with what the writer wrote (B-6, B-10): the
- * AuthnRequest of the service provider to the identity provider, behaviour/authn-request-written-for-http-redirect.xml,
- * written by saml2-model's AuthnRequestWriter at 9c833c5 with no Signing; the LogoutRequest of the identity provider
- * and the LogoutResponse of the service provider, the two logout documents of ReceptionFixtures, which that writer
- * writes byte for byte. Over HTTP-POST, the same three, and the identity provider's response to the AuthnRequest at
- * the service provider's assertion consumer service, its assertion of the parts the profile requires (the values of
- * saml2-model's ResponseWriterFixtures at 9c833c5, its IDs fixed), and its failure, Responder and AuthnFailed. A
- * Signing holds a test key; the parties and the validators are those of ReceptionFixtures.
+ * Sections 6.3, 6.4, 9.1, 9.2, 9.3, B-6, B-10
  *
  * @phpstan-type Message 'an unsigned AuthnRequest'|'an AuthnRequest'|'a LogoutRequest'|'a LogoutResponse'
  * @phpstan-type PostMessage Message|'a Response'|'a Response signed whole'|'an unsigned failure'|'a failure'
@@ -59,25 +50,18 @@ trait SendingFixtures
     public const string AUTHN_REQUEST_WRITTEN = 'behaviour/authn-request-written-for-http-redirect.xml';
 
     /**
-     * A RelayState of exactly 80 bytes once decoded (B-9): twenty euro signs, three bytes each, then every character
-     * a query string reads or percent-encoding escapes, a space, &, =, +, /, ?, #, %, ;, and the four unreserved
-     * characters other than letters and digits, ~, -, . and _.
+     * B-9
      */
     public const string RELAY_STATE = '€€€€€€€€€€€€€€€€€€€€ &=+/?#%;~-._state00';
 
     /**
-     * A RelayState of exactly 1 024 bytes once decoded, the bound of B-9 (section 8), every byte escaped on the wire:
-     * 341 euro signs, three bytes each, then a slash, 3 072 characters percent-encoded, the longest RelayState a query
-     * string of the package carries (section 7).
+     * B-9, section 8, section 7
      */
     public static function longestRelayState(): string
     {
         return str_repeat('€', 341) . '/';
     }
 
-    /**
-     * The ID of the service provider's AuthnRequest, which the identity provider's response answers.
-     */
     public const string AUTHN_REQUEST_ID = '_4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b';
 
     public const string RESPONSE_ID = '_8f2e4d6c1b3a5f7e9d0c2b4a6f8e1d3c5b7a9f0e';
@@ -86,9 +70,6 @@ trait SendingFixtures
 
     public const string FAILURE_ID = '_9d1f3b5a7c2e4d6f8a0b2c4e6a8d0f1b3c5e7a9d';
 
-    /**
-     * The service provider's AuthnRequest to the single sign-on service, or to $destination.
-     */
     private static function authnRequest(?string $destination = self::SSO): AuthnRequest
     {
         return new AuthnRequest(
@@ -102,9 +83,6 @@ trait SendingFixtures
         );
     }
 
-    /**
-     * The identity provider's LogoutRequest to the service provider's single logout service, or to $destination.
-     */
     private static function logoutRequest(string $destination = self::SP_SLO): LogoutRequest
     {
         return new LogoutRequest(
@@ -124,9 +102,6 @@ trait SendingFixtures
         );
     }
 
-    /**
-     * The service provider's LogoutResponse to the identity provider's single logout service, or to $destination.
-     */
     private static function logoutResponse(string $destination = self::IDP_SLO): LogoutResponse
     {
         return new LogoutResponse(
@@ -139,10 +114,6 @@ trait SendingFixtures
         );
     }
 
-    /**
-     * The identity provider's response to the AuthnRequest, Success, at the assertion consumer service or at
-     * $destination, issued when the AuthnRequest is.
-     */
     private static function response(?string $destination = self::ACS): Response
     {
         return new Response(
@@ -156,12 +127,6 @@ trait SendingFixtures
         );
     }
 
-    /**
-     * The assertion of the response: an unspecified NameID, a bearer confirmation to the assertion consumer service
-     * answering the AuthnRequest, Conditions without window holding the service provider as audience, an
-     * authentication statement with its SessionIndex. The bearer confirmation is to $recipient, which the model's writer
-     * requires to be the Destination of the response.
-     */
     private static function assertion(string $recipient = self::ACS): Assertion
     {
         return new Assertion(
@@ -186,10 +151,6 @@ trait SendingFixtures
         );
     }
 
-    /**
-     * The identity provider's failure to the AuthnRequest, Responder and AuthnFailed, without assertion, at the
-     * assertion consumer service or at $destination.
-     */
     private static function failure(?string $destination = self::ACS): Response
     {
         return new Response(
@@ -203,9 +164,6 @@ trait SendingFixtures
         );
     }
 
-    /**
-     * The identity provider of ReceptionFixtures, its single sign-on service at $location over HTTP-Redirect.
-     */
     private static function identityProviderAt(string $location): IdentityProvider
     {
         return new IdentityProvider(
@@ -218,8 +176,6 @@ trait SendingFixtures
     }
 
     /**
-     * The Signing of the test key $key under $algorithm, without certificate: HTTP-Redirect carries no KeyInfo.
-     *
      * @param 'idp'|'sp' $key
      */
     private static function signing(string $key, SignatureAlgorithm $algorithm = SignatureAlgorithm::RsaSha256): Signing
@@ -228,7 +184,7 @@ trait SendingFixtures
     }
 
     /**
-     * The sender under the default bounds of section 7, or under $limits.
+     * Section 7
      */
     private static function sender(?BindingLimits $limits = null): RedirectSender
     {
@@ -236,11 +192,6 @@ trait SendingFixtures
     }
 
     /**
-     * The URL the sender writes for $message: the AuthnRequest unsigned or signed by the service provider, the
-     * LogoutRequest signed by the identity provider, the LogoutResponse signed by the service provider, each under
-     * $algorithm, or by the key of $signing when one is given; with $relayState, to $destination or to the message's
-     * own, under $limits or the default bounds.
-     *
      * @param Message $message
      */
     private static function send(
@@ -278,7 +229,7 @@ trait SendingFixtures
     }
 
     /**
-     * The post sender under the default bounds of section 7, or under $limits.
+     * Section 7
      */
     private static function postSender(?BindingLimits $limits = null): PostSender
     {
@@ -286,12 +237,6 @@ trait SendingFixtures
     }
 
     /**
-     * The form the post sender writes for $message: the AuthnRequest unsigned or signed by the service provider, the
-     * LogoutRequest signed by the identity provider, the LogoutResponse signed by the service provider, the response
-     * signed by the identity provider, its assertion or the whole, its failure unsigned or signed, each under
-     * $algorithm, or by the key of $signing when one is given; with $relayState, to $destination or to the message's own,
-     * under $limits or the default bounds.
-     *
      * @param PostMessage $message
      */
     private static function post(
@@ -339,8 +284,7 @@ trait SendingFixtures
     }
 
     /**
-     * Every signature algorithm this build signs and verifies: the three of PKCS#1 v1.5, and the three of RSASSA-PSS
-     * on PHP 8.5 with OpenSSL 3.1 (dsig.md section 5.1).
+     * dsig.md section 5.1
      *
      * @return list<SignatureAlgorithm>
      */
@@ -352,17 +296,11 @@ trait SendingFixtures
         ));
     }
 
-    /**
-     * The query string of $url, what follows its first "?", as the consumer's peer receives it.
-     */
     private static function queryString(string $url): string
     {
         return explode('?', $url, 2)[1] ?? throw new LogicException('A URL of the tests holds no query.');
     }
 
-    /**
-     * The query of $url, read back.
-     */
     private static function query(string $url): RedirectQuery
     {
         return RedirectQuery::of(self::queryString($url));

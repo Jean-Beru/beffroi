@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.8, M-4, M-5, M-6: the structure or a lexical form, refused with the rest of what the model refuses.
+ * Section 5.8, M-4, M-5, M-6
  */
 final class MalformedMessageTest extends TestCase
 {

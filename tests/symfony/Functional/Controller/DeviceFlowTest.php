@@ -23,9 +23,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * RFC 8628 and BCP 10027 over HTTP, end to end: an appliance with no keyboard asks for a code, shows it, and
- * polls; somebody types that code in a browser of their own, is asked to confirm, and the appliance gets its
- * tokens. One step per test.
+ * RFC 8628, BCP 10027
  */
 final class DeviceFlowTest extends BrowserTestCase
 {
@@ -46,8 +44,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8628 §3.2: the two codes, where the user goes, the same page with the code already in it (§3.3.1),
-     * the lifetime and the interval.
+     * RFC 8628 §3.2, §3.3.1
      */
     #[Test]
     public function anApplianceIsAnsweredTwoCodesAPageAndTheTimes(): void
@@ -68,7 +65,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8628 §3.2: the codes are credentials of one use and no cache holds them.
+     * RFC 8628 §3.2
      */
     #[Test]
     public function theAnswerIsNeverCached(): void
@@ -83,7 +80,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8628 §3.5: while nobody has answered, the client is told "not yet" and nothing else.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aPollBeforeAnybodyAnsweredIsPending(): void
@@ -101,7 +98,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8628 §3.5: a client polling faster than the interval it was given is told to slow down.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aPollFasterThanTheIntervalIsToldToSlowDown(): void
@@ -119,7 +116,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8628 §3.5: past its lifetime the code is dead, and the appliance is told to start over.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aPollAfterTheLifetimeIsToldTheCodeExpired(): void
@@ -136,8 +133,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8628 §3.3, BCP 10027 §2: the code typed by a signed-in user is answered with the request it names,
-     * the client, where it came from, and what it asks for.
+     * RFC 8628 §3.3, BCP 10027 §2
      */
     #[Test]
     public function theCodeTypedBySomebodySignedInNamesTheRequestAndWhatItAsksFor(): void
@@ -159,8 +155,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8628 §3.3: the whole flow. The code is typed and confirmed, and the appliance polling gets its
-     * tokens, the ones of a code and nothing new.
+     * RFC 8628 §3.3
      */
     #[Test]
     public function aConfirmedCodeReleasesTheTokensToThePollingAppliance(): void
@@ -188,7 +183,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8628 §3.5: a device code is spent once, and presented again is worth nothing.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aDeviceCodeSpentOnceIsRefusedAfterThat(): void
@@ -209,7 +204,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8628 §3.5: a user who refuses ends the request, and the appliance learns it rather than polling on.
+     * RFC 8628 §3.5
      */
     #[Test]
     public function aRefusalEndsTheRequestAndTheApplianceLearnsIt(): void
@@ -228,8 +223,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8628 §3.3.1: the complete verification URI brings the code already typed, and still asks for a
-     * confirmation. A GET approves nothing, whatever it carries.
+     * RFC 8628 §3.3.1
      */
     #[Test]
     public function theCompleteVerificationUriStillAsksForAConfirmation(): void
@@ -251,8 +245,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8628 §3.3: a request approved by nobody is a request approved by nobody. The visitor signs in on
-     * the login of the firewall and lands back on the code the page carried.
+     * RFC 8628 §3.3
      */
     #[Test]
     public function aVisitorWhoIsNotSignedInSignsInAndLandsBackOnTheCode(): void
@@ -281,8 +274,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * The login of the firewall is the one every other page uses, second factor included: a password that is
-     * not a login yet (§5.4) does not lose the page that was waiting for it.
+     * Architecture §5.4
      */
     #[Test]
     public function aUserWhoHoldsASecondFactorTypesTheirCodeAndLandsBackOnTheDeviceCode(): void
@@ -315,8 +307,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8628 §3.3: a visitor who is not signed in is sent to the login before any code is read at all, so
-     * that no code is ever tried by nobody.
+     * RFC 8628 §3.3
      */
     #[Test]
     public function aVisitorWhoIsNotSignedInNeverReachesTheForm(): void
@@ -333,8 +324,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * BCP 10027 §2: the user compares the code on this page with the code on the screen of the appliance, so
-     * it is shown the way that screen shows it whatever form it was typed in, separator included.
+     * BCP 10027 §2
      */
     #[Test]
     public function theCodeIsShownBackAsTheApplianceShowsItWhateverFormItWasTypedIn(): void
@@ -352,8 +342,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8628 §5.1: a code that names no request awaiting an answer gets one refusal, whatever the reason it
-     * names none.
+     * RFC 8628 §5.1
      */
     #[Test]
     #[DataProvider('provideCodesThatNameNothing')]
@@ -380,8 +369,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8628 §5.2, decision 0014: the codes refused to a user are counted, and guessing stops being
-     * answered.
+     * RFC 8628 §5.2, Decision 0014
      */
     #[Test]
     public function repeatedWrongCodesStopBeingAnswered(): void
@@ -401,8 +389,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0014: only what was refused is counted, so a user who reads the same page of an appliance
-     * several times over is never told to wait.
+     * Decision 0014
      */
     #[Test]
     public function aCodeThatNamesARequestCostsNoAttempt(): void
@@ -421,7 +408,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8628 §3.1: a public client is what a television is, and it starts the flow by naming itself.
+     * RFC 8628 §3.1
      */
     #[Test]
     public function aPublicApplianceStartsTheFlowByNamingItself(): void
@@ -439,7 +426,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8628 §3.1: a client whose grants take no user on another device has no business here.
+     * RFC 8628 §3.1
      */
     #[Test]
     public function aClientRegisteredForNoSuchGrantIsRefused(): void
@@ -459,7 +446,7 @@ final class DeviceFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8628 §4: the endpoint and the grant are announced because they are wired.
+     * RFC 8628 §4
      */
     #[Test]
     public function theDocumentAnnouncesTheEndpointAndTheGrant(): void
@@ -525,9 +512,6 @@ final class DeviceFlowTest extends BrowserTestCase
         $this->browser->submit($crawler->selectButton($button)->form());
     }
 
-    /**
-     * A user who holds an active authenticator app, as the code page tests build one.
-     */
     private function userWithTotp(string $username, string $password): User
     {
         $user = self::userWithPassword($username, $password);

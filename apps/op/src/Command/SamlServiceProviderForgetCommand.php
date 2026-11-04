@@ -12,15 +12,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * The accepted metadata of a service provider forgotten, by hand (beffroi/saml, spec/saml.md S-6, section 6.2). The
- * newest document accepted is kept against a rollback, and a service provider that went back to a document without
- * validUntil after one that had one is refused at every refresh, until its accepted document expires; forgetting it
- * is the operator's decision, and the next "beffroi:saml:service-provider:refresh" registers the service provider
- * again as a first one.
- *
- * It writes and reads nothing else: the refresh is "beffroi:saml:service-provider:refresh". It forgets a row, whether
- * the configuration still declares its service provider or not, so the row a declaration removed left behind goes
- * the same way. An entity ID nothing is accepted for is refused, compared exactly, rather than reported forgotten.
+ * beffroi/saml S-6, section 6.2
  */
 #[AsCommand(
     name: self::NAME,

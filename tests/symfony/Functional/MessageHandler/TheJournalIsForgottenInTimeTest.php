@@ -22,15 +22,6 @@ use function sprintf;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #454: the journal keeps an act for as long as the deployment says and the timed step forgets the
- * rest. Six months by default, the duration the deliberation 2021-122 of the CNIL holds for a log of
- * connections.
- *
- * **One step for the two tables** (issue #590): what a client was given of a person goes with the act that
- * gave it, at the same moment and under the same duration, because an act whose row is gone, or a row
- * whose act is gone, is half an answer.
- */
 final class TheJournalIsForgottenInTimeTest extends DatabaseTestCase
 {
     #[Test]
@@ -85,10 +76,6 @@ final class TheJournalIsForgottenInTimeTest extends DatabaseTestCase
         static::assertSame(1, self::keptOfWhatWasGiven());
     }
 
-    /**
-     * A count read from the database, narrowed where it is read: a driver answers a number as whatever its
-     * platform calls one.
-     */
     private static function counted(string $sql): int
     {
         $value = self::service('doctrine.dbal.default_connection', Connection::class)->fetchOne($sql);

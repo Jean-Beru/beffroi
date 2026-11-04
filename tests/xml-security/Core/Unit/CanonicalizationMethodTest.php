@@ -11,12 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.4: the four methods the protocol fixes, their URIs and their two flags.
+ * Section 5.4
  */
 final class CanonicalizationMethodTest extends TestCase
 {
     /**
-     * Section 9.1: each case round-trips through fromUri().
+     * Section 9.1
      */
     #[Test]
     #[DataProvider('provideMethods')]
@@ -32,7 +32,7 @@ final class CanonicalizationMethodTest extends TestCase
     }
 
     /**
-     * Section 5.4: the mapping of a method to the two flags of C14N().
+     * Section 5.4
      */
     #[Test]
     #[DataProvider('provideMethods')]
@@ -79,8 +79,7 @@ final class CanonicalizationMethodTest extends TestCase
     }
 
     /**
-     * Section 9.1, section 11: Canonical XML 1.1 is not reachable from PHP and is refused like any unknown URI; the
-     * message carries no input (I-16).
+     * Section 9.1, section 11, I-16
      */
     #[Test]
     #[DataProvider('provideUnknownUris')]

@@ -8,9 +8,7 @@ use Beffroi\Oidc\Application\Authorization\CodeChallengeMethods;
 use Beffroi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
 
 /**
- * The PKCE methods the tests wire (RFC 7636 §4.2): the one the provider wires, which decision 0006 holds
- * every deployment to, and that one beside a method a deployment invented, for what a provider announces
- * and takes when the wiring holds two.
+ * RFC 7636 §4.2
  */
 final readonly class ChallengeMethods
 {

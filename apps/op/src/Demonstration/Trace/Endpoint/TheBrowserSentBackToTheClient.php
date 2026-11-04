@@ -14,17 +14,9 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Where an authorization response really comes from (RFC 6749 §4.1.2): the answer that sends the browser
- * away from this provider, which is the authorization endpoint when the request needed nothing of the
- * user, and the page the interaction ended on when it did, a login, a consent, a code typed.
+ * RFC 6749 §4.1.2
  *
- * It is recognised by what it is and not by where it is served, because where it is served is whichever
- * page the user was last on. What narrows it to an authorization response is the request carrying the
- * identifier of an authorization request this provider parked (AuthorizationResponder): a logout that
- * sends a browser to a client is an answer that leaves too, and it carries none.
- *
- * The answer alone is a hop here. The request the browser brought is recorded where it was brought,
- * which is the authorization endpoint.
+ * Recognised by what it is and not by where it is served, which is whichever page the interaction ended on.
  */
 final readonly class TheBrowserSentBackToTheClient implements RecordedEndpointInterface
 {
@@ -51,10 +43,6 @@ final readonly class TheBrowserSentBackToTheClient implements RecordedEndpointIn
         return OneFlowOfTheWiring::of($served->sendingTheUserToTheClient());
     }
 
-    /**
-     * The page the interaction ended on names no client: it is a page of this provider, serving whoever
-     * is signed in. The hop joins the trace of the client that last brought an authorization request.
-     */
     public function clientOf(Request $request): ?string
     {
         return null;

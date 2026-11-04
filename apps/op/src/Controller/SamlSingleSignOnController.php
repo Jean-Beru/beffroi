@@ -17,12 +17,9 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The single sign-on service of the SAML identity provider of the tenant (beffroi/saml, spec/saml.md section 6.4),
- * at the one URL its metadata publish for both bindings: HTTP-Redirect by GET, its raw query string read from
- * QUERY_STRING and never from the parsed query, whose octets the signature covers (B-2); HTTP-POST by POST, the
- * fields of a form and nothing else (spec/saml.md section 6.8), posted again from the origin of the provider when it came
- * from another site without the session cookie (S-28). A request refused gets the page of a refusal and no
- * SAML answer; one accepted is answered from the session of the browser, or waits for its login.
+ * spec/saml.md section 6.4
+ *
+ * HTTP-Redirect is read from the raw QUERY_STRING, not the parsed query: the signature covers its octets (B-2).
  */
 #[AsController]
 final readonly class SamlSingleSignOnController

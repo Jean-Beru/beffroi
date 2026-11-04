@@ -11,12 +11,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * A token type identifier (RFC 8693 §3): the URI a request names a kind of token by.
+ * RFC 8693 §3
  */
 final class TokenTypeIdentifierTest extends TestCase
 {
     /**
-     * RFC 8693 §3: the access tokens of RFC 6749, which is what this provider issues and reads back.
+     * RFC 8693 §3
      */
     #[Test]
     public function theAccessTokenIsNamedByTheUriOfTheRegistry(): void
@@ -47,8 +47,7 @@ final class TokenTypeIdentifierTest extends TestCase
     }
 
     /**
-     * RFC 8693 §3, RFC 6755: every type of the registry is named by a URI, and an extension names its own
-     * that way.
+     * RFC 8693 §3, RFC 6755
      */
     #[Test]
     #[DataProvider('provideWhatIsNotAnIdentifier')]

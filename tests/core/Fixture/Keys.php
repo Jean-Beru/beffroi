@@ -19,10 +19,6 @@ use Symfony\Component\KeyManagement\EnvelopeEncrypter;
 use Symfony\Component\KeyManagement\KeyLoader\InMemoryKeyLoader;
 use Symfony\Component\KeyManagement\Local\SodiumKms;
 
-/**
- * Real keys and a real (local) KMS, generated once per process: RSA generation is slow and tests only need
- * a key that works.
- */
 final class Keys
 {
     public const string KMS_KEY_ID = 'signing-keys';
@@ -53,17 +49,13 @@ final class Keys
         return self::$otherPair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate(Algorithms::rs256());
     }
 
-    /**
-     * A pair a client encrypts to, over P-256: the other half of what a tenant publishes.
-     */
     public static function encryptionPair(): GeneratedKeyPair
     {
         return self::$encryptionPair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate(Algorithms::ecdhEsA256Kw());
     }
 
     /**
-     * The application server key pair of a tenant, over P-256: what a browser subscribes under and what
-     * signs a push to it afterwards (RFC 8292 §2).
+     * RFC 8292 §2
      */
     public static function applicationServerPair(): GeneratedKeyPair
     {
@@ -71,26 +63,18 @@ final class Keys
     }
 
     /**
-     * The pair a tenant seals what leaves the process to, over P-256: the one key it keeps and never
-     * hands to anybody (decision 0020).
+     * Decision 0020
      */
     public static function messagePair(): GeneratedKeyPair
     {
         return self::$messagePair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate(Algorithms::messageSeal());
     }
 
-    /**
-     * A second pair of the same family, which is what a rotation stages beside the first.
-     */
     public static function otherMessagePair(): GeneratedKeyPair
     {
         return self::$otherMessagePair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate(Algorithms::messageSeal());
     }
 
-    /**
-     * The one KMS of the suite, under which the keys of the tenants and the secrets of the users are
-     * sealed alike.
-     */
     public static function envelopes(): EnvelopeEncrypter
     {
         return self::$envelopes ??= new EnvelopeEncrypter(new SodiumKms(new InMemoryKeyLoader([
@@ -103,19 +87,11 @@ final class Keys
         return self::$sealer ??= new EnvelopeKeySealer(self::envelopes(), self::KMS_KEY_ID);
     }
 
-    /**
-     * The memory a key provider is given, a new one at each call where everything else here is drawn
-     * once: two providers sharing one would answer each other's openings.
-     */
     public static function opened(): OpenedKeys
     {
         return new OpenedKeys(self::sealer());
     }
 
-    /**
-     * The active RS256 key of that tenant, on the first pair, opened by the signer of the core: what a double
-     * hands over for a key the KMS opened.
-     */
     public static function openedSigningKey(Tenant $tenant): OpenedSigningKeyInterface
     {
         $key = new TenantKey(

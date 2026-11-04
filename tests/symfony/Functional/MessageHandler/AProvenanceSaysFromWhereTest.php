@@ -21,31 +21,14 @@ use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #473: a provenance says from where, and not only from which address. The whole of it on the lane,
- * from the event a login announces to the two rows a reader of their own account looks at: the session
- * open in their name, and the act of the journal that says they signed in.
- *
- * The databases are written by the test and not downloaded: what is played here is that the enrichment
- * runs where the architecture says it runs, off the request, and that what it found reaches the sealed
- * column of each row.
- */
 final class AProvenanceSaysFromWhereTest extends DatabaseTestCase
 {
-    /**
-     * Every test of this class starts where an installation starts, holding no database at all: the
-     * storage of the test kernel is a directory of its cache, which lives as long as the process.
-     */
     protected function setUp(): void
     {
         parent::setUp();
         new Filesystem()->remove(self::storage());
     }
 
-    /**
-     * The place of the address is written on both provenances of the session, after the row was already
-     * written: the login of a browser never waits for a database of addresses.
-     */
     #[Test]
     public function theProvenancesOfASessionSayThePlaceOfTheirAddress(): void
     {
@@ -66,10 +49,6 @@ final class AProvenanceSaysFromWhereTest extends DatabaseTestCase
         static::assertSame('Oxford', $read->lastSeenFrom->location?->city);
     }
 
-    /**
-     * And the act the journal wrote down for the same event, which is the other row a person reads: it
-     * says the place the day it is written, the handler of the journal being on that same lane.
-     */
     #[Test]
     public function anActOfTheJournalSaysThePlaceOfItsAddress(): void
     {
@@ -84,10 +63,6 @@ final class AProvenanceSaysFromWhereTest extends DatabaseTestCase
         static::assertSame('Oxford', self::onlyAct()->context->location?->city);
     }
 
-    /**
-     * The place is a personal datum of the person it is about, so it is sealed where the address beside it
-     * is sealed (decisions 0011 and 0018): the row of the journal holds nothing of it in the clear.
-     */
     #[Test]
     public function theRowOfTheJournalHoldsNothingOfThePlaceInTheClear(): void
     {
@@ -102,10 +77,6 @@ final class AProvenanceSaysFromWhereTest extends DatabaseTestCase
         static::assertStringNotContainsString('Oxford', self::provenanceOfTheOnlyAct());
     }
 
-    /**
-     * A deployment that never refreshed a database serves the same login and says the same address, with
-     * no place and no row rewritten (`GeoLite2GeoLocator`).
-     */
     #[Test]
     public function aDeploymentThatHoldsNoDatabaseSaysTheAddressAlone(): void
     {
@@ -123,10 +94,6 @@ final class AProvenanceSaysFromWhereTest extends DatabaseTestCase
         static::assertNull(self::onlyAct()->context->location);
     }
 
-    /**
-     * The provenance of the one act, as the database holds it, which is what an operator or a dump would
-     * see. A column that holds nothing fails here rather than letting the search pass for the wrong reason.
-     */
     private static function provenanceOfTheOnlyAct(): string
     {
         $rows = RawRows::of(self::connection(), 'beffroi_journal', ['context']);
@@ -135,10 +102,6 @@ final class AProvenanceSaysFromWhereTest extends DatabaseTestCase
         return $rows[0]['context'] ?? static::fail('The act of the journal holds no provenance at all.');
     }
 
-    /**
-     * Where the provider reads the databases of addresses, read from the container rather than restated, so
-     * that it is the directory the kernel of this process was given, token of a parallel worker included.
-     */
     private static function storage(): string
     {
         $cacheDirectory = static::getContainer()->getParameter('kernel.cache_dir');

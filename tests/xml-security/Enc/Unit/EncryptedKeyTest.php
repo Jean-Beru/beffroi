@@ -28,13 +28,12 @@ use function strlen;
 use Throwable;
 
 /**
- * Section 5.3, E-5: the xenc:EncryptedKey read strictly, its KeyInfo never read (E-6), its cipher value bounded
- * (E-13).
+ * Section 5.3, E-5, E-6, E-13
  */
 final class EncryptedKeyTest extends TestCase
 {
     /**
-     * Section 5.3, §9.1 row 1: the key of the vector, an RSA-2048 transport under rsa-oaep-mgf1p.
+     * Section 5.3, §9.1 row 1
      */
     #[Test]
     public function itReadsTheKeyOfTheVector(): void
@@ -54,7 +53,7 @@ final class EncryptedKeyTest extends TestCase
     }
 
     /**
-     * §9.1 row 5: the key of the rsa-oaep vector names SHA-256.
+     * §9.1 row 5
      */
     #[Test]
     public function itReadsTheKeyOfTheRsaOaepVector(): void
@@ -71,7 +70,7 @@ final class EncryptedKeyTest extends TestCase
     }
 
     /**
-     * §9.1 row 3, E-6: a key without KeyInfo reads the same, since the KeyInfo is never read.
+     * §9.1 row 3, E-6
      */
     #[Test]
     public function itReadsAKeyWithoutKeyInfo(): void
@@ -88,7 +87,7 @@ final class EncryptedKeyTest extends TestCase
     }
 
     /**
-     * E-6: whatever the KeyInfo holds, a name, a retrieval method, an unknown element, the key reads the same.
+     * E-6
      */
     #[Test]
     public function itNeverReadsTheKeyInfo(): void
@@ -111,8 +110,7 @@ final class EncryptedKeyTest extends TestCase
     }
 
     /**
-     * §9.2 rows 3, 12 and 18, E-1, E-5, E-13: every shape of the key the model refuses, with the rule named and
-     * never the input (E-12).
+     * §9.2 rows 3, 12 and 18, E-1, E-5, E-12, E-13
      *
      * @param class-string<Throwable> $exception
      */
@@ -179,7 +177,7 @@ final class EncryptedKeyTest extends TestCase
     }
 
     /**
-     * E-5: an EncryptedKey without EncryptionMethod, built from the vector.
+     * E-5
      */
     #[Test]
     public function itRefusesAKeyWithoutEncryptionMethod(): void
@@ -203,7 +201,7 @@ final class EncryptedKeyTest extends TestCase
     }
 
     /**
-     * §9.2 row 35, Core I-4: an EncryptedKey of a document parsed outside the loader.
+     * §9.2 row 35, Core I-4
      */
     #[Test]
     public function itRefusesAnElementOfAForeignDocument(): void
@@ -220,7 +218,7 @@ final class EncryptedKeyTest extends TestCase
     }
 
     /**
-     * §9.2 row 35, E-5: the children of an EncryptedKey under another name.
+     * §9.2 row 35, E-5
      */
     #[Test]
     public function itRefusesAnElementThatIsNotAnEncryptedKey(): void
@@ -245,8 +243,7 @@ final class EncryptedKeyTest extends TestCase
     }
 
     /**
-     * §9.2 row 37, E-13: the text of the key's CipherValue is bounded at 4 096 bytes before anything is decoded; at
-     * the bound it is decoded, and refused by the length of what it decodes to.
+     * §9.2 row 37, E-13
      */
     #[Test]
     #[TestWith(

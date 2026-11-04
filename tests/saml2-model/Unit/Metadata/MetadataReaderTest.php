@@ -35,15 +35,14 @@ use function str_repeat;
 use function str_replace;
 
 /**
- * Section 5.6, section 6.5: a peer's md:EntityDescriptor read strictly, where its keys come from (M-3) and where an
- * assertion may go (M-9); metadata rows of sections 9.2 and 9.3.
+ * Section 5.6, section 6.5, M-3, M-9, sections 9.2 and 9.3
  */
 final class MetadataReaderTest extends TestCase
 {
     private const string NOW = '2026-09-30T12:00:00Z';
 
     /**
-     * Section 6.5, SAML Metadata §2.4.3: an identity provider's metadata, every field read.
+     * Section 6.5, SAML Metadata §2.4.3
      */
     #[Test]
     public function itReadsAnIdentityProvider(): void
@@ -73,7 +72,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * Section 6.5, SAML Metadata §2.4.4: a service provider's metadata, every field read.
+     * Section 6.5, SAML Metadata §2.4.4
      */
     #[Test]
     public function itReadsAServiceProvider(): void
@@ -104,9 +103,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * §9.3 row 11, "a metadata listing Artifact and SOAP endpoints next to POST and Redirect ones", section 6.5
-     * step 6: it loads, the HTTP-Redirect and HTTP-POST endpoints kept in order, the assertion consumer services on
-     * HTTP-POST only.
+     * §9.3 row 11, section 6.5 step 6
      */
     #[Test]
     public function itKeepsTheRedirectAndPostEndpointsOnly(): void
@@ -145,8 +142,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * Section 6.5 step 4: the children a role may hold and the package does not use are skipped in their place of
-     * the schema's order, Keycloak's md:ArtifactResolutionService among them.
+     * Section 6.5 step 4
      */
     #[Test]
     public function itSkipsTheOtherChildrenOfARole(): void
@@ -177,8 +173,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * Section 6.5 step 6, Keycloak's broker: an assertion consumer service on HTTP-Redirect, isDefault or not, is
-     * dropped, and the default of SAML Metadata §2.2.3 applies over the kept ones.
+     * Section 6.5 step 6, SAML Metadata §2.2.3
      */
     #[Test]
     public function itResolvesTheDefaultOverTheKeptAssertionConsumerServices(): void
@@ -201,8 +196,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * Section 6.5 step 6: byIndex() searches the kept assertion consumer services only, an index of a dropped one
-     * is unknown (M-9).
+     * Section 6.5 step 6, M-9
      */
     #[Test]
     public function itDoesNotFindADroppedAssertionConsumerService(): void
@@ -222,8 +216,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * Section 6.5 step 7: the formats of SAML Core §8.3 are kept, an empty one, an unknown one and one with a space
-     * before it dropped.
+     * Section 6.5 step 7, SAML Core §8.3
      */
     #[Test]
     public function itDropsTheEmptyAndUnknownFormats(): void
@@ -242,7 +235,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * Section 6.5 step 5, SAML Metadata §2.4.1.1 and E68: a key without use serves signing and encryption.
+     * Section 6.5 step 5, SAML Metadata §2.4.1.1 and E68
      */
     #[Test]
     public function itUsesAKeyWithoutUseForBoth(): void
@@ -264,9 +257,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * Section 6.5 step 5, Metadata Interoperability Profile §2.5.1: ds:KeyName, ds:KeyValue, ds:RetrievalMethod and
-     * the other children of ds:X509Data are hints that are not read; the md:EncryptionMethod URIs are checked and
-     * not kept.
+     * Section 6.5 step 5, Metadata Interoperability Profile §2.5.1
      */
     #[Test]
     public function itReadsTheCertificateAndNotTheHints(): void
@@ -282,7 +273,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * Section 6.5 step 5: a certificate written over several lines, which base64Binary allows, is kept on one.
+     * Section 6.5 step 5
      */
     #[Test]
     public function itKeepsACertificateOnOneLine(): void
@@ -298,9 +289,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * Section 6.5 step 4: the roles that do not list SAML 2.0, the other role descriptors, md:Extensions,
-     * md:Organization, md:ContactPerson and md:AdditionalMetadataLocation are skipped; the one identity provider for
-     * SAML 2.0 is read.
+     * Section 6.5 step 4
      */
     #[Test]
     public function itIgnoresTheRolesWithoutSaml2(): void
@@ -319,8 +308,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * M-7, section 6.5 step 3: a validUntil one second after now minus the skew
-     * is still valid, and returned.
+     * M-7, section 6.5 step 3
      */
     #[Test]
     #[DataProvider('provideClocksWithinValidUntil')]
@@ -350,7 +338,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * M-7, §9.2 row 35, "validUntil passed": a validUntil at or before now minus the skew is refused.
+     * M-7, §9.2 row 35
      */
     #[Test]
     #[DataProvider('provideClocksPastValidUntil')]
@@ -382,8 +370,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * M-7, section 6.5 step 4, §9.2 row 35, "validUntil passed": the validUntil of a role that is read, one second
-     * after now minus the skew, holds, as the entity's does.
+     * M-7, section 6.5 step 4, §9.2 row 35
      */
     #[Test]
     #[DataProvider('provideClocksWithinValidUntil')]
@@ -404,8 +391,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * M-7, section 6.5 step 4, §9.2 row 35, "validUntil passed": a role that is read, at or before its own
-     * validUntil minus the skew, refuses the metadata rather than being dropped.
+     * M-7, section 6.5 step 4, §9.2 row 35
      */
     #[Test]
     #[DataProvider('provideRolesPastValidUntil')]
@@ -454,8 +440,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * Section 6.5 step 4: a role that is ignored, for SAML 1.1, or skipped, an md:AttributeAuthorityDescriptor, is not
-     * read, its validUntil with it: the metadata is read with its one identity provider for SAML 2.0.
+     * Section 6.5 step 4
      */
     #[Test]
     public function itDoesNotReadTheValidUntilOfARoleItDoesNotRead(): void
@@ -477,8 +462,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * M-2, M-1, section 6.5 step 2: signed metadata verified with the pinned key is read from what the signature
-     * covered, the same descriptor as the document read without verification.
+     * M-2, M-1, section 6.5 step 2
      */
     #[Test]
     public function itReadsSignedMetadataVerifiedWithThePinnedKey(): void
@@ -494,7 +478,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * M-7: the clock is read once per call.
+     * M-7
      */
     #[Test]
     public function itReadsTheClockOnce(): void
@@ -515,7 +499,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * M-2 names the one exception: readTrusted() does not verify, a signature that no longer holds included.
+     * M-2
      */
     #[Test]
     public function itDoesNotVerifyTrustedMetadata(): void
@@ -531,8 +515,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * M-2, M-3, §9.2 row 35, "a signed metadata verified with a key not pinned" and the signed metadata altered:
-     * Dsig's refusals, as they are (section 5.8).
+     * M-2, M-3, §9.2 row 35, section 5.8
      *
      * @param class-string<RefusedXml> $exception
      */
@@ -575,8 +558,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * M-2, section 6.5 step 2: readSigned() refuses metadata without a signature, and one out of its place before
-     * anything is verified.
+     * M-2, section 6.5 step 2
      *
      * @param class-string<RefusedXml> $exception
      */
@@ -621,8 +603,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * Sections 9.2 and 8, M-5, M-13, M-17: each hostile metadata, one change from a valid one, refused with the
-     * named exception and the rule in its message, never a value of the input (M-16).
+     * Sections 9.2 and 8, M-5, M-13, M-16, M-17
      *
      * @param class-string<RefusedXml> $exception
      */
@@ -839,7 +820,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * M-5, M-6: a value not of its lexical form, one change from a valid metadata.
+     * M-5, M-6
      *
      * @param class-string<RefusedXml> $exception
      */
@@ -1004,7 +985,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * M-6: an index is an xs:unsignedShort, its two ends included.
+     * M-6
      */
     #[Test]
     #[DataProvider('provideIndexes')]
@@ -1035,7 +1016,7 @@ final class MetadataReaderTest extends TestCase
     }
 
     /**
-     * M-6, section 6.5 step 7: a flag is one of the four forms of a boolean, absent meaning false.
+     * M-6, section 6.5 step 7
      */
     #[Test]
     #[DataProvider('provideFlags')]

@@ -32,8 +32,7 @@ use RuntimeException;
 final class OAuth2ExceptionTest extends TestCase
 {
     /**
-     * RFC 6749 §5.2: invalid_request is a 400; the flag says whether the authorization endpoint may
-     * redirect it, which the token endpoint never does.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function anInvalidRequestIsA400AndIsNotRedirectableByDefault(): void
@@ -48,9 +47,6 @@ final class OAuth2ExceptionTest extends TestCase
         static::assertFalse($exception->redirectable);
     }
 
-    /**
-     * The message is the error and its description; the error is the code, the integer one means nothing.
-     */
     #[Test]
     public function theMessageIsTheErrorAndItsDescription(): void
     {
@@ -73,9 +69,6 @@ final class OAuth2ExceptionTest extends TestCase
         static::assertTrue($exception->redirectable);
     }
 
-    /**
-     * The cause stays for the logs.
-     */
     #[Test]
     #[DataProvider('provideExceptionsWithACause')]
     public function theCauseStaysForTheLogs(callable $build): void
@@ -108,7 +101,7 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: invalid_client is answered 401; architecture §4.10 makes 401 the only status for it.
+     * RFC 6749 §5.2, Architecture §4.10
      */
     #[Test]
     public function anInvalidClientIsA401WithoutChallengeByDefault(): void
@@ -124,7 +117,7 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: WWW-Authenticate when the client used the Authorization header.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function anInvalidClientMayCarryAChallenge(): void
@@ -137,8 +130,7 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2.1 and §5.2: invalid_scope is raised by both endpoints, so the flag is the caller's;
-     * the token endpoint answers 400.
+     * RFC 6749 §4.1.2.1, §5.2
      */
     #[Test]
     public function anInvalidScopeIsA400AndIsNotRedirectableByDefault(): void
@@ -153,7 +145,7 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: the errors of the token endpoint are 400 and never redirected.
+     * RFC 6749 §5.2
      */
     #[Test]
     #[DataProvider('provideErrorsOfTheTokenEndpoint')]
@@ -176,8 +168,7 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2.1: invalid_scope and unauthorized_client are also errors of the authorization
-     * endpoint, so their flag is the caller's.
+     * RFC 6749 §4.1.2.1
      */
     #[Test]
     #[DataProvider('provideErrorsOfBothEndpoints')]
@@ -197,8 +188,7 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2.1 and OIDC Core §3.1.2.6: the errors only the authorization endpoint raises, once
-     * the client and its redirect URI are known, are always sent back to the client.
+     * RFC 6749 §4.1.2.1, OIDC Core §3.1.2.6
      */
     #[Test]
     #[DataProvider('provideErrorsOfTheAuthorizationEndpointAlone')]
@@ -222,8 +212,7 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.2.6, RFC 9101 §6.3: a request the provider could not read is never redirected,
-     * because what names the destination is inside what it could not read.
+     * OIDC Core §3.1.2.6, RFC 9101 §6.3
      */
     #[Test]
     #[DataProvider('provideErrorsOfARequestObject')]
@@ -248,7 +237,7 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: error_description is ASCII text without double quotes nor backslashes.
+     * RFC 6749 §5.2
      */
     #[Test]
     #[DataProvider('provideForbiddenDescriptions')]
@@ -276,7 +265,7 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * RFC 6750 §3.1: invalid_token is a 401 raised by a protected resource, never redirected.
+     * RFC 6750 §3.1
      */
     #[Test]
     public function anInvalidTokenIsA401(): void
@@ -293,8 +282,7 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * RFC 6750 §1.2: what verifies a token never sees how it was presented, so its refusal names the
-     * scheme of a bearer token until the resource that read the request says otherwise.
+     * RFC 6750 §1.2
      */
     #[Test]
     public function anInvalidTokenIsChallengedUnderTheBearerSchemeByDefault(): void
@@ -308,8 +296,7 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * RFC 9449 §7.2: the resource that read the request names the scheme the token was presented under,
-     * and the refusal stays the same refusal, the one it replaces kept as its cause for the logs.
+     * RFC 9449 §7.2
      */
     #[Test]
     public function anInvalidTokenPresentedUnderASchemeIsTheSameRefusalUnderThatScheme(): void
@@ -330,7 +317,7 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * RFC 6750 §3.1: insufficient_scope is a 403 that names the scopes the resource required.
+     * RFC 6750 §3.1
      */
     #[Test]
     public function anInsufficientScopeIsA403NamingTheScopesRequired(): void
@@ -346,7 +333,7 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * RFC 6750 §3.1: a request without any token is not an OAuth 2.0 error; it is a 401 without code.
+     * RFC 6750 §3.1
      */
     #[Test]
     public function aMissingBearerTokenIsA401WithoutErrorCode(): void

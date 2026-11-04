@@ -9,10 +9,7 @@ use DateTimeImmutable;
 use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\CredentialsInterface;
 
 /**
- * What an upstream identity provider proved of the person its assertion names (beffroi/saml S-57): the methods of
- * RFC 8176 its authentication context maps to exactly, "fed" first, the AuthnInstant, when it proved them, and the
- * SessionNotOnOrAfter, the instant the session must end by. The assertion consumer service verified the response
- * before it put this on the passport (S-53).
+ * Resolved from the start: the assertion consumer service verified the response before the passport was built.
  */
 final readonly class UpstreamCredentials implements CredentialsInterface
 {

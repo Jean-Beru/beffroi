@@ -26,11 +26,7 @@ use PHPUnit\Framework\TestCase;
 use Beffroi\Saml2\Model\Tests\Support\InMemoryReplayGuard;
 
 /**
- * Section 9.4: the logout messages of tests/saml2-model/Fixture/real/, bytes as received, validated with a clock frozen at their
- * IssueInstant, each between the two parties of the metadata captured with it. The signed ones are accepted by
- * validate(); SimpleSAMLphp's request, which HTTP-Redirect carried with a signature over the query string that the
- * capture verified and did not keep, by validateAuthenticatedByBinding(); the two that no signature authenticated,
- * neither in the XML nor in the query string, are refused by validate(), as section 6.8 has the binding do.
+ * Section 9.4, section 6.8
  */
 final class LogoutRealDocumentsTest extends TestCase
 {
@@ -47,8 +43,7 @@ final class LogoutRealDocumentsTest extends TestCase
     private const string KEYCLOAK_SP = 'keycloak-26.7.4-sp-metadata-2026-09-30.xml';
 
     /**
-     * Section 9.4, section 6.8: the LogoutRequest of SimpleSAMLphp 2.5.3.1's service provider, which arrived at the
-     * identity provider over HTTP-Redirect with a signature over the query string, accepted through the binding path.
+     * Section 9.4, section 6.8
      */
     #[Test]
     public function itAcceptsTheRequestOfSimpleSamlPhpThroughTheBinding(): void
@@ -86,8 +81,7 @@ final class LogoutRealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, M-2, SAML Profiles §4.4.4.2: the LogoutResponse of SimpleSAMLphp 2.5.3.1's identity provider, which
-     * no signature covers, in the XML or over the query string (finding F-1 of story #11), refused by validate().
+     * Section 9.4, M-2, SAML Profiles §4.4.4.2, F-1
      */
     #[Test]
     public function itRefusesTheUnsignedResponseOfSimpleSamlPhp(): void
@@ -112,8 +106,7 @@ final class LogoutRealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, M-2, M-3: the LogoutRequest simplesamlphp/saml2 4.20.3 signed with the service provider's test key,
-     * verified under the certificate of the service provider's metadata, not the one of its own KeyInfo.
+     * Section 9.4, M-2, M-3
      */
     #[Test]
     public function itAcceptsTheSignedRequestOfTheLibrary(): void
@@ -151,8 +144,7 @@ final class LogoutRealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, M-2, M-10: the LogoutResponse simplesamlphp/saml2 4.20.3 signed with the identity provider's test
-     * key, answering the library's request.
+     * Section 9.4, M-2, M-10
      */
     #[Test]
     public function itAcceptsTheSignedResponseOfTheLibrary(): void
@@ -184,8 +176,7 @@ final class LogoutRealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, M-2, M-3: the LogoutRequest of Keycloak 26.7.4's broker, sent over HTTP-Redirect without any
-     * signature, refused by validate(): the broker's metadata publishes no signing key either.
+     * Section 9.4, M-2, M-3
      */
     #[Test]
     public function itRefusesTheUnsignedRequestOfKeycloak(): void
@@ -209,8 +200,7 @@ final class LogoutRealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, M-2, M-10: the signed LogoutResponse of Keycloak 26.7.4's identity provider, posted to its broker,
-     * its Issuer in the default namespace, its signature with the dsig prefix, its IssueInstant in milliseconds.
+     * Section 9.4, M-2, M-10
      */
     #[Test]
     public function itAcceptsTheSignedResponseOfKeycloak(): void
@@ -256,9 +246,6 @@ final class LogoutRealDocumentsTest extends TestCase
         return $this->descriptor($file)->serviceProvider ?? throw new LogicException('The metadata holds a service provider.');
     }
 
-    /**
-     * A real metadata read by readTrusted() with a clock at its capture.
-     */
     private function descriptor(string $file): EntityDescriptor
     {
         return new MetadataReader(

@@ -16,21 +16,10 @@ use function str_starts_with;
 use function strpbrk;
 use function substr;
 
-/**
- * What the build of the image is given of this application (issues #832 and #922). apps/op/Dockerfile.dockerignore,
- * which BuildKit reads for apps/op/Dockerfile in place of a .dockerignore at the root of the monorepo, lets "src/"
- * and "apps/op/" in after "*", then names what of them stays out, every path written from that root.
- *
- * A path of the application is left out when a pattern after the last line that lets a path back in names it: the
- * path itself or a directory above it, a path the pattern matches, or, for a pattern under "**", a name the path
- * carries at any depth. Docker strips the slash that ends a pattern, and so does this.
- *
- * No daemon is asked here: which file BuildKit reads, and what it then sends, is what building the image shows.
- */
 final readonly class BuildContext
 {
     /**
-     * @param list<string> $exclusions the patterns after the last one that lets a path back in
+     * @param list<string> $exclusions
      */
     private function __construct(
         public array $exclusions,
@@ -49,9 +38,6 @@ final readonly class BuildContext
         ));
     }
 
-    /**
-     * @param string $file the path of a file or of a directory in the application
-     */
     public function leavesOut(string $file): bool
     {
         $path = ApplicationFiles::FROM_THE_ROOT . $file;

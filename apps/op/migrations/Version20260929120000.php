@@ -8,17 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * What the controlled registration mode of decision 0009 needs: the initial access tokens a tenant
- * issues (RFC 7591 §1.2), and what the registration policy of a tenant wrote on a client it registered
- * (decision 0017).
- *
- * A token is one row holding the digest of its value and never the value, so that whoever reads the
- * table holds nothing to present; the digest is unique under its tenant, which is what a presented value
- * is looked up by and what makes one registration of it claimable by one request. What the policy wrote
- * is its own column beside the metadata the client sent: the two would otherwise be one column a client
- * could write half of, and a row written before this migration had no policy writing on it.
- */
 final class Version20260929120000 extends AbstractMigration
 {
     public function getDescription(): string

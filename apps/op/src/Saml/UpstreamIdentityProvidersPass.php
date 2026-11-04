@@ -18,33 +18,14 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 /**
- * The upstream identity providers the configuration declares, built when the container is compiled (beffroi/saml,
- * spec/saml.md section 6.10 step 1): the service that holds them is built at its first use, the hourly step of the
- * schedule or the first sign-in, and a declaration that does not hold together would fail there, long after the
- * deployment was built. A domain two of them declare is refused here with them (S-44), and so is an identity
- * provider declared under one of the entity IDs of the tenant itself, the one of its identity provider, the issuer
- * followed by the path of its metadata, and the one of its service provider, the one the deployment names or else the
- * issuer followed by the path of its metadata (S-42): an issuer or an entity ID that holds an environment variable
- * leaves the comparison that needs it undone, its value being the running deployment's.
- *
- * The checks are the constructors of the declarations and of the collection, run by building the same object the
- * container builds later, so that no rule is written twice; none of them opens a file or reaches the network. A
- * declaration that holds an environment variable is left to its first use, with what it shares with the others. The
- * claims of the profile (S-45) are checked right after the compilation, in the same build: they come from the claims
- * the container builds, so the declarations are built here with every claim they name held (DeclaredClaims), and
- * handed to MappedClaimsWarmer, which builds them again against the claims of the profile.
+ * Builds the declared upstream identity providers at compile time, so that a declaration that does not hold
+ * together fails the build rather than its first use; MappedClaimsWarmer checks the claims they name.
  */
 final class UpstreamIdentityProvidersPass implements CompilerPassInterface
 {
-    /**
-     * The key the declarations are written under, which the failure names.
-     */
     public const string PATH = 'beffroi.saml.identity_providers';
 
     /**
-     * The declarations built as the container builds them, under those claims, for a tenant whose slug plays no part
-     * in what a declaration is; what the constructors refuse is the failure of the configuration, naming its key.
-     *
      * @param array<array-key, mixed> $declarations by entity ID
      *
      * @throws InvalidConfigurationException when a declaration does not hold together, or two declare one domain
@@ -74,7 +55,7 @@ final class UpstreamIdentityProvidersPass implements CompilerPassInterface
     }
 
     /**
-     * S-42: no identity provider declared under an entity ID of the tenant itself.
+     * beffroi/saml S-42
      *
      * @param list<array-key> $entityIds
      *
@@ -95,11 +76,10 @@ final class UpstreamIdentityProvidersPass implements CompilerPassInterface
     }
 
     /**
-     * S-42 when the container runs, for a list the environment carries (SamlSection): the issuer and the entity ID the
-     * service provider is named by are values then.
+     * Applies beffroi/saml S-42 at run time, to a list the environment carries (SamlSection).
      *
      * @param list<array-key> $entityIds
-     * @param string|null $namedServiceProvider the entity ID the service provider is given, null for the URL of its metadata
+     * @param string|null $namedServiceProvider null for the URL of its metadata
      *
      * @throws InvalidConfigurationException
      */
@@ -109,9 +89,6 @@ final class UpstreamIdentityProvidersPass implements CompilerPassInterface
     }
 
     /**
-     * The identity provider of the tenant named by the URL of its metadata under the issuer, its service provider by
-     * the entity ID given; a name not known yet is no name to compare.
-     *
      * @param list<array-key> $entityIds
      *
      * @throws InvalidConfigurationException
@@ -128,18 +105,11 @@ final class UpstreamIdentityProvidersPass implements CompilerPassInterface
         }
     }
 
-    /**
-     * The URL of that path under the issuer, or null when the issuer is not known yet.
-     */
     private static function under(?string $issuer, string $path): ?string
     {
         return $issuer === null ? null : $issuer . $path;
     }
 
-    /**
-     * The value when it is a string that holds no environment variable, which only the running deployment knows, and
-     * null otherwise.
-     */
     private static function literal(ContainerBuilder $container, mixed $value): ?string
     {
         if (! is_string($value)) {

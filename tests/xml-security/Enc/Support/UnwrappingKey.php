@@ -8,8 +8,7 @@ use Beffroi\Xml\Enc\DecryptionKeyInterface;
 use Beffroi\Xml\Enc\OaepHash;
 
 /**
- * A decryption key that records what it was asked to unwrap and answers with what the test decided: the port of
- * section 5.2 implemented by a test, as a key management service would implement it.
+ * Section 5.2
  */
 final class UnwrappingKey implements DecryptionKeyInterface
 {

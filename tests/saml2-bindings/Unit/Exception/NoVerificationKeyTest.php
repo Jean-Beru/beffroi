@@ -11,8 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.4, B-4: a signed query string from a peer without a signing key, refused with the rest of what the
- * package refuses.
+ * Section 5.4, B-4
  */
 final class NoVerificationKeyTest extends TestCase
 {

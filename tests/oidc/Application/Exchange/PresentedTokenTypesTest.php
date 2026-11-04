@@ -14,13 +14,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The types of token the wiring gave the exchange (RFC 8693 §3): the one list the grant and a registration
- * both read.
+ * RFC 8693 §3
  */
 final class PresentedTokenTypesTest extends TestCase
 {
     /**
-     * RFC 8693 §3: what a request wrote is looked up, never read as a name.
+     * RFC 8693 §3
      */
     #[Test]
     public function itFindsTheTypeThatAnswersToAnIdentifier(): void
@@ -43,7 +42,7 @@ final class PresentedTokenTypesTest extends TestCase
     }
 
     /**
-     * RFC 8693 §3: what a client may register is the wired list, read where a registration meets the wiring.
+     * RFC 8693 §3
      */
     #[Test]
     public function itNamesTheTypesItIsWiredWithInTheOrderTheyAreWired(): void
@@ -79,8 +78,7 @@ final class PresentedTokenTypesTest extends TestCase
     }
 
     /**
-     * RFC 8693 §3: an exchange that reads nothing serves nothing, and a wiring that says so is a wiring that
-     * does not hold together.
+     * RFC 8693 §3
      */
     #[Test]
     public function itRefusesAnExchangeWiredWithNoType(): void

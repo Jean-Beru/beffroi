@@ -25,15 +25,14 @@ use function strlen;
 use function substr;
 
 /**
- * Section 6.7, enc.md E-15: the proof the model hands Enc before it opens AES-CBC is the document of the verification
- * of the response's signature, and the package builds it nowhere else.
+ * Section 6.7, enc.md E-15
  */
 final class CoveringResponseSignatureTest extends TestCase
 {
     use ResponseFixtures;
 
     /**
-     * Section 6.7, E-15: the document the proof covers is the one the verification of the response's signature gave.
+     * Section 6.7, E-15
      */
     #[Test]
     public function itCoversTheDocumentTheVerificationGave(): void
@@ -51,7 +50,7 @@ final class CoveringResponseSignatureTest extends TestCase
     }
 
     /**
-     * Section 6.7, E-15: one class of the package implements the proof, this one, built from a Verified only.
+     * Section 6.7, E-15
      */
     #[Test]
     public function thePackageImplementsTheProofInOneClassOnly(): void
@@ -67,7 +66,7 @@ final class CoveringResponseSignatureTest extends TestCase
     }
 
     /**
-     * @return array<string, string> the source of every PHP file of src/, by its path under src/
+     * @return array<string, string> source by path under src/
      */
     private function sources(): array
     {

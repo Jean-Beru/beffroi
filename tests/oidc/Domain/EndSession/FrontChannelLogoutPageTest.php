@@ -16,7 +16,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Front-Channel Logout 1.0 §2: the page itself, and the policy that is part of it.
+ * Front-Channel Logout 1.0 §2
  */
 final class FrontChannelLogoutPageTest extends TestCase
 {
@@ -27,9 +27,6 @@ final class FrontChannelLogoutPageTest extends TestCase
         $this->session = Fixtures::session();
     }
 
-    /**
-     * One frame per client, in the order the clients were given.
-     */
     #[Test]
     public function itCarriesOneFrameForEachClient(): void
     {
@@ -44,7 +41,7 @@ final class FrontChannelLogoutPageTest extends TestCase
     }
 
     /**
-     * RFC 6454 §3.2: two clients of one origin are one source in the policy.
+     * RFC 6454 §3.2
      */
     #[Test]
     public function twoClientsOfTheSameOriginAreOneSource(): void
@@ -57,8 +54,7 @@ final class FrontChannelLogoutPageTest extends TestCase
     }
 
     /**
-     * CSP Level 3 §6.1: nothing loads but the frames the clients registered, nothing frames this page,
-     * and the one script that moves the browser on is named by its hash.
+     * CSP Level 3 §6.1
      */
     #[Test]
     public function thePolicyNamesTheFramesAndTheOneScript(): void
@@ -78,9 +74,6 @@ final class FrontChannelLogoutPageTest extends TestCase
         );
     }
 
-    /**
-     * A page with nowhere to continue to runs no script, so it allows none.
-     */
     #[Test]
     public function aPageThatGoesNowhereAllowsNoScript(): void
     {
@@ -95,8 +88,7 @@ final class FrontChannelLogoutPageTest extends TestCase
     }
 
     /**
-     * CSP Level 3 §6.6.2.2: the hash is over the text of the script element, which is why that text is a
-     * constant.
+     * CSP Level 3 §6.6.2.2
      */
     #[Test]
     public function theHashIsTheOneOfTheScriptTheTemplateRenders(): void
@@ -109,7 +101,7 @@ final class FrontChannelLogoutPageTest extends TestCase
     }
 
     /**
-     * §2: a page with no frame has nothing to do; the caller renders none.
+     * Front-Channel Logout 1.0 §2
      */
     #[Test]
     public function aPageWithoutAFrameIsRefused(): void

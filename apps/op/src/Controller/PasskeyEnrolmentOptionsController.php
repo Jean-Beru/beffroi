@@ -17,13 +17,9 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The options a browser creates a passkey with for the signed-in user (WebAuthn Level 3 §5.4,
- * architecture §5.2): drawn by the enrolment of the core, kept in the session of this browser for the
- * attestation that comes back.
+ * WebAuthn Level 3 §5.4
  *
- * **A session alone reaches it** (ReachedOnTheSessionAloneInterface): the ceremony it opens is worth
- * nothing until the attestation is posted, and that post is where the proof is asked
- * (PasskeyEnrolmentController); what a script reads as JSON could not be sent to a login anyway.
+ * Reached on the session alone: the proof is asked where the attestation is posted (PasskeyEnrolmentController).
  */
 #[AsController]
 final readonly class PasskeyEnrolmentOptionsController implements ReachedOnTheSessionAloneInterface

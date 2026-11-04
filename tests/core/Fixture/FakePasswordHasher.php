@@ -11,20 +11,13 @@ use Beffroi\Core\Domain\Credential\PasswordHash;
 use Beffroi\Core\Port\PasswordHasherInterface;
 use SensitiveParameter;
 
-/**
- * A hasher that costs nothing and records every verification, so that tests can assert which hash a
- * secret was compared to. Never leaves the test suite.
- */
 final class FakePasswordHasher implements PasswordHasherInterface
 {
     /**
-     * @var list<string> the encoded hashes verified against, in order
+     * @var list<string>
      */
     public private(set) array $verifiedAgainst = [];
 
-    /**
-     * How many times hash() was called, for tests that must see a costly hash computed once.
-     */
     public private(set) int $hashed = 0;
 
     public function hash(#[SensitiveParameter] string $plainPassword): PasswordHash

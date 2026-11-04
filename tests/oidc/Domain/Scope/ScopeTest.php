@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 final class ScopeTest extends TestCase
 {
     /**
-     * RFC 6749 §3.3: scope-token = 1*( %x21 / %x23-5B / %x5D-7E ).
+     * RFC 6749 §3.3
      */
     #[Test]
     #[DataProvider('provideScopeTokens')]
@@ -42,7 +42,7 @@ final class ScopeTest extends TestCase
     }
 
     /**
-     * OIDC Core §11.
+     * OIDC Core §11
      */
     #[Test]
     public function offlineAccessIsAScope(): void
@@ -92,7 +92,7 @@ final class ScopeTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.3: space-delimited, case-sensitive.
+     * RFC 6749 §3.3
      */
     #[Test]
     public function itParsesASpaceDelimitedListInOrder(): void

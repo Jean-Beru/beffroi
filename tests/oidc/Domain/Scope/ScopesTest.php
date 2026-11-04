@@ -13,16 +13,10 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * A set of scopes as RFC 6749 §3.3 writes one. Everything that keeps a scope list holds one of these, so
- * whether a set holds a scope, whether it covers another and how it is written on the wire are answered
- * here and nowhere else.
+ * RFC 6749 §3.3
  */
 final class ScopesTest extends TestCase
 {
-    /**
-     * Nothing this provider keeps grants nothing: a request, a consent, a code, a token and a client
-     * registration all name what they are for.
-     */
     #[Test]
     public function aSetHoldsAtLeastOneScope(): void
     {
@@ -35,7 +29,7 @@ final class ScopesTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.3: a set, so a scope named twice counts once, in the order it was first seen.
+     * RFC 6749 §3.3
      */
     #[Test]
     public function aScopeNamedTwiceCountsOnce(): void
@@ -94,7 +88,7 @@ final class ScopesTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.3: space delimited, in the order the set holds them.
+     * RFC 6749 §3.3
      */
     #[Test]
     public function aSetWritesItselfSpaceDelimited(): void

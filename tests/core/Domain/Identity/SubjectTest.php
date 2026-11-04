@@ -35,7 +35,7 @@ final class SubjectTest extends TestCase
     }
 
     /**
-     * OIDC Core §2: "sub" is case sensitive.
+     * OIDC Core §2
      */
     #[Test]
     public function itComparesCaseSensitively(): void
@@ -48,7 +48,7 @@ final class SubjectTest extends TestCase
     }
 
     /**
-     * OIDC Core §2: "sub" MUST NOT exceed 255 ASCII characters.
+     * OIDC Core §2
      */
     #[Test]
     public function itMayBe255CharactersLong(): void

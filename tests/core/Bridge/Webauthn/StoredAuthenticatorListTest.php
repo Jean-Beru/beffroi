@@ -13,9 +13,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * The list of the community as the console stored it, read once for the life of the process.
- */
 final class StoredAuthenticatorListTest extends TestCase
 {
     private const string AAGUID = '9ddd1817-af5a-4672-a2b9-3e3dd95000a9';
@@ -47,9 +44,6 @@ final class StoredAuthenticatorListTest extends TestCase
         static::assertNull($this->list->model(Uuid::fromString(self::AAGUID)));
     }
 
-    /**
-     * A worker reads a list stored after it started once it restarts, as it does the FIDO metadata.
-     */
     #[Test]
     public function theListIsReadOnceForTheLifeOfTheProcess(): void
     {
@@ -73,9 +67,6 @@ final class StoredAuthenticatorListTest extends TestCase
         static::assertNull($this->list->model(Uuid::fromString(self::AAGUID)));
     }
 
-    /**
-     * What is stored was read as a list when it was written: one that does not read is a defect of the store.
-     */
     #[Test]
     public function aStoredListThatDoesNotReadIsADefectOfTheStore(): void
     {

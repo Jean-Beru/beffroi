@@ -34,35 +34,12 @@ use Psr\Clock\ClockInterface;
 use function sprintf;
 use Symfony\Component\Messenger\MessageBusInterface;
 
-/**
- * Issue #177: a row that can no longer do anything is dropped, and nothing else is.
- *
- * One case per kind, the row written at the moment that makes its retention end exactly now, then played
- * one minute on either side of it. **The retentions are two and not nine.** A row whose own expiry is the
- * end of it goes at that expiry: an interaction, a pushed request, an opaque access token of any of its
- * three kinds. A row an access token still needs waits what WhatATokenStillNeeds comes to, that being the
- * question a resource server asks of it: the three records a grant can be written in, and the login the
- * grant was given on.
- */
 final class TheDeadRowsAreForgottenTest extends DatabaseTestCase
 {
-    /**
-     * How long a row whose own expiry is the end of it is kept past that expiry: nothing at all. Nobody
-     * reads it again, so there is nothing to wait for.
-     */
     private const string AT_ITS_EXPIRY = '-0 seconds';
 
-    /**
-     * How long a row an access token still needs is kept past the instant it stopped granting, on the
-     * lifetimes the test kernel configures: the absolute lifetime of a refresh token family, then the
-     * lifetime of the last access token that family can mint.
-     */
     private const string STILL_NEEDED = '-90 days -600 seconds';
 
-    /**
-     * How long an interaction of this test is parked for, and how long the device and backchannel records
-     * of the fixtures live: a number the test chooses, so that only the retention is under test.
-     */
     private const string TEN_MINUTES = '-600 seconds';
 
     #[Test]
@@ -94,10 +71,6 @@ final class TheDeadRowsAreForgottenTest extends DatabaseTestCase
     }
 
     /**
-     * Each kind, how long it is kept past the instant it stopped granting, and the table that holds it.
-     * The instant the row stopped granting is the one the case plays on either side of; what the row's own
-     * lifetime was before it is written() and not a retention.
-     *
      * @return iterable<string, array{string, string, string}>
      */
     public static function provideKinds(): iterable
@@ -154,16 +127,6 @@ final class TheDeadRowsAreForgottenTest extends DatabaseTestCase
         ];
     }
 
-    /**
-     * RFC 9700 §4.13.2: a rotated token stays so that its reuse is told from a token nobody issued, and
-     * its own sliding expiry is not what ends that. Thirty days past that expiry, the family it belongs to
-     * can still be refreshed, and the row is there.
-     */
-    /**
-     * A ticket spent opens nothing, whatever its own time says, so it goes with the dead rows rather than
-     * waiting for an expiry it will outlive (issue #613): what it opened is in the journal of its person
-     * and in the credential it posed.
-     */
     #[Test]
     public function anEnrolmentTicketSpentIsDroppedBeforeItsTime(): void
     {
@@ -186,6 +149,9 @@ final class TheDeadRowsAreForgottenTest extends DatabaseTestCase
         static::assertSame(0, self::rowsIn('beffroi_enrolment_ticket'));
     }
 
+    /**
+     * RFC 9700 §4.13.2
+     */
     #[Test]
     public function aRotatedRefreshTokenOutlivesItsOwnExpiry(): void
     {
@@ -217,11 +183,6 @@ final class TheDeadRowsAreForgottenTest extends DatabaseTestCase
         static::assertSame(0, self::rowsIn('beffroi_refresh_token_family'));
     }
 
-    /**
-     * The foreign key of a token to its family cascades nothing, so a family goes only once no token names
-     * it. A statement bounded to one row leaves the second token of a lineage of two, and the family is
-     * left where it is rather than failing the run.
-     */
     #[Test]
     public function aFamilyOneOfWhoseTokensIsStillThereIsLeftToTheNextRun(): void
     {
@@ -236,10 +197,6 @@ final class TheDeadRowsAreForgottenTest extends DatabaseTestCase
         static::assertSame(1, self::rowsIn('beffroi_refresh_token_family'));
     }
 
-    /**
-     * The present of the kernel, which is what the step reads; the fixtures are written against it so that
-     * only the retention decides.
-     */
     private static function present(): DateTimeImmutable
     {
         return self::service('clock', ClockInterface::class)->now();
@@ -251,10 +208,6 @@ final class TheDeadRowsAreForgottenTest extends DatabaseTestCase
         self::reload();
     }
 
-    /**
-     * The store of the refresh tokens asked for one row, which is the budget its tokens spend before its
-     * families are reached.
-     */
     private static function sweepWithRoomForOneRow(): void
     {
         self::service('test.beffroi.dead_refresh_tokens', DoctrineRefreshTokenRepository::class)->forgetWhatIsDead(self::tenant(), self::present(), 1);
@@ -269,9 +222,6 @@ final class TheDeadRowsAreForgottenTest extends DatabaseTestCase
         self::reload();
     }
 
-    /**
-     * A lineage of two, the second rotated from the first, both of a family whose absolute lifetime is up.
-     */
     private static function twoTokensOfAFamilyThatIsOver(): void
     {
         $issuedAt = self::present()->modify('-91 days');
@@ -292,10 +242,6 @@ final class TheDeadRowsAreForgottenTest extends DatabaseTestCase
         return (int) $value;
     }
 
-    /**
-     * One row of the kind named, written as if the provider had written it so that it stopped being able to
-     * grant anything at the moment given.
-     */
     private static function write(string $kind, DateTimeImmutable $stoppedGranting): void
     {
         $client = self::client();

@@ -9,17 +9,10 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Session\SessionFactoryInterface;
 
 /**
- * beffroi/saml, spec/saml.md S-28, "The plane": a request of the interaction plane that a browser sent from another site
- * by a method other than GET or HEAD, which a session cookie set "SameSite=Lax" does not accompany, is answered with no
- * session cookie, whatever the endpoint wrote in the session it started: that cookie would replace the one the browser
- * holds, and any page of another site would sign the browser out of the provider. The browser of these tests is signed
- * in, and a post from another site is played without its cookies (postedFromAnotherSite()).
+ * beffroi/saml S-28, "The plane"
  */
 final class CrossSiteSessionCookieTest extends BrowserTestCase
 {
-    /**
-     * What a page of another site posts: a form whose fields mean nothing to the endpoint it reaches.
-     */
     private const string BODY = '_token=forged&SAMLResponse=PHNhbWw%2B&confirm=yes&field=value';
 
     protected function setUp(): void
@@ -29,10 +22,7 @@ final class CrossSiteSessionCookieTest extends BrowserTestCase
     }
 
     /**
-     * S-28, "The plane": every endpoint of the interaction plane a browser posts to, posted from another site without
-     * the session cookie, answers with no session cookie, the single sign-on service, the authorization endpoint, the
-     * single logout service and the end session endpoint by the page that posts the request again, the others by the
-     * rule of the plane.
+     * S-28, "The plane"
      */
     #[Test]
     #[DataProvider('provideEndpointsOfTheInteractionPlane')]
@@ -67,8 +57,7 @@ final class CrossSiteSessionCookieTest extends BrowserTestCase
     }
 
     /**
-     * S-28, "The plane": the same post from the provider's own origin, which the cookie accompanies, is answered with
-     * the session the endpoint started, a browser that holds none being given one.
+     * S-28, "The plane"
      */
     #[Test]
     public function aPostFromTheSameOriginWithoutASessionIsGivenOne(): void
@@ -81,9 +70,7 @@ final class CrossSiteSessionCookieTest extends BrowserTestCase
     }
 
     /**
-     * S-28, "The plane": a GET from another site is a top-level navigation, which the cookie accompanies, so one that
-     * comes without it is a browser that holds no session, and the authorization endpoint starts one for the request
-     * that waits for its login.
+     * S-28, "The plane"
      */
     #[Test]
     public function aGetFromAnotherSiteWithoutASessionIsGivenOne(): void
@@ -106,17 +93,12 @@ final class CrossSiteSessionCookieTest extends BrowserTestCase
         static::assertContains($this->sessionName(), $this->cookiesSet());
     }
 
-    /**
-     * The name of the session cookie, which the storage of the kernel gives it.
-     */
     private function sessionName(): string
     {
         return self::service('session.factory', SessionFactoryInterface::class)->createSession()->getName();
     }
 
     /**
-     * The names of the cookies the last response sets or clears.
-     *
      * @return list<string>
      */
     private function cookiesSet(): array

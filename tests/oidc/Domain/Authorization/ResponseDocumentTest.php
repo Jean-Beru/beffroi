@@ -13,15 +13,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * JARM §2.1: the claims of a signed authorization response.
+ * JARM §2.1
  */
 final class ResponseDocumentTest extends TestCase
 {
     private const string ISSUER = 'https://id.acme.example';
 
     /**
-     * JARM §2.1: every parameter the answer would have carried becomes a claim of its own, and the three
-     * of the section are added; "state" is one of the parameters and therefore travels inside.
+     * JARM §2.1
      */
     #[Test]
     public function everyParameterOfTheAnswerBecomesAClaimBesideTheThreeOfTheSection(): void
@@ -51,7 +50,7 @@ final class ResponseDocumentTest extends TestCase
     }
 
     /**
-     * JARM §2.4: a refusal is the same document, with the error among its parameters.
+     * JARM §2.4
      */
     #[Test]
     public function aRefusalIsTheSameDocument(): void
@@ -75,9 +74,6 @@ final class ResponseDocumentTest extends TestCase
         static::assertSame('invalid_request', $claims['error']);
     }
 
-    /**
-     * The document names its issuer from the tenant, whatever the answer carried.
-     */
     #[Test]
     public function theIssuerIsTheOneOfTheTenant(): void
     {

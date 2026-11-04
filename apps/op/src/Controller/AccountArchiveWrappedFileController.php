@@ -23,23 +23,8 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The archive of a person handed to them wrapped in a container only their passphrase opens (issue #483).
- *
- * **It is a POST and not a GET, and the passphrase is in the body.** A passphrase in a query string is
- * written to every access log between here and the browser, kept in the history of that browser and sent
- * on in a referer: the one place a secret of a request belongs is the body of that request.
- *
- * **This is the one form of these pages that does not answer with a redirection** (issue #481), because
- * its answer is the file: there is nothing to redirect to that would still hold the passphrase, and a
- * passphrase kept across a redirection is a passphrase written to a session. The hazard that rule exists
- * for is not here either, an answer with `Content-Disposition: attachment` leaving the browser on the page
- * it posted from, so a reload reloads that page and posts nothing.
- *
- * **A passphrase that is refused takes nothing with it.** It is read and judged before the archive is
- * asked for, so a refusal is not an act: nothing left, and the journal does not say it did.
- *
- * Nothing to give is nothing, as on the plain download: a person who never asked, one whose file is still
- * being built and one whose file has expired all get a 404 and read which of the three it is on the page.
+ * The passphrase travels in the body of a POST answered with the file: it must reach no URL, log or session.
+ * It is judged before the archive is handed out, so a refusal is not an act of the journal.
  */
 #[AsController]
 final readonly class AccountArchiveWrappedFileController implements ReachedOnTheSessionAloneInterface
@@ -71,7 +56,7 @@ final readonly class AccountArchiveWrappedFileController implements ReachedOnThe
         try {
             $password = new ArchivePassword(is_string($typed) ? $typed : '');
         } catch (InvalidArgumentException) {
-            // what the page says is that it was refused, and never what was typed nor how far off it was
+            // Only the refusal is kept, never what was typed nor how far off it was.
             $this->refusals->keep($request, ArchivePage::PASSPHRASE_REFUSED);
 
             return $this->pages->afterTheForm(AccountArchiveController::ROUTE);

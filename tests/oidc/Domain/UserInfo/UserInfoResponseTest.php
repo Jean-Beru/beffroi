@@ -29,8 +29,7 @@ use function str_repeat;
 final class UserInfoResponseTest extends TestCase
 {
     /**
-     * OIDC Core §5.3.2: "sub" first, then the claims as JSON values of their kind; a "sub" a provider
-     * would return is not the response's.
+     * OIDC Core §5.3.2
      */
     #[Test]
     public function itWritesSubFirstThenTheClaimsAsTheyAre(): void
@@ -85,8 +84,7 @@ final class UserInfoResponseTest extends TestCase
     }
 
     /**
-     * RFC 6750 §3: the challenge carries "error" and "error_description"; the status is the exception's;
-     * the body repeats the error.
+     * RFC 6750 §3
      */
     #[Test]
     public function anInvalidTokenIsA401WithTheErrorInTheChallenge(): void
@@ -114,8 +112,7 @@ final class UserInfoResponseTest extends TestCase
     }
 
     /**
-     * RFC 9449 §7.2: a token presented under the DPoP scheme is refused in the challenge of that scheme,
-     * which names the algorithms a proof may be signed with (§7.1).
+     * RFC 9449 §7.2, §7.1
      */
     #[Test]
     public function aTokenRefusedAsInvalidIsChallengedUnderTheSchemeItWasPresentedUnder(): void
@@ -136,8 +133,7 @@ final class UserInfoResponseTest extends TestCase
     }
 
     /**
-     * RFC 9449 §7.1: every challenge under the DPoP scheme names the algorithms a proof may be signed
-     * with, after what the refusal says.
+     * RFC 9449 §7.1
      */
     #[Test]
     #[DataProvider('provideRefusalsUnderDpop')]
@@ -171,7 +167,7 @@ final class UserInfoResponseTest extends TestCase
     }
 
     /**
-     * RFC 6750 §3: nothing is cached.
+     * RFC 6750 §3
      */
     #[Test]
     public function anErrorIsNotCached(): void
@@ -195,7 +191,7 @@ final class UserInfoResponseTest extends TestCase
     }
 
     /**
-     * RFC 6750 §3.1: invalid_request is a 400, through the same challenge.
+     * RFC 6750 §3.1
      */
     #[Test]
     public function anInvalidRequestIsA400(): void
@@ -213,7 +209,7 @@ final class UserInfoResponseTest extends TestCase
     }
 
     /**
-     * RFC 6750 §3: insufficient_scope is a 403 and the challenge names the scopes that would have done.
+     * RFC 6750 §3
      */
     #[Test]
     public function anInsufficientScopeIsA403NamingTheScopes(): void
@@ -250,9 +246,7 @@ final class UserInfoResponseTest extends TestCase
     }
 
     /**
-     * RFC 9449 §7.2: a token that holds and is not enough is a 403 under the scheme it was presented
-     * under, the challenge naming the scope that would have done (RFC 6750 §3) and, under "DPoP", the
-     * algorithms a proof may be signed with (RFC 9449 §7.1).
+     * RFC 9449 §7.2, §7.1, RFC 6750 §3
      */
     #[Test]
     public function anInsufficientScopeIsChallengedUnderTheSchemeTheTokenWasPresentedUnder(): void
@@ -273,7 +267,7 @@ final class UserInfoResponseTest extends TestCase
     }
 
     /**
-     * RFC 6750 §3.1: a request without any token gets the bare challenge, no error code, no body.
+     * RFC 6750 §3.1
      */
     #[Test]
     public function aRequestWithoutTokenGetsTheBareChallenge(): void
@@ -299,7 +293,7 @@ final class UserInfoResponseTest extends TestCase
     }
 
     /**
-     * The description is optional in the challenge (RFC 6750 §3) and so in the body.
+     * RFC 6750 §3
      */
     #[Test]
     public function theDescriptionIsOptional(): void

@@ -27,7 +27,7 @@ final class AccessTokenTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.1: "expires_in" is the lifetime in seconds from issuance.
+     * RFC 6749 §5.1
      */
     #[Test]
     #[DataProvider('provideLifetimes')]
@@ -59,9 +59,6 @@ final class AccessTokenTest extends TestCase
         new AccessToken('', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
     }
 
-    /**
-     * A token that expires within the second it was issued would advertise "expires_in": 0.
-     */
     #[Test]
     #[DataProvider('provideExpiriesWithinTheFirstSecond')]
     public function itRefusesToExpireWithinTheSecondItWasIssued(DateTimeImmutable $expiresAt): void

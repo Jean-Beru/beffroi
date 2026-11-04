@@ -15,14 +15,9 @@ use Psr\Clock\ClockInterface;
 use function sprintf;
 
 /**
- * The chains of logout the SAML identity provider plays, in beffroi_saml_logout_chain (beffroi/saml, spec/saml.md
- * S-32): the store every worker of the deployment shares.
+ * beffroi/saml S-32
  *
- * Written and taken through the connection and not the unit of work. A step takes its chain by a deletion whose count
- * the database gives, so that of two requests presenting the same reference, or the answer to the same request, one
- * only is told it deleted the row; the next step then inserts the chain again under the same reference, which the
- * unit of work, still holding the row it read, would take for a second entity of one identifier. The rows whose ten
- * minutes have passed are deleted before each insertion, with the clock the steps read.
+ * Through the connection, not the unit of work: the count of a deletion names the one request that takes a chain.
  *
  * @extends DoctrineRepository<LogoutChain>
  */
@@ -125,9 +120,6 @@ final readonly class DoctrineLogoutChainRepository extends DoctrineRepository im
         return $deleted === 1;
     }
 
-    /**
-     * The chain of the tenant whose $field is $value, read again from the database whatever the unit of work holds.
-     */
     private function one(Tenant $tenant, string $field, string $value): ?LogoutChain
     {
         $chain = $this->queryBuilder('chain')

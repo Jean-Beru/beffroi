@@ -13,16 +13,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md section 5.2, S-9, S-11, S-19: what a reading of the metadata of a service provider returns, and what
- * it says of the key an assertion is encrypted for.
+ * spec/saml.md section 5.2, S-9, S-11, S-19
  */
 final class ServiceProviderMetadataTest extends TestCase
 {
     /**
-     * S-9, S-11: whether the provider signs its requests and the keys that verify them are never defaulted, so that a
-     * reading that leaves them out fails where it is written rather than reporting a provider that says nothing and
-     * holds no key. PHPStan refuses the call below at level max, and the ignore it carries is itself refused once the
-     * call is allowed again, PHPStan reporting an ignore that matches nothing.
+     * S-9, S-11
      */
     #[Test]
     public function aReadingCannotLeaveOutWhatDecidesTheSignatureOfARequest(): void
@@ -36,10 +32,7 @@ final class ServiceProviderMetadataTest extends TestCase
     }
 
     /**
-     * S-6: whether the document was read under the signers the declaration pins is said by the reading, which is the
-     * one that knows it, and never defaulted, so that a reading that leaves it out fails where it is written rather
-     * than reporting a document the rule against a rollback does not hold. PHPStan refuses the call below at level
-     * max, as above.
+     * S-6
      */
     #[Test]
     public function aReadingCannotLeaveOutWhetherItWasSigned(): void
@@ -53,8 +46,7 @@ final class ServiceProviderMetadataTest extends TestCase
     }
 
     /**
-     * S-19: the key an assertion is encrypted for is the first certificate for encryption, in document order, the one
-     * a SimpleSAMLphp identity provider takes; none without one.
+     * S-19
      *
      * @param list<Certificate> $certificates
      */

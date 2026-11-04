@@ -7,8 +7,6 @@ namespace App\Doctrine\Type;
 use Beffroi\Oidc\Domain\Claims\SectorIdentifier;
 
 /**
- * The sector a pairwise identifier belongs to (OIDC Core §8.1), stored as the host it is.
- *
  * @extends StringObjectType<SectorIdentifier>
  */
 final class SectorIdentifierType extends StringObjectType

@@ -9,10 +9,6 @@ use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\DispatchAfterCurrentBusStamp;
 
-/**
- * The PSR-14 dispatcher of the core, replaying every event on "event.bus" (architecture §5.6); nothing
- * listens in the process that produced it.
- */
 final readonly class EventBusDispatcher implements EventDispatcherInterface
 {
     public function __construct(

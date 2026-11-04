@@ -10,9 +10,6 @@ use Beffroi\Saml\Domain\SingleSignOn\SignOnFailure;
 use Beffroi\Saml\Domain\SingleSignOn\SignOnResponse;
 use Beffroi\Saml\Port\SignOnResponderInterface;
 
-/**
- * A responder that keeps what it was asked to write, and answers with a form naming it.
- */
 final class RecordingResponder implements SignOnResponderInterface
 {
     public private(set) ?SignOnResponse $response = null;

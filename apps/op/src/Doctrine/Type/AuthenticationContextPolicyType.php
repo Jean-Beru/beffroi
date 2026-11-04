@@ -10,14 +10,6 @@ use Beffroi\Core\Port\AuthenticationPredicatesInterface;
 use LogicException;
 
 /**
- * The "acr" policy of a tenant (decision 0010) in one JSON column, as the core writes a stored policy
- * (`StoredAuthenticationContextPolicy`): its classes in order, each a name on a predicate of the provider,
- * read back as the class the wiring holds for that name.
- *
- * The handoff through a static is the Doctrine half: Doctrine builds a type from a class name, so nothing
- * can be injected here; what reads the document takes the wiring as an argument, and this hands it the one
- * the provider gave it when it booted.
- *
  * @extends JsonObjectType<AuthenticationContextPolicy>
  */
 final class AuthenticationContextPolicyType extends JsonObjectType implements NeedsAuthenticationPredicatesInterface

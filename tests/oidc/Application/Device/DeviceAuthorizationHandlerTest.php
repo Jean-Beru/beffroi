@@ -45,8 +45,7 @@ use Symfony\Component\Clock\MockClock;
 use function urlencode;
 
 /**
- * RFC 8628 §3.1, §3.2: an authenticated client asks, and is answered two codes, where its user goes, for how
- * long and how often it may ask.
+ * RFC 8628 §3.1, §3.2
  */
 final class DeviceAuthorizationHandlerTest extends TestCase
 {
@@ -88,8 +87,7 @@ final class DeviceAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.2: the two codes, the page the user goes to, the same page with the code already in it
-     * (§3.3.1), the lifetime and the interval.
+     * RFC 8628 §3.2, §3.3.1
      */
     #[Test]
     public function itAnswersTheCodesThePageAndTheTimes(): void
@@ -106,8 +104,7 @@ final class DeviceAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.2: the record waits under the hash of the device code, bound to the client that asked,
-     * with what the request asked for, unanswered and unspent.
+     * RFC 8628 §3.2
      */
     #[Test]
     public function itKeepsTheRequestUnderTheHashOfItsDeviceCode(): void
@@ -125,9 +122,6 @@ final class DeviceAuthorizationHandlerTest extends TestCase
         static::assertFalse($record->isUsed());
     }
 
-    /**
-     * The page the user types on looks a code up by itself, so the record is found by the user code too.
-     */
     #[Test]
     public function theRecordIsFoundByTheCodeTheUserTypes(): void
     {
@@ -139,10 +133,6 @@ final class DeviceAuthorizationHandlerTest extends TestCase
         static::assertSame(DrawnSecret::digestOf($response->deviceCode), $record->deviceCodeHash);
     }
 
-    /**
-     * What the provider keeps is the digest of both codes and never their value, as of every other value it
-     * hands out.
-     */
     #[Test]
     public function itKeepsTheDigestOfBothCodesAndNeitherValue(): void
     {
@@ -158,7 +148,7 @@ final class DeviceAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * BCP 10027 §2: the approval page says where the request came from, so the record keeps it.
+     * BCP 10027 §2
      */
     #[Test]
     public function itKeepsWhereTheApplianceAskedFrom(): void
@@ -173,7 +163,7 @@ final class DeviceAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: the resources the request names, among the ones the client registered.
+     * RFC 8707 §2
      */
     #[Test]
     public function theTokenIsAddressedToTheResourceTheRequestNames(): void
@@ -189,8 +179,7 @@ final class DeviceAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: a request that names no resource is served all the same, there being a user behind this
-     * grant and therefore a client the token can be addressed to.
+     * RFC 8707 §2
      */
     #[Test]
     public function aRequestThatNamesNoResourceIsServed(): void
@@ -204,8 +193,7 @@ final class DeviceAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.1: the endpoint serves the clients registered for a grant that asks their user on another
-     * device, and no other. Which grants those are is read from the wiring and never from a name.
+     * RFC 8628 §3.1
      */
     #[Test]
     public function itRefusesAClientWhoseGrantsTakeNoUserOnAnotherDevice(): void
@@ -219,7 +207,7 @@ final class DeviceAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.3: the client of the request is authenticated before anything is read of what it asks.
+     * RFC 6749 §2.3
      */
     #[Test]
     public function itAuthenticatesTheClientBeforeReadingTheRequest(): void
@@ -232,8 +220,6 @@ final class DeviceAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * A request the endpoint refuses leaves nothing behind for anybody to approve.
-     *
      * @param array<string, string|null> $overrides
      * @param class-string<OAuth2Exception> $error
      */
@@ -270,10 +256,6 @@ final class DeviceAuthorizationHandlerTest extends TestCase
         yield 'a resource of a client that registered none' => ['television', ['resource' => Clients::CALENDAR], InvalidTargetException::class];
     }
 
-    /**
-     * A code the store already holds is drawn again: the page looks a code up by itself, so two live records
-     * carrying the same one would be two requests one answer could approve.
-     */
     #[Test]
     public function itDrawsAgainWhenTheCodeItDrewIsOneItAlreadyHolds(): void
     {
@@ -292,9 +274,6 @@ final class DeviceAuthorizationHandlerTest extends TestCase
         static::assertSame(self::SECOND_CODE, $second->userCode->value);
     }
 
-    /**
-     * The lifetime and the interval are the deployment's, and what the client is told is what the record has.
-     */
     #[Test]
     public function theLifetimeAndTheIntervalAreTheOnesTheDeploymentWired(): void
     {
@@ -310,9 +289,7 @@ final class DeviceAuthorizationHandlerTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.5: the interval the deployment wired is held to the bound of a request when the handler is
-     * built, so that a number an environment variable carries refuses the start of the service rather than
-     * its first request (issue #913).
+     * RFC 8628 §3.5
      */
     #[Test]
     public function itIsNotBuiltWithAnIntervalNoRequestMayBeMadeWith(): void

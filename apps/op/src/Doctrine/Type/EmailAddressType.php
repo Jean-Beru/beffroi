@@ -7,8 +7,6 @@ namespace App\Doctrine\Type;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 
 /**
- * An email address, stored as written.
- *
  * @extends StringObjectType<EmailAddress>
  */
 final class EmailAddressType extends StringObjectType

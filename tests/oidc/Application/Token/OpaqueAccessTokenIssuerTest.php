@@ -40,8 +40,7 @@ final class OpaqueAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: ten minutes from issuance, as the value the repository drew, kept under its hash
-     * with what the authorization says.
+     * Architecture §4.6
      */
     #[Test]
     public function itMintsAnOpaqueValueForTenMinutesAndKeepsItsRecord(): void
@@ -69,9 +68,7 @@ final class OpaqueAccessTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 8705 §3: an opaque token is bound the way a self-contained one is, its record carrying what
-     * the token would have carried as a claim; the resource server reads it back by introspection
-     * (§3.2).
+     * RFC 8705 §3, §3.2
      */
     #[Test]
     public function itBindsTheRecordToWhatTheClientProved(): void

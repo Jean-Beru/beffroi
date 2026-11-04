@@ -43,9 +43,7 @@ use Beffroi\Oidc\Tests\Fixture\Subjects;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 7523 §2.1: an assertion signed by an issuer the tenant trusts, exchanged for an access token for the user
- * it is about. The user is reached through a linked identity of that issuer's source (decision 0002), and no
- * user is created here.
+ * RFC 7523 §2.1, Decision 0002
  */
 final class JwtBearerGrantTest extends TestCase
 {
@@ -103,8 +101,7 @@ final class JwtBearerGrantTest extends TestCase
     }
 
     /**
-     * RFC 7523 §2.1, decision 0002: the token names the user the linked identity resolved, and is addressed to
-     * the resource the request asked for.
+     * RFC 7523 §2.1, Decision 0002
      */
     #[Test]
     public function itAuthorizesTheClientForTheUserTheAssertionIsAbout(): void
@@ -123,9 +120,7 @@ final class JwtBearerGrantTest extends TestCase
     }
 
     /**
-     * Issue #588: the assertion was validated for a user of this tenant, so what the client gets is
-     * written in the journal of that person and not under the "sub" this client is answered, which under
-     * a pairwise kind is a name nothing else holds (OIDC Core §8.1).
+     * OIDC Core §8.1
      */
     #[Test]
     public function theAuthorizationNamesThePersonTheAssertionWasValidatedFor(): void
@@ -138,8 +133,7 @@ final class JwtBearerGrantTest extends TestCase
     }
 
     /**
-     * OIDC Core §2: the user was authenticated elsewhere and this provider says nothing of how, so there is no
-     * "sid", no "acr", no "amr" and no ID token.
+     * OIDC Core §2
      */
     #[Test]
     public function theResponseSaysNothingOfHowTheUserWasAuthenticated(): void
@@ -157,7 +151,7 @@ final class JwtBearerGrantTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3, §4: the same assertion presented twice is refused.
+     * RFC 7523 §3, §4
      */
     #[Test]
     public function theSameAssertionIsRefusedTheSecondTime(): void
@@ -175,9 +169,7 @@ final class JwtBearerGrantTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3 (issue #876): what the response reads from outside the provider is read before the "jti" of
-     * the assertion is remembered, so a KMS that does not answer leaves the assertion to the same request,
-     * which is served once the KMS answers again and is never taken for a replay.
+     * RFC 7523 §3
      */
     #[Test]
     public function anAssertionLeftUnspentByAnOutageIsExchangedOnceTheKmsAnswers(): void
@@ -199,8 +191,7 @@ final class JwtBearerGrantTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3 (issue #876): an assertion is spent by the response it is exchanged for, so a request
-     * refused for what it asks leaves its assertion to the next request, which is served.
+     * RFC 7523 §3
      */
     #[Test]
     #[DataProvider('provideRequestsRefusedForWhatTheyAsk')]
@@ -234,8 +225,7 @@ final class JwtBearerGrantTest extends TestCase
     }
 
     /**
-     * Decision 0002: a subject an upstream provider names is a user of this tenant only when a linked identity
-     * says so, and this grant creates none.
+     * Decision 0002
      */
     #[Test]
     public function anAssertionAboutSomebodyNoIdentityResolvesIsRefused(): void
@@ -249,7 +239,7 @@ final class JwtBearerGrantTest extends TestCase
     }
 
     /**
-     * Decision 0002: a linked identity of another source is another identity.
+     * Decision 0002
      */
     #[Test]
     public function anIdentityOfAnotherSourceDoesNotResolveTheSubject(): void
@@ -280,7 +270,7 @@ final class JwtBearerGrantTest extends TestCase
     }
 
     /**
-     * OIDC Core §2: "openid" asks for an authentication, and this grant performs none.
+     * OIDC Core §2
      */
     #[Test]
     public function theOpenidScopeIsRefused(): void
@@ -312,7 +302,7 @@ final class JwtBearerGrantTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: within what the issuer is trusted for, whatever the client registered.
+     * RFC 7523 §3
      */
     #[Test]
     public function aScopeTheIssuerIsNotTrustedForIsRefused(): void
@@ -329,7 +319,7 @@ final class JwtBearerGrantTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: the token is addressed to a resource the request named, never to the client that asked.
+     * RFC 8707 §2
      */
     #[Test]
     public function aRequestThatNamesNoResourceIsRefused(): void
@@ -374,8 +364,6 @@ final class JwtBearerGrantTest extends TestCase
     }
 
     /**
-     * @param string|null $assertion the assertion the request presents, a fresh one about that subject unless the test holds its own
-     *
      * @throws OAuth2Exception
      */
     private function request(
@@ -399,7 +387,7 @@ final class JwtBearerGrantTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: an assertion of the trusted issuer about that subject, addressed to this provider.
+     * RFC 7523 §3
      */
     private function assertion(string $subject = self::EMPLOYEE): string
     {

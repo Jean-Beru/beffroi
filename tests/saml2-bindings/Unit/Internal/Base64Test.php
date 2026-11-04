@@ -20,9 +20,8 @@ use function rtrim;
 use function str_replace;
 
 /**
- * B-8, section 6.1 steps 5 and 8, section 6.2 step 4: base64 in its one form, the alphabet and the padding of RFC 4648
- * §4 with the unused bits zero (RFC 4648 §3.5); no whitespace in a query string (SAML Bindings §3.4.4.1), the line
- * breaks of RFC 2045 §6.8 and no other whitespace in a form (SAML Bindings §3.5.4); written on one line.
+ * B-8, section 6.1 steps 5 and 8, section 6.2 step 4, RFC 4648 §4, §3.5, RFC 2045 §6.8,
+ * SAML Bindings §3.4.4.1, §3.5.4
  */
 final class Base64Test extends TestCase
 {
@@ -31,8 +30,7 @@ final class Base64Test extends TestCase
     private const string NOT_CANONICAL = 'A base64 value is not in its one form: the alphabet and the padding of RFC 4648 section 4, the unused bits zero, no whitespace (B-8).';
 
     /**
-     * B-8, RFC 4648 §4: the text in its one form is the bytes it encodes, with or without padding, every character of
-     * the alphabet included.
+     * B-8, RFC 4648 §4
      */
     #[Test]
     #[DataProvider('provideCanonicalTexts')]
@@ -61,8 +59,7 @@ final class Base64Test extends TestCase
     }
 
     /**
-     * §9.2 row 25, B-8, B-11, RFC 4648 §3.5 and §5, SAML Bindings §3.4.4.1: in a value of a query string, a text that
-     * is not the one form, whitespace included, is refused, and the refusal carries nothing of it.
+     * §9.2 row 25, B-8, B-11, RFC 4648 §3.5 and §5, SAML Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideTextsNotInTheOneForm')]
@@ -100,8 +97,7 @@ final class Base64Test extends TestCase
     }
 
     /**
-     * §9.2 row 26, B-8, SAML Bindings §3.4.4.1: a + of the base64 left unescaped in a query string is a space once
-     * percent-decoded, and the value is refused, never read with the space taken back for a +.
+     * §9.2 row 26, B-8, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesAPlusLeftUnescapedInAQueryString(): void
@@ -118,7 +114,7 @@ final class Base64Test extends TestCase
     }
 
     /**
-     * B-8: an empty value of a query string is refused.
+     * B-8
      */
     #[Test]
     public function itRefusesAnEmptyValueOfAQueryString(): void
@@ -132,8 +128,7 @@ final class Base64Test extends TestCase
     }
 
     /**
-     * §9.3 row 9, B-8, RFC 2045 §6.8, SAML Bindings §3.5.4: a value of a form wrapped at 76 characters, by CR LF or by
-     * LF alone, is the message it encodes, and so is one on a single line.
+     * §9.3 row 9, B-8, RFC 2045 §6.8, SAML Bindings §3.5.4
      */
     #[Test]
     #[DataProvider('provideWrappedTexts')]
@@ -160,8 +155,7 @@ final class Base64Test extends TestCase
     }
 
     /**
-     * §9.2 row 25, B-8, B-11, RFC 2045 §6.8: in a value of a form, whitespace other than a line break is refused, and
-     * so is a text that is not the one form once its line breaks are removed.
+     * §9.2 row 25, B-8, B-11, RFC 2045 §6.8
      */
     #[Test]
     #[DataProvider('provideWrappedTextsNotInTheOneForm')]
@@ -191,7 +185,7 @@ final class Base64Test extends TestCase
     }
 
     /**
-     * B-8: a value of a form that holds nothing but line breaks is empty, and refused.
+     * B-8
      */
     #[Test]
     #[DataProvider('provideEmptyWrappedTexts')]
@@ -217,8 +211,7 @@ final class Base64Test extends TestCase
     }
 
     /**
-     * §9.3 rows 11 and 12, sections 6.3 step 3 and 6.4 step 3: a message is written on one line, in the one form its
-     * receiver reads.
+     * §9.3 rows 11 and 12, sections 6.3 step 3 and 6.4 step 3
      */
     #[Test]
     public function itEncodesOnOneLine(): void
@@ -235,7 +228,7 @@ final class Base64Test extends TestCase
     }
 
     /**
-     * B-8, RFC 4648 §3.5: what the package encodes, it decodes to the same bytes, for every byte.
+     * B-8, RFC 4648 §3.5
      */
     #[Test]
     public function itDecodesWhatItEncodes(): void

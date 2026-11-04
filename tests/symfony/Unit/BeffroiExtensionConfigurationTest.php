@@ -33,7 +33,7 @@ use Symfony\Component\Config\Definition\PrototypedArrayNode;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 /**
- * The configuration tree of architecture §5.1, read through the Config component as the kernel reads it.
+ * Architecture §5.1
  */
 final class BeffroiExtensionConfigurationTest extends TestCase
 {
@@ -48,7 +48,7 @@ final class BeffroiExtensionConfigurationTest extends TestCase
     ];
 
     /**
-     * Architecture §9: the lifetimes are the choices of the design, applied when the configuration says nothing.
+     * Architecture §9
      */
     #[Test]
     public function theDefaultsAreThoseOfTheArchitecture(): void
@@ -62,18 +62,13 @@ final class BeffroiExtensionConfigurationTest extends TestCase
                 'issuer' => 'https://op.test',
                 'slug' => 'default',
                 'name' => null,
-                // a tenant that declares no look is served the pages it has always been served (issue #449)
                 'look' => [
                     'logo_uri' => null,
                     'primary_color' => null,
                     'primary_content_color' => null,
                 ],
-                // nothing is a person's to change until the tenant says which claims are (issue #452)
                 'self_served_claims' => [],
-                // the tree keeps no list of the predicates of the provider: a tenant that names no class
-                // is handed the default policy of the core (TenantFactory, issue #607)
                 'authentication_classes' => [],
-                // no scope of an API until the deployment names one, beside those its clients register (issue #920)
                 'scopes' => [],
             ],
             $config['tenant'],
@@ -82,7 +77,6 @@ final class BeffroiExtensionConfigurationTest extends TestCase
             [
                 'kms' => 'op',
                 'key_id' => 'signing',
-                // the secret of the kernel binds the stored data keys, as the component does by default
                 'data_key_secrets' => ['%kernel.secret%'],
                 'storage' => '%kernel.project_dir%/var/keys',
                 'jwks_max_age' => JwksHandler::DEFAULT_MAX_AGE,
@@ -132,8 +126,7 @@ final class BeffroiExtensionConfigurationTest extends TestCase
     }
 
     /**
-     * Decision 0010: the tree keeps no policy of its own (issue #607), so a tenant that configures nothing
-     * and a row written before the column existed speak the one default vocabulary, the core's.
+     * Decision 0010
      */
     #[Test]
     public function aTenantThatNamesNoClassSpeaksTheDefaultPolicyOfTheCore(): void
@@ -146,8 +139,7 @@ final class BeffroiExtensionConfigurationTest extends TestCase
     }
 
     /**
-     * Decision 0009: the two durations the tree carries are the ones the policy of the module defaults to, so
-     * that the reference a deployment reads and the default a deployment gets cannot say different things.
+     * Decision 0009
      */
     #[Test]
     public function theDefaultRetentionOfAClientIsTheOneOfThePolicy(): void
@@ -168,8 +160,7 @@ final class BeffroiExtensionConfigurationTest extends TestCase
     }
 
     /**
-     * Decision 0010: the classes are configured in order, each on a predicate of the provider, the
-     * numeric names kept as names.
+     * Decision 0010
      */
     #[Test]
     public function theAuthenticationClassesAreReadInOrderOnThePredicatesOfTheProvider(): void
@@ -198,10 +189,6 @@ final class BeffroiExtensionConfigurationTest extends TestCase
         );
     }
 
-    /**
-     * The tree cannot tell an absent list from an empty one, so it carries the defaults of the module
-     * itself; a client declared with nothing but a redirect URI is the same client either way.
-     */
     #[Test]
     public function aClientDeclaredWithNothingGetsTheDefaultsOfTheModule(): void
     {
@@ -260,8 +247,6 @@ final class BeffroiExtensionConfigurationTest extends TestCase
             ],
             'issuer',
         ];
-        // the tree holds the shape and the wiring holds the predicates (issue #607): a name no wired
-        // predicate carries refuses the start in TenantFactory, where the registry can be read
         yield 'a class named on no predicate at all' => [
             [
                 'tenant' => self::MINIMAL['tenant']
@@ -447,10 +432,6 @@ final class BeffroiExtensionConfigurationTest extends TestCase
         self::process($config);
     }
 
-    /**
-     * One secret written alone is the list of one secret, the first and the only one, as the component reads
-     * its own.
-     */
     #[Test]
     public function oneSecretToBindTheStoredDataKeysIsAListOfOne(): void
     {
@@ -468,10 +449,6 @@ final class BeffroiExtensionConfigurationTest extends TestCase
         static::assertSame(['%env(BEFFROI_DATA_KEY_SECRET)%'], $config['keys']['data_key_secrets'] ?? null);
     }
 
-    /**
-     * Issue #911: an empty staging delay is the one an environment variable declared empty carries, which is no
-     * delay configured and leaves it to be derived from the max-age of the JWK Set.
-     */
     #[Test]
     public function anEmptyStagingDelayIsAccepted(): void
     {
@@ -490,9 +467,7 @@ final class BeffroiExtensionConfigurationTest extends TestCase
     }
 
     /**
-     * Spec/saml.md S-12, S-40, issue #952: the figures of the SAML keys and the cacheDuration of the metadata are set
-     * under nodes of no role, so that a deployment that serves the service provider alone sets them and leaves its
-     * identity provider off.
+     * spec/saml.md S-12, S-40
      */
     #[Test]
     public function theFiguresOfTheSamlKeysTurnNoRoleOn(): void
@@ -519,9 +494,6 @@ final class BeffroiExtensionConfigurationTest extends TestCase
         static::assertFalse($config['saml']['identity_provider']['enabled']);
     }
 
-    /**
-     * A client identifier is a value, not a configuration key to normalize: "oidc-demo" stays "oidc-demo".
-     */
     #[Test]
     public function clientIdentifiersAreKeptAsWritten(): void
     {
@@ -542,8 +514,7 @@ final class BeffroiExtensionConfigurationTest extends TestCase
     }
 
     /**
-     * Decision 0006: no option to do it wrong. Nothing in the tree, at any depth, names an insecure mode,
-     * a compatibility switch or a way to allow or disable a security rule.
+     * Decision 0006
      */
     #[Test]
     public function theTreeHasNoInsecureOptionAndNoCompatibilitySwitch(): void

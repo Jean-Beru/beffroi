@@ -15,9 +15,7 @@ use function strtr;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Push API §3.4, RFC 8292 §3.2, architecture §5.2, §5.6: the page where a user says which of their
- * browsers this provider may reach, over HTTP. The browser is handed the application server key of the
- * tenant, it hands back what its push service gave it, and it is taken out from the same page.
+ * Push API §3.4, RFC 8292 §3.2, Architecture §5.2, §5.6
  */
 final class PushSubscriptionTest extends BrowserTestCase
 {
@@ -30,8 +28,7 @@ final class PushSubscriptionTest extends BrowserTestCase
     private const string AUTH_SECRET = 'tBHItJI5svbpez7KI4CCXg';
 
     /**
-     * §3.2: the browser is handed the uncompressed point of the active key, which is what it subscribes
-     * with, and the page names the worker that will receive.
+     * RFC 8292 §3.2
      */
     #[Test]
     public function thePageHandsTheBrowserTheApplicationServerKey(): void
@@ -50,10 +47,6 @@ final class PushSubscriptionTest extends BrowserTestCase
         static::assertSame('/push-worker.js', $form->attr('data-worker-url'));
     }
 
-    /**
-     * A tenant whose key has not been drawn has nothing to hand out, and the page says this provider
-     * reaches nobody this way rather than offering a button that cannot work.
-     */
     #[Test]
     public function aTenantWithoutAKeyHandsOutNothing(): void
     {
@@ -72,8 +65,7 @@ final class PushSubscriptionTest extends BrowserTestCase
     }
 
     /**
-     * Push API §8: what the browser hands back is kept against the key it was handed, and the page lists
-     * it.
+     * Push API §8
      */
     #[Test]
     public function aBrowserThatSubscribesIsListed(): void
@@ -95,9 +87,6 @@ final class PushSubscriptionTest extends BrowserTestCase
         static::assertSame('Alice at the counter', $subscription->label);
     }
 
-    /**
-     * The page comes back with what is subscribed, and what the user called it.
-     */
     #[Test]
     public function thePageListsWhatIsSubscribed(): void
     {
@@ -111,7 +100,6 @@ final class PushSubscriptionTest extends BrowserTestCase
 
         // Then
         static::assertCount(1, $crawler->filter('table[data-subscriptions="1"] tr[data-subscription]'));
-        // the name is the field it is corrected in, so it is read there and not in the text of the row
         static::assertSame(
             ['Alice at the counter'],
             $crawler->filter('tr[data-subscription] form[data-subscription="rename"] input[name="label"]')->extract(['value']),
@@ -119,10 +107,7 @@ final class PushSubscriptionTest extends BrowserTestCase
     }
 
     /**
-     * Push API §3.4: the same browser subscribing again hands back the endpoint it already had, so the row
-     * it has is what changes. It is the one path where a row is read and written in the same request, which
-     * is what a second object over one identity is refused by, and what no test against an in-memory store
-     * can see.
+     * Push API §3.4
      */
     #[Test]
     public function aBrowserThatSubscribesAgainChangesTheRowItHas(): void
@@ -146,8 +131,7 @@ final class PushSubscriptionTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8030 §7.3, Push API §3.4: a browser the user had taken out is reachable again when it subscribes
-     * again, having just said so, and it does not come back beside itself.
+     * RFC 8030 §7.3, Push API §3.4
      */
     #[Test]
     public function aBrowserTakenOutIsReachableAgainWhenItSubscribesAgain(): void
@@ -170,7 +154,7 @@ final class PushSubscriptionTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8030 §2: what could not be a push endpoint is refused, and the page says so.
+     * RFC 8030 §2
      */
     #[Test]
     public function anEndpointThatIsNotOneIsRefused(): void
@@ -187,7 +171,7 @@ final class PushSubscriptionTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0002: a browser taken out is reached by nobody again and its row stays.
+     * Decision 0002
      */
     #[Test]
     public function aBrowserTakenOutIsReachedByNobody(): void
@@ -208,9 +192,6 @@ final class PushSubscriptionTest extends BrowserTestCase
         static::assertSame([], self::subscriptions()->findActiveByUser(self::reloaded($alice)));
     }
 
-    /**
-     * The page of the account needs a signed-in user, and a browser without a session is told to sign in.
-     */
     #[Test]
     public function aBrowserWithoutASessionIsToldToSignInFirst(): void
     {
@@ -222,8 +203,7 @@ final class PushSubscriptionTest extends BrowserTestCase
     }
 
     /**
-     * The service worker is served at the root of the pages of the provider, so that its scope covers the
-     * page it opens (Service Workers §3.1.1).
+     * Service Workers §3.1.1
      */
     #[Test]
     public function theServiceWorkerIsServedAtTheRootOfThePages(): void
@@ -238,8 +218,7 @@ final class PushSubscriptionTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §5.2: what tells one browser from another is a name its holder wrote, corrected in the
-     * line where it is read.
+     * Architecture §5.2
      */
     #[Test]
     public function aBrowserIsNamedAgainFromTheLineItIsReadIn(): void
@@ -258,10 +237,6 @@ final class PushSubscriptionTest extends BrowserTestCase
         static::assertSame('Alice at home', self::subscriptions()->find($subscription->id)?->label);
     }
 
-    /**
-     * What a browser may be called is the rule of the row that holds it, read on the server, and the page
-     * says what was refused once (issue #481).
-     */
     #[Test]
     public function aNameABrowserDoesNotHoldIsRefusedAndSaidOnThePage(): void
     {
@@ -279,9 +254,6 @@ final class PushSubscriptionTest extends BrowserTestCase
         static::assertCount(1, $this->afterTheForm()->filter('p[data-error="invalid_label"]'));
     }
 
-    /**
-     * Somebody else's browser is not found, as it is not taken out either.
-     */
     #[Test]
     public function theBrowserOfSomebodyElseIsNotNamed(): void
     {
@@ -305,9 +277,7 @@ final class PushSubscriptionTest extends BrowserTestCase
     }
 
     /**
-     * Push API §8: the page carries the digest of the endpoint of every browser it lists, which is what
-     * the script of the provider recognises the browser reading the page by. The endpoint itself is on no
-     * page: a digest is what this provider compares too (PushSubscription::digestOf).
+     * Push API §8
      */
     #[Test]
     public function eachRowCarriesTheDigestOfItsEndpointAndNotTheEndpoint(): void
@@ -346,9 +316,6 @@ final class PushSubscriptionTest extends BrowserTestCase
         ]);
     }
 
-    /**
-     * The token the page renders, taken from the form that posts it.
-     */
     private function token(string $form): string
     {
         $crawler = $this->browser->request('GET', '/account/notifications');
@@ -356,9 +323,6 @@ final class PushSubscriptionTest extends BrowserTestCase
         return self::string($crawler->filter($form . ' input[name="_token"]')->attr('value'));
     }
 
-    /**
-     * The user as the rows hold them, the browser having rebooted the kernel between two requests.
-     */
     private static function reloaded(User $user): User
     {
         self::reload();

@@ -12,12 +12,6 @@ use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * What the OpenID conformance suite answers a backchannel request with when nobody is there to answer it
- * ("automated_ciba_approval_url", tests/conformance/README.md), imported by the test kernel under
- * /ciba/conformance as an application imports it in development. The FAPI-CIBA plan itself runs against
- * the stack; what it asks of this endpoint is played here.
- */
 final class CibaConformanceTest extends BrowserTestCase
 {
     private const string CLIENT_ID = 'terminal-app';
@@ -29,8 +23,7 @@ final class CibaConformanceTest extends BrowserTestCase
     private const string OTHER_PASSWORD = 'a password of somebody else';
 
     /**
-     * CIBA Core §10.1: the answer of the suite is the answer of the user, and the client that comes back
-     * gets its tokens.
+     * CIBA Core §10.1
      */
     #[Test]
     public function theSuiteApprovesARequestAndTheClientGetsItsTokens(): void
@@ -51,7 +44,7 @@ final class CibaConformanceTest extends BrowserTestCase
     }
 
     /**
-     * §11: the suite refuses on behalf of the user, and the client learns it.
+     * CIBA Core §11
      */
     #[Test]
     public function theSuiteRefusesARequestAndTheClientLearnsIt(): void
@@ -71,8 +64,7 @@ final class CibaConformanceTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0006: a session is opened on a proof here as everywhere, so a wrong password answers
-     * nothing and the request goes on waiting.
+     * Decision 0006
      */
     #[Test]
     public function aWrongPasswordAnswersNothing(): void
@@ -92,8 +84,7 @@ final class CibaConformanceTest extends BrowserTestCase
     }
 
     /**
-     * §7.1: this endpoint reads the list of one user as the page does, so a request made for somebody
-     * else is not answerable through it either.
+     * CIBA Core §7.1
      */
     #[Test]
     public function aRequestOfSomebodyElseIsNotAnswerable(): void
@@ -113,10 +104,6 @@ final class CibaConformanceTest extends BrowserTestCase
         static::assertSame('authorization_pending', self::json($this->browser->getResponse())['error']);
     }
 
-    /**
-     * An identifier this provider never issued names no request, and says so as one already answered
-     * does.
-     */
     #[Test]
     public function anIdentifierOfNoRequestIsRefused(): void
     {
@@ -130,9 +117,6 @@ final class CibaConformanceTest extends BrowserTestCase
         static::assertSame(Response::HTTP_BAD_REQUEST, $answered->getStatusCode());
     }
 
-    /**
-     * The two words the suite substitutes and nothing else: what it wants done is read, never guessed.
-     */
     #[Test]
     public function anAnswerThatIsNeitherOfTheTwoIsRefused(): void
     {
@@ -166,9 +150,6 @@ final class CibaConformanceTest extends BrowserTestCase
         return $this->browser->getResponse();
     }
 
-    /**
-     * The call the suite makes: everything in the query, no body at all.
-     */
     private function answer(string $authRequestId, string $answer, string $username = 'alice', string $password = self::PASSWORD): Response
     {
         $this->browser->request('POST', sprintf('/ciba/conformance/approval?%s', http_build_query([

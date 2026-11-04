@@ -33,16 +33,12 @@ use function serialize;
 use function str_repeat;
 
 /**
- * Section 6.1, E-15, E-16: AES-CBC opened by Decryptor::decryptCovered() only, under the proof that a signature covers
- * the encrypted element, refused by name everywhere else before any key is touched, and failing in one way, the
- * refusal of its plaintext included, from one place for every mode (section 6.1 step 9). The proof is the test's
- * (Support\CoveringDocument): Enc checks what it covers, never where it comes from.
+ * Section 6.1, E-15, E-16, section 6.1 step 9
  */
 final class DecryptorCoveredTest extends TestCase
 {
     /**
-     * §9.1 rows 8 and 9, E-1, E-15, section 5.1: the two AES-CBC vectors of xmlsec1 decrypt under a signature whose
-     * document holds them, the second with the DigestMethod of SHA-1 that Entra and ADFS write under rsa-oaep-mgf1p.
+     * §9.1 rows 8 and 9, E-1, E-15, section 5.1
      */
     #[Test]
     #[DataProvider('provideCbcVectors')]
@@ -78,7 +74,7 @@ final class DecryptorCoveredTest extends TestCase
     }
 
     /**
-     * §9.2 row 42, E-15: decrypt() takes no proof, and refuses AES-CBC by name before any key is touched.
+     * §9.2 row 42, E-15
      */
     #[Test]
     #[DataProvider('provideCbcVectors')]
@@ -106,8 +102,7 @@ final class DecryptorCoveredTest extends TestCase
     }
 
     /**
-     * §9.2 row 43, E-15: a signature whose document is another one, the same bytes loaded again, covers nothing of the
-     * element, under AES-GCM as under AES-CBC: refused before anything is read or any key touched.
+     * §9.2 row 43, E-15
      */
     #[Test]
     #[DataProvider('provideVectorsOfBothModes')]
@@ -142,7 +137,7 @@ final class DecryptorCoveredTest extends TestCase
     }
 
     /**
-     * §9.3 row 26, E-15: AES-GCM under a signature that covers it decrypts as decrypt() decrypts it.
+     * §9.3 row 26, E-15
      */
     #[Test]
     public function itDecryptsAesGcmUnderASignatureAsWithoutOne(): void
@@ -161,9 +156,7 @@ final class DecryptorCoveredTest extends TestCase
     }
 
     /**
-     * §9.2 rows 45 to 48, E-2, E-16: under AES-CBC, a session key of the wrong length, a count out of range, an
-     * altered padding, a garbled block, another key and a plaintext Core refuses are all the one failure with the one
-     * message: CBC authenticated nothing, so that the refusal of the plaintext says nothing either.
+     * §9.2 rows 45 to 48, E-2, E-16
      */
     #[Test]
     #[DataProvider('provideFailingCbcFixtures')]
@@ -203,8 +196,7 @@ final class DecryptorCoveredTest extends TestCase
     }
 
     /**
-     * §9.3 rows 21 and 22, E-16: the count is read, from 1 to a whole block, and nothing else of the padding: the
-     * random octets of xmlsec1 before it are never compared.
+     * §9.3 rows 21 and 22, E-16
      */
     #[Test]
     #[DataProvider('providePaddings')]
@@ -236,8 +228,7 @@ final class DecryptorCoveredTest extends TestCase
     }
 
     /**
-     * §9.2 row 49, E-15, section 6.1 step 1: an element of the covered document that its root does not contain, the
-     * xenc:EncryptedData removed from the tree, is covered by nothing, before any key is touched.
+     * §9.2 row 49, E-15, section 6.1 step 1
      */
     #[Test]
     #[DataProvider('provideVectorsOfBothModes')]
@@ -263,8 +254,7 @@ final class DecryptorCoveredTest extends TestCase
     }
 
     /**
-     * §9.2 row 50, E-16: under AES-CBC, what the reader refuses of the plaintext is the one failure, after the reader
-     * was asked.
+     * §9.2 row 50, E-16
      */
     #[Test]
     public function itRefusesWhatTheReaderRefusesUnderAesCbcAsTheOneFailure(): void
@@ -289,7 +279,7 @@ final class DecryptorCoveredTest extends TestCase
     }
 
     /**
-     * §9.2 row 50, E-4: under AES-GCM, whose tag authenticated the plaintext, what the reader refuses passes as it is.
+     * §9.2 row 50, E-4
      */
     #[Test]
     public function itLetsWhatTheReaderRefusesUnderAesGcmThroughAsItIs(): void
@@ -311,8 +301,7 @@ final class DecryptorCoveredTest extends TestCase
     }
 
     /**
-     * §9.3 row 27, E-16: what the reader reads of the plaintext is what decryptCovered() returns, under AES-GCM and
-     * AES-CBC.
+     * §9.3 row 27, E-16
      */
     #[Test]
     #[DataProvider('provideVectorsOfBothModes')]
@@ -335,10 +324,7 @@ final class DecryptorCoveredTest extends TestCase
     }
 
     /**
-     * §9.2 row 33, E-3, E-16, section 6.1 step 9: every failure of a decryption, under AES-GCM and AES-CBC, a key that
-     * does not unwrap or is of another length, a tag, a ciphertext, a padding, a plaintext that is not XML or that Core
-     * refuses, and what a reader refuses of an AES-CBC plaintext, is the same exception raised on the same line of
-     * Decryptor, with the same frames for one method: neither getLine() nor getTrace() tells which step failed.
+     * §9.2 row 33, E-3, E-16, section 6.1 step 9
      */
     #[Test]
     public function itRaisesEveryFailureFromOnePlace(): void
@@ -384,8 +370,6 @@ final class DecryptorCoveredTest extends TestCase
     }
 
     /**
-     * The DecryptionFailed $fixture gives, under the proof of its own document and read by $reader when $covered.
-     *
      * @param PlaintextReaderInterface<mixed> $reader
      */
     private function failToDecrypt(
@@ -408,9 +392,6 @@ final class DecryptorCoveredTest extends TestCase
         static::fail('The decryptor accepted ' . $fixture);
     }
 
-    /**
-     * The frames of the trace of $failure, file, line, class and function, without their arguments.
-     */
     private static function frames(DecryptionFailed $failure): string
     {
         return serialize(array_map(

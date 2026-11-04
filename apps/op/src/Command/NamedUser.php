@@ -11,11 +11,6 @@ use function sprintf;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use function trim;
 
-/**
- * The user a command names on its command line, of the tenant it works on. The name is read as the
- * shell handed it over, without the spaces a copied value carries, and a name nobody answers to is said
- * the same way by every command that takes one.
- */
 final readonly class NamedUser
 {
     public function __construct(
@@ -23,9 +18,6 @@ final readonly class NamedUser
     ) {
     }
 
-    /**
-     * @return User|null null when the command was told there is no such user, and should fail
-     */
     public function orTold(SymfonyStyle $io, Tenant $tenant, string $username): ?User
     {
         $name = trim($username);

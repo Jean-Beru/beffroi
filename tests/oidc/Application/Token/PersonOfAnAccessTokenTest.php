@@ -19,9 +19,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The person a resource of the provider reads off an access token (issue #601, architecture §4.6): the one
- * the token names where whatever read it resolved one, and the "sub" read for the client the token was
- * written for where it did not.
+ * Architecture §4.6
  */
 final class PersonOfAnAccessTokenTest extends TestCase
 {
@@ -37,9 +35,7 @@ final class PersonOfAnAccessTokenTest extends TestCase
     }
 
     /**
-     * RFC 8693 §2.2.1, OIDC Core §8.1: the "sub" of an exchanged token was written for the client that
-     * presented it and names nobody to the client that asked, so the person is read by the name their
-     * account carries and that "sub" is asked of nobody.
+     * RFC 8693 §2.2.1, OIDC Core §8.1
      */
     #[Test]
     public function itNamesThePersonTheTokenSaysItIsAbout(): void
@@ -56,9 +52,7 @@ final class PersonOfAnAccessTokenTest extends TestCase
     }
 
     /**
-     * OIDC Core §8: a token that says nobody carries its own claims and nothing else, so its "sub" is read
-     * for the client it was written for, which is what a public kind reads as the identifier the provider
-     * keeps.
+     * OIDC Core §8
      */
     #[Test]
     public function itReadsTheSubjectOfATokenThatSaysNobodyForItsClient(): void
@@ -74,10 +68,6 @@ final class PersonOfAnAccessTokenTest extends TestCase
         static::assertSame($this->alice, $read);
     }
 
-    /**
-     * A person the provider no longer keeps is named by nobody, which the resource that asked reads as a
-     * token it has nothing to answer for.
-     */
     #[Test]
     public function itNamesNobodyForAPersonTheProviderNoLongerKeeps(): void
     {
@@ -93,8 +83,7 @@ final class PersonOfAnAccessTokenTest extends TestCase
     }
 
     /**
-     * A "sub" no kind of this provider resolves names nobody, which is what the "sub" of one client is to
-     * another under a pairwise kind (OIDC Core §8.1).
+     * OIDC Core §8.1
      */
     #[Test]
     public function itNamesNobodyForASubjectNothingResolves(): void

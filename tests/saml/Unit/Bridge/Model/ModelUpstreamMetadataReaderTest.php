@@ -18,9 +18,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * spec/saml.md S-42, S-43, section 6.10 step 3: the metadata of an upstream identity provider read by saml2-model's
- * MetadataReader, by the channel or under the signers a declaration pins, at 2026-09-15T10:00:00Z; and its accepted
- * document read back when the service provider sends it a request (S-48, section 6.11 step 4).
+ * spec/saml.md S-42, S-43, section 6.10 step 3, S-48, section 6.11 step 4
  */
 final class ModelUpstreamMetadataReaderTest extends TestCase
 {
@@ -31,10 +29,6 @@ final class ModelUpstreamMetadataReaderTest extends TestCase
         $this->reader = new ModelUpstreamMetadataReader(new MockClock(Fixtures::now()));
     }
 
-    /**
-     * The acceptance of issue #779: the metadata the SimpleSAMLphp 2.5.3.1 identity provider of the judge publishes,
-     * read by the channel, its entity ID and its key for signing.
-     */
     #[Test]
     public function itReadsTheMetadataOfTheIdentityProviderOfTheJudge(): void
     {
@@ -50,7 +44,7 @@ final class ModelUpstreamMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-42, S-6: a document signed by the pinned key is read signed, with its validUntil.
+     * S-42, S-6
      */
     #[Test]
     public function itReadsADocumentSignedByThePinnedKey(): void
@@ -68,7 +62,7 @@ final class ModelUpstreamMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-42: a document signed by another key than the pinned one is refused.
+     * S-42
      */
     #[Test]
     public function itRefusesADocumentSignedByAnotherKey(): void
@@ -84,7 +78,7 @@ final class ModelUpstreamMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-6: a signed document without validUntil is refused, an older one signed by the same key verifying as well.
+     * S-6
      */
     #[Test]
     public function itRefusesASignedDocumentWithoutValidUntil(): void
@@ -98,8 +92,7 @@ final class ModelUpstreamMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-42, the acceptance of issue #779: a document without an identity provider role is refused, the metadata of
-     * the service provider of a SimpleSAMLphp installation among them.
+     * S-42
      */
     #[Test]
     public function itRefusesADocumentWithoutAnIdentityProviderRole(): void
@@ -113,7 +106,7 @@ final class ModelUpstreamMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-43: an identity provider whose metadata hold no key for signing is refused, nothing it sends being verifiable.
+     * S-43
      */
     #[Test]
     public function itRefusesAnIdentityProviderWithoutAKeyForSigning(): void
@@ -127,8 +120,7 @@ final class ModelUpstreamMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-43: a single sign-on service the service provider would send a browser to that is not https on a host is
-     * refused, the refusal naming the endpoint and never its value (M-16).
+     * S-43, M-16
      */
     #[Test]
     #[DataProvider('provideSingleSignOnServicesOutOfReach')]
@@ -153,7 +145,7 @@ final class ModelUpstreamMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-43: a single sign-on service on a port, and on an IPv6 literal, is https on a host.
+     * S-43
      */
     #[Test]
     #[DataProvider('provideSingleSignOnServicesInReach')]
@@ -176,8 +168,7 @@ final class ModelUpstreamMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-48, section 6.11 step 4: the accepted document of the identity provider of the judge read back into the
-     * model's role, which holds its single sign-on service.
+     * S-48, section 6.11 step 4
      */
     #[Test]
     public function itReadsTheAcceptedDocumentBackIntoTheRoleOfTheModel(): void
@@ -194,8 +185,7 @@ final class ModelUpstreamMetadataReaderTest extends TestCase
     }
 
     /**
-     * S-42, S-43, section 6.11 step 4: a document accepted before that the reading back refuses now is refused, as
-     * the readings of the refresh refuse it.
+     * S-42, S-43, section 6.11 step 4
      */
     #[Test]
     #[DataProvider('provideDocumentsTheReadingBackRefuses')]

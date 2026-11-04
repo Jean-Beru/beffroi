@@ -8,9 +8,7 @@ use Beffroi\Xml\Core\Document;
 use Beffroi\Xml\Core\Loader;
 
 /**
- * A document loaded through the brick, with the SAML stack's ID attributes and the default limits: the way every
- * test obtains a node unless it needs a foreign one. A test holds the Document it reads nodes from: a node alone
- * does not keep its document recognised (section 6.1 step 7).
+ * Section 6.1 step 7
  */
 final class Loaded
 {

@@ -19,9 +19,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 7591 §1.2, decision 0009: the way in to the controlled mode. A tenant issues a token, a client
- * registers with it, and the tenant takes it back; the endpoint reads what the console wrote, both
- * through the one store.
+ * RFC 7591 §1.2, decision 0009
  */
 final class RegistrationTokensTest extends ConsoleTestCase
 {
@@ -29,10 +27,6 @@ final class RegistrationTokensTest extends ConsoleTestCase
 
     private const string REDIRECT_URI = 'https://registered.test/callback';
 
-    /**
-     * The value is printed here and nowhere else: the row holds its digest, so this is the one moment it
-     * exists outside the terminal of whoever issued it.
-     */
     #[Test]
     public function issuingATokenPrintsItsValueOnce(): void
     {
@@ -44,10 +38,6 @@ final class RegistrationTokensTest extends ConsoleTestCase
         static::assertTrue(DrawnSecret::isValue(self::valueOf($tester)));
     }
 
-    /**
-     * A second reading of the same token says what it is worth and never what it is: nothing reads a
-     * value back.
-     */
     #[Test]
     public function theListSaysWhatATokenIsWorthAndNeverWhatItIs(): void
     {
@@ -75,10 +65,6 @@ final class RegistrationTokensTest extends ConsoleTestCase
         static::assertStringContainsString('has issued no initial access token', self::flattened($tester));
     }
 
-    /**
-     * The acceptance of the issue: from "issue" to a 201. What the console wrote is what the endpoint
-     * reads, both through the one store.
-     */
     #[Test]
     public function aTokenTheConsoleIssuedRegistersAClient(): void
     {
@@ -92,10 +78,6 @@ final class RegistrationTokensTest extends ConsoleTestCase
         static::assertSame(Response::HTTP_CREATED, $this->browser->getResponse()->getStatusCode());
     }
 
-    /**
-     * And the other half: from "revoke" to a 401. A token taken back authorises no registration, whatever
-     * it was still worth.
-     */
     #[Test]
     public function aTokenTheConsoleRevokedRegistersNobody(): void
     {
@@ -205,10 +187,6 @@ final class RegistrationTokensTest extends ConsoleTestCase
         );
     }
 
-    /**
-     * The value the issuance printed: the one line of the display that is of the shape this provider
-     * draws.
-     */
     private static function valueOf(CommandTester $tester): string
     {
         static::assertSame(

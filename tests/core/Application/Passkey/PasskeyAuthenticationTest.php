@@ -34,7 +34,7 @@ use Symfony\Component\Clock\MockClock;
 use Webauthn\PublicKeyCredentialRequestOptions;
 
 /**
- * Architecture §3.2, §3.4: a session opened on what an assertion proved, WebAuthn Level 3 §7.2.
+ * Architecture §3.2, §3.4, WebAuthn Level 3 §7.2
  */
 final class PasskeyAuthenticationTest extends TestCase
 {
@@ -185,8 +185,7 @@ final class PasskeyAuthenticationTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §6.1.1 and decision 0034: a count that did not grow is a cloned authenticator or a replay,
-     * refused after the signature with the passkey and its holder in the trail, and the passkey keeps its count.
+     * WebAuthn Level 3 §6.1.1, Decision 0034
      */
     #[Test]
     public function aSignCountThatDidNotGrowIsRefusedWithItsUser(): void
@@ -210,8 +209,7 @@ final class PasskeyAuthenticationTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §7.2 compares the counts only when one of them is not zero: a synced passkey keeps both at
-     * zero, and signs in.
+     * WebAuthn Level 3 §7.2
      */
     #[Test]
     public function aPasskeyThatKeepsItsCountAtZeroSignsIn(): void
@@ -274,9 +272,7 @@ final class PasskeyAuthenticationTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §6.1.3: the BE flag of a credential never changes, so an assertion that claims
-     * another one is refused after the signature was checked, with the key the passkey was enrolled as in
-     * the trail and not the one the assertion claimed.
+     * WebAuthn Level 3 §6.1.3
      */
     #[Test]
     public function anAssertionThatChangedItsBackupEligibilityIsRefused(): void
@@ -322,8 +318,7 @@ final class PasskeyAuthenticationTest extends TestCase
     }
 
     /**
-     * Decision 0029, spec/saml.md S-63: a person of a domain the tenant federates signs in through its upstream
-     * provider and through nothing else, a passkey refused after the signature, as a revoked one is.
+     * Decision 0029, spec/saml.md S-63
      */
     #[Test]
     public function aPersonOfAFederatedDomainIsRefused(): void

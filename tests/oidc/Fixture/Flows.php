@@ -17,15 +17,11 @@ use Beffroi\Oidc\Application\Flow\TheUserIsSentToTheClient;
 use Beffroi\Oidc\Application\Flow\WiredFlowPictures;
 use Beffroi\Oidc\Port\ServedGrantsInterface;
 
-/**
- * The shapes the provider is wired with, in the order it wires them, so that a test reads the pictures
- * of a wiring of grants and no test writes the list of shapes again.
- */
 final readonly class Flows
 {
     /**
-     * @param list<FlowShapeInterface> $openings the wired openings, the production ones by default
-     * @param list<FlowShapeInterface> $closings the wired closings, the production ones by default
+     * @param list<FlowShapeInterface> $openings
+     * @param list<FlowShapeInterface> $closings
      */
     public static function of(ServedGrantsInterface $served, ?array $openings = null, ?array $closings = null): WiredFlowPictures
     {

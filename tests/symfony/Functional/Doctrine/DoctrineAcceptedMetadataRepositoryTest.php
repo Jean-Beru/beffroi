@@ -18,23 +18,16 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * beffroi/saml, spec/saml.md section 6.2 steps 6 and 7: the first document of a service provider registered under the
- * unique index of the tenant and the entity ID, where the console and the hourly step at the same minute race and one
- * of them writes nothing, the store answering every reading after it; S-42, S-8: the rows of each role in the table of
- * that role.
+ * beffroi/saml spec/saml.md section 6.2 steps 6 and 7, S-42, S-8
  */
 final class DoctrineAcceptedMetadataRepositoryTest extends DatabaseTestCase
 {
     private const string SIGNED = 'https://sp.example.org/saml';
 
-    /**
-     * An entity of both roles, a SimpleSAMLphp installation that is a service provider and an identity provider under
-     * one entity ID.
-     */
     private const string BOTH = 'https://saml.acme.example/metadata';
 
     /**
-     * Section 6.2 step 7: the first document of a service provider is written, and read back.
+     * Section 6.2 step 7
      */
     #[Test]
     public function theFirstDocumentOfAServiceProviderIsRegistered(): void
@@ -52,8 +45,7 @@ final class DoctrineAcceptedMetadataRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Section 6.2 step 6: a service provider another process registered first keeps its row, and the second
-     * registration writes nothing and says so.
+     * Section 6.2 step 6
      */
     #[Test]
     public function aServiceProviderRegisteredFirstByAnotherProcessKeepsItsRow(): void
@@ -78,8 +70,7 @@ final class DoctrineAcceptedMetadataRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Section 6.2: a registration that lost the race leaves the store as usable as before, so the service providers
-     * read after it are registered in the same run.
+     * Section 6.2
      */
     #[Test]
     public function aRegistrationThatLostTheRaceLeavesTheStoreUsable(): void
@@ -98,8 +89,7 @@ final class DoctrineAcceptedMetadataRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * S-42, S-8: one entity ID registered as a service provider and as an upstream identity provider is two rows, one
-     * in the table of each role, and forgetting the one leaves the other.
+     * S-42, S-8
      */
     #[Test]
     public function anEntityIdOfBothRolesIsForgottenInOneOnly(): void
@@ -121,7 +111,7 @@ final class DoctrineAcceptedMetadataRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * S-8: the repository of one role refuses the row of the other, which belongs to another table.
+     * S-8
      */
     #[Test]
     public function theRepositoryOfOneRoleRefusesTheRowOfTheOther(): void

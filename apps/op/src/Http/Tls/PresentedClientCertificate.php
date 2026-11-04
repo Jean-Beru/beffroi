@@ -10,15 +10,9 @@ use Beffroi\Oidc\Exception\InvalidRequestException;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * The certificate of a request as the protocol endpoints ask for it (RFC 8705 §2): the one the resolver
- * of the deployment read, or none, and an error of RFC 6749 §5.2 rather than a failure of the server
- * when the request tried to bring one of its own.
+ * RFC 8705 §2
  *
- * The two refusals are the same answer on purpose. A request carrying a certificate in a header and a
- * request whose edge handed over something that is not a certificate are both requests this provider
- * cannot read as a client authentication, and "invalid_request" is what RFC 6749 §5.2 calls that. Which
- * header was tried is kept for whoever reads the logs and is not written back: an error description is
- * a sentence of the provider, never something the request chose (RFC 6749 §5.2).
+ * The header a request tried is logged and never written back: an error description is the provider's own sentence.
  */
 final readonly class PresentedClientCertificate
 {

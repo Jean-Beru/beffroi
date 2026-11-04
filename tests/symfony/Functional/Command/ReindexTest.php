@@ -11,11 +11,6 @@ use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
 use Symfony\Component\Console\Command\Command;
 
-/**
- * Issue #781: the blind indexes of the persons of the tenant derived again after a projection changed, the
- * address folded whole where only its domain was. A row written under the old projection is a row no search
- * finds until then.
- */
 final class ReindexTest extends ConsoleTestCase
 {
     #[Test]

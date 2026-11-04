@@ -9,18 +9,11 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Which named values of the protocol the panel says are there and never writes: the ones whose holder holds
- * what they name, wherever they are written.
- */
 final class WithheldValuesTest extends TestCase
 {
     /**
-     * RFC 6749 §1.4 and §1.5, OIDC Core §3.1.2.1, and what stands for a request in progress: the two codes of
-     * the device grant (RFC 8628 §3.2), both worth guessing (§5.1, §5.2), the verification URI that carries
-     * the user code (§3.3.1), the identifier of a backchannel request (CIBA Core §7.3) and the reference of a
-     * pushed request (RFC 9126 §2.2, §7.1). "user_code" is also the secret of the user a backchannel request
-     * may carry (CIBA Core §7.1).
+     * RFC 6749 §1.4, §1.5, OIDC Core §3.1.2.1, RFC 8628 §3.2, §3.3.1, §5.1, §5.2, CIBA Core §7.1, §7.3,
+     * RFC 9126 §2.2, §7.1
      */
     #[Test]
     #[DataProvider('provideNamesThatHandOverWhatTheyName')]
@@ -52,8 +45,7 @@ final class WithheldValuesTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.2, CIBA Core §7.3, RFC 9126 §2.2: what the same answers say beside a code, an identifier or
-     * a reference is written as it is, the page where the user types the code included.
+     * RFC 8628 §3.2, CIBA Core §7.3, RFC 9126 §2.2
      */
     #[Test]
     #[DataProvider('provideNamesThatHandOverNothing')]

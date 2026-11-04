@@ -8,16 +8,11 @@ use function in_array;
 use Beffroi\Oidc\Domain\Authorization\ResponseModeNames;
 use Beffroi\Oidc\Port\ServedResponseModesInterface;
 
-/**
- * The response modes a test wires exactly, under the names the ways of answering give themselves, including
- * a wiring the provider would never produce, such as the same mode twice or a mode nothing else knows.
- */
 final readonly class WiredModes implements ServedResponseModesInterface
 {
     /**
      * @param non-empty-list<string> $modes
-     * @param list<string> $signing those of them whose answer the tenant signs (JARM §2)
-     * @param string|null $alias the one "response_mode=jwt" resolves to (JARM §2.1), null when the wiring answers no alias
+     * @param list<string> $signing
      */
     private function __construct(
         private array $modes,

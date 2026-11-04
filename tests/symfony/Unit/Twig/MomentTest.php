@@ -14,20 +14,8 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Translation\LocaleSwitcher;
 
-/**
- * Issue #469: a moment as the person in front of the page reads it, in the language the page is written
- * in, on the clock that person keeps, and always saying which clock that is.
- *
- * What ICU writes for a language is ICU's and changes with its version, so what is asserted here is what
- * the provider decides: which clock, which hour on it, and whose words. Pinning the spacing of a locale
- * would be pinning the library.
- */
 final class MomentTest extends TestCase
 {
-    /**
-     * 14:04 UTC is an hour later in London that day, and the clock is named so a reader can check it.
-     * The hour alone is asserted: how a language writes the half of the day is that language's.
-     */
     #[Test]
     public function aMomentIsReadOnTheClockOfThePerson(): void
     {
@@ -50,9 +38,6 @@ final class MomentTest extends TestCase
         static::assertStringContainsString('UTC', $written);
     }
 
-    /**
-     * A clock with no abbreviation of its own is named by its offset, which is as checkable.
-     */
     #[Test]
     public function aClockWithNoAbbreviationIsNamedByItsOffset(): void
     {
@@ -64,10 +49,6 @@ final class MomentTest extends TestCase
         static::assertStringContainsString('GMT+7', $written);
     }
 
-    /**
-     * The language decides the order and the words of a date, which is why the same instant on the same
-     * clock is not written the same way on a page in French and on a page in English.
-     */
     #[Test]
     public function theLanguageOfThePageDecidesTheWordsOfTheDate(): void
     {

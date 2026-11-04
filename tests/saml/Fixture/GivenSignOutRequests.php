@@ -10,11 +10,6 @@ use Beffroi\Saml\Domain\SingleLogout\SignOutAnswer;
 use Beffroi\Saml\Domain\SingleLogout\SignOutRequest;
 use Beffroi\Saml\Port\LogoutMessageReceiverInterface;
 
-/**
- * A receiver that accepts whatever arrives as the logout message a test gives it, a request or the answer of a chain,
- * over either binding, and counts the messages it was handed, each of which the receiver of the provider would have
- * remembered.
- */
 final class GivenSignOutRequests implements LogoutMessageReceiverInterface
 {
     public private(set) int $received = 0;

@@ -12,14 +12,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * I-12, section 6.4: the text of an element is the concatenation of its text and CDATA children, in document order,
- * the value that Canonical XML without comments signs. The comment-split NameID of Duo Labs 2018 (CVE-2017-11428,
- * CVE-2018-0489) is the case.
+ * I-12, section 6.4, CVE-2017-11428, CVE-2018-0489
  */
 final class TextTest extends TestCase
 {
     /**
-     * §9.3 row 1, I-12: a comment splits the text node; both halves are read, as the signature covers them.
+     * §9.3 row 1, I-12
      */
     #[Test]
     public function itConcatenatesTheTextAroundAComment(): void
@@ -32,7 +30,7 @@ final class TextTest extends TestCase
     }
 
     /**
-     * §9.3 row 2, I-12: a CDATA section is text.
+     * §9.3 row 2, I-12
      */
     #[Test]
     public function itReadsACdataSectionAsText(): void
@@ -45,7 +43,7 @@ final class TextTest extends TestCase
     }
 
     /**
-     * §9.3 row 3, I-12: a child element is a refusal; textContent would say user@evil@example.com.
+     * §9.3 row 3, I-12
      */
     #[Test]
     public function itRefusesAChildElement(): void
@@ -62,7 +60,7 @@ final class TextTest extends TestCase
     }
 
     /**
-     * §9.3 row 4, I-12: a processing instruction is skipped.
+     * §9.3 row 4, I-12
      */
     #[Test]
     public function itSkipsAProcessingInstruction(): void
@@ -75,8 +73,7 @@ final class TextTest extends TestCase
     }
 
     /**
-     * I-12: an empty element has the empty string as text, and whitespace is text; trimming is the consumer's
-     * decision.
+     * I-12
      */
     #[Test]
     public function itKeepsWhitespaceAndReadsAnEmptyElementAsEmpty(): void
@@ -94,8 +91,7 @@ final class TextTest extends TestCase
     }
 
     /**
-     * I-12, section 6.4: any other child, an entity reference of a document parsed outside the loader here, is a
-     * refusal too; a partial concatenation is the comment-split class.
+     * I-12, section 6.4
      */
     #[Test]
     public function itRefusesAnEntityReferenceChild(): void

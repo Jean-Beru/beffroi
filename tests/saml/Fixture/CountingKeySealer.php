@@ -9,9 +9,6 @@ use Beffroi\Core\Port\KeySealerInterface;
 use Beffroi\Core\Tests\Fixture\Keys;
 use SensitiveParameter;
 
-/**
- * The KMS of the suite, counting the envelopes it is asked to open: what a test of what a process holds open reads.
- */
 final class CountingKeySealer implements KeySealerInterface
 {
     public private(set) int $unsealed = 0;

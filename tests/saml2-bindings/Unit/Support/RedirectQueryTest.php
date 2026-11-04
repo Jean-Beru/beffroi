@@ -18,16 +18,14 @@ use PHPUnit\Framework\TestCase;
 use function rawurldecode;
 
 /**
- * The builder of the query strings of the tests (sections 9.2 and 9.3), checked against PHP and Dsig alone: what it
- * carries is the message raw-deflated, and what it signs is the octets of SAML Bindings §3.4.4.1, so that a row of the
- * corpus that changes one thing changes that thing only.
+ * Sections 9.2 and 9.3, SAML Bindings §3.4.4.1
  */
 final class RedirectQueryTest extends TestCase
 {
     private const string XML = '<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"/>';
 
     /**
-     * SAML Bindings §3.4.4.1 step 2 and 3: the message raw-deflated, base64-encoded, percent-encoded.
+     * SAML Bindings §3.4.4.1 step 2 and 3
      */
     #[Test]
     public function itCarriesTheMessageRawDeflated(): void
@@ -43,8 +41,7 @@ final class RedirectQueryTest extends TestCase
     }
 
     /**
-     * B-2, SAML Bindings §3.4.4.1: the octets are the message parameter, RelayState and SigAlg, whatever the order of
-     * the parameters.
+     * B-2, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itTakesTheOctetsInTheOrderOfTheBinding(): void
@@ -66,7 +63,7 @@ final class RedirectQueryTest extends TestCase
     }
 
     /**
-     * D-8: the Signature signed() appends is one of the test key over the octets, which Dsig verifies.
+     * D-8
      */
     #[Test]
     public function itSignsTheOctetsWithTheTestKey(): void
@@ -88,7 +85,7 @@ final class RedirectQueryTest extends TestCase
     }
 
     /**
-     * B-8: an escape in lowercase hexadecimal, the rest of the value as it was.
+     * B-8
      */
     #[Test]
     public function itEscapesInLowercase(): void
@@ -98,8 +95,7 @@ final class RedirectQueryTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 2: a query string read back is split on & and each segment on its first =, the names and the
-     * values kept as written, in order, a segment without = an empty value.
+     * Section 6.1 step 2
      */
     #[Test]
     public function itReadsAQueryStringBack(): void

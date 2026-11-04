@@ -7,10 +7,6 @@ namespace Beffroi\Core\Tests\Fixture;
 use Beffroi\Core\Domain\Key\KeptSigningAlgorithmInterface;
 use Beffroi\Core\Domain\Key\KeyUse;
 
-/**
- * An algorithm of a key the tenant signs with and keeps out of its JWK Set, as the SAML key of a tenant is: RSA, its
- * use "sig" unless a test names another to see it refused.
- */
 final readonly class KeptSigning implements KeptSigningAlgorithmInterface
 {
     public function __construct(

@@ -7,9 +7,6 @@ namespace Beffroi\Oidc\Tests\Fixture;
 use Beffroi\Core\Bridge\Random\PlatformRandomness;
 use Beffroi\Oidc\Application\Secret\SecretDrawer;
 
-/**
- * For a test that needs a value of the shape this provider draws and does not care which.
- */
 final class Secrets
 {
     public static function drawer(): SecretDrawer

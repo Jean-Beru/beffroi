@@ -13,16 +13,10 @@ use LogicException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * The ways of answering the authorization endpoint is wired with (issue #240): the one source the parser, the
- * discovery document and the retirement of a signing key read. It knows no mode of its own.
- */
 final class AuthorizationResponseRenderersTest extends TestCase
 {
     /**
-     * Multiple Response Type Encoding Practices §2.1: the names the ways of answering give themselves, in the
-     * order they are wired, the first being what a request the provider cannot answer as it asked falls
-     * back to.
+     * Multiple Response Type Encoding Practices §2.1
      */
     #[Test]
     public function itNamesTheModesItIsWiredWithInTheOrderTheyAreWired(): void
@@ -58,8 +52,7 @@ final class AuthorizationResponseRenderersTest extends TestCase
     }
 
     /**
-     * JARM §2.1: the alias delivers nothing of its own, and what it names is the wired way of answering that
-     * declares it.
+     * JARM §2.1
      */
     #[Test]
     public function theAliasIsAnsweredInTheModeThatDeclaresItAnswersIt(): void
@@ -76,7 +69,7 @@ final class AuthorizationResponseRenderersTest extends TestCase
     }
 
     /**
-     * JARM §2.1: a deployment that wires no such way of answering serves no alias, whatever else it signs.
+     * JARM §2.1
      */
     #[Test]
     public function theAliasIsAnsweredInNothingWhereNoModeDeclaresIt(): void
@@ -92,8 +85,7 @@ final class AuthorizationResponseRenderersTest extends TestCase
     }
 
     /**
-     * JARM §2: what the document announces beside the modes, the algorithms it announces with them and the
-     * retirement window of the key that signs one all read this.
+     * JARM §2
      */
     #[Test]
     public function itSignsAnAnswerWhenAWiredModeSaysSo(): void
@@ -127,8 +119,7 @@ final class AuthorizationResponseRenderersTest extends TestCase
     }
 
     /**
-     * JARM §2.1: the alias names a mode and is not one, so a way of answering that took its name would be a
-     * delivery nothing could resolve.
+     * JARM §2.1
      */
     #[Test]
     public function itRefusesAWayOfAnsweringThatTakesTheNameOfTheAlias(): void
@@ -142,8 +133,7 @@ final class AuthorizationResponseRenderersTest extends TestCase
     }
 
     /**
-     * JARM §2.1: the alias names one signed mode, so a wiring with two answers to that question is a wiring
-     * that does not hold together.
+     * JARM §2.1
      */
     #[Test]
     public function itRefusesTwoWaysOfAnsweringTheAlias(): void

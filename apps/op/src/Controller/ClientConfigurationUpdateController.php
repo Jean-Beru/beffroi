@@ -16,10 +16,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * A client replaces its own registration (RFC 7592 §2.2), PUT only: the whole registration in, what the
- * provider now holds of it out. A member the request leaves out is a member the client no longer
- * registers, and a request that would reach what a registration could not is refused exactly as that
- * registration would have been.
+ * RFC 7592 §2.2
  */
 #[AsController]
 final readonly class ClientConfigurationUpdateController

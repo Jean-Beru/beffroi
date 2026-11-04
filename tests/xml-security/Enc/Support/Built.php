@@ -14,8 +14,7 @@ use Dom\XMLDocument;
 use RuntimeException;
 
 /**
- * What a consumer builds and encrypts (section 6.2): a SAML-shaped response holding one assertion, every element
- * prefixed, the Issuer first in each; the assertion is what the tests of the encryptor hand it.
+ * Section 6.2
  */
 final class Built
 {
@@ -31,7 +30,7 @@ final class Built
     }
 
     /**
-     * The same, a comment inside the NameID: what the exclusive canonical form with comments keeps (E-9).
+     * E-9
      */
     public static function responseWithCommentedAssertion(): Document
     {
@@ -39,8 +38,7 @@ final class Built
     }
 
     /**
-     * The assertion of a built response, the element a consumer encrypts: found among the children, since a built
-     * document has no ID index before it is loaded (core.md section 6.2).
+     * core.md section 6.2
      */
     public static function assertionOf(Document $document): Element
     {

@@ -18,25 +18,14 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * FAPI 1.0 Advanced Final §6.2.1: the answer of a protected resource of the provider names the exchange
- * it belongs to, with the UUID the request named or with one drawn for it, and the answer of anything
- * else names none.
+ * FAPI 1.0 Advanced Final §6.2.1
  */
 final class FapiInteractionIdTest extends TestCase
 {
-    /**
-     * What a client names an exchange with: the UUID §6.2.1 asks it to send.
-     */
     private const string NAMED = '9f4ecb8a-0a4a-4a8f-9b06-77b5b0d1a2c3';
 
-    /**
-     * What the provider draws for a request that named nothing it could read.
-     */
     private const string DRAWN = '3d1b4b24-6a2a-4df1-9f8f-2c1b60cb7c11';
 
-    /**
-     * A second UUID, for the request that names the header twice.
-     */
     private const string ALSO_NAMED = '5c2d9f70-1e84-4f16-8a42-0b0d3f7e6a55';
 
     #[Test]
@@ -66,8 +55,7 @@ final class FapiInteractionIdTest extends TestCase
     }
 
     /**
-     * §6.2.1 asks the client for an RFC 4122 UUID, so anything else names no exchange on either side and
-     * is not echoed; a request naming the header twice has named it once too often.
+     * FAPI 1.0 Advanced Final §6.2.1, RFC 4122
      *
      * @return iterable<string, array{list<string>}>
      */
@@ -97,10 +85,6 @@ final class FapiInteractionIdTest extends TestCase
         static::assertSame(self::DRAWN, $response->headers->get(FapiInteractionId::HEADER));
     }
 
-    /**
-     * The header is owed by the resources of the provider and by nothing else: an endpoint a client
-     * authenticates at and a page a browser reaches carry none, whatever the request named.
-     */
     #[Test]
     public function theAnswerOfWhatIsNoResourceCarriesNothing(): void
     {
@@ -127,7 +111,7 @@ final class FapiInteractionIdTest extends TestCase
     }
 
     /**
-     * @param list<string> $named what the request carries under the header, as many times as it carries it
+     * @param list<string> $named
      */
     private static function request(array $named): Request
     {

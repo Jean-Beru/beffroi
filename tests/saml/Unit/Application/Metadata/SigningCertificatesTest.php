@@ -30,8 +30,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md section 6.1 step 2, S-1, S-2, S-3: the certificate of each SAML key of a tenant in service, in creation
- * order, each key opened by the KMS at most once per process.
+ * spec/saml.md section 6.1 step 2, S-1, S-2, S-3
  */
 final class SigningCertificatesTest extends TestCase
 {
@@ -46,7 +45,7 @@ final class SigningCertificatesTest extends TestCase
     }
 
     /**
-     * S-2: the staged key, which signs nothing yet, has its certificate beside the active one's, in creation order.
+     * S-2
      */
     #[Test]
     public function theNextCertificateIsListedBesideTheCurrentOne(): void
@@ -65,7 +64,7 @@ final class SigningCertificatesTest extends TestCase
     }
 
     /**
-     * S-2: a key that has retired is out of the metadata.
+     * S-2
      */
     #[Test]
     public function aRetiredKeyIsNotListed(): void
@@ -86,7 +85,7 @@ final class SigningCertificatesTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 1, S-1: a key of any other algorithm of the tenant has no certificate in the metadata.
+     * Section 6.1 step 1, S-1
      */
     #[Test]
     public function aKeyOfAnotherAlgorithmIsNotListed(): void
@@ -102,8 +101,7 @@ final class SigningCertificatesTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 2, S-3: a key is opened by the KMS once per process, whatever the number of times the metadata
-     * is asked for.
+     * Section 6.1 step 2, S-3
      */
     #[Test]
     public function aKeyIsOpenedOncePerProcess(): void
@@ -124,8 +122,7 @@ final class SigningCertificatesTest extends TestCase
     }
 
     /**
-     * S-1: what is kept of a key that has left service is forgotten with it, so that a key under that name in service
-     * again is opened again rather than answered from memory.
+     * S-1
      */
     #[Test]
     public function theCertificateOfAKeyThatLeftServiceIsForgotten(): void
@@ -150,7 +147,7 @@ final class SigningCertificatesTest extends TestCase
     }
 
     /**
-     * S-1: forgetting the keys of one tenant leaves what was built for another as it was.
+     * S-1
      */
     #[Test]
     public function forgettingTheKeysOfOneTenantLeavesAnotherOnesAlone(): void
@@ -171,9 +168,7 @@ final class SigningCertificatesTest extends TestCase
     }
 
     /**
-     * S-1, S-3: the private half opened to build a certificate is dropped at once, the active key's as any other, so
-     * that the memory of the core holds nothing once the metadata is served: the first signature of the process opens
-     * the active key for itself.
+     * S-1, S-3
      */
     #[Test]
     public function theCertificatesLeaveNoPrivateHalfOpen(): void
@@ -192,8 +187,7 @@ final class SigningCertificatesTest extends TestCase
     }
 
     /**
-     * Section 5.3, S-3, S-37: a process that signs before it serves the metadata opens the active key once, the
-     * certificate the metadata list built from the key the signature opened.
+     * Section 5.3, S-3, S-37
      */
     #[Test]
     public function aProcessThatSignsFirstOpensTheActiveKeyOnce(): void
@@ -217,8 +211,7 @@ final class SigningCertificatesTest extends TestCase
     }
 
     /**
-     * S-1, S-3: what SigningCertificates keeps between two calls is certificates. Once of() has built them, nothing it
-     * holds, its collaborators aside, is a key the KMS opened or a private member of one (RFC 7518 section 6.3.2).
+     * S-1, S-3, RFC 7518 §6.3.2
      */
     #[Test]
     public function theCertificatesKeepNoPrivateMember(): void
@@ -237,8 +230,7 @@ final class SigningCertificatesTest extends TestCase
     }
 
     /**
-     * S-37: the certificate of a key already opened, the active one a signature is made with, is the one the metadata
-     * list for it.
+     * S-37
      */
     #[Test]
     public function theCertificateOfAnOpenedKeyIsTheOneListed(): void
@@ -255,8 +247,7 @@ final class SigningCertificatesTest extends TestCase
     }
 
     /**
-     * S-3, S-37: the certificate built for a key already opened is the one the metadata list afterwards, the KMS not
-     * asked to open that key again.
+     * S-3, S-37
      */
     #[Test]
     public function theCertificateOfAnOpenedKeyIsListedWithoutTheKms(): void
@@ -277,8 +268,7 @@ final class SigningCertificatesTest extends TestCase
     }
 
     /**
-     * S-3, S-37: the certificate of a key already opened is built once per process, whatever the number of signatures
-     * that carry it.
+     * S-3, S-37
      */
     #[Test]
     public function theCertificateOfAnOpenedKeyIsBuiltOnce(): void
@@ -329,10 +319,6 @@ final class SigningCertificatesTest extends TestCase
     }
 
     /**
-     * What a value holds of the private half of the SAML pair: an opened key, or the value of one of its private
-     * members, looked for through every property of every object, whatever its visibility, as an array cast reads
-     * them, and through every array, the collaborators named left out.
-     *
      * @param list<object> $collaborators
      *
      * @return list<string>

@@ -19,8 +19,7 @@ use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
- * Reading back the document a client publishes behind its "sector_identifier_uri" (OIDC Registration §5):
- * one GET, bounded, no redirect followed (decision 0006).
+ * OIDC Registration §5, Decision 0006
  */
 final class SectorIdentifierDocumentFetcherTest extends TestCase
 {
@@ -48,9 +47,7 @@ final class SectorIdentifierDocumentFetcherTest extends TestCase
     }
 
     /**
-     * Decision 0006: no outbound request follows a redirect. The document is what proves that whoever
-     * registers controls the host of the sector, so a third party answering for that host would prove the
-     * opposite of what is being asked.
+     * Decision 0006
      */
     #[Test]
     public function itRefusesToFollowARedirect(): void
@@ -87,9 +84,6 @@ final class SectorIdentifierDocumentFetcherTest extends TestCase
         $fetcher->fetch(new ClientUri(self::SECTOR_IDENTIFIER_URI));
     }
 
-    /**
-     * A client that hangs must not hold a worker: a registration is waiting on this read.
-     */
     #[Test]
     public function itRefusesAClientThatDoesNotAnswerInTime(): void
     {
@@ -135,8 +129,7 @@ final class SectorIdentifierDocumentFetcherTest extends TestCase
     }
 
     /**
-     * OIDC Registration §5: a single JSON array, and a registration is refused rather than checked against
-     * half a document.
+     * OIDC Registration §5
      */
     #[Test]
     public function itRefusesAnAnswerThatIsNotAnArray(): void

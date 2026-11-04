@@ -11,8 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The page of a table of the account that was asked for (architecture §5.2): a number, how many rows it
- * holds, and what that is worth inside a list of a given length.
+ * Architecture §5.2
  */
 final class PaginationTest extends TestCase
 {
@@ -80,9 +79,6 @@ final class PaginationTest extends TestCase
         static::assertSame(2, new Pagination(2, 20)->within(45)->number);
     }
 
-    /**
-     * A list that holds nothing is one page, and that page is the one a table says it holds nothing on.
-     */
     #[Test]
     public function aListThatHoldsNothingIsOnePage(): void
     {

@@ -25,9 +25,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 6749 §4.1.4, OIDC Core §11: whether a response carries a refresh token, asked in one place for every
- * grant that may issue one. What spends one is what the provider is wired with and what the client
- * registered for, and no grant names it.
+ * RFC 6749 §4.1.4, OIDC Core §11
  */
 final class RefreshTokenDueTest extends TestCase
 {
@@ -41,9 +39,6 @@ final class RefreshTokenDueTest extends TestCase
         $this->hasher = new FakePasswordHasher();
     }
 
-    /**
-     * A confidential client registered for a grant that spends a refresh token gets one without asking.
-     */
     #[Test]
     public function aConfidentialClientRegisteredForTheRenewalGetsOne(): void
     {
@@ -54,9 +49,6 @@ final class RefreshTokenDueTest extends TestCase
         static::assertTrue($due->forThe($this->authorization($this->confidential())));
     }
 
-    /**
-     * A deployment that hands a refresh token only to whoever asked for "offline_access" says so once.
-     */
     #[Test]
     public function aDeploymentMayAskForOfflineAccessOfEverybody(): void
     {
@@ -69,7 +61,7 @@ final class RefreshTokenDueTest extends TestCase
     }
 
     /**
-     * OIDC Core §11: a public client gets one when it asked for "offline_access" and not otherwise.
+     * OIDC Core §11
      *
      * @param list<string> $scopes
      */
@@ -93,9 +85,6 @@ final class RefreshTokenDueTest extends TestCase
         yield 'with offline_access' => [['openid', 'offline_access'], true];
     }
 
-    /**
-     * A refresh token nothing wired could spend is one no response carries, whatever the client asked for.
-     */
     #[Test]
     public function aProviderThatSpendsNoneIssuesNone(): void
     {
@@ -106,9 +95,6 @@ final class RefreshTokenDueTest extends TestCase
         static::assertFalse($due->forThe($this->authorization($this->confidential(), ['openid', 'offline_access'])));
     }
 
-    /**
-     * A client not registered for the grant that spends one gets none, even asking for "offline_access".
-     */
     #[Test]
     public function aClientNotRegisteredForTheRenewalGetsNone(): void
     {

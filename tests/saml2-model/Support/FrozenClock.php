@@ -10,8 +10,7 @@ use Psr\Clock\ClockInterface;
 use function sprintf;
 
 /**
- * The clock port of section 5.2, frozen at an instant in UTC: now() returns it however often it is read. A test moves
- * time by taking another clock from movedBy(), never by sleeping (section 9.7); this one never changes.
+ * Section 5.2, section 9.7
  */
 final readonly class FrozenClock implements ClockInterface
 {
@@ -27,9 +26,6 @@ final readonly class FrozenClock implements ClockInterface
         return $this->now;
     }
 
-    /**
-     * A new clock, $seconds later, or earlier when negative.
-     */
     public function movedBy(int $seconds): self
     {
         return new self($this->now->modify(sprintf('%+d seconds', $seconds)));

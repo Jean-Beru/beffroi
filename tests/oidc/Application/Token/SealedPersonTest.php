@@ -17,15 +17,10 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The person a self-contained access token says it is about (issue #641, architecture §4.6): the claim the
- * issuer of that shape writes and the verifier of that shape opens.
+ * Architecture §4.6
  */
 final class SealedPersonTest extends TestCase
 {
-    /**
-     * The name the account carries, which is the one the journal of a person is read under (issue #588) and
-     * the one a pairwise kind exists to keep from a client (OIDC Core §8.1).
-     */
     private const string ACCOUNT = 'alice-as-this-provider-knows-her';
 
     private Tenant $tenant;
@@ -38,10 +33,6 @@ final class SealedPersonTest extends TestCase
         $this->persons = Subjects::sealedPerson();
     }
 
-    /**
-     * Issue #641: what the issuer wrote is what the verifier reads, the person as their account names them,
-     * which is what lets a token with no record behind it say who it is about.
-     */
     #[Test]
     public function itReadsBackThePersonItSealed(): void
     {
@@ -56,9 +47,7 @@ final class SealedPersonTest extends TestCase
     }
 
     /**
-     * OIDC Core §8.1: the name the account carries is the one that links a person across sectors, so a
-     * claim carrying it in the clear would hand it to every holder of the token. The claim is read by this
-     * provider and by nobody else.
+     * OIDC Core §8.1
      */
     #[Test]
     public function itHandsTheNameOfTheAccountToNoHolderOfTheToken(): void
@@ -72,9 +61,7 @@ final class SealedPersonTest extends TestCase
     }
 
     /**
-     * A token that carries no such claim is about whoever its "sub" names for the client it was written
-     * for, which is what a token somebody signed in for and a token a client holds for itself are
-     * (RFC 6749 §4.4).
+     * RFC 6749 §4.4
      */
     #[Test]
     public function itNamesNobodyForATokenCarryingNoClaim(): void
@@ -87,8 +74,7 @@ final class SealedPersonTest extends TestCase
     }
 
     /**
-     * RFC 6750 §3.1, decision 0006: a claim this provider did not write there is refused rather than read
-     * as saying nobody, and the refusal says no more than that the token is not one of ours.
+     * RFC 6750 §3.1, Decision 0006
      */
     #[Test]
     #[DataProvider('provideClaimsThisProviderDidNotWrite')]
@@ -116,17 +102,13 @@ final class SealedPersonTest extends TestCase
         ];
         yield 'empty' => [''];
         yield 'not base64url' => ['sealed:acme:' . self::ACCOUNT];
-        // RFC 4648 §5: the alphabet of base64url and no other, so a value written in the standard one is
-        // not read as though this provider had written it
+        // RFC 4648 §5: a value in the standard alphabet was not written by this provider.
         yield 'the standard alphabet' => ['c2VhbGVkOmFjbWU6YWxpY+Ug'];
         yield 'the padding of base64' => ['c2VhbGVkOmFjbWU6YWxpY2U='];
-        // an envelope of one tenant does not open for another, which is what the KMS guarantees
-        // (architecture §3.3)
         yield 'sealed for another tenant' => [
             Base64Url::encode(new FakeSecretSealer()->seal(Fixtures::tenant('other', 'https://id.other.example'), self::ACCOUNT)),
         ];
-        // OIDC Core §2: a subject is printable ASCII without spaces, and what an envelope of this provider
-        // holds is a subject
+        // OIDC Core §2: a subject is printable ASCII without spaces.
         yield 'an envelope holding no subject' => [
             Base64Url::encode(new FakeSecretSealer()->seal(Fixtures::tenant(), 'a name with a space')),
         ];

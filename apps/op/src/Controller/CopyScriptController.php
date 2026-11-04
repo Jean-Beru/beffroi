@@ -10,11 +10,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * The script a page of the account runs to put what it shows into the clipboard of whoever is reading it
- * (Clipboard API §3, architecture §5.2): the backup codes of a second factor, shown once and copied in
- * one click rather than by hand.
- */
 #[AsController]
 final readonly class CopyScriptController
 {

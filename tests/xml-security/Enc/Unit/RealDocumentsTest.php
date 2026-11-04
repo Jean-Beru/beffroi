@@ -25,15 +25,12 @@ use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 9.4: the real documents, what SimpleSAMLphp's library encrypted, decrypted here with the test key
- * (tests/xml-security/Enc/Fixture/real/README.md); the interoperability is proven, the trust is the metadata layer's business.
+ * Section 9.4
  */
 final class RealDocumentsTest extends TestCase
 {
     /**
-     * §9.4, section 13: what xmlseclibs 3.1.5, the library under simplesamlphp/saml2, encrypted for this namespace
-     * on 27 September 2026 over the assertion of the data file, under aes256-gcm then aes128-gcm, the session key
-     * under rsa-oaep-mgf1p, the EncryptedKey inside a dsig:KeyInfo with no hint.
+     * §9.4, section 13
      */
     #[Test]
     #[TestWith(
@@ -71,9 +68,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * §9.4, E-15: what simplesamlphp/saml2 4.20.3's EncryptedAssertion::setAssertion() produces under the peer's RSA
-     * key, aes128-cbc with rsa-oaep-mgf1p, which is what a SimpleSAMLphp identity provider sends: refused by name by
-     * the decryption that takes no signature, before any key is touched.
+     * §9.4, E-15
      */
     #[Test]
     public function itRefusesWhatSimpleSamlPhpsSetAssertionEncryptsByDefaultWithoutASignature(): void
@@ -91,8 +86,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * §9.4, §9.3 row 22, E-15, E-16: the same under a signature that covers it decrypts, its padding the count
-     * repeated, as xmlseclibs writes it: a padding of another producer than xmlsec1, of which only the count is read.
+     * §9.4, §9.3 row 22, E-15, E-16
      */
     #[Test]
     public function itDecryptsWhatSimpleSamlPhpsSetAssertionEncryptsByDefaultUnderASignature(): void

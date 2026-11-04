@@ -16,7 +16,7 @@ use function strlen;
 final class RequestUriTest extends TestCase
 {
     /**
-     * RFC 9126 §2.2: the URN the specification registers, with the reference behind it.
+     * RFC 9126 §2.2
      */
     #[Test]
     public function aGeneratedReferenceIsTheUrnOfTheSpecification(): void
@@ -30,8 +30,7 @@ final class RequestUriTest extends TestCase
     }
 
     /**
-     * RFC 9126 §7.1: the reference is guessed by nobody, which is 256 bits of randomness and a value no
-     * two calls share.
+     * RFC 9126 §7.1
      */
     #[Test]
     public function twoGeneratedReferencesDiffer(): void
@@ -52,8 +51,7 @@ final class RequestUriTest extends TestCase
     }
 
     /**
-     * OIDC Core §6.2: a "request_uri" that is not one of ours is a request object by reference, which
-     * the authorization endpoint answers for; nothing here looks it up and nothing fetches it.
+     * OIDC Core §6.2
      */
     #[Test]
     #[DataProvider('provideForeignReferences')]
@@ -78,9 +76,6 @@ final class RequestUriTest extends TestCase
         yield 'a newline behind a reference that would pass' => ['urn:ietf:params:oauth:request_uri:' . str_repeat('a', 43) . "\n"];
     }
 
-    /**
-     * The store keeps the SHA-256 and never the value, as it keeps an authorization code.
-     */
     #[Test]
     public function theHashIsTheSha256OfTheValue(): void
     {

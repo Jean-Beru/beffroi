@@ -22,8 +22,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Issue #741, architecture §4.9, decision 0006: what was issued under a session is taken out of use when the
- * session ends, whatever ended it.
+ * Architecture §4.9, Decision 0006
  */
 final class SessionTokensRevocationTest extends TestCase
 {
@@ -52,10 +51,6 @@ final class SessionTokensRevocationTest extends TestCase
         $this->revocation = new SessionTokensRevocation(new RefreshTokenRevocation($this->refreshTokens), $this->accessTokens);
     }
 
-    /**
-     * Every refresh token issued in the session is revoked, a rotated one included, dated by the end of the
-     * session and not by the run that revokes it.
-     */
     #[Test]
     public function theRefreshTokensOfTheSessionAreRevokedAtItsEnd(): void
     {
@@ -86,8 +81,7 @@ final class SessionTokensRevocationTest extends TestCase
     }
 
     /**
-     * An opaque access token of the session is removed, an unknown token being an invalid one
-     * (RFC 6750 §3.1); one of another session stays.
+     * RFC 6750 §3.1
      */
     #[Test]
     public function theStoredAccessTokensOfTheSessionAreRemoved(): void
@@ -104,9 +98,6 @@ final class SessionTokensRevocationTest extends TestCase
         static::assertSame([$elsewhere], $this->accessTokens->all());
     }
 
-    /**
-     * A refresh token of the session, issued at the fixture's "now" plus an offset, saved.
-     */
     private function refreshToken(
         string $value,
         AuthenticationSession $session,

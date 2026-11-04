@@ -9,10 +9,6 @@ use Beffroi\Oidc\Domain\Interaction\AuthorizationDecision;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * The user has to authenticate: the browser goes to the login page of this interaction, which resumes
- * it once the login is done (OIDC Core §3.1.2.1).
- */
 final readonly class LoginRequiredRenderer implements DecisionRendererInterface
 {
     public const string ROUTE = LoginController::ROUTE;

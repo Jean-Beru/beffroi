@@ -22,18 +22,6 @@ use const JSON_UNESCAPED_SLASHES;
 use JsonException;
 use LogicException;
 
-/**
- * The backup codes of a TOTP in one JSON column, as the core writes a stored set of them
- * (`StoredBackupCodes`): a list, in their order, each entry a typed hash and the moment the code was spent
- * at.
- *
- * A column holds a list of value objects and not one, so this is a type of its own and not a
- * `JsonObjectType`; the Doctrine half is all it keeps.
- *
- * The handoff through a static is part of that half: Doctrine builds a type from a class name, so nothing
- * can be injected here; what reads the document takes the wiring as an argument, and this hands it the one
- * the provider gave it when it booted.
- */
 final class BackupCodesType extends Type implements NeedsPasswordAlgorithmsInterface
 {
     public const string NAME = 'beffroi_backup_codes';

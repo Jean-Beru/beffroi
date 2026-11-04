@@ -20,9 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Issue #613: a person poses their first passkey from the URL an administrator handed them, with no
- * session and nothing to sign in with, on a tenant that signs its users in by passkey (decision 0025).
- * The walk ends where the product claim is: they sign in with what they have just posed.
+ * Decision 0025
  */
 final class AFirstPasskeyFromATicketTest extends PasskeyTestCase
 {
@@ -31,7 +29,6 @@ final class AFirstPasskeyFromATicketTest extends PasskeyTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        // the case the ticket exists for: a person created after the tenant hardened, with no password
         $this->alice = self::user('alice');
         self::harden(new PhishingResistant());
         self::reload();
@@ -51,10 +48,6 @@ final class AFirstPasskeyFromATicketTest extends PasskeyTestCase
         static::assertCount(1, $page->filter('form[data-passkey="enrol"]'));
     }
 
-    /**
-     * The whole of it: the page, the ceremony, the passkey in the rows, the ticket spent, and the person
-     * signed in by what they just posed.
-     */
     #[Test]
     public function thePersonPosesAPasskeyAndSignsInWithIt(): void
     {
@@ -71,7 +64,6 @@ final class AFirstPasskeyFromATicketTest extends PasskeyTestCase
         static::assertCount(1, self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
             ->findByUser($this->alice, PasskeyCredential::class));
 
-        // and the point of it all: they sign in with what they posed
         $this->forgetTheBrowser();
         self::forgetEvents();
         $this->loginWithPasskey($this->authorize(), $device);
@@ -134,10 +126,6 @@ final class AFirstPasskeyFromATicketTest extends PasskeyTestCase
         static::assertSame(Response::HTTP_NOT_FOUND, $this->browser->getResponse()->getStatusCode());
     }
 
-    /**
-     * The form of the page is read with its token: a ceremony posted without it is refused as every form
-     * of this provider is.
-     */
     #[Test]
     public function aCeremonyPostedWithoutTheTokenOfThePageIsRefused(): void
     {
@@ -155,10 +143,6 @@ final class AFirstPasskeyFromATicketTest extends PasskeyTestCase
         static::assertSame([], self::events(CredentialEnrolled::class));
     }
 
-    /**
-     * The person is read again from the rows: what the fixture holds was detached when the identity map
-     * was cleared, and a ticket names a person the entity manager manages.
-     */
     private function issue(): IssuedEnrolmentTicket
     {
         $alice = self::service('test.beffroi.users', UserRepositoryInterface::class)->find($this->alice->id) ?? static::fail('The person is gone.');
@@ -182,10 +166,6 @@ final class AFirstPasskeyFromATicketTest extends PasskeyTestCase
         return $crawler;
     }
 
-    /**
-     * The ceremony as the page does it: the options fetched, the attestation posted with the token of the
-     * page.
-     */
     private function poseAPasskey(IssuedEnrolmentTicket $issued, SoftwareAuthenticator $device): void
     {
         $token = $this->ticketPage($issued)->filter('form[data-passkey="enrol"] input[name="_token"]')->attr('value');

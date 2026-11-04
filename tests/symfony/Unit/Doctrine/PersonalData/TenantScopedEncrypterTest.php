@@ -19,17 +19,12 @@ use Symfony\Component\KeyManagement\Test\InMemoryDataKeyStore;
 use Symfony\Component\KeyManagement\Test\InMemoryKms;
 
 /**
- * Decision 0018: the scope of a sealed column carries the tenant, the envelope is bound to it, and a write
- * with no ambient tenant is refused rather than falling back on a scope of its own.
+ * Decision 0018
  */
 final class TenantScopedEncrypterTest extends TestCase
 {
     private const string FAMILY = 'user';
 
-    /**
-     * The scope the store sees is the family prefixed by the slug of the ambient tenant, which is the only
-     * channel there is between an encrypted type and the store.
-     */
     #[Test]
     public function theScopeTheStoreSeesCarriesTheSlugOfTheAmbientTenant(): void
     {
@@ -49,9 +44,7 @@ final class TenantScopedEncrypterTest extends TestCase
     }
 
     /**
-     * Decision 0011 refuses a data key shared between two tenants, and the store returns the newest key of
-     * a scope without reading any other column: two tenants sealing the same value in the same column are
-     * two keys and two ciphertexts.
+     * Decision 0011
      */
     #[Test]
     public function twoTenantsSealingTheSameValueInTheSameColumnDoNotShareAKey(): void
@@ -73,11 +66,6 @@ final class TenantScopedEncrypterTest extends TestCase
         static::assertSame('alice@example.com', $globex->decrypt($ofGlobex));
     }
 
-    /**
-     * The authenticated data of the envelope name the tenant, as `TenantEnvelope` names them for a signing
-     * key and for a sealed secret: a ciphertext of one tenant does not open for another, whatever row it is
-     * found in.
-     */
     #[Test]
     public function aValueSealedForOneTenantDoesNotOpenForAnother(): void
     {
@@ -95,10 +83,6 @@ final class TenantScopedEncrypterTest extends TestCase
         $globex->decrypt($sealed);
     }
 
-    /**
-     * A value sealed outside the scope of its tenant is a value no destruction of that tenant's keys
-     * reaches, so a write that cannot name a tenant refuses and the refusal names the family.
-     */
     #[Test]
     public function aWriteWithNoAmbientTenantIsRefusedAndNamesTheFamily(): void
     {
@@ -113,10 +97,6 @@ final class TenantScopedEncrypterTest extends TestCase
         $encrypter->encrypt(self::FAMILY, 'alice@example.com');
     }
 
-    /**
-     * Nothing is written when the tenant cannot be named: the refusal happens before the store is asked
-     * for a key, so no scope of a tenant nobody named is created either.
-     */
     #[Test]
     public function aWriteWithNoAmbientTenantMintsNoDataKey(): void
     {
@@ -134,10 +114,6 @@ final class TenantScopedEncrypterTest extends TestCase
         static::assertSame([], iterator_to_array($store->all()));
     }
 
-    /**
-     * A read is refused the same way: the tenant is what the authenticated data name, so a read that
-     * cannot name one has nothing to open the envelope with.
-     */
     #[Test]
     public function aReadWithNoAmbientTenantIsRefused(): void
     {
@@ -155,11 +131,6 @@ final class TenantScopedEncrypterTest extends TestCase
         $encrypter->decrypt($sealed);
     }
 
-    /**
-     * An envelope that carries its own data key is read through the fallback rather than refused: nothing
-     * of this repository has written one into a column, but the sealed keys and the sealed secrets are
-     * envelopes of that shape and the same encrypter is what reads them.
-     */
     #[Test]
     public function aSelfContainedEnvelopeIsReadThroughTheFallback(): void
     {
@@ -180,10 +151,6 @@ final class TenantScopedEncrypterTest extends TestCase
         static::assertSame('alice@example.com', $read);
     }
 
-    /**
-     * The slug of a scope is what precedes the first separator, which is what routes a write to the store
-     * of its tenant; a slug carries no separator of its own, being lowercase letters, digits and hyphens.
-     */
     #[Test]
     #[DataProvider('provideScopes')]
     public function theSlugOfAScopeIsWhatPrecedesTheFirstSeparator(string $scope, string $expected): void

@@ -14,13 +14,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 3, the XXE family: external entities read files and URLs, entity expansion exhausts memory, an external
- * DTD is fetched. The rule: a DOCTYPE is refused before parsing, so no entity is ever defined (I-1, I-2).
+ * Section 3, I-1, I-2
  */
 final class XxeFamilyTest extends TestCase
 {
     /**
-     * I-1: the attack shapes of the XXE family never reach the parser.
+     * I-1
      */
     #[Test]
     #[DataProvider('provideXxeShapes')]

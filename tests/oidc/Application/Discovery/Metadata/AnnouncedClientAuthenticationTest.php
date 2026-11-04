@@ -15,8 +15,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 8414 §2: how a client authenticates at the token endpoint, and what an assertion of those methods
- * may be signed with.
+ * RFC 8414 §2
  */
 final class AnnouncedClientAuthenticationTest extends TestCase
 {
@@ -47,10 +46,6 @@ final class AnnouncedClientAuthenticationTest extends TestCase
         );
     }
 
-    /**
-     * Open by addition: a method no line of the module knows about is announced with what signs its own
-     * assertion, because it is wired and for no other reason (issue #98).
-     */
     #[Test]
     public function aMethodTheModuleKnowsNothingAboutIsAnnouncedBecauseItIsWired(): void
     {

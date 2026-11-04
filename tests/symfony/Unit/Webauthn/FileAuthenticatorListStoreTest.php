@@ -14,7 +14,7 @@ use function sys_get_temp_dir;
 use function uniqid;
 
 /**
- * The list of the community as a file (architecture §3.4): one document, replaced whole by the next one.
+ * Architecture §3.4
  */
 final class FileAuthenticatorListStoreTest extends TestCase
 {

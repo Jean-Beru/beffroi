@@ -18,8 +18,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-65, section 6.12 step 2, S-1, S-3: the certificate of each key an upstream identity provider encrypts
- * for, the newest first, each key opened by the KMS at most once per process, those of another provider kept.
+ * spec/saml.md S-65, section 6.12 step 2, S-1, S-3
  */
 final class EncryptionCertificatesTest extends TestCase
 {
@@ -44,7 +43,7 @@ final class EncryptionCertificatesTest extends TestCase
     }
 
     /**
-     * S-65: the certificate of each key of the provider, the next one before the current one, and none of another.
+     * S-65
      */
     #[Test]
     public function theCertificatesOfTheProviderComeNewestFirst(): void
@@ -65,8 +64,7 @@ final class EncryptionCertificatesTest extends TestCase
     }
 
     /**
-     * S-65: a retiring key is no longer announced, so that no provider takes it in its last hour; the key that took
-     * over is.
+     * S-65
      */
     #[Test]
     public function aRetiringKeyIsNoLongerAnnounced(): void
@@ -88,8 +86,7 @@ final class EncryptionCertificatesTest extends TestCase
     }
 
     /**
-     * S-3: a key is opened by the KMS once per process for its certificate, whatever the number of times the metadata
-     * are asked for.
+     * S-3
      */
     #[Test]
     public function aKeyIsOpenedOncePerProcess(): void
@@ -106,7 +103,7 @@ final class EncryptionCertificatesTest extends TestCase
     }
 
     /**
-     * S-3: the certificates built for one provider are kept while the metadata of another are served.
+     * S-3
      */
     #[Test]
     public function theCertificatesOfAnotherProviderAreKept(): void
@@ -125,8 +122,7 @@ final class EncryptionCertificatesTest extends TestCase
     }
 
     /**
-     * S-1: what is kept of a key that has left service is forgotten with it, so that a key under that name in service
-     * again is opened again rather than answered from memory.
+     * S-1
      */
     #[Test]
     public function theCertificateOfAKeyThatLeftServiceIsForgotten(): void
@@ -149,7 +145,7 @@ final class EncryptionCertificatesTest extends TestCase
     }
 
     /**
-     * Section 6.12 step 1: a provider for which the tenant holds no key in service has no certificate.
+     * Section 6.12 step 1
      */
     #[Test]
     public function aProviderWithoutAKeyHasNoCertificate(): void

@@ -7,10 +7,6 @@ namespace App\Doctrine\Type;
 use Beffroi\Core\Domain\Session\AuthenticationProofs;
 
 /**
- * The proofs of a session (architecture §3.2) as a JSON object of method reference to Unix timestamp,
- * the shape of TokenInterface::getAuthenticationProofs() and the proofs' own
- * (`AuthenticationProofs::toTimestamps()`).
- *
  * @extends JsonbObjectType<AuthenticationProofs>
  */
 final class AuthenticationProofsType extends JsonbObjectType

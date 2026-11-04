@@ -10,14 +10,7 @@ use Beffroi\Core\Domain\PersonalData\NoPersonalDatum;
 use Beffroi\Core\Domain\PersonalData\Reason;
 
 /**
- * The one table of this schema no class of the model holds a field of: the store of the data keys puts it
- * in the schema the ORM assembles, through the listener of its ORM bridge (decisions 0011 and 0018). It is
- * where every sealed field of the model takes its key from, and it holds no personal datum of its own: a
- * dump of it alone opens nothing, the master key never being in it.
- *
- * It is classified here, column by column, because this is the package that owns the table
- * (`TenantDataKeyStores`), where everything else of the schema is classified by the class of the model
- * whose field the column holds (`ClassifiedFieldsInterface`).
+ * Classifies the columns of the data key table, the one table no class of the model holds a field of.
  */
 final readonly class DataKeyColumns implements ClassifiedFieldsInterface
 {

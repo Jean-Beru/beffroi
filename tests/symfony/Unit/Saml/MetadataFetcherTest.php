@@ -21,8 +21,7 @@ use function tempnam;
 use function unlink;
 
 /**
- * beffroi/saml, spec/saml.md section 6.2 step 2 and section 7: the metadata of a service provider read from a file of
- * the deployment or from an https URL, one GET, no redirect followed (decision 0006), bounded by the maxBytes of Core.
+ * spec/saml.md section 6.2 step 2, section 7, Decision 0006
  */
 final class MetadataFetcherTest extends TestCase
 {
@@ -70,7 +69,7 @@ final class MetadataFetcherTest extends TestCase
     }
 
     /**
-     * Section 7: a file larger than any metadata the loader accepts is refused rather than handed to it.
+     * Section 7
      */
     #[Test]
     public function itRefusesAFileLargerThanAnyMetadata(): void
@@ -99,9 +98,6 @@ final class MetadataFetcherTest extends TestCase
         static::assertSame(MetadataFetcherInterface::MAX_BYTES, \strlen($bytes));
     }
 
-    /**
-     * One GET, asking for the media type of SAML metadata, nothing followed.
-     */
     #[Test]
     public function itReadsAnHttpsUrl(): void
     {
@@ -124,7 +120,7 @@ final class MetadataFetcherTest extends TestCase
     }
 
     /**
-     * Decision 0006: no outbound request follows a redirect, the declaration naming where the metadata are.
+     * Decision 0006
      */
     #[Test]
     public function itRefusesToFollowARedirect(): void
@@ -178,7 +174,7 @@ final class MetadataFetcherTest extends TestCase
     }
 
     /**
-     * Section 7: the read stops as soon as the body is longer than any metadata the loader accepts.
+     * Section 7
      */
     #[Test]
     public function itRefusesAnAnswerLargerThanAnyMetadata(): void

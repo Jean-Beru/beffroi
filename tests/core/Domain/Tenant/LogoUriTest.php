@@ -10,9 +10,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Issue #449: where the logo of a tenant is served from, read once and answered.
- */
 final class LogoUriTest extends TestCase
 {
     #[Test]
@@ -23,8 +20,7 @@ final class LogoUriTest extends TestCase
     }
 
     /**
-     * RFC 6454 §3.2: a source expression of a policy names the scheme, the host and the port, never a
-     * path and never a query.
+     * RFC 6454 §3.2
      */
     #[Test]
     #[DataProvider('provideUrls')]

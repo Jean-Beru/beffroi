@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 final class ProviderEndpointsTest extends TestCase
 {
     /**
-     * OIDC Discovery §3: the endpoints are absolute URLs; a query is retained as it is (RFC 6749 §3.1).
+     * OIDC Discovery §3, RFC 6749 §3.1
      */
     #[Test]
     public function itKeepsAbsoluteHttpsUrlsAsTheyAre(): void
@@ -52,8 +52,7 @@ final class ProviderEndpointsTest extends TestCase
     }
 
     /**
-     * RFC 6761 §6.3: plain HTTP is tolerated on a loopback host for development, the same exception the
-     * issuer makes.
+     * RFC 6761 §6.3
      */
     #[Test]
     public function itToleratesPlainHttpOnLoopback(): void
@@ -82,9 +81,7 @@ final class ProviderEndpointsTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.2 requires TLS on the token endpoint, and oidc_login refuses a token endpoint in clear
-     * even on loopback; RFC 7662 §2.1 and RFC 7009 §2 require it of the two endpoints that take the
-     * client credentials and a token the same way.
+     * RFC 6749 §3.2, RFC 7662 §2.1, RFC 7009 §2
      */
     #[Test]
     #[DataProvider('provideEndpointsRequiringTls')]
@@ -132,8 +129,7 @@ final class ProviderEndpointsTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.1, §3.2: absolute, no fragment, over TLS; what a relying party would use as it is must
-     * be refused before it is announced.
+     * RFC 6749 §3.1, §3.2
      */
     #[Test]
     #[DataProvider('provideRefusedUrls')]
@@ -176,9 +172,6 @@ final class ProviderEndpointsTest extends TestCase
         yield 'a user without a password' => ['https://user@id.acme.example/authorize', 'must not carry credentials'];
     }
 
-    /**
-     * Every endpoint is checked, and the message names the one at fault.
-     */
     #[Test]
     #[DataProvider('provideEndpointsAtFault')]
     public function everyEndpointIsCheckedAndNamed(string $name, int $position, string $url): void

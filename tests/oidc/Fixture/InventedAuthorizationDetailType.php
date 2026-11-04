@@ -14,13 +14,7 @@ use function is_string;
 use function sprintf;
 
 /**
- * A type of authorization detail nobody wrote a line of production code for (RFC 9396 §2), which is what a
- * deployment adds when its own domain asks for one: it names itself, it validates the members it accepts,
- * and it says what a page shows of them.
- *
- * It accepts an account named by a string and the actions asked of it, both required, in that order
- * whatever order the request wrote them in, and it refuses everything else. The page shows the account and
- * the actions, which is what a user reads before agreeing to it.
+ * RFC 9396 §2
  */
 final readonly class InventedAuthorizationDetailType implements AuthorizationDetailTypeInterface
 {
@@ -31,7 +25,7 @@ final readonly class InventedAuthorizationDetailType implements AuthorizationDet
     public const string ACTIONS = 'actions';
 
     /**
-     * @param non-empty-string $type the "type" this instance answers for, so that a test can wire two
+     * @param non-empty-string $type
      */
     public function __construct(
         private string $type = self::TYPE,

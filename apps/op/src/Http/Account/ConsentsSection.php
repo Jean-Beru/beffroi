@@ -9,10 +9,6 @@ use App\Controller\AccountConsentsController;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Oidc\Port\ActiveConsentsInterface;
 
-/**
- * What a user has agreed to, on the home page: how many clients may obtain something about them. Which
- * ones, and what each was granted, is on the page of the consents, where one is taken back.
- */
 final readonly class ConsentsSection implements AccountSectionInterface
 {
     public function __construct(

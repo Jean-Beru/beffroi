@@ -14,9 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Architecture §5.7: the language this provider writes to a user in when there is no request of theirs to
- * read one from. The "locale" claim of OIDC Core §5.1 as they gave it, read against the locales this
- * deployment serves, and the default locale when it names none of them.
+ * Architecture §5.7, OIDC Core §5.1
  */
 final class UserLocaleTest extends TestCase
 {

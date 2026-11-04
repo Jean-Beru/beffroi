@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.7: not an NCName, or longer than the bound (I-8). A consumer catches the base class when it does not care which rule fired.
+ * Section 5.7, I-8
  */
 final class InvalidIdTest extends TestCase
 {

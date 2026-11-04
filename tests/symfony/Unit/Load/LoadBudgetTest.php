@@ -13,8 +13,7 @@ use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
 
 /**
- * Decision 0014: a budget that bounds a load counts what is asked of it on a key, refuses what finds the
- * window full, and hands the refusal the delay to wait and the name it answers to.
+ * Decision 0014
  */
 final class LoadBudgetTest extends TestCase
 {
@@ -52,7 +51,7 @@ final class LoadBudgetTest extends TestCase
     }
 
     /**
-     * RFC 9110 §10.2.3: the delay a refusal carries, which is never zero, and the budget that refused.
+     * RFC 9110 §10.2.3
      */
     #[Test]
     public function aRefusalNamesItsBudgetAndTheDelayToWait(): void
@@ -74,7 +73,7 @@ final class LoadBudgetTest extends TestCase
     }
 
     /**
-     * Decision 0014: a budget is counted on a key, so what one caller spent is nothing to another.
+     * Decision 0014
      */
     #[Test]
     public function whatOneKeySpendsIsNotCountedOnAnother(): void
@@ -90,9 +89,6 @@ final class LoadBudgetTest extends TestCase
         $this->expectNotToPerformAssertions();
     }
 
-    /**
-     * The audit trail is told which client a refusal was counted on, when the caller knows one.
-     */
     #[Test]
     public function aRefusalCarriesTheClientItWasCountedOn(): void
     {
@@ -110,10 +106,6 @@ final class LoadBudgetTest extends TestCase
         }
     }
 
-    /**
-     * Issue #913: the tree holds a written limit to one request at least, and a number an environment
-     * variable carries is held to it when the budget is built.
-     */
     #[Test]
     public function itIsNotBuiltForNoRequest(): void
     {

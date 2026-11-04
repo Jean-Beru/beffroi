@@ -16,14 +16,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The metadata of the SAML service provider of the tenant given to one upstream identity provider (beffroi/saml,
- * spec/saml.md S-65, section 6.12): those of the URL of the entity ID, with the certificate of each key that provider
- * encrypts for, the newest first, and of no other provider. The provider is named by the last segment of the URL, its
- * entity ID in base64url (IdentityProviderSegment).
- *
- * A deployment that does not enable "beffroi.saml.service_provider" serves none (S-41); neither has a segment that
- * names no entity ID, nor a provider for which the tenant holds no key in service, the key of a provider the deployment
- * does not declare being read past (S-64).
+ * spec/saml.md S-65, section 6.12
  */
 #[AsController]
 final readonly class SamlServiceProviderMetadataForIdentityProviderController

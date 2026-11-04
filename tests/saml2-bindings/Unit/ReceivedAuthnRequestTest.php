@@ -27,10 +27,7 @@ use function rawurldecode;
 use function str_repeat;
 
 /**
- * Section 6.1 step 12, B-2 to B-5: an AuthnRequest received over HTTP-Redirect, authenticated as the binding says, then
- * validated through the model: its detached signature verified over the octets of B-2 under the service provider's
- * keys before validateAuthenticatedByBinding(), and the model's validate() without one. The signatures are the test
- * keys', computed over the octets each row names. SAML Bindings §3.4.4.1.
+ * Section 6.1 step 12, B-2 to B-5, SAML Bindings §3.4.4.1
  */
 final class ReceivedAuthnRequestTest extends TestCase
 {
@@ -39,8 +36,7 @@ final class ReceivedAuthnRequestTest extends TestCase
     private const string MISMATCH = 'No trusted key verifies the detached signature (D-7, D-8).';
 
     /**
-     * §9.3 row 7, B-5: a signed AuthnRequest, its signature verified under the service provider's key, is accepted by
-     * the binding's authentication, its RelayState returned.
+     * §9.3 row 7, B-5
      */
     #[Test]
     public function itAuthenticatesASignedRequestByTheBinding(): void
@@ -59,8 +55,7 @@ final class ReceivedAuthnRequestTest extends TestCase
     }
 
     /**
-     * §9.3 row 7, B-5, SAML Profiles §4.1.6: an unsigned AuthnRequest from a service provider whose metadata asks for
-     * no signature, nor ours, goes to the model's validate(), and was authenticated by nothing.
+     * §9.3 row 7, B-5, SAML Profiles §4.1.6
      */
     #[Test]
     public function itValidatesAnUnsignedRequestNobodyWantsSigned(): void
@@ -76,8 +71,7 @@ final class ReceivedAuthnRequestTest extends TestCase
     }
 
     /**
-     * §9.2 row 20, B-5, M-2, SAML Metadata §2.4.4: an unsigned AuthnRequest from a service provider whose metadata says
-     * AuthnRequestsSigned is refused by the model's validate().
+     * §9.2 row 20, B-5, M-2, SAML Metadata §2.4.4
      */
     #[Test]
     public function itRefusesAnUnsignedRequestTheServiceProviderSigns(): void
@@ -94,8 +88,7 @@ final class ReceivedAuthnRequestTest extends TestCase
     }
 
     /**
-     * §9.2 row 11, B-2, B-3, SAML Bindings §3.4.4.1: SigAlg changed after signing, RSA-SHA256 to RSA-SHA512, is
-     * refused: SigAlg is among the octets.
+     * §9.2 row 11, B-2, B-3, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesASigAlgChangedAfterSigning(): void
@@ -113,8 +106,7 @@ final class ReceivedAuthnRequestTest extends TestCase
     }
 
     /**
-     * §9.2 row 12, B-2, SAML Bindings §3.4.4.1: octets signed in another order than the binding's, the order of arrival
-     * RelayState, SAMLRequest, SigAlg, or SigAlg first, are refused.
+     * §9.2 row 12, B-2, SAML Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideQueriesSignedInAnotherOrder')]
@@ -148,8 +140,7 @@ final class ReceivedAuthnRequestTest extends TestCase
     }
 
     /**
-     * §9.2 row 13, B-2, SAML Bindings §3.4.4.1: octets signed over other values than those the query string carries,
-     * decoded, or encoded again in lowercase hexadecimal while the URL carries uppercase, are refused.
+     * §9.2 row 13, B-2, SAML Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideQueriesSignedOverOtherValues')]
@@ -182,8 +173,7 @@ final class ReceivedAuthnRequestTest extends TestCase
     }
 
     /**
-     * §9.2 row 14, B-2, SAML Bindings §3.4.4.1: the signature of another AuthnRequest of the same service provider,
-     * replayed on this one, is refused.
+     * §9.2 row 14, B-2, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesTheSignatureOfAnotherMessage(): void
@@ -207,8 +197,7 @@ final class ReceivedAuthnRequestTest extends TestCase
     }
 
     /**
-     * §9.2 row 15, B-2, B-9, erratum E1: RelayState changed, added or removed after signing is refused: it is among
-     * the octets when present.
+     * §9.2 row 15, B-2, B-9, erratum E1
      */
     #[Test]
     #[DataProvider('provideRelayStatesChangedAfterSigning')]
@@ -238,8 +227,7 @@ final class ReceivedAuthnRequestTest extends TestCase
     }
 
     /**
-     * §9.2 row 17, B-4, SAML Bindings §3.4.4.1: a query string signed by a key the service provider's metadata does not
-     * list is refused.
+     * §9.2 row 17, B-4, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesAKeyThePeerDoesNotList(): void
@@ -256,8 +244,7 @@ final class ReceivedAuthnRequestTest extends TestCase
     }
 
     /**
-     * §9.2 row 18, B-4, SAML Metadata §2.4.1.1: a signed query string from a service provider whose metadata holds no
-     * signing certificate is refused before anything is verified.
+     * §9.2 row 18, B-4, SAML Metadata §2.4.1.1
      */
     #[Test]
     public function itRefusesAPeerWithoutSigningCertificate(): void
@@ -274,8 +261,7 @@ final class ReceivedAuthnRequestTest extends TestCase
     }
 
     /**
-     * §9.2 row 19, D-14, SAML Bindings §3.4.4.1: a Signature of 255 or of 1 025 bytes, inside the 1 368 characters of
-     * section 7, is Dsig's refusal, before any key.
+     * §9.2 row 19, D-14, SAML Bindings §3.4.4.1
      */
     #[Test]
     #[DataProvider('provideSignaturesOutsideTheBoundsOfDsig')]
@@ -305,8 +291,7 @@ final class ReceivedAuthnRequestTest extends TestCase
     }
 
     /**
-     * §9.3 row 8, B-4, D-7, SAML Metadata §2.4.1.1: two signing certificates in the service provider's metadata during
-     * a rotation, the second verifying, are accepted.
+     * §9.3 row 8, B-4, D-7, SAML Metadata §2.4.1.1
      */
     #[Test]
     public function itAcceptsTheSecondKeyOfARotation(): void
@@ -325,8 +310,7 @@ final class ReceivedAuthnRequestTest extends TestCase
     }
 
     /**
-     * §9.3 row 13, B-3, dsig.md §5.1, SAML Bindings §3.4.4.1: RSASSA-PSS with SHA-256, on a build with PHP 8.5 and
-     * OpenSSL 3.1, is accepted.
+     * §9.3 row 13, B-3, dsig.md §5.1, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itAcceptsRsaPssWhereTheBuildHasIt(): void
@@ -345,8 +329,7 @@ final class ReceivedAuthnRequestTest extends TestCase
     }
 
     /**
-     * §9.3 row 13, B-3, dsig.md §5.1, SAML Bindings §3.4.4.1: RSASSA-PSS with SHA-256 on a build without PHP 8.5 and
-     * OpenSSL 3.1, PHP 8.4 among them, is Dsig's AlgorithmUnavailable, before any key.
+     * §9.3 row 13, B-3, dsig.md §5.1, SAML Bindings §3.4.4.1
      */
     #[Test]
     public function itRefusesRsaPssWhereTheBuildLacksIt(): void
@@ -369,8 +352,7 @@ final class ReceivedAuthnRequestTest extends TestCase
     }
 
     /**
-     * Section 5.2, B-5: a ReceivedAuthnRequest is built from the reception of an AuthnRequest and of no other message, a programming
-     * error otherwise.
+     * Section 5.2, B-5
      */
     #[Test]
     #[DataProvider('provideReceptionsOfOtherMessages')]
@@ -409,10 +391,6 @@ final class ReceivedAuthnRequestTest extends TestCase
         return RedirectQuery::carrying('SAMLRequest', self::fixture(self::AUTHN_REQUEST));
     }
 
-    /**
-     * $received validated as the identity provider at its single sign-on service, the service provider $sp or the
-     * one of the fixtures.
-     */
     private function validate(ReceivedAuthnRequest $received, ?ServiceProvider $sp = null): AcceptedAuthnRequest
     {
         return $received->validate(

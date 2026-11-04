@@ -21,8 +21,7 @@ use function str_repeat;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Decision 0002, issue #782: the groups of a tenant are created by the deployment, from a console, a fixture or
- * an import, never from what an upstream provider sends.
+ * Decision 0002
  */
 final class GroupProvisionerTest extends TestCase
 {
@@ -70,9 +69,6 @@ final class GroupProvisionerTest extends TestCase
         $this->provisioner->create($this->tenant, 'admins');
     }
 
-    /**
-     * Two creations of one name running side by side both find it free; the store is what refuses the second.
-     */
     #[Test]
     public function aNameTakenBetweenTheLookupAndTheWriteIsRefused(): void
     {
@@ -121,9 +117,6 @@ final class GroupProvisionerTest extends TestCase
         static::assertSame($group, $this->groups->findByName($this->tenant, 'admins'));
     }
 
-    /**
-     * Names are exact, case included, as the mapping of a provider compares the values it asserts.
-     */
     #[Test]
     public function aNameDifferingByItsCaseIsAnotherGroup(): void
     {
@@ -148,10 +141,6 @@ final class GroupProvisionerTest extends TestCase
         $this->provisioner->create($this->tenant, '');
     }
 
-    /**
-     * Whitespace at an end is refused rather than trimmed, ASCII or not, so that "admins" and "admins"
-     * followed by a no-break space are never two groups.
-     */
     #[Test]
     #[DataProvider('provideNamesWithWhitespaceAtAnEnd')]
     public function aNameThatBeginsOrEndsWithWhitespaceIsRefused(string $name): void
@@ -210,9 +199,6 @@ final class GroupProvisionerTest extends TestCase
         $this->provisioner->create($this->tenant, str_repeat('é', 256));
     }
 
-    /**
-     * The column counts characters, not bytes: 255 of them are taken, whatever they weigh.
-     */
     #[Test]
     public function aNameAsLongAsItsColumnIsTaken(): void
     {

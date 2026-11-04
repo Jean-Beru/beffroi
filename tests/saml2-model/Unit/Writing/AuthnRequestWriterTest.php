@@ -34,8 +34,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Sections 5.7 and 6.6, M-15: a samlp:AuthnRequest written by the service provider, and read back by the validator
- * of the identity provider; the AuthnRequest rows of section 9.1.
+ * Sections 5.7, 6.6 and 9.1, M-15
  */
 final class AuthnRequestWriterTest extends TestCase
 {
@@ -44,8 +43,7 @@ final class AuthnRequestWriterTest extends TestCase
     private const string PROTOCOL = 'urn:oasis:names:tc:SAML:2.0:protocol';
 
     /**
-     * Section 9.1 row "an AuthnRequest signed", M-2, M-15: written and signed with the service provider's test key,
-     * serialized with Core, loaded again with SamlLoader::create(), accepted by validate() as it was written.
+     * Section 9.1 row "an AuthnRequest signed", M-2, M-15
      */
     #[Test]
     #[DataProvider('provideRequests')]
@@ -70,8 +68,7 @@ final class AuthnRequestWriterTest extends TestCase
     }
 
     /**
-     * Section 9.1 row "an AuthnRequest unsigned", M-15: written without signature, accepted by validate() when
-     * neither party's metadata asks for signed requests.
+     * Section 9.1 row "an AuthnRequest unsigned", M-15
      */
     #[Test]
     #[DataProvider('provideRequests')]
@@ -93,9 +90,7 @@ final class AuthnRequestWriterTest extends TestCase
     }
 
     /**
-     * Section 9.1 row "an AuthnRequest for HTTP-Redirect", section 6.8, M-15: written without signature, the binding
-     * signing the query string, accepted by validateAuthenticatedByBinding() although both parties ask for signed
-     * requests.
+     * Section 9.1 row "an AuthnRequest for HTTP-Redirect", section 6.8, M-15
      */
     #[Test]
     #[DataProvider('provideRequests')]
@@ -153,8 +148,7 @@ final class AuthnRequestWriterTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 3, SAML Core §3.2.1, §5.4.1, dsig.md section 6.2: the Signature is the child after the Issuer,
-     * over the ID of the request, with no InclusiveNamespaces, the certificate of the key in its KeyInfo when given.
+     * Section 6.6 step 3, SAML Core §3.2.1, §5.4.1, dsig.md section 6.2
      */
     #[Test]
     public function itSignsTheRequestWithTheSignatureAfterTheIssuer(): void
@@ -194,9 +188,7 @@ final class AuthnRequestWriterTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 2, core.md section 6.5, SAML Core §3.4.1: one prefix per namespace, samlp and saml; the
-     * attributes of the request, its IssueInstant in UTC to the second whatever the zone it was given in, the
-     * children in the order of the schema.
+     * Section 6.6 step 2, core.md section 6.5, SAML Core §3.4.1
      */
     #[Test]
     public function itWritesTheRequestWithOnePrefixPerNamespace(): void
@@ -253,8 +245,7 @@ final class AuthnRequestWriterTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 2, SAML Core §3.4.1: ForceAuthn, IsPassive and AllowCreate are written only when true, their
-     * absence meaning false; an index is written as the decimal of an xs:unsignedShort.
+     * Section 6.6 step 2, SAML Core §3.4.1
      */
     #[Test]
     public function itWritesNoFlagThatIsFalse(): void
@@ -295,8 +286,7 @@ final class AuthnRequestWriterTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 1, M-8, M-15: a request without Destination would be refused by the identity provider once
-     * signed, by XML or by the binding, which the writer cannot tell apart: a programming error of the caller.
+     * Section 6.6 step 1, M-8, M-15
      */
     #[Test]
     public function itRefusesARequestWithoutDestination(): void
@@ -313,8 +303,7 @@ final class AuthnRequestWriterTest extends TestCase
     }
 
     /**
-     * Section 9.1: the request the writer signed with the service provider's test key, committed as
-     * behaviour/authn-request-written-and-signed-by-the-writer.xml and verified by xmlsec1, is accepted by validate().
+     * Section 9.1
      */
     #[Test]
     public function itWroteTheRequestXmlsec1Verified(): void
@@ -372,8 +361,6 @@ final class AuthnRequestWriterTest extends TestCase
     }
 
     /**
-     * The attributes in no namespace, in document order, the namespace declarations left aside.
-     *
      * @return array<string, string>
      */
     private function attributes(Element $element): array
@@ -390,7 +377,7 @@ final class AuthnRequestWriterTest extends TestCase
     }
 
     /**
-     * @param list<string> $path the local names of XML Signature from $element down
+     * @param list<string> $path
      */
     private function path(Element $element, array $path): Element
     {
@@ -402,7 +389,7 @@ final class AuthnRequestWriterTest extends TestCase
     }
 
     /**
-     * @return list<Element> the elements under $element whose local name is $local
+     * @return list<Element>
      */
     private function descendantsNamed(Element $element, string $local): array
     {

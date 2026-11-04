@@ -10,7 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3: an attribute whose values identify elements, on the elements of one namespace or of any.
+ * Section 5.3
  */
 final class IdAttributeTest extends TestCase
 {
@@ -26,7 +26,7 @@ final class IdAttributeTest extends TestCase
     }
 
     /**
-     * Section 5.3: null for any element, the way xml:id would be registered.
+     * Section 5.3
      */
     #[Test]
     public function itAppliesToAnyElementByDefault(): void

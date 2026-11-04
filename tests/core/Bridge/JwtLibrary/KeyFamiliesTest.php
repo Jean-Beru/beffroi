@@ -15,14 +15,10 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Issue #738, architecture §3.3: each family of keys declares the schedule its keys rotate by beside the
- * registry of its algorithms, and an algorithm rotates by the schedule of the family that holds it.
+ * Architecture §3.3
  */
 final class KeyFamiliesTest extends TestCase
 {
-    /**
-     * The schedule of an algorithm is the one its family declares, whichever family comes first.
-     */
     #[Test]
     public function anAlgorithmRotatesByTheScheduleOfItsFamily(): void
     {
@@ -41,10 +37,6 @@ final class KeyFamiliesTest extends TestCase
         static::assertSame($encryption, $schedule);
     }
 
-    /**
-     * An algorithm no family holds has no schedule to rotate by, and no default stands in for the family a
-     * wiring forgot.
-     */
     #[Test]
     public function anAlgorithmNoFamilyHoldsIsRefused(): void
     {

@@ -66,9 +66,7 @@ final class TokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4.3, OIDC Core §2: an ID token describes who signed in, so an authorization with nobody
-     * behind it is answered with an access token and nothing else, whatever its scopes say. What decides is
-     * what the authorization is, not the name of the grant that produced it.
+     * RFC 6749 §4.4.3, OIDC Core §2
      */
     #[Test]
     public function anAuthorizationWithNobodyBehindItIsAnsweredWithAnAccessTokenAlone(): void
@@ -85,11 +83,6 @@ final class TokenIssuerTest extends TestCase
         static::assertSame([$authorization], $this->accessTokens->issued);
     }
 
-    /**
-     * Issue #588: the act names the person the tokens were issued in the name of, by the subject their
-     * account carries and not the "sub" the client is answered, so that the journal of that person holds
-     * it.
-     */
     #[Test]
     public function theIssuanceNamesThePersonTheTokensWereIssuedFor(): void
     {
@@ -104,8 +97,7 @@ final class TokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4: a client that obtained tokens for itself did it in nobody's name, so the act names
-     * nobody rather than the client twice.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function theIssuanceToAClientActingForItselfNamesNobody(): void
@@ -121,8 +113,7 @@ final class TokenIssuerTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.3.3: an access token and an ID token; the ID token is minted with the access token
-     * of the same response, for at_hash.
+     * OIDC Core §3.1.3.3
      */
     #[Test]
     public function itMintsAnAccessTokenAndAnIdTokenWhenOpenidIsRequested(): void
@@ -142,9 +133,6 @@ final class TokenIssuerTest extends TestCase
         static::assertSame([[$authorization, $issued->accessToken]], $this->idTokens->issued);
     }
 
-    /**
-     * The refresh token given goes into the response.
-     */
     #[Test]
     public function theRefreshTokenGivenGoesIntoTheResponse(): void
     {
@@ -159,9 +147,6 @@ final class TokenIssuerTest extends TestCase
         static::assertSame($refreshToken, $issued->refreshToken);
     }
 
-    /**
-     * The issuance is announced once, with the request context and the record of the refresh token.
-     */
     #[Test]
     public function theIssuanceIsAnnouncedOnce(): void
     {
@@ -186,7 +171,7 @@ final class TokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §6 with a scope narrowed below "openid": an access token only.
+     * RFC 6749 §6
      */
     #[Test]
     public function itMintsNoIdTokenWithoutOpenid(): void
@@ -204,8 +189,7 @@ final class TokenIssuerTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.3.3: a response without "openid" carries no ID token, so nothing of the client is read
-     * for one, whatever the client publishes.
+     * OIDC Core §3.1.3.3
      */
     #[Test]
     public function theIdTokenOfAResponseWithoutOpenidIsNotAddressed(): void
@@ -221,8 +205,7 @@ final class TokenIssuerTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.3.7 (issue #836): the key the ID token is encrypted to is read when the grant addresses
-     * it, before it spends anything, and keys the client cannot serve right now are said then.
+     * OIDC Core §3.1.3.7
      */
     #[Test]
     public function keysThatCannotBeReadAreToldWhenTheIdTokenIsAddressed(): void
@@ -239,8 +222,7 @@ final class TokenIssuerTest extends TestCase
     }
 
     /**
-     * Architecture §4.5 (issue #870): the key of the tenant the access token is signed with is opened when the
-     * grant addresses the response, before it spends anything, and a KMS that does not answer is said then.
+     * Architecture §4.5
      */
     #[Test]
     public function aKmsThatDoesNotAnswerIsToldWhenTheResponseIsAddressed(): void
@@ -257,8 +239,7 @@ final class TokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4.3: the response to an authorization nobody signed in for is an access token alone, and
-     * it is addressed when it is struck: the key it is signed with is opened then.
+     * RFC 6749 §4.4.3
      */
     #[Test]
     public function aResponseNobodySignedInForIsAddressedWhenItIsStruck(): void
@@ -275,10 +256,6 @@ final class TokenIssuerTest extends TestCase
         $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
     }
 
-    /**
-     * Issue #876: the response to an authorization nobody signed in for that its grant addressed before it spent
-     * anything is struck for what was read then, so a KMS that stopped answering since keeps nothing from it.
-     */
     #[Test]
     public function aResponseItsGrantAddressedIsStruckWithWhatWasReadThen(): void
     {
@@ -295,9 +272,7 @@ final class TokenIssuerTest extends TestCase
     }
 
     /**
-     * Architecture §4.5 (issue #870): the response to an authorization somebody signed in for is struck for
-     * what its grant addressed before it spent anything, so one the grant did not address is a fault of that
-     * grant, said before any token leaves.
+     * Architecture §4.5
      */
     #[Test]
     public function aResponseTheGrantDidNotAddressIsAFaultOfTheGrant(): void
@@ -313,10 +288,6 @@ final class TokenIssuerTest extends TestCase
         $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
     }
 
-    /**
-     * An ID token is struck for the shape the grant addressed before it spent anything, so a response that
-     * carries one the grant did not address is a fault of that grant, said before any ID token leaves.
-     */
     #[Test]
     public function anIdTokenTheGrantDidNotAddressIsAFaultOfTheGrant(): void
     {
@@ -349,7 +320,7 @@ final class TokenIssuerTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: the refresh token is stored as its hash; the value goes to the client only.
+     * Architecture §4.6
      */
     #[Test]
     public function itIssuesARefreshTokenStoredHashed(): void
@@ -369,8 +340,7 @@ final class TokenIssuerTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: the refresh token is issued in the family given, for the granted scopes, with
-     * the authentication of the authorization.
+     * Architecture §4.6
      */
     #[Test]
     public function theRefreshTokenCarriesTheFamilyTheGrantedScopesAndTheAuthentication(): void
@@ -392,7 +362,7 @@ final class TokenIssuerTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: thirty days sliding.
+     * Architecture §4.6
      */
     #[Test]
     public function theRefreshTokenLivesThirtyDaysFromIssuance(): void
@@ -411,7 +381,7 @@ final class TokenIssuerTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: within the family, whose end caps the sliding expiry.
+     * Architecture §4.6
      */
     #[Test]
     public function theRefreshTokenNeverOutlivesItsFamily(): void
@@ -427,9 +397,6 @@ final class TokenIssuerTest extends TestCase
         static::assertEquals($token->family->expiresAt, $issued->token->expiresAt);
     }
 
-    /**
-     * The refresh token is announced with the response, by issue(), not when it is minted.
-     */
     #[Test]
     public function mintingARefreshTokenAnnouncesNothing(): void
     {
@@ -460,8 +427,7 @@ final class TokenIssuerTest extends TestCase
     }
 
     /**
-     * An authorization of a client acting for itself, which is the one shape of authorization with
-     * nobody behind it (RFC 6749 §4.4).
+     * RFC 6749 §4.4
      */
     private function clientAuthorization(): ClientAuthorization
     {
@@ -489,9 +455,6 @@ final class TokenIssuerTest extends TestCase
         ));
     }
 
-    /**
-     * What the grant reads before it spends anything: the response to the authorization, addressed.
-     */
     private function addressed(UserAuthorization $authorization): AddressedResponse
     {
         return $this->issuer->address($authorization->client, $authorization->scopes);

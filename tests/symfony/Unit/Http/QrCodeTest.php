@@ -10,7 +10,7 @@ use PHPUnit\Framework\TestCase;
 use function str_starts_with;
 
 /**
- * Architecture §5.2: the QR code of an enrolment is an SVG the page embeds.
+ * Architecture §5.2
  */
 final class QrCodeTest extends TestCase
 {

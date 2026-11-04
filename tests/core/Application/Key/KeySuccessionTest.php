@@ -25,10 +25,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
-/**
- * Issue #455: an active key that has worked for the age of a key gets a successor, staged and not
- * activated, so that a relying party sees the new "kid" before anything is signed with it.
- */
 final class KeySuccessionTest extends TestCase
 {
     private Tenant $tenant;
@@ -75,10 +71,6 @@ final class KeySuccessionTest extends TestCase
         static::assertSame($first, $this->repository->findActive($this->tenant, Algorithms::rs256()));
     }
 
-    /**
-     * Issue #738: a key is old by the age of its family, so that a family that works a year gets no successor
-     * when the keys of the others, active as long, get theirs.
-     */
     #[Test]
     public function aKeyIsOldByTheAgeOfItsFamily(): void
     {
@@ -111,10 +103,6 @@ final class KeySuccessionTest extends TestCase
         static::assertSame([], $staged);
     }
 
-    /**
-     * The tick that follows finds the successor of the previous one and stages nothing: what makes it
-     * idempotent is the key it looks at, not a flag it keeps.
-     */
     #[Test]
     public function theTickThatFollowsStagesNothing(): void
     {
@@ -130,10 +118,6 @@ final class KeySuccessionTest extends TestCase
         static::assertSame([], $again);
     }
 
-    /**
-     * The age is counted from the activation and not from the creation: a key that waited its staging
-     * window has not worked for that window.
-     */
     #[Test]
     public function theAgeIsCountedFromTheActivationAndNotFromTheCreation(): void
     {
@@ -151,10 +135,6 @@ final class KeySuccessionTest extends TestCase
         static::assertSame([], $staged);
     }
 
-    /**
-     * A staged key that is not due for activation yet is still a successor: the step looks at what the
-     * JWK Set publishes and not at what it would activate.
-     */
     #[Test]
     public function anAlgorithmWhoseSuccessorIsStagedByHandGetsNothing(): void
     {
@@ -171,10 +151,7 @@ final class KeySuccessionTest extends TestCase
     }
 
     /**
-     * An age that does not outlast the window a retiring key holds the JWK Set open for would leave a key
-     * behind at every rotation, so the step refuses rather than growing the set (decision 0006). As long
-     * as the window is not longer than it: the successor would start retiring the key it took over from
-     * at the very instant that key left, and one tick of the planning late is one key too many.
+     * Decision 0006
      */
     #[Test]
     #[DataProvider('provideAgesThatDoNotOutlastTheWindow')]

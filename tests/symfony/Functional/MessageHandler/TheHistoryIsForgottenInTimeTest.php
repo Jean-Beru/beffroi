@@ -16,11 +16,6 @@ use function sprintf;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Issue #482: a history of what a person used to be called is a personal datum with a duration and not a
- * thing kept for ever. The duration is the one the journal keeps an act, a change and the act that
- * announced it being two halves of one answer.
- */
 final class TheHistoryIsForgottenInTimeTest extends DatabaseTestCase
 {
     #[Test]

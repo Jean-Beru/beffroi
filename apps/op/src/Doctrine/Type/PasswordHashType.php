@@ -10,14 +10,6 @@ use Beffroi\Core\Port\PasswordAlgorithmsInterface;
 use LogicException;
 
 /**
- * A stored password hash of a credential, in the one document the core writes a hash as
- * (`StoredPasswordHash`): the algorithm it was made with by the name it carries (decision 0002), the
- * encoded form, and the parameters an import keeps apart from the digest.
- *
- * The handoff through a static is the Doctrine half: Doctrine builds a type from a class name, so nothing
- * can be injected here; what reads the document takes the wiring as an argument, and this hands it the one
- * the provider gave it when it booted.
- *
  * @extends JsonbObjectType<PasswordHash>
  */
 final class PasswordHashType extends JsonbObjectType implements NeedsPasswordAlgorithmsInterface

@@ -9,9 +9,7 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The home of the account (architecture §5.2): where a person who typed the issuer in a browser lands. It
- * names who is signed in, offers the pages of the account that are wired with what the account holds on
- * each, and sends a browser without a session to the login it comes back from.
+ * Architecture §5.2
  */
 final class AccountHomeTest extends PasskeyTestCase
 {
@@ -40,12 +38,6 @@ final class AccountHomeTest extends PasskeyTestCase
         static::assertStringContainsString('Signed in as alice.', $crawler->filter('main')->text());
     }
 
-    /**
-     * The other pages of the account refuse a browser that holds no session (AccountAccess), and this page
-     * is the way out of that refusal: the login is offered here and on no other page of the account, so a
-     * person who opened a page of their account before signing in is one link from signing in rather than
-     * left on a page that only tells them it cannot be served.
-     */
     #[Test]
     public function aRefusedPageOfTheAccountOffersTheWayToThisOne(): void
     {
@@ -85,7 +77,6 @@ final class AccountHomeTest extends PasskeyTestCase
 
         // Then
         static::assertCount(10, $crawler->filter('ul[data-sections="10"] li'));
-        // first of them: it is what makes the page of what somebody is waiting on findable (BCP 10027 §5.2)
         $approvals = $crawler->filter('li[data-section="beffroi_interaction_account_approvals"]');
         static::assertSame('/account/approvals', $approvals->filter('a')->attr('href'));
         static::assertSame('Requests waiting for you', $approvals->filter('a')->text());
@@ -113,7 +104,6 @@ final class AccountHomeTest extends PasskeyTestCase
         static::assertSame('/account/notifications', $notifications->filter('a')->attr('href'));
         static::assertSame('Notifications', $notifications->filter('a')->text());
         static::assertSame('No browser told', $notifications->filter('span[data-state]')->text());
-        // last of them: the one thing none of the pages above replaces (issue #453)
         $archive = $crawler->filter('li[data-section="beffroi_interaction_account_archive"]');
         static::assertSame('/account/archive', $archive->filter('a')->attr('href'));
         static::assertSame('Your data', $archive->filter('a')->text());

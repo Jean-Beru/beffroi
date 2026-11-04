@@ -13,13 +13,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * The archive of everything this provider holds about the signed-in person (RGPD articles 15 and 20, issue
- * #453): what asking gives them, or where their last request has got to.
- *
- * It reads what the form that asks for a wrapped file was refused, once, out of the session the redirection
- * crossed (issues #481 and #483).
- */
 #[AsController]
 final readonly class AccountArchiveController implements ReachedOnTheSessionAloneInterface
 {

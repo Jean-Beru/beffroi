@@ -29,23 +29,15 @@ use Beffroi\Oidc\Tests\Fixture\Subjects;
 use Beffroi\Oidc\Tests\Fixture\Shapes;
 
 /**
- * Back-Channel Logout 1.0 §2.4 and §2.6: what the provider signs for a client of a session that ended,
- * verified the way that client verifies it, against the published JWK Set.
+ * Back-Channel Logout 1.0 §2.4, §2.6
  */
 final class LogoutTokenIssuerTest extends TestCase
 {
     /**
-     * What a relying party asks of the token before it reads a claim of it (Back-Channel Logout 1.0 §2.6,
-     * which asks for "exp" to be checked the way the one of an ID token is): every test of this class
-     * therefore proves the token passes a checker that requires it, which is what refused the token of a
-     * provider that sent none (issue #495).
+     * Back-Channel Logout 1.0 §2.6
      */
     private const array MANDATORY = ['iss', 'aud', 'iat', 'exp'];
 
-    /**
-     * The patience of the sender the delivery of this test is wired with, which is what the "exp" of the
-     * token is set from.
-     */
     private const int BUDGET = 200;
 
     private AuthenticationSession $session;
@@ -71,8 +63,7 @@ final class LogoutTokenIssuerTest extends TestCase
     }
 
     /**
-     * Back-Channel Logout 1.0 §2.4: "typ" is "logout+jwt", which is how a client refuses an ID token
-     * offered as a logout token; the key is the active one of the tenant.
+     * Back-Channel Logout 1.0 §2.4
      */
     #[Test]
     public function theHeaderNamesTheActiveKeyAndTheLogoutType(): void
@@ -95,8 +86,7 @@ final class LogoutTokenIssuerTest extends TestCase
     }
 
     /**
-     * Back-Channel Logout 1.0 §2.6: the logout token is signed in the algorithm the client registered for
-     * its ID tokens, since that is the one it knows how to verify.
+     * Back-Channel Logout 1.0 §2.6
      */
     #[Test]
     public function theTokenIsSignedWithTheAlgorithmTheClientRegistered(): void
@@ -132,11 +122,6 @@ final class LogoutTokenIssuerTest extends TestCase
         );
     }
 
-    /**
-     * The logout token reads the algorithm of the ID token registration and nothing else of it: a client
-     * that registered an encryption for its ID tokens receives a logout token signed and in clear, because
-     * Back-Channel Logout 1.0 registers no shape of its own for it and the provider announces none.
-     */
     #[Test]
     public function theTokenIsNotEncryptedForAClientWhoseIdTokensAre(): void
     {
@@ -152,7 +137,7 @@ final class LogoutTokenIssuerTest extends TestCase
     }
 
     /**
-     * Back-Channel Logout 1.0 §2.4: the claims of the section, and them alone.
+     * Back-Channel Logout 1.0 §2.4
      */
     #[Test]
     public function thePayloadCarriesTheClaimsOfTheSpecification(): void
@@ -173,10 +158,7 @@ final class LogoutTokenIssuerTest extends TestCase
     }
 
     /**
-     * Back-Channel Logout 1.0 §2.4 requires an "exp", and the instant is the end of the delivery this
-     * provider is willing to attempt: a token still being tried again is still valid, and one that
-     * arrives after the sender gave up is refused by whoever receives it. The claim and the patience of
-     * the sender are therefore the same number, read where it is set (issue #155).
+     * Back-Channel Logout 1.0 §2.4
      */
     #[Test]
     public function theTokenExpiresWhenTheProviderStopsTryingToDeliverIt(): void
@@ -192,7 +174,7 @@ final class LogoutTokenIssuerTest extends TestCase
     }
 
     /**
-     * Back-Channel Logout 1.0 §2.4: the one member of "events", an empty JSON object.
+     * Back-Channel Logout 1.0 §2.4
      */
     #[Test]
     public function thePayloadAnnouncesTheBackChannelLogoutEvent(): void
@@ -213,8 +195,7 @@ final class LogoutTokenIssuerTest extends TestCase
     }
 
     /**
-     * RFC 7519 §4.1.7: two logout tokens never carry the same "jti", or a client would take the second
-     * for the replay of the first (Back-Channel Logout 1.0 §2.6).
+     * RFC 7519 §4.1.7, Back-Channel Logout 1.0 §2.6
      */
     #[Test]
     public function eachTokenCarriesAnIdentifierOfItsOwn(): void
@@ -233,7 +214,7 @@ final class LogoutTokenIssuerTest extends TestCase
     }
 
     /**
-     * OIDC Core §8: the client reads the subject it already knows, never the internal identifier.
+     * OIDC Core §8
      */
     #[Test]
     public function theSubjectIsTheOneTheClientAlreadySees(): void

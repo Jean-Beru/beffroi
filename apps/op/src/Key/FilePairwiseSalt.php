@@ -25,25 +25,14 @@ use function sprintf;
 use function unlink;
 
 /**
- * The pairwise salt of a tenant as a file, beside the sealed keys of that tenant and sealed like them
- * (architecture §3.3): "<storage>/<tenant slug>/pairwise.salt", the KMS envelope written in base64 so that
- * the file is text and copies like the key files do.
- *
- * It is drawn on first use and never again. The file is written through a sibling and hard-linked into
- * place, which fails when the name is taken: two workers that draw at the same moment leave one salt, the
- * one that was linked first, and the loser reads it back rather than overwriting it. A salt overwritten
- * would be every pairwise identifier of the tenant changed, so the write that must not happen twice is the
- * one the filesystem refuses.
- *
- * Nothing here logs the salt or hands it out: what leaves is the value the resolver hashes with.
+ * Hard-linked into place rather than renamed, as a link fails when the name is taken: of two workers drawing at
+ * once, the loser reads the salt back, since a salt overwritten would change every pairwise identifier of the
+ * tenant. The salt is never logged.
  */
 final readonly class FilePairwiseSalt implements PairwiseSaltInterface
 {
     public const string FILE = 'pairwise.salt';
 
-    /**
-     * 256 bits, as every other value this provider draws (architecture §3.4).
-     */
     private const int LENGTH = 32;
 
     public function __construct(
@@ -109,7 +98,7 @@ final readonly class FilePairwiseSalt implements PairwiseSaltInterface
     }
 
     /**
-     * @return non-empty-string|null null when the tenant has none yet
+     * @return non-empty-string|null
      */
     private static function read(string $path): ?string
     {

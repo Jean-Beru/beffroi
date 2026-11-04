@@ -12,8 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Decision 0002: a person names the source that created it and holds its attributes, local or an upstream
- * provider, and what that source holds a manual description does not change.
+ * Decision 0002
  */
 final class UserSourceTest extends TestCase
 {
@@ -127,9 +126,6 @@ final class UserSourceTest extends TestCase
         static::assertEquals($source, $read);
     }
 
-    /**
-     * A local source holds nothing, so it writes nothing, and nothing reads back as one.
-     */
     #[Test]
     public function aLocalSourceWritesNoDocument(): void
     {
@@ -193,10 +189,6 @@ final class UserSourceTest extends TestCase
         ];
     }
 
-    /**
-     * Issue #781: what the provider says now of the claims its source holds is what the profile says; what
-     * it does not hold, or does not say, is left as it was.
-     */
     #[Test]
     public function anUpstreamSourceRewritesWhatItHoldsAsItsProviderSaysItNow(): void
     {

@@ -69,10 +69,6 @@ use PHPUnit\Framework\TestCase;
 use Beffroi\Oidc\Tests\Fixture\Subjects;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * The endpoint end to end below HTTP: tokens minted by the issuers of #8 and signed by the bridge of the
- * core, verified by the same bridge against the published keys, claims read from a real user.
- */
 final class UserInfoHandlerTest extends TestCase
 {
     private Tenant $tenant;
@@ -133,11 +129,6 @@ final class UserInfoHandlerTest extends TestCase
         $this->handler = $this->handler($users);
     }
 
-    /**
-     * Issue #589: the claims of a person served to a client is one of the two reads where a personal datum
-     * leaves this provider, so it is an act, naming the client that asked and the person by the subject
-     * their account carries.
-     */
     #[Test]
     public function servingTheClaimsOfAPersonIsAnAct(): void
     {
@@ -154,10 +145,6 @@ final class UserInfoHandlerTest extends TestCase
         static::assertTrue($acts[0]->subject()->equals($this->user->subject));
     }
 
-    /**
-     * Nothing of anybody left, so there is nothing to say a read of: a refusal is not an act of this
-     * register (issue #589).
-     */
     #[Test]
     public function aRefusedRequestIsNoAct(): void
     {
@@ -176,8 +163,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.3.2: "sub" first, equal to the one of the token; §5.4: the claims of the scopes of the
-     * token. RFC 6750 §2.1: the token in the Authorization header, which is how oidc_login sends it.
+     * OIDC Core §5.3.2, §5.4, RFC 6750 §2.1
      */
     #[Test]
     public function itServesTheClaimsOfTheScopesOfTheToken(): void
@@ -204,8 +190,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: an opaque token opens the same door, from its record: the scopes, and the claims
-     * asked for by name.
+     * Architecture §4.6
      */
     #[Test]
     public function itServesTheClaimsOfAnOpaqueToken(): void
@@ -229,8 +214,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 8705 §3: a token bound to a certificate is honoured when the request presents that very
-     * certificate again, whichever shape the token has.
+     * RFC 8705 §3
      */
     #[Test]
     #[DataProvider('provideBoundTokens')]
@@ -248,7 +232,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 8705 §3.2: another certificate is another holder, and the resource refuses with invalid_token.
+     * RFC 8705 §3.2
      */
     #[Test]
     #[DataProvider('provideBoundTokens')]
@@ -266,8 +250,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 8705 §3: a bound token is not a bearer token, and whoever steals it holds bytes that open
-     * nothing.
+     * RFC 8705 §3
      */
     #[Test]
     #[DataProvider('provideBoundTokens')]
@@ -285,8 +268,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * A token bound to nothing is a bearer token, honoured by whoever holds it, certificate or not
-     * (RFC 6750 §2).
+     * RFC 6750 §2
      */
     #[Test]
     public function aBearerTokenIsHonouredByWhoeverHoldsIt(): void
@@ -302,7 +284,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * The two shapes of access token of architecture §4.6.
+     * Architecture §4.6
      *
      * @return iterable<string, array{string}>
      */
@@ -314,7 +296,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.1: "email_verified" a JSON boolean on the wire.
+     * OIDC Core §5.1
      */
     #[Test]
     public function theVerificationFlagsAreJsonBooleansOnTheWire(): void
@@ -333,10 +315,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5: the claims asked for by name in "claims.userinfo" are served with or without their
-     * scope, read from the token alone (architecture §4.6), and only those: "email" by name is not the
-     * "email" scope, so "email_verified" stays out; those of "claims.id_token" went into the ID token and
-     * are not served here for that reason. RFC 6750 §2.2: the token in the form body.
+     * OIDC Core §5.5, Architecture §4.6, RFC 6750 §2.2
      */
     #[Test]
     public function itServesTheClaimsAskedForByNameFromTheTokenAlone(): void
@@ -367,8 +346,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.4: "openid" alone gives "sub" and nothing else; RFC 6749 §6: on a refresh the token
-     * carries the narrowed scopes, so UserInfo serves the narrowed claims.
+     * OIDC Core §5.4, RFC 6749 §6
      */
     #[Test]
     public function itServesSubAloneForOpenidAlone(): void
@@ -390,8 +368,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 6750 §3.1: no token at all is a 401 with the bare challenge; the handler says so with an
-     * exception the integration turns into that response.
+     * RFC 6750 §3.1
      */
     #[Test]
     public function itRefusesARequestWithoutToken(): void
@@ -410,7 +387,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 6750 §2: both methods at once is invalid_request, before anything is verified.
+     * RFC 6750 §2
      */
     #[Test]
     public function itRefusesATokenSentTwice(): void
@@ -434,8 +411,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 6750 §3.1, RFC 9068 §4: an expired token is invalid_token, 401, with a description that tells
-     * the client to refresh.
+     * RFC 6750 §3.1, RFC 9068 §4
      */
     #[Test]
     public function itRefusesAnExpiredToken(): void
@@ -457,8 +433,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9068 §4: an ID token of this provider presented as an access token (no "typ" at+jwt) is
-     * invalid_token, 401.
+     * RFC 9068 §4
      */
     #[Test]
     public function itRefusesAnIdTokenPresentedAsAnAccessToken(): void
@@ -482,8 +457,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 8707 §2: a token asked for a resource is addressed to that resource, and this endpoint is not
-     * it. The refusal is the one of RFC 6750 §3.1, whatever else the token is worth.
+     * RFC 8707 §2, RFC 6750 §3.1
      */
     #[Test]
     public function itRefusesATokenAddressedToAResource(): void
@@ -508,8 +482,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.3.1: the access token must come from an OpenID Connect authentication request; one
-     * without "openid" is insufficient_scope, 403, and the challenge says which scope.
+     * OIDC Core §5.3.1
      */
     #[Test]
     public function itRefusesATokenWithoutOpenidScope(): void
@@ -533,9 +506,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.4, RFC 8707 §2: a token a client holds for itself is asked for a resource and addressed
-     * to it, and this endpoint is not that resource. It is refused there, before anything of a person is
-     * read, so a service acting for itself never reads the claims of anybody.
+     * RFC 6749 §4.4, RFC 8707 §2
      */
     #[Test]
     public function itRefusesATokenNobodySignedInFor(): void
@@ -562,9 +533,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: the replay of an authorization code revokes what was issued from it. The access
-     * token still verifies on its own (RFC 9068 §4), so a resource server holding only the keys keeps
-     * serving it; the provider, which knows where its grants live, refuses it: invalid_token, 401.
+     * RFC 6749 §4.1.2, RFC 9068 §4
      */
     #[Test]
     public function itRefusesATokenOfARevokedGrant(): void
@@ -583,8 +552,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2 names every token issued from the code, so an access token obtained by refreshing
-     * is refused as well: the family carries the grant of the code it descends from.
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function itRefusesARefreshedTokenOfARevokedGrant(): void
@@ -603,10 +571,6 @@ final class UserInfoHandlerTest extends TestCase
         $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
     }
 
-    /**
-     * A token whose grant the provider no longer has is refused the same way: there is nothing left to
-     * vouch for it.
-     */
     #[Test]
     public function itRefusesATokenWhoseGrantIsGone(): void
     {
@@ -632,9 +596,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 8628 §3.4: the tokens of the device grant descend from the device authorization request and from
-     * no authorization code, so the record of that request is what says the grant is still alive. Asked of
-     * the codes alone, the question had no answer and the token was refused at this endpoint.
+     * RFC 8628 §3.4
      */
     #[Test]
     public function itServesATokenOfTheDeviceGrant(): void
@@ -650,8 +612,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * Architecture §4.3: a device authorization request is revoked as a code is, and the tokens that
-     * descend from it stop being served here.
+     * Architecture §4.3
      */
     #[Test]
     public function itRefusesATokenOfARevokedDeviceRequest(): void
@@ -671,8 +632,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * CIBA Core §10.1: the tokens of the backchannel grant descend from the backchannel authentication
-     * request and from no authorization code, which is the refusal the FAPI-CIBA plan met at this endpoint.
+     * CIBA Core §10.1
      */
     #[Test]
     public function itServesATokenOfTheBackchannelGrant(): void
@@ -688,8 +648,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * Architecture §4.3: a backchannel authentication request is revoked as a code is, and the tokens that
-     * descend from it stop being served here.
+     * Architecture §4.3
      */
     #[Test]
     public function itRefusesATokenOfARevokedBackchannelRequest(): void
@@ -708,10 +667,6 @@ final class UserInfoHandlerTest extends TestCase
         $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
     }
 
-    /**
-     * A token that names a user the tenant has disabled opens nothing: invalid_token, the same as a bad
-     * one. Nothing about the user is said.
-     */
     #[Test]
     public function itRefusesATokenOfADisabledUser(): void
     {
@@ -727,9 +682,6 @@ final class UserInfoHandlerTest extends TestCase
         $this->handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
     }
 
-    /**
-     * A token that names a user the tenant no longer has opens nothing either.
-     */
     #[Test]
     public function itRefusesATokenOfAUserGone(): void
     {
@@ -744,9 +696,6 @@ final class UserInfoHandlerTest extends TestCase
         $handler->handle($this->tenant, 'GET', 'Bearer ' . $token, [], Fixtures::context());
     }
 
-    /**
-     * A token of another tenant does not verify against the keys of this one, whatever it says.
-     */
     #[Test]
     public function itRefusesATokenOfAnotherTenant(): void
     {
@@ -760,10 +709,6 @@ final class UserInfoHandlerTest extends TestCase
         $this->handler->handle(Fixtures::tenant('other', 'https://id.other.example'), 'GET', 'Bearer ' . $token, [], Fixtures::context());
     }
 
-    /**
-     * The acceptance of issue #165: a client that registered nothing keeps receiving the JSON answer,
-     * which is what every client does today.
-     */
     #[Test]
     public function aClientThatRegisteredNothingReceivesTheJson(): void
     {
@@ -779,8 +724,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.3.2: a client that registered a signature receives the same claims as a JWT, served as
-     * "application/jwt", and the JWT names who wrote it and for whom, which the JSON has no room to say.
+     * OIDC Core §5.3.2
      */
     #[Test]
     public function aClientThatRegisteredASignatureReceivesAJwt(): void
@@ -808,8 +752,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * §5.3.2: a client that registered an encryption receives a JWE it opens with its own key, carrying
-     * the signed answer.
+     * OIDC Core §5.3.2
      */
     #[Test]
     public function aClientThatRegisteredAnEncryptionReceivesAJweItOpens(): void
@@ -829,8 +772,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * §5.3.2: an answer may be encrypted without being signed, and what the JWE carries is then the JSON
-     * of the claims, which says nothing about who wrote it beyond the key it was addressed to.
+     * OIDC Core §5.3.2
      */
     #[Test]
     public function aClientThatRegisteredOnlyAnEncryptionReceivesTheJsonInsideTheJwe(): void
@@ -852,8 +794,6 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * A token issued to the client as it is now, once the registration under test replaced it.
-     *
      * @param list<string> $scopes
      */
     private function reopenedWith(array $scopes): string
@@ -894,8 +834,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9449 §7.1: a token bound to a key is honoured when the request carries a proof of that key,
-     * made for this request and naming this very token, whichever shape the token has.
+     * RFC 9449 §7.1
      */
     #[Test]
     #[DataProvider('provideBoundTokens')]
@@ -911,9 +850,6 @@ final class UserInfoHandlerTest extends TestCase
         static::assertSame('alice-subject', $response->subject);
     }
 
-    /**
-     * A token issued against one key and presented with a proof of another opens nothing.
-     */
     #[Test]
     #[DataProvider('provideBoundTokens')]
     public function aKeyBoundTokenPresentedWithAnotherKeyIsRefused(string $shape): void
@@ -930,8 +866,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9449 §7.1: a token bound to a key is presented under the DPoP scheme, and refused when it is
-     * presented as a bearer token, with the challenge naming the scheme that would have worked.
+     * RFC 9449 §7.1
      */
     #[Test]
     #[DataProvider('provideBoundTokens')]
@@ -959,9 +894,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 6750 §3.1: an expired token is invalid_token. What a token is bound to is read from the token, so
-     * the scheme it came under (RFC 9449 §7.2) is judged once it holds: a key-bound token presented as a
-     * bearer token after its expiry is refused as expired, under the Bearer scheme it was presented under.
+     * RFC 6750 §3.1, RFC 9449 §7.2
      */
     #[Test]
     #[DataProvider('provideBoundTokens')]
@@ -984,9 +917,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9449 §7.2: a token presented under the DPoP scheme is refused in the challenge of that scheme.
-     * A key-bound token presented under "DPoP" after its expiry, with a proof that verifies, is refused
-     * for its expiry under "DPoP", with the algorithms a proof may be signed with (§7.1).
+     * RFC 9449 §7.2, §7.1
      */
     #[Test]
     #[DataProvider('provideBoundTokens')]
@@ -1010,8 +941,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9449 §7.2, RFC 8707 §2: a token addressed to a resource is refused here whatever scheme it came
-     * under, and in the challenge of the one it came under.
+     * RFC 9449 §7.2, RFC 8707 §2
      */
     #[Test]
     public function aTokenAddressedToAResourcePresentedUnderDpopIsRefusedUnderTheDpopChallenge(): void
@@ -1041,9 +971,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9449 §7.2, OIDC Core §5.3.1: a token without "openid" presented under the DPoP scheme is
-     * insufficient_scope in the challenge of that scheme, still a 403 naming the scope that would have
-     * done (RFC 6750 §3.1).
+     * RFC 9449 §7.2, OIDC Core §5.3.1, RFC 6750 §3.1
      */
     #[Test]
     public function aTokenWithoutOpenidPresentedUnderDpopIsRefusedUnderTheDpopChallenge(): void
@@ -1068,8 +996,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * RFC 9449 §7.1: the proof names the token it accompanies, so that one taken from another request
-     * of the same client does not open this one.
+     * RFC 9449 §7.1
      */
     #[Test]
     public function aProofMadeForAnotherTokenIsRefused(): void
@@ -1086,7 +1013,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * A token of the shape named, bound to the key of the proofs fixture (RFC 9449 §6.1).
+     * RFC 9449 §6.1
      */
     private function keyBoundToken(string $shape): string
     {
@@ -1102,17 +1029,13 @@ final class UserInfoHandlerTest extends TestCase
         return Tokens::accessToken($this->opaque(), $authorization, Fixtures::now())->value;
     }
 
-    /**
-     * A proof for a GET of the UserInfo endpoint of the tenant, naming the token it accompanies, made at
-     * the moment given or at the one of the fixtures.
-     */
     private function proof(string $accessToken, ?JWK $key = null, ?DateTimeImmutable $at = null): string
     {
         return Proofs::proof('GET', Endpoints::of($this->tenant)->userinfo, $at ?? Fixtures::now(), $accessToken, [], [], $key);
     }
 
     /**
-     * A token of the shape named, bound to the certificate given (RFC 8705 §3).
+     * RFC 8705 §3
      */
     private function boundToken(string $shape, ClientCertificate $certificate): string
     {
@@ -1142,7 +1065,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * The authorization the device grant builds, its grant named by the record it spent (RFC 8628 §3.4).
+     * RFC 8628 §3.4
      */
     private function ofADeviceRequest(): UserAuthorization
     {
@@ -1153,8 +1076,7 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * The authorization the backchannel grant builds, its grant named by the record it spent (CIBA Core
-     * §10.1).
+     * CIBA Core §10.1
      */
     private function ofABackchannelRequest(): UserAuthorization
     {
@@ -1188,9 +1110,6 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * A code of the grant the tokens descend from, in the repository the endpoint reads to learn whether
-     * that grant is still alive.
-     *
      * @param list<string> $scopes
      */
     private function code(array $scopes, ?string $claims = null): AuthorizationCode
@@ -1209,8 +1128,6 @@ final class UserInfoHandlerTest extends TestCase
     }
 
     /**
-     * The authorization of a refresh, whose tokens descend from the same grant as the code.
-     *
      * @param list<string> $granted
      */
     private function refreshed(array $granted, ?Scopes $scopes): UserAuthorization

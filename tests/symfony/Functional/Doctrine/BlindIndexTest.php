@@ -17,16 +17,7 @@ use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 
 /**
- * The index key of a tenant, where it lives and what it costs (decisions 0011 and 0018).
- *
- * The key is a row of the data key table in a scope of its own, on a store whose keys never retire, so
- * that `key-management:rewrap-data-keys` carries it along when a deployment changes master key or backend
- * and no second command has to be remembered. It is never rotated: every tag already written was derived
- * under it.
- *
- * A second tenant is stood up here rather than configured, there being one tenant in the configuration of
- * a deployment and of this kernel: what changes between the two is the ambient tenant and nothing else,
- * which is what decision 0018 says decides a scope.
+ * Decisions 0011 and 0018
  */
 final class BlindIndexTest extends DatabaseTestCase
 {
@@ -36,10 +27,6 @@ final class BlindIndexTest extends DatabaseTestCase
         self::kms()->forget();
     }
 
-    /**
-     * The scope carries the slug and is no family of columns, so the index key shares no store with the
-     * keys that retire after thirty days.
-     */
     #[Test]
     public function theIndexKeyIsARowOfTheStoreInAScopeOfItsOwn(): void
     {
@@ -54,8 +41,7 @@ final class BlindIndexTest extends DatabaseTestCase
     }
 
     /**
-     * Decision 0011 refuses an index key shared between two tenants: the same username of two tenants is
-     * two tags, so the column says nothing about who else holds that username elsewhere.
+     * Decision 0011
      */
     #[Test]
     public function twoTenantsDeriveDifferentTagsForOneUsername(): void
@@ -69,8 +55,7 @@ final class BlindIndexTest extends DatabaseTestCase
     }
 
     /**
-     * Decision 0018 counts one opening per data key and per thread. The index key is unwrapped at the first
-     * tag and held, so a page that looks a user up on a thread that already did pays nothing.
+     * Decision 0018
      */
     #[Test]
     public function theIndexKeyIsOpenedOnceWhateverTheNumberOfTagsDerived(): void
@@ -90,10 +75,7 @@ final class BlindIndexTest extends DatabaseTestCase
     }
 
     /**
-     * One key per tenant and one opening for every index over it: the store opens the row once and
-     * `StoredKeyBlindIndex` derives under the handle it holds, so the two columns of one tenant cost the
-     * opening of one and not of each. Decision 0018 counts one opening per data key and per thread, and
-     * this is where the count is read.
+     * Decision 0018
      */
     #[Test]
     public function thePairOfColumnsOfOneTenantCostsOneOpeningOfItsIndexKey(): void
@@ -111,11 +93,6 @@ final class BlindIndexTest extends DatabaseTestCase
         static::assertSame(1, self::kms()->unwrapped);
     }
 
-    /**
-     * The key of an index scope is its first row and not its newest, which is the one place this reads the
-     * table differently from the store of the bridge: a rotation nobody asked for would otherwise leave
-     * every tag already written unreachable.
-     */
     #[Test]
     public function aSecondRowInTheScopeIsNotWhatTheTagsAreDerivedUnder(): void
     {
@@ -130,10 +107,6 @@ final class BlindIndexTest extends DatabaseTestCase
         static::assertSame($before, self::tagOf(self::tenant()->slug, 'ada-lovelace'));
     }
 
-    /**
-     * A tag derived under the index key of another tenant is a tag no search of either tenant matches, so
-     * a unit of work with no ambient tenant is refused rather than answered.
-     */
     #[Test]
     public function aTagWithNoAmbientTenantIsRefused(): void
     {
@@ -153,10 +126,6 @@ final class BlindIndexTest extends DatabaseTestCase
         $indexes->of(BlindIndexedColumns::of(User::class, 'username'));
     }
 
-    /**
-     * The one the container wires, which is what the repository is handed: the tenant it indexes for is
-     * the one the configuration names, through the same provider every use case receives.
-     */
     #[Test]
     public function theIndexesOfTheContainerDeriveForTheConfiguredTenant(): void
     {
@@ -172,10 +141,6 @@ final class BlindIndexTest extends DatabaseTestCase
         return self::indexesOf($slug)->of(BlindIndexedColumns::of(User::class, 'username'))->of($username);
     }
 
-    /**
-     * The indexes of a tenant the test decides, over the store and the connection of the container: what
-     * is replaced is the ambient tenant and nothing else.
-     */
     private static function indexesOf(string $slug): TenantBlindIndexes
     {
         return new TenantBlindIndexes(

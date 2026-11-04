@@ -13,12 +13,12 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * Section 5.3, M-12: a NameID under the rule of its format, whoever builds it (SAML Core §2.2.3, §8.3).
+ * Section 5.3, M-12, SAML Core §2.2.3, §8.3
  */
 final class NameIdTest extends TestCase
 {
     /**
-     * Section 5.3: the value, the format and the three optional attributes of SAML Core §2.2.2, kept as given.
+     * Section 5.3, SAML Core §2.2.2
      */
     #[Test]
     public function itKeepsItsValueFormatAndQualifiers(): void
@@ -46,7 +46,7 @@ final class NameIdTest extends TestCase
     }
 
     /**
-     * M-12, SAML Core §2.2.2 as corrected by E60: without a format, the unspecified one, and no qualifier.
+     * M-12, SAML Core §2.2.2 as corrected by E60
      */
     #[Test]
     public function itIsOfTheUnspecifiedFormatWithoutQualifierByDefault(): void
@@ -62,7 +62,7 @@ final class NameIdTest extends TestCase
     }
 
     /**
-     * M-12: a value its format allows, never trimmed nor otherwise changed.
+     * M-12
      */
     #[Test]
     #[DataProvider('provideValues')]
@@ -112,7 +112,7 @@ final class NameIdTest extends TestCase
     }
 
     /**
-     * §9.2 row 27, M-12: an empty value; the message carries nothing of the NameID (M-16).
+     * §9.2 row 27, M-12, M-16
      */
     #[Test]
     public function itRefusesAnEmptyValue(): void
@@ -126,7 +126,7 @@ final class NameIdTest extends TestCase
     }
 
     /**
-     * §9.2 row 27, M-12, M-6: whitespace or a control character around the value, never trimmed.
+     * §9.2 row 27, M-12, M-6
      */
     #[Test]
     #[DataProvider('provideSurroundedValues')]
@@ -159,9 +159,7 @@ final class NameIdTest extends TestCase
     }
 
     /**
-     * M-15: a NUL in the value or a qualifier, which the DOM would cut the written identifier at, so that the identity
-     * provider signs another identifier than the one it was given, or another character XML does not carry; refused
-     * whoever builds the NameID.
+     * M-15
      */
     #[Test]
     #[DataProvider('provideTextsNotCarried')]
@@ -192,8 +190,7 @@ final class NameIdTest extends TestCase
     }
 
     /**
-     * §9.2 row 27, M-12, M-6: a Unicode format character anywhere in the value, invisible or reordering, so that the
-     * identifier displayed is the one compared.
+     * §9.2 row 27, M-12, M-6
      */
     #[Test]
     #[DataProvider('provideValuesWithAFormatCharacter')]
@@ -227,8 +224,7 @@ final class NameIdTest extends TestCase
     }
 
     /**
-     * M-12, M-6: a control character, a line separator or a paragraph separator inside the value, which a consumer that
-     * displays, logs or splits it by line would read as two; a space inside stays allowed.
+     * M-12, M-6
      */
     #[Test]
     #[DataProvider('provideValuesWithAControlInside')]
@@ -259,8 +255,7 @@ final class NameIdTest extends TestCase
     }
 
     /**
-     * M-12, SAML Core §2.2.2: a qualifier, of any format, held to the rule of the value, since the identity the
-     * consumer links is the value with its qualifiers.
+     * M-12, SAML Core §2.2.2
      */
     #[Test]
     #[DataProvider('provideQualifiersBreakingTheRule')]
@@ -307,7 +302,7 @@ final class NameIdTest extends TestCase
     }
 
     /**
-     * M-12: a qualifier of a format that does not make it a URI, empty, of 1024 characters, or holding a space inside.
+     * M-12
      */
     #[Test]
     public function itAcceptsAQualifierThatHoldsToTheRule(): void
@@ -323,7 +318,7 @@ final class NameIdTest extends TestCase
     }
 
     /**
-     * §9.2 row 27, M-12, SAML Core §8.3.7, §8.3.8: a persistent or a transient identifier over 256 characters.
+     * §9.2 row 27, M-12, SAML Core §8.3.7, §8.3.8
      */
     #[Test]
     #[DataProvider('provideLongPairwiseValues')]
@@ -348,7 +343,7 @@ final class NameIdTest extends TestCase
     }
 
     /**
-     * M-12, section 7: every other format is at most 1024 characters.
+     * M-12, section 7
      */
     #[Test]
     #[DataProvider('provideLongValues')]
@@ -374,7 +369,7 @@ final class NameIdTest extends TestCase
     }
 
     /**
-     * §9.2 row 27, M-12, SAML Core §8.3.6: an entity identifier carries none of the three optional attributes.
+     * §9.2 row 27, M-12, SAML Core §8.3.6
      */
     #[Test]
     #[DataProvider('provideQualifiedEntities')]
@@ -408,7 +403,7 @@ final class NameIdTest extends TestCase
     }
 
     /**
-     * M-12, SAML Core §8.3.6: an entity identifier is a URI of M-6.
+     * M-12, SAML Core §8.3.6, M-6
      */
     #[Test]
     #[DataProvider('provideNotUris')]
@@ -433,7 +428,7 @@ final class NameIdTest extends TestCase
     }
 
     /**
-     * M-12, SAML Core §8.3.2: an email address is an addr-spec, a local part and a domain around the last @.
+     * M-12, SAML Core §8.3.2
      */
     #[Test]
     #[DataProvider('provideNotAddrSpecs')]
@@ -473,7 +468,7 @@ final class NameIdTest extends TestCase
     }
 
     /**
-     * M-12, SAML Core §8.3.7, §8.3.8: the qualifiers of a persistent or a transient identifier name an entity.
+     * M-12, SAML Core §8.3.7, §8.3.8
      */
     #[Test]
     #[DataProvider('providePairwiseQualifiers')]
@@ -502,7 +497,7 @@ final class NameIdTest extends TestCase
     }
 
     /**
-     * M-12, SAML Core §2.2.2: for the other formats, the qualifiers are a domain, which Core does not make a URI.
+     * M-12, SAML Core §2.2.2
      */
     #[Test]
     public function itAcceptsQualifiersThatAreNotUrisOnAnotherFormat(): void
@@ -515,7 +510,7 @@ final class NameIdTest extends TestCase
     }
 
     /**
-     * M-12, SAML Core §8.3.7, §8.3.8: a NameQualifier of a persistent or a transient identifier that is not a URI.
+     * M-12, SAML Core §8.3.7, §8.3.8
      */
     #[Test]
     #[DataProvider('provideNameQualifiersNotUris')]
@@ -540,7 +535,7 @@ final class NameIdTest extends TestCase
     }
 
     /**
-     * M-12, SAML Core §8.3.7, §8.3.8: an SPNameQualifier of a persistent or a transient identifier that is not a URI.
+     * M-12, SAML Core §8.3.7, §8.3.8
      */
     #[Test]
     #[DataProvider('provideSpNameQualifiersNotUris')]

@@ -7,10 +7,7 @@ namespace App\Doctrine\Type;
 use Beffroi\Oidc\Domain\Authorization\AuthenticationSnapshot;
 
 /**
- * What a session had proven at a grant (architecture §4.6), as the three claims every token of the provider
- * writes it as. A record that carries one from the moment it exists embeds it; a record that gains one only
- * when somebody answers it keeps it as a document, because it is absent until then and an embeddable cannot
- * be null.
+ * A record that gains one only when answered keeps it as a document: an embeddable cannot be null.
  *
  * @extends JsonbObjectType<AuthenticationSnapshot>
  */

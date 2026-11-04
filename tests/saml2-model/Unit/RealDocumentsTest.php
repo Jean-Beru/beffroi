@@ -41,18 +41,12 @@ use function preg_replace;
 use function sprintf;
 
 /**
- * Section 9.4: the real documents of tests/saml2-model/Fixture/real/, bytes as received, read with a clock frozen at their
- * capture. A real document the model refuses is a finding (section 9.4); none of these is refused.
+ * Section 9.4
  */
 final class RealDocumentsTest extends TestCase
 {
     private const string DSIG = 'http://www.w3.org/2000/09/xmldsig#';
 
-    /**
-     * The walk of issue #789 on 23 October 2026: the App Federation Metadata of the enterprise application of the test
-     * tenant, the response its Entra posted for alice, the assertion of that response, and the request of the service
-     * provider of the stack that response answers, as HTTP-Redirect carried it and inflated.
-     */
     private const string ENTRA_METADATA = 'entra-app-federation-metadata-2026-10-23.xml';
 
     private const string ENTRA_RESPONSE = 'entra-idp-response-signed-both-2026-10-23.xml';
@@ -64,10 +58,7 @@ final class RealDocumentsTest extends TestCase
     private const string ENTRA_REQUEST_QUERY = 'beffroi-sp-authnrequest-to-entra-query-2026-10-23.txt';
 
     /**
-     * Section 9.4, section 6.5: the metadata of an identity provider, as Entra, Keycloak 26.7.4 and SimpleSAMLphp
-     * 2.5.3.1 publish it, the first both for every tenant and for the enterprise application upstream of the stack, the
-     * last both in plain http and as the upstream identity provider of the stack, over https and signed, and as its
-     * library 4.20.3 writes it, read by readTrusted().
+     * Section 9.4, section 6.5
      *
      * @param list<Endpoint> $singleSignOn
      * @param list<Endpoint> $singleLogout
@@ -192,9 +183,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, section 6.5: the metadata of a service provider, as Keycloak 26.7.4's broker and SimpleSAMLphp
-     * 2.5.3.1 publish it and as its library 4.20.3 writes it, read by readTrusted(); the default assertion consumer
-     * service resolved over the HTTP-POST ones (M-9).
+     * Section 9.4, section 6.5, M-9
      *
      * @param list<IndexedEndpoint> $assertionConsumers
      * @param list<Endpoint> $singleLogout
@@ -298,8 +287,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, M-2, M-1: the metadata the SimpleSAMLphp library signed with a test key, verified by
-     * readSigned() under the certificate of that key, reads as its unsigned twin.
+     * Section 9.4, M-2, M-1
      */
     #[Test]
     #[DataProvider('provideSignedByTheLibrary')]
@@ -339,8 +327,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, M-2: the metadata Entra and SimpleSAMLphp 2.5.3.1 signed themselves, verified by readSigned() under
-     * the certificate of their own KeyInfo, which proves the signature and not the trust, read as by readTrusted().
+     * Section 9.4, M-2
      */
     #[Test]
     #[DataProvider('provideSignedByTheirPublisher')]
@@ -372,12 +359,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, section 6.1, M-2: the responses of real identity providers, validated with the clock frozen at
-     * their IssueInstant, under the keys of the metadata that goes with each: SimpleSAMLphp 2.5.3.1's two captured
-     * responses, its default signing the response and the assertion, the other the assertion only; Keycloak 26.7.4's,
-     * the response only; and the two responses simplesamlphp/saml2 4.20.3, the code SimpleSAMLphp signs with, made on
-     * 27 September 2026 under xml-security's test certificate (its tests/Dsig/Fixture/real/, copied byte for byte with
-     * that certificate).
+     * Section 9.4, section 6.1, M-2
      */
     #[Test]
     #[DataProvider('provideRealResponses')]
@@ -475,12 +457,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * The identity provider of a real metadata of tests/saml2-model/Fixture/real/, read by readTrusted().
-     */
-    /**
-     * Section 9.4, M-2: the assertion of Entra's response, its bytes as the response carries them, verified alone under
-     * the signing certificate of the metadata of the enterprise application, Entra signing it apart from the response
-     * ("Sign SAML response and assertion").
+     * Section 9.4, M-2
      */
     #[Test]
     public function itVerifiesTheAssertionOfEntraAloneUnderTheKeyOfItsMetadata(): void
@@ -500,10 +477,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, issue #722: the request of the service provider of the stack that Entra answered, as HTTP-Redirect
-     * carried it, its SAMLRequest inflating to the document of the corpus byte for byte. The query string measures
-     * 1 267 bytes under the 8 192 of maxQueryStringBytes (bindings.md section 7), its message 664 bytes inflated under
-     * the 65 536 of maxInflatedBytes.
+     * Section 9.4
      */
     #[Test]
     public function itCarriesTheRequestEntraAnsweredInItsQueryString(): void
@@ -523,11 +497,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 7, M-7, issue #722: Entra writes the bearer NotOnOrAfter of its assertion one hour after the instant it
-     * begins its windows from, which comes 161 ms before the IssueInstant of its response, so that its bearer window is
-     * maxBearerWindow itself, 3 600 s, with no margin. The bearer limit takes the clock skew as every instant ahead of
-     * now does, so that a service provider whose clock is behind Entra's within the skew accepts its response, the
-     * bearer confirmation included.
+     * Section 7, M-7
      */
     #[Test]
     #[DataProvider('provideClocksBehindEntraWithinTheSkew')]
@@ -559,9 +529,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 7, M-7, issue #722: a service provider whose clock is the clock skew and one second behind Entra's
-     * refuses its response, whose IssueInstant is then later than now plus the skew (section 6.1 step 6), before its
-     * bearer confirmation is read.
+     * Section 7, M-7, section 6.1 step 6
      */
     #[Test]
     public function itRefusesTheResponseOfEntraUnderAClockBehindItsOwnByMoreThanTheSkew(): void
@@ -582,10 +550,6 @@ final class RealDocumentsTest extends TestCase
         $validator->validate($response, self::identityProviderOf(self::ENTRA_METADATA), self::entraRequest());
     }
 
-    /**
-     * What the service provider of the stack expected of the response of Entra: the request it sent, its assertion
-     * consumer service and its entity ID, the Reply URL and the Identifier of the enterprise application.
-     */
     private static function entraRequest(): ExpectedResponse
     {
         return ExpectedResponse::toRequest(
@@ -610,7 +574,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * The clock frozen at noon UTC of the capture date the name of the file carries (section 9.4).
+     * Section 9.4
      */
     private function reader(string $file): MetadataReader
     {

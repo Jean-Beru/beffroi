@@ -18,13 +18,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3: the rules an identity provider and a service provider share, whoever builds them: an entity ID of
- * M-6, the counts of section 7 (M-17), each certificate an RSA key of at least 2048 bits (D-16).
+ * Section 5.3, M-6, M-17, D-16
  */
 final class RoleRulesTest extends TestCase
 {
     /**
-     * Section 7: every list at its bound.
+     * Section 7
      */
     #[Test]
     public function itAcceptsEveryListAtItsBound(): void
@@ -43,7 +42,7 @@ final class RoleRulesTest extends TestCase
     }
 
     /**
-     * M-17, §9.2 rows 35 and 36, "seventeen signing certificates" and "one over each bound of section 7".
+     * M-17, §9.2 rows 35 and 36
      *
      * @param list<string> $signing
      * @param list<string> $encryption
@@ -104,7 +103,7 @@ final class RoleRulesTest extends TestCase
     }
 
     /**
-     * M-6: the entity ID is an absolute URI.
+     * M-6
      */
     #[Test]
     public function itRefusesARelativeEntityId(): void
@@ -118,7 +117,7 @@ final class RoleRulesTest extends TestCase
     }
 
     /**
-     * D-16, section 6.5 step 5: a certificate, signing or encryption, is checked by building its Dsig key.
+     * D-16, section 6.5 step 5
      *
      * @param list<string> $signing
      * @param list<string> $encryption
@@ -153,7 +152,7 @@ final class RoleRulesTest extends TestCase
     }
 
     /**
-     * M-3, section 5.3: no signing certificate, no keys.
+     * M-3, section 5.3
      */
     #[Test]
     public function itHasNoKeysWithoutASigningCertificate(): void
@@ -163,7 +162,7 @@ final class RoleRulesTest extends TestCase
     }
 
     /**
-     * M-3: one key per signing certificate.
+     * M-3
      */
     #[Test]
     public function itHasOneKeyPerSigningCertificate(): void

@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.7: an XML version other than 1.0 (I-5). A consumer catches the base class when it does not care which rule fired.
+ * Section 5.7, I-5
  */
 final class XmlVersionRefusedTest extends TestCase
 {

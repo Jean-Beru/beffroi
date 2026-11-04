@@ -12,12 +12,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3, M-5: the top-level status codes, a closed vocabulary (SAML Core §3.2.2.2).
+ * Section 5.3, M-5, SAML Core §3.2.2.2
  */
 final class StatusCodeTest extends TestCase
 {
     /**
-     * SAML Core §3.2.2.2: the four URIs the top-level StatusCode MUST take, and no other.
+     * SAML Core §3.2.2.2
      */
     #[Test]
     public function itHoldsTheFourTopLevelCodesOfSamlCore(): void
@@ -56,7 +56,7 @@ final class StatusCodeTest extends TestCase
     }
 
     /**
-     * M-5, M-6: any other URI is refused, compared byte for byte, and the refusal carries none of it (M-16).
+     * M-5, M-6, M-16
      */
     #[Test]
     #[DataProvider('provideRefusedUris')]

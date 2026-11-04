@@ -18,9 +18,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * The device authorization endpoint (RFC 8628 §3.1), POST only: where a client with no browser starts. An
- * error is the JSON of the token endpoint (§3.2), never a redirection and never a page, this client having
- * nowhere to be sent.
+ * RFC 8628 §3.1, §3.2
  */
 #[AsController]
 final readonly class DeviceAuthorizationController

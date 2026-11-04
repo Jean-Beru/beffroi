@@ -9,11 +9,6 @@ use Beffroi\Core\Domain\Key\UnsealedKey;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\SigningKeyProviderInterface;
 
-/**
- * Which key of the tenant signed, and which KMS opened it (architecture §3.3). The private material the
- * provider hands back stays where it is: what the panel keeps is the "kid" the JWS header will carry
- * anyway and the algorithm it is a key of.
- */
 final readonly class ProfilingSigningKeyProvider implements SigningKeyProviderInterface
 {
     public function __construct(

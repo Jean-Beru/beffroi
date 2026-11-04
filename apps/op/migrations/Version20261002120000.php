@@ -9,23 +9,7 @@ use Doctrine\DBAL\Schema\Schema;
 use App\Doctrine\Migration\SealingMigration;
 
 /**
- * The three columns of `beffroi_linked_identity` sealed under the data key of their tenant, and the blind
- * index of the pair a federated login recognises an identity by (decisions 0011 and 0018).
- *
- * **The table is sealed before a federation fills it, and that is why it is sealed now.** What writes a row
- * today is `beffroi:user:link`, by hand or from a provisioning run, and what reads one is the grant that
- * reads an assertion of a trusted issuer: one row per identity, where a federation writes one per person
- * who signs in through it. A blind index added once a directory has been imported is a reindex, which
- * means reading and unsealing every row of every tenant of a customer; added here it is this migration and
- * nothing else, so the spike that federates has nothing to migrate and nothing to add.
- *
- * The columns are recreated rather than converted, as the columns of `beffroi_user` were and for the same
- * reason: there is no deployment, so there are no cleartext rows worth a conversion path. A table that
- * holds rows is refused before anything runs, with the sentence `SealingMigration` gives it. `claims`
- * loses its `jsonb` with the rest, what the column holds being the ciphertext of a JSON document.
- *
- * **The unique constraint moves onto the two index columns.** A sealed column holds a different ciphertext
- * for every write of the same value, so the constraint on the pair in the clear would refuse nothing.
+ * The unique constraint moves onto the two blind indexes: a sealed column holds a new ciphertext at every write.
  */
 final class Version20261002120000 extends SealingMigration
 {

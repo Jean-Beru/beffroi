@@ -24,10 +24,7 @@ use function implode;
 use function sprintf;
 
 /**
- * The fixtures the AuthnRequest tests share: the two parties of the files authn-request-*.xml of tests/saml2-model/Fixture/, a
- * service provider signing with the test key of its role and an identity provider at two single sign-on services; the
- * validator with a clock frozen at the IssueInstant of those files, or moved from it; the files, and the variants of
- * the unsigned request whose one change is a lexical value (section 9.7), built from the same attributes.
+ * Section 9.7
  */
 final class AuthnRequestFixtures
 {
@@ -48,8 +45,7 @@ final class AuthnRequestFixtures
     public const string ISSUER = '<saml:Issuer>https://sp.example.com/saml</saml:Issuer>';
 
     /**
-     * The service provider of the fixtures: its signing certificate the test key of $key, its assertion consumer
-     * services at index 0 and at index 1, the second its default (SAML Metadata §2.2.3).
+     * SAML Metadata §2.2.3
      *
      * @param 'idp'|'sp' $key
      */
@@ -67,9 +63,6 @@ final class AuthnRequestFixtures
         );
     }
 
-    /**
-     * Our identity provider: its single sign-on services on HTTP-Redirect and on HTTP-POST, at two locations.
-     */
     public static function identityProvider(bool $wantAuthnRequestsSigned = false): IdentityProvider
     {
         return new IdentityProvider(
@@ -85,7 +78,7 @@ final class AuthnRequestFixtures
     }
 
     /**
-     * The validator, its clock frozen at NOW moved by $seconds, the default bounds of section 7.
+     * Section 7
      */
     public static function validator(int $seconds = 0): AuthnRequestValidator
     {
@@ -96,7 +89,7 @@ final class AuthnRequestFixtures
     }
 
     /**
-     * A file of tests/saml2-model/Fixture/, loaded with SamlLoader::create() (M-14) and read before verification (M-1).
+     * M-14, M-1
      */
     public static function load(string $path): UnverifiedAuthnRequest
     {
@@ -104,10 +97,7 @@ final class AuthnRequestFixtures
     }
 
     /**
-     * The unsigned request of behaviour/authn-request-unsigned.xml, each attribute of $changes replacing its own or
-     * added, a null one removed, with $children as the children of the root.
-     *
-     * @param array<string, ?string> $changes
+     * @param array<string, ?string> $changes attribute name to value, null removing it
      */
     public static function request(array $changes = [], string $children = self::ISSUER): UnverifiedAuthnRequest
     {

@@ -32,25 +32,16 @@ use const T_STRING;
 use const T_VARIABLE;
 
 /**
- * §9.3 row 16, M-16: every message of a MessageRefused, read on the source of src/, ends with the rule that refused, in
- * parentheses, and is written in the code, a literal or the format of a sprintf() whose arguments are names and bounds
- * of the schema, never a value read from a message. Counts::check() and Schema::unsupported() pass on the message their
- * callers write, which is read at each call; UnsuccessfulResponse writes its own, which its test reads (§9.3 row 14).
- * That no message carries an ID, a URL, an entity ID or a NameID of the input is asserted by every refusal test of the
- * readers (assertCarriesNothingOf()).
+ * §9.3 row 16, M-16, §9.3 row 14
  */
 final class RefusalMessagesTest extends TestCase
 {
-    /**
-     * The methods that throw the message their caller writes, and the files they live in.
-     */
     private const array PASSING_ON = ['Counts::check', 'Schema::unsupported'];
 
     private const array PASSING_ON_FILES = ['Value/Counts.php', 'Internal/Schema.php'];
 
     /**
-     * §9.3 row 16, M-16: the message of every refusal of src/ ends with "(M-n).", "(section n)." or the section of a
-     * SAML specification.
+     * §9.3 row 16, M-16
      */
     #[Test]
     public function everyRefusalNamesItsRule(): void
@@ -79,8 +70,6 @@ final class RefusalMessagesTest extends TestCase
     }
 
     /**
-     * The scan finds the messages of a refusal, built as the source builds them, and marks one it cannot read.
-     *
      * @param list<string> $expected
      */
     #[Test]
@@ -110,10 +99,6 @@ final class RefusalMessagesTest extends TestCase
     }
 
     /**
-     * The messages the source gives a refusal: the first argument of new <MessageRefused subclass>(...), a literal or
-     * the format of sprintf(), and the literal of each Counts::check() and Schema::unsupported(); anything else is
-     * "<not a literal>".
-     *
      * @return list<string>
      */
     private function messages(string $source): array
@@ -141,8 +126,6 @@ final class RefusalMessagesTest extends TestCase
     }
 
     /**
-     * The message at $index, the first token of an argument: a literal, or the literal format of sprintf().
-     *
      * @param list<PhpToken> $tokens
      */
     private function argument(array $tokens, int $index): string
@@ -156,8 +139,6 @@ final class RefusalMessagesTest extends TestCase
     }
 
     /**
-     * The last literal argument of the call whose parenthesis opens at $index, the format of a sprintf() included.
-     *
      * @param list<PhpToken> $tokens
      */
     private function lastLiteral(array $tokens, int $index): string
@@ -193,8 +174,6 @@ final class RefusalMessagesTest extends TestCase
     }
 
     /**
-     * The short names of the MessageRefused subclasses, the files of src/Exception/.
-     *
      * @return list<string>
      */
     private function refusals(): array
@@ -209,8 +188,7 @@ final class RefusalMessagesTest extends TestCase
     }
 
     /**
-     * @return array<string, string> each PHP file of src/, its path relative to src/ to its source, the two that pass
-     *                               on the message their callers write left aside
+     * @return array<string, string> source by path relative to src/
      */
     private function sources(): array
     {

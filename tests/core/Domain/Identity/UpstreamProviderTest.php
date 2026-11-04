@@ -17,8 +17,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Issue #781, decision 0029: an upstream provider as the deployment declares it, which answers for its
- * e-mail domains and creates the persons of those domains only.
+ * Decision 0029
  */
 final class UpstreamProviderTest extends TestCase
 {
@@ -45,8 +44,6 @@ final class UpstreamProviderTest extends TestCase
     }
 
     /**
-     * A domain a provider is declared with is an EmailDomain, refused there when it is none (EmailDomainTest).
-     *
      * @param list<string> $claims
      */
     #[Test]
@@ -67,7 +64,6 @@ final class UpstreamProviderTest extends TestCase
     public static function provideWhatIsNotAProvider(): iterable
     {
         yield 'unnamed' => ['', [], 'An upstream provider is named.'];
-        // the address is not a claim of the profile: every provider holds it, its domains being read from it
         yield 'the address among the claims of the profile' => [
             self::PROVIDER,
             ['email'],
@@ -81,7 +77,7 @@ final class UpstreamProviderTest extends TestCase
     }
 
     /**
-     * RFC 4343 §3, UTS #46: the domain of an address, as EmailDomain reads it, is compared exactly.
+     * RFC 4343 §3, UTS #46
      */
     #[Test]
     #[DataProvider('provideAddresses')]
@@ -114,9 +110,7 @@ final class UpstreamProviderTest extends TestCase
     }
 
     /**
-     * Decision 0002, issue #781: the source of a person it creates names it, and holds the address and those
-     * of the claims it fills that it said, so that a manual description leaves them to it; a claim it fills
-     * and did not say, or said and does not fill, it does not hold.
+     * Decision 0002
      */
     #[Test]
     public function itHoldsTheAddressAndTheClaimsItFillsThatItSaid(): void

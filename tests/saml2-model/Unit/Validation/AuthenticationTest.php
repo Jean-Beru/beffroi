@@ -10,12 +10,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.6, M-2: how a protocol message was authenticated.
+ * Section 5.6, M-2
  */
 final class AuthenticationTest extends TestCase
 {
     /**
-     * Section 5.6: an XML signature verified here, the binding's signature, or nothing, and no other case.
+     * Section 5.6
      */
     #[Test]
     public function itIsAnXmlSignatureTheBindingOrNothing(): void

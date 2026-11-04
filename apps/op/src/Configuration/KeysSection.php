@@ -45,9 +45,6 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurat
 use function is_int;
 use function is_string;
 
-/**
- * Where the keys of the tenant live and what seals them (architecture §3.3): the KMS is named here and built by the framework, and what the provider holds is that name.
- */
 final readonly class KeysSection extends ConfigurationSection
 {
     public function name(): string
@@ -88,8 +85,7 @@ final readonly class KeysSection extends ConfigurationSection
             ->defaultNull()
             ->validate()
             ->always(static function (mixed $delay): mixed {
-                // refused here as the schedule refuses it when it is built (StagingDelay), which is where a
-                // value of the environment is checked, a placeholder standing for one in this tree
+                // An environment value is a placeholder here; StagingDelay checks it when the schedule is built.
                 if ($delay !== null && ! is_int($delay) && ! is_string($delay)) {
                     throw new InvalidConfigurationException('The "beffroi" configuration key "staging_delay" is a number of seconds.');
                 }
@@ -111,35 +107,17 @@ final readonly class KeysSection extends ConfigurationSection
     public function load(array $config, ServicesConfigurator $services, bool $debug): void
     {
         $keys = $this->own($config);
-        // the client is named here and built there: the KMS clients live in "key_management.clients", the
-        // configuration of KeyManagementBundle, which is also where a client made of several providers and a
-        // data key store are declared, and where a DSN that may carry key material already belongs. What the
-        // provider holds is a name, and an alias to the client that name points at.
         $services->alias('beffroi.kms', 'key_management.' . self::string($keys, 'kms'));
-        // Traced in debug, so that the panel of the profiler sees what this provider opens. The component
-        // traces what it builds itself and nothing else: the clients it is given, its own envelope
-        // encrypter and its own store, none of which this provider uses, so a page that sealed or opened a
-        // column reported nothing at all (beffroi#427). The decorators are the component's own, posed here
-        // rather than taken through an alias to its service, because a test takes the KMS of this kernel
-        // down by replacing this service at runtime and an alias cannot be replaced.
+        // The component traces only what it builds itself, so this encrypter is traced here; set rather than aliased,
+        // because a test replaces it at runtime and an alias cannot be replaced.
         $envelopes = inline_service(EnvelopeEncrypter::class)->args([service('beffroi.kms')]);
         $services->set('beffroi.kms.envelopes', $debug ? TraceableEnvelopeEncrypter::class : EnvelopeEncrypter::class)->args(
             $debug
                 ? [$envelopes, service('key_management.data_collector'), self::string($keys, 'kms')]
                 : [service('beffroi.kms')],
         );
-        // The columns that carry a personal datum (decisions 0011 and 0018): a data key per tenant and per
-        // family of columns, wrapped by the master key of that tenant, the one its signing keys are already
-        // sealed under, and a payload that carries a 16-byte reference to it rather than the wrapped key.
-        //
-        // Three services and one setting of their own, the secrets that bind a row to its reference and its
-        // scope: the table is the provider's, and what a deployment chooses of the rest it has already chosen
-        // above, by naming its KMS and the pattern of its master keys. None of them is tagged
-        // "kernel.reset": the component tags its own store with it and "forget()" would put the KMS back on
-        // the path of every request that touches a column, where a thread is to keep open what it has
-        // opened (decision 0018, 12-garde-des-cles.md §1.5).
-        // the secrets reach the stores as the configuration or the environment carries them, the factory holding
-        // them to the rules of the tree either way (decision 0030)
+        // The stores are not tagged "kernel.reset" as the component's own is: forget() would put the KMS back on
+        // the path of every request that touches a sealed column.
         $secrets = $keys['data_key_secrets'] ?? [];
         $services
             ->set('beffroi.data_keys', TenantDataKeyStores::class)
@@ -152,12 +130,7 @@ final readonly class KeysSection extends ConfigurationSection
                 $secrets,
                 TenantDataKeyStores::TABLE,
             ]);
-        // The index key of a tenant, which is what a search matches a sealed column by: a row of the same
-        // table, in a scope of its own, on a store whose maximum age is null. The age past which a key is
-        // retired is a setting of a store and not of a scope, and an index key must never be retired nor
-        // rotated, every tag already written having been derived under it; keeping it in the store rather
-        // than beside the master key of the tenant is what has "key-management:rewrap-data-keys" carry it
-        // along when a deployment changes backend (decision 0018).
+        // No maximum age for this store: an index key is never retired, every tag written being derived under it.
         $services
             ->set('beffroi.data_keys.index', TenantDataKeyStores::class)
             ->factory(self::dataKeyStores(...))
@@ -170,20 +143,12 @@ final readonly class KeysSection extends ConfigurationSection
                 TenantDataKeyStores::TABLE,
                 null,
             ]);
-        // The store opens the index key of a tenant once and every index over it costs that one opening,
-        // which is what decision 0018 counts; the table is read for the reference of its first row and for
-        // nothing else. Declared by its class so that what looks a user up is autowired with it
-        // (DoctrineUserRepository).
         $services->set(TenantBlindIndexes::class)->args([
             service(Connection::class),
             service('beffroi.data_keys.index'),
             service(TenantProvider::class),
             TenantDataKeyStores::TABLE,
         ]);
-        // What an operator holds the data keys with (decision 0018). The reading is one service and the two
-        // writes are the commands themselves: a command that reads is not the command that writes, and
-        // what erases a key is a statement of its own and never a method of the router the encryption path
-        // sees. The index key is in the same table, so all three see it with the rest.
         $services->set(TenantDataKeys::class)->args([service('beffroi.data_keys')]);
         $services->set(TenantDataKeyDestruction::class)->args([
             service(Connection::class),
@@ -192,27 +157,17 @@ final readonly class KeysSection extends ConfigurationSection
             service(RequestContextFactory::class),
             TenantDataKeyStores::TABLE,
         ]);
-        // The rewrap hands the command of the component a store that lists one tenant's rows, so that
-        // nothing of its loop is written twice, and resolves the master key of the tenant rather than
-        // asking for it: an operator who had to type it could type another tenant's.
+        // The master key is resolved, never asked for: an operator who had to type it could type another tenant's.
         $services->get(DataKeysRewrapCommand::class)->arg('$store', service('beffroi.data_keys'))->arg('$clients', tagged_locator(
             'key_management.client',
             'key',
         ))->arg('$masterKeyId', self::string($keys, 'key_id'));
-        // The tag written in the same statement as the value it indexes, on "onFlush" and not on
-        // "prePersist", which fires when persist() is called and would miss a value set afterwards. A row
-        // whose tag does not match what it holds is a row no search returns.
+        // "onFlush", not "prePersist": prePersist fires when persist() is called and would miss a value set afterwards.
         $services->set(BlindIndexListener::class)->args([service(TenantBlindIndexes::class)])->tag('doctrine.event_listener', [
             'event' => 'onFlush',
         ]);
-        // The fallback reads an envelope that carries its own data key rather than refusing it: nothing of
-        // this repository has written one into a column, but the sealed keys and the sealed secrets are
-        // envelopes of that shape and the same encrypter is what reads them.
-        // The store is where a sealed column shows: "StoredEnvelopeEncrypter" asks it for the data key of a
-        // scope and then seals locally, so the KMS is off the path of a value and the panel would see
-        // nothing of one. Traced in debug, and only on this path: the reader keeps its own, so the schema
-        // listener still gets a "DataKeyStore" and the rewrapping half stays where it is, which is what
-        // the decorator of the component says it deliberately does not claim.
+        // Traced here, the KMS being off the path of a sealed value, and on this path only: the decorator of the
+        // component does not claim the rewrapping half the other consumers of the store need.
         $stores = $debug
             ? inline_service(TraceableDataKeyStore::class)->args([
                 service('beffroi.data_keys'),
@@ -224,13 +179,8 @@ final readonly class KeysSection extends ConfigurationSection
             $stores,
             service('beffroi.kms.envelopes'),
         ]);
-        // Lazy, and public so that it stays lazy: the types are registered while the bundles boot, and what
-        // they are handed is this encrypter, so building it there would build the store, the connection and
-        // the KMS client of every process that boots, for a path a process that seals nothing never takes.
-        // A private service with one consumer is inlined, and an inlined service is not a proxy, so being
-        // reachable by its name is what keeps the KMS off the path of a boot; it is also what lets a
-        // deployment seal a value outside Doctrine. What it costs is asserted rather than trusted
-        // (BeffroiExtensionTest).
+        // Lazy, so that registering the types at boot builds no KMS client; public, because a private service with one
+        // consumer is inlined and an inlined service is not a proxy.
         $services
             ->set('beffroi.personal_data.encrypter', TenantScopedEncrypter::class)
             ->public()
@@ -239,18 +189,11 @@ final readonly class KeysSection extends ConfigurationSection
                 service('beffroi.kms.stored_envelopes'),
                 service(TenantProvider::class),
             ]);
-        // What the kernel registers while it boots (BeffroiKernelTrait::boot()), and the one argument a
-        // deployment chooses: which encrypter the types are given is what decides where the data key of a
-        // scope comes from.
         $services
             ->set('beffroi.encrypted_types', EncryptedTypes::class)
             ->public()
             ->factory(EncryptedColumnTypes::service(...))
             ->args([service('beffroi.personal_data.encrypter')]);
-        // The table of the store declared in the schema the ORM assembles, so that "doctrine:schema:update"
-        // does not offer to drop what no mapping of the provider puts there. What the listener of the ORM
-        // bridge asks for is a DataKeyStore and not the router, so what is tagged is the one store every
-        // read goes to: the table of a read is the table of every write.
         $services
             ->set('beffroi.data_keys.reader', DataKeyStore::class)
             ->factory([service('beffroi.data_keys'), 'reader'])
@@ -264,17 +207,11 @@ final readonly class KeysSection extends ConfigurationSection
         $services->get(EnvelopeKeySealer::class)->arg('$envelopes', service('beffroi.kms.envelopes'))->arg('$kmsKeyId', self::string($keys, 'key_id'));
         $services->get(EnvelopeSecretSealer::class)->arg('$envelopes', service('beffroi.kms.envelopes'))->arg('$kmsKeyId', self::string($keys, 'key_id'));
         $services->get(FileTenantKeyRepository::class)->arg('$directory', self::string($keys, 'storage'));
-        // The pairwise salt of a tenant lives beside its sealed keys and is sealed like them (OIDC Core
-        // §8.1): one directory to back up, one KMS to lose.
         $services->get(FilePairwiseSalt::class)->arg('$directory', self::string($keys, 'storage'));
         if ($debug) {
             $services->get(KmsClient::class)->arg('$name', self::string($keys, 'kms'));
         }
         $services->get(JwksHandler::class)->arg('$maxAge', self::integer($keys, 'jwks_max_age'));
-        // The schedule of the JOSE families, the keys of the JWK Set and the keys the tenant keeps
-        // (issue #738): one service the four families of JoseKeyAlgorithms share, the SAML key having a
-        // schedule of its own (SamlSection). The staging delay is derived at runtime, once the environment
-        // placeholders are numbers, and the age is held to the floor of the tree when it is built.
         $services->set('beffroi.keys.rotation_schedule', RotationSchedule::class)->args([
             inline_service(DateInterval::class)
                 ->factory(StagingDelay::interval(...))
@@ -284,14 +221,9 @@ final readonly class KeysSection extends ConfigurationSection
     }
 
     /**
-     * A store of the data keys of the tenants, which binds its rows with the secrets the configuration or the
-     * environment carries, held to the rules of the tree either way (decision 0030); every other argument is the one
-     * of the store.
+     * @param int<0, max>|null $maxAgeSeconds
      *
-     * @param mixed $secrets the list of the secrets, or one secret, which is the list of one
-     * @param int<0, max>|null $maxAgeSeconds the age past which a data key is retired, null for one never retired
-     *
-     * @throws InvalidConfigurationException when the secrets are no list of secrets the tree accepts
+     * @throws InvalidConfigurationException
      */
     public static function dataKeyStores(
         Connection $connection,
@@ -306,9 +238,6 @@ final readonly class KeysSection extends ConfigurationSection
         return new TenantDataKeyStores($connection, $clients, $client, $masterKeyId, self::secrets($secrets), $table, $maxAgeSeconds);
     }
 
-    /**
-     * The secrets as the tree declares them, which the environment may carry whole.
-     */
     private static function dataKeySecrets(): EnvironmentListDefinition
     {
         $secrets = new EnvironmentListDefinition('data_key_secrets');
@@ -325,12 +254,9 @@ final readonly class KeysSection extends ConfigurationSection
     }
 
     /**
-     * The secrets that bind a stored data key, in the order the deployment wrote them: the first one binds and every
-     * one is accepted. One secret is the list of one, which is what an environment variable carrying one gives.
+     * @throws InvalidConfigurationException
      *
-     * @throws InvalidConfigurationException when the secrets are no list of secrets the tree accepts
-     *
-     * @return non-empty-list<string>
+     * @return non-empty-list<string> the first one binds, every one is accepted
      */
     private static function secrets(mixed $written): array
     {

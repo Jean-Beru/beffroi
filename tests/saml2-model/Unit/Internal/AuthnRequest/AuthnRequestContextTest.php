@@ -13,7 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 6.2 steps 3 to 5: what the rules of an AuthnRequest are checked against, as the validator states it.
+ * Section 6.2 steps 3 to 5
  */
 final class AuthnRequestContextTest extends TestCase
 {

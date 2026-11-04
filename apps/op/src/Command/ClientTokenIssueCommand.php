@@ -15,15 +15,6 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use function trim;
 
-/**
- * A tenant hands somebody the right to register a client with it (RFC 7591 §1.2, decision 0009). It is
- * the way in to the controlled mode: without a token nobody registers, so a tenant that offers that mode
- * and has issued nothing authorises nobody.
- *
- * **The value is printed here and nowhere else, ever.** The row holds its digest, as every value this
- * provider draws is held, so nothing reads it back: whoever issued it hands it to the team that
- * integrates, and a tenant that lost one issues another and revokes this one.
- */
 #[AsCommand(
     name: self::NAME,
     description: 'Issue an initial access token for the tenant; the value is printed once and never again.',
@@ -32,10 +23,6 @@ final readonly class ClientTokenIssueCommand
 {
     public const string NAME = 'beffroi:client:token:issue';
 
-    /**
-     * What a token is worth and for how long when the command line says neither: one client, thirty days.
-     * A token worth more or living longer is a token asked for, never a default.
-     */
     public const int DEFAULT_REGISTRATIONS = 1;
 
     public const int DEFAULT_DAYS = 30;

@@ -43,14 +43,12 @@ use function str_repeat;
 use Throwable;
 
 /**
- * Section 6.1: decryption in order, the vectors of section 9.1 decrypted to a Document the consumer's Loader built
- * (E-4), every failing fixture of section 9.2 the one failure with the one message (E-3).
+ * Section 6.1, section 9.1, section 9.2, E-3, E-4
  */
 final class DecryptorTest extends TestCase
 {
     /**
-     * §9.1 rows 1 to 4, 6 and 7, §9.3 row 1: every vector decrypts to a Document whose root is the assertion, its
-     * ID indexed, its Issuer readable.
+     * §9.1 rows 1 to 4, 6 and 7, §9.3 row 1
      */
     #[Test]
     #[DataProvider('provideVectors')]
@@ -85,8 +83,7 @@ final class DecryptorTest extends TestCase
     }
 
     /**
-     * §9.1 row 5, section 13: rsa-oaep with SHA-256 decrypts where the RSA functions take a digest, PHP 8.5, and is
-     * AlgorithmUnavailable on 8.4.
+     * §9.1 row 5, section 13
      */
     #[Test]
     public function itDecryptsUnderRsaOaepSha256WhereTheBuildTakesADigest(): void
@@ -107,8 +104,7 @@ final class DecryptorTest extends TestCase
     }
 
     /**
-     * §9.1 row 6: the signed assertion decrypted, then verified by Dsig with the test certificate: the round trip
-     * of the stack, decrypt, load, verify.
+     * §9.1 row 6
      */
     #[Test]
     public function itDecryptsASignedAssertionThatDsigThenVerifies(): void
@@ -130,8 +126,7 @@ final class DecryptorTest extends TestCase
     }
 
     /**
-     * §9.1 row 7: the comment of the plaintext survives: the exclusive canonical form with comments of the NameID
-     * holds it, and Text::of() reads around it.
+     * §9.1 row 7
      */
     #[Test]
     public function itKeepsTheCommentOfThePlaintext(): void
@@ -155,7 +150,7 @@ final class DecryptorTest extends TestCase
     }
 
     /**
-     * §9.3 row 2: decrypting the same element twice gives the same canonical bytes of the root.
+     * §9.3 row 2
      */
     #[Test]
     public function itDecryptsTheSameElementTwiceToTheSameBytes(): void
@@ -177,9 +172,7 @@ final class DecryptorTest extends TestCase
     }
 
     /**
-     * §9.3 row 15, E-6: the port's answer is the session key. A key a test implements, answering what the PEM key
-     * unwrapped, decrypts the vector; it is asked for the wrapped bytes of the EncryptedKey under the hash its
-     * EncryptionMethod names.
+     * §9.3 row 15, E-6
      */
     #[Test]
     public function itUsesWhatThePortAnswers(): void
@@ -201,7 +194,7 @@ final class DecryptorTest extends TestCase
     }
 
     /**
-     * §9.3 row 15, E-3: a port that answers null is the one failure.
+     * §9.3 row 15, E-3
      */
     #[Test]
     public function itFailsInTheOneWayWhenThePortAnswersNothing(): void
@@ -219,8 +212,7 @@ final class DecryptorTest extends TestCase
     }
 
     /**
-     * §9.2 rows 22 and 23 by the port, E-2: a session key of any length but the method's is the one failure, before
-     * the primitive, which would have accepted the longer ones (section 13).
+     * §9.2 rows 22 and 23, E-2, section 13
      */
     #[Test]
     #[TestWith([16], 'the length of the other method')]
@@ -242,8 +234,7 @@ final class DecryptorTest extends TestCase
     }
 
     /**
-     * §9.2 rows 19 to 25 and 33, E-2, E-3: every failing fixture is the one failure with the one message, whatever
-     * failed, and nothing else on the exception.
+     * §9.2 rows 19 to 25 and 33, E-2, E-3
      */
     #[Test]
     #[DataProvider('provideFailingFixtures')]
@@ -291,8 +282,7 @@ final class DecryptorTest extends TestCase
     }
 
     /**
-     * §9.2 rows 27, 28 and 30, E-4, E-9: an authentic ciphertext whose plaintext Core refuses is Core's named
-     * refusal, since the plaintext goes through the consumer's Loader like everything else.
+     * §9.2 rows 27, 28 and 30, E-4, E-9
      *
      * @param class-string<Throwable> $exception
      */
@@ -326,7 +316,7 @@ final class DecryptorTest extends TestCase
     }
 
     /**
-     * §9.2 row 29, E-4: the plaintext is bounded by the consumer's limits, not by this namespace.
+     * §9.2 row 29, E-4
      */
     #[Test]
     public function itBoundsThePlaintextByTheConsumersLimits(): void
@@ -345,7 +335,7 @@ final class DecryptorTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 2, E-5: the reading model refuses before any key is touched.
+     * Section 6.1 step 2, E-5
      */
     #[Test]
     public function itReadsTheStructureBeforeTouchingTheKey(): void
@@ -369,8 +359,7 @@ final class DecryptorTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 3: the availability of the hash is checked before any key is touched; where the build takes
-     * a digest, the port is asked under that hash.
+     * Section 6.1 step 3
      */
     #[Test]
     public function itChecksTheAvailabilityOfTheHashBeforeTouchingTheKey(): void
@@ -400,7 +389,7 @@ final class DecryptorTest extends TestCase
     }
 
     /**
-     * §9.2 row 34: a document parsed outside the loader.
+     * §9.2 row 34
      */
     #[Test]
     public function itRefusesAForeignElement(): void

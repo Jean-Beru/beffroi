@@ -51,11 +51,6 @@ use Beffroi\Oidc\Port\ServedLogoutChannelsInterface;
 use Beffroi\Oidc\Port\ServedResponseModesInterface;
 use Beffroi\Oidc\Port\UnsignedRequestObjectsInterface;
 
-/**
- * The document of a provider, assembled from its capabilities as the wiring of the provider assembles it,
- * in the order the document publishes them. A test names only the capability it is about and takes the
- * rest as a deployment has them.
- */
 final class ProviderDocument
 {
     /**

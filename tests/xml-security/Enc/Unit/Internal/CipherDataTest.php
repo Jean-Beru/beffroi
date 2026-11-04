@@ -13,7 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * E-5, E-7: one CipherValue, decoded strictly, never a CipherReference.
+ * E-5, E-7
  */
 final class CipherDataTest extends TestCase
 {
@@ -28,7 +28,7 @@ final class CipherDataTest extends TestCase
     }
 
     /**
-     * E-7: a value split by a comment reads as one value, Text::of() concatenating.
+     * E-7
      */
     #[Test]
     public function itDecodesAValueSplitByAComment(): void
@@ -41,7 +41,7 @@ final class CipherDataTest extends TestCase
     }
 
     /**
-     * §9.2 row 11, E-5: a CipherReference, alone or next to a value.
+     * §9.2 row 11, E-5
      */
     #[Test]
     public function itRefusesACipherReference(): void
@@ -86,8 +86,7 @@ final class CipherDataTest extends TestCase
     }
 
     /**
-     * §9.2 row 36, E-5: a CipherValue with an element child is refused by the model, never with Core's MixedContent,
-     * since nothing was decrypted.
+     * §9.2 row 36, E-5
      */
     #[Test]
     public function itRefusesACipherValueHoldingAnElement(): void

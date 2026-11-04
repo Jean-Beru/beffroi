@@ -16,8 +16,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * spec/saml.md S-6, section 6.2, forgotten: the accepted document of a service provider removed by an operator, so
- * that the next refresh registers it as a first one.
+ * spec/saml.md S-6, section 6.2
  */
 final class AcceptedMetadataForgettingTest extends TestCase
 {
@@ -37,7 +36,7 @@ final class AcceptedMetadataForgettingTest extends TestCase
     }
 
     /**
-     * S-6, section 6.2: the document accepted for a service provider is removed, and the forgetting says so.
+     * S-6, section 6.2
      */
     #[Test]
     public function theAcceptedDocumentIsForgotten(): void
@@ -54,7 +53,7 @@ final class AcceptedMetadataForgettingTest extends TestCase
     }
 
     /**
-     * Section 6.2: an entity ID nothing is accepted for forgets nothing, and the forgetting says so.
+     * Section 6.2
      */
     #[Test]
     public function anEntityIdNothingIsAcceptedForForgetsNothing(): void
@@ -71,8 +70,7 @@ final class AcceptedMetadataForgettingTest extends TestCase
     }
 
     /**
-     * Section 6.2: what is forgotten is the document of the tenant asked for, never the one another tenant accepted
-     * for the same entity ID.
+     * Section 6.2
      */
     #[Test]
     public function theDocumentOfAnotherTenantIsNotForgotten(): void

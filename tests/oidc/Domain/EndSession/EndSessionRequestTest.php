@@ -35,8 +35,7 @@ final class EndSessionRequestTest extends TestCase
     }
 
     /**
-     * OIDC RP-Initiated Logout 1.0 §3: the redirect exists when the client asked for one it registered,
-     * with the state of the request.
+     * OIDC RP-Initiated Logout 1.0 §3
      */
     #[Test]
     public function itRedirectsWhereTheClientAskedWithTheState(): void
@@ -63,8 +62,7 @@ final class EndSessionRequestTest extends TestCase
     }
 
     /**
-     * A logout link without parameters is a valid request (§2: every parameter is optional); it just
-     * has nowhere to redirect to (§3).
+     * OIDC RP-Initiated Logout 1.0 §2, §3
      */
     #[Test]
     public function itMayNameNoClientAtAllAndThenRedirectsNowhere(): void
@@ -90,9 +88,7 @@ final class EndSessionRequestTest extends TestCase
     }
 
     /**
-     * What the parser establishes, checked again: the client belongs to the tenant, the hint was issued
-     * to it, the redirect URI is registered on it (§3), the state is not empty, a hint is verified or
-     * invalid, not both.
+     * OIDC RP-Initiated Logout 1.0 §3
      */
     #[Test]
     #[DataProvider('provideInconsistentRequests')]

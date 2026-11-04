@@ -17,14 +17,12 @@ use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 3, a reference outside the signed content: CVE-2019-3465, xmlseclibs before 3.0.4 verified a signature
- * whose reference did not resolve inside the signed content. The rule: a reference is "#" and an NCName, resolved
- * to the claimed element by identity; empty, xpointer and external references are refused (D-2).
+ * Section 3, CVE-2019-3465, D-2
  */
 final class ReferenceOutsideTheSignedContentTest extends TestCase
 {
     /**
-     * CVE-2019-3465: an external URI, an empty URI and an xpointer form are refused before anything is computed.
+     * CVE-2019-3465
      */
     #[Test]
     #[TestWith(['reference-uri-external-refused.xml'], 'an external URI')]

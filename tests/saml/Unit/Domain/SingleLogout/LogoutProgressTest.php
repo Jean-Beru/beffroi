@@ -15,8 +15,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * spec/saml.md S-32: where a chain stands is written to its document and read back whole, and a document that is not
- * one is refused; each step of section 6.6 moves it as it says.
+ * spec/saml.md S-32, section 6.6
  */
 final class LogoutProgressTest extends TestCase
 {
@@ -27,7 +26,7 @@ final class LogoutProgressTest extends TestCase
     private const string SECOND = 'https://second.example.org/saml';
 
     /**
-     * S-32: the column of a chain holds the progress whole, the RelayState of the requester byte for byte among it.
+     * S-32
      */
     #[Test]
     #[DataProvider('provideProgresses')]
@@ -61,7 +60,7 @@ final class LogoutProgressTest extends TestCase
     }
 
     /**
-     * S-32: a document edited by hand, or written by something else, is refused rather than read as a chain.
+     * S-32
      *
      * @param array<string, mixed> $document
      */
@@ -146,7 +145,7 @@ final class LogoutProgressTest extends TestCase
     }
 
     /**
-     * Section 6.6 step 3: the next service provider is the first left, taken off as it is told.
+     * Section 6.6 step 3
      */
     #[Test]
     public function theNextServiceProviderIsTakenOff(): void
@@ -173,8 +172,7 @@ final class LogoutProgressTest extends TestCase
     }
 
     /**
-     * S-33, S-34: an answer other than Success makes the chain partial, and Success does not undo it; the service
-     * provider awaited is forgotten either way.
+     * S-33, S-34
      */
     #[Test]
     public function anAnswerOtherThanSuccessMakesTheChainPartial(): void
@@ -190,7 +188,7 @@ final class LogoutProgressTest extends TestCase
     }
 
     /**
-     * S-30: a service provider passed over makes the chain partial.
+     * S-30
      */
     #[Test]
     public function aServiceProviderPassedOverMakesTheChainPartial(): void

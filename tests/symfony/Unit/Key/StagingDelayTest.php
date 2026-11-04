@@ -13,9 +13,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
 /**
- * Architecture §3.3 and §9: the staging window is at least the JWK Set max-age plus the refetch cooldown
- * of oidc_login, so that a relying party with a warm cache, even one served by a shared HTTP cache, sees
- * the new key when it starts signing.
+ * Architecture §3.3, §9
  */
 final class StagingDelayTest extends TestCase
 {
@@ -40,9 +38,6 @@ final class StagingDelayTest extends TestCase
         static::assertSame(30, StagingDelay::seconds(30, 120));
     }
 
-    /**
-     * Issue #911: an environment variable declared empty is an empty string, which is no delay configured.
-     */
     #[Test]
     public function anEmptyDelayDerivesFromTheJwksMaxAge(): void
     {

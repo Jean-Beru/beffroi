@@ -13,9 +13,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 8705 §3.3: whether the provider binds an access token to a certificate is whether a method that
- * proves one is wired, and nothing else (issue #98). A provider that binds none says so rather than
- * leaving the member out: a client that reads nothing there would have to guess.
+ * RFC 8705 §3.3
  */
 final class AnnouncedMutualTlsTest extends TestCase
 {

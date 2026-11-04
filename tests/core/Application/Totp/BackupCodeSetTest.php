@@ -14,8 +14,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Architecture §3.4: the set of backup codes the enrolment of a TOTP and the renewal of its codes both
- * draw, drawn where every secret of this provider is and hashed as a password is.
+ * Architecture §3.4
  */
 final class BackupCodeSetTest extends TestCase
 {
@@ -41,8 +40,7 @@ final class BackupCodeSetTest extends TestCase
     }
 
     /**
-     * The alphabet of RFC 4648 §6 in two groups of five, which is what BackupCode::spelledBy() makes of
-     * the bytes it is handed: a code is drawn from LENGTH bytes and spelled in one place.
+     * RFC 4648 §6
      */
     #[Test]
     public function aCodeIsTheBytesItWasDrawnFromSpelled(): void
@@ -57,9 +55,6 @@ final class BackupCodeSetTest extends TestCase
         static::assertSame(BackupCode::spelledBy("\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09"), $spelled[0]);
     }
 
-    /**
-     * What a credential holds of a set: the hash of every code, in the order they were drawn.
-     */
     #[Test]
     public function itHashesEveryCodeOfASetInTheOrderTheyWereDrawn(): void
     {

@@ -10,9 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * RFC 8252 §7.3 over HTTP, end to end: a native client registered for `http://127.0.0.1/callback` is
- * answered on the port the operating system handed it, and on nothing else. One step per test, on the test
- * kernel, the public "native-app" client of its configuration and the confidential "oidc-demo".
+ * RFC 8252 §7.3
  */
 final class LoopbackRedirectTest extends BrowserTestCase
 {
@@ -21,8 +19,7 @@ final class LoopbackRedirectTest extends BrowserTestCase
     private const string ON_ITS_PORT = 'http://127.0.0.1:53127/callback';
 
     /**
-     * RFC 8252 §7.3: the port is what a native client cannot register in advance, so the code comes back to
-     * the port the request named.
+     * RFC 8252 §7.3
      */
     #[Test]
     public function aNativeClientIsAnsweredOnThePortItAsksFor(): void
@@ -41,9 +38,7 @@ final class LoopbackRedirectTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §4.1.3: the token request repeats the redirect URI of the authorization request, which is the
-     * one the code was issued for, port included. The exception is at the authorization endpoint and nowhere
-     * else: what the code holds is what was received, and the token endpoint compares byte for byte.
+     * RFC 6749 §4.1.3
      */
     #[Test]
     public function theCodeIsExchangedOnThePortItWasIssuedFor(): void
@@ -61,8 +56,7 @@ final class LoopbackRedirectTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §4.1.3: another port at the token endpoint is not the URI the code was issued for, so the
-     * exception of the authorization endpoint does not follow the code there.
+     * RFC 6749 §4.1.3
      */
     #[Test]
     public function theCodeIsNotExchangedOnAnotherPort(): void
@@ -80,9 +74,7 @@ final class LoopbackRedirectTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8252 §7.3: the port is the only thing that varies. Everything else is the exact match of
-     * RFC 6749 §3.1.2.3, and a redirect URI that is not registered is never redirected to: the refusal is a
-     * page (RFC 9700 §4.1).
+     * RFC 8252 §7.3, RFC 6749 §3.1.2.3, RFC 9700 §4.1
      */
     #[Test]
     #[DataProvider('provideRefusedRedirectUris')]
@@ -114,8 +106,7 @@ final class LoopbackRedirectTest extends BrowserTestCase
     }
 
     /**
-     * RFC 8252 §7.3: the exception belongs to a client that cannot register its port. A confidential client
-     * has a host of its own and is held to what it registered, port included.
+     * RFC 8252 §7.3
      */
     #[Test]
     public function aConfidentialClientIsHeldToItsRegisteredUri(): void
@@ -138,10 +129,6 @@ final class LoopbackRedirectTest extends BrowserTestCase
         static::assertStringContainsString('data-error="invalid_request"', self::string($response->getContent()));
     }
 
-    /**
-     * The URI a native client registered is still the URI it registered: the exception adds a port and takes
-     * nothing away.
-     */
     #[Test]
     public function aNativeClientIsStillAnsweredOnTheUriItRegistered(): void
     {
@@ -165,10 +152,6 @@ final class LoopbackRedirectTest extends BrowserTestCase
         ]));
     }
 
-    /**
-     * The authorization request of the native client, agreed to on the consent page: this client requires
-     * one, being no first-party application of the deployment.
-     */
     private function allow(string $redirectUri): void
     {
         $this->browser->request('GET', $this->authorizationUri($redirectUri));
@@ -179,9 +162,6 @@ final class LoopbackRedirectTest extends BrowserTestCase
         $this->browser->submit($consent->selectButton('Allow')->form());
     }
 
-    /**
-     * The code the native client gets once alice signed in and allowed, for the redirect URI given.
-     */
     private function codeFor(string $redirectUri): string
     {
         self::signingKey();

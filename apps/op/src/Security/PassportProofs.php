@@ -13,17 +13,10 @@ use Beffroi\Oidc\Port\ProvableMethodsInterface;
 use LogicException;
 use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
 
-/**
- * What the logins of the firewall prove, as the core names it (RFC 8176 §2), in one place: what a given
- * passport proved, for the session the listener opens, and everything a login here may prove, for the
- * discovery and the step-up (decision 0010). Neither is an enumeration: both are read from the logins
- * that are tagged (ProvingLoginInterface), so that what the provider announces is what is wired, and a
- * login added to the firewall is a class tagged and nothing edited.
- */
 final readonly class PassportProofs implements ProvableMethodsInterface
 {
     /**
-     * @param iterable<ProvingLoginInterface> $logins the logins of the firewall, at least one
+     * @param iterable<ProvingLoginInterface> $logins
      */
     public function __construct(
         private iterable $logins,
@@ -31,10 +24,6 @@ final readonly class PassportProofs implements ProvableMethodsInterface
     }
 
     /**
-     * The first login that recognises the passport answers; they are mutually exclusive, a passport
-     * carrying the badge of one login only. A firewall that authenticates another way is refused loudly
-     * rather than recorded wrongly.
-     *
      * @return non-empty-list<AuthenticationMethod>
      */
     public function methods(Passport $passport): array
@@ -49,10 +38,6 @@ final readonly class PassportProofs implements ProvableMethodsInterface
         throw new LogicException('The firewall authenticated a user of the provider with a login none of the tagged ones recognises: the passport carries the badge of no login of the provider.');
     }
 
-    /**
-     * When what the passport proved was proven, null when it was proven now: the first login that dates its proofs and
-     * recognises the passport answers (DatesItsProofsInterface, beffroi/saml S-57).
-     */
     public function provenAt(Passport $passport): ?DateTimeImmutable
     {
         foreach ($this->logins as $login) {
@@ -65,10 +50,6 @@ final readonly class PassportProofs implements ProvableMethodsInterface
         return null;
     }
 
-    /**
-     * The instant the session the passport opens must end by, null when nothing bounds it: the first login that bounds
-     * its session and recognises the passport answers (BoundsItsSessionInterface, beffroi/saml S-57).
-     */
     public function sessionNotOnOrAfter(Passport $passport): ?DateTimeImmutable
     {
         foreach ($this->logins as $login) {
@@ -82,10 +63,7 @@ final readonly class PassportProofs implements ProvableMethodsInterface
     }
 
     /**
-     * Every method the wired logins prove for this tenant, each once, in the order they are tagged: a login
-     * whose proofs the floor of the tenant never reads is a login closed there (issue #327), so it is asked
-     * login by login and not method by method, a passkey that proves "user" besides its key not being half
-     * admitted.
+     * The floor is asked login by login: a login it closes announces none of its methods.
      *
      * @return non-empty-list<AuthenticationMethod>
      */

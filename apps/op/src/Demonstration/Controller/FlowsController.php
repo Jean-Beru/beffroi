@@ -12,14 +12,6 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 use Twig\Environment;
 
-/**
- * The flows this provider serves, drawn (issue #462): one picture per wired grant, and nothing else.
- * Unwiring a grant takes its picture off this page, and wiring one puts it on, without a line being
- * edited here.
- *
- * A page of the demonstration and not of the product: the application routes it in development and in
- * its own suite, never in a deployment, as it routes the endpoints the conformance tools drive.
- */
 #[AsController]
 final readonly class FlowsController
 {

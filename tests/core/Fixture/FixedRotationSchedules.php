@@ -8,14 +8,10 @@ use Beffroi\Core\Domain\Key\KeyAlgorithmInterface;
 use Beffroi\Core\Domain\Key\RotationSchedule;
 use Beffroi\Core\Port\RotationSchedulesInterface;
 
-/**
- * The schedules of the families of keys under test: one for every algorithm, and another for the algorithms
- * a test names, so that a key of another family waits and ages by figures of its own.
- */
 final readonly class FixedRotationSchedules implements RotationSchedulesInterface
 {
     /**
-     * @param array<string, RotationSchedule> $byAlgorithm the schedule of the algorithms of that name
+     * @param array<string, RotationSchedule> $byAlgorithm
      */
     public function __construct(
         private RotationSchedule $schedule,

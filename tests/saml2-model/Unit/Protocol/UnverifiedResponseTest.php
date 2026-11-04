@@ -12,15 +12,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.4, M-1: a response read before any signature is verified, its root, its Issuer and its InResponseTo, and
- * nothing else, so that the consumer can choose the identity provider whose keys verify it.
+ * Section 5.4, M-1
  */
 final class UnverifiedResponseTest extends TestCase
 {
     use AssertionFixtures;
 
     /**
-     * Section 5.4: the document as loaded, the response's own Issuer, and its InResponseTo.
+     * Section 5.4
      */
     #[Test]
     public function itReadsTheIssuerAndTheInResponseToOfTheResponse(): void
@@ -39,7 +38,7 @@ final class UnverifiedResponseTest extends TestCase
     }
 
     /**
-     * Section 5.4, SAML Profiles §4.1.4.2: a response without Issuer names its issuer through its one assertion.
+     * Section 5.4, SAML Profiles §4.1.4.2
      */
     #[Test]
     public function itReadsTheIssuerOfTheAssertionOfAResponseWithoutOne(): void
@@ -55,8 +54,7 @@ final class UnverifiedResponseTest extends TestCase
     }
 
     /**
-     * Section 5.4, M-4: without an Issuer of its own, a response names no issuer unless it holds exactly one
-     * assertion, never the first of several.
+     * Section 5.4, M-4
      */
     #[Test]
     #[DataProvider('provideResponsesNamingNoIssuer')]
@@ -84,7 +82,7 @@ final class UnverifiedResponseTest extends TestCase
     }
 
     /**
-     * M-10, SAML Profiles §4.1.5: an unsolicited response has no InResponseTo.
+     * M-10, SAML Profiles §4.1.5
      */
     #[Test]
     public function itReadsNoInResponseToOfAnUnsolicitedResponse(): void
@@ -100,7 +98,7 @@ final class UnverifiedResponseTest extends TestCase
     }
 
     /**
-     * M-1, M-4, M-6: another root, a repeated Issuer, an InResponseTo that is not an NCName.
+     * M-1, M-4, M-6
      */
     #[Test]
     #[DataProvider('provideMalformedResponses')]

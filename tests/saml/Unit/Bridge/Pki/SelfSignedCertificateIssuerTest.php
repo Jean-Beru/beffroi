@@ -34,8 +34,7 @@ use function strtr;
 use function substr;
 
 /**
- * spec/saml.md section 6.1 step 2, S-3: the self-signed certificate around a SAML key of a tenant, built with
- * pki-framework, each of its fields a function of the key and of its tenant.
+ * spec/saml.md section 6.1 step 2, S-3
  */
 final class SelfSignedCertificateIssuerTest extends TestCase
 {
@@ -50,8 +49,7 @@ final class SelfSignedCertificateIssuerTest extends TestCase
     }
 
     /**
-     * S-3: the certificate verifies under the public key it carries, openssl_verify() returning 1 and not a value PHP
-     * would hold for true.
+     * S-3
      */
     #[Test]
     public function itVerifiesUnderItsOwnPublicKey(): void
@@ -69,7 +67,7 @@ final class SelfSignedCertificateIssuerTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 2: the public key of the certificate is the modulus and the exponent of the key's public JWK.
+     * Section 6.1 step 2
      */
     #[Test]
     public function itIsAroundThePublicHalfOfTheKey(): void
@@ -90,9 +88,7 @@ final class SelfSignedCertificateIssuerTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 2: version 3, its subject and its issuer the slug of the tenant, valid from the creation of the
-     * key to the second for ten years, its serial number one more than the first seven bytes of the SHA-256 of the
-     * kid, signed sha256WithRSAEncryption.
+     * Section 6.1 step 2
      */
     #[Test]
     public function itCarriesTheFieldsOfTheKeyAndOfItsTenant(): void
@@ -124,7 +120,7 @@ final class SelfSignedCertificateIssuerTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 2: the certificate is valid ten years from the creation of its key, to the second, in UTC.
+     * Section 6.1 step 2
      */
     #[Test]
     #[DataProvider('provideCreations')]
@@ -151,8 +147,7 @@ final class SelfSignedCertificateIssuerTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 2, RFC 5280 §4.1.2.5: the end of the validity is before 2050, so it is written as UTCTime, the
-     * two digits of its year and its seconds, as OpenSSL reads it from the DER.
+     * Section 6.1 step 2, RFC 5280 §4.1.2.5
      */
     #[Test]
     public function itWritesTheEndOfItsValidityAsUtcTime(): void
@@ -169,8 +164,7 @@ final class SelfSignedCertificateIssuerTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 2, RFC 4055 §5: the certificate is signed sha256WithRSAEncryption, its parameters NULL, which a
-     * producer must write, in the certificate and in what it signed.
+     * Section 6.1 step 2, RFC 4055 §5
      */
     #[Test]
     public function itIsSignedSha256WithRsaEncryptionWithNullParameters(): void
@@ -189,7 +183,7 @@ final class SelfSignedCertificateIssuerTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 2, RFC 5280 §4.2.1.3: one extension, keyUsage with digitalSignature alone, critical.
+     * Section 6.1 step 2, RFC 5280 §4.2.1.3
      */
     #[Test]
     public function itMayOnlySign(): void
@@ -218,8 +212,7 @@ final class SelfSignedCertificateIssuerTest extends TestCase
     }
 
     /**
-     * S-65, RFC 5280 §4.2.1.3: the certificate of the key an upstream identity provider encrypts for has one extension,
-     * keyUsage with keyEncipherment alone, critical.
+     * S-65, RFC 5280 §4.2.1.3
      */
     #[Test]
     public function itMayOnlyTransportKeysForTheKeyOfAnIdentityProvider(): void
@@ -251,8 +244,7 @@ final class SelfSignedCertificateIssuerTest extends TestCase
     }
 
     /**
-     * S-65, S-3: the certificate of the key an upstream identity provider encrypts for verifies under the public key it
-     * carries, which is the modulus of the key's public JWK.
+     * S-65, S-3
      */
     #[Test]
     public function theCertificateOfTheKeyOfAnIdentityProviderVerifiesUnderThatKey(): void
@@ -284,7 +276,7 @@ final class SelfSignedCertificateIssuerTest extends TestCase
     }
 
     /**
-     * S-3: built twice, the certificate is the same bytes, so that two processes publish the same one.
+     * S-3
      */
     #[Test]
     public function itIsTheSameBytesWhenBuiltAgain(): void
@@ -301,8 +293,7 @@ final class SelfSignedCertificateIssuerTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 2: a private half whose modulus is not the one of the public JWK is refused before anything is
-     * signed.
+     * Section 6.1 step 2
      */
     #[Test]
     public function itRefusesAPrivateHalfThatIsNotTheKeys(): void
@@ -322,8 +313,7 @@ final class SelfSignedCertificateIssuerTest extends TestCase
     }
 
     /**
-     * Section 5.1, S-1: the key of any other algorithm is not one whose certificate the metadata publishes, an RSA key
-     * of the JWK Set among them.
+     * Section 5.1, S-1
      */
     #[Test]
     public function itRefusesAKeyThatIsNotASamlSigningKey(): void
@@ -344,7 +334,7 @@ final class SelfSignedCertificateIssuerTest extends TestCase
     }
 
     /**
-     * Section 6.1 step 2: every member of the private RSA JWK is a base64url integer of RFC 7518 §6.3.
+     * Section 6.1 step 2, RFC 7518 §6.3
      *
      * @param array<string, string> $privateJwk
      */
@@ -397,9 +387,6 @@ final class SelfSignedCertificateIssuerTest extends TestCase
         return $bytes;
     }
 
-    /**
-     * Written apart from the issuer, so that the test does not read the rule from the code it tests.
-     */
     private static function serialNumberOf(string $kid): int
     {
         $serial = 0;

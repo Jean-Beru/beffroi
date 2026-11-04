@@ -20,7 +20,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 7592 §2.3: a client deletes itself, and what is left of it is nothing.
+ * RFC 7592 §2.3
  */
 final class ClientConfigurationRemovalTest extends TestCase
 {
@@ -63,9 +63,6 @@ final class ClientConfigurationRemovalTest extends TestCase
         static::assertNull($this->clients->findRecord($this->tenant, self::CLIENT_ID));
     }
 
-    /**
-     * One event for one thing happening: the timed step that drops a client nobody uses emits the same one.
-     */
     #[Test]
     public function theDeletionEmitsTheOneEventAClientGoingAwayEmits(): void
     {
@@ -78,9 +75,6 @@ final class ClientConfigurationRemovalTest extends TestCase
         static::assertSame(self::CLIENT_ID, $events[0]->clientId);
     }
 
-    /**
-     * The token that read the client reads nothing afterwards, which is what a client that comes back sees.
-     */
     #[Test]
     public function theTokenThatDeletedTheClientReadsNothingAfterwards(): void
     {

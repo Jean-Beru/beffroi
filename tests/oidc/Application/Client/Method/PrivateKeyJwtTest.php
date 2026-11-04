@@ -36,8 +36,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * "private_key_jwt" (OIDC Core §9, RFC 7523): the client signs a JWT with a key of its own and the
- * provider verifies it against the keys the client publishes.
+ * OIDC Core §9, RFC 7523
  */
 final class PrivateKeyJwtTest extends TestCase
 {
@@ -72,8 +71,7 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: "iss" and "sub" name the client, "aud" names the issuer of the provider, "exp", "iat" and "jti" are
-     * all there, and the signature verifies against a key the client publishes.
+     * RFC 7523 §3
      */
     #[Test]
     public function itAuthenticatesAClientThatSignsWithItsOwnKey(): void
@@ -96,9 +94,7 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * FAPI 2.0 Security Profile §5.3.2.1 clause 8: the endpoint the request was sent to is not an audience
-     * of an ordinary client, although RFC 7523 §3 permits it and OIDC Core §9 recommends it. Only a client
-     * of the backchannel flow names it (issue #267).
+     * FAPI 2.0 Security Profile §5.3.2.1 clause 8
      */
     #[Test]
     public function itRefusesTheEndpointAsTheAudience(): void
@@ -113,8 +109,7 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * RFC 7519 §4.1.3 lets "aud" be a list; one that names the issuer among other audiences is an
-     * assertion made for more than this provider, and it is refused whole.
+     * RFC 7519 §4.1.3
      */
     #[Test]
     public function itRefusesAnAudienceThatNamesMoreThanTheIssuer(): void
@@ -129,7 +124,7 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: an audience that is not this provider's is not taken.
+     * RFC 7523 §3
      */
     #[Test]
     public function itRefusesAnAudienceOfAnotherProvider(): void
@@ -144,7 +139,7 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * RFC 7523 §4: an assertion authenticates once.
+     * RFC 7523 §4
      */
     #[Test]
     public function itRefusesAnAssertionReplayedInsideItsValidity(): void
@@ -162,7 +157,7 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: "exp" is required.
+     * RFC 7523 §3
      */
     #[Test]
     public function itRefusesAnAssertionWithoutAnExpiry(): void
@@ -190,9 +185,6 @@ final class PrivateKeyJwtTest extends TestCase
         $this->assertRefused(ClientAuthenticationFailureReason::InvalidAssertion);
     }
 
-    /**
-     * An assertion is minted for one request: an "exp" a year away is a bearer token nobody watches.
-     */
     #[Test]
     public function itRefusesAnExpiryBeyondTheLifetimeItAccepts(): void
     {
@@ -206,7 +198,7 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: "jti" is required, because it is what makes the assertion single-use.
+     * RFC 7523 §3
      */
     #[Test]
     public function itRefusesAnAssertionWithoutAnIdentifier(): void
@@ -223,7 +215,7 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: an assertion whose "iss" names another client is not this client's.
+     * RFC 7523 §3
      */
     #[Test]
     public function itRefusesAnAssertionIssuedByAnotherName(): void
@@ -238,9 +230,7 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: the "sub" of an assertion names the client. An assertion that names none, in a body
-     * that names none either, leaves nothing to look up, and the refusal names no method because none was
-     * chosen.
+     * RFC 7523 §3
      */
     #[Test]
     public function itRefusesAnAssertionThatNamesNoClient(): void
@@ -261,9 +251,7 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3, OIDC Core §9: a client sending both names itself twice, and the "client_id" of the body
-     * is what names the client to look up when the assertion carries no "sub". What the assertion then has
-     * to say is the validator's to judge, which it does naming that client.
+     * RFC 7523 §3, OIDC Core §9
      */
     #[Test]
     public function theClientIdOfTheBodyNamesTheClientWhenTheAssertionDoesNot(): void
@@ -283,9 +271,7 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * The "sub" of the assertion is what names the client; the "client_id" of the body is the client
-     * repeating itself. A body naming another client is a request that names two, and it is refused
-     * naming the one the assertion claims (RFC 6749 §5.2 "invalid_request").
+     * RFC 6749 §5.2
      */
     #[Test]
     public function theSubOfTheAssertionNamesTheClientWhenTheBodyNamesAnother(): void
@@ -301,9 +287,6 @@ final class PrivateKeyJwtTest extends TestCase
         $this->assertRefused(ClientAuthenticationFailureReason::MismatchedClientId);
     }
 
-    /**
-     * The signature is verified against the keys of the client and against nothing else.
-     */
     #[Test]
     public function itRefusesAnAssertionSignedByAnotherKey(): void
     {
@@ -321,10 +304,6 @@ final class PrivateKeyJwtTest extends TestCase
         $this->assertRefused(ClientAuthenticationFailureReason::InvalidAssertion);
     }
 
-    /**
-     * A client that publishes its keys behind a "jwks_uri" is read back over HTTPS and authenticated
-     * against what it published there.
-     */
     #[Test]
     public function itAuthenticatesAClientThatPublishesItsKeysBehindAJwksUri(): void
     {
@@ -351,10 +330,6 @@ final class PrivateKeyJwtTest extends TestCase
         static::assertSame([self::JWKS_URI], array_map(static fn (ClientUri $uri): string => $uri->value, $fetcher->fetched));
     }
 
-    /**
-     * A "jwks_uri" that answers an error, answers too slowly or redirects fails the authentication and
-     * touches nothing else.
-     */
     #[Test]
     public function aJwksUriThatCannotBeReadFailsTheAuthentication(): void
     {
@@ -375,10 +350,6 @@ final class PrivateKeyJwtTest extends TestCase
         $this->assertRefused(ClientAuthenticationFailureReason::UnreadableClientKeys, 'remote-client');
     }
 
-    /**
-     * A client registered for this method and presenting a secret is refused as an unknown client is,
-     * with the same message.
-     */
     #[Test]
     public function aClientPresentingASecretInsteadIsRefusedLikeAnyOther(): void
     {
@@ -395,8 +366,7 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * CIBA Core §7.1: the URL of the token endpoint is one of the three audiences the provider accepts from
-     * a client whose user it reaches itself, the specification naming the ambiguity it settles.
+     * CIBA Core §7.1
      */
     #[Test]
     public function aClientOfTheBackchannelFlowIsAuthenticatedNamingTheTokenEndpoint(): void
@@ -412,8 +382,7 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * CIBA Core §7.1: and so is the URL of the endpoint where such a request is made, which is the default
-     * of the client the suite drives.
+     * CIBA Core §7.1
      */
     #[Test]
     public function aClientOfTheBackchannelFlowIsAuthenticatedNamingTheBackchannelEndpoint(): void
@@ -428,10 +397,6 @@ final class PrivateKeyJwtTest extends TestCase
         static::assertSame($client, $authenticated->client);
     }
 
-    /**
-     * Three names accepted is still one name written: an "aud" naming two of them is an assertion made for
-     * more than the request it travels in, and the widening does not reach it.
-     */
     #[Test]
     public function aClientOfTheBackchannelFlowIsRefusedAnAudienceThatNamesTwoOfThem(): void
     {
@@ -462,8 +427,7 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * A client that signs with a key of its own and waits for its user to approve elsewhere (CIBA Core §7),
-     * which is what the FAPI-CIBA plan drives.
+     * CIBA Core §7
      */
     private function backchannelClient(): Client
     {
@@ -497,10 +461,6 @@ final class PrivateKeyJwtTest extends TestCase
         );
     }
 
-    /**
-     * The same wiring with the backchannel grant served, which is what makes a client registered for it a
-     * client of that flow.
-     */
     private function authenticatorServingCiba(): ClientAuthenticator
     {
         return new ClientAuthenticator(
@@ -584,10 +544,6 @@ final class PrivateKeyJwtTest extends TestCase
         return $events[count($events) - 1];
     }
 
-    /**
-     * A key of somebody else, with the "kid" the client's assertions name, so that the signature and not
-     * the lookup is what fails.
-     */
     private static function strangerKey(): JWK
     {
         return new JWK([

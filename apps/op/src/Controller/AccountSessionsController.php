@@ -13,12 +13,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * Where the signed-in user is signed in (architecture §5.2): the sessions open in their name, and the
- * button that ends one. A browser without a session of the core is told to sign in first. The button of
- * the session of this browser is answered with the SAML service providers of that session told in turn,
- * redirections of its submission, which the page names (beffroi/saml S-36).
- */
 #[AsController]
 final readonly class AccountSessionsController implements ReachedOnTheSessionAloneInterface
 {

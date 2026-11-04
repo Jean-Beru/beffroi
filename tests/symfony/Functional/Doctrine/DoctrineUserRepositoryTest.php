@@ -20,7 +20,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §3.4: users found by identifier, by subject, by username and by address within a tenant.
+ * Architecture §3.4
  */
 final class DoctrineUserRepositoryTest extends DatabaseTestCase
 {
@@ -113,10 +113,6 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
         static::assertEquals(self::now()->modify('+1 hour'), $found->updatedAt);
     }
 
-    /**
-     * Issue #781: what the provider that created a person holds changes at its sign-ins, and the column
-     * follows.
-     */
     #[Test]
     public function whatItsSourceHoldsIsWrittenOnSave(): void
     {
@@ -173,9 +169,7 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Issue #781: the first sign-in through an upstream provider asks whether somebody holds the address it
-     * gave, on the blind index of the address, whose projection folds the domain and leaves the local part
-     * as it is written (RFC 5321 §2.4).
+     * RFC 5321 §2.4
      */
     #[Test]
     #[DataProvider('provideAddressesBobHolds')]
@@ -203,15 +197,10 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
     {
         yield 'as it was written' => ['Bob@acme.example'];
         yield 'its domain in another case' => ['Bob@ACME.Example'];
-        // one mailbox however its local part is written, so that no second person holds it under another
-        // spelling (issue #781)
+        // One mailbox however its local part is written, so no second person holds it under another spelling.
         yield 'its local part in another case' => ['bob@acme.example'];
     }
 
-    /**
-     * Nothing says two persons may not share an address, so the lookup answers every one of them, and what
-     * asks reads no order into it.
-     */
     #[Test]
     public function everyPersonWhoHoldsAnAddressIsFound(): void
     {
@@ -232,7 +221,7 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Decision 0002: the same username and the same subject in another tenant are another user.
+     * Decision 0002
      */
     #[Test]
     public function aUserOfAnotherTenantIsFoundInThatTenant(): void

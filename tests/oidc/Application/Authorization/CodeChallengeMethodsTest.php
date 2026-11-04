@@ -17,8 +17,7 @@ use PHPUnit\Framework\TestCase;
 final class CodeChallengeMethodsTest extends TestCase
 {
     /**
-     * RFC 7636 §4.2: the methods the wiring gave the provider, in the order it wired them, which is the
-     * order the discovery document announces them in.
+     * RFC 7636 §4.2
      */
     #[Test]
     public function itHoldsTheMethodsInTheOrderTheyAreWired(): void
@@ -31,8 +30,7 @@ final class CodeChallengeMethodsTest extends TestCase
     }
 
     /**
-     * RFC 7636 §4.3: a request names a method, and the name is resolved against the wiring rather than
-     * read.
+     * RFC 7636 §4.3
      */
     #[Test]
     public function itResolvesAMethodByTheNameItGivesItself(): void
@@ -45,8 +43,7 @@ final class CodeChallengeMethodsTest extends TestCase
     }
 
     /**
-     * Decision 0006: "plain" (RFC 7636 §4.2) is a class this module does not ship, so nothing answers to
-     * that name, whatever a deployment wires.
+     * Decision 0006, RFC 7636 §4.2
      */
     #[Test]
     public function itResolvesNothingForANameNothingWiredAnswersTo(): void
@@ -67,8 +64,7 @@ final class CodeChallengeMethodsTest extends TestCase
     }
 
     /**
-     * Decision 0006: PKCE is required of every client, so a provider wired to verify no challenge is not
-     * one this deployment can be.
+     * Decision 0006
      */
     #[Test]
     public function itRefusesAProviderWiredWithNoMethodAtAll(): void
@@ -82,8 +78,7 @@ final class CodeChallengeMethodsTest extends TestCase
     }
 
     /**
-     * RFC 7636 §4.6: two methods of the same wiring each verify their own challenge, and nothing outside
-     * them chooses which transformation is applied.
+     * RFC 7636 §4.6
      */
     #[Test]
     public function itResolvesEachWiredMethodToItself(): void

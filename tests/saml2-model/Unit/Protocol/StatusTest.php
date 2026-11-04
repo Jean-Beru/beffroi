@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Section 5.3: the status of a response, its two codes and nothing the peer wrote around them (M-13, M-16).
+ * Section 5.3, M-13, M-16
  */
 final class StatusTest extends TestCase
 {
@@ -27,7 +27,7 @@ final class StatusTest extends TestCase
     }
 
     /**
-     * SAML Core §3.2.2.2: the second-level code is optional, absent or unknown alike.
+     * SAML Core §3.2.2.2
      */
     #[Test]
     public function itHasNoSecondLevelCodeUnlessGivenOne(): void

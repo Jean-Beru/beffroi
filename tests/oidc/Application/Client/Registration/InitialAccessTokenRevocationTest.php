@@ -18,8 +18,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 7591 §1.2, decision 0009: a tenant takes back what it handed out, by the identifier and never by
- * the value, which it does not hold.
+ * RFC 7591 §1.2, Decision 0009
  */
 final class InitialAccessTokenRevocationTest extends TestCase
 {
@@ -54,9 +53,6 @@ final class InitialAccessTokenRevocationTest extends TestCase
         static::assertFalse($issued->token->authorisesARegistration($this->clock->now()));
     }
 
-    /**
-     * What a record says happened is what happened: revoking twice keeps the first instant.
-     */
     #[Test]
     public function revokingItTwiceKeepsTheInstantItWasFirstTakenBack(): void
     {
@@ -74,10 +70,6 @@ final class InitialAccessTokenRevocationTest extends TestCase
         static::assertSame(self::REVOKED_AT, $token?->revokedAt?->format('c'));
     }
 
-    /**
-     * A token of another tenant is a token this tenant has none of: nothing is taken back, and nothing
-     * says there was anything there.
-     */
     #[Test]
     public function aTokenOfAnotherTenantIsNotTakenBack(): void
     {
@@ -104,10 +96,6 @@ final class InitialAccessTokenRevocationTest extends TestCase
         static::assertNull($token);
     }
 
-    /**
-     * The clients that token already registered stay: they were registered under an authorisation that
-     * held at the time, and a client is taken back by taking that client back.
-     */
     #[Test]
     public function whatItAlreadyRegisteredIsLeftAlone(): void
     {

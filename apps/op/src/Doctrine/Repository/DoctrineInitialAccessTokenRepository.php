@@ -17,10 +17,6 @@ use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The initial access tokens of a tenant, in beffroi_initial_access_token (RFC 7591 §1.2). The value is
- * never here: a row is found by the digest of what the caller presented, so whoever reads the table
- * holds nothing to present.
- *
  * @extends DoctrineRepository<InitialAccessToken>
  */
 final readonly class DoctrineInitialAccessTokenRepository extends DoctrineRepository implements
@@ -41,10 +37,7 @@ final readonly class DoctrineInitialAccessTokenRepository extends DoctrineReposi
     }
 
     /**
-     * One UPDATE ... WHERE through the connection and not the unit of work, as an authorization code is
-     * consumed: the count of affected rows says who claimed the registration, so that a token worth one
-     * registers one client and not one per request that arrived together. The loser reads the count back,
-     * so that its copy says what the winner wrote.
+     * Through the connection, not the unit of work: concurrent requests never spend one registration twice.
      */
     public function spend(InitialAccessToken $token, DateTimeImmutable $now): bool
     {
@@ -87,8 +80,6 @@ final readonly class DoctrineInitialAccessTokenRepository extends DoctrineReposi
     }
 
     /**
-     * The most recently issued first, which is the order whoever issued one looks for it in.
-     *
      * @return list<InitialAccessToken>
      */
     public function issuedIn(Tenant $tenant): iterable

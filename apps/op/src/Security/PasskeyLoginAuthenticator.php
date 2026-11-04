@@ -23,13 +23,8 @@ use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
 use Symfony\Component\Security\Http\Authenticator\Token\PostAuthenticationToken;
 
 /**
- * The passkey login on the firewall of the interaction pages (architecture §5.4), next to the form login:
- * the assertion the browser signed, posted by the login page as a form with the same CSRF token, verified
- * by the ceremony of the core against the options this browser was given, the passport carrying what was
- * proven (PasskeyCredentials) for the one LoginSuccessListener that sees both logins. A passkey of another
- * tenant, a revoked one, an assertion whose backup eligibility is not the one of the enrolment and the
- * passkey of a person of a federated domain (decision 0029) are refused after the signature, so that a
- * refusal costs the same; a disabled user is refused by the UserChecker after, as with a password.
+ * A passkey of another tenant, a revoked one, a backup eligibility other than at enrolment and a person of a
+ * federated domain are refused after the signature, so that every refusal costs the same.
  */
 final readonly class PasskeyLoginAuthenticator implements AuthenticatorInterface, InteractiveAuthenticatorInterface
 {
@@ -78,8 +73,7 @@ final readonly class PasskeyLoginAuthenticator implements AuthenticatorInterface
         if ($credential->isRevoked()) {
             throw new PasskeyLoginException(AuthenticationFailureReason::RevokedCredential, $method, $credential->user);
         }
-        // decision 0029, beffroi/saml S-63: a person of a federated domain signs in through their provider and
-        // through nothing else, whatever the page offered them
+        // Refused whatever the page offered: a person of a federated domain signs in through their provider alone.
         if (! $this->federated->admitsLocalCredentials($credential->user)) {
             throw new PasskeyLoginException(AuthenticationFailureReason::FederatedDomain, $method, $credential->user);
         }

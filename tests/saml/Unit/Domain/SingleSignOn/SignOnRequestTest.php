@@ -14,13 +14,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * spec/saml.md S-18, section 6.4 step 3: a request waiting for a login is written to its document and read back whole,
- * for ten minutes.
+ * S-18, section 6.4 step 3
  */
 final class SignOnRequestTest extends TestCase
 {
     /**
-     * S-18: what the browser's session keeps is the request whole, its RelayState byte for byte among it.
+     * S-18
      */
     #[Test]
     #[DataProvider('provideRequests')]
@@ -47,7 +46,7 @@ final class SignOnRequestTest extends TestCase
     }
 
     /**
-     * Section 7: ten minutes after it was received.
+     * Section 7
      */
     #[Test]
     public function aRequestWaitsTenMinutes(): void
@@ -57,7 +56,7 @@ final class SignOnRequestTest extends TestCase
     }
 
     /**
-     * S-18: a document that is not a request, edited by hand or written by something else, is refused.
+     * S-18
      *
      * @param array<string, mixed> $change
      */
@@ -101,9 +100,6 @@ final class SignOnRequestTest extends TestCase
         ];
     }
 
-    /**
-     * The receiving instant is kept to the microsecond, so that ForceAuthn compares a proof with the request itself.
-     */
     #[Test]
     public function theInstantIsKeptToTheMicrosecond(): void
     {

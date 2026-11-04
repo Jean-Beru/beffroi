@@ -20,9 +20,7 @@ use function sort;
 use function str_starts_with;
 
 /**
- * The mappings of the provider describe a schema Doctrine validates, writes without a deprecation, creates on
- * SQLite and finds in sync afterwards (architecture §5.3, §7), next to the tables of the application
- * (decision 0002).
+ * Architecture §5.3, §7, Decision 0002
  */
 final class SchemaTest extends DatabaseTestCase
 {
@@ -61,15 +59,10 @@ final class SchemaTest extends DatabaseTestCase
         'beffroi_saml_remembered_message',
         'beffroi_saml_session_participant',
         'beffroi_saml_logout_chain',
-        // The one table of this schema no mapping of the provider describes: the store of the data keys puts
-        // it there, through the schema listener of the ORM bridge, so that "doctrine:schema:update" does
-        // not offer to drop what it did not put there (decisions 0011 and 0018).
+        // No mapping describes this table: the schema listener of the ORM bridge adds it for the data keys.
         'beffroi_data_key',
     ];
 
-    /**
-     * What "doctrine:schema:validate" checks: the mappings are consistent, and the database matches them.
-     */
     #[Test]
     public function theMappingsAreValid(): void
     {
@@ -90,13 +83,6 @@ final class SchemaTest extends DatabaseTestCase
         static::assertSame([], $validator->getUpdateSchemaList());
     }
 
-    /**
-     * Issue #969: the schema the mappings describe is written without a deprecation of Doctrine, on the
-     * database of the application as on the one of this suite. A document stored as JSONB is of a type that
-     * declares it, as DBAL's own `JsonbType` does, and no mapping asks the platform for it by the "jsonb"
-     * option, which doctrine/dbal deprecates since 4.3.0 (doctrine/dbal#6939): every process of this suite
-     * that creates its database would otherwise raise it once per such column.
-     */
     #[Test]
     #[DataProvider('providePlatforms')]
     public function theSchemaIsWrittenWithoutADeprecationOfDoctrine(AbstractPlatform $platform): void
@@ -126,7 +112,7 @@ final class SchemaTest extends DatabaseTestCase
     }
 
     /**
-     * Architecture §5.3: the tables of the provider, every one prefixed "beffroi_", and no other.
+     * Architecture §5.3
      */
     #[Test]
     public function theProviderDeclaresItsThirtyPrefixedTables(): void
@@ -145,14 +131,7 @@ final class SchemaTest extends DatabaseTestCase
     }
 
     /**
-     * Architecture §5.3: every row carries the tenant.
-     *
-     * Two tables name it otherwise, and both are named here rather than letting the rule bend. The tenant
-     * is its own row. And the store of the data keys carries the tenant in its scope, as the slug the
-     * encrypter of the provider prefixes the family of columns with (decision 0018): the five columns of
-     * that table are the five the store of the bridge names, a table carrying anything else being a table
-     * the application would have to declare itself, and the scope is the only channel there is between an
-     * encrypted type and the store.
+     * Architecture §5.3, Decision 0018
      */
     #[Test]
     public function everyTableButTheTenantOneAndTheDataKeysCarriesTheTenant(): void
@@ -169,11 +148,6 @@ final class SchemaTest extends DatabaseTestCase
         }
     }
 
-    /**
-     * The scope of the data key store is what carries the tenant there, so a table with no tenant column
-     * is refused unless it is one of the two the rule above names: this is the assertion that makes the
-     * exception an exception rather than a hole.
-     */
     #[Test]
     public function theScopeOfTheDataKeyStoreIsWhatCarriesTheTenantThere(): void
     {
@@ -187,8 +161,7 @@ final class SchemaTest extends DatabaseTestCase
     }
 
     /**
-     * Decision 0002: the application keeps its own "User", in a table of its own, and the provider
-     * never hooks onto it. The two schemas install together.
+     * Decision 0002
      */
     #[Test]
     public function theHostApplicationKeepsItsOwnUserNextToTheProvider(): void
@@ -211,8 +184,6 @@ final class SchemaTest extends DatabaseTestCase
     }
 
     /**
-     * The tables the mappings of the provider describe, by name, the one of the application left out.
-     *
      * @return array<string, Table>
      */
     private static function tablesOfTheProvider(): array

@@ -11,10 +11,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Where the login page posts a signed assertion (architecture §5.2, §5.4): the check path of the passkey
- * authenticator of the firewall, which answers before this controller and sends the browser back to the
- * login page of its interaction. Without a firewall, a POST goes back there and nothing is verified, as
- * with the form login.
+ * The check path of the passkey authenticator of the firewall, which answers before this controller.
  */
 #[AsController]
 final readonly class PasskeyLoginController

@@ -8,8 +8,7 @@ use Beffroi\Xml\Enc\DecryptionKeyInterface;
 use Beffroi\Xml\Enc\OaepHash;
 
 /**
- * The service provider's key of section 5.5, which records whether it was asked to unwrap anything: what proves that
- * a refusal came before any key was touched (section 6.7, enc.md E-15).
+ * Section 5.5, section 6.7, enc.md E-15
  */
 final class RecordingDecryptionKey implements DecryptionKeyInterface
 {

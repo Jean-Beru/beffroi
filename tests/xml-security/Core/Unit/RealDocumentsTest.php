@@ -23,16 +23,14 @@ use function str_starts_with;
 use function strlen;
 
 /**
- * Section 9.4: the real documents under tests/xml-security/Core/Fixture/real/, each loading without refusal with the SAML stack's
- * IdAttributes and the default Limits, its IDs indexed, its exclusive canonical form stable across two runs. A
- * real document the loader refuses is a finding.
+ * Section 9.4
  */
 final class RealDocumentsTest extends TestCase
 {
     private const string ENTRA = 'real/entra-common-federation-metadata-2026-09-23.xml';
 
     /**
-     * Section 9.4: every real document loads.
+     * Section 9.4
      */
     #[Test]
     #[DataProvider('provideRealDocuments')]
@@ -46,7 +44,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4: the exclusive canonical form is the same bytes on two runs, two loads apart.
+     * Section 9.4
      */
     #[Test]
     #[DataProvider('provideRealDocuments')]
@@ -74,7 +72,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 9.4, section 13: Entra's common federation metadata, its one ID indexed under the root.
+     * Section 9.4, section 13
      */
     #[Test]
     public function entrasMetadataHasItsOneIdIndexed(): void
@@ -89,8 +87,7 @@ final class RealDocumentsTest extends TestCase
     }
 
     /**
-     * Section 13, measured on 23 September 2026: the figures of the specification, pinned so that a re-capture
-     * that moves them is seen.
+     * Section 13
      */
     #[Test]
     public function entrasMetadataMatchesTheMeasurementsOfSection13(): void

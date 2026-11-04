@@ -11,10 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * RFC 6749 §4.4 over HTTP, end to end: a service asks the token endpoint for itself, with no browser
- * anywhere and nobody signed in. The answer is an access token addressed to the resource it named and
- * nothing else, in an "at+jwt" for the "service-app" client of the test kernel and in the introspection of
- * the opaque one for "service-opaque-app". One step per test.
+ * RFC 6749 §4.4
  */
 final class ClientCredentialsFlowTest extends BrowserTestCase
 {
@@ -29,8 +26,7 @@ final class ClientCredentialsFlowTest extends BrowserTestCase
     private const string CALENDAR = 'https://cal.example.com/';
 
     /**
-     * RFC 6749 §4.4.2, RFC 9068 §2.2, RFC 8707 §2: the token names the client in "sub" and in
-     * "client_id", is addressed to the resource the request named, and says nothing of a sign-in.
+     * RFC 6749 §4.4.2, RFC 9068 §2.2, RFC 8707 §2
      */
     #[Test]
     public function aServiceGetsATokenThatNamesItAndIsAddressedToItsResource(): void
@@ -54,8 +50,7 @@ final class ClientCredentialsFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §4.4.3: an access token and nothing else, there being nobody to describe in an ID token and
-     * no session to renew with a refresh token.
+     * RFC 6749 §4.4.3
      */
     #[Test]
     public function theResponseCarriesNoIdTokenAndNoRefreshToken(): void
@@ -74,8 +69,7 @@ final class ClientCredentialsFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7662 §2.2, RFC 6749 §4.4: the introspection of the opaque shape says what the "at+jwt" says, the
-     * client in "sub" and no sign-in.
+     * RFC 7662 §2.2, RFC 6749 §4.4
      */
     #[Test]
     public function theIntrospectionOfTheOpaqueShapeSaysTheSameThing(): void
@@ -110,7 +104,7 @@ final class ClientCredentialsFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7009 §2.1: the opaque token of a service is taken back like any other, and is inactive after it.
+     * RFC 7009 §2.1
      */
     #[Test]
     public function theOpaqueTokenOfAServiceIsRevokedLikeAnyOther(): void
@@ -143,8 +137,7 @@ final class ClientCredentialsFlowTest extends BrowserTestCase
     }
 
     /**
-     * What this grant refuses, each with the error of RFC 6749 §5.2 or RFC 8707 §2 that says why, in JSON
-     * and never a redirect.
+     * RFC 6749 §5.2, RFC 8707 §2
      *
      * @param array<string, string|null> $parameters
      */
@@ -204,7 +197,7 @@ final class ClientCredentialsFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §4.4: the client authenticates itself, so a request that proves nothing is invalid_client.
+     * RFC 6749 §4.4
      */
     #[Test]
     public function aRequestThatDoesNotAuthenticateTheClientIsRefused(): void
@@ -227,8 +220,7 @@ final class ClientCredentialsFlowTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §4.4, OIDC Discovery §3: a client registered for another grant is not registered for this
-     * one, and the endpoint says so before the grant reads anything.
+     * RFC 6749 §4.4, OIDC Discovery §3
      */
     #[Test]
     public function aClientNotRegisteredForThisGrantIsRefused(): void
@@ -255,7 +247,7 @@ final class ClientCredentialsFlowTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Discovery §3: the grant is announced because it is wired, and by nothing kept beside it.
+     * OIDC Discovery §3
      */
     #[Test]
     public function theDiscoveryDocumentAnnouncesTheGrant(): void
@@ -270,7 +262,7 @@ final class ClientCredentialsFlowTest extends BrowserTestCase
     }
 
     /**
-     * @param array<string, string|null> $parameters what replaces the defaults; null removes a parameter
+     * @param array<string, string|null> $parameters replace the defaults, null removing a parameter
      */
     private function ask(array $parameters = [], string $client = self::CLIENT_ID, string $secret = self::SECRET): void
     {

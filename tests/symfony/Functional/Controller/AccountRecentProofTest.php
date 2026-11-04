@@ -26,21 +26,10 @@ use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Issue #580, architecture §5.2: a page of the account that adds or takes away a way in is not reached on
- * a session alone. Which pages ask is said by the pages themselves, read where the kernel is about to call
- * one (RecentProofListener), and walked here from the router and from no list of this suite: a page added
- * to the account is covered by being routed, the way the routes of the two planes are.
- *
- * A post of these walks carries no form token on purpose: the proof is read before the page is called, so
- * the page never gets to ask for one, and what the walk reads is the rule and not the token.
+ * Architecture §5.2
  */
 final class AccountRecentProofTest extends PasskeyTestCase
 {
-    /**
-     * The acceptance of issue #580: what asks is read off the pages, so a page that says neither of the
-     * two fails here rather than being reached on the session alone by nobody's decision. Both answers are
-     * given by a page, which is what makes the walks below walk anything.
-     */
     #[Test]
     public function everyPageOfTheAccountSaysWhetherItAsksForARecentProof(): void
     {
@@ -64,10 +53,6 @@ final class AccountRecentProofTest extends PasskeyTestCase
         static::assertNotSame([], $onTheSessionAlone);
     }
 
-    /**
-     * A session is not a proof that whoever holds it is its person: a browser left unlocked an hour ago, or
-     * a session cookie somebody took, reaches none of these pages.
-     */
     #[Test]
     public function aPageThatAsksForARecentProofSendsASessionThatProvedNothingToTheLogin(): void
     {
@@ -91,12 +76,6 @@ final class AccountRecentProofTest extends PasskeyTestCase
         static::assertSame([], $served);
     }
 
-    /**
-     * A page that shows what the account holds is reached on the session, or nothing of the account is
-     * reachable to the person who most needs it; and ending a session is what somebody does because they
-     * fear that session, which is no moment to ask them for a password on the browser they are worried
-     * about.
-     */
     #[Test]
     public function aPageReachedOnTheSessionAloneSendsNobodyToTheLogin(): void
     {
@@ -119,11 +98,6 @@ final class AccountRecentProofTest extends PasskeyTestCase
         static::assertSame([], $sentToTheLogin);
     }
 
-    /**
-     * A browser with no session is left to the page, which refuses it with the one refusal every page of
-     * the account writes (AccountAccess): there is nothing to prove again where nothing was proven, and a
-     * login is not something to come back from when there is nowhere to come back to.
-     */
     #[Test]
     public function aPageThatAsksRefusesABrowserWithNoSessionRatherThanSendingItToTheLogin(): void
     {
@@ -144,11 +118,6 @@ final class AccountRecentProofTest extends PasskeyTestCase
         static::assertSame([], $answered);
     }
 
-    /**
-     * The page is remembered, so the browser comes back to it once the proof is given, and a post comes
-     * back to the page that holds its form; it is the login of the firewall that asks, the same one every
-     * other page of the provider uses.
-     */
     #[Test]
     public function aPageThatAsksIsRememberedSoTheBrowserComesBackToItOnceTheProofIsGiven(): void
     {
@@ -170,11 +139,6 @@ final class AccountRecentProofTest extends PasskeyTestCase
         );
     }
 
-    /**
-     * It is the page that was waiting for the login that forgets it and not the login that answered
-     * (LoginTarget), so a browser that came back with a proof leaves nothing behind for the next login of
-     * this provider to resume.
-     */
     #[Test]
     public function aPageThatAsksForgetsTheLoginItWasWaitingForOnceTheProofHolds(): void
     {
@@ -193,10 +157,6 @@ final class AccountRecentProofTest extends PasskeyTestCase
         static::assertNull($this->browser->getRequest()->getSession()->get(LoginTarget::SESSION_KEY));
     }
 
-    /**
-     * A guard the form does not repeat is a guard a form post goes around: the post of a page that asks
-     * revokes nothing on a session whose newest proof is older than the window.
-     */
     #[Test]
     public function aPasskeyIsNotRevokedOnASessionThatProvedNothingRecently(): void
     {
@@ -223,10 +183,6 @@ final class AccountRecentProofTest extends PasskeyTestCase
         static::assertSame([], self::events(CredentialRevoked::class));
     }
 
-    /**
-     * Ending a session is not taking a credential away, and the page that ends one is unchanged: a person
-     * who fears a session ends it on the session they are reading from, whatever it last proved.
-     */
     #[Test]
     public function aSessionIsStillEndedOnASessionThatProvedNothingRecently(): void
     {
@@ -255,10 +211,6 @@ final class AccountRecentProofTest extends PasskeyTestCase
     }
 
     /**
-     * Every page of the account, read from the router of the kernel and from no list of this suite: a
-     * method it answers, a path with a value for every variable, and the class the kernel calls, which is
-     * where the page says what it asks of a session.
-     *
      * @return iterable<string, array{string, string, class-string}>
      */
     private static function pagesOfTheAccount(): iterable
@@ -275,10 +227,6 @@ final class AccountRecentProofTest extends PasskeyTestCase
         }
     }
 
-    /**
-     * The path of a route, with a value the requirements of every variable take: the pages of the account
-     * name an identifier of a row, and a page is reached before it looks for one.
-     */
     private static function pathOf(Route $route): string
     {
         $path = $route->getPath();

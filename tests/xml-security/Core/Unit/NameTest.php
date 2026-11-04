@@ -12,12 +12,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * I-10: names are namespace URI and local name; a prefix is never compared. Section 5.1.
+ * I-10, Section 5.1
  */
 final class NameTest extends TestCase
 {
     /**
-     * Section 5.1: a null namespace is a node in no namespace.
+     * Section 5.1
      */
     #[Test]
     public function itHoldsTheNamespaceAndTheLocalName(): void
@@ -31,7 +31,7 @@ final class NameTest extends TestCase
     }
 
     /**
-     * Section 5.1: of() reads (namespaceURI, localName) of an element, not its prefix.
+     * Section 5.1
      */
     #[Test]
     public function itReadsTheNamespaceUriAndTheLocalNameOfAnElement(): void
@@ -47,7 +47,7 @@ final class NameTest extends TestCase
     }
 
     /**
-     * Section 5.1: an unprefixed attribute is in no namespace, whatever the default namespace of its element.
+     * Section 5.1
      */
     #[Test]
     public function itReadsAnUnprefixedAttributeAsInNoNamespace(): void
@@ -65,7 +65,7 @@ final class NameTest extends TestCase
     }
 
     /**
-     * I-10, §9.3 row 9: same namespace, other prefix, matched.
+     * I-10, §9.3 row 9
      */
     #[Test]
     public function itMatchesAnElementOnNamespaceUriAndLocalNameNeverThePrefix(): void
@@ -78,7 +78,7 @@ final class NameTest extends TestCase
     }
 
     /**
-     * I-10, §9.3 row 8: same local name, other namespace, not matched.
+     * I-10, §9.3 row 8
      */
     #[Test]
     public function itDoesNotMatchTheSameLocalNameInAnotherNamespace(): void
@@ -91,7 +91,7 @@ final class NameTest extends TestCase
     }
 
     /**
-     * I-10: same namespace, other local name, not matched.
+     * I-10
      */
     #[Test]
     public function itDoesNotMatchAnotherLocalNameInTheSameNamespace(): void
@@ -104,7 +104,7 @@ final class NameTest extends TestCase
     }
 
     /**
-     * I-10: an attribute matches on its namespace URI and local name too.
+     * I-10
      */
     #[Test]
     public function itMatchesAnAttribute(): void
@@ -119,7 +119,7 @@ final class NameTest extends TestCase
     }
 
     /**
-     * Section 5.1: equality is the pair (namespace, local), null namespace included.
+     * Section 5.1
      */
     #[Test]
     #[DataProvider('provideNamePairs')]

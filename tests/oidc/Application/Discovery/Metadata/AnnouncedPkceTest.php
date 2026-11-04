@@ -11,8 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 7636 §4.2: what is announced is what the provider is wired to verify a challenge with. Decision
- * 0006 wires "S256" alone, and "plain" is a class the module does not ship, so it is announced nowhere.
+ * RFC 7636 §4.2, Decision 0006
  */
 final class AnnouncedPkceTest extends TestCase
 {
@@ -32,8 +31,7 @@ final class AnnouncedPkceTest extends TestCase
     }
 
     /**
-     * RFC 8414 §2: a deployment that wires a method of its own is announced with it, and nothing here is
-     * edited for that.
+     * RFC 8414 §2
      */
     #[Test]
     public function itAnnouncesAMethodADeploymentWiredOfItsOwn(): void

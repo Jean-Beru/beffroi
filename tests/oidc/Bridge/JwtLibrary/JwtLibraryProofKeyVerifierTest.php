@@ -16,8 +16,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 9449 §4.3 and RFC 7638 §3: the key of the header is the key that has to have signed, and what
- * names it is its JWK thumbprint.
+ * RFC 9449 §4.3, RFC 7638 §3
  */
 final class JwtLibraryProofKeyVerifierTest extends TestCase
 {
@@ -26,9 +25,7 @@ final class JwtLibraryProofKeyVerifierTest extends TestCase
     private const string ENDPOINT = 'https://id.acme.example/token';
 
     /**
-     * RFC 7638 §3.1: the key of the example, and the thumbprint the section publishes for it. This is
-     * the very computation the verifier answers with, checked against the specification and not against
-     * itself.
+     * RFC 7638 §3.1
      */
     #[Test]
     public function theThumbprintIsTheOneTheSpecificationPublishes(): void
@@ -63,8 +60,7 @@ final class JwtLibraryProofKeyVerifierTest extends TestCase
     }
 
     /**
-     * RFC 8725 §3.1: a proof is signed with a key nobody shares, and the algorithms the provider is
-     * wired with are asymmetric every one of them. A proof naming another algorithm is not verified.
+     * RFC 8725 §3.1
      */
     #[Test]
     public function aProofSignedWithAnAlgorithmTheProviderDoesNotTakeIsRefused(): void

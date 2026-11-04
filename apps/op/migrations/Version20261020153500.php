@@ -9,14 +9,7 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * The browser a chain of logout is bound to (beffroi/saml, issue #735, spec/saml.md S-32): beside the SHA-256 of its
- * reference, the SHA-256 of the secret the browser that began the chain holds in a cookie of the provider, without
- * which no step of the chain is played, so that neither the server of a service provider answering for the browser nor
- * a reference read in an access log plays it.
- *
- * The rows the table already holds are bound to no browser, and a chain lives ten minutes from its last step, so they
- * are deleted and the column is mandatory from the start rather than nullable for ever: the sessions of those chains
- * have ended already (S-29), and the service providers they had left to tell are not told, as when a chain closes.
+ * The rows already held are bound to no browser and live minutes, so they are deleted and the column is mandatory.
  */
 final class Version20261020153500 extends AbstractMigration
 {

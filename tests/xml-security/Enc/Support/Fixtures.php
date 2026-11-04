@@ -9,8 +9,7 @@ use RuntimeException;
 use function sprintf;
 
 /**
- * The corpus of section 9 of spec/enc.md: files, one case per file, under tests/xml-security/Enc/Fixture/{vectors,hostile,
- * behaviour,real,keys}/.
+ * Section 9 of spec/enc.md
  */
 final class Fixtures
 {

@@ -9,9 +9,7 @@ use Beffroi\Oidc\Domain\Exchange\PresentedToken;
 use Beffroi\Oidc\Domain\Exchange\TokenTypeIdentifier;
 
 /**
- * The token type identifiers the tests speak of (RFC 8693 §3), and the wirings they read them from. The one
- * type the provider reads today is written here once, so that a test says which type it is about and no test
- * says what the provider is wired with.
+ * RFC 8693 §3
  */
 final readonly class TokenTypes
 {
@@ -21,7 +19,7 @@ final readonly class TokenTypes
     }
 
     /**
-     * RFC 8693 §3: a type nobody wrote a line of production code for, named by a URI as every other is.
+     * RFC 8693 §3
      */
     public static function invented(): TokenTypeIdentifier
     {
@@ -29,8 +27,6 @@ final readonly class TokenTypes
     }
 
     /**
-     * What the provider is wired to read today: the access token, reading whatever the test put in it.
-     *
      * @param array<string, PresentedToken> $tokens by the value a request presents
      */
     public static function served(array $tokens = []): PresentedTokenTypes

@@ -12,9 +12,6 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 use function strlen;
 
-/**
- * The randomness a test writes down: what it wrote first, then a sequence that repeats nothing.
- */
 final class FixedRandomnessTest extends TestCase
 {
     #[Test]
@@ -37,10 +34,6 @@ final class FixedRandomnessTest extends TestCase
         static::assertNotSame($randomness->bytes(8), $randomness->bytes(8));
     }
 
-    /**
-     * What it draws on its own is of the length it is asked for, shorter than the counter it is made of
-     * as well as longer.
-     */
     #[Test]
     #[DataProvider('provideLengths')]
     public function whatItDrawsOnItsOwnIsOfTheLengthAskedFor(int $length): void
@@ -59,9 +52,6 @@ final class FixedRandomnessTest extends TestCase
         yield 'longer than the counter' => [32];
     }
 
-    /**
-     * Bytes written for a draw of another length are a mistake in the test, and are said to be.
-     */
     #[Test]
     public function bytesOfAnotherLengthAreRefused(): void
     {

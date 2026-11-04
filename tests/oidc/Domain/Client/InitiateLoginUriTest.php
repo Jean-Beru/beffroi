@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 final class InitiateLoginUriTest extends TestCase
 {
     /**
-     * OIDC Registration §2: an "https" URL, kept as it was registered.
+     * OIDC Registration §2
      */
     #[Test]
     public function itAcceptsAnHttpsUrl(): void
@@ -23,9 +23,7 @@ final class InitiateLoginUriTest extends TestCase
     }
 
     /**
-     * OIDC Registration §2 gives this member none of the tolerance ClientUri keeps for a development
-     * stack: it is "https" on a loopback host as anywhere else
-     * (module `oidcc-3rd_party-init-login-nohttps`).
+     * OIDC Registration §2
      */
     #[Test]
     #[DataProvider('provideHostsPlainHttpNeverReaches')]
@@ -52,10 +50,6 @@ final class InitiateLoginUriTest extends TestCase
         yield 'a scheme in capitals (RFC 3986 §3.1, compared without regard to case)' => ['HTTP://rp.example/start'];
     }
 
-    /**
-     * What may be registered at all is the rule of ClientUri, which this URI is one use of: what it
-     * refuses of every client URI is refused here too, and this class adds one rule to it.
-     */
     #[Test]
     public function itIsAUriAClientMayRegister(): void
     {
@@ -67,10 +61,6 @@ final class InitiateLoginUriTest extends TestCase
         new InitiateLoginUri('https://rp.example/start#frag');
     }
 
-    /**
-     * A value that carries no scheme at all is not a URI a client may register, and the rule of every one of
-     * them answers for it: this class refuses a scheme, never the absence of one.
-     */
     #[Test]
     public function aValueWithNoSchemeIsLeftToTheRuleOfEveryClientUri(): void
     {
@@ -83,7 +73,7 @@ final class InitiateLoginUriTest extends TestCase
     }
 
     /**
-     * OIDC Core §4: the query the client registered is kept and the parameters are added to it.
+     * OIDC Core §4
      */
     #[Test]
     public function itKeepsTheRegisteredQueryAndAddsTheParameters(): void

@@ -14,9 +14,7 @@ use function strlen;
 use function substr;
 
 /**
- * A sealer that seals nothing: it writes the tenant into the envelope and reads it back, so that a test
- * sees what would have been kept and that an envelope of one tenant does not open for another, which is
- * what the KMS of a deployment guarantees (architecture §3.3).
+ * Architecture §3.3
  */
 final readonly class FakeSecretSealer implements SecretSealerInterface
 {

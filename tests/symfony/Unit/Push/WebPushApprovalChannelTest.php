@@ -36,8 +36,7 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * RFC 8030, RFC 8291, RFC 8292, BCP 10027 §5.2: what the browsers of a user are told when a client asks
- * for something only that user can answer, and what becomes of a browser that is not there any more.
+ * RFC 8030, RFC 8291, RFC 8292, BCP 10027 §5.2
  */
 final class WebPushApprovalChannelTest extends TestCase
 {
@@ -63,8 +62,6 @@ final class WebPushApprovalChannelTest extends TestCase
     private array $requests = [];
 
     /**
-     * The locale every string of the notification was asked of the translator in.
-     *
      * @var list<string>
      */
     private array $askedIn = [];
@@ -79,10 +76,6 @@ final class WebPushApprovalChannelTest extends TestCase
         $this->activeKey();
     }
 
-    /**
-     * A deployment that reaches nobody is not a deployment that fails: the user finds the request on the
-     * page where requests are answered.
-     */
     #[Test]
     public function aUserWithNoBrowserIsToldNothingAndNothingFails(): void
     {
@@ -99,8 +92,7 @@ final class WebPushApprovalChannelTest extends TestCase
     }
 
     /**
-     * BCP 10027 §5.2: what a browser is told is who is asking, what they wrote and where an answer is
-     * given; nothing of it names the request or answers it.
+     * BCP 10027 §5.2
      */
     #[Test]
     public function aBrowserIsToldWhoIsAskingAndWhereToAnswer(): void
@@ -121,9 +113,7 @@ final class WebPushApprovalChannelTest extends TestCase
     }
 
     /**
-     * Architecture §5.7: a user who told this provider they read French is not told in English. There is
-     * no request of theirs to read a language from here, so what is left is the claim of OIDC Core §5.1
-     * they gave, which this deployment serves as "fr" and not as "fr_CA".
+     * Architecture §5.7, OIDC Core §5.1
      */
     #[Test]
     public function theNotificationIsWrittenInTheLanguageTheUserReads(): void
@@ -143,8 +133,7 @@ final class WebPushApprovalChannelTest extends TestCase
     }
 
     /**
-     * RFC 8030 §5.2: a message worth nothing once the request has expired is not one a push service
-     * should keep for a device that is asleep.
+     * RFC 8030 §5.2
      */
     #[Test]
     public function theMessageIsWorthDeliveringAsLongAsTheRequestIs(): void
@@ -165,8 +154,7 @@ final class WebPushApprovalChannelTest extends TestCase
     }
 
     /**
-     * RFC 8030 §7.3: a push service that says the subscription is gone has taken the browser out, and
-     * the row follows rather than being tried for ever.
+     * RFC 8030 §7.3
      */
     #[Test]
     public function aBrowserThePushServiceSaysIsGoneIsTakenOut(): void
@@ -185,8 +173,7 @@ final class WebPushApprovalChannelTest extends TestCase
     }
 
     /**
-     * Architecture §5.6: a push service that did not answer may answer in a minute, and the lane is what
-     * comes back, on its policy and not beyond it, as it does for a logout token.
+     * Architecture §5.6
      */
     #[Test]
     public function aPushServiceThatDidNotAnswerBringsTheLaneBack(): void
@@ -205,9 +192,6 @@ final class WebPushApprovalChannelTest extends TestCase
         $channel->tell($this->alice, $this->approval());
     }
 
-    /**
-     * One browser that got it is a user who was told: the lane is not brought back for the others.
-     */
     #[Test]
     public function oneBrowserReachedIsEnough(): void
     {
@@ -258,10 +242,6 @@ final class WebPushApprovalChannelTest extends TestCase
         );
     }
 
-    /**
-     * Keeps the language every string was asked in, so that a test reads back the locale the notification
-     * was written in, which is encrypted to the browser by the time it leaves.
-     */
     private function translator(): TranslatorInterface
     {
         $translator = self::createStub(TranslatorInterface::class);

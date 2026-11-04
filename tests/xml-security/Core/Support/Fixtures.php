@@ -9,7 +9,7 @@ use RuntimeException;
 use function sprintf;
 
 /**
- * The corpus of section 9: files, one case per file, under tests/Fixture/{canonical,hostile,behaviour,real}/.
+ * Section 9
  */
 final class Fixtures
 {

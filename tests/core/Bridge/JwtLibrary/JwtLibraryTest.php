@@ -63,7 +63,7 @@ final class JwtLibraryTest extends TestCase
     }
 
     /**
-     * RFC 7638 §3: the kid is the SHA-256 thumbprint of the public key.
+     * RFC 7638 §3
      */
     #[Test]
     public function theGeneratorNamesTheKeyByItsThumbprint(): void
@@ -79,7 +79,7 @@ final class JwtLibraryTest extends TestCase
     }
 
     /**
-     * RFC 7517 §4: the public JWK carries kid, alg and use, and no private member.
+     * RFC 7517 §4
      */
     #[Test]
     public function theGeneratorProducesAPublicJwkWithoutPrivateMembers(): void
@@ -96,7 +96,7 @@ final class JwtLibraryTest extends TestCase
     }
 
     /**
-     * RFC 7515 §7.1 compact serialization, header with alg and kid.
+     * RFC 7515 §7.1
      */
     #[Test]
     public function itSignsWithTheActiveKeyAndNamesItInTheHeader(): void
@@ -122,9 +122,7 @@ final class JwtLibraryTest extends TestCase
     }
 
     /**
-     * RFC 7515 §7.1 (issue #870): a key is opened first and signs afterwards without the store or the KMS being
-     * asked again, so a key that stopped being the active one since it was opened still signs what it was opened
-     * for, the header naming it and its algorithm.
+     * RFC 7515 §7.1
      */
     #[Test]
     public function aKeyOpenedBeforeSignsWithoutBeingLookedUpAgain(): void
@@ -150,9 +148,6 @@ final class JwtLibraryTest extends TestCase
         );
     }
 
-    /**
-     * Verified by the library against the published JWK Set, the way a relying party would.
-     */
     #[Test]
     public function theSignatureVerifiesAgainstThePublishedJwks(): void
     {
@@ -214,7 +209,7 @@ final class JwtLibraryTest extends TestCase
     }
 
     /**
-     * OIDC Core §10.1.1: what the previous key signed stays verifiable while it is in the JWK Set.
+     * OIDC Core §10.1.1
      */
     #[Test]
     public function aRetiringKeyStillVerifies(): void
@@ -244,9 +239,6 @@ final class JwtLibraryTest extends TestCase
         $signer->sign($this->tenant, Algorithms::rs256(), 'x');
     }
 
-    /**
-     * A staged key is published so that a cache learns it, and signs nothing until it is activated.
-     */
     #[Test]
     public function aStagedKeyDoesNotSign(): void
     {
@@ -272,9 +264,6 @@ final class JwtLibraryTest extends TestCase
         $signer->sign($this->tenant, Algorithms::rs256(), 'x');
     }
 
-    /**
-     * A JWS naming a retired kid is refused like one naming a key that never existed.
-     */
     #[Test]
     public function aRetiredKeyNoLongerVerifies(): void
     {
@@ -291,8 +280,7 @@ final class JwtLibraryTest extends TestCase
     }
 
     /**
-     * RFC 8725 §3.1 and §3.2: the algorithm comes from the verifier, never from the token; "none" and HMAC
-     * are refused whatever the header says.
+     * RFC 8725 §3.1, §3.2
      */
     #[Test]
     public function itRefusesTokensSignedWithAnotherAlgorithm(): void
@@ -414,10 +402,6 @@ final class JwtLibraryTest extends TestCase
         static::assertSame($first, $second);
     }
 
-    /**
-     * The opened private half of a key that stopped signing leaves the memory of the provider: the next
-     * active key is opened, the previous one is not kept beside it.
-     */
     #[Test]
     public function theProviderForgetsAKeyOnceItIsNoLongerActive(): void
     {

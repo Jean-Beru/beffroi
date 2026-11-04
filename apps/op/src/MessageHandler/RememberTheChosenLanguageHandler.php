@@ -9,14 +9,6 @@ use Beffroi\Core\Application\Identity\LanguageRecording;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
-/**
- * Writes on the account the language a person chose on a page (issue #471). Nothing of the request that
- * chose it waits for this: the cookie is what the next journey of that browser starts in and the
- * interaction is what the next page of this one is read in, so the claim is written on the lane.
- *
- * A person whose row is gone by the time this runs is nobody to write to, and the message is done: an
- * account deleted between the choice and the write is not a failure of the choice.
- */
 #[AsMessageHandler]
 final readonly class RememberTheChosenLanguageHandler
 {

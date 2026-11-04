@@ -11,13 +11,10 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 7591 §3.2.2: what the endpoint answers a registration it refused.
+ * RFC 7591 §3.2.2
  */
 final class RegistrationErrorResponseTest extends TestCase
 {
-    /**
-     * The code is the one the refusal names itself by, and the description is what that refusal says.
-     */
     #[Test]
     public function itAnswersWithTheCodeTheRefusalNamesAndWhatItSays(): void
     {
@@ -38,7 +35,7 @@ final class RegistrationErrorResponseTest extends TestCase
     }
 
     /**
-     * RFC 7591 §3.2.2 asks for ASCII, and a message written for a log names a section with the sign.
+     * RFC 7591 §3.2.2
      */
     #[Test]
     public function theSectionSignOfAMessageBecomesTheWordEveryDescriptionSpells(): void
@@ -53,10 +50,6 @@ final class RegistrationErrorResponseTest extends TestCase
         static::assertSame('Not a scope token (RFC 6749 section 3.3).', $response->errorDescription);
     }
 
-    /**
-     * A message naming a member a client sent carries what that client wrote, and what a client wrote
-     * does not decide the shape of an answer.
-     */
     #[Test]
     public function whatAClientWroteOutsideAsciiIsNotAnsweredBack(): void
     {

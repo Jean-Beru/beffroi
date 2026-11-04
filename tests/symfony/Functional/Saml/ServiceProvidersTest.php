@@ -40,9 +40,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * beffroi/saml, spec/saml.md section 6.2, the acceptance of issue #729: the SimpleSAMLphp service provider the
- * configuration of the test declares (tests/symfony/config/config_test.yml), its assertions encrypted, registered by
- * "beffroi:saml:service-provider:refresh" from its metadata, a file of the deployment, at 2026-09-15T10:00:00Z.
+ * beffroi/saml, spec/saml.md section 6.2
  */
 final class ServiceProvidersTest extends ConsoleTestCase
 {
@@ -55,8 +53,7 @@ final class ServiceProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * The acceptance of issue #729: a SimpleSAMLphp service provider is registered by command from its metadata,
-     * the bytes that were read kept (S-8).
+     * S-8
      */
     #[Test]
     public function aSimpleSamlPhpServiceProviderIsRegisteredByCommandFromItsMetadata(): void
@@ -77,7 +74,7 @@ final class ServiceProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * S-6, the acceptance of issue #729: an expired document is refused, and the accepted one kept.
+     * S-6
      */
     #[Test]
     public function anExpiredDocumentIsRefusedAndTheAcceptedOneKept(): void
@@ -97,10 +94,7 @@ final class ServiceProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * S-6, the security review of 20 October 2026 (finding B-1): a document its channel vouches for, the file the
-     * declaration names, replaces the one accepted whatever validUntil that one carries. A document an attacker had
-     * accepted while he held where the metadata are read, valid until 2099 and listing his own certificate and his own
-     * assertion consumer service, gives way to the genuine one, which carries no validUntil, at the next refresh.
+     * S-6
      */
     #[Test]
     public function theGenuineDocumentReplacesTheDocumentAnAttackerHadAccepted(): void
@@ -133,8 +127,7 @@ final class ServiceProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * S-7, the acceptance of issue #729: the service provider of the test asks for encryption, and its metadata
-     * without an encryption key are refused at its registration.
+     * S-7
      */
     #[Test]
     public function aServiceProviderAskingForEncryptionWithoutAKeyIsRefusedAtRegistration(): void
@@ -155,7 +148,7 @@ final class ServiceProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * S-5: the command reads the metadata of what the configuration declares, and makes no service provider.
+     * S-5
      */
     #[Test]
     public function anEntityIdTheConfigurationDoesNotDeclareIsRefused(): void
@@ -171,7 +164,7 @@ final class ServiceProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * S-6, section 6.2, forgotten: the operator forgets the document accepted for a service provider, and its row goes.
+     * S-6, section 6.2, forgotten
      */
     #[Test]
     public function theForgetCommandRemovesTheAcceptedDocument(): void
@@ -195,8 +188,7 @@ final class ServiceProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * S-6, section 6.2, forgotten: once the operator forgot the document accepted for a service provider, the next
-     * refresh registers it as a first one.
+     * S-6, section 6.2, forgotten
      */
     #[Test]
     public function aForgottenServiceProviderIsRegisteredAgainAtTheNextRefresh(): void
@@ -222,8 +214,7 @@ final class ServiceProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * Section 6.2, forgotten: an entity ID nothing is accepted for is refused as invalid, so that a mistyped one is
-     * never taken for a service provider forgotten.
+     * Section 6.2, forgotten
      */
     #[Test]
     public function forgettingAnEntityIdNothingIsAcceptedForIsRefused(): void
@@ -242,7 +233,7 @@ final class ServiceProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * Section 6.2: the step of the schedule runs the same object as the command.
+     * Section 6.2
      */
     #[Test]
     public function theStepOfTheScheduleRegistersTheServiceProvider(): void
@@ -258,8 +249,7 @@ final class ServiceProvidersTest extends ConsoleTestCase
     }
 
     /**
-     * S-6, section 6.2: a document the step of the schedule refuses is written to the log as an error, the level an
-     * operator is alerted on, since the refusal comes back at every hour while the document accepted serves on.
+     * S-6, section 6.2
      */
     #[Test]
     public function aDocumentTheStepOfTheScheduleRefusesIsLoggedAsAnError(): void
@@ -289,9 +279,6 @@ final class ServiceProvidersTest extends ConsoleTestCase
         );
     }
 
-    /**
-     * The file the declaration of the test names, in the cache directory of the kernel of this worker.
-     */
     private static function publish(string $document): void
     {
         $kernel = self::$kernel ?? static::fail('The kernel is not booted.');
@@ -313,11 +300,6 @@ final class ServiceProvidersTest extends ConsoleTestCase
             );
     }
 
-    /**
-     * What an attacker who held where the metadata of the service provider of single sign-on are read publishes for
-     * its entity ID: valid until 2099, his own certificate, the test key "idp" of saml2-model, and his own assertion
-     * consumer service.
-     */
     private static function attackerDocument(): string
     {
         return new Serializer()->serialize(new MetadataWriter()->write(

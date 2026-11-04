@@ -32,15 +32,10 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * beffroi/saml, spec/saml.md S-38 to S-41, section 6.9: a deployment whose tenant is a SAML service provider and no
- * identity provider (config_test_service_provider.yml). The SAML key is drawn for the service provider alone, its
- * metadata are served on the protocol plane, and the identity provider left off serves nothing with that key.
+ * beffroi/saml, spec/saml.md S-38 to S-41, section 6.9
  */
 final class ServiceProviderMetadataTest extends ConsoleTestCase
 {
-    /**
-     * The environment whose configuration enables the service provider and not the identity provider.
-     */
     private const string SERVICE_PROVIDER = 'test_service_provider';
 
     private const string METADATA = '/saml/sp/metadata';
@@ -53,10 +48,7 @@ final class ServiceProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * Section 6.9, S-38, S-39: the metadata served are read back by saml2-model's MetadataReader, their entity ID the
-     * URL of the metadata under the issuer, their one assertion consumer service on HTTP-POST under the issuer, the
-     * requests said signed and the assertions wanted signed, the certificate of the one key, and no single logout
-     * service nor key for encryption.
+     * Section 6.9, S-38, S-39
      */
     #[Test]
     public function theMetadataOfTheServiceProviderAreReadBackByTheModel(): void
@@ -96,8 +88,7 @@ final class ServiceProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * Section 6.9 step 5: served as SAML metadata, cacheable for the max-age of the keys of the tenant, two minutes in
-     * this kernel.
+     * Section 6.9 step 5
      */
     #[Test]
     public function theyAreServedAsSamlMetadataForTheMaxAgeOfTheKeys(): void
@@ -121,8 +112,7 @@ final class ServiceProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-40: the service provider enabled alone, the key commands draw the SAML key, whose certificate the metadata
-     * served are around.
+     * S-40
      */
     #[Test]
     public function theCertificateIsAroundTheSamlKeyTheServiceProviderDrew(): void
@@ -141,7 +131,7 @@ final class ServiceProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-41: the identity provider left off serves no metadata, though the tenant holds a SAML key in service.
+     * S-41
      */
     #[Test]
     public function theIdentityProviderLeftOffServesNoMetadata(): void
@@ -157,9 +147,7 @@ final class ServiceProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-41: the identity provider left off declares no service provider, so its single sign-on service refuses a
-     * request signed by a service provider, with the page of a refusal and no SAML answer, though the tenant holds a
-     * SAML key in service.
+     * S-41
      */
     #[Test]
     public function theIdentityProviderLeftOffRefusesEveryRequest(): void
@@ -186,7 +174,7 @@ final class ServiceProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * Section 6.9 step 1: the service provider enabled, a tenant that holds no SAML key has no metadata of it to serve.
+     * Section 6.9 step 1
      */
     #[Test]
     public function aTenantWithoutASamlKeyServesNoMetadata(): void
@@ -199,9 +187,7 @@ final class ServiceProviderMetadataTest extends ConsoleTestCase
     }
 
     /**
-     * S-41: the identity provider left off declares no service provider, so its single logout service refuses a
-     * LogoutRequest signed by a service provider, with the page of a refusal and no SAML answer, though the tenant
-     * holds a SAML key in service.
+     * S-41
      */
     #[Test]
     public function theIdentityProviderLeftOffRefusesEveryLogoutRequest(): void
@@ -229,9 +215,6 @@ final class ServiceProviderMetadataTest extends ConsoleTestCase
         ]);
     }
 
-    /**
-     * The first SAML key of the tenant, drawn by the command an operator runs and active at once.
-     */
     private static function generate(): TenantKey
     {
         $tester = self::console('beffroi:keys:generate', [

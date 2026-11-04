@@ -59,18 +59,7 @@ use Symfony\Component\Uid\Uuid;
 use function unserialize;
 
 /**
- * Architecture §5.6: the events of the provider are handled asynchronously, so every one of them is
- * written to a queue. A client carries the method that authenticates it, and a method that proves a key
- * or a certificate carries the reader of the "jwks_uri" of the client, which is an HTTP client of the
- * framework: an event that carried a client could not be written at all, and would carry the
- * configuration of that HTTP client to the broker if it could. So an event carries what happened, by
- * identifier, and never the client itself.
- *
- * Each case is built the way the use case that raises it builds it, which is the only way there is: an
- * event has no named constructor, so what a queue is asked to carry is what a call site wrote.
- *
- * The client of each case authenticates with "private_key_jwt" and reads its keys through something that
- * cannot be serialized, which is what a deployment has.
+ * Architecture §5.6
  */
 final class EventsLeaveTheProcessTest extends TestCase
 {
@@ -269,10 +258,6 @@ final class EventsLeaveTheProcessTest extends TestCase
         static::assertInstanceOf($event::class, unserialize($written));
     }
 
-    /**
-     * An event this test does not carry to the queue is an event nothing says a broker can take, so the
-     * cases above are the events of the module and not a selection of them.
-     */
     #[Test]
     public function everyEventOfTheModuleIsWrittenToTheQueue(): void
     {
@@ -305,8 +290,6 @@ final class EventsLeaveTheProcessTest extends TestCase
         foreach ($files as $candidate) {
             /** @var class-string $class */
             $class = $reflection->getNamespaceName() . '\\' . basename($candidate, '.php');
-            // an event is a class: an interface that says something of several of them is not one, and
-            // there is nothing of it to write to a queue
             if (class_exists($class) && is_a($class, DomainEventInterface::class, true)) {
                 $declared[] = $class;
             }
@@ -316,9 +299,6 @@ final class EventsLeaveTheProcessTest extends TestCase
         return $declared;
     }
 
-    /**
-     * A client whose method cannot be serialized, as the one of a deployment cannot.
-     */
     private static function client(AuthenticationSession $session): Client
     {
         return Clients::withKeys(

@@ -8,10 +8,6 @@ use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * The first schema of the provider (architecture §5.3), generated from the XML mappings against PostgreSQL 16
- * and kept equal to them by a test.
- */
 final class Version20260915171732 extends AbstractMigration
 {
     public function getDescription(): string

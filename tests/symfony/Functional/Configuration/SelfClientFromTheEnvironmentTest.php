@@ -9,12 +9,6 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
-/**
- * Issue #282: the secret of the application is read from the environment, and its identifier may be, so they are
- * values only once the container runs. The source of its client holds the secret to what any secret of a declared
- * client is held to and to being its own, and the identifier to being nobody else's, when it is built; the kernel of
- * these tests reads both as an application does (config_test.yml), so each test names its value before it boots one.
- */
 final class SelfClientFromTheEnvironmentTest extends KernelTestCase
 {
     private const string SECRET = 'BEFFROI_TEST_APPLICATION_SECRET';
@@ -28,8 +22,7 @@ final class SelfClientFromTheEnvironmentTest extends KernelTestCase
     }
 
     /**
-     * RFC 6749 appendix A.2, RFC 6819 §5.1.4.2.2: a secret the environment gives is held to the length any declared
-     * secret is held to.
+     * RFC 6749 appendix A.2, RFC 6819 §5.1.4.2.2
      */
     #[Test]
     public function aSecretTooShortToBeGeneratedRefusesTheSourceOfTheApplication(): void
@@ -46,10 +39,6 @@ final class SelfClientFromTheEnvironmentTest extends KernelTestCase
         static::getContainer()->get('test.beffroi.self_client');
     }
 
-    /**
-     * The secret of the kernel of these tests is "test" (config_test.yml): a variable that gives it is refused,
-     * whatever its name, before its length is even looked at.
-     */
     #[Test]
     public function theSecretOfTheKernelRefusesTheSourceOfTheApplication(): void
     {
@@ -65,10 +54,6 @@ final class SelfClientFromTheEnvironmentTest extends KernelTestCase
         static::getContainer()->get('test.beffroi.self_client');
     }
 
-    /**
-     * One identifier is one client of the tenant: an identifier the environment gives is compared with the clients of
-     * the file when the source is built, the tree only seeing what the variable stands for.
-     */
     #[Test]
     public function theIdentifierOfADeclaredClientRefusesTheSourceOfTheApplication(): void
     {
