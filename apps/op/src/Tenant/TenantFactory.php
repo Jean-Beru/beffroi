@@ -25,6 +25,11 @@ use Symfony\Component\Uid\Uuid;
  * slug, so renaming the slug is creating another tenant. Its "acr" policy is the configured classes in
  * their order (decision 0010), each named on one of the predicates the provider is wired with; what the
  * policy refuses, and a predicate nothing wired carries, refuse the start.
+ *
+ * Its issuer is an origin (issue #992): the routes of the provider are served at the root of it
+ * (config/routes/beffroi.yaml), and an issuer that carries a path refuses the start, even behind a proxy that
+ * would forward that path as a prefix: RFC 8414 §3 places the metadata of such an issuer at the origin, before
+ * the path, where no route of the provider is.
  */
 final readonly class TenantFactory
 {
@@ -55,7 +60,7 @@ final readonly class TenantFactory
 
     public function create(): Tenant
     {
-        $issuer = new Issuer($this->issuer);
+        $issuer = $this->issuer();
 
         return new Tenant(
             self::identifier($this->slug),
@@ -67,6 +72,23 @@ final readonly class TenantFactory
             $this->look(),
             $this->selfServedClaims(),
         );
+    }
+
+    /**
+     * The issuer of the configuration, which the core accepts with a path (OIDC Discovery §4.1) and this
+     * provider does not.
+     */
+    private function issuer(): Issuer
+    {
+        $issuer = new Issuer($this->issuer);
+        if ($issuer->path !== '') {
+            throw new InvalidArgumentException(sprintf(
+                'The issuer "%s" carries a path: the issuer of a tenant is an origin, the routes of the provider being served at its root.',
+                $issuer->value,
+            ));
+        }
+
+        return $issuer;
     }
 
     /**

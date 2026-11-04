@@ -18,9 +18,8 @@ use Symfony\Component\Routing\Attribute\Route;
  * which is where Symfony's "oauth2" token handler looks.
  *
  * RFC 8414 §3 inserts its path between the host and the path of the issuer, where OIDC Discovery §4.1
- * appends it: the two locations are the same as long as the issuer is an origin, which is the only
- * mount `RouterEndpointLocator` accepts today. An issuer carrying a path needs this route at the
- * origin and not under the prefix the rest of the provider is mounted at.
+ * appends it: the issuer of a tenant being an origin (TenantFactory, issue #992), the two locations are
+ * the same.
  */
 #[AsController]
 final readonly class DiscoveryController

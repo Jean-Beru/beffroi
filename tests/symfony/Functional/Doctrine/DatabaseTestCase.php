@@ -78,7 +78,7 @@ abstract class DatabaseTestCase extends WebTestCase
      * starts from: a copy of the file, a millisecond, where the schema dropped and created by every test
      * was 160 ms of its time. The template is rebuilt by every process, never trusted from a previous run.
      * There is one per database file, which is one per environment, because an environment of its own may
-     * configure its tenant otherwise (config_test_issuer_with_a_path.yml), and the provider refuses a tenant
+     * configure its tenant otherwise (config_test_tenant_logo.yml), and the provider refuses a tenant
      * row synchronised from another configuration.
      *
      * @var array<string, string> the template of each database file
