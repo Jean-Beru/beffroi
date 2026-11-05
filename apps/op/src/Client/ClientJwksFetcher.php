@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Client;
 
+use App\Http\BoundedRead;
 use App\Http\ByteLimit;
+use App\Http\ReadRefusedException;
+use App\Http\ReadWords;
 use App\Http\Timeout;
-use Beffroi\Core\Exception\ExceptionTrail;
 use Beffroi\Oidc\Domain\Client\ClientJwks;
 use Beffroi\Oidc\Domain\Client\ClientUri;
 use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
@@ -24,11 +26,14 @@ use Throwable;
  */
 final readonly class ClientJwksFetcher implements ClientJwksFetcherInterface
 {
+    private BoundedRead $reading;
+
     public function __construct(
-        private HttpClientInterface $http,
-        private Timeout $timeout,
-        private ByteLimit $maximumSize,
+        HttpClientInterface $http,
+        Timeout $timeout,
+        ByteLimit $maximumSize,
     ) {
+        $this->reading = new BoundedRead($http, $timeout, $maximumSize);
     }
 
     public function fetch(ClientUri $jwksUri): ClientJwks
@@ -55,40 +60,12 @@ final readonly class ClientJwksFetcher implements ClientJwksFetcherInterface
     private function read(ClientUri $jwksUri): string
     {
         try {
-            $response = $this->http->request('GET', $jwksUri->value, [
-                'headers' => [
-                    'Accept' => 'application/json',
-                ],
-                'max_redirects' => 0,
-                ...$this->timeout->options(),
-            ]);
-            $status = $response->getStatusCode();
-            if ($status >= 300 && $status < 400) {
-                throw new ClientKeysUnavailableException(sprintf(
-                    '%s redirects, and no outbound request follows a redirect; publish the keys at the URL that is registered.',
-                    $jwksUri->value,
-                ));
-            }
-            if ($status < 200 || $status >= 300) {
-                throw new ClientKeysUnavailableException(sprintf('%s answered %d.', $jwksUri->value, $status));
-            }
-            $body = '';
-            foreach ($this->http->stream($response) as $chunk) {
-                $body .= $chunk->getContent();
-                if ($this->maximumSize->isExceededBy($body)) {
-                    throw new ClientKeysUnavailableException(sprintf(
-                        '%s answers more than %d bytes, which no JWK Set needs.',
-                        $jwksUri->value,
-                        $this->maximumSize->bytes,
-                    ));
-                }
-            }
-
-            return $body;
-        } catch (ClientKeysUnavailableException $exception) {
-            throw $exception;
-        } catch (Throwable $exception) {
-            throw new ClientKeysUnavailableException(sprintf('%s cannot be reached: %s', $jwksUri->value, ExceptionTrail::of($exception)), 0, $exception);
+            return $this->reading->read($jwksUri->value, 'application/json', new ReadWords(
+                'publish the keys at the URL that is registered.',
+                '%s answers more than %d bytes, which no JWK Set needs.',
+            ));
+        } catch (ReadRefusedException $exception) {
+            throw new ClientKeysUnavailableException($exception->getMessage(), 0, $exception->getPrevious());
         }
     }
 }
