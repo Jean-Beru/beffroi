@@ -23,5 +23,7 @@
         <field name="issuedAt" type="datetime_immutable" column="issued_at"/>
         <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
         <field name="revokedAt" type="datetime_immutable" column="revoked_at" nullable="true"/>
+        <!-- What the token gives the clients it registers (decision 0043), which a registration copies onto its client: null for a token that gives nothing, and for one issued before the column existed. -->
+        <field name="granted" type="beffroi_granted_members" column="granted" nullable="true"/>
     </entity>
 </doctrine-mapping>

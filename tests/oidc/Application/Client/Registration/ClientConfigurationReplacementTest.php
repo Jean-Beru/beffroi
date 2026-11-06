@@ -16,11 +16,14 @@ use Beffroi\Oidc\Domain\Client\HashedClientSecret;
 use Beffroi\Oidc\Domain\Client\Registration\ClientInformationResponse;
 use Beffroi\Oidc\Domain\Client\Registration\RegistrationRequest;
 use Beffroi\Oidc\Domain\Client\SharedClientSecret;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicator;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use Beffroi\Oidc\Exception\InvalidClientMetadataException;
 use Beffroi\Oidc\Exception\UnauthorizedClientConfigurationException;
 use Beffroi\Oidc\Port\ClientRegistrationPolicyInterface;
+use Beffroi\Oidc\Port\ServedGrantsInterface;
 use Beffroi\Oidc\Tests\Fixture\Endpoints;
+use Beffroi\Oidc\Tests\Fixture\Grants;
 use Beffroi\Oidc\Tests\Fixture\RegistrationPolicies;
 use Beffroi\Oidc\Tests\Fixture\Registrations;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -442,6 +445,61 @@ final class ClientConfigurationReplacementTest extends TestCase
         yield 'no name at all' => [[]];
     }
 
+    /**
+     * Decision 0043
+     */
+    #[Test]
+    public function aReplacementKeepsWhatTheInitialAccessTokenGave(): void
+    {
+        // Given
+        $this->register(granted: [
+            'resources' => ['https://api.example/invoices'],
+        ]);
+
+        // When
+        $response = $this->replace([
+            'client_id' => self::CLIENT_ID,
+            'redirect_uris' => ['https://rp.example/cb'],
+            'client_name' => 'A new name',
+        ]);
+
+        // Then
+        $registration = Registrations::reader()->read(self::CLIENT_ID, $response->record->asRegistered(), true);
+        static::assertEquals([new ResourceIndicator('https://api.example/invoices')], $registration->resources);
+    }
+
+    /**
+     * RFC 8693 §2.1, Decision 0043
+     */
+    #[Test]
+    public function aReplacementIsHeldToWhatTheInitialAccessTokenGave(): void
+    {
+        // Given
+        $this->register(
+            [
+                'grant_types' => ['urn:ietf:params:oauth:grant-type:token-exchange'],
+            ],
+            granted: [
+                'token_exchange' => [
+                    'subject_token_types' => ['urn:ietf:params:oauth:token-type:access_token'],
+                ],
+            ],
+        );
+
+        // Then
+        $this->expectException(InvalidClientMetadataException::class);
+        $this->expectExceptionMessageIs('The client "drawn-identifier" declares a token_exchange and no grant that would exchange anything: register one of: urn:ietf:params:oauth:grant-type:token-exchange.');
+
+        // When
+        $this->replace(
+            [
+                'client_id' => self::CLIENT_ID,
+                'redirect_uris' => ['https://rp.example/cb'],
+            ],
+            grants: Grants::servedWithTokenExchange(),
+        );
+    }
+
     #[Test]
     public function aRequestThatReadsNoClientReplacesNothing(): void
     {
@@ -468,12 +526,14 @@ final class ClientConfigurationReplacementTest extends TestCase
      * @param array<string, mixed>|null $metadata
      * @param array<string, mixed> $assigned
      * @param array<string, mixed>|null $attested
+     * @param array<string, mixed>|null $granted
      */
     private function register(
         ?array $metadata = null,
         ?ClientSecretInterface $secret = null,
         array $assigned = [],
         ?array $attested = null,
+        ?array $granted = null,
     ): void {
         $this->clients->save(new ClientRecord(
             Uuid::v7(),
@@ -487,19 +547,23 @@ final class ClientConfigurationReplacementTest extends TestCase
             $this->digest,
             Fixtures::now(),
             attested: $attested,
+            granted: $granted,
         ));
     }
 
     /**
      * @param array<string, mixed> $members
      */
-    private function replace(array $members, ?ClientRegistrationPolicyInterface $policies = null): ClientInformationResponse
-    {
+    private function replace(
+        array $members,
+        ?ClientRegistrationPolicyInterface $policies = null,
+        ?ServedGrantsInterface $grants = null,
+    ): ClientInformationResponse {
         return new ClientConfigurationReplacement(
             new ClientConfigurationAccess($this->clients),
-            Registrations::reader(),
+            Registrations::reader(grants: $grants),
             $policies ?? RegistrationPolicies::controlled(),
-            Registrations::underThePolicy(),
+            Registrations::underThePolicy(Registrations::reader(grants: $grants)),
             $this->clients,
             new Endpoints(),
         )->replace($this->tenant, self::CLIENT_ID, new RegistrationRequest($members, 'Bearer ' . self::TOKEN));

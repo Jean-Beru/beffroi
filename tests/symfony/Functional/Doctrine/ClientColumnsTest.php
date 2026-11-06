@@ -36,12 +36,14 @@ final class ClientColumnsTest extends DatabaseTestCase
 
     private const string ATTESTED_SOFTWARE = SealedRows::VALUES['beffroi_client']['attested_metadata'];
 
+    private const string GRANTED_RESOURCE = SealedRows::VALUES['beffroi_client']['granted_metadata'];
+
     private const string SHARED_SECRET = SealedRows::VALUES['beffroi_client']['secret'];
 
     /**
      * @var list<string>
      */
-    private const array SEALED = ['metadata', 'assigned_metadata', 'attested_metadata', 'secret'];
+    private const array SEALED = ['metadata', 'assigned_metadata', 'attested_metadata', 'granted_metadata', 'secret'];
 
     /**
      * Decision 0011
@@ -126,6 +128,45 @@ final class ClientColumnsTest extends DatabaseTestCase
     }
 
     /**
+     * Decision 0043
+     */
+    #[Test]
+    public function whatAnInitialAccessTokenGaveAClientComesBackBesideWhatItRegistered(): void
+    {
+        // Given
+        self::record(granted: true);
+        self::reload();
+
+        // When
+        $found = self::clients()->findRecord(self::tenant(), 'the-engine');
+
+        // Then
+        static::assertInstanceOf(ClientRecord::class, $found);
+        static::assertSame(
+            [
+                'resources' => [self::GRANTED_RESOURCE],
+            ],
+            $found->granted,
+        );
+    }
+
+    #[Test]
+    public function aClientNoTokenGaveAnythingHoldsNothingInThatColumn(): void
+    {
+        // Given
+        self::record();
+        self::reload();
+
+        // When
+        $found = self::clients()->findRecord(self::tenant(), 'the-engine');
+
+        // Then
+        static::assertInstanceOf(ClientRecord::class, $found);
+        static::assertNull($found->granted);
+        static::assertNull(self::rows()[0]['granted_metadata']);
+    }
+
+    /**
      * OIDC Core §9
      */
     #[Test]
@@ -182,14 +223,14 @@ final class ClientColumnsTest extends DatabaseTestCase
     public function theRowHoldsNoneOfThePlaintexts(string $column): void
     {
         // Given
-        self::record(new SharedClientSecret(self::SHARED_SECRET), attested: true);
+        self::record(new SharedClientSecret(self::SHARED_SECRET), attested: true, granted: true);
 
         // When
         $stored = self::rows()[0][$column];
 
         // Then
         static::assertNotNull($stored, sprintf('beffroi_client.%s holds nothing, so there is nothing to search.', $column));
-        foreach ([self::CONTACT, self::CLIENT_NAME, self::ASSIGNED_SCOPE, self::ATTESTED_SOFTWARE, self::SHARED_SECRET] as $plaintext) {
+        foreach ([self::CONTACT, self::CLIENT_NAME, self::ASSIGNED_SCOPE, self::ATTESTED_SOFTWARE, self::GRANTED_RESOURCE, self::SHARED_SECRET] as $plaintext) {
             static::assertStringNotContainsString(
                 $plaintext,
                 (string) $stored,
@@ -233,9 +274,9 @@ final class ClientColumnsTest extends DatabaseTestCase
         );
     }
 
-    private static function record(?ClientSecretInterface $secret = null, bool $attested = false): ClientRecord
+    private static function record(?ClientSecretInterface $secret = null, bool $attested = false, bool $granted = false): ClientRecord
     {
-        return self::fixture()->client($secret, $attested);
+        return self::fixture()->client($secret, $attested, $granted);
     }
 
     private static function fixture(): SealedRows

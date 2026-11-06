@@ -12,7 +12,6 @@ use Beffroi\Oidc\Port\IssuedInitialAccessTokensInterface;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\Test;
-use function preg_match;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\HttpFoundation\Response;
@@ -185,16 +184,5 @@ final class RegistrationTokensTest extends ConsoleTestCase
                 'token_endpoint_auth_method' => 'client_secret_basic',
             ], JSON_THROW_ON_ERROR),
         );
-    }
-
-    private static function valueOf(CommandTester $tester): string
-    {
-        static::assertSame(
-            1,
-            preg_match('/^([A-Za-z0-9_-]{43})$/m', $tester->getDisplay(true), $matches),
-            sprintf('No value was printed in: %s', $tester->getDisplay(true)),
-        );
-
-        return $matches[1];
     }
 }

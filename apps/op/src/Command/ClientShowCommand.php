@@ -4,17 +4,9 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use function array_keys;
-use function array_map;
 use DateTimeImmutable;
 use Beffroi\Oidc\Domain\Client\InventoriedClient;
 use Beffroi\Oidc\Port\ClientStoreInterface;
-use function is_string;
-use function json_encode;
-use const JSON_THROW_ON_ERROR;
-use const JSON_UNESCAPED_SLASHES;
-use const JSON_UNESCAPED_UNICODE;
-use function ksort;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -64,6 +56,7 @@ final readonly class ClientShowCommand
 
         self::members($io, 'Registered', $record->metadata);
         self::members($io, 'Assigned by the registration policy', $record->assigned);
+        self::members($io, 'Given by the initial access token', $record->granted ?? []);
 
         return Command::SUCCESS;
     }
@@ -100,17 +93,8 @@ final readonly class ClientShowCommand
         if ($members === []) {
             return;
         }
-        ksort($members);
         $io->section($section);
-        $io->table(['Member', 'Value'], array_map(
-            static fn (string $name): array => [$name, self::shown($members[$name])],
-            array_keys($members),
-        ));
-    }
-
-    private static function shown(mixed $value): string
-    {
-        return is_string($value) ? $value : json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $io->table(['Member', 'Value'], PrintedMembers::rows($members));
     }
 
     private static function date(?DateTimeImmutable $date): string

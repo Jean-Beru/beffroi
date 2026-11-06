@@ -23,10 +23,12 @@ use Beffroi\Oidc\Bridge\InMemory\InMemorySoftwareStatementReplayGuard;
 use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
 use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryJwtKeyVerifier;
 use Beffroi\Oidc\Domain\Client\HashedClientSecret;
+use Beffroi\Oidc\Domain\Client\Metadata\GrantedMembers;
 use Beffroi\Oidc\Domain\Client\Registration\ClientInformationResponse;
 use Beffroi\Oidc\Domain\Client\Registration\InitialAccessToken;
 use Beffroi\Oidc\Domain\Client\Registration\RegistrationRequest;
 use Beffroi\Oidc\Domain\Client\SharedClientSecret;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicator;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use Beffroi\Oidc\Exception\ClientRegistrationNotOfferedException;
 use Beffroi\Oidc\Exception\InvalidClientMetadataException;
@@ -45,7 +47,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 7591 §3.1, Decision 0009
+ * RFC 7591 §3.1, Decision 0009, Decision 0043
  */
 final class ClientRegistrationHandlerTest extends TestCase
 {
@@ -318,7 +320,76 @@ final class ClientRegistrationHandlerTest extends TestCase
         static::assertNull($response->record->attested);
     }
 
-    private function issue(): InitialAccessToken
+    /**
+     * Decision 0043
+     */
+    #[Test]
+    public function aClientRegisteredOnATokenKeepsWhatTheTokenGaveApart(): void
+    {
+        // Given
+        $this->issue(self::invoices());
+
+        // When
+        $response = $this->handle(self::request());
+
+        // Then
+        static::assertSame(self::invoices()->members(), $response->record->granted);
+    }
+
+    /**
+     * Decision 0043
+     */
+    #[Test]
+    public function aClientIsReadWithWhatItsTokenGaveIt(): void
+    {
+        // Given
+        $this->issue(self::invoices());
+
+        // When
+        $response = $this->handle(self::request());
+
+        // Then
+        $registration = Registrations::reader()->read($response->record->clientId, $response->record->asRegistered(), true);
+        static::assertEquals([new ResourceIndicator('https://api.example/invoices')], $registration->resources);
+    }
+
+    #[Test]
+    public function aClientRegisteredOnATokenThatGivesNothingIsGivenNothing(): void
+    {
+        // Given
+        $this->issue();
+
+        // When
+        $response = $this->handle(self::request());
+
+        // Then
+        static::assertNull($response->record->granted);
+    }
+
+    /**
+     * RFC 7592 §2.2
+     */
+    #[Test]
+    public function aClientIsNotAnsweredWhatItsTokenGaveIt(): void
+    {
+        // Given
+        $this->issue(self::invoices());
+
+        // When
+        $response = $this->handle(self::request());
+
+        // Then
+        static::assertArrayNotHasKey('resources', $response->parameters());
+    }
+
+    private static function invoices(): GrantedMembers
+    {
+        return new GrantedMembers([
+            'resources' => ['https://api.example/invoices'],
+        ]);
+    }
+
+    private function issue(?GrantedMembers $granted = null): InitialAccessToken
     {
         $token = new InitialAccessToken(
             Uuid::v7(),
@@ -328,6 +399,7 @@ final class ClientRegistrationHandlerTest extends TestCase
             1,
             Fixtures::now(),
             Fixtures::now()->modify('+1 day'),
+            $granted,
         );
         $this->tokens->save($token);
 

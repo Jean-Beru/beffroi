@@ -23,7 +23,7 @@ final class RegisteredMembersTest extends TestCase
         // Then
         $this->expectException(InvalidClientMetadataException::class);
         $this->expectExceptionMessageIs(sprintf(
-            'The member "%s" is not one a client registers: it is written by whoever declares a client or by the registration policy of the tenant, and never asked for (decision 0009).',
+            'The member "%s" is not one a client registers: it is written by whoever declares a client, by the registration policy of the tenant or by the initial access token the tenant issued, and never asked for (decisions 0009 and 0043).',
             $member,
         ));
 

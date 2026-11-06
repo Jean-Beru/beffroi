@@ -150,6 +150,8 @@ final readonly class SealedRows
             'assigned_metadata' => 'urn:example:scope:assigned-by-the-policy',
             // The software a statement says the client is (RFC 7591 §2.3).
             'attested_metadata' => 'babbage-difference-engine',
+            // The API an initial access token gave the client (decision 0043).
+            'granted_metadata' => 'https://analytical-engine.example.org/',
             'secret' => 'a-shared-secret-this-provider-handed-over',
         ],
     ];
@@ -214,7 +216,7 @@ final readonly class SealedRows
         $this->backchannelRequest($client, $user);
         $this->interaction($client);
         $this->pushedRequest($client);
-        $this->client(new SharedClientSecret(self::VALUES['beffroi_client']['secret']), attested: true);
+        $this->client(new SharedClientSecret(self::VALUES['beffroi_client']['secret']), attested: true, granted: true);
         $this->act($user);
         $this->archive($user);
         $this->change($user);
@@ -505,7 +507,7 @@ final readonly class SealedRows
     /**
      * RFC 7591 §3.1.1
      */
-    public function client(?ClientSecretInterface $secret = null, bool $attested = false): ClientRecord
+    public function client(?ClientSecretInterface $secret = null, bool $attested = false, bool $granted = false): ClientRecord
     {
         $values = self::VALUES['beffroi_client'];
         $signed = [
@@ -529,6 +531,7 @@ final readonly class SealedRows
             DrawnSecret::digestOf('the-registration-access-token'),
             $this->now,
             attested: $attested ? $signed : null,
+            granted: $granted ? ['resources' => [$values['granted_metadata']]] : null,
         );
         $this->service('test.beffroi.client_store', ClientStoreInterface::class)->save($record);
 

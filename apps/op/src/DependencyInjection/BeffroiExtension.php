@@ -55,6 +55,7 @@ use App\Doctrine\Type\AuthorizationDetailsType;
 use App\Doctrine\Type\DeviceType;
 use App\Doctrine\Type\EmailAddressType;
 use App\Doctrine\Type\GeoLocationType;
+use App\Doctrine\Type\GrantedMembersType;
 use App\Doctrine\Type\IssuerType;
 use App\Doctrine\Type\KeyConfirmationType;
 use App\Doctrine\Type\PasskeyUserHandleType;
@@ -106,6 +107,7 @@ final class BeffroiExtension extends AbstractExtension
         BindingMessageType::NAME => BindingMessageType::class,
         ClaimsRequestType::NAME => ClaimsRequestType::class,
         ClaimNamesType::NAME => ClaimNamesType::class,
+        GrantedMembersType::NAME => GrantedMembersType::class,
         CodeChallengeType::NAME => CodeChallengeType::class,
         ClientSecretType::NAME => ClientSecretType::class,
         ActorType::NAME => ActorType::class,

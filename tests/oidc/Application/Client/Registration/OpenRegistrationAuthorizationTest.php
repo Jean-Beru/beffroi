@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Oidc\Tests\Application\Client\Registration;
 
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Client\Registration\AuthorizedRegistration;
 use Beffroi\Oidc\Application\Client\Registration\OpenRegistrationAuthorization;
 use Beffroi\Oidc\Domain\Client\Registration\RegistrationRequest;
 use Beffroi\Oidc\Tests\Fixture\Policies;
@@ -25,10 +26,10 @@ final class OpenRegistrationAuthorizationTest extends TestCase
         $authorization = new OpenRegistrationAuthorization();
 
         // When
-        $sources = $authorization->authorize(Fixtures::tenant(), new RegistrationRequest([], $header), Policies::open());
+        $authorized = $authorization->authorize(Fixtures::tenant(), new RegistrationRequest([], $header), Policies::open());
 
         // Then
-        static::assertSame([], $sources);
+        static::assertEquals(new AuthorizedRegistration(), $authorized);
     }
 
     /**

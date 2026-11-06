@@ -39,6 +39,7 @@ use App\Doctrine\Type\ScopesType;
 use App\Doctrine\Type\SubjectType;
 use App\Doctrine\Type\SelfServedClaimsType;
 use App\Doctrine\Type\ClaimNamesType;
+use App\Doctrine\Type\GrantedMembersType;
 use App\Doctrine\Type\UserSourceType;
 use App\Doctrine\Type\TenantLookType;
 use App\Doctrine\Type\LogoutProgressType;
@@ -78,6 +79,7 @@ use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
 use Beffroi\Oidc\Domain\Authorization\CodeChallenge;
 use Beffroi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
 use Beffroi\Oidc\Domain\Client\HashedClientSecret;
+use Beffroi\Oidc\Domain\Client\Metadata\GrantedMembers;
 use Beffroi\Oidc\Domain\Client\RedirectUri;
 use Beffroi\Oidc\Domain\Client\SharedClientSecret;
 use Beffroi\Oidc\Domain\Scope\Scope;
@@ -202,6 +204,13 @@ final class TypesTest extends TestCase
         yield 'a tenant that lets a person change nothing' => [SelfServedClaimsType::class, SelfServedClaims::none(), '[]'];
         yield 'the claims a person agreed to by name' => [ClaimNamesType::class, new ClaimNames(['email', 'phone_number']), '["email","phone_number"]'];
         yield 'a consent that holds no claim by name' => [ClaimNamesType::class, new ClaimNames(), '[]'];
+        yield 'what an initial access token gives' => [
+            GrantedMembersType::class,
+            new GrantedMembers([
+                'resources' => ['https://api.example/invoices'],
+            ]),
+            '{"resources":["https://api.example/invoices"]}',
+        ];
         yield 'the look of a tenant' => [
             TenantLookType::class,
             new TenantLook(new LogoUri('https://acme.example/logo.svg'), '#1b4b8f', '#ffffff'),
@@ -344,6 +353,7 @@ final class TypesTest extends TestCase
         yield 'a string for the progress of a chain' => [LogoutProgressType::class, '{}'];
         yield 'a name for the source of a person' => [UserSourceType::class, 'local'];
         yield 'a list of strings for claims by name' => [ClaimNamesType::class, ['email']];
+        yield 'the members of what a token gives' => [GrantedMembersType::class, ['resources' => ['https://api.example/invoices']]];
     }
 
     /**
@@ -415,6 +425,7 @@ final class TypesTest extends TestCase
         yield 'the source of a person whose claims are not names' => [UserSourceType::class, '{"provider":"workforce","claims":[12]}'];
         yield 'claims by name that are a JSON object' => [ClaimNamesType::class, '{"email":true}'];
         yield 'claims by name that are not names' => [ClaimNamesType::class, '["email",12]'];
+        yield 'what a token gives that no token may give' => [GrantedMembersType::class, '{"requires_consent":false}'];
     }
 
     /**
@@ -501,10 +512,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function theProviderDeclaresThirtyFourTypes(): void
+    public function theProviderDeclaresThirtyFiveTypes(): void
     {
         // When / Then
-        static::assertCount(34, BeffroiExtension::DBAL_TYPES);
+        static::assertCount(35, BeffroiExtension::DBAL_TYPES);
     }
 
     /**
