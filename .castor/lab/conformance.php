@@ -408,7 +408,7 @@ function conformance(
         exit(1);
     }
     if ($reset) {
-        conformance_reset($env['BEFFROI_ISSUER']);
+        $env = conformance_reset($env['BEFFROI_ISSUER']);
     }
     if (array_any($plans, static fn (array $definition): bool => (bool) ($definition['registers_its_own_clients'] ?? false))) {
         conformance_open_registration($env['BEFFROI_ISSUER']);
@@ -659,9 +659,12 @@ function conformance_server(string $suite): array
 
 /**
  * Restarts the containers last: a FrankenPHP worker keeps the signing key it opened until its source
- * changes, and no row names that key after the reset.
+ * changes, and no row names that key after the reset. The environment is read again after the
+ * provisioning, which issues the development user a new subject.
+ *
+ * @return array<string, string> the environment of the application
  */
-function conformance_reset(string $issuer): void
+function conformance_reset(string $issuer): array
 {
     io()->section('Resetting the OP');
     op_console(['doctrine:schema:drop', '--full-database', '--force', '--no-interaction']);
@@ -671,6 +674,8 @@ function conformance_reset(string $issuer): void
     // Last, after the containers they follow, or the back-channel and sector modules wait for what cannot arrive.
     compose_recreate_redirectors(['op', 'worker']);
     conformance_wait_for_op($issuer);
+
+    return load_dot_env(getcwd() . '/apps/op/.env');
 }
 
 /**
