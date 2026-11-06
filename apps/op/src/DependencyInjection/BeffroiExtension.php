@@ -66,6 +66,7 @@ use App\Doctrine\Type\ScopesType;
 use App\Doctrine\Type\SectorIdentifierType;
 use App\Doctrine\Type\SubjectType;
 use App\Key\KmsClientPass;
+use App\Key\KmsHttpClientPass;
 use App\Saml\ServiceProviderEntityIdPass;
 use App\Saml\ServiceProvidersPass;
 use App\Saml\UpstreamIdentityProvidersPass;
@@ -133,6 +134,7 @@ final class BeffroiExtension extends AbstractExtension
     public static function addCompilerPasses(ContainerBuilder $container): void
     {
         $container->addCompilerPass(new KmsClientPass());
+        $container->addCompilerPass(new KmsHttpClientPass());
         $container->addCompilerPass(new ServiceProvidersPass());
         $container->addCompilerPass(new ServiceProviderEntityIdPass());
         $container->addCompilerPass(new UpstreamIdentityProvidersPass());

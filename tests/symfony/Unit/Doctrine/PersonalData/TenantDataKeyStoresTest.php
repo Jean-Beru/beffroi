@@ -21,6 +21,7 @@ use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\DataKeyStore;
 use Symfony\Component\KeyManagement\Command\RewrapDataKeysCommand;
 use Symfony\Component\KeyManagement\DataKeyHandle;
+use Symfony\Component\KeyManagement\Exception\DataKeyNotFoundException;
 use Symfony\Component\KeyManagement\Exception\DecryptionFailedException;
 use Symfony\Component\KeyManagement\Exception\RuntimeException;
 use Symfony\Component\KeyManagement\StoredDataKey;
@@ -165,6 +166,67 @@ final class TenantDataKeyStoresTest extends TestCase
 
         // When
         $this->stores(['current'])->get($reference);
+    }
+
+    /**
+     * Decision 0018
+     */
+    #[Test]
+    public function aKeyMintedToSealIsTheKeyAReadFindsOpen(): void
+    {
+        // Given
+        $stores = $this->stores(['current']);
+        $reference = $stores->current(self::SCOPE)->reference;
+
+        // When
+        $stores->get($reference);
+
+        // Then
+        static::assertSame(0, $this->kms->calls['unwrapDataKey'] ?? 0);
+    }
+
+    /**
+     * Decision 0018
+     */
+    #[Test]
+    public function aKeyOpenedToReadIsTheKeyASealFindsOpen(): void
+    {
+        // Given
+        $reference = $this->stores(['current'])->current(self::SCOPE)->reference;
+        $stores = $this->stores(['current']);
+        $stores->get($reference);
+
+        // When
+        $stores->current(self::SCOPE);
+
+        // Then
+        static::assertSame(1, $this->kms->calls['unwrapDataKey'] ?? 0);
+    }
+
+    #[Test]
+    public function aKeyAlreadyOpenedIsAnsweredWithoutReadingItsRowAgain(): void
+    {
+        // Given
+        $reference = $this->stores(['current'])->current(self::SCOPE)->reference;
+        $stores = $this->stores(['current']);
+        $stores->get($reference);
+        $this->connection->executeStatement('DELETE FROM ' . TenantDataKeyStores::TABLE);
+
+        // When
+        $handle = $stores->get($reference);
+
+        // Then
+        static::assertSame($reference, $handle->reference);
+    }
+
+    #[Test]
+    public function aReferenceThatNamesNoRowIsNoDataKey(): void
+    {
+        // Then
+        $this->expectException(DataKeyNotFoundException::class);
+
+        // When
+        $this->stores(['current'])->get(new UuidV7()->toBinary());
     }
 
     /**

@@ -7,6 +7,7 @@ namespace App\Configuration;
 use DateInterval;
 use Doctrine\DBAL\Connection;
 use App\Doctrine\PersonalData\BlindIndexListener;
+use App\Doctrine\PersonalData\DataKeysOfTheTenant;
 use App\Doctrine\PersonalData\EncryptedColumnTypes;
 use App\Command\DataKeysRewrapCommand;
 use App\Http\RequestContextFactory;
@@ -150,6 +151,11 @@ final readonly class KeysSection extends ConfigurationSection
             TenantDataKeyStores::TABLE,
         ]);
         $services->set(TenantDataKeys::class)->args([service('beffroi.data_keys')]);
+        $services->set(DataKeysOfTheTenant::class)->args([
+            service(TenantDataKeys::class),
+            service('beffroi.data_keys'),
+            service(TenantBlindIndexes::class),
+        ]);
         $services->set(TenantDataKeyDestruction::class)->args([
             service(Connection::class),
             service(TenantDataKeys::class),

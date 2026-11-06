@@ -80,6 +80,23 @@ final class DataKeyStoreTest extends DatabaseTestCase
      * Decision 0018
      */
     #[Test]
+    public function aValueSealedThenReadInOneProcessCostsOneCallToTheKms(): void
+    {
+        // Given
+        self::seal(1, 'alice@example.com');
+
+        // When
+        self::read(1);
+
+        // Then
+        static::assertSame(1, self::kms()->minted);
+        static::assertSame(0, self::kms()->unwrapped);
+    }
+
+    /**
+     * Decision 0018
+     */
+    #[Test]
     public function aResetBetweenTwoUnitsOfWorkDoesNotGiveBackTheDataKey(): void
     {
         // Given

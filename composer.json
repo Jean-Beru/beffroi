@@ -55,6 +55,7 @@
         "symfony/password-hasher": "^8.1",
         "symfony/rate-limiter": "8.2.*",
         "symfony/routing": "8.2.*",
+        "symfony/runtime": "8.2.*",
         "symfony/scheduler": "8.2.*",
         "symfony/security-bundle": "8.2.*",
         "symfony/security-core": "8.2.*",
@@ -129,7 +130,8 @@
         "sort-packages": true,
         "allow-plugins": {
             "infection/extension-installer": true,
-            "phpstan/extension-installer": true
+            "phpstan/extension-installer": true,
+            "symfony/runtime": false
         }
     }
 }
