@@ -11,6 +11,7 @@ use Beffroi\Core\Application\Key\KeyTakeOver;
 use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use function is_string;
+use function random_bytes;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
@@ -93,6 +94,25 @@ final class VaultTransitCustodyTest extends DatabaseTestCase
     }
 
     #[Test]
+    public function theTokenOfTheOpWrapsADataKeyItHoldsUnderTheKeyOfTheTenant(): void
+    {
+        // When
+        $response = $this->vault->request('POST', 'transit/encrypt/' . self::TRANSIT_KEY, [
+            'json' => [
+                'plaintext' => base64_encode(random_bytes(32)),
+                'context' => base64_encode('beffroi:data-key:default.user'),
+            ],
+        ]);
+
+        // Then
+        static::assertSame(200, $response->getStatusCode());
+        $data = $response->toArray()['data'] ?? [];
+        static::assertIsArray($data);
+        static::assertIsString($data['ciphertext'] ?? null);
+        static::assertStringStartsWith('vault:v', $data['ciphertext']);
+    }
+
+    #[Test]
     #[DataProvider('provideRefusedRequests')]
     public function theTokenOfTheOpIsRefusedEverythingElse(string $method, string $path): void
     {
@@ -115,9 +135,9 @@ final class VaultTransitCustodyTest extends DatabaseTestCase
         yield 'deleting the key' => ['DELETE', 'transit/keys/' . self::TRANSIT_KEY];
         yield 'creating a key of another tenant' => ['POST', 'transit/keys/beffroi-other'];
         yield 'listing the keys' => ['GET', 'transit/keys?list=true'];
-        yield 'encrypting directly' => ['POST', 'transit/encrypt/' . self::TRANSIT_KEY];
         yield 'a data key outside the prefix' => ['POST', 'transit/datakey/plaintext/other'];
         yield 'decrypting outside the prefix' => ['POST', 'transit/decrypt/other'];
+        yield 'encrypting outside the prefix' => ['POST', 'transit/encrypt/other'];
         yield 'reading a key outside the prefix' => ['GET', 'transit/keys/other'];
         yield 'the policies' => ['GET', 'sys/policies/acl/beffroi-op'];
     }
