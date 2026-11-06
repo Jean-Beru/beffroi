@@ -11,6 +11,7 @@ use Beffroi\Oidc\Domain\Client\Registration\ClientInformationResponse;
 use Beffroi\Oidc\Domain\Client\SharedClientSecret;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -118,7 +119,63 @@ final class ClientInformationResponseTest extends TestCase
         static::assertArrayNotHasKey('registration_access_token', $parameters);
     }
 
-    private static function record(?ClientSecretInterface $secret = null): ClientRecord
+    /**
+     * RFC 7591 §2, §3.2.1
+     */
+    #[Test]
+    public function itAnswersTheScopesThePolicyWroteForAClientThatNamedNone(): void
+    {
+        // Given
+        $response = new ClientInformationResponse(
+            ClientInformationResponse::INFORMED,
+            self::record(assigned: [
+                'scope' => 'openid profile',
+            ]),
+            self::URI,
+        );
+
+        // When
+        $parameters = $response->parameters();
+
+        // Then
+        static::assertSame('openid profile', $parameters['scope'] ?? null);
+    }
+
+    /**
+     * RFC 7592 §2.2, Decision 0043
+     *
+     * @param array<string, mixed> $assigned
+     * @param array<string, mixed>|null $granted
+     */
+    #[Test]
+    #[DataProvider('provideMembersOfTheProvider')]
+    public function itAnswersNoMemberOfTheProvider(string $member, array $assigned, ?array $granted): void
+    {
+        // Given
+        $response = new ClientInformationResponse(ClientInformationResponse::INFORMED, self::record(assigned: $assigned, granted: $granted), self::URI);
+
+        // When
+        $parameters = $response->parameters();
+
+        // Then
+        static::assertArrayNotHasKey($member, $parameters);
+    }
+
+    /**
+     * @return iterable<string, array{string, array<string, mixed>, array<string, mixed>|null}>
+     */
+    public static function provideMembersOfTheProvider(): iterable
+    {
+        yield 'the PKCE exemption the policy wrote' => ['requires_pkce', ['requires_pkce' => false], null];
+
+        yield 'an API the initial access token gave' => ['resources', [], ['resources' => ['https://api.example/invoices']]];
+    }
+
+    /**
+     * @param array<string, mixed> $assigned
+     * @param array<string, mixed>|null $granted
+     */
+    private static function record(?ClientSecretInterface $secret = null, array $assigned = [], ?array $granted = null): ClientRecord
     {
         return new ClientRecord(
             Uuid::v7(),
@@ -127,10 +184,11 @@ final class ClientInformationResponseTest extends TestCase
             [
                 'redirect_uris' => ['https://rp.example/cb'],
             ],
-            [],
+            $assigned,
             $secret,
             DrawnSecret::digestOf(Secrets::draw()),
             Fixtures::now(),
+            granted: $granted,
         );
     }
 }

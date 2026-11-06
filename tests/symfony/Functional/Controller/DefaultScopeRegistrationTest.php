@@ -8,6 +8,8 @@ use Beffroi\Oidc\Domain\Client\Registration\InitialAccessToken;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use Beffroi\Oidc\Port\ClientRepositoryInterface;
 use Beffroi\Oidc\Port\InitialAccessTokenRepositoryInterface;
+use function array_diff_key;
+use function array_flip;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\Test;
@@ -53,6 +55,53 @@ final class DefaultScopeRegistrationTest extends BrowserTestCase
 
         // Then
         static::assertSame(self::DEFAULT_SCOPE, (string) $client?->registration->allowedScopes);
+    }
+
+    /**
+     * RFC 7591 §3.2.1
+     */
+    #[Test]
+    public function theClientIsAnsweredTheScopesTheTenantWrote(): void
+    {
+        // When
+        $registered = $this->register([]);
+
+        // Then
+        static::assertSame(self::DEFAULT_SCOPE, $registered['scope'] ?? null);
+    }
+
+    /**
+     * RFC 7592 §2.2
+     */
+    #[Test]
+    public function aClientThatSendsBackWhatItWasAnsweredKeepsTheScopesTheTenantWrote(): void
+    {
+        // Given
+        $registered = $this->register([]);
+
+        // When
+        $this->browser->request(
+            'PUT',
+            self::string($registered['registration_client_uri']),
+            server: [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_AUTHORIZATION' => 'Bearer ' . self::string($registered['registration_access_token']),
+            ],
+            content: json_encode(
+                array_diff_key($registered, array_flip([
+                    'registration_access_token',
+                    'registration_client_uri',
+                    'client_secret_expires_at',
+                    'client_id_issued_at',
+                ])),
+                JSON_THROW_ON_ERROR,
+            ),
+        );
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertSame(self::DEFAULT_SCOPE, self::json($response)['scope'] ?? null);
     }
 
     #[Test]
