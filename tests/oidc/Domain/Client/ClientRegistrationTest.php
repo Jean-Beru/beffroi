@@ -8,6 +8,7 @@ use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Client\Certificate\CertificateIdentityInterface;
 use Beffroi\Oidc\Domain\Client\Certificate\SubjectDistinguishedName;
 use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetail;
 use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
@@ -29,6 +30,7 @@ use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
 use Beffroi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
+use Beffroi\Oidc\Tests\Fixture\Certificates;
 use Beffroi\Oidc\Tests\Fixture\Clients;
 use Beffroi\Oidc\Tests\Fixture\Grants;
 use Beffroi\Oidc\Tests\Fixture\Methods;
@@ -116,6 +118,44 @@ final class ClientRegistrationTest extends TestCase
 
         // Then
         static::assertFalse($client->registration->requiresPkce);
+    }
+
+    /**
+     * RFC 9449 §5.2, RFC 8705 §3
+     */
+    #[Test]
+    #[DataProvider('provideClientsWhoseTokensAreBoundToTheirCertificate')]
+    public function aClientWhoseTokensAreBoundToItsCertificateDoesNotBindThemToADpopKey(
+        ClientAuthenticationMethodInterface $method,
+        bool $certificateBound,
+        ?CertificateIdentityInterface $identity,
+    ): void {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The client "terminal" registers dpop_bound_access_tokens while its tokens are bound to its certificate, by tls_client_certificate_bound_access_tokens or by the mutual TLS it authenticates with, and a token is bound to one thing (RFC 9449 section 5.2, RFC 8705 section 3).');
+
+        // When
+        new ClientRegistration(
+            'terminal',
+            new ClientPresentation('Payment terminal'),
+            $method,
+            false,
+            [new RedirectUri('https://terminal.example/callback')],
+            Shapes::jwt(),
+            certificateIdentity: $identity,
+            requiresCertificateBoundTokens: $certificateBound,
+            requiresDpopBoundTokens: true,
+        );
+    }
+
+    /**
+     * @return iterable<string, array{ClientAuthenticationMethodInterface, bool, CertificateIdentityInterface|null}>
+     */
+    public static function provideClientsWhoseTokensAreBoundToTheirCertificate(): iterable
+    {
+        yield 'it registers certificate-bound tokens' => [Methods::none(), true, null];
+
+        yield 'it authenticates with mutual TLS' => [Methods::tlsClientAuth(), false, new SubjectDistinguishedName(Certificates::SUBJECT_DN)];
     }
 
     /**

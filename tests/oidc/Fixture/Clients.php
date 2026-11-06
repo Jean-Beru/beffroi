@@ -368,6 +368,25 @@ final class Clients
     }
 
     /**
+     * RFC 9449 §5.2
+     */
+    public static function boundToADpopKey(Tenant $tenant, string $clientId = 'dpop-bound-client'): Client
+    {
+        return new Client(
+            $tenant,
+            new ClientRegistration(
+                $clientId,
+                new ClientPresentation('Single page application that always proves its key'),
+                Methods::none(),
+                false,
+                [new RedirectUri('https://spa.example/callback')],
+                Shapes::jwt(),
+                requiresDpopBoundTokens: true,
+            ),
+        );
+    }
+
+    /**
      * OIDC Core §8.1
      */
     public static function pairwise(

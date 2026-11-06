@@ -540,6 +540,44 @@ final class TokenHandlerTest extends TestCase
         $this->handler->handle($this->tenant, null, $this->publicExchange(), $this->context, null, $this->proof());
     }
 
+    /**
+     * RFC 9449 §5.2
+     */
+    #[Test]
+    public function aClientThatAlwaysUsesDpopIsRefusedATokenRequestThatCarriesNoProof(): void
+    {
+        // Given
+        $client = Clients::boundToADpopKey($this->tenant);
+        $this->clients->save($client);
+        $this->codes->save(Tokens::code('the-code', $client, $this->session, $this->clock->now(), ['openid']));
+
+        // Then
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessageIs('invalid_request: The tokens of this client are bound to a key it proves with DPoP, and this request carries no DPoP proof (RFC 9449 section 5.2).');
+
+        // When
+        $this->handler->handle($this->tenant, null, $this->dpopBoundExchange(), $this->context);
+    }
+
+    /**
+     * RFC 9449 §5.2
+     */
+    #[Test]
+    public function aClientThatAlwaysUsesDpopGetsItsTokensBoundToTheKeyItProved(): void
+    {
+        // Given
+        $client = Clients::boundToADpopKey($this->tenant);
+        $this->clients->save($client);
+        $this->codes->save(Tokens::code('the-code', $client, $this->session, $this->clock->now(), ['openid']));
+
+        // When
+        $response = $this->handler->handle($this->tenant, null, $this->dpopBoundExchange(), $this->context, null, $this->proof());
+
+        // Then
+        static::assertSame('DPoP', $response->parameters()['token_type']);
+        static::assertEquals(Proofs::thumbprintOf(Proofs::key()), $this->issuedConfirmation());
+    }
+
     #[Test]
     public function aRequestThatProvesACertificateAndAKeyIsRefused(): void
     {
@@ -683,6 +721,20 @@ final class TokenHandlerTest extends TestCase
             'code' => 'the-code',
             'redirect_uri' => 'https://spa.example/callback',
             'client_id' => 'public-client',
+            'code_verifier' => Tokens::CODE_VERIFIER,
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function dpopBoundExchange(): array
+    {
+        return [
+            'grant_type' => 'authorization_code',
+            'code' => 'the-code',
+            'redirect_uri' => 'https://spa.example/callback',
+            'client_id' => 'dpop-bound-client',
             'code_verifier' => Tokens::CODE_VERIFIER,
         ];
     }

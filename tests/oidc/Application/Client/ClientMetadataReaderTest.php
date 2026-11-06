@@ -224,6 +224,25 @@ final class ClientMetadataReaderTest extends TestCase
     }
 
     /**
+     * RFC 9449 §5.2
+     */
+    #[Test]
+    public function aClientThatAlwaysUsesDpopRegistersIt(): void
+    {
+        // Given
+        $metadata = self::registered([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'dpop_bound_access_tokens' => true,
+        ]);
+
+        // When
+        $registration = Registrations::reader()->read('drawn', $metadata, true);
+
+        // Then
+        static::assertTrue($registration->requiresDpopBoundTokens);
+    }
+
+    /**
      * RFC 7591 §3.2.2
      *
      * @param array<string, mixed> $members
@@ -257,6 +276,15 @@ final class ClientMetadataReaderTest extends TestCase
      */
     public static function provideRefusedRegistrations(): iterable
     {
+        yield 'a DPoP binding that is no boolean' => [
+            [
+                'redirect_uris' => ['https://rp.example/cb'],
+                'dpop_bound_access_tokens' => 'true',
+            ],
+            InvalidClientMetadataException::class,
+            'dpop_bound_access_tokens',
+            'must be a boolean',
+        ];
         yield 'a member nobody reads' => [
             [
                 'redirect_uris' => ['https://rp.example/cb'],
