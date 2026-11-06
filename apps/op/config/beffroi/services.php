@@ -277,6 +277,7 @@ use Beffroi\Core\Application\Identity\UserProvisioner;
 use Beffroi\Core\Application\Key\ActiveKeptSigningKeys;
 use Beffroi\Core\Application\Key\ActiveSigningKeys;
 use Beffroi\Core\Application\Key\ApplicationServerKeysInService;
+use Beffroi\Core\Application\Key\KeptDecryptionKeysInService;
 use Beffroi\Core\Application\Key\KeyRetirement;
 use Beffroi\Core\Application\Key\KeyStaging;
 use Beffroi\Core\Application\Key\KeySuccession;
@@ -1142,6 +1143,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ActiveSigningKeys::class);
     $services->set(PublishedDecryptionKeys::class);
     $services->set(ActiveKeptSigningKeys::class)->arg('$algorithms', service('beffroi.saml.signing_algorithms'));
+    $services->set(KeptDecryptionKeysInService::class);
     $services->set(MessageKeysInService::class);
     $services->set(ApplicationServerKeysInService::class);
     // What each process serves with, and nothing more: a thread never opens a message body, the consumer never a JWE.
@@ -1153,6 +1155,7 @@ return static function (ContainerConfigurator $container): void {
                 service(ActiveSigningKeys::class),
                 service(PublishedDecryptionKeys::class),
                 service(ActiveKeptSigningKeys::class),
+                service(KeptDecryptionKeysInService::class),
                 service(DataKeysOfTheTenant::class),
             ]),
         ]);

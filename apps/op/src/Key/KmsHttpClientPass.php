@@ -12,7 +12,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 /**
  * Hands every KMS factory that talks HTTP the client of the application with a wait bounded under the execution time
  * of PHP: a KMS that stops answering is an outage within seconds, never a request or the start of a thread killed by
- * the time limit. A DSN that names its own "timeout" and "max_duration" keeps them.
+ * the time limit. A DSN that names its own "timeout" or "max_duration" keeps it.
  */
 final class KmsHttpClientPass implements CompilerPassInterface
 {

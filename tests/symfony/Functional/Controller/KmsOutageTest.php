@@ -640,10 +640,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * The TOTP is enrolled on the secret of RFC 6238, sealed while the KMS is up.
-     */
-    /**
-     * Decision 0018
+     * Decision 0044
      */
     #[Test]
     public function aThreadThatOpenedItsKeysAtStartExchangesACodeWhileTheKmsIsCut(): void
@@ -664,7 +661,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * Decision 0020
+     * Decisions 0020 and 0044
      */
     #[Test]
     public function aConsumerThatOpenedItsKeysAtStartOpensABodyWhileTheKmsIsCut(): void
@@ -681,6 +678,9 @@ final class KmsOutageTest extends PasskeyTestCase
         static::assertSame($key->kid, $opened->key->kid);
     }
 
+    /**
+     * The TOTP is enrolled on the secret of RFC 6238, sealed while the KMS is up.
+     */
     private function userWithTotp(string $username): User
     {
         $user = self::userWithPassword($username, self::PASSWORD);

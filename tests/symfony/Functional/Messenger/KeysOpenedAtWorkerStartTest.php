@@ -13,7 +13,7 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Event\WorkerStartedEvent;
 
 /**
- * Decision 0018
+ * Decision 0044
  */
 final class KeysOpenedAtWorkerStartTest extends DatabaseTestCase
 {

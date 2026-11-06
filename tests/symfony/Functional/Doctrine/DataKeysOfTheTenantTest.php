@@ -16,7 +16,7 @@ use function sprintf;
 use function str_repeat;
 
 /**
- * Decision 0018
+ * Decisions 0018 and 0044
  */
 final class DataKeysOfTheTenantTest extends DatabaseTestCase
 {
