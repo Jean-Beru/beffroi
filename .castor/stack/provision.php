@@ -364,8 +364,7 @@ function provision_env_local(?string $kms): array
         'sodium' => [
             'BEFFROI_KMS_DSN' => static fn (): string => 'sodium://?keys[signing]=' . $generate(32),
             'BEFFROI_KMS_KEY_ID' => static fn (): string => 'signing',
-            // The master key "castor rewrap-live" moves to, on this backend only: a Transit key or a KMS alias is
-            // created by its container, not by a task.
+            // The client "castor rewrap-live" moves the data keys to: a second key under the id of the first.
             'BEFFROI_KMS_DSN_SECOND' => static fn (): string => 'sodium://?keys[signing]=' . $generate(32),
         ],
         'file' => [
@@ -375,6 +374,8 @@ function provision_env_local(?string $kms): array
         'vault' => [
             'BEFFROI_KMS_DSN' => static fn (): string => 'hashicorp-vault-transit://' . vault_mint_op_token() . '@vault:8200?scheme=http',
             'BEFFROI_KMS_KEY_ID' => static fn (): string => 'beffroi-{tenant}',
+            // The same, a sodium key under the name of the Transit key, which its container creates and a task cannot.
+            'BEFFROI_KMS_DSN_SECOND' => static fn (): string => 'sodium://?keys[beffroi-' . DEV_TENANT_SLUG . ']=' . $generate(32),
         ],
         // The alias of the tenant is the one docker/localstack/init.sh creates.
         'aws' => [
