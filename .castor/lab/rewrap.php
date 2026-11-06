@@ -43,7 +43,7 @@ function rewrap_live(
     if (($env['BEFFROI_KMS_DSN_SECOND'] ?? '') === '') {
         io()->error([
             'There is no second KMS client to move the keys to, so there is nothing this walk can play.',
-            'A rewrap is a run with both clients configured at once, and the second one has to hold a key under the id the deployment names. Run "castor provision --kms sodium", which writes BEFFROI_KMS_DSN_SECOND; the Vault and LocalStack backends hold a key a container creates and not one a task generates, and moving to Vault waits on beffroi#420 besides.',
+            'A rewrap is a run with both clients configured at once, and the second one has to hold a key under the id the deployment names. Run "castor provision --kms sodium" or "castor provision --kms vault", which write BEFFROI_KMS_DSN_SECOND, a sodium key under that id; LocalStack holds a key its container creates under an alias, and a move to Vault is refused to the token of the provider, which holds no transit/encrypt (beffroi#1008).',
         ]);
 
         exit(1);

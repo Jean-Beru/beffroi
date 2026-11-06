@@ -55,6 +55,8 @@ final readonly class DataKeysRewrapCommand
         ?string $from = null,
         #[Option(description: 'List what would move and write nothing.')]
         bool $dryRun = false,
+        #[Option(description: 'Also move the keys wrapped under no context, written before the store bound each one to its reference and its scope.')]
+        bool $acceptUnbound = false,
     ): int {
         $tenant = $this->tenant->orTold($io);
         if ($tenant === null) {
@@ -84,7 +86,14 @@ final readonly class DataKeysRewrapCommand
         $masterKeyId = new KmsKeyId($this->masterKeyId)->forSlug($tenant->slug);
         $io->note(sprintf('The master key of "%s" on "%s" is "%s", resolved from the configuration and not asked for.', $tenant->slug, $to, $masterKeyId));
 
-        $status = new RewrapDataKeysCommand($scoped, $this->clients)->__invoke($io, to: $to, keyId: $masterKeyId, from: $from, dryRun: $dryRun);
+        $status = new RewrapDataKeysCommand($scoped, $this->clients)->__invoke(
+            $io,
+            to: $to,
+            keyId: $masterKeyId,
+            from: $from,
+            dryRun: $dryRun,
+            acceptUnbound: $acceptUnbound,
+        );
         if ($status !== Command::SUCCESS || $dryRun) {
             return $status;
         }

@@ -20,9 +20,9 @@ if ! vault secrets list -format=json | grep -q '"transit/"'; then
     vault secrets enable transit
 fi
 
-# The master key of the tenant. derived=true: the envelope carries a context (the AAD that binds it to its
-# use and its tenant) and Vault only honours a context on a derived key, it silently ignores it otherwise;
-# the bridge refuses to seal under a key that is not derived. Not exportable, no plaintext backup: the key
+# The master key of the tenant. derived=true: each data key is wrapped under a context, its reference and its
+# scope, and Vault only honours a context on a derived key, it silently ignores it otherwise; the bridge
+# refuses to wrap under a key that is not derived. Not exportable, no plaintext backup: the key
 # material never leaves Vault, whoever asks. Deletion refused: a rotation retires a version, it never
 # deletes the key (transit/keys/<name>/rotate, min_decryption_version, transit/rewrap).
 vault write -f "transit/keys/${KEY}" type=aes256-gcm96 derived=true exportable=false allow_plaintext_backup=false >/dev/null

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Symfony\Functional\Command;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
 use App\Doctrine\PersonalData\EncryptedColumnTypes;
 use App\Doctrine\PersonalData\TenantDataKeyStores;
 use App\Doctrine\PersonalData\TenantScopedEncrypter;
@@ -29,6 +30,8 @@ use function count;
 use function sprintf;
 use Throwable;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\KeyManagement\Ciphertext;
+use Symfony\Component\KeyManagement\DataKeyGeneratorInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -302,6 +305,46 @@ final class DataKeysTest extends ConsoleTestCase
     }
 
     #[Test]
+    public function aRowWhoseDataKeyIsWrappedUnderNoContextNoLongerOpens(): void
+    {
+        // Given
+        $user = self::sealSomething();
+        self::wrapTheKeysUnderNoContext();
+
+        // When
+        $thrown = null;
+        try {
+            self::service('test.beffroi.users', UserRepositoryInterface::class)->find($user->id);
+        } catch (Throwable $caught) {
+            $thrown = $caught;
+        }
+
+        // Then
+        static::assertNotNull($thrown, 'a data key wrapped under no context opened, so the store binds none.');
+        static::assertStringContainsString('Decryption failed.', self::reasonOf($thrown));
+    }
+
+    #[Test]
+    public function aRewrapThatAcceptsTheKeysWrappedUnderNoContextMakesWhatTheySealedReadAgain(): void
+    {
+        // Given
+        $user = self::sealSomething();
+        self::wrapTheKeysUnderNoContext();
+
+        // When
+        $tester = self::console('beffroi:data-keys:rewrap', [
+            '--to' => 'test',
+            '--accept-unbound' => true,
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode());
+        $read = self::service('test.beffroi.users', UserRepositoryInterface::class)->find($user->id);
+        static::assertInstanceOf(User::class, $read);
+        static::assertSame(self::USERNAME, $read->username);
+    }
+
+    #[Test]
     public function aRowWhoseDataKeyWasDestroyedNoLongerOpens(): void
     {
         // Given
@@ -378,6 +421,30 @@ final class DataKeysTest extends ConsoleTestCase
         self::entityManager()->flush();
 
         return $other;
+    }
+
+    /**
+     * The same data key under the same master key, wrapped under no context; then a kernel of its own, the stores of
+     * the one before holding the keys it opened.
+     */
+    private static function wrapTheKeysUnderNoContext(): void
+    {
+        $kms = self::service('test.beffroi.kms', DataKeyGeneratorInterface::class);
+        $stores = self::service('test.beffroi.data_keys_index', TenantDataKeyStores::class);
+        foreach ([...$stores->all()] as $row) {
+            $unbound = $kms->unwrapDataKey($row->wrapped, $stores->wrappingContextOf($row))->use(
+                static fn (string $key): Ciphertext => $kms->wrapDataKey($row->wrapped->keyId, $key),
+            );
+            self::connection()
+                ->update(
+                    TenantDataKeyStores::TABLE,
+                    ['key_material' => $unbound->blob],
+                    ['id' => $row->reference],
+                    ['key_material' => ParameterType::BINARY, 'id' => ParameterType::BINARY],
+                );
+        }
+        self::ensureKernelShutdown();
+        self::bootKernel();
     }
 
     private static function destroyTheKeysOf(Tenant $tenant): void
