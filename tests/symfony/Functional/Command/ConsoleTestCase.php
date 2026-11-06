@@ -40,6 +40,17 @@ abstract class ConsoleTestCase extends BrowserTestCase
         return self::string(preg_replace('/\s*\n\s*!?\s*/', ' ', $tester->getDisplay(true)));
     }
 
+    protected static function valueOf(CommandTester $tester): string
+    {
+        static::assertSame(
+            1,
+            preg_match('/^([A-Za-z0-9_-]{43})$/m', $tester->getDisplay(true), $matches),
+            sprintf('No value was printed in: %s', $tester->getDisplay(true)),
+        );
+
+        return $matches[1];
+    }
+
     protected static function displayed(CommandTester $tester, string $label): string
     {
         $display = $tester->getDisplay(true);

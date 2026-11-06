@@ -10,6 +10,7 @@ use Beffroi\Oidc\Application\Client\Registration\KeptRegistration;
 use Beffroi\Oidc\Domain\Client\ClientSecretInterface;
 use Beffroi\Oidc\Domain\Client\Metadata\AttestedMembers;
 use Beffroi\Oidc\Domain\Client\Metadata\ClientMetadataSourceInterface;
+use Beffroi\Oidc\Domain\Client\Metadata\GrantedMembers;
 use Beffroi\Oidc\Domain\Client\Registration\ClientRegistrationPolicy;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Domain\Client\HashedClientSecret;
@@ -131,6 +132,55 @@ final class RegistrationUnderThePolicyTest extends TestCase
                 'client_name' => 'Invoice reader, attested',
             ],
             $kept->attested,
+        );
+    }
+
+    /**
+     * RFC 7592 §2.2, Decision 0043
+     */
+    #[Test]
+    public function whatATokenGaveIsKeptOutOfWhatTheClientSent(): void
+    {
+        // When
+        $kept = $this->read(
+            [
+                'redirect_uris' => [self::REDIRECT_URI],
+            ],
+            granted: new GrantedMembers([
+                'resources' => ['https://api.example/invoices'],
+            ]),
+        );
+
+        // Then
+        static::assertSame(
+            [
+                'redirect_uris' => [self::REDIRECT_URI],
+            ],
+            $kept->metadata,
+        );
+    }
+
+    /**
+     * RFC 8693 §2.1, Decision 0043
+     */
+    #[Test]
+    public function aClientATokenGaveTheExchangeToRegistersTheGrantThatExchanges(): void
+    {
+        // Then
+        $this->expectException(InvalidClientMetadataException::class);
+        $this->expectExceptionMessageIs('The client "drawn-identifier" declares a token_exchange and no grant that would exchange anything: register one of: urn:ietf:params:oauth:grant-type:token-exchange.');
+
+        // When
+        $this->read(
+            [
+                'redirect_uris' => [self::REDIRECT_URI],
+            ],
+            grants: Grants::servedWithTokenExchange(),
+            granted: new GrantedMembers([
+                'token_exchange' => [
+                    'subject_token_types' => ['urn:ietf:params:oauth:token-type:access_token'],
+                ],
+            ]),
         );
     }
 
@@ -402,10 +452,11 @@ final class RegistrationUnderThePolicyTest extends TestCase
         ?ServedGrantsInterface $grants = null,
         ?ClientRegistrationPolicy $policy = null,
         array $inFront = [],
+        ?GrantedMembers $granted = null,
     ): KeptRegistration {
         return Registrations::underThePolicy(
             Registrations::reader(grants: $grants, subjects: Subjects::bothKinds()),
             documents: $documents,
-        )->read(Fixtures::tenant(), 'drawn-identifier', $inFront, $members, $policy, $held);
+        )->read(Fixtures::tenant(), 'drawn-identifier', $inFront, $members, $policy, $held, $granted);
     }
 }

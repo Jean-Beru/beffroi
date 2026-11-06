@@ -7,8 +7,10 @@ namespace Beffroi\Oidc\Tests\Application\Client\Registration;
 use DateTimeImmutable;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Client\Registration\AuthorizedRegistration;
 use Beffroi\Oidc\Application\Client\Registration\InitialAccessTokenAuthorization;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryInitialAccessTokenRepository;
+use Beffroi\Oidc\Domain\Client\Metadata\GrantedMembers;
 use Beffroi\Oidc\Domain\Client\Registration\InitialAccessToken;
 use Beffroi\Oidc\Domain\Client\Registration\RegistrationRequest;
 use Beffroi\Oidc\Tests\Fixture\Policies;
@@ -21,7 +23,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 7591 §1.2, Decision 0009
+ * RFC 7591 §1.2, Decision 0009, Decision 0043
  */
 final class InitialAccessTokenAuthorizationTest extends TestCase
 {
@@ -38,16 +40,48 @@ final class InitialAccessTokenAuthorizationTest extends TestCase
     }
 
     #[Test]
-    public function aTokenOfTheTenantAuthorisesARegistrationAndAddsNothingToIt(): void
+    public function aTokenOfTheTenantAuthorisesARegistrationAndPutsNothingInFrontOfIt(): void
     {
         // Given
         $this->issue();
 
         // When
-        $sources = $this->authorize(self::presenting(self::VALUE));
+        $authorized = $this->authorize(self::presenting(self::VALUE));
 
         // Then
-        static::assertSame([], $sources);
+        static::assertSame([], $authorized->inFront);
+    }
+
+    #[Test]
+    public function aTokenThatGivesNothingGivesTheRegistrationNothing(): void
+    {
+        // Given
+        $this->issue();
+
+        // When
+        $authorized = $this->authorize(self::presenting(self::VALUE));
+
+        // Then
+        static::assertNull($authorized->granted);
+    }
+
+    /**
+     * Decision 0043
+     */
+    #[Test]
+    public function aTokenGivesTheRegistrationItAuthorisesWhatItWasIssuedToGive(): void
+    {
+        // Given
+        $granted = new GrantedMembers([
+            'resources' => ['https://api.example/invoices'],
+        ]);
+        $this->issue(granted: $granted);
+
+        // When
+        $authorized = $this->authorize(self::presenting(self::VALUE));
+
+        // Then
+        static::assertSame($granted, $authorized->granted);
     }
 
     #[Test]
@@ -116,10 +150,10 @@ final class InitialAccessTokenAuthorizationTest extends TestCase
         $this->issue();
 
         // When
-        $sources = $this->authorize(self::presenting(self::VALUE, 'bearer'));
+        $authorized = $this->authorize(self::presenting(self::VALUE, 'bearer'));
 
         // Then
-        static::assertSame([], $sources);
+        static::assertSame([], $authorized->inFront);
     }
 
     #[Test]
@@ -135,7 +169,7 @@ final class InitialAccessTokenAuthorizationTest extends TestCase
         $this->authorize(self::presenting(self::VALUE));
     }
 
-    private function issue(?Tenant $tenant = null): InitialAccessToken
+    private function issue(?Tenant $tenant = null, ?GrantedMembers $granted = null): InitialAccessToken
     {
         $token = new InitialAccessToken(
             Uuid::v7(),
@@ -145,16 +179,14 @@ final class InitialAccessTokenAuthorizationTest extends TestCase
             1,
             Fixtures::now(),
             Fixtures::now()->modify('+1 day'),
+            $granted,
         );
         $this->tokens->save($token);
 
         return $token;
     }
 
-    /**
-     * @return list<object>
-     */
-    private function authorize(RegistrationRequest $request, ?DateTimeImmutable $now = null): array
+    private function authorize(RegistrationRequest $request, ?DateTimeImmutable $now = null): AuthorizedRegistration
     {
         return new InitialAccessTokenAuthorization(
             $this->tokens,

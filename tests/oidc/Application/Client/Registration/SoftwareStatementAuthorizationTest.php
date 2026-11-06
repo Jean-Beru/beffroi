@@ -71,11 +71,29 @@ final class SoftwareStatementAuthorizationTest extends TestCase
         ]);
 
         // When
-        $sources = $this->authorization->authorize($this->tenant, $request, Policies::attested([SoftwareStatements::authority()]));
+        $authorized = $this->authorization->authorize($this->tenant, $request, Policies::attested([SoftwareStatements::authority()]));
 
         // Then
-        static::assertCount(1, $sources);
-        static::assertSame('Invoice reader, attested', $sources[0]->members()['client_name']);
+        static::assertCount(1, $authorized->inFront);
+        static::assertSame('Invoice reader, attested', $authorized->inFront[0]->members()['client_name']);
+    }
+
+    /**
+     * Decision 0043
+     */
+    #[Test]
+    public function aStatementGivesTheClientNoMemberOfTheDeployment(): void
+    {
+        // Given
+        $request = new RegistrationRequest([
+            'software_statement' => SoftwareStatements::statement((string) $this->tenant->issuer, Fixtures::now()),
+        ]);
+
+        // When
+        $authorized = $this->authorization->authorize($this->tenant, $request, Policies::attested([SoftwareStatements::authority()]));
+
+        // Then
+        static::assertNull($authorized->granted);
     }
 
     /**

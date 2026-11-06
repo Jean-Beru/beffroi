@@ -45,7 +45,7 @@ final readonly class ClientTokenListCommand
 
         $now = $this->clock->now();
         $io->table(
-            ['Id', 'Name', 'Issued', 'Expires', 'Served', 'State'],
+            ['Id', 'Name', 'Issued', 'Expires', 'Served', 'State', 'Gives'],
             array_map(static fn (InitialAccessToken $token): array => [
                 $token->id->toRfc4122(),
                 $token->name,
@@ -53,6 +53,7 @@ final readonly class ClientTokenListCommand
                 $token->expiresAt->format('Y-m-d H:i:s'),
                 sprintf('%d of %d', $token->registrationsServed, $token->registrationsAllowed),
                 self::state($token, $now),
+                PrintedMembers::lines($token->granted?->members() ?? []),
             ], $tokens),
         );
 

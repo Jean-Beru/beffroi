@@ -11,6 +11,7 @@ use Beffroi\Oidc\Application\Client\Registration\InitialAccessTokenIssuance;
 use Beffroi\Oidc\Application\Client\Registration\InitialAccessTokenRevocation;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryInitialAccessTokenRepository;
 use Beffroi\Oidc\Domain\Client\Registration\IssuedInitialAccessToken;
+use Beffroi\Oidc\Tests\Fixture\Registrations;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -113,7 +114,7 @@ final class InitialAccessTokenRevocationTest extends TestCase
 
     private function issue(int $registrationsAllowed = 1): IssuedInitialAccessToken
     {
-        return new InitialAccessTokenIssuance(Secrets::drawer(), $this->tokens, $this->clock)->issue(
+        return new InitialAccessTokenIssuance(Secrets::drawer(), $this->tokens, $this->clock, Registrations::reader())->issue(
             $this->tenant,
             'The team that integrates',
             $registrationsAllowed,

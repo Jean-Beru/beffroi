@@ -7,6 +7,7 @@ namespace Beffroi\Oidc\Tests\Domain\Client;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Domain\Client\ClientRecord;
 use Beffroi\Oidc\Domain\Client\Metadata\AttestedMembers;
+use Beffroi\Oidc\Domain\Client\Metadata\GrantedMembers;
 use Beffroi\Oidc\Domain\Client\SharedClientSecret;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
@@ -275,6 +276,47 @@ final class ClientRecordTest extends TestCase
 
         // When / Then
         static::assertSame([], $record->attestation());
+    }
+
+    /**
+     * Decision 0043
+     */
+    #[Test]
+    public function aClientIsReadWithWhatItsInitialAccessTokenGave(): void
+    {
+        // Given
+        $record = new ClientRecord(
+            Uuid::v7(),
+            Fixtures::tenant(),
+            'drawn-identifier',
+            [
+                'redirect_uris' => ['https://registered.example/callback'],
+            ],
+            [],
+            null,
+            self::digest(),
+            Fixtures::now(),
+            granted: [
+                'resources' => ['https://api.example/invoices'],
+            ],
+        );
+
+        // When
+        $metadata = $record->asRegistered();
+
+        // Then
+        static::assertSame(['https://api.example/invoices'], $metadata->value('resources'));
+        static::assertSame(new GrantedMembers([])->source(), $metadata->sourceOf('resources'));
+    }
+
+    #[Test]
+    public function aClientNoTokenGaveAnythingHasNothingGiven(): void
+    {
+        // Given
+        $record = new ClientRecord(Uuid::v7(), Fixtures::tenant(), 'drawn-identifier', [], [], null, self::digest(), Fixtures::now());
+
+        // When / Then
+        static::assertNull($record->grants());
     }
 
     private static function digest(): string
