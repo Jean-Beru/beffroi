@@ -108,16 +108,7 @@ final class TenantDataKeyStores implements RewrappableDataKeyStoreInterface
     {
         $slug = TenantScopedEncrypter::slugOf($scope);
 
-        return $this->stores[$slug] ??= new DataKeyStore(
-            $this->connection,
-            $this->clients,
-            $this->client,
-            new KmsKeyId($this->masterKeyId)->forSlug($slug),
-            $this->secrets,
-            $this->table,
-            self::KEY_BYTES,
-            $this->maxAgeSeconds,
-        );
+        return $this->stores[$slug] ??= $this->storeUnder(new KmsKeyId($this->masterKeyId)->forSlug($slug));
     }
 
     /**
@@ -126,15 +117,25 @@ final class TenantDataKeyStores implements RewrappableDataKeyStoreInterface
      */
     public function reader(): DataKeyStore
     {
-        return $this->reader ??= new DataKeyStore(
+        return $this->reader ??= $this->storeUnder($this->masterKeyId);
+    }
+
+    /**
+     * The KMS authenticates the reference and the scope of every key it wraps: a key presented under another row is
+     * refused before it leaves the KMS, and a backend that cannot authenticate data refuses to wrap one at all.
+     */
+    private function storeUnder(string $masterKeyId): DataKeyStore
+    {
+        return new DataKeyStore(
             $this->connection,
             $this->clients,
             $this->client,
-            $this->masterKeyId,
+            $masterKeyId,
             $this->secrets,
             $this->table,
             self::KEY_BYTES,
             $this->maxAgeSeconds,
+            bindWrappingContext: true,
         );
     }
 }

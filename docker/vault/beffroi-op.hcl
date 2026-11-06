@@ -4,7 +4,7 @@
 # The envelope of symfony/key-management is opened and sealed with a data key: the OP mints one under the
 # Transit key of the tenant (datakey/plaintext), unwraps it later (decrypt), and reads the configuration of
 # the key once per process to make sure it was created with derived=true, without which Vault would ignore
-# the context that binds an envelope to its tenant (the AAD of the envelope, the preflight of the bridge).
+# the context that binds a data key to its reference and its scope (the preflight of the bridge).
 # It never encrypts directly: the private JWK never reaches Vault, only the data key does, so no capability
 # on transit/encrypt. No update on transit/keys: no creation, no rotation, no configuration change, and
 # nothing on transit/export nor transit/backup, which the keys refuse anyway (exportable=false,

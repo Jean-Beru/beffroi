@@ -18,12 +18,15 @@ use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\ServiceLocator;
+use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\DataKeyStore;
 use Symfony\Component\KeyManagement\Command\RewrapDataKeysCommand;
 use Symfony\Component\KeyManagement\DataKeyHandle;
 use Symfony\Component\KeyManagement\Exception\DecryptionFailedException;
 use Symfony\Component\KeyManagement\Exception\RuntimeException;
+use Symfony\Component\KeyManagement\StoredDataKey;
 use Symfony\Component\KeyManagement\Test\InMemoryKms;
 use Symfony\Component\KeyManagement\Test\SwitchableKms;
+use Symfony\Component\Uid\UuidV7;
 
 final class TenantDataKeyStoresTest extends TestCase
 {
@@ -98,6 +101,72 @@ final class TenantDataKeyStoresTest extends TestCase
         static::assertSame($reference, $handle->reference);
     }
 
+    #[Test]
+    public function theKmsOpensADataKeyUnderTheContextOfItsReferenceAndItsScope(): void
+    {
+        // Given
+        $minted = $this->stores(['current'])->current(self::SCOPE)->use(static fn (string $key): string => $key);
+        $row = $this->row();
+
+        // When
+        $unwrapped = $this->kms->unwrapDataKey($row->wrapped, StoredDataKey::wrappingContextFor($row->reference, $row->scope));
+
+        // Then
+        static::assertSame($minted, $unwrapped->use(static fn (string $key): string => $key));
+    }
+
+    /**
+     * @param Closure(StoredDataKey): string $context
+     */
+    #[Test]
+    #[DataProvider('provideAnotherContext')]
+    public function theKmsRefusesADataKeyPresentedUnderAnotherContext(Closure $context): void
+    {
+        // Given
+        $this->stores(['current'])->current(self::SCOPE);
+        $row = $this->row();
+
+        // Then
+        $this->expectException(DecryptionFailedException::class);
+
+        // When
+        $this->kms->unwrapDataKey($row->wrapped, $context($row));
+    }
+
+    /**
+     * @return iterable<string, array{Closure(StoredDataKey): string}>
+     */
+    public static function provideAnotherContext(): iterable
+    {
+        yield 'none' => [static fn (StoredDataKey $row): string => ''];
+        yield 'the context of another scope' => [
+            static fn (StoredDataKey $row): string => StoredDataKey::wrappingContextFor($row->reference, 'acme.journal'),
+        ];
+        yield 'the context of another reference' => [
+            static fn (StoredDataKey $row): string => StoredDataKey::wrappingContextFor(new UuidV7()->toBinary(), $row->scope),
+        ];
+    }
+
+    #[Test]
+    public function aDataKeyWrappedUnderNoContextOpensNothing(): void
+    {
+        // Given
+        $reference = new DataKeyStore(
+            $this->connection,
+            $this->clients,
+            'op',
+            'beffroi-acme',
+            ['current'],
+            TenantDataKeyStores::TABLE,
+        )->current(self::SCOPE)->reference;
+
+        // Then
+        $this->expectException(DecryptionFailedException::class);
+
+        // When
+        $this->stores(['current'])->get($reference);
+    }
+
     /**
      * Decision 0018
      *
@@ -151,5 +220,10 @@ final class TenantDataKeyStoresTest extends TestCase
     private function stores(array $secrets): TenantDataKeyStores
     {
         return new TenantDataKeyStores($this->connection, $this->clients, 'op', self::MASTER_KEY, $secrets, TenantDataKeyStores::TABLE);
+    }
+
+    private function row(): StoredDataKey
+    {
+        return [...$this->stores(['current'])->all()][0] ?? static::fail('The store holds no data key.');
     }
 }
