@@ -15,6 +15,7 @@ use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\KeyManagement\Bridge\DoctrineDbal\EncryptedType;
+use Symfony\Component\KeyManagement\Exception\DecryptionFailedException;
 
 final class EncryptedColumnTypesTest extends DatabaseTestCase
 {
@@ -108,6 +109,41 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
         $read = Type::getTypeRegistry()->get($name)->convertToPHPValue($stored, $connection->getDatabasePlatform());
         static::assertInstanceOf(EmailAddress::class, $read);
         static::assertSame('alice@example.com', $read->value);
+    }
+
+    /**
+     * Decision 0018
+     */
+    #[Test]
+    #[DataProvider('provideColumnsOfAnotherFamilyOrType')]
+    public function aValueCopiedIntoAColumnOfAnotherFamilyOrTypeDoesNotOpenThere(string $sealedBy, string $value, string $readBy): void
+    {
+        // Given
+        $platform = self::connection()->getDatabasePlatform();
+        $copied = Type::getTypeRegistry()->get($sealedBy)->convertToDatabaseValue($value, $platform);
+
+        // Then
+        $this->expectException(DecryptionFailedException::class);
+
+        // When
+        Type::getTypeRegistry()->get($readBy)->convertToPHPValue($copied, $platform);
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string}>
+     */
+    public static function provideColumnsOfAnotherFamilyOrType(): iterable
+    {
+        yield 'the subject of a linked identity into the username of a user' => [
+            EncryptedColumnTypes::name('linked_identity', 'string'),
+            '110169484474386276334',
+            EncryptedColumnTypes::name('user', 'string'),
+        ];
+        yield 'the username of a user into the email of a user' => [
+            EncryptedColumnTypes::name('user', 'string'),
+            'alice',
+            EncryptedColumnTypes::name('user', 'beffroi_email_address'),
+        ];
     }
 
     #[Test]

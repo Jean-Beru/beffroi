@@ -18,8 +18,9 @@ use function strlen;
 use function substr;
 
 /**
- * A sealed column is unbounded binary whatever the length its mapping carries, and a ciphertext is not bound to its
- * row: moved to another row of the same column and tenant, it decrypts there.
+ * A sealed column is unbounded binary whatever the length its mapping carries. A ciphertext is bound to its tenant, its
+ * family and its type, not to its row: moved to another row of the same column, or to another column of the same
+ * family and type, it decrypts there.
  */
 final readonly class EncryptedColumnTypes
 {
