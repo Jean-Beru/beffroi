@@ -16,6 +16,8 @@ const REWRAP_LOGINS = 10;
 
 const REWRAP_AFTER = 5;
 
+const REWRAP_WORKER_TIMEOUT = 30;
+
 /**
  * In no particular order: the direction of a move is read from the store.
  */
@@ -48,7 +50,7 @@ function rewrap_live(
     }
 
     $running = compose_running_services();
-    foreach (['op', 'database'] as $service) {
+    foreach (['op', 'worker', 'database'] as $service) {
         if (! in_array($service, $running, true)) {
             io()->error(sprintf('The %s container is not running: "castor start" starts the stack.', $service));
 
@@ -61,16 +63,23 @@ function rewrap_live(
     $secret = $env['OIDC_DEMO_SECRET'];
     $ca = caddy_ca(getcwd() . '/' . REWRAP_CA_FILE);
 
+    // Before the keys are read: a scope gets its key the first time something is sealed under it, and a login, or the
+    // worker after it, is the first to seal under some.
+    cost_journey($issuer, $password, $secret, $ca);
+    io()->text('  a login before the keys are read went through');
+    rewrap_wait_for_the_worker();
+    io()->text('  the worker handled what that login sent it');
+
     $keysBefore = rewrap_keys();
     if ($keysBefore === []) {
-        io()->error('The tenant holds no data key, so there is nothing to move: play a journey first ("castor demo --check") and run this again.');
+        io()->error('A login went through and the tenant holds no data key, so there is nothing to move.');
 
         exit(1);
     }
     [$from, $to] = rewrap_direction(array_values(array_unique(array_values($keysBefore))));
     $sealedBefore = rewrap_sealed_columns();
     if ($sealedBefore === []) {
-        io()->error('No sealed column of beffroi_user holds anything, so a comparison before and after would compare nothing: run "castor provision" and play a journey.');
+        io()->error('No sealed column of beffroi_user holds anything, so a comparison before and after would compare nothing: run "castor provision".');
 
         exit(1);
     }
@@ -148,7 +157,7 @@ function rewrap_live(
     io()->text('  a login after the move went through');
 
     io()->table(['What', 'Measured'], [
-        ['Logins played', sprintf('%d, none failed', $logins + 1)],
+        ['Logins played', sprintf('%d, none failed', $logins + 2)],
         ['The move', sprintf('%.2f s, between login %d and login %d', $moveEnded - $moveStarted, REWRAP_AFTER, REWRAP_AFTER + 1)],
         ['The walk', sprintf('%.1f s', microtime(true) - $started)],
         ['Keys', sprintf('%d scope(s), now wrapped by "%s"', count($keysAfter), $to)],
@@ -167,7 +176,7 @@ function rewrap_live(
         $from,
         $to,
         $moveEnded - $moveStarted,
-        $logins + 1,
+        $logins + 2,
         count($sealedBefore),
         $to,
     ));
@@ -247,6 +256,26 @@ function rewrap_check(Process $process): void
     ]);
 
     exit(1);
+}
+
+/**
+ * The lanes of the stack are queues of its database, where a message stays until the worker has handled it; one put
+ * back for a later retry is not waited for.
+ */
+function rewrap_wait_for_the_worker(): void
+{
+    $deadline = microtime(true) + REWRAP_WORKER_TIMEOUT;
+    while (rewrap_query("SELECT count(*) FROM messenger_messages WHERE queue_name <> 'failed' AND available_at <= now() AT TIME ZONE 'UTC'") !== ['0']) {
+        if (microtime(true) >= $deadline) {
+            io()->error(sprintf(
+                'The worker has not emptied its queues within %d s of the login above, so a key it mints for that login could be minted during the walk: "castor logs worker" says what it is doing.',
+                REWRAP_WORKER_TIMEOUT,
+            ));
+
+            exit(1);
+        }
+        usleep(200_000);
+    }
 }
 
 function rewrap_dry_run(string $from, string $to): int
