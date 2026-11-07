@@ -7,9 +7,13 @@ namespace App\Tests\Symfony\Functional\Controller;
 use function base64_encode;
 use Closure;
 use DateTimeImmutable;
+use App\Doctrine\PersonalData\BlindIndexedColumns;
+use App\Doctrine\PersonalData\EncryptedColumnTypes;
 use App\Http\PendingLoginStore;
 use App\Http\TotpProvisioningStore;
+use App\Key\KeysOpenedAtStart;
 use App\Key\KmsUnavailableListener;
+use App\Messenger\KeysOpenedAtWorkerStart;
 use App\Tests\Symfony\Functional\Key\DataKeyOutage;
 use App\Tests\Symfony\Functional\Key\KmsOutage;
 use Beffroi\Core\Domain\Credential\TotpCredential;
@@ -22,9 +26,11 @@ use Beffroi\Core\Domain\Identity\LinkedIdentity;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
 use Beffroi\Core\Port\LinkedIdentityRepositoryInterface;
+use Beffroi\Core\Port\MessageKeyProviderInterface;
 use Beffroi\Core\Port\SecretSealerInterface;
 use Beffroi\Core\Port\TotpAlgorithmInterface;
 use Beffroi\Core\Port\UserRepositoryInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Totps;
 use Beffroi\Oidc\Domain\Event\AuthorizationCodeReplayed;
@@ -634,6 +640,45 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
+     * Decision 0044
+     */
+    #[Test]
+    public function aThreadThatOpenedItsKeysAtStartExchangesACodeWhileTheKmsIsCut(): void
+    {
+        // Given
+        $code = $this->codeOfAlice();
+        $this->aThreadThatOpenedItsKeysAtStart();
+        $this->kms->down = true;
+        $this->dataKeys->families = [...EncryptedColumnTypes::families(), BlindIndexedColumns::SCOPE];
+
+        // When
+        $this->postCode($code);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), (string) $response->getContent());
+        static::assertArrayHasKey('id_token', self::json($response));
+    }
+
+    /**
+     * Decisions 0020 and 0044
+     */
+    #[Test]
+    public function aConsumerThatOpenedItsKeysAtStartOpensABodyWhileTheKmsIsCut(): void
+    {
+        // Given
+        $key = self::takeOver()->rotate(self::tenant(), Algorithms::messageSeal(), self::context());
+        $this->aConsumerThatOpenedItsKeysAtStart();
+        $this->kms->down = true;
+
+        // When
+        $opened = self::service('test.beffroi.key_provider', MessageKeyProviderInterface::class)->messageKey(self::tenant(), $key->kid);
+
+        // Then
+        static::assertSame($key->kid, $opened->key->kid);
+    }
+
+    /**
      * The TOTP is enrolled on the secret of RFC 6238, sealed while the KMS is up.
      */
     private function userWithTotp(string $username): User
@@ -663,6 +708,27 @@ final class KmsOutageTest extends PasskeyTestCase
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));
 
         return self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client got no code.');
+    }
+
+    private function aThreadThatOpenedItsKeysAtStart(): void
+    {
+        $this->aNewProcess();
+        self::service(KeysOpenedAtStart::BY_A_THREAD, KeysOpenedAtStart::class)->open();
+    }
+
+    private function aConsumerThatOpenedItsKeysAtStart(): void
+    {
+        $this->aNewProcess();
+        self::service(KeysOpenedAtWorkerStart::class, KeysOpenedAtWorkerStart::class)();
+    }
+
+    /**
+     * A kernel booted anew, its doubles taken over by a first request that opens nothing.
+     */
+    private function aNewProcess(): void
+    {
+        $this->browser->getKernel()->shutdown();
+        $this->browser->request('GET', '/jwks');
     }
 
     private function aWorkerThatOpenedNothing(): void

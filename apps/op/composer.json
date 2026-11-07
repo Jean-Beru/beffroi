@@ -113,6 +113,9 @@
         "symfony/symfony": "*"
     },
     "extra": {
+        "runtime": {
+            "class": "App\\Runtime\\Runtime"
+        },
         "symfony": {
             "allow-contrib": "true",
             "require": "8.2.*"

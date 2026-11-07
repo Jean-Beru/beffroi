@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Doctrine\PersonalData;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
 use Beffroi\Core\Bridge\KeyManagement\KeyManagementFailure;
 use Beffroi\Core\Bridge\KeyManagement\KmsKeyId;
 use Beffroi\Core\Exception\KmsUnavailableException;
+use function is_string;
 use Psr\Container\ContainerInterface;
 use SensitiveParameter;
 use function sprintf;
@@ -19,8 +21,8 @@ use Symfony\Component\KeyManagement\RewrappableDataKeyStoreInterface;
 use Symfony\Component\KeyManagement\StoredDataKey;
 
 /**
- * One store per tenant for what wraps, and one reader for every read, which takes the client and the master key from
- * the row it reads.
+ * One store per tenant, which opens the keys of its tenant whether a value is sealed or read, so that a key is asked of
+ * the KMS once; one reader for the rows of every tenant, and for a reference that names no row.
  */
 final class TenantDataKeyStores implements RewrappableDataKeyStoreInterface
 {
@@ -32,6 +34,11 @@ final class TenantDataKeyStores implements RewrappableDataKeyStoreInterface
      * @var array<string, DataKeyStore> by tenant slug
      */
     private array $stores = [];
+
+    /**
+     * @var array<string, string> the slug of the tenant of each reference, by reference
+     */
+    private array $slugs = [];
 
     private ?DataKeyStore $reader = null;
 
@@ -83,7 +90,7 @@ final class TenantDataKeyStores implements RewrappableDataKeyStoreInterface
     public function get(string $reference): DataKeyHandle
     {
         try {
-            return $this->reader()->get($reference);
+            return $this->storeOf($reference)->get($reference);
         } catch (KeyManagementRuntimeException $exception) {
             throw KeyManagementFailure::outageOf($exception, 'The data key of a sealed value could not be opened.') ?? $exception;
         }
@@ -106,9 +113,29 @@ final class TenantDataKeyStores implements RewrappableDataKeyStoreInterface
 
     private function of(string $scope): DataKeyStore
     {
-        $slug = TenantScopedEncrypter::slugOf($scope);
+        return $this->ofTenant(TenantScopedEncrypter::slugOf($scope));
+    }
 
+    private function ofTenant(string $slug): DataKeyStore
+    {
         return $this->stores[$slug] ??= $this->storeUnder(new KmsKeyId($this->masterKeyId)->forSlug($slug));
+    }
+
+    /**
+     * The store of the tenant its row names, read once per reference.
+     */
+    private function storeOf(string $reference): DataKeyStore
+    {
+        $slug = $this->slugs[$reference] ?? null;
+        if ($slug === null) {
+            $scope = $this->connection->fetchOne(sprintf('SELECT scope FROM %s WHERE id = ?', $this->table), [$reference], [ParameterType::BINARY]);
+            if (! is_string($scope)) {
+                return $this->reader();
+            }
+            $slug = $this->slugs[$reference] = TenantScopedEncrypter::slugOf($scope);
+        }
+
+        return $this->ofTenant($slug);
     }
 
     /**

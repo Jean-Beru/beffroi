@@ -71,7 +71,7 @@ final class BlindIndexTest extends DatabaseTestCase
 
         // Then
         static::assertSame(1, self::kms()->minted);
-        static::assertSame(1, self::kms()->unwrapped);
+        static::assertSame(0, self::kms()->unwrapped);
     }
 
     /**
@@ -90,7 +90,7 @@ final class BlindIndexTest extends DatabaseTestCase
         // Then
         static::assertCount(1, self::scopes());
         static::assertSame(1, self::kms()->minted);
-        static::assertSame(1, self::kms()->unwrapped);
+        static::assertSame(0, self::kms()->unwrapped);
     }
 
     #[Test]

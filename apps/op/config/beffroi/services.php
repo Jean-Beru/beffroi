@@ -28,6 +28,7 @@ use App\Doctrine\Listener\ClientResolver;
 use App\Doctrine\DoctrineAtomicWrites;
 use App\Doctrine\EntityManagers;
 use App\Doctrine\PageOfRows;
+use App\Doctrine\PersonalData\DataKeysOfTheTenant;
 use App\Doctrine\Repository\DoctrineAccessTokenRepository;
 use App\Doctrine\Repository\BoundedDelete;
 use App\Doctrine\Repository\DoctrineAuthenticationSessionRepository;
@@ -155,6 +156,7 @@ use App\Http\TwoFactorPage;
 use App\Key\FilePairwiseSalt;
 use App\Key\DormantKeyAlgorithms;
 use App\Key\FileTenantKeyRepository;
+use App\Key\KeysOpenedAtStart;
 use App\Key\KmsUnavailableListener;
 use App\Load\LoadBudget;
 use App\Load\LoadRefusal;
@@ -164,6 +166,7 @@ use App\Load\RateLimitedClientLoad;
 use App\MessageHandler\TellUserOfPendingApprovalHandler;
 use App\MessageHandler\QueueLogoutTokenHandler;
 use App\Messenger\EventBusDispatcher;
+use App\Messenger\KeysOpenedAtWorkerStart;
 use App\Messenger\LaneDsn;
 use App\Messenger\LogoutTokenGivenUpListener;
 use App\Messenger\MessengerContract;
@@ -271,11 +274,17 @@ use Beffroi\Core\Application\Group\UpstreamMemberships;
 use Beffroi\Core\Application\Identity\IdentityLinker;
 use Beffroi\Core\Application\Identity\JustInTimeProvisioning;
 use Beffroi\Core\Application\Identity\UserProvisioner;
+use Beffroi\Core\Application\Key\ActiveKeptSigningKeys;
+use Beffroi\Core\Application\Key\ActiveSigningKeys;
+use Beffroi\Core\Application\Key\ApplicationServerKeysInService;
+use Beffroi\Core\Application\Key\KeptDecryptionKeysInService;
 use Beffroi\Core\Application\Key\KeyRetirement;
 use Beffroi\Core\Application\Key\KeyStaging;
 use Beffroi\Core\Application\Key\KeySuccession;
 use Beffroi\Core\Application\Key\KeyTakeOver;
+use Beffroi\Core\Application\Key\MessageKeysInService;
 use Beffroi\Core\Application\Key\NamedKey;
+use Beffroi\Core\Application\Key\PublishedDecryptionKeys;
 use Beffroi\Core\Application\Key\RetirementWindow;
 use Beffroi\Core\Application\Passkey\PasskeyAuthentication;
 use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
@@ -985,6 +994,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(LogoutTokenSender::class);
     $services->set(ClientNotificationSender::class);
     $services->set(LogoutTokenGivenUpListener::class);
+    $services->set(KeysOpenedAtWorkerStart::class)->args([service(KeysOpenedAtStart::BY_THE_CONSUMER)]);
     $services->set(NotificationRetryPolicy::class);
     $services->set(LaneDsn::class);
     $services->set(MessengerContract::SERIALIZER, SealedBodySerializer::class)->args([
@@ -1130,6 +1140,33 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(KeptSigningKeyProviderInterface::class, SealedKeyProvider::class);
     $services->alias(KeptDecryptionKeyProviderInterface::class, SealedKeyProvider::class);
     $services->alias(MessageKeyProviderInterface::class, SealedKeyProvider::class);
+    $services->set(ActiveSigningKeys::class);
+    $services->set(PublishedDecryptionKeys::class);
+    $services->set(ActiveKeptSigningKeys::class)->arg('$algorithms', service('beffroi.saml.signing_algorithms'));
+    $services->set(KeptDecryptionKeysInService::class);
+    $services->set(MessageKeysInService::class);
+    $services->set(ApplicationServerKeysInService::class);
+    // What each process serves with, and nothing more: a thread never opens a message body, the consumer never a JWE.
+    $services
+        ->set(KeysOpenedAtStart::BY_A_THREAD, KeysOpenedAtStart::class)
+        ->public()
+        ->args([
+            '$keys' => iterator([
+                service(ActiveSigningKeys::class),
+                service(PublishedDecryptionKeys::class),
+                service(ActiveKeptSigningKeys::class),
+                service(KeptDecryptionKeysInService::class),
+                service(DataKeysOfTheTenant::class),
+            ]),
+        ]);
+    $services->set(KeysOpenedAtStart::BY_THE_CONSUMER, KeysOpenedAtStart::class)->args([
+        '$keys' => iterator([
+            service(MessageKeysInService::class),
+            service(ActiveSigningKeys::class),
+            service(ApplicationServerKeysInService::class),
+            service(DataKeysOfTheTenant::class),
+        ]),
+    ]);
     // The first one tagged is the default; RS256 stays because OIDC Core §15.1 makes it mandatory.
     $services->set(RsaKeyBits::class);
     $services
@@ -1175,13 +1212,12 @@ return static function (ContainerConfigurator $container): void {
         ->set(SamlSigning::class)
         ->args([service(RsaKeyBits::class)])
         ->tag(DormantKeyAlgorithms::TAG);
-    $services->set(JoseSamlSigningAlgorithms::class)->args([
-        inline_service(SwitchedServices::class)->args([
-            tagged_iterator(JoseSamlSigningAlgorithms::TAG),
-            service(SamlSection::ROLE),
-            iterator([service(SamlSigning::class)]),
-        ]),
+    $services->set('beffroi.saml.signing_algorithms', SwitchedServices::class)->args([
+        tagged_iterator(JoseSamlSigningAlgorithms::TAG),
+        service(SamlSection::ROLE),
+        iterator([service(SamlSigning::class)]),
     ]);
+    $services->set(JoseSamlSigningAlgorithms::class)->args([service('beffroi.saml.signing_algorithms')]);
     $services->set(JoseSamlEncryptionAlgorithms::class)->arg('$tagged', tagged_iterator(JoseSamlEncryptionAlgorithms::TAG));
     $services->set(JwtLibraryMessageBodySealer::class);
     $services->alias(MessageBodySealerInterface::class, JwtLibraryMessageBodySealer::class);

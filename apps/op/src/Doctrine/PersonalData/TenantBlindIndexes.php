@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Doctrine\PersonalData;
 
 use Doctrine\DBAL\Connection;
+use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Port\AmbientTenantInterface;
 use function is_resource;
@@ -42,6 +43,17 @@ final class TenantBlindIndexes
         $slug = $this->slug($column);
 
         return $this->indexes[$slug][$column->tag] ??= $this->build($slug, $column);
+    }
+
+    /**
+     * Opens the key the tags of the tenant are derived under, and mints none: a tenant that indexed nothing has none.
+     */
+    public function open(Tenant $tenant): void
+    {
+        $reference = $this->reference(TenantScopedEncrypter::scope($tenant->slug, BlindIndexedColumns::SCOPE));
+        if ($reference !== null) {
+            $this->store->get($reference);
+        }
     }
 
     private function build(string $slug, BlindIndexedColumn $column): BlindIndexInterface
