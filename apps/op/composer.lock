@@ -197,7 +197,7 @@
         },
         {
             "name": "beffroi/core",
-            "version": "0.0.x-dev",
+            "version": "dev-main",
             "dist": {
                 "type": "path",
                 "url": "../../src/core",
@@ -248,7 +248,7 @@
         },
         {
             "name": "beffroi/oidc",
-            "version": "0.0.x-dev",
+            "version": "dev-main",
             "dist": {
                 "type": "path",
                 "url": "../../src/oidc",
@@ -291,7 +291,7 @@
         },
         {
             "name": "beffroi/saml",
-            "version": "0.0.x-dev",
+            "version": "dev-main",
             "dist": {
                 "type": "path",
                 "url": "../../src/saml",
@@ -341,7 +341,7 @@
         },
         {
             "name": "beffroi/saml2-bindings",
-            "version": "0.0.x-dev",
+            "version": "dev-main",
             "dist": {
                 "type": "path",
                 "url": "../../src/saml2-bindings",
@@ -391,7 +391,7 @@
         },
         {
             "name": "beffroi/saml2-model",
-            "version": "0.0.x-dev",
+            "version": "dev-main",
             "dist": {
                 "type": "path",
                 "url": "../../src/saml2-model",
@@ -440,7 +440,7 @@
         },
         {
             "name": "beffroi/xml-security",
-            "version": "0.0.x-dev",
+            "version": "dev-main",
             "dist": {
                 "type": "path",
                 "url": "../../src/xml-security",
@@ -1628,16 +1628,16 @@
         },
         {
             "name": "doctrine/orm",
-            "version": "3.7.5",
+            "version": "3.7.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/doctrine/orm.git",
-                "reference": "00c2fd70da291cca1ec75f4dae5344fe3df588fa"
+                "reference": "4487f850401c0e1f27891cce5897fa90b3055c2a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/doctrine/orm/zipball/00c2fd70da291cca1ec75f4dae5344fe3df588fa",
-                "reference": "00c2fd70da291cca1ec75f4dae5344fe3df588fa",
+                "url": "https://api.github.com/repos/doctrine/orm/zipball/4487f850401c0e1f27891cce5897fa90b3055c2a",
+                "reference": "4487f850401c0e1f27891cce5897fa90b3055c2a",
                 "shasum": ""
             },
             "require": {
@@ -1712,9 +1712,9 @@
             ],
             "support": {
                 "issues": "https://github.com/doctrine/orm/issues",
-                "source": "https://github.com/doctrine/orm/tree/3.7.5"
+                "source": "https://github.com/doctrine/orm/tree/3.7.6"
             },
-            "time": "2026-10-09T05:58:13+00:00"
+            "time": "2026-10-30T12:19:09+00:00"
         },
         {
             "name": "doctrine/persistence",
@@ -3730,16 +3730,16 @@
         },
         {
             "name": "symfony/console",
-            "version": "8.2.x-dev",
+            "version": "v8.2.0-BETA1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/console.git",
-                "reference": "5f4a8b57d4d7d7febb8ce20f3633d2b5d68061c7"
+                "reference": "79f70ba3bc27b6aa73ed438e26603f3c552de041"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/console/zipball/5f4a8b57d4d7d7febb8ce20f3633d2b5d68061c7",
-                "reference": "5f4a8b57d4d7d7febb8ce20f3633d2b5d68061c7",
+                "url": "https://api.github.com/repos/symfony/console/zipball/79f70ba3bc27b6aa73ed438e26603f3c552de041",
+                "reference": "79f70ba3bc27b6aa73ed438e26603f3c552de041",
                 "shasum": ""
             },
             "require": {
@@ -3774,7 +3774,6 @@
                 "symfony/validator": "^7.4|^8.0",
                 "symfony/var-dumper": "^7.4|^8.0"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -3807,7 +3806,7 @@
                 "terminal"
             ],
             "support": {
-                "source": "https://github.com/symfony/console/tree/8.2"
+                "source": "https://github.com/symfony/console/tree/v8.2.0-BETA1"
             },
             "funding": [
                 {
@@ -3827,7 +3826,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-11-01T22:29:06+00:00"
+            "time": "2026-11-04T07:07:40+00:00"
         },
         {
             "name": "symfony/dependency-injection",
@@ -3915,16 +3914,16 @@
         },
         {
             "name": "symfony/deprecation-contracts",
-            "version": "v3.7.1",
+            "version": "v3.8.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/deprecation-contracts.git",
-                "reference": "f3202fa1b5097b0af062dc978b32ecf63404e31d"
+                "reference": "feb1edf4e546af3b85c5caebe8359a20db230ca3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/deprecation-contracts/zipball/f3202fa1b5097b0af062dc978b32ecf63404e31d",
-                "reference": "f3202fa1b5097b0af062dc978b32ecf63404e31d",
+                "url": "https://api.github.com/repos/symfony/deprecation-contracts/zipball/feb1edf4e546af3b85c5caebe8359a20db230ca3",
+                "reference": "feb1edf4e546af3b85c5caebe8359a20db230ca3",
                 "shasum": ""
             },
             "require": {
@@ -3937,7 +3936,7 @@
                     "name": "symfony/contracts"
                 },
                 "branch-alias": {
-                    "dev-main": "3.7-dev"
+                    "dev-main": "3.8-dev"
                 }
             },
             "autoload": {
@@ -3962,7 +3961,7 @@
             "description": "A generic function and convention to trigger deprecation notices",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/deprecation-contracts/tree/v3.7.1"
+                "source": "https://github.com/symfony/deprecation-contracts/tree/v3.8.1"
             },
             "funding": [
                 {
@@ -3982,7 +3981,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-06-05T06:23:12+00:00"
+            "time": "2026-09-16T14:15:10+00:00"
         },
         {
             "name": "symfony/doctrine-bridge",
@@ -7967,7 +7966,7 @@
         },
         {
             "name": "symfony/service-contracts",
-            "version": "dev-main",
+            "version": "v3.8.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/service-contracts.git",
@@ -7987,7 +7986,6 @@
             "conflict": {
                 "ext-psr": "<1.1|>=2"
             },
-            "default-branch": true,
             "type": "library",
             "extra": {
                 "thanks": {
@@ -8031,7 +8029,7 @@
                 "standards"
             ],
             "support": {
-                "source": "https://github.com/symfony/service-contracts/tree/main"
+                "source": "https://github.com/symfony/service-contracts/tree/v3.8.1"
             },
             "funding": [
                 {
