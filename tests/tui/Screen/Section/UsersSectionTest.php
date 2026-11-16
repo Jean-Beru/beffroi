@@ -245,6 +245,30 @@ final class UsersSectionTest extends TestCase
         ]);
     }
 
+    /**
+     * A question left by a key the screen answers before the table, Tab here, is forgotten as well.
+     */
+    #[Test]
+    public function aQuestionTheFocusLeftIsForgotten(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            '/users/0193-alice/sessions' => self::sessionsOfAlice(),
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press(['s', 'x']);
+
+        // When
+        $this->screen->press(["\t", "\t", "\t", 'y']);
+
+        // Then
+        static::assertSame([0, false], [
+            $this->screen->requestsTo('/users/0193-alice/sessions/session-1', 'DELETE'),
+            str_contains($this->screen->screen(), 'End the session of alice'),
+        ]);
+    }
+
     #[Test]
     public function aCredentialIsRevokedOnceTheAdministratorConfirmsIt(): void
     {
