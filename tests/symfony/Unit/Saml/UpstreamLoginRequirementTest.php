@@ -22,6 +22,7 @@ use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Authorization\Prompt;
 use Beffroi\Oidc\Domain\Interaction\Interaction;
 use Beffroi\Oidc\Domain\Interaction\LoginRequirement;
+use Beffroi\Oidc\Tests\Fixture\Administrations;
 use Beffroi\Oidc\Tests\Fixture\Clients;
 use Beffroi\Oidc\Tests\Fixture\FakeJwsVerifier;
 use Beffroi\Oidc\Tests\Fixture\Logins;
@@ -61,7 +62,13 @@ final class UpstreamLoginRequirementTest extends TestCase
         $users = new InMemoryUserRepository();
         $users->save(Fixtures::user($this->tenant, 'bob', 'bob-subject'));
         $this->requirement = new UpstreamLoginRequirement(
-            new AuthenticationRequirement(Logins::passwordAndPasskey(), $this->credentials, new IdTokenHintVerifier($hints), Subjects::ofAProvider($users)),
+            new AuthenticationRequirement(
+                Logins::passwordAndPasskey(),
+                $this->credentials,
+                new IdTokenHintVerifier($hints),
+                Subjects::ofAProvider($users),
+                Administrations::none(),
+            ),
         );
     }
 

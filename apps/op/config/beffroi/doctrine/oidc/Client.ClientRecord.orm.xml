@@ -80,5 +80,11 @@
         <!-- When somebody last used this client (decision 0009): null for one that never was, which is not kept for as long. Indexed with the tenant, because the step that drops what nobody uses asks exactly that. -->
         <field name="lastUsedAt" type="datetime_immutable" column="last_used_at" nullable="true"/>
         <field name="secretExpiresAt" type="datetime_immutable" column="client_secret_expires_at" nullable="true"/>
+        <!-- Whether a token the tenant issued for its administration registered this client, which is then given the administration API of the tenant when the row is read (decision 0038). Its default, in the database, is what a client registered before the column existed was: a client of no administration. -->
+        <field name="administration" type="boolean" column="administration">
+            <options>
+                <option name="default">false</option>
+            </options>
+        </field>
     </entity>
 </doctrine-mapping>

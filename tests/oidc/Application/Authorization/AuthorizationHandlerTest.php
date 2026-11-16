@@ -4,11 +4,18 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Authorization;
 
+use Beffroi\Core\Bridge\InMemory\InMemoryGroupMembershipRepository;
 use Beffroi\Core\Domain\Encoding\Base64Url;
 use function str_repeat;
+use Beffroi\Core\Domain\Group\Group;
+use Beffroi\Core\Domain\Group\GroupMembership;
+use Beffroi\Core\Domain\Group\GroupSource;
+use Beffroi\Oidc\Application\Administration\AdministrationAudience;
 use Beffroi\Oidc\Application\Secret\SecretDrawer;
 use Beffroi\Core\Bridge\Uid\FixedUuidGenerator;
 use Beffroi\Core\Bridge\Random\FixedRandomness;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
+use Beffroi\Oidc\Tests\Fixture\Administrations;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Port\UuidGeneratorInterface;
@@ -173,6 +180,7 @@ final class AuthorizationHandlerTest extends TestCase
         ?DateInterval $codeLifetime = null,
         ?SecretDrawer $secrets = null,
         ?UuidGeneratorInterface $uuids = null,
+        ?AdministrationAudience $administration = null,
     ): AuthorizationHandler {
         $secrets ??= Secrets::drawer();
         $uuids ??= new SymfonyUuidGenerator();
@@ -198,8 +206,10 @@ final class AuthorizationHandlerTest extends TestCase
                 $this->credentials,
                 $hints ?? new IdTokenHintVerifier(new FakeJwsVerifier()),
                 $this->subjects,
+                $administration ?? Administrations::none(),
             ),
             $codes,
+            $administration ?? Administrations::none(),
             $this->clock,
             ...$interactionLifetime === null ? [] : [$interactionLifetime],
         );
@@ -1798,6 +1808,57 @@ final class AuthorizationHandlerTest extends TestCase
     }
 
     /**
+     * Decision 0038
+     */
+    #[Test]
+    public function aRequestForTheAdministrationApiStepsUpASessionThatProvedAPasswordAlone(): void
+    {
+        // Given
+        $this->aliceHoldsAPasskey();
+        $handler = $this->handlerWith(administration: $this->administeredByAlice());
+
+        // When
+        $decision = $handler->begin($this->requestForTheAdministrationApi(), $this->session(), $this->context);
+
+        // Then
+        $this->loginRequired($decision, LoginRequirement::StrongerFactorRequired);
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function anAdministratorSignedInWithAPasskeyIsGrantedTheAdministrationApi(): void
+    {
+        // Given
+        $handler = $this->handlerWith(administration: $this->administeredByAlice());
+
+        // When
+        $decision = $handler->begin($this->requestForTheAdministrationApi(), $this->passkeySession(), $this->context);
+
+        // Then
+        $code = $this->granted($decision)->code;
+        static::assertSame([[Administrations::RESOURCE], 'phr'], [$code->resources?->values(), $code->authentication->contextClass]);
+    }
+
+    /**
+     * RFC 6749 §4.1.2.1, decision 0038
+     */
+    #[Test]
+    public function aPersonWhoDoesNotAdministerTheTenantIsDeniedTheAdministrationApi(): void
+    {
+        // Given
+        $handler = $this->handlerWith(administration: Administrations::of($this->tenant, new InMemoryGroupMembershipRepository()));
+
+        // Then
+        $this->expectException(AccessDeniedException::class);
+        $this->expectExceptionMessageIs('access_denied: The end user does not administer the tenant whose administration API the request names.');
+
+        // When
+        $handler->begin($this->requestForTheAdministrationApi(), $this->passkeySession(), $this->context);
+    }
+
+    /**
      * Decision 0010
      */
     #[Test]
@@ -2085,6 +2146,33 @@ final class AuthorizationHandlerTest extends TestCase
     private function session(?DateTimeImmutable $authenticatedAt = null): AuthenticationSession
     {
         return Fixtures::session($this->alice, $authenticatedAt);
+    }
+
+    private function administeredByAlice(): AdministrationAudience
+    {
+        $memberships = new InMemoryGroupMembershipRepository();
+        $memberships->save(new GroupMembership(
+            Uuid::v7(),
+            new Group(Uuid::v7(), $this->tenant, Administrations::GROUP, GroupSource::Local, Fixtures::now()),
+            $this->alice,
+            GroupSource::Local,
+            Fixtures::now(),
+        ));
+
+        return Administrations::of($this->tenant, $memberships);
+    }
+
+    private function requestForTheAdministrationApi(): AuthorizationRequest
+    {
+        return Requests::authorization($this->firstParty, resources: ResourceIndicators::of([Administrations::RESOURCE]));
+    }
+
+    private function passkeySession(): AuthenticationSession
+    {
+        return Fixtures::session($this->alice, proofs: AuthenticationProofs::ofAll([
+            new AuthenticationMethod('hwk'),
+            new AuthenticationMethod('user'),
+        ], Fixtures::now()));
     }
 
     private function aliceHoldsAPasskey(bool $synced = false): PasskeyCredential

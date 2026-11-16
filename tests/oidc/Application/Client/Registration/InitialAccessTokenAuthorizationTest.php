@@ -66,6 +66,38 @@ final class InitialAccessTokenAuthorizationTest extends TestCase
     }
 
     /**
+     * Decision 0038
+     */
+    #[Test]
+    public function aTokenIssuedForNoAdministrationAuthorisesNoClientOfIt(): void
+    {
+        // Given
+        $this->issue();
+
+        // When
+        $authorized = $this->authorize(self::presenting(self::VALUE));
+
+        // Then
+        static::assertFalse($authorized->administration);
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function aTokenIssuedForTheAdministrationAuthorisesAClientOfTheAdministration(): void
+    {
+        // Given
+        $this->issue(administration: true);
+
+        // When
+        $authorized = $this->authorize(self::presenting(self::VALUE));
+
+        // Then
+        static::assertTrue($authorized->administration);
+    }
+
+    /**
      * Decision 0043
      */
     #[Test]
@@ -169,7 +201,7 @@ final class InitialAccessTokenAuthorizationTest extends TestCase
         $this->authorize(self::presenting(self::VALUE));
     }
 
-    private function issue(?Tenant $tenant = null, ?GrantedMembers $granted = null): InitialAccessToken
+    private function issue(?Tenant $tenant = null, ?GrantedMembers $granted = null, bool $administration = false): InitialAccessToken
     {
         $token = new InitialAccessToken(
             Uuid::v7(),
@@ -180,6 +212,7 @@ final class InitialAccessTokenAuthorizationTest extends TestCase
             Fixtures::now(),
             Fixtures::now()->modify('+1 day'),
             $granted,
+            $administration,
         );
         $this->tokens->save($token);
 

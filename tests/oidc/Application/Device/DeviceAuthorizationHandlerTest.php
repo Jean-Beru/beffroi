@@ -7,6 +7,9 @@ namespace Beffroi\Oidc\Tests\Application\Device;
 use function array_filter;
 use function array_merge;
 use function base64_encode;
+use Beffroi\Core\Bridge\InMemory\InMemoryGroupMembershipRepository;
+use Beffroi\Oidc\Application\Administration\AdministrationAudience;
+use Beffroi\Oidc\Tests\Fixture\Administrations;
 use DateInterval;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Domain\Session\RequestContext;
@@ -67,6 +70,8 @@ final class DeviceAuthorizationHandlerTest extends TestCase
 
     private DeviceAuthorizationHandler $handler;
 
+    private AdministrationAudience $administration;
+
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
@@ -83,6 +88,7 @@ final class DeviceAuthorizationHandlerTest extends TestCase
         $this->clients->save(Clients::confidential($this->tenant, $this->hasher->hash(Clients::SECRET)));
         $this->records = new InMemoryDeviceAuthorizationRecordRepository();
         $this->clock = new MockClock('2026-09-26T09:00:00+00:00');
+        $this->administration = Administrations::none();
         $this->handler = $this->handler();
     }
 
@@ -160,6 +166,26 @@ final class DeviceAuthorizationHandlerTest extends TestCase
         $record = $this->records->findByDeviceCodeHash(DrawnSecret::digestOf($response->deviceCode)) ?? static::fail('No record.');
         static::assertSame($this->context->ipAddress, $record->requestedFrom->ipAddress);
         static::assertSame($this->context->userAgent, $record->requestedFrom->userAgent);
+    }
+
+    /**
+     * RFC 8628 §5.4, decision 0038
+     */
+    #[Test]
+    public function theAdministrationApiOfTheTenantIsRefused(): void
+    {
+        // Given
+        $this->administration = Administrations::of($this->tenant, new InMemoryGroupMembershipRepository(), Clients::CALENDAR);
+        $this->handler = $this->handler();
+
+        // Then
+        $this->expectException(InvalidTargetException::class);
+        $this->expectExceptionMessageIs('invalid_target: The requested resource is reserved to the administrators of the tenant (RFC 8707 section 2).');
+
+        // When
+        $this->askAs('television-with-resources', [
+            'resource' => Clients::CALENDAR,
+        ]);
     }
 
     /**
@@ -351,6 +377,7 @@ final class DeviceAuthorizationHandlerTest extends TestCase
             Secrets::drawer(),
             $userCodes ?? UserCodes::drawer([self::FIRST_CODE, self::SECOND_CODE]),
             new SymfonyUuidGenerator(),
+            $this->administration,
             $this->clock,
             $lifetime ?? new DateInterval('PT600S'),
             $interval ?? 5,

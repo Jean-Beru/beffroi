@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Client\Registration;
 
+use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
 use DateInterval;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\Algorithms;
@@ -382,6 +383,55 @@ final class ClientRegistrationHandlerTest extends TestCase
         static::assertArrayNotHasKey('resources', $response->parameters());
     }
 
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function aClientATokenForTheAdministrationRegistersIsOneOfTheAdministration(): void
+    {
+        // Given
+        $this->issue(administration: true);
+
+        // When
+        $response = $this->handle(self::request(self::keyBearing()));
+
+        // Then
+        static::assertTrue($response->record->administration);
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function aClientOfTheAdministrationThatSharesASecretIsRefused(): void
+    {
+        // Given
+        $this->issue(administration: true);
+
+        // Then
+        $this->expectException(InvalidClientMetadataException::class);
+        $this->expectExceptionMessageIsOrContains('is registered for the administration of the tenant, whose clients authenticate with a key');
+
+        // When
+        $this->handle(self::request([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'token_endpoint_auth_method' => 'client_secret_basic',
+        ]));
+    }
+
+    #[Test]
+    public function aClientAnyOtherTokenRegistersIsNotOneOfTheAdministration(): void
+    {
+        // Given
+        $this->issue();
+
+        // When
+        $response = $this->handle(self::request(self::keyBearing()));
+
+        // Then
+        static::assertFalse($response->record->administration);
+    }
+
     private static function invoices(): GrantedMembers
     {
         return new GrantedMembers([
@@ -389,7 +439,19 @@ final class ClientRegistrationHandlerTest extends TestCase
         ]);
     }
 
-    private function issue(?GrantedMembers $granted = null): InitialAccessToken
+    /**
+     * @return array<string, mixed>
+     */
+    private static function keyBearing(): array
+    {
+        return [
+            'redirect_uris' => ['https://rp.example/cb'],
+            'token_endpoint_auth_method' => 'private_key_jwt',
+            'jwks' => ['keys' => [ClientAssertions::privateKey()->toPublic()->all()]],
+        ];
+    }
+
+    private function issue(?GrantedMembers $granted = null, bool $administration = false): InitialAccessToken
     {
         $token = new InitialAccessToken(
             Uuid::v7(),
@@ -400,6 +462,7 @@ final class ClientRegistrationHandlerTest extends TestCase
             Fixtures::now(),
             Fixtures::now()->modify('+1 day'),
             $granted,
+            $administration,
         );
         $this->tokens->save($token);
 

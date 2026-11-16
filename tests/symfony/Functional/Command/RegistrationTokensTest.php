@@ -7,10 +7,16 @@ namespace App\Tests\Symfony\Functional\Command;
 use App\Command\ClientTokenIssueCommand;
 use App\Command\ClientTokenListCommand;
 use App\Command\ClientTokenRevokeCommand;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicator;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Port\ClientRepositoryInterface;
 use Beffroi\Oidc\Port\IssuedInitialAccessTokensInterface;
+use function array_map;
 use function json_encode;
+use function is_array;
+use function json_decode;
 use const JSON_THROW_ON_ERROR;
+use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -75,6 +81,57 @@ final class RegistrationTokensTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Response::HTTP_CREATED, $this->browser->getResponse()->getStatusCode());
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function aTokenForTheAdministrationRegistersAClientOfTheAdministrationApi(): void
+    {
+        // Given
+        $value = self::valueOf($this->issue(administration: true));
+
+        // When
+        $this->register($value, self::keyBearing());
+
+        // Then
+        $clientId = $this->answer()['client_id'] ?? null;
+        static::assertIsString($clientId, (string) $this->browser->getResponse()->getContent());
+        $client = self::service('test.beffroi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), $clientId);
+        static::assertSame(['https://admin.op.test'], array_map(
+            static fn (ResourceIndicator $resource): string => $resource->value,
+            $client?->registration->resources ?? [],
+        ));
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function aTokenForTheAdministrationRegistersNoClientThatSharesASecret(): void
+    {
+        // Given
+        $value = self::valueOf($this->issue(administration: true));
+
+        // When
+        $this->register($value);
+
+        // Then
+        static::assertSame(
+            [Response::HTTP_BAD_REQUEST, 'invalid_client_metadata'],
+            [$this->browser->getResponse()->getStatusCode(), $this->answer()['error'] ?? null],
+        );
+    }
+
+    #[Test]
+    public function aTokenForTheAdministrationIsSaidToBeOne(): void
+    {
+        // When
+        $tester = $this->issue(administration: true);
+
+        // Then
+        static::assertSame('yes', self::displayed($tester, 'Administration'));
     }
 
     #[Test]
@@ -161,16 +218,20 @@ final class RegistrationTokensTest extends ConsoleTestCase
         static::assertStringContainsString('worth something for a day at least', self::flattened($tester));
     }
 
-    private function issue(int $registrations = 1, int $days = 30): CommandTester
+    private function issue(int $registrations = 1, int $days = 30, bool $administration = false): CommandTester
     {
         return self::console(ClientTokenIssueCommand::NAME, [
             'name' => self::NAME,
             '--registrations' => (string) $registrations,
             '--days' => (string) $days,
+            ...($administration ? ['--administration' => true] : []),
         ]);
     }
 
-    private function register(string $token): void
+    /**
+     * @param array<string, mixed>|null $members what the client registers, a confidential client sharing a secret when null
+     */
+    private function register(string $token, ?array $members = null): void
     {
         $this->browser->request(
             'POST',
@@ -179,10 +240,35 @@ final class RegistrationTokensTest extends ConsoleTestCase
                 'CONTENT_TYPE' => 'application/json',
                 'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
             ],
-            content: json_encode([
-                'redirect_uris' => [self::REDIRECT_URI],
-                'token_endpoint_auth_method' => 'client_secret_basic',
-            ], JSON_THROW_ON_ERROR),
+            content: json_encode(
+                $members ?? [
+                    'redirect_uris' => [self::REDIRECT_URI],
+                    'token_endpoint_auth_method' => 'client_secret_basic',
+                ],
+                JSON_THROW_ON_ERROR,
+            ),
         );
+    }
+
+    /**
+     * @return array<array-key, mixed>
+     */
+    private function answer(): array
+    {
+        $document = json_decode((string) $this->browser->getResponse()->getContent(), true, 16, JSON_THROW_ON_ERROR);
+
+        return is_array($document) ? $document : [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function keyBearing(): array
+    {
+        return [
+            'redirect_uris' => [self::REDIRECT_URI],
+            'token_endpoint_auth_method' => 'private_key_jwt',
+            'jwks' => ['keys' => [ClientAssertions::privateKey()->toPublic()->all()]],
+        ];
     }
 }

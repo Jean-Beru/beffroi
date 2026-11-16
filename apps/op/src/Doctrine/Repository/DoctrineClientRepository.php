@@ -21,6 +21,7 @@ use Beffroi\Oidc\Port\ClientStoreInterface;
 use Beffroi\Oidc\Exception\UnreadableClientMetadataException;
 use Beffroi\Oidc\Port\UnusedClientsInterface;
 use function is_string;
+use Beffroi\Oidc\Port\AdministrationResourceInterface;
 use Psr\Log\LoggerInterface;
 use function sprintf;
 
@@ -39,6 +40,7 @@ final readonly class DoctrineClientRepository extends DoctrineRepository impleme
         EntityManagers $managers,
         private ClientMetadataReader $reader,
         private LoggerInterface $logger,
+        private AdministrationResourceInterface $administration,
     ) {
         parent::__construct($managers, ClientRecord::class);
     }
@@ -141,7 +143,11 @@ final readonly class DoctrineClientRepository extends DoctrineRepository impleme
     private function registrationOf(ClientRecord $record): ?ClientRegistration
     {
         try {
-            return $this->reader->read($record->clientId, $record->asRegistered(), $record->secret !== null);
+            return $this->reader->read(
+                $record->clientId,
+                $record->asRegistered($this->administration->administrationResourceOf($record->tenant)),
+                $record->secret !== null,
+            );
         } catch (UnreadableClientMetadataException $refusal) {
             $this->logger->error(sprintf(
                 'The client "%s" registered metadata this provider refuses now, and is served as no client: %s',

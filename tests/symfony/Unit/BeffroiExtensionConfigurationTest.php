@@ -70,6 +70,9 @@ final class BeffroiExtensionConfigurationTest extends TestCase
                 'self_served_claims' => [],
                 'authentication_classes' => [],
                 'scopes' => [],
+                // nobody administers a tenant whose deployment did not say who does, and nothing is reserved (decision 0038)
+                'administrators' => [],
+                'administration_resource' => null,
                 'passkey_attestation' => 'none',
                 'passkey_attestation_roots' => [],
                 'passkey_attestation_own_roots' => [],
