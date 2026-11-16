@@ -1087,7 +1087,7 @@
       </trans-unit>
       <trans-unit id="acts.explanation" resname="acts.explanation">
         <source>acts.explanation</source>
-        <target>Chaque acte que ce fournisseur a écrit en votre nom : les fois où quelqu'un s'est connecté en votre nom et avec quoi il l'a prouvé, celles où quelqu'un a essayé sans y parvenir, et ce qui a changé sur votre compte. Une ligne que vous ne reconnaissez pas vaut un nouveau mot de passe.</target>
+        <target>Chaque acte que ce fournisseur a écrit en votre nom : les fois où quelqu'un s'est connecté en votre nom et avec quoi il l'a prouvé, celles où quelqu'un a essayé sans y parvenir, ce qui a changé sur votre compte, et ce qu'un administrateur de votre organisation en a consulté ou changé. Une ligne que vous ne reconnaissez pas vaut un nouveau mot de passe.</target>
       </trans-unit>
       <trans-unit id="acts.what" resname="acts.what">
         <source>acts.what</source>
@@ -1100,6 +1100,10 @@
       <trans-unit id="acts.from" resname="acts.from">
         <source>acts.from</source>
         <target>D'où</target>
+      </trans-unit>
+      <trans-unit id="acts.by_an_administrator" resname="acts.by_an_administrator">
+        <source>acts.by_an_administrator</source>
+        <target>Un administrateur de votre organisation</target>
       </trans-unit>
       <trans-unit id="acts.none" resname="acts.none">
         <source>acts.none</source>
@@ -1180,6 +1184,18 @@
       <trans-unit id="act.archive.dropped" resname="act.archive.dropped">
         <source>act.archive.dropped</source>
         <target>Dossier de vos données supprimé</target>
+      </trans-unit>
+      <trans-unit id="act.administration.person_read" resname="act.administration.person_read">
+        <source>act.administration.person_read</source>
+        <target>Votre compte a été consulté</target>
+      </trans-unit>
+      <trans-unit id="act.administration.sessions_read" resname="act.administration.sessions_read">
+        <source>act.administration.sessions_read</source>
+        <target>Vos sessions ouvertes ont été consultées</target>
+      </trans-unit>
+      <trans-unit id="act.administration.journal_read" resname="act.administration.journal_read">
+        <source>act.administration.journal_read</source>
+        <target>Ce qui s'est passé sur votre compte a été consulté</target>
       </trans-unit>
       <trans-unit id="profile.what_you_may_change" resname="profile.what_you_may_change">
         <source>profile.what_you_may_change</source>

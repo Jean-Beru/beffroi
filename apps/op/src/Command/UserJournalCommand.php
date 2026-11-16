@@ -30,7 +30,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: self::NAME,
-    description: 'List the acts of a user over a period, with the application each one was done on behalf of; for answering a request about what happened in their name.',
+    description: 'List the acts of a user over a period, with the application each one was done on behalf of and the administrator who did one to them; for answering a request about what happened in their name.',
 )]
 final readonly class UserJournalCommand
 {
@@ -123,12 +123,13 @@ final readonly class UserJournalCommand
             $io->text(sprintf('The journal holds no act of "%s" over that stretch of time.', $user->username));
         } else {
             $io->table(
-                ['Act', 'Occurred (UTC)', 'Application', 'From'],
+                ['Act', 'Occurred (UTC)', 'Application', 'From', 'Administrator'],
                 array_map(static fn (JournalEntry $entry): array => [
                     $entry->act,
                     $entry->occurredAt->format('Y-m-d H:i:s'),
                     $entry->client ?? '',
                     $entry->context->ipAddress ?? 'address not recorded',
+                    $entry->author->value ?? '',
                 ], $acts),
             );
             $io->text(sprintf('%d act(s), most recent first.', count($acts)));
@@ -155,7 +156,7 @@ final readonly class UserJournalCommand
                     'days' => $this->retention->window->days,
                     'since' => ArchivedFacts::moment($this->retention->keptSince()),
                 ],
-                'acts' => array_map(ArchivedFacts::act(...), $acts),
+                'acts' => array_map(ArchivedFacts::actAsWritten(...), $acts),
             ],
             JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES,
         ));
