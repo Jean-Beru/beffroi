@@ -158,6 +158,149 @@ final class UsersSectionTest extends TestCase
     }
 
     /**
+     * The key that changes a row is on the last line of the screen while its table has the focus.
+     */
+    #[Test]
+    public function theKeyThatRevokesACredentialIsSaid(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(['/users?username=alice' => self::alice()]);
+
+        // When
+        self::lookUpAlice($this->screen);
+
+        // Then
+        static::assertStringContainsString('x  revoke', $this->screen->screen());
+    }
+
+    /**
+     * Decision 0038: a change of a person is asked to be confirmed, and nothing is sent before it is.
+     */
+    #[Test]
+    public function aChangeIsAskedToBeConfirmedBeforeItIsMade(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            '/users/0193-alice/sessions' => self::sessionsOfAlice(),
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press('s');
+
+        // When
+        $this->screen->press('x');
+
+        // Then
+        static::assertSame([0, true], [
+            $this->screen->requestsTo('/users/0193-alice/sessions/session-1', 'DELETE'),
+            str_contains($this->screen->screen(), 'End the session of alice authenticated 2026-11-04 09:00'),
+        ]);
+    }
+
+    #[Test]
+    public function anOpenSessionIsEndedOnceTheAdministratorConfirmsIt(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            '/users/0193-alice/sessions' => self::sessionsOfAlice(),
+            'DELETE /users/0193-alice/sessions/session-1' => ['id' => 'session-1', 'ended_at' => '2026-11-04T10:00:00Z'],
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press(['s', 'x']);
+
+        // When
+        $this->screen->press('y');
+
+        // Then
+        $screen = $this->screen->screen();
+        static::assertSame([1, false, true], [
+            $this->screen->requestsTo('/users/0193-alice/sessions/session-1', 'DELETE'),
+            str_contains($screen, '203.0.113.4'),
+            str_contains($screen, 'The session of alice is ended'),
+        ]);
+    }
+
+    /**
+     * A change the administrator did not confirm at once is forgotten, and a `y` pressed later confirms nothing.
+     */
+    #[Test]
+    public function anyOtherKeyThanYForgetsTheChange(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            '/users/0193-alice/sessions' => self::sessionsOfAlice(),
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press(['s', 'x']);
+
+        // When
+        $this->screen->press(['n', 'y']);
+
+        // Then
+        static::assertSame([0, false], [
+            $this->screen->requestsTo('/users/0193-alice/sessions/session-1', 'DELETE'),
+            str_contains($this->screen->screen(), 'End the session of alice'),
+        ]);
+    }
+
+    #[Test]
+    public function aCredentialIsRevokedOnceTheAdministratorConfirmsIt(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            'DELETE /users/0193-alice/credentials/credential-1' => [
+                'id' => 'credential-1',
+                'kind' => 'passkey',
+                'name' => 'YubiKey',
+                'revoked_at' => '2026-11-04T10:00:00Z',
+            ],
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press('x');
+
+        // When
+        $this->screen->press('y');
+
+        // Then
+        $screen = $this->screen->screen();
+        static::assertSame([1, true, true], [
+            $this->screen->requestsTo('/users/0193-alice/credentials/credential-1', 'DELETE'),
+            str_contains($screen, '2026-11-04 10:00'),
+            str_contains($screen, 'The passkey credential YubiKey of alice is revoked'),
+        ]);
+    }
+
+    /**
+     * A password is replaced, never revoked: the screen says so and asks nothing.
+     */
+    #[Test]
+    public function aCredentialNoRevocationAppliesToIsNotOffered(): void
+    {
+        // Given
+        $alice = self::alice();
+        $alice['credentials'] = [[
+            'id' => 'credential-2',
+            'kind' => 'password',
+            'revocable' => false,
+            'created_at' => '2026-10-01T08:00:00Z',
+        ]];
+        $this->screen = new SignedInScreen(['/users?username=alice' => $alice]);
+        self::lookUpAlice($this->screen);
+
+        // When
+        $this->screen->press(['x', 'y']);
+
+        // Then
+        static::assertSame([0, true], [
+            $this->screen->requestsTo('/users/0193-alice/credentials/credential-2', 'DELETE'),
+            str_contains($this->screen->screen(), 'A password is replaced, never revoked'),
+        ]);
+    }
+
+    /**
      * The letters the screen answers to are the field's while the administrator types in it.
      */
     #[Test]
@@ -173,6 +316,32 @@ final class UsersSectionTest extends TestCase
 
         // Then
         static::assertSame([true, true], [$this->screen->shell->typing($this->screen->tui), str_contains($this->screen->screen(), 'Username: qr')]);
+    }
+
+    private static function lookUpAlice(SignedInScreen $screen): void
+    {
+        $screen->open('section.users');
+        $screen->press("\t");
+        $screen->type('alice');
+        $screen->press("\r");
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function sessionsOfAlice(): array
+    {
+        return [
+            'sessions' => [[
+                'id' => 'session-1',
+                'authenticated_at' => '2026-11-04T09:00:00Z',
+                'last_seen_at' => '2026-11-04T09:30:00Z',
+                'expires_at' => '2026-11-04T17:00:00Z',
+                'acr' => 'phr',
+                'methods' => ['hwk', 'user'],
+                'provenance' => ['address' => '203.0.113.4', 'user_agent' => 'Firefox', 'place' => 'Lille, France'],
+            ]],
+        ];
     }
 
     /**
@@ -196,6 +365,7 @@ final class UsersSectionTest extends TestCase
                 'authenticator' => 'YubiKey 5 NFC',
                 'created_at' => '2026-10-01T08:00:00Z',
                 'last_used_at' => '2026-11-04T09:00:00Z',
+                'revocable' => true,
             ]],
         ];
     }
