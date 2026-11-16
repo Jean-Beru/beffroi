@@ -41,6 +41,14 @@ beffroi:
         self_served_claims: '%env(json:BEFFROI_TENANT_SELF_SERVED_CLAIMS)%'
         authentication_classes: '%env(json:BEFFROI_TENANT_AUTHENTICATION_CLASSES)%'
         scopes: '%env(json:BEFFROI_TENANT_SCOPES)%'
+        # What the enrolment of a passkey asks of its authenticator (decision 0046): the name of the policy, then
+        # the PEM roots of the enterprise attestations it admits, the PEM authorities of the tenant itself, and
+        # the models under a security alert it still enrols, each to the last day it does. .env documents them
+        # with what an image takes.
+        passkey_attestation: '%env(BEFFROI_TENANT_PASSKEY_ATTESTATION)%'
+        passkey_attestation_roots: '%env(json:BEFFROI_TENANT_PASSKEY_ATTESTATION_ROOTS)%'
+        passkey_attestation_own_roots: '%env(json:BEFFROI_TENANT_PASSKEY_ATTESTATION_OWN_ROOTS)%'
+        passkey_compromised_models: '%env(json:BEFFROI_TENANT_PASSKEY_COMPROMISED_MODELS)%'
     keys:
         # The KMS client of config/packages/key_management.yaml the private keys are sealed with; the DSN
         # of that client, and whether it is one provider or several, are declared there.

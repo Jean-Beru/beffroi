@@ -34,6 +34,12 @@
                 <option name="default">[]</option>
             </options>
         </field>
+        <!-- What the enrolment of a passkey asks of its authenticator (decision 0046). A row written before the column existed asks for none, as every tenant did. -->
+        <field name="passkeyAttestation" type="beffroi_passkey_attestation" column="passkey_attestation">
+            <options>
+                <option name="default">{"policy":"none","roots":[],"own_roots":[],"models_under_alert":[]}</option>
+            </options>
+        </field>
         <field name="createdAt" type="datetime_immutable" column="created_at"/>
     </entity>
 </doctrine-mapping>

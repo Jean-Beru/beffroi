@@ -26,6 +26,7 @@ use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Session\AuthenticationPredicateInterface;
 use Beffroi\Core\Domain\Session\PhishingResistant;
 use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Core\Domain\Tenant\PasskeyAttestation;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Port\MetadataBlobStoreInterface;
 use Psr\Clock\ClockInterface;
@@ -55,8 +56,9 @@ final class Fixtures
         string $slug = 'acme',
         string $issuer = 'https://id.acme.example',
         ?AuthenticationPredicateInterface $loginFloor = null,
+        ?PasskeyAttestation $passkeyAttestation = null,
     ): Tenant {
-        return new Tenant(Uuid::v7(), $slug, new Issuer($issuer), 'Acme', self::now(), loginFloor: $loginFloor);
+        return new Tenant(Uuid::v7(), $slug, new Issuer($issuer), 'Acme', self::now(), loginFloor: $loginFloor, passkeyAttestation: $passkeyAttestation);
     }
 
     public static function hardenedTenant(string $slug = 'acme'): Tenant

@@ -430,6 +430,15 @@ use Beffroi\Core\Bridge\Webauthn\StoredMetadata;
 use Beffroi\Core\Bridge\Webauthn\WebauthnCeremonies;
 use Beffroi\Core\Bridge\Webauthn\WebauthnPasskeyAuthenticator;
 use Beffroi\Core\Bridge\Webauthn\WebauthnPasskeyRegistrar;
+use Beffroi\Core\Bridge\Webauthn\WiredPasskeyAttestationPolicies;
+use Beffroi\Core\Bridge\Webauthn\PkiAttestationRootReader;
+use Beffroi\Core\Application\Passkey\PasskeyAttestations;
+use Beffroi\Core\Domain\Credential\Attestation\DirectAttestation;
+use Beffroi\Core\Domain\Credential\Attestation\EnterpriseAttestation;
+use Beffroi\Core\Domain\Credential\Attestation\NoAttestation;
+use Beffroi\Core\Port\AttestationRootReaderInterface;
+use Beffroi\Core\Port\PasskeyAttestationPoliciesInterface;
+use App\Fido\Conformance\ConformanceToolsRegistrar;
 use Beffroi\Core\Domain\Record\WhatATokenStillNeeds;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Beffroi\Core\Port\CodeAttemptLimiterInterface;
@@ -959,7 +968,11 @@ return static function (ContainerConfigurator $container): void {
     // Wired in every environment, reached only through config/beffroi/routes/fido-conformance.php, which the
     // application imports in development only.
     $services->set('beffroi.fido_conformance.ceremonies', WebauthnCeremonies::class)->arg('$algorithms', service(ConformanceToolsAlgorithms::class));
-    $services->set('beffroi.fido_conformance.registrar', WebauthnPasskeyRegistrar::class)->arg('$ceremonies', service('beffroi.fido_conformance.ceremonies'));
+    $services->set('beffroi.fido_conformance.options', WebauthnPasskeyRegistrar::class)->arg('$ceremonies', service('beffroi.fido_conformance.ceremonies'));
+    $services->set('beffroi.fido_conformance.registrar', ConformanceToolsRegistrar::class)->args([
+        '$drawn' => service('beffroi.fido_conformance.options'),
+        '$ceremonies' => service('beffroi.fido_conformance.ceremonies'),
+    ]);
     $services->set('beffroi.fido_conformance.authenticator', WebauthnPasskeyAuthenticator::class)->arg(
         '$ceremonies',
         service('beffroi.fido_conformance.ceremonies'),
@@ -1292,6 +1305,16 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PhpCertificateChainValidator::class)->arg('$client', service(RevocationListClient::class));
     $services->alias(CertificateChainValidator::class, PhpCertificateChainValidator::class);
     $services->set(MetadataBlobVerifier::class);
+    $services->set(NoAttestation::class)->tag('beffroi.passkey_attestation_policy');
+    $services->set(DirectAttestation::class)->tag('beffroi.passkey_attestation_policy');
+    $services->set(EnterpriseAttestation::class)->tag('beffroi.passkey_attestation_policy');
+    $services->set(WiredPasskeyAttestationPolicies::class)->args([tagged_iterator('beffroi.passkey_attestation_policy')]);
+    $services->alias(PasskeyAttestationPoliciesInterface::class, WiredPasskeyAttestationPolicies::class);
+    $services->set(PkiAttestationRootReader::class);
+    $services->alias(AttestationRootReaderInterface::class, PkiAttestationRootReader::class);
+    $services->set(PasskeyAttestations::class);
+    // Public: a DBAL type cannot be injected into, so BeffroiKernelTrait::boot() hands it this service.
+    $services->alias('beffroi.passkey_attestations', PasskeyAttestations::class)->public();
     $services->set(ProviderPasskeyAlgorithms::class);
     $services->alias(PasskeyAlgorithms::class, ProviderPasskeyAlgorithms::class);
     $services->set(WebauthnCeremonies::class);

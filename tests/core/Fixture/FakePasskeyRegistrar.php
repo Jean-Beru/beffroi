@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace Beffroi\Core\Tests\Fixture;
 
 use function array_map;
+use Beffroi\Core\Domain\Credential\Attestation\AttestationEvidence;
+use Beffroi\Core\Domain\Credential\Attestation\PasskeyAttestationRefusal;
+use Beffroi\Core\Domain\Credential\Attestation\VerifiedRegistration;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Credential\PasskeyUserHandle;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\PasskeyAttestationRefusedException;
 use Beffroi\Core\Exception\PasskeyCeremonyFailedException;
 use Beffroi\Core\Port\PasskeyRegistrarInterface;
 use function str_repeat;
@@ -30,16 +34,31 @@ final class FakePasskeyRegistrar implements PasskeyRegistrarInterface
 
     private ?CredentialRecord $record = null;
 
+    private AttestationEvidence $evidence;
+
     private ?string $refusal = null;
 
-    public function returns(CredentialRecord $record): void
+    private ?PasskeyAttestationRefusal $policyRefusal = null;
+
+    public function __construct()
+    {
+        $this->evidence = AttestationEvidence::declared();
+    }
+
+    public function returns(CredentialRecord $record, ?AttestationEvidence $evidence = null): void
     {
         $this->record = $record;
+        $this->evidence = $evidence ?? AttestationEvidence::declared();
     }
 
     public function refuses(string $message): void
     {
         $this->refusal = $message;
+    }
+
+    public function refusesUnderThePolicy(PasskeyAttestationRefusal $refusal): void
+    {
+        $this->policyRefusal = $refusal;
     }
 
     /**
@@ -83,12 +102,15 @@ final class FakePasskeyRegistrar implements PasskeyRegistrarInterface
         );
     }
 
-    public function verifyAttestation(Tenant $tenant, PublicKeyCredentialCreationOptions $options, string $response): CredentialRecord
+    public function verifyAttestation(Tenant $tenant, PublicKeyCredentialCreationOptions $options, string $response): VerifiedRegistration
     {
         if ($this->refusal !== null) {
             throw new PasskeyCeremonyFailedException($this->refusal);
         }
+        if ($this->policyRefusal !== null) {
+            throw new PasskeyAttestationRefusedException($this->policyRefusal, 'Refused by the policy of the tenant.');
+        }
 
-        return $this->record ?? self::record($options);
+        return new VerifiedRegistration($this->record ?? self::record($options), $this->evidence);
     }
 }

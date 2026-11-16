@@ -70,6 +70,10 @@ final class BeffroiExtensionConfigurationTest extends TestCase
                 'self_served_claims' => [],
                 'authentication_classes' => [],
                 'scopes' => [],
+                'passkey_attestation' => 'none',
+                'passkey_attestation_roots' => [],
+                'passkey_attestation_own_roots' => [],
+                'passkey_compromised_models' => [],
             ],
             $config['tenant'],
         );

@@ -44,6 +44,9 @@ final readonly class TenantSynchronizer
         if (! $tenant->selfServedClaims->equals($configured->selfServedClaims)) {
             $tenant->adoptSelfServedClaims($configured->selfServedClaims);
         }
+        if (! $tenant->passkeyAttestation->equals($configured->passkeyAttestation)) {
+            $tenant->adoptPasskeyAttestation($configured->passkeyAttestation);
+        }
         $manager->flush();
 
         return $tenant;

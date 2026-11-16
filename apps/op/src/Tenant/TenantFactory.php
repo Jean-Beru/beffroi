@@ -6,7 +6,9 @@ namespace App\Tenant;
 
 use Beffroi\Core\Domain\Session\AuthenticationContextClass;
 use Beffroi\Core\Domain\Session\AuthenticationContextPolicy;
+use Beffroi\Core\Application\Passkey\PasskeyAttestations;
 use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Core\Domain\Tenant\PasskeyAttestation;
 use Beffroi\Core\Domain\Tenant\LogoUri;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use App\Identity\WiredClaims;
@@ -15,6 +17,7 @@ use Beffroi\Core\Domain\Tenant\TenantLook;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Port\AuthenticationPredicatesInterface;
 use function implode;
+use function is_array;
 use function is_string;
 use function sprintf;
 use Psr\Clock\ClockInterface;
@@ -34,6 +37,8 @@ final readonly class TenantFactory
      * @param array<array-key, mixed> $authenticationClasses class name to predicate name, in order
      * @param array<array-key, mixed> $selfServedClaims
      * @param array<array-key, mixed> $look
+     * @param array<array-key, mixed> $passkeyAttestation the name of a policy under "policy", the lists it reads under
+     *     "roots", "own_roots" and "models_under_alert"
      */
     public function __construct(
         private string $issuer,
@@ -45,6 +50,8 @@ final readonly class TenantFactory
         private array $look = [],
         private array $selfServedClaims = [],
         private ?WiredClaims $claims = null,
+        private ?PasskeyAttestations $passkeyAttestations = null,
+        private array $passkeyAttestation = [],
     ) {
     }
 
@@ -61,6 +68,7 @@ final readonly class TenantFactory
             $this->authenticationContextPolicy(),
             $this->look(),
             $this->selfServedClaims(),
+            passkeyAttestation: $this->passkeyAttestation(),
         );
     }
 
@@ -98,6 +106,45 @@ final readonly class TenantFactory
         }
 
         return new SelfServedClaims($names);
+    }
+
+    /**
+     * Without the wired policies, the tenant asks for no attestation, and anything else is refused rather than dropped.
+     */
+    public function passkeyAttestation(): PasskeyAttestation
+    {
+        $none = PasskeyAttestation::none();
+        $policy = $this->passkeyAttestation['policy'] ?? $none->policy->name();
+        if (! is_string($policy)) {
+            throw new InvalidArgumentException('A passkey attestation policy is named by a string.');
+        }
+        $roots = self::list($this->passkeyAttestation, 'roots');
+        $ownRoots = self::list($this->passkeyAttestation, 'own_roots');
+        $modelsUnderAlert = self::list($this->passkeyAttestation, 'models_under_alert');
+        if ($this->passkeyAttestations === null) {
+            if ($policy !== $none->policy->name() || $roots !== [] || $ownRoots !== [] || $modelsUnderAlert !== []) {
+                throw new InvalidArgumentException('No passkey attestation policy is wired: the tenant asks for none.');
+            }
+
+            return $none;
+        }
+
+        return $this->passkeyAttestations->named($policy, $roots, $ownRoots, $modelsUnderAlert);
+    }
+
+    /**
+     * @param array<array-key, mixed> $members
+     *
+     * @return array<array-key, mixed>
+     */
+    private static function list(array $members, string $name): array
+    {
+        $list = $members[$name] ?? [];
+        if (! is_array($list)) {
+            throw new InvalidArgumentException(sprintf('The "%s" of the passkey attestation of a tenant is a list.', $name));
+        }
+
+        return $list;
     }
 
     public function look(): TenantLook

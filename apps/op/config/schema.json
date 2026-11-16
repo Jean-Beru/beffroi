@@ -824,6 +824,59 @@
                                     }
                                 ],
                                 "description": "The scopes this tenant hands out tokens for beyond \"openid\", the scopes of the claims this provider serves and \"offline_access\" (issue #920): the scopes of the APIs it protects, which stand for no claim. The tenant offers them, its discovery document announces them in \"scopes_supported\", and a client that registers itself may register them, a registration being held to what the tenant offers (decision 0009). A scope a declared client registers is offered as well, so a deployment that declares its clients may name none here; one that declares none, as the image, has nothing else to make such a scope exist. \"offline_access\" is never one of them, the wired grants deciding it (OIDC Core section 11): it is refused, as a value that is no scope token (RFC 6749 section 3.3) is, when the service that reads the list is built. None by default."
+                            },
+                            "passkey_attestation": {
+                                "$ref": "#/$defs/types/scalar",
+                                "default": "none",
+                                "description": "What the enrolment of a passkey asks of its authenticator (WebAuthn Level 3 §5.4.7, decision 0046), by the name a policy wired in the provider gives itself: \"none\", the model being the one the authenticator declares; \"direct\", the model verified when the FIDO metadata know it and declared otherwise, a passkey never being refused for want of an attestation; \"enterprise\", only an attestation that chains up to a root the tenant pins enrolling. Under \"direct\" and \"enterprise\" a model whose last status report is a security notification is refused, save those \"passkey_compromised_models\" names. A name no wired policy carries refuses the start, naming the ones that are wired. \"none\" by default."
+                            },
+                            "passkey_attestation_roots": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/types/array_null",
+                                        "items": {
+                                            "$ref": "#/$defs/types/scalar"
+                                        }
+                                    },
+                                    {
+                                        "type": [
+                                            "string"
+                                        ]
+                                    }
+                                ],
+                                "description": "The roots of the enterprise attestations the tenant admits, in PEM, under \"enterprise\" only: an attestation that chains up to one of them carries the serial number of its authenticator (WebAuthn Level 3 §8.2.2), which no attestation of a whole range of a maker carries. A certificate that is no certificate authority refuses the start, as \"enterprise\" pinning no root at all does. None by default."
+                            },
+                            "passkey_attestation_own_roots": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/types/array_null",
+                                        "items": {
+                                            "$ref": "#/$defs/types/scalar"
+                                        }
+                                    },
+                                    {
+                                        "type": [
+                                            "string"
+                                        ]
+                                    }
+                                ],
+                                "description": "The authorities of the tenant itself, in PEM, under \"enterprise\" only: the ones that sign the identities of its own devices, under which the attestation is the proof and no serial number is required. None by default."
+                            },
+                            "passkey_compromised_models": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/types/object_null",
+                                        "additionalProperties": {
+                                            "$ref": "#/$defs/types/scalar"
+                                        }
+                                    },
+                                    {
+                                        "type": [
+                                            "string"
+                                        ]
+                                    }
+                                ],
+                                "description": "The models whose last status report in the FIDO metadata is a security notification (FIDO Metadata Service v3.1.1 §3.1.4.2) the tenant still enrols under \"direct\" and \"enterprise\", each the AAGUID of its authenticator to the last day it is admitted, as \"2027-03-31\" (decision 0006: an exception is named and bounded): until then a passkey of that model enrols and is marked under alert, after it the refusal returns. None by default."
                             }
                         },
                         "additionalProperties": false,

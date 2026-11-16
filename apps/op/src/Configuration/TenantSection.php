@@ -7,6 +7,7 @@ namespace App\Configuration;
 use function array_values;
 use App\Identity\WiredClaims;
 use App\Tenant\TenantFactory;
+use Beffroi\Core\Application\Passkey\PasskeyAttestations;
 use Beffroi\Core\Port\AuthenticationPredicatesInterface;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationDeclaredScopes;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
@@ -65,6 +66,20 @@ final readonly class TenantSection extends ConfigurationSection
             ->append(self::selfServedClaims())
             ->append(self::authenticationClasses())
             ->append(self::scopes())
+            ->scalarNode('passkey_attestation')
+            ->info('What the enrolment of a passkey asks of its authenticator (WebAuthn Level 3 §5.4.7, decision 0046), by the name a policy wired in the provider gives itself: "none", the model being the one the authenticator declares; "direct", the model verified when the FIDO metadata know it and declared otherwise, a passkey never being refused for want of an attestation; "enterprise", only an attestation that chains up to a root the tenant pins enrolling. Under "direct" and "enterprise" a model whose last status report is a security notification is refused, save those "passkey_compromised_models" names. A name no wired policy carries refuses the start, naming the ones that are wired. "none" by default.')
+            ->defaultValue('none')
+            ->cannotBeEmpty()
+            ->end()
+            ->append(self::roots(
+                'passkey_attestation_roots',
+                'The roots of the enterprise attestations the tenant admits, in PEM, under "enterprise" only: an attestation that chains up to one of them carries the serial number of its authenticator (WebAuthn Level 3 §8.2.2), which no attestation of a whole range of a maker carries. A certificate that is no certificate authority refuses the start, as "enterprise" pinning no root at all does. None by default.',
+            ))
+            ->append(self::roots(
+                'passkey_attestation_own_roots',
+                'The authorities of the tenant itself, in PEM, under "enterprise" only: the ones that sign the identities of its own devices, under which the attestation is the proof and no serial number is required. None by default.',
+            ))
+            ->append(self::compromisedModels())
             ->end()
             ->end();
     }
@@ -80,10 +95,15 @@ final readonly class TenantSection extends ConfigurationSection
         ?string $name,
         ClockInterface $clock,
         AuthenticationPredicatesInterface $predicates,
+        PasskeyAttestations $passkeyAttestations,
         mixed $authenticationClasses = [],
         array $look = [],
         mixed $selfServedClaims = [],
         ?WiredClaims $claims = null,
+        string $passkeyAttestation = 'none',
+        mixed $passkeyAttestationRoots = [],
+        mixed $passkeyAttestationOwnRoots = [],
+        mixed $passkeyCompromisedModels = [],
     ): TenantFactory {
         if ($slug === '') {
             throw new InvalidConfigurationException('The "beffroi" configuration key "tenant.slug" is the stable name of the tenant, and it is empty.');
@@ -99,6 +119,14 @@ final readonly class TenantSection extends ConfigurationSection
             $look,
             self::selfServedClaims()->normalized($selfServedClaims, 'tenant.self_served_claims'),
             $claims,
+            $passkeyAttestations,
+            [
+                'policy' => $passkeyAttestation,
+                'roots' => self::roots('passkey_attestation_roots', '')->normalized($passkeyAttestationRoots, 'tenant.passkey_attestation_roots'),
+                'own_roots' => self::roots('passkey_attestation_own_roots', '')
+                    ->normalized($passkeyAttestationOwnRoots, 'tenant.passkey_attestation_own_roots'),
+                'models_under_alert' => self::compromisedModels()->normalized($passkeyCompromisedModels, 'tenant.passkey_compromised_models'),
+            ],
         );
     }
 
@@ -138,6 +166,29 @@ final readonly class TenantSection extends ConfigurationSection
         return $claims;
     }
 
+    private static function roots(string $name, string $info): EnvironmentListDefinition
+    {
+        $roots = new EnvironmentListDefinition($name);
+        $roots->info($info)->scalarPrototype()->cannotBeEmpty()->end()->defaultValue([]);
+
+        return $roots;
+    }
+
+    private static function compromisedModels(): EnvironmentListDefinition
+    {
+        $models = new EnvironmentListDefinition('passkey_compromised_models');
+        $models
+            ->info('The models whose last status report in the FIDO metadata is a security notification (FIDO Metadata Service v3.1.1 §3.1.4.2) the tenant still enrols under "direct" and "enterprise", each the AAGUID of its authenticator to the last day it is admitted, as "2027-03-31" (decision 0006: an exception is named and bounded): until then a passkey of that model enrols and is marked under alert, after it the refusal returns. None by default.')
+            ->useAttributeAsKey('aaguid')
+            ->normalizeKeys(false)
+            ->scalarPrototype()
+            ->cannotBeEmpty()
+            ->end()
+            ->defaultValue([]);
+
+        return $models;
+    }
+
     private static function authenticationClasses(): EnvironmentListDefinition
     {
         $classes = new EnvironmentListDefinition('authentication_classes');
@@ -167,7 +218,11 @@ final readonly class TenantSection extends ConfigurationSection
             )
             ->arg('$authenticationClasses', $tenant['authentication_classes'] ?? [])
             ->arg('$look', self::section($tenant, 'look'))
-            ->arg('$selfServedClaims', $tenant['self_served_claims'] ?? []);
+            ->arg('$selfServedClaims', $tenant['self_served_claims'] ?? [])
+            ->arg('$passkeyAttestation', self::string($tenant, 'passkey_attestation'))
+            ->arg('$passkeyAttestationRoots', $tenant['passkey_attestation_roots'] ?? [])
+            ->arg('$passkeyAttestationOwnRoots', $tenant['passkey_attestation_own_roots'] ?? [])
+            ->arg('$passkeyCompromisedModels', $tenant['passkey_compromised_models'] ?? []);
         $services->get(ConfigurationDeclaredScopes::class)->factory(self::declaredScopes(...))->arg('$tenantSlug', self::string($tenant, 'slug'))->arg(
             '$scopes',
             $tenant['scopes'] ?? [],

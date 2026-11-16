@@ -7,6 +7,7 @@ namespace App\Tests\Symfony\Functional\Doctrine\PersonalData;
 use DateTimeImmutable;
 use function array_values;
 use Beffroi\Core\Domain\Archive\PersonalArchive;
+use Beffroi\Core\Domain\Credential\Attestation\AttestationEvidence;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Identity\Address;
 use Beffroi\Core\Domain\Identity\ClaimChange;
@@ -100,6 +101,7 @@ final readonly class SealedRows
         ],
         'beffroi_passkey_credential' => [
             'name' => 'The key Ada keeps on her keyring',
+            'serial_number' => '0ada1815deadbeef',
         ],
         'beffroi_push_subscription' => [
             'endpoint' => 'https://push.example.org/subscriptions/ada-at-the-difference-engine',
@@ -388,6 +390,7 @@ final readonly class SealedRows
             Uuid::v4(),
             Fixtures::userHandle(),
             $this->now,
+            AttestationEvidence::enterprise(self::VALUES['beffroi_passkey_credential']['serial_number']),
         );
         $this->service('test.beffroi.credentials', CredentialRepositoryInterface::class)->save($passkey);
 

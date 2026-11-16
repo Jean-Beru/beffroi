@@ -25,6 +25,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function str_repeat;
 use function strlen;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 use Webauthn\MetadataService\Statement\AuthenticatorStatus;
 use Webauthn\PublicKeyCredentialCreationOptions;
@@ -49,7 +50,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
         $this->tenant = Fixtures::tenant();
         $this->alice = Fixtures::user($this->tenant);
         $this->ceremonies = Fixtures::ceremonies();
-        $this->registrar = new WebauthnPasskeyRegistrar($this->ceremonies);
+        $this->registrar = new WebauthnPasskeyRegistrar($this->ceremonies, new MockClock(Fixtures::now()));
     }
 
     /**
@@ -144,7 +145,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
         $options = $this->registrar->creationOptions($this->alice, Fixtures::userHandle(), []);
 
         // When
-        $record = $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)));
+        $record = $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)))->record;
 
         // Then
         static::assertSame($authenticator->credentialId, $record->publicKeyCredentialId);
@@ -177,7 +178,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
         $options = $this->creationOptions();
 
         // When
-        $record = $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)));
+        $record = $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)))->record;
 
         // Then
         static::assertSame('self', $record->attestationType);
@@ -196,7 +197,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
         $options = $this->creationOptions();
 
         // When
-        $record = $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)));
+        $record = $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)))->record;
 
         // Then
         static::assertSame('self', $record->attestationType);
@@ -254,11 +255,11 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
             [AuthenticatorStatus::USER_VERIFICATION_BYPASS],
         )]));
         $ceremonies = Fixtures::ceremonies($store);
-        $registrar = new WebauthnPasskeyRegistrar($ceremonies);
+        $registrar = new WebauthnPasskeyRegistrar($ceremonies, new MockClock(Fixtures::now()));
         $options = $registrar->creationOptions($this->alice, Fixtures::userHandle(), []);
 
         // When
-        $record = $registrar->verifyAttestation($this->tenant, $options, $authenticator->create($ceremonies->optionsToJson($options)));
+        $record = $registrar->verifyAttestation($this->tenant, $options, $authenticator->create($ceremonies->optionsToJson($options)))->record;
 
         // Then
         static::assertSame('self', $record->attestationType);

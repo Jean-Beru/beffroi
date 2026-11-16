@@ -9,6 +9,7 @@ use App\Http\RequestContextFactory;
 use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
 use Beffroi\Core\Bridge\Webauthn\WebauthnCeremonies;
 use Beffroi\Core\Exception\CredentialEnrolmentFailedException;
+use Beffroi\Core\Exception\PasskeyAttestationRefusedException;
 use Beffroi\Core\Exception\PasskeyCeremonyFailedException;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -56,7 +57,7 @@ final readonly class AttestationResultController
         }
         try {
             $this->enrolment->complete($user, self::PASSKEY_NAME, $options, $response, $this->contexts->fromRequest($request));
-        } catch (CredentialEnrolmentFailedException $exception) {
+        } catch (CredentialEnrolmentFailedException|PasskeyAttestationRefusedException $exception) {
             return ServerResponse::failed($exception->getMessage());
         }
 

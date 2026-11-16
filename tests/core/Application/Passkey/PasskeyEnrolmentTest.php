@@ -15,12 +15,16 @@ use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Beffroi\Core\Application\Credential\EnrolmentRefusal;
+use Beffroi\Core\Domain\Credential\Attestation\AttestationEvidence;
+use Beffroi\Core\Domain\Credential\Attestation\ModelProof;
+use Beffroi\Core\Domain\Credential\Attestation\PasskeyAttestationRefusal;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Credential\PasskeyUserHandle;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Exception\CredentialEnrolmentFailedException;
 use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\PasskeyAttestationRefusedException;
 use Beffroi\Core\Exception\PasskeyCeremonyFailedException;
 use Beffroi\Core\Tests\Fixture\FakePasskeyRegistrar;
 use Beffroi\Core\Tests\Fixture\Fixtures;
@@ -124,6 +128,46 @@ final class PasskeyEnrolmentTest extends TestCase
         static::assertSame($passkey, $events[0]->credential);
         static::assertSame($context, $events[0]->context);
         static::assertSame($this->alice->tenant, $events[0]->tenant);
+    }
+
+    /**
+     * Decision 0046
+     */
+    #[Test]
+    public function thePasskeyKeepsWhatItsEnrolmentProved(): void
+    {
+        // Given
+        $options = $this->enrolment->begin($this->alice);
+        $this->registrar->returns(FakePasskeyRegistrar::record($options), AttestationEvidence::enterprise('0a1b', underSecurityAlert: true));
+
+        // When
+        $passkey = $this->enrolment->complete($this->alice, 'YubiKey', $options, '{"id":"credential-id"}', Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame(ModelProof::Enterprise, $passkey->modelProof);
+        static::assertSame('0a1b', $passkey->serialNumber);
+        static::assertTrue($passkey->underSecurityAlert);
+    }
+
+    /**
+     * Decision 0046
+     */
+    #[Test]
+    public function aPasskeyThePolicyOfTheTenantRefusesIsNotStored(): void
+    {
+        // Given
+        $options = $this->enrolment->begin($this->alice);
+        $this->registrar->refusesUnderThePolicy(PasskeyAttestationRefusal::OrganisationKeysOnly);
+
+        // When
+        try {
+            $this->enrolment->complete($this->alice, 'YubiKey', $options, '{"id":"credential-id"}', Fixtures::context($this->clock->now()));
+            static::fail('The passkey was enrolled.');
+        } catch (PasskeyAttestationRefusedException $exception) {
+            // Then
+            static::assertSame(PasskeyAttestationRefusal::OrganisationKeysOnly, $exception->refusal);
+            static::assertSame([], $this->credentials->findByUser($this->alice, PasskeyCredential::class));
+        }
     }
 
     /**

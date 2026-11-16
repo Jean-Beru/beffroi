@@ -11,6 +11,7 @@ use App\Tests\Symfony\Functional\Doctrine\PersonalData\RawRows;
 use Beffroi\Core\Domain\PersonalData\Sealed;
 use App\Tests\Symfony\Functional\Doctrine\PersonalData\ClassifiedModel;
 use App\Tests\Symfony\Functional\Doctrine\PersonalData\SealedRows;
+use Beffroi\Core\Domain\Credential\Attestation\ModelProof;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Identity\PushSubscription;
 use Beffroi\Core\Domain\Identity\User;
@@ -79,6 +80,25 @@ final class PasskeyAndSubscriptionColumnsTest extends DatabaseTestCase
         // Then
         static::assertInstanceOf(PasskeyCredential::class, $read);
         static::assertSame(self::PLAINTEXTS['beffroi_passkey_credential']['name'], $read->name);
+    }
+
+    /**
+     * WebAuthn Level 3 §8.2.2, Decision 0046
+     */
+    #[Test]
+    public function aPasskeyIsReadBackWithTheSerialNumberOfItsAuthenticator(): void
+    {
+        // Given
+        $saved = self::passkey(self::user());
+        self::reload();
+
+        // When
+        $read = self::credentials()->find($saved->id);
+
+        // Then
+        static::assertInstanceOf(PasskeyCredential::class, $read);
+        static::assertSame(self::PLAINTEXTS['beffroi_passkey_credential']['serial_number'], $read->serialNumber);
+        static::assertSame(ModelProof::Enterprise, $read->modelProof);
     }
 
     #[Test]

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Core\Tests\Fixture;
 
 use CBOR\ByteStringObject;
+use CBOR\ListObject;
 use CBOR\MapItem;
 use CBOR\MapObject;
 use CBOR\NegativeIntegerObject;
@@ -43,6 +44,7 @@ final class SoftwareAuthenticator
     /**
      * @param string $attestation "none" or "packed"
      * @param string|null $aaguid sixteen bytes
+     * @param AttestationCertificate|null $attestedBy the certificate a "packed" attestation is signed with, self attestation without one
      */
     public function __construct(
         private string $origin,
@@ -55,6 +57,7 @@ final class SoftwareAuthenticator
         private bool $forgesAttestation = false,
         private SoftwareCredentialKey $credentialKey = new Es256SoftwareKey(),
         ?string $aaguid = null,
+        private ?AttestationCertificate $attestedBy = null,
     ) {
         $this->credentialId = random_bytes(32);
         $this->aaguid = $aaguid ?? random_bytes(16);
@@ -184,15 +187,20 @@ final class SoftwareAuthenticator
         if ($this->attestation !== 'packed') {
             return MapObject::create();
         }
-        $signature = $this->credentialKey->sign($data);
-
-        return MapObject::create([
-            MapItem::create(TextStringObject::create('alg'), NegativeIntegerObject::create($this->credentialKey->algorithm())),
+        $signer = $this->attestedBy ?? $this->credentialKey;
+        $signature = $signer->sign($data);
+        $members = [
+            MapItem::create(TextStringObject::create('alg'), NegativeIntegerObject::create($signer->algorithm())),
             MapItem::create(
                 TextStringObject::create('sig'),
                 ByteStringObject::create($this->forgesAttestation ? str_repeat("\0", strlen($signature)) : $signature),
             ),
-        ]);
+        ];
+        if ($this->attestedBy !== null) {
+            $members[] = MapItem::create(TextStringObject::create('x5c'), ListObject::create([ByteStringObject::create($this->attestedBy->der)]));
+        }
+
+        return MapObject::create($members);
     }
 
     /**

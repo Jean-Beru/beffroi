@@ -461,9 +461,37 @@
         <source>passkeys.authenticator.unknown</source>
         <target>Authentificateur inconnu</target>
       </trans-unit>
+      <trans-unit id="passkeys.model_proof.declared" resname="passkeys.model_proof.declared">
+        <source>passkeys.model_proof.declared</source>
+        <target>Modèle déclaré par l’authentificateur</target>
+      </trans-unit>
+      <trans-unit id="passkeys.model_proof.verified" resname="passkeys.model_proof.verified">
+        <source>passkeys.model_proof.verified</source>
+        <target>Modèle vérifié par son attestation</target>
+      </trans-unit>
+      <trans-unit id="passkeys.model_proof.enterprise" resname="passkeys.model_proof.enterprise">
+        <source>passkeys.model_proof.enterprise</source>
+        <target>Clé attestée pour votre organisation</target>
+      </trans-unit>
+      <trans-unit id="passkeys.serial_number" resname="passkeys.serial_number">
+        <source>passkeys.serial_number</source>
+        <target>Numéro de série {serial}</target>
+      </trans-unit>
+      <trans-unit id="passkeys.under_security_alert" resname="passkeys.under_security_alert">
+        <source>passkeys.under_security_alert</source>
+        <target>Modèle sous alerte de sécurité</target>
+      </trans-unit>
+      <trans-unit id="passkeys.error.organisation_keys_only" resname="passkeys.error.organisation_keys_only">
+        <source>passkeys.error.organisation_keys_only</source>
+        <target>Votre organisation n’accepte que les clés qu’elle vous a remises. Utilisez l’une d’elles.</target>
+      </trans-unit>
+      <trans-unit id="passkeys.error.model_under_security_alert" resname="passkeys.error.model_under_security_alert">
+        <source>passkeys.error.model_under_security_alert</source>
+        <target>Ce modèle d’authentificateur fait l’objet d’une alerte de sécurité et n’est plus accepté. Utilisez-en un autre.</target>
+      </trans-unit>
       <trans-unit id="dbb47ea9ff" resname="passkeys.authenticator.declared">
         <source>passkeys.authenticator.declared</source>
-        <target>Un authentificateur est nommé d’après ce qu’il a déclaré à l’ajout de la passkey : rien ne le vérifie.</target>
+        <target>Un authentificateur dont le modèle est déclaré est nommé d’après ce qu’il a dit à l’ajout de la passkey : rien ne l’a vérifié.</target>
       </trans-unit>
       <trans-unit id="fd60213150" resname="passkeys.certification.NOT_FIDO_CERTIFIED">
         <source>passkeys.certification.NOT_FIDO_CERTIFIED</source>
@@ -1656,6 +1684,14 @@
       <trans-unit id="enrolment_ticket.error.no_ceremony" resname="enrolment_ticket.error.no_ceremony">
         <source>enrolment_ticket.error.no_ceremony</source>
         <target>Aucune passkey n'était en cours de création. Réessayez.</target>
+      </trans-unit>
+      <trans-unit id="enrolment_ticket.error.organisation_keys_only" resname="enrolment_ticket.error.organisation_keys_only">
+        <source>enrolment_ticket.error.organisation_keys_only</source>
+        <target>Votre organisation n'accepte que les clés qu'elle vous a remises. Utilisez l'une d'elles.</target>
+      </trans-unit>
+      <trans-unit id="enrolment_ticket.error.model_under_security_alert" resname="enrolment_ticket.error.model_under_security_alert">
+        <source>enrolment_ticket.error.model_under_security_alert</source>
+        <target>Ce modèle d'authentificateur fait l'objet d'une alerte de sécurité et n'est plus accepté. Utilisez-en un autre.</target>
       </trans-unit>
       <trans-unit id="enrolment_ticket.error.refused" resname="enrolment_ticket.error.refused">
         <source>enrolment_ticket.error.refused</source>

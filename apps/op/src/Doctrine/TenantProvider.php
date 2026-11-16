@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Doctrine;
 
 use App\Tenant\TenantFactory;
+use Beffroi\Core\Domain\Tenant\PasskeyAttestation;
 use Beffroi\Core\Domain\Tenant\SelfServedClaims;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Domain\Tenant\TenantLook;
 use Beffroi\Core\Port\AmbientTenantInterface;
+use function count;
 use function implode;
 use function sprintf;
 use Symfony\Contracts\Service\ResetInterface;
@@ -62,6 +64,14 @@ final class TenantProvider implements AmbientTenantInterface, ResetInterface
         if (! $tenant->look->equals($configured->look)) {
             throw TenantNotSynchronizedException::differs($configured->slug, 'look', self::described($tenant->look), self::described($configured->look));
         }
+        if (! $tenant->passkeyAttestation->equals($configured->passkeyAttestation)) {
+            throw TenantNotSynchronizedException::differs(
+                $configured->slug,
+                'passkey_attestation',
+                self::describedAttestation($tenant->passkeyAttestation),
+                self::describedAttestation($configured->passkeyAttestation),
+            );
+        }
 
         return $this->tenant = $tenant;
     }
@@ -69,6 +79,17 @@ final class TenantProvider implements AmbientTenantInterface, ResetInterface
     private static function describedClaims(SelfServedClaims $claims): string
     {
         return $claims->names === [] ? 'none' : implode(' ', $claims->names);
+    }
+
+    private static function describedAttestation(PasskeyAttestation $attestation): string
+    {
+        return sprintf(
+            '%s, %d root(s), %d own root(s), %d model(s) under alert',
+            $attestation->policy->name(),
+            count($attestation->roots),
+            count($attestation->ownRoots),
+            count($attestation->modelsUnderAlert),
+        );
     }
 
     private static function described(TenantLook $look): string
