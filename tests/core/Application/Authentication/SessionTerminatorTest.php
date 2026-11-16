@@ -7,6 +7,7 @@ namespace Beffroi\Core\Tests\Application\Authentication;
 use Beffroi\Core\Application\Authentication\SessionTerminator;
 use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Beffroi\Core\Domain\Event\AuthenticationSessionEnded;
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\RequestContext;
@@ -87,6 +88,35 @@ final class SessionTerminatorTest extends TestCase
         static::assertSame($this->ended, $event->session);
         static::assertSame($this->context, $event->context);
         static::assertEquals($this->clock->now(), $event->occurredAt);
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function theEndAnAdministratorMadeNamesThemInItsAct(): void
+    {
+        // Given
+        $administrator = new Subject('administrator-subject');
+
+        // When
+        $this->terminator->endByAnAdministrator($this->ended, $administrator, $this->context);
+
+        // Then
+        static::assertSame(
+            [SessionEnd::Administrator, $administrator],
+            [$this->ended->endedBy, $this->events->of(AuthenticationSessionEnded::class)[0]->author()],
+        );
+    }
+
+    #[Test]
+    public function theEndThePersonMadeNamesNoAuthor(): void
+    {
+        // When
+        $this->terminator->end($this->ended, SessionEnd::User, $this->context);
+
+        // Then
+        static::assertNull($this->events->of(AuthenticationSessionEnded::class)[0]->author());
     }
 
     #[Test]

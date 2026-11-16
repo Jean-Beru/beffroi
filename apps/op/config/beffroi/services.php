@@ -18,6 +18,8 @@ use Beffroi\Core\Port\CanCountActsInterface;
 use Beffroi\Core\Port\CanCountUsersInterface;
 use Beffroi\Oidc\Application\Administration\AdministeredJournal;
 use Beffroi\Oidc\Application\Administration\AdministeredPerson;
+use Beffroi\Oidc\Application\Administration\AdministeredCredentialRevocation;
+use Beffroi\Oidc\Application\Administration\AdministeredSessionEnd;
 use Beffroi\Oidc\Application\Administration\AdministeredSessions;
 use Beffroi\Oidc\Application\Administration\AdministratorOfARequest;
 use Beffroi\Oidc\Application\Administration\PersonsOfTheTenant;
@@ -1591,6 +1593,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set(AdministeredPerson::class);
     $services->set(AdministeredSessions::class);
     $services->set(AdministeredJournal::class);
+    $services->set(AdministeredSessionEnd::class);
+    $services->set(AdministeredCredentialRevocation::class);
     $services->set(OfferedScopes::class);
     $services->alias(OfferedScopesInterface::class, OfferedScopes::class);
 

@@ -170,9 +170,10 @@ abstract class AdministrationTestCase extends PasskeyTestCase
     }
 
     /**
-     * The routes the kernel of a process of the plane of the administration loads, by name and path.
+     * The routes the kernel of a process of the plane of the administration loads, by name: the method a request of
+     * each one is sent with, the first it answers or GET for one that answers every method, and its path.
      *
-     * @return array<string, string>
+     * @return array<string, array{string, string}>
      */
     protected function routesOfTheApi(): array
     {
@@ -181,7 +182,7 @@ abstract class AdministrationTestCase extends PasskeyTestCase
         static::assertInstanceOf(RouterInterface::class, $router);
         $routes = [];
         foreach ($router->getRouteCollection()->all() as $name => $route) {
-            $routes[$name] = $route->getPath();
+            $routes[$name] = [$route->getMethods()[0] ?? 'GET', $route->getPath()];
         }
 
         return $routes;
