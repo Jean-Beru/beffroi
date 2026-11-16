@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Symfony\Functional\Doctrine;
 
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Types\Type;
 use App\Doctrine\PersonalData\EncryptedColumnTypes;
 use App\Doctrine\PersonalData\TenantScopedEncrypter;
 use App\Tests\Symfony\Functional\Doctrine\PersonalData\CountingKms;
@@ -150,10 +149,12 @@ final class DataKeyStoreTest extends DatabaseTestCase
     {
         $stored = self::connection()->fetchOne('SELECT value FROM ' . self::TABLE . ' WHERE id = ?', [$id]);
         static::assertIsString($stored);
-        $read = Type::getTypeRegistry()->get(EncryptedColumnTypes::name(self::FAMILY, 'beffroi_email_address'))->convertToPHPValue(
-            $stored,
-            self::connection()->getDatabasePlatform(),
-        );
+        $read = self::typesOfTheConnection()
+            ->get(EncryptedColumnTypes::name(self::FAMILY, 'beffroi_email_address'))
+            ->convertToPHPValue(
+                $stored,
+                self::connection()->getDatabasePlatform(),
+            );
         static::assertInstanceOf(EmailAddress::class, $read);
 
         return $read->value;

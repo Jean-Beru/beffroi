@@ -8,7 +8,6 @@ use function array_diff;
 use function array_keys;
 use function array_values;
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Types\Type;
 use App\Doctrine\PersonalData\EncryptedColumnTypes;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Exception\InvalidArgumentException;
@@ -54,12 +53,12 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
     public function everyDeclaredTypeIsRegisteredOnceTheKernelHasBooted(): void
     {
         // Given
-        $registry = Type::getTypeRegistry();
+        $types = self::typesOfTheConnection();
 
         // When / Then
         foreach (EncryptedColumnTypes::names() as $name) {
-            static::assertTrue($registry->has($name), $name . ' is declared by the provider and not registered.');
-            static::assertInstanceOf(EncryptedType::class, $registry->get($name));
+            static::assertTrue($types->has($name), $name . ' is declared by the provider and not registered.');
+            static::assertInstanceOf(EncryptedType::class, $types->get($name));
         }
     }
 
@@ -67,7 +66,7 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
     public function aValueSealedByAnEncryptedTypeIsReadBackAsTheDomainObjectItWas(): void
     {
         // Given
-        $type = Type::getTypeRegistry()->get(EncryptedColumnTypes::name('user', 'beffroi_email_address'));
+        $type = self::typesOfTheConnection()->get(EncryptedColumnTypes::name('user', 'beffroi_email_address'));
         $platform = self::connection()->getDatabasePlatform();
         $address = new EmailAddress('alice@example.com');
 
@@ -106,7 +105,7 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
 
         // Then
         static::assertStringNotContainsString('alice@example.com', $stored, 'The column holds the address in the clear.');
-        $read = Type::getTypeRegistry()->get($name)->convertToPHPValue($stored, $connection->getDatabasePlatform());
+        $read = self::typesOfTheConnection()->get($name)->convertToPHPValue($stored, $connection->getDatabasePlatform());
         static::assertInstanceOf(EmailAddress::class, $read);
         static::assertSame('alice@example.com', $read->value);
     }
@@ -120,13 +119,13 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
     {
         // Given
         $platform = self::connection()->getDatabasePlatform();
-        $copied = Type::getTypeRegistry()->get($sealedBy)->convertToDatabaseValue($value, $platform);
+        $copied = self::typesOfTheConnection()->get($sealedBy)->convertToDatabaseValue($value, $platform);
 
         // Then
         $this->expectException(DecryptionFailedException::class);
 
         // When
-        Type::getTypeRegistry()->get($readBy)->convertToPHPValue($copied, $platform);
+        self::typesOfTheConnection()->get($readBy)->convertToPHPValue($copied, $platform);
     }
 
     /**
@@ -151,14 +150,14 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
     {
         // Given
         $name = EncryptedColumnTypes::name('user', 'beffroi_email_address');
-        $before = Type::getTypeRegistry()->get($name);
+        $before = self::typesOfTheConnection()->get($name);
 
         // When
         self::ensureKernelShutdown();
         self::bootKernel();
 
         // Then
-        $after = Type::getTypeRegistry()->get($name);
+        $after = self::typesOfTheConnection()->get($name);
         static::assertInstanceOf(EncryptedType::class, $after);
         static::assertNotSame(
             $before,

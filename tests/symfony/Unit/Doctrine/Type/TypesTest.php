@@ -89,7 +89,6 @@ use Beffroi\Oidc\Domain\Scope\Scopes;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use function sprintf;
 use function str_repeat;
 
 /**
@@ -498,7 +497,6 @@ final class TypesTest extends TestCase
     {
         // When / Then
         static::assertSame($class::NAME, $name);
-        static::assertInstanceOf($class, self::type($class));
     }
 
     /**
@@ -523,14 +521,6 @@ final class TypesTest extends TestCase
      */
     private static function type(string $class): Type
     {
-        $name = $class::NAME;
-        static::assertIsString($name);
-        if (! Type::hasType($name)) {
-            Type::addType($name, $class);
-        }
-        $type = Type::getType($name);
-        static::assertInstanceOf($class, $type, sprintf('"%s" is registered as another type.', $name));
-
-        return $type;
+        return new $class();
     }
 }
