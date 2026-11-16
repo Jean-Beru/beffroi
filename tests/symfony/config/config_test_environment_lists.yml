@@ -14,11 +14,13 @@ parameters:
     env(BEFFROI_TEST_DATA_KEY_SECRETS): '["a-secret-of-these-tests-that-binds-nothing"]'
     env(BEFFROI_TEST_SAML_SERVICE_PROVIDERS): '{}'
     env(BEFFROI_TEST_SAML_IDENTITY_PROVIDERS): '{}'
+    env(BEFFROI_TEST_TENANT_ADMINISTRATORS): '[]'
 
 beffroi:
     tenant:
         self_served_claims: '%env(json:BEFFROI_TEST_SELF_SERVED_CLAIMS)%'
         authentication_classes: '%env(json:BEFFROI_TEST_AUTHENTICATION_CLASSES)%'
+        administrators: '%env(json:BEFFROI_TEST_TENANT_ADMINISTRATORS)%'
     keys:
         data_key_secrets: '%env(json:BEFFROI_TEST_DATA_KEY_SECRETS)%'
     trusted_issuers: '%env(json:BEFFROI_TEST_TRUSTED_ISSUERS)%'
@@ -38,6 +40,9 @@ services:
         public: true
     test.beffroi.environment_lists.declared_scopes:
         alias: Beffroi\Oidc\Bridge\Configuration\ConfigurationDeclaredScopes
+        public: true
+    test.beffroi.environment_lists.administrator_groups:
+        alias: Beffroi\Core\Bridge\Configuration\ConfigurationAdministratorGroups
         public: true
     test.beffroi.environment_lists.registration_policy:
         alias: Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy

@@ -8,7 +8,10 @@ use function array_values;
 use App\Identity\WiredClaims;
 use App\Tenant\TenantFactory;
 use Beffroi\Core\Application\Passkey\PasskeyAttestations;
+use Beffroi\Core\Bridge\Configuration\ConfigurationAdministratorGroups;
+use Beffroi\Core\Exception\InvalidArgumentException as CoreInvalidArgumentException;
 use Beffroi\Core\Port\AuthenticationPredicatesInterface;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationAdministrationResource;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationDeclaredScopes;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Psr\Clock\ClockInterface;
@@ -66,6 +69,11 @@ final readonly class TenantSection extends ConfigurationSection
             ->append(self::selfServedClaims())
             ->append(self::authenticationClasses())
             ->append(self::scopes())
+            ->append(self::administrators())
+            ->scalarNode('administration_resource')
+            ->info('The identifier of the administration API of this tenant (decision 0038), the resource its tokens are addressed to (RFC 8707 section 2): an absolute URI without a fragment, the URL that API is served at. The provider reserves that audience to the administrators of the tenant: it addresses a token to it only for a member of one of the groups "administrators" names, signed in at the authorization endpoint by a session whose proofs satisfy phishing_resistant whatever the floor of the tenant, and bound to a key of the client; the device authorization grant and the backchannel authentication grant are refused it, and the discovery document never announces it. A client still registers it among its resources to ask for it. None by default, which reserves nothing.')
+            ->defaultNull()
+            ->end()
             ->scalarNode('passkey_attestation')
             ->info('What the enrolment of a passkey asks of its authenticator (WebAuthn Level 3 §5.4.7, decision 0046), by the name a policy wired in the provider gives itself: "none", the model being the one the authenticator declares; "direct", the model verified when the FIDO metadata know it and declared otherwise, a passkey never being refused for want of an attestation; "enterprise", only an attestation that chains up to a root the tenant pins enrolling. Under "direct" and "enterprise" a model whose last status report is a security notification is refused, save those "passkey_compromised_models" names. A name no wired policy carries refuses the start, naming the ones that are wired. "none" by default.')
             ->defaultValue('none')
@@ -140,6 +148,30 @@ final readonly class TenantSection extends ConfigurationSection
         $declared = array_values(self::scopes()->normalized($scopes, 'tenant.scopes'));
 
         return new ConfigurationDeclaredScopes($tenantSlug, $declared);
+    }
+
+    /**
+     * @throws InvalidConfigurationException
+     * @throws CoreInvalidArgumentException
+     */
+    public static function administratorGroups(string $tenantSlug, mixed $groups): ConfigurationAdministratorGroups
+    {
+        /** @var list<string> $named */
+        $named = array_values(self::administrators()->normalized($groups, 'tenant.administrators'));
+
+        return new ConfigurationAdministratorGroups($tenantSlug, $named);
+    }
+
+    private static function administrators(): EnvironmentListDefinition
+    {
+        $groups = new EnvironmentListDefinition('administrators');
+        $groups
+            ->info('The groups whose members administer this tenant (decision 0038), by their names in the tenant, exactly: the role of an administrator is read from the groups of the person, a local group the console fills ("beffroi:group:add-member") as well as a group an upstream provider or SCIM holds the members of (decision 0002), and never from a list of people. A person taken out of the group stops administering the tenant at once: the next token addressed to "administration_resource" is refused. A name that is empty, or that begins or ends with whitespace, refuses the start; a name no group carries yet is kept. None by default, so that nobody administers a tenant whose deployment did not say who does.')
+            ->stringPrototype()
+            ->end()
+            ->defaultValue([]);
+
+        return $groups;
     }
 
     private static function scopes(): EnvironmentListDefinition
@@ -226,6 +258,17 @@ final readonly class TenantSection extends ConfigurationSection
         $services->get(ConfigurationDeclaredScopes::class)->factory(self::declaredScopes(...))->arg('$tenantSlug', self::string($tenant, 'slug'))->arg(
             '$scopes',
             $tenant['scopes'] ?? [],
+        );
+        $services->get(ConfigurationAdministratorGroups::class)->factory(self::administratorGroups(...))->arg('$tenantSlug', self::string(
+            $tenant,
+            'slug',
+        ))->arg(
+            '$groups',
+            $tenant['administrators'] ?? [],
+        );
+        $services->get(ConfigurationAdministrationResource::class)->arg('$tenantSlug', self::string($tenant, 'slug'))->arg(
+            '$resource',
+            is_string($tenant['administration_resource'] ?? null) ? $tenant['administration_resource'] : null,
         );
     }
 }

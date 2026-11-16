@@ -825,6 +825,27 @@
                                 ],
                                 "description": "The scopes this tenant hands out tokens for beyond \"openid\", the scopes of the claims this provider serves and \"offline_access\" (issue #920): the scopes of the APIs it protects, which stand for no claim. The tenant offers them, its discovery document announces them in \"scopes_supported\", and a client that registers itself may register them, a registration being held to what the tenant offers (decision 0009). A scope a declared client registers is offered as well, so a deployment that declares its clients may name none here; one that declares none, as the image, has nothing else to make such a scope exist. \"offline_access\" is never one of them, the wired grants deciding it (OIDC Core section 11): it is refused, as a value that is no scope token (RFC 6749 section 3.3) is, when the service that reads the list is built. None by default."
                             },
+                            "administrators": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/types/array_null",
+                                        "items": {
+                                            "$ref": "#/$defs/types/string_null"
+                                        }
+                                    },
+                                    {
+                                        "type": [
+                                            "string"
+                                        ]
+                                    }
+                                ],
+                                "description": "The groups whose members administer this tenant (decision 0038), by their names in the tenant, exactly: the role of an administrator is read from the groups of the person, a local group the console fills (\"beffroi:group:add-member\") as well as a group an upstream provider or SCIM holds the members of (decision 0002), and never from a list of people. A person taken out of the group stops administering the tenant at once: the next token addressed to \"administration_resource\" is refused. A name that is empty, or that begins or ends with whitespace, refuses the start; a name no group carries yet is kept. None by default, so that nobody administers a tenant whose deployment did not say who does."
+                            },
+                            "administration_resource": {
+                                "$ref": "#/$defs/types/scalar",
+                                "default": null,
+                                "description": "The identifier of the administration API of this tenant (decision 0038), the resource its tokens are addressed to (RFC 8707 section 2): an absolute URI without a fragment, the URL that API is served at. The provider reserves that audience to the administrators of the tenant: it addresses a token to it only for a member of one of the groups \"administrators\" names, signed in at the authorization endpoint by a session whose proofs satisfy phishing_resistant whatever the floor of the tenant, and bound to a key of the client; the device authorization grant and the backchannel authentication grant are refused it, and the discovery document never announces it. A client still registers it among its resources to ask for it. None by default, which reserves nothing."
+                            },
                             "passkey_attestation": {
                                 "$ref": "#/$defs/types/scalar",
                                 "default": "none",

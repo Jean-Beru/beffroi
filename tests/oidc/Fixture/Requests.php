@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Oidc\Tests\Fixture;
 
 use function array_map;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Domain\Authorization\AuthorizationRequest;
 use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
@@ -36,6 +37,7 @@ final class Requests
         ?ClaimsRequest $claims = null,
         array $acrValues = [],
         ?AuthorizationDetails $authorizationDetails = null,
+        ?ResourceIndicators $resources = null,
     ): AuthorizationRequest {
         return new AuthorizationRequest(
             $client,
@@ -50,6 +52,7 @@ final class Requests
             acrValues: $acrValues,
             idTokenHint: $idTokenHint,
             claims: $claims,
+            resources: $resources,
             authorizationDetails: $authorizationDetails,
         );
     }

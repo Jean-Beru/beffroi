@@ -1,0 +1,132 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Beffroi\Core\Tests\Application\Group;
+
+use Beffroi\Core\Application\Group\LocalMemberships;
+use Beffroi\Core\Bridge\InMemory\InMemoryGroupMembershipRepository;
+use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Domain\Group\Group;
+use Beffroi\Core\Domain\Group\GroupMembership;
+use Beffroi\Core\Domain\Group\GroupSource;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\GroupMembershipException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Uid\Uuid;
+
+/**
+ * Decision 0002: the members the tenant holds itself in its groups, given and taken back from a console; what a
+ * directory holds is written by that directory alone.
+ */
+final class LocalMembershipsTest extends TestCase
+{
+    private Tenant $tenant;
+
+    private User $user;
+
+    private Group $group;
+
+    private InMemoryGroupMembershipRepository $memberships;
+
+    private MockClock $clock;
+
+    private LocalMemberships $local;
+
+    protected function setUp(): void
+    {
+        $this->tenant = Fixtures::tenant();
+        $this->user = Fixtures::user($this->tenant);
+        $this->group = new Group(Uuid::v7(), $this->tenant, 'administrators', GroupSource::Local, Fixtures::now());
+        $this->memberships = new InMemoryGroupMembershipRepository();
+        $this->clock = new MockClock('2026-11-04T12:00:00+00:00');
+        $this->local = new LocalMemberships($this->memberships, $this->memberships, new SymfonyUuidGenerator(), $this->clock);
+    }
+
+    #[Test]
+    public function aPersonIsMadeAMemberTheTenantHoldsItself(): void
+    {
+        // When
+        $this->local->add($this->group, $this->user);
+
+        // Then
+        $memberships = $this->memberships->of($this->user);
+        static::assertSame(
+            [[$this->group, GroupSource::Local, $this->clock->now()->getTimestamp()]],
+            [[$memberships[0]->group, $memberships[0]->source, $memberships[0]->addedAt->getTimestamp()]],
+        );
+    }
+
+    #[Test]
+    public function aMemberIsNotMadeOneTwice(): void
+    {
+        // Given
+        $this->local->add($this->group, $this->user);
+
+        // Then
+        $this->expectException(GroupMembershipException::class);
+        $this->expectExceptionMessageIs('This person is already a member of the group "administrators".');
+
+        // When
+        $this->local->add($this->group, $this->user);
+    }
+
+    #[Test]
+    public function aGroupScimFillsTakesNoMemberFromTheTenant(): void
+    {
+        // Given
+        $directory = new Group(Uuid::v7(), $this->tenant, 'engineering', GroupSource::Scim, Fixtures::now());
+
+        // Then
+        $this->expectException(GroupMembershipException::class);
+        $this->expectExceptionMessageIs('The members of the group "engineering" are written by the directory that fills it, never by the tenant.');
+
+        // When
+        $this->local->add($directory, $this->user);
+    }
+
+    #[Test]
+    public function aMembershipTheTenantHoldsIsTakenBack(): void
+    {
+        // Given
+        $this->local->add($this->group, $this->user);
+
+        // When
+        $this->local->remove($this->group, $this->user);
+
+        // Then
+        static::assertSame([], $this->memberships->of($this->user));
+    }
+
+    #[Test]
+    public function aPersonWhoIsNoMemberIsNotTakenOut(): void
+    {
+        // Then
+        $this->expectException(GroupMembershipException::class);
+        $this->expectExceptionMessageIs('This person is not a member of the group "administrators".');
+
+        // When
+        $this->local->remove($this->group, $this->user);
+    }
+
+    /**
+     * The next assertion of the upstream provider would write it again.
+     */
+    #[Test]
+    public function aMembershipAnUpstreamProviderGaveIsNotTakenBackByTheTenant(): void
+    {
+        // Given
+        $this->memberships->save(new GroupMembership(Uuid::v7(), $this->group, $this->user, GroupSource::UpstreamClaims, Fixtures::now()));
+
+        // Then
+        $this->expectException(GroupMembershipException::class);
+        $this->expectExceptionMessageIs('This person is a member of the group "administrators" by a directory, which alone takes the membership back.');
+
+        // When
+        $this->local->remove($this->group, $this->user);
+    }
+}

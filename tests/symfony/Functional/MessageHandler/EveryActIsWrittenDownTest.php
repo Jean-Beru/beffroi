@@ -12,9 +12,11 @@ use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
 use Beffroi\Core\Domain\Event\DomainEventInterface;
 use Beffroi\Core\Domain\Event\LoadBudgetSpent;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Journal\JournalEntry;
 use Beffroi\Oidc\Domain\Claims\ClaimNames;
 use Beffroi\Oidc\Domain\Event\ConsentGranted;
+use Beffroi\Oidc\Domain\Event\PersonReadByAnAdministrator;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use function array_keys;
@@ -40,6 +42,48 @@ final class EveryActIsWrittenDownTest extends DatabaseTestCase
         static::assertSame(UserAuthenticated::NAME, $act->act);
         static::assertSame($user->subject->value, $act->subject?->value);
         static::assertNull($act->client);
+    }
+
+    /**
+     * Decision 0038: an act an administrator did to a person names the person and, beside them, the administrator.
+     */
+    #[Test]
+    public function anActSomebodyElseDidToAPersonNamesItsAuthor(): void
+    {
+        // Given
+        $user = self::user('bob', 'bob-subject');
+
+        // When
+        self::announce(
+            new PersonReadByAnAdministrator(self::now(), self::tenant(), 'administration-app', $user->subject, new Subject('alice-subject'), self::context()),
+        );
+
+        // Then
+        $act = self::onlyAct();
+        static::assertSame(
+            [PersonReadByAnAdministrator::NAME, 'bob-subject', 'alice-subject', 'administration-app'],
+            [$act->act, $act->subject?->value, $act->author?->value, $act->client],
+        );
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function anActWhoseTenantCameBackFromAQueueNamesItsAuthor(): void
+    {
+        // Given
+        $user = self::user('bob', 'bob-subject');
+        $tenant = self::tenant();
+        self::reload();
+
+        // When
+        self::announce(
+            new PersonReadByAnAdministrator(self::now(), $tenant, 'administration-app', $user->subject, new Subject('alice-subject'), self::context()),
+        );
+
+        // Then
+        static::assertSame('alice-subject', self::onlyAct()->author?->value);
     }
 
     #[Test]
@@ -102,11 +146,11 @@ final class EveryActIsWrittenDownTest extends DatabaseTestCase
     }
 
     #[Test]
-    public function theJournalHoldsTheFourFactsAndTheTwoNamesAndNothingElse(): void
+    public function theJournalHoldsTheFourFactsAndTheThreeNamesAndNothingElse(): void
     {
         // When / Then
         static::assertSame(
-            ['act', 'client', 'context', 'id', 'occurred_at', 'subject', 'tenant_id'],
+            ['act', 'author', 'client', 'context', 'id', 'occurred_at', 'subject', 'tenant_id'],
             array_keys(ClassifiedModel::of(self::entityManager())->linesOf('beffroi_journal')),
         );
     }

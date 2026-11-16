@@ -7,6 +7,9 @@ namespace Beffroi\Oidc\Tests\Application\Ciba;
 use function array_filter;
 use function array_merge;
 use function base64_encode;
+use Beffroi\Core\Bridge\InMemory\InMemoryGroupMembershipRepository;
+use Beffroi\Oidc\Application\Administration\AdministrationAudience;
+use Beffroi\Oidc\Tests\Fixture\Administrations;
 use DateInterval;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
@@ -75,6 +78,8 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
 
     private BackchannelAuthenticationHandler $handler;
 
+    private AdministrationAudience $administration;
+
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
@@ -102,6 +107,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
         $this->notifier = new RecordingPendingApprovalNotifier();
         $this->replays = new InMemoryRequestObjectReplayGuard();
         $this->clock = new MockClock('2026-09-26T09:00:00+00:00');
+        $this->administration = Administrations::none();
         $this->handler = $this->handler();
     }
 
@@ -493,6 +499,26 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
     }
 
     /**
+     * Decision 0038
+     */
+    #[Test]
+    public function theAdministrationApiOfTheTenantIsRefused(): void
+    {
+        // Given
+        $this->administration = Administrations::of($this->tenant, new InMemoryGroupMembershipRepository(), Clients::CALENDAR);
+        $this->handler = $this->handler();
+
+        // Then
+        $this->expectException(InvalidTargetException::class);
+        $this->expectExceptionMessageIs('invalid_target: The requested resource is reserved to the administrators of the tenant (RFC 8707 section 2).');
+
+        // When
+        $this->askAs('terminal-with-resources', [
+            'resource' => Clients::CALENDAR,
+        ]);
+    }
+
+    /**
      * RFC 8707 §2
      */
     #[Test]
@@ -748,6 +774,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
             new SymfonyUuidGenerator(),
             new FakeSecretSealer(),
             $this->notifier,
+            $this->administration,
             $this->clock,
             $lifetime ?? new DateInterval('PT300S'),
             new DateInterval('PT1800S'),

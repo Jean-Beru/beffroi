@@ -6,6 +6,7 @@ namespace App\Tests\Symfony\Functional\Configuration;
 
 use App\Doctrine\PersonalData\TenantDataKeyStores;
 use App\Tenant\TenantFactory;
+use Beffroi\Core\Bridge\Configuration\ConfigurationAdministratorGroups;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use function array_map;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy;
@@ -35,6 +36,7 @@ final class ListsFromTheEnvironmentTest extends KernelTestCase
         'BEFFROI_TEST_SAML_SERVICE_PROVIDERS',
         'BEFFROI_TEST_SAML_IDENTITY_PROVIDERS',
         'BEFFROI_TEST_TENANT_SCOPES',
+        'BEFFROI_TEST_TENANT_ADMINISTRATORS',
     ];
 
     private const array JWKS = [
@@ -188,6 +190,41 @@ final class ListsFromTheEnvironmentTest extends KernelTestCase
 
         // When
         static::getContainer()->get('test.beffroi.environment_lists.declared_scopes');
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function theGroupsThatAdministerTheTenantAreTheOnesTheEnvironmentNames(): void
+    {
+        // Given
+        self::carry('BEFFROI_TEST_TENANT_ADMINISTRATORS', ['administrators', 'operators']);
+
+        // When
+        $groups = self::service('test.beffroi.environment_lists.administrator_groups', ConfigurationAdministratorGroups::class)
+            ->groupsAdministering(self::tenant());
+
+        // Then
+        static::assertSame(['administrators', 'operators'], $groups);
+    }
+
+    /**
+     * Decision 0030
+     */
+    #[Test]
+    public function aGroupTheTreeRefusesIsRefusedWhenItsServiceIsBuilt(): void
+    {
+        // Given
+        self::carry('BEFFROI_TEST_TENANT_ADMINISTRATORS', [['administrators']]);
+        self::bootKernel(['environment' => self::ENVIRONMENT]);
+
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIsOrContains('The "beffroi" configuration key "tenant.administrators" carried by the environment is refused:');
+
+        // When
+        static::getContainer()->get('test.beffroi.environment_lists.administrator_groups');
     }
 
     /**

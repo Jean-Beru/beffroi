@@ -29,6 +29,7 @@ $builder->withPaths([
     __DIR__ . '/../apps/op/src',
     __DIR__ . '/../apps/op/config/beffroi',
     __DIR__ . '/../apps/op/migrations',
+    __DIR__ . '/../apps/tui/src',
     __DIR__ . '/../tests',
     __DIR__ . '/../castor.php',
     __DIR__ . '/../.castor',

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Client\Registration;
 
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationAdministrationResource;
+use Beffroi\Oidc\Tests\Fixture\Administrations;
 use DateInterval;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\Fixtures;
@@ -114,7 +116,13 @@ final class InitialAccessTokenRevocationTest extends TestCase
 
     private function issue(int $registrationsAllowed = 1): IssuedInitialAccessToken
     {
-        return new InitialAccessTokenIssuance(Secrets::drawer(), $this->tokens, $this->clock, Registrations::reader())->issue(
+        return new InitialAccessTokenIssuance(
+            Secrets::drawer(),
+            $this->tokens,
+            $this->clock,
+            Registrations::reader(),
+            new ConfigurationAdministrationResource('acme', Administrations::RESOURCE),
+        )->issue(
             $this->tenant,
             'The team that integrates',
             $registrationsAllowed,

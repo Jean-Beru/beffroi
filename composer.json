@@ -1,6 +1,6 @@
 {
     "name": "beffroi/framework",
-    "description": "An identity provider for the Symfony ecosystem: identity core, OAuth 2.0 / OpenID Connect module, SAML 2.0 module, XML security, the SAML 2.0 model and its bindings, and the application built on them.",
+    "description": "An identity provider for the Symfony ecosystem: identity core, OAuth 2.0 / OpenID Connect module, SAML 2.0 module, XML security, the SAML 2.0 model and its bindings, the application built on them, and the terminal client that administers it.",
     "type": "library",
     "license": "MIT",
     "homepage": "https://github.com/beffroi-auth/beffroi",
@@ -22,7 +22,11 @@
         "ext-intl": "*",
         "ext-libxml": "*",
         "ext-openssl": "*",
+        "ext-sodium": "*",
         "ext-zlib": "*",
+        "amphp/http-client": "^5.3.2",
+        "amphp/process": "^2.0",
+        "amphp/socket": "^2.3",
         "bacon/bacon-qr-code": "^3.0",
         "doctrine/dbal": "^4.6",
         "doctrine/doctrine-bundle": "^3.3",
@@ -33,6 +37,7 @@
         "psr/clock": "^1.0",
         "psr/event-dispatcher": "^1.0",
         "psr/log": "^3.0",
+        "revolt/event-loop": "^1.0",
         "spomky-labs/aes-key-wrap": "^7.0",
         "spomky-labs/otphp": "^11.5",
         "spomky-labs/pki-framework": "^1.2.1",
@@ -62,6 +67,7 @@
         "symfony/security-csrf": "8.2.*",
         "symfony/security-http": "8.2.*",
         "symfony/translation": "8.2.*",
+        "symfony/tui": "^8.1",
         "symfony/twig-bridge": "8.2.*",
         "symfony/twig-bundle": "8.2.*",
         "symfony/uid": "8.2.*",
@@ -103,7 +109,8 @@
             "App\\": "apps/op/src/",
             "Beffroi\\Xml\\": "src/xml-security/src/",
             "Beffroi\\Saml2\\Model\\": "src/saml2-model/src/",
-            "Beffroi\\Saml2\\Bindings\\": "src/saml2-bindings/src/"
+            "Beffroi\\Saml2\\Bindings\\": "src/saml2-bindings/src/",
+            "Beffroi\\Tui\\": "apps/tui/src/"
         }
     },
     "autoload-dev": {
@@ -115,7 +122,8 @@
             "DoctrineMigrations\\": "apps/op/migrations/",
             "Beffroi\\Xml\\Tests\\": "tests/xml-security/",
             "Beffroi\\Saml2\\Model\\Tests\\": "tests/saml2-model/",
-            "Beffroi\\Saml2\\Bindings\\Tests\\": "tests/saml2-bindings/"
+            "Beffroi\\Saml2\\Bindings\\Tests\\": "tests/saml2-bindings/",
+            "Beffroi\\Tui\\Tests\\": "tests/tui/"
         },
         "exclude-from-classmap": [
             "tests/saml2-model/Fixture/",

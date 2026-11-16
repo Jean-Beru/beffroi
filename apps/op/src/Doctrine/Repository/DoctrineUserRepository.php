@@ -12,15 +12,17 @@ use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\CanCountUsersInterface;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use function array_values;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 /**
  * @extends DoctrineRepository<User>
  */
-final readonly class DoctrineUserRepository extends DoctrineRepository implements UserRepositoryInterface
+final readonly class DoctrineUserRepository extends DoctrineRepository implements UserRepositoryInterface, CanCountUsersInterface
 {
     public function __construct(
         EntityManagers $managers,
@@ -69,6 +71,16 @@ final readonly class DoctrineUserRepository extends DoctrineRepository implement
      *
      * @throws UserAlreadyExistsException
      */
+    public function countUsersIn(Tenant $tenant): int
+    {
+        return (int) $this->queryBuilder('u')
+            ->select('COUNT(u.id)')
+            ->where('u.tenant = :tenant')
+            ->setParameter('tenant', $tenant->id, UuidType::NAME)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
     public function save(User $user): void
     {
         try {

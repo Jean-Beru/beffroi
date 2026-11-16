@@ -15,6 +15,12 @@ security:
             # Ensure dev tools and static assets are always allowed
             pattern: ^/(_profiler|_wdt|assets|build)/
             security: false
+        # The administration API of a tenant (decision 0038), which a process of its own plane serves: guarded by the
+        # token of each request (App\Administration\AdministrationGuard) and never by a session, so the firewall
+        # reads no cookie there and starts none.
+        beffroi_administration:
+            request_matcher: App\Administration\AdministrationRequestMatcher
+            security: false
         beffroi_protocol:
             pattern: ^/(\.well-known/(openid-configuration|oauth-authorization-server)|jwks|token|userinfo|introspect|revoke|par|device_authorization|backchannel_authentication|register(/.+)?)$
             security: false

@@ -35,12 +35,16 @@ beffroi:
         # Every list of this file but the clients is a JSON document of the environment, of the shape the list
         # has in this file, held to the rules of the tree when the service it reaches is built (decision 0030): what
         # the people of this tenant may change of themselves (issue beffroi-auth/beffroi#452), its "acr"
-        # vocabulary (decision 0010) and the scopes of the APIs it protects, which stand for no claim and which a
-        # client that registers itself may then register (issue beffroi-auth/beffroi#920). .env documents the three
-        # with what an image takes.
+        # vocabulary (decision 0010), the scopes of the APIs it protects, which stand for no claim and which a
+        # client that registers itself may then register (issue beffroi-auth/beffroi#920), and the groups whose
+        # members administer it (decision 0038). .env documents the four with what an image takes.
         self_served_claims: '%env(json:BEFFROI_TENANT_SELF_SERVED_CLAIMS)%'
         authentication_classes: '%env(json:BEFFROI_TENANT_AUTHENTICATION_CLASSES)%'
         scopes: '%env(json:BEFFROI_TENANT_SCOPES)%'
+        administrators: '%env(json:BEFFROI_TENANT_ADMINISTRATORS)%'
+        # The administration API of the tenant, the audience the provider reserves to those administrators (decision
+        # 0038): "default::" makes an empty variable no API at all, which reserves nothing.
+        administration_resource: '%env(default::BEFFROI_TENANT_ADMINISTRATION_RESOURCE)%'
         # What the enrolment of a passkey asks of its authenticator (decision 0046): the name of the policy, then
         # the PEM roots of the enterprise attestations it admits, the PEM authorities of the tenant itself, and
         # the models under a security alert it still enrols, each to the last day it does. .env documents them

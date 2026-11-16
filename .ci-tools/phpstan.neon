@@ -15,6 +15,7 @@ parameters:
 		- %currentWorkingDirectory%/apps/op/src
 		- %currentWorkingDirectory%/apps/op/config/beffroi
 		- %currentWorkingDirectory%/apps/op/migrations
+		- %currentWorkingDirectory%/apps/tui/src
 		- %currentWorkingDirectory%/tests
 	# The SAML packages are analysed apart, each by its own configuration (.ci-tools/phpstan-xml-security.neon,
 	# .ci-tools/phpstan-saml2-model.neon, .ci-tools/phpstan-saml2-bindings.neon and .ci-tools/phpstan-saml.neon), with

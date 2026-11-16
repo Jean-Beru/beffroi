@@ -14,6 +14,7 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Domain\Listing\Listing;
 use Beffroi\Core\Domain\Listing\Pagination;
 use Beffroi\Core\Port\ActsOfAPersonInterface;
+use Beffroi\Core\Port\CanCountActsInterface;
 use Beffroi\Core\Port\CanPageActsOfAPersonInterface;
 use Beffroi\Core\Exception\RuntimeException;
 use Beffroi\Core\Port\JournalInterface;
@@ -27,7 +28,11 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
 /**
  * @extends DoctrineRepository<JournalEntry>
  */
-final readonly class DoctrineJournal extends DoctrineRepository implements JournalInterface, ActsOfAPersonInterface, CanPageActsOfAPersonInterface
+final readonly class DoctrineJournal extends DoctrineRepository implements
+    JournalInterface,
+    ActsOfAPersonInterface,
+    CanPageActsOfAPersonInterface,
+    CanCountActsInterface
 {
     public const int FORGOTTEN_AT_ONCE = 1000;
 
@@ -57,7 +62,7 @@ final readonly class DoctrineJournal extends DoctrineRepository implements Journ
             throw new RuntimeException(sprintf('The tenant "%s" of an act of the journal has no row.', $entry->tenant->slug));
         }
 
-        return new JournalEntry($entry->id, $tenant, $entry->act, $entry->occurredAt, $entry->context, $entry->subject, $entry->client);
+        return new JournalEntry($entry->id, $tenant, $entry->act, $entry->occurredAt, $entry->context, $entry->subject, $entry->client, $entry->author);
     }
 
     public function forgetBefore(Tenant $tenant, DateTimeImmutable $moment): int
@@ -82,6 +87,28 @@ final readonly class DoctrineJournal extends DoctrineRepository implements Journ
         $manager->flush();
 
         return count($past);
+    }
+
+    public function countActsSince(Tenant $tenant, DateTimeImmutable $since): array
+    {
+        /** @var list<array{act: string, acts: int|string}> $rows */
+        $rows = $this->queryBuilder('a')
+            ->select('a.act AS act', 'COUNT(a.id) AS acts')
+            ->where('a.tenant = :tenant')
+            ->andWhere('a.occurredAt >= :since')
+            ->groupBy('a.act')
+            ->orderBy('acts', SortDirection::Descending)
+            ->addOrderBy('a.act', SortDirection::Ascending)
+            ->setParameter('tenant', $tenant->id, UuidType::NAME)
+            ->setParameter('since', $since)
+            ->getQuery()
+            ->getArrayResult();
+        $counts = [];
+        foreach ($rows as $row) {
+            $counts[$row['act']] = (int) $row['acts'];
+        }
+
+        return $counts;
     }
 
     /**

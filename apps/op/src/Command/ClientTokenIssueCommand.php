@@ -62,6 +62,8 @@ final readonly class ClientTokenIssueCommand
         bool $exchangeForAUser = false,
         #[Option(description: 'The subject that may act for the subject of their tokens (RFC 8693 section 4.4), a gateway by its client id.')]
         ?string $mayAct = null,
+        #[Option(description: 'The clients it registers are clients of the administration API of the tenant (decision 0038), and authenticate with a key.')]
+        bool $administration = false,
     ): int {
         $tenant = $this->tenant->orTold($io);
         if ($tenant === null) {
@@ -85,6 +87,7 @@ final readonly class ClientTokenIssueCommand
                 $registrations,
                 new DateInterval(sprintf('P%dD', $days)),
                 self::granted($resource, $accessTokenFormat, $requireSenderConstrainedTokens, $exchangeSubjectTokenType, $exchangeForAUser, $mayAct),
+                $administration,
             );
         } catch (InvalidArgumentException $exception) {
             $io->error($exception->getMessage());
@@ -104,6 +107,9 @@ final readonly class ClientTokenIssueCommand
             ],
             [
                 'Expires' => $issued->token->expiresAt->format('Y-m-d H:i:s'),
+            ],
+            [
+                'Administration' => $issued->token->administration ? 'yes' : 'no',
             ],
             [
                 'Gives' => PrintedMembers::lines($issued->token->granted?->members() ?? []),

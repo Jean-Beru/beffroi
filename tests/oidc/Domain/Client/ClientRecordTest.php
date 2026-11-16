@@ -9,6 +9,7 @@ use Beffroi\Oidc\Domain\Client\ClientRecord;
 use Beffroi\Oidc\Domain\Client\Metadata\AttestedMembers;
 use Beffroi\Oidc\Domain\Client\Metadata\GrantedMembers;
 use Beffroi\Oidc\Domain\Client\SharedClientSecret;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicator;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
@@ -37,6 +38,36 @@ final class ClientRecordTest extends TestCase
         static::assertSame($metadata, $record->metadata);
         static::assertNull($record->secret);
         static::assertNull($record->secretExpiresAt);
+    }
+
+    /**
+     * Decision 0038: a client of the administration is given the administration API the deployment names when its row
+     * is read, which it never registered itself.
+     */
+    #[Test]
+    public function aClientOfTheAdministrationIsGivenTheApiTheDeploymentNames(): void
+    {
+        // Given
+        $record = new ClientRecord(Uuid::v7(), Fixtures::tenant(), 'drawn-identifier', [], [], null, self::digest(), Fixtures::now(), administration: true);
+
+        // When
+        $registered = $record->asRegistered(new ResourceIndicator('https://admin.acme.example'));
+
+        // Then
+        static::assertSame(['https://admin.acme.example'], $registered->value('resources'));
+    }
+
+    #[Test]
+    public function anyOtherClientIsGivenNoneOfIt(): void
+    {
+        // Given
+        $record = new ClientRecord(Uuid::v7(), Fixtures::tenant(), 'drawn-identifier', [], [], null, self::digest(), Fixtures::now());
+
+        // When
+        $registered = $record->asRegistered(new ResourceIndicator('https://admin.acme.example'));
+
+        // Then
+        static::assertFalse($registered->has('resources'));
     }
 
     #[Test]

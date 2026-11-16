@@ -6,6 +6,8 @@ namespace Beffroi\Oidc\Tests\Application\Client\Registration;
 
 use function array_key_first;
 use function array_map;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationAdministrationResource;
+use Beffroi\Oidc\Tests\Fixture\Administrations;
 use DateInterval;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Application\Client\Registration\InitialAccessTokenIssuance;
@@ -24,7 +26,7 @@ use function sort;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * RFC 7591 §1.2, Decision 0009, Decision 0043
+ * RFC 7591 §1.2, Decision 0009, Decision 0038, Decision 0043
  */
 final class InitialAccessTokenIssuanceTest extends TestCase
 {
@@ -37,7 +39,13 @@ final class InitialAccessTokenIssuanceTest extends TestCase
     protected function setUp(): void
     {
         $this->tokens = new InMemoryInitialAccessTokenRepository();
-        $this->issuance = new InitialAccessTokenIssuance(Secrets::drawer(), $this->tokens, new MockClock(self::NOW), Registrations::reader());
+        $this->issuance = new InitialAccessTokenIssuance(
+            Secrets::drawer(),
+            $this->tokens,
+            new MockClock(self::NOW),
+            Registrations::reader(),
+            new ConfigurationAdministrationResource('acme', Administrations::RESOURCE),
+        );
     }
 
     #[Test]
@@ -221,5 +229,105 @@ final class InitialAccessTokenIssuanceTest extends TestCase
 
         // When
         $this->issuance->issue(Fixtures::tenant(), '', 1, new DateInterval('P30D'));
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function aTokenIsIssuedForTheAdministrationOfATenantThatNamesItsApi(): void
+    {
+        // When
+        $issued = $this->issuance->issue(Fixtures::tenant(), 'The terminal of the administrators', 1, new DateInterval('P1D'), administration: true);
+
+        // Then
+        static::assertTrue($issued->token->administration);
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function noTokenIsIssuedForTheAdministrationOfATenantThatNamesNoApi(): void
+    {
+        // Given
+        $issuance = new InitialAccessTokenIssuance(
+            Secrets::drawer(),
+            $this->tokens,
+            new MockClock(self::NOW),
+            Registrations::reader(),
+            new ConfigurationAdministrationResource('acme'),
+        );
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The tenant "acme" names no administration API (BEFFROI_TENANT_ADMINISTRATION_RESOURCE): a token for its administration would register clients of nothing.');
+
+        // When
+        $issuance->issue(Fixtures::tenant(), 'The terminal of the administrators', 1, new DateInterval('P1D'), administration: true);
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function aTokenForTheAdministrationGivesNoResource(): void
+    {
+        // Given
+        $granted = new GrantedMembers([
+            'resources' => ['https://api.example/invoices'],
+        ]);
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The token "The terminal of the administrators" is issued for the administration of the tenant, whose clients are given its administration API and no other resource (decision 0038).');
+
+        // When
+        $this->issuance->issue(Fixtures::tenant(), 'The terminal of the administrators', 1, new DateInterval('P1D'), $granted, true);
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function aTokenForTheAdministrationGivesWhatIsNoResource(): void
+    {
+        // Given
+        $granted = new GrantedMembers([
+            'require_sender_constrained_tokens' => true,
+        ]);
+
+        // When
+        $issued = $this->issuance->issue(Fixtures::tenant(), 'The terminal of the administrators', 1, new DateInterval('P1D'), $granted, true);
+
+        // Then
+        static::assertSame($granted, $issued->token->granted);
+    }
+
+    /**
+     * Decision 0038
+     *
+     * @param list<string> $resources
+     */
+    #[Test]
+    #[DataProvider('provideResourcesThatNameTheAdministrationApi')]
+    public function aTokenThatWouldGiveTheAdministrationApiAmongItsResourcesIsNotIssued(array $resources): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The token "invoices" names the administration API of the tenant among its resources, which only a token issued for the administration gives, to clients that authenticate with a key (decision 0038).');
+
+        // When
+        $this->issuance->issue(Fixtures::tenant(), 'invoices', 1, new DateInterval('P30D'), new GrantedMembers(['resources' => $resources]));
+    }
+
+    /**
+     * @return iterable<string, array{list<string>}>
+     */
+    public static function provideResourcesThatNameTheAdministrationApi(): iterable
+    {
+        yield 'the administration API alone' => [[Administrations::RESOURCE]];
+
+        yield 'the administration API beside another' => [['https://api.example/invoices', Administrations::RESOURCE]];
     }
 }

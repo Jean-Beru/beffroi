@@ -9,6 +9,7 @@ use App\Doctrine\Repository\DoctrineClientRepository;
 use App\Tests\Symfony\Fixture\RecordedMessages;
 use Beffroi\Core\Port\PasswordHasherInterface;
 use Beffroi\Oidc\Application\Client\ClientMetadataReader;
+use Beffroi\Oidc\Bridge\Configuration\ConfigurationAdministrationResource;
 use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Client\ClientRecord;
 use Beffroi\Oidc\Domain\Client\ClientSecretInterface;
@@ -162,6 +163,7 @@ final class RegisteredClientFlowTest extends BrowserTestCase
             self::service(EntityManagers::class, EntityManagers::class),
             self::service(ClientMetadataReader::class, ClientMetadataReader::class),
             $said,
+            new ConfigurationAdministrationResource('none'),
         );
 
         // When
