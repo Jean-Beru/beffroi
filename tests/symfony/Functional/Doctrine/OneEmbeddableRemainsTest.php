@@ -15,7 +15,6 @@ use Beffroi\Oidc\Domain\Interaction\Interaction;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
-use Doctrine\DBAL\Types\Type;
 use function method_exists;
 use PHPUnit\Framework\Attributes\Test;
 use ReflectionClass;
@@ -108,7 +107,7 @@ final class OneEmbeddableRemainsTest extends DatabaseTestCase
         // Given
         $handed = [];
         foreach (self::typesOfTheProvider() as $name) {
-            if (method_exists(Type::getType($name), 'resolveWith')) {
+            if (method_exists(self::typesOfTheConnection()->get($name), 'resolveWith')) {
                 $handed[] = $name;
             }
         }

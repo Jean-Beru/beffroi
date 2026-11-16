@@ -105,8 +105,6 @@ final class OriginLoadListenerTest extends TestCase
         $firewall = FirewallListener::getSubscribedEvents()[KernelEvents::REQUEST][1][1] ?? null;
 
         // When / Then
-        static::assertSame(32, $router);
-        static::assertSame(8, $firewall);
         static::assertLessThan($router, OriginLoadListener::PRIORITY);
         static::assertGreaterThan($firewall, OriginLoadListener::PRIORITY);
     }

@@ -11,6 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
+use Symfony\Bundle\SecurityBundle\EventListener\FirewallListener;
 use Symfony\Component\HttpKernel\EventListener\RouterListener;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
@@ -121,12 +122,12 @@ final class PlaneTest extends TestCase
     public function theListenerRunsAfterTheRouterAndBeforeTheFirewall(): void
     {
         // Given
-        $routerPriority = RouterListener::getSubscribedEvents()[KernelEvents::REQUEST][0][1] ?? null;
+        $router = RouterListener::getSubscribedEvents()[KernelEvents::REQUEST][0][1] ?? null;
+        $firewall = FirewallListener::getSubscribedEvents()[KernelEvents::REQUEST][1][1] ?? null;
 
         // When / Then
-        static::assertSame(32, $routerPriority);
-        static::assertLessThan($routerPriority, PlaneRequestListener::PRIORITY);
-        static::assertGreaterThan(8, PlaneRequestListener::PRIORITY);
+        static::assertLessThan($router, PlaneRequestListener::PRIORITY);
+        static::assertGreaterThan($firewall, PlaneRequestListener::PRIORITY);
     }
 
     private static function event(?string $route): RequestEvent

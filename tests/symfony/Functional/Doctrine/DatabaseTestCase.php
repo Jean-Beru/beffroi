@@ -7,6 +7,7 @@ namespace App\Tests\Symfony\Functional\Doctrine;
 use Closure;
 use function copy;
 use DateTimeImmutable;
+use Doctrine\DBAL\Types\TypeProvider;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\Persistence\ManagerRegistry;
@@ -124,6 +125,11 @@ abstract class DatabaseTestCase extends WebTestCase
     protected static function entityManager(): EntityManagerInterface
     {
         return self::service('doctrine.orm.entity_manager', EntityManagerInterface::class);
+    }
+
+    protected static function typesOfTheConnection(): TypeProvider
+    {
+        return self::entityManager()->getConnection()->getConfiguration()->getTypeProvider();
     }
 
     protected static function registry(): ManagerRegistry
