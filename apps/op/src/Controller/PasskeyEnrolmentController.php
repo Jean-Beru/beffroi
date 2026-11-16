@@ -14,6 +14,7 @@ use App\Http\RequestContextFactory;
 use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Exception\CredentialEnrolmentFailedException;
+use Beffroi\Core\Exception\PasskeyAttestationRefusedException;
 use function mb_strlen;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -79,6 +80,8 @@ final readonly class PasskeyEnrolmentController implements AsksForARecentProofIn
         }
         try {
             $this->enrolment->complete($user, $name, $options, $attestation, $this->contexts->fromRequest($request));
+        } catch (PasskeyAttestationRefusedException $exception) {
+            return $this->refused($request, $exception->refusal->value);
         } catch (CredentialEnrolmentFailedException) {
             return $this->refused($request, self::REFUSED);
         }

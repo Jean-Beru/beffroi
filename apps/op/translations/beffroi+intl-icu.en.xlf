@@ -461,9 +461,37 @@
         <source>passkeys.authenticator.unknown</source>
         <target>Unknown authenticator</target>
       </trans-unit>
+      <trans-unit id="passkeys.model_proof.declared" resname="passkeys.model_proof.declared">
+        <source>passkeys.model_proof.declared</source>
+        <target>Model declared by the authenticator</target>
+      </trans-unit>
+      <trans-unit id="passkeys.model_proof.verified" resname="passkeys.model_proof.verified">
+        <source>passkeys.model_proof.verified</source>
+        <target>Model verified by its attestation</target>
+      </trans-unit>
+      <trans-unit id="passkeys.model_proof.enterprise" resname="passkeys.model_proof.enterprise">
+        <source>passkeys.model_proof.enterprise</source>
+        <target>Key attested for your organisation</target>
+      </trans-unit>
+      <trans-unit id="passkeys.serial_number" resname="passkeys.serial_number">
+        <source>passkeys.serial_number</source>
+        <target>Serial number {serial}</target>
+      </trans-unit>
+      <trans-unit id="passkeys.under_security_alert" resname="passkeys.under_security_alert">
+        <source>passkeys.under_security_alert</source>
+        <target>Model under a security alert</target>
+      </trans-unit>
+      <trans-unit id="passkeys.error.organisation_keys_only" resname="passkeys.error.organisation_keys_only">
+        <source>passkeys.error.organisation_keys_only</source>
+        <target>Your organisation accepts only the keys it gave you. Use one of them.</target>
+      </trans-unit>
+      <trans-unit id="passkeys.error.model_under_security_alert" resname="passkeys.error.model_under_security_alert">
+        <source>passkeys.error.model_under_security_alert</source>
+        <target>This model of authenticator is under a security alert and is no longer accepted. Use another one.</target>
+      </trans-unit>
       <trans-unit id="dbb47ea9ff" resname="passkeys.authenticator.declared">
         <source>passkeys.authenticator.declared</source>
-        <target>An authenticator is named after what it declared when the passkey was added: nothing verifies it.</target>
+        <target>An authenticator whose model is declared is named after what it said when the passkey was added: nothing verified it.</target>
       </trans-unit>
       <trans-unit id="fd60213150" resname="passkeys.certification.NOT_FIDO_CERTIFIED">
         <source>passkeys.certification.NOT_FIDO_CERTIFIED</source>
@@ -1656,6 +1684,14 @@
       <trans-unit id="enrolment_ticket.error.no_ceremony" resname="enrolment_ticket.error.no_ceremony">
         <source>enrolment_ticket.error.no_ceremony</source>
         <target>No passkey was being created. Try again.</target>
+      </trans-unit>
+      <trans-unit id="enrolment_ticket.error.organisation_keys_only" resname="enrolment_ticket.error.organisation_keys_only">
+        <source>enrolment_ticket.error.organisation_keys_only</source>
+        <target>Your organisation accepts only the keys it gave you. Use one of them.</target>
+      </trans-unit>
+      <trans-unit id="enrolment_ticket.error.model_under_security_alert" resname="enrolment_ticket.error.model_under_security_alert">
+        <source>enrolment_ticket.error.model_under_security_alert</source>
+        <target>This model of authenticator is under a security alert and is no longer accepted. Use another one.</target>
       </trans-unit>
       <trans-unit id="enrolment_ticket.error.refused" resname="enrolment_ticket.error.refused">
         <source>enrolment_ticket.error.refused</source>

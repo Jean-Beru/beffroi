@@ -6,6 +6,7 @@ namespace App\Tests\Symfony\Functional\Command;
 
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler;
+use Beffroi\Core\Domain\Credential\Attestation\AttestationEvidence;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
@@ -55,7 +56,7 @@ final class CredentialsTest extends ConsoleTestCase
             . $passkey->id->toRfc4122()
             . ' YubiKey 5 unknown (AAGUID '
             . $passkey->aaguid->toRfc4122()
-            . ') 2026-09-15 10:00:00 2026-09-15 11:00:00 2026-09-15 12:00:00',
+            . ', declared) 2026-09-15 10:00:00 2026-09-15 11:00:00 2026-09-15 12:00:00',
             $display,
         );
     }
@@ -81,7 +82,34 @@ final class CredentialsTest extends ConsoleTestCase
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         $display = self::string(preg_replace('/ +/', ' ', $tester->getDisplay(true)));
-        static::assertStringContainsString('passkey ' . $passkey->id->toRfc4122() . ' YubiKey 5 YubiKey 5 Series (fido-metadata) 2026-09-15', $display);
+        static::assertStringContainsString(
+            'passkey ' . $passkey->id->toRfc4122() . ' YubiKey 5 YubiKey 5 Series (fido-metadata, declared) 2026-09-15',
+            $display,
+        );
+    }
+
+    /**
+     * WebAuthn Level 3 §8.2.2, Decision 0046
+     */
+    #[Test]
+    public function whatTheEnrolmentOfAPasskeyProvedIsShownWithItsAuthenticator(): void
+    {
+        // Given
+        $user = self::user('alice');
+        $passkey = self::passkey($user, AttestationEvidence::enterprise('0ada', underSecurityAlert: true));
+        self::credentials()->save($passkey);
+
+        // When
+        $tester = self::console('beffroi:user:show', [
+            'username' => 'alice',
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertStringContainsString(
+            'unknown (AAGUID ' . $passkey->aaguid->toRfc4122() . ', enterprise, serial number 0ada, under a security alert)',
+            self::string(preg_replace('/ +/', ' ', $tester->getDisplay(true))),
+        );
     }
 
     #[Test]
@@ -247,7 +275,7 @@ final class CredentialsTest extends ConsoleTestCase
         static::assertStringContainsString('There is no user named "nobody"', self::flattened($tester));
     }
 
-    private static function passkey(User $user): PasskeyCredential
+    private static function passkey(User $user, ?AttestationEvidence $evidence = null): PasskeyCredential
     {
         return new PasskeyCredential(
             Uuid::v7(),
@@ -262,6 +290,7 @@ final class CredentialsTest extends ConsoleTestCase
             Uuid::v4(),
             Fixtures::userHandle(),
             self::now(),
+            $evidence ?? AttestationEvidence::declared(),
         );
     }
 

@@ -8,6 +8,8 @@ use function array_filter;
 use function array_map;
 use DateTimeImmutable;
 use Beffroi\Core\Domain\Credential\AuthenticatorTransport;
+use Beffroi\Core\Domain\Credential\Attestation\AttestationEvidence;
+use Beffroi\Core\Domain\Credential\Attestation\VerifiedRegistration;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
@@ -384,7 +386,13 @@ final class PasskeyCredentialTest extends TestCase
         );
 
         // When
-        $passkey = PasskeyCredential::fromRecord(Uuid::v7(), $user, 'Pixel', $record, Fixtures::now());
+        $passkey = PasskeyCredential::fromRecord(
+            Uuid::v7(),
+            $user,
+            'Pixel',
+            new VerifiedRegistration($record, AttestationEvidence::declared()),
+            Fixtures::now(),
+        );
 
         // Then
         static::assertSame('credential-id', $passkey->credentialId);
@@ -422,7 +430,13 @@ final class PasskeyCredentialTest extends TestCase
         $this->expectExceptionMessageIs('A passkey is enrolled with the backup flags of its authenticator data (WebAuthn Level 3 §6.1.3).');
 
         // When
-        PasskeyCredential::fromRecord(Uuid::v7(), Fixtures::user(), 'Pixel', $record, Fixtures::now());
+        PasskeyCredential::fromRecord(
+            Uuid::v7(),
+            Fixtures::user(),
+            'Pixel',
+            new VerifiedRegistration($record, AttestationEvidence::declared()),
+            Fixtures::now(),
+        );
     }
 
     /**

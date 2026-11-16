@@ -13,6 +13,7 @@ use App\Http\WhatWasRefused;
 use Beffroi\Core\Application\Enrolment\EnrolmentTicketRedemption;
 use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
 use Beffroi\Core\Exception\CredentialEnrolmentFailedException;
+use Beffroi\Core\Exception\PasskeyAttestationRefusedException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -79,6 +80,8 @@ final readonly class EnrolmentTicketEnrolmentController
                 $attestation,
                 $this->contexts->fromRequest($request),
             );
+        } catch (PasskeyAttestationRefusedException $exception) {
+            return $this->refused($request, $exception->refusal->value);
         } catch (CredentialEnrolmentFailedException) {
             return $this->refused($request, self::REFUSED);
         }

@@ -1785,6 +1785,10 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         self_served_claims?: Param|string|list<scalar|Param|null>,
  *         authentication_classes?: Param|string|array<string, scalar|Param|null>,
  *         scopes?: Param|string|list<string|Param>,
+ *         passkey_attestation?: scalar|Param|null, // What the enrolment of a passkey asks of its authenticator (WebAuthn Level 3 §5.4.7, decision 0046), by the name a policy wired in the provider gives itself: "none", the model being the one the authenticator declares; "direct", the model verified when the FIDO metadata know it and declared otherwise, a passkey never being refused for want of an attestation; "enterprise", only an attestation that chains up to a root the tenant pins enrolling. Under "direct" and "enterprise" a model whose last status report is a security notification is refused, save those "passkey_compromised_models" names. A name no wired policy carries refuses the start, naming the ones that are wired. "none" by default. // Default: "none"
+ *         passkey_attestation_roots?: Param|string|list<scalar|Param|null>,
+ *         passkey_attestation_own_roots?: Param|string|list<scalar|Param|null>,
+ *         passkey_compromised_models?: Param|string|array<string, scalar|Param|null>,
  *     },
  *     keys?: array{ // Where the keys of the tenants live: sealed by the KMS named here, stored as files until a table takes over (architecture §3.3).
  *         kms?: scalar|Param|null, // Name of the KMS client that seals the private keys, an entry of "key_management.clients", the configuration of KeyManagementBundle (a DSN there, or the members of a composite client); the KMS keeps, it never signs.

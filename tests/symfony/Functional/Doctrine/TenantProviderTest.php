@@ -8,6 +8,7 @@ use App\Doctrine\TenantNotSynchronizedException;
 use App\Doctrine\TenantProvider;
 use App\Doctrine\TenantSynchronizer;
 use App\Tenant\TenantFactory;
+use Beffroi\Core\Tests\Fixture\AttestationPolicies;
 use Beffroi\Core\Tests\Fixture\Predicates;
 use Beffroi\Core\Domain\Session\AuthenticationContextPolicy;
 use Beffroi\Core\Domain\Session\TwoFactors;
@@ -222,6 +223,42 @@ final class TenantProviderTest extends DatabaseTestCase
     }
 
     /**
+     * Decision 0046
+     */
+    #[Test]
+    public function aTenantWithAnotherPasskeyAttestationRefusesToServeUntilSynchronised(): void
+    {
+        // Given
+        $provider = new TenantProvider(self::factory('https://op.test', 'default', null, passkeyAttestation: self::DIRECT), self::managers());
+
+        // Then
+        $this->expectException(TenantNotSynchronizedException::class);
+        $this->expectExceptionMessageIsOrContains('stored with the passkey_attestation "none, 0 root(s), 0 own root(s), 0 model(s) under alert" and configured with "direct, 0 root(s), 0 own root(s), 1 model(s) under alert"');
+
+        // When
+        $provider->provide();
+    }
+
+    /**
+     * Decision 0046
+     */
+    #[Test]
+    public function synchronisingATenantWithAnotherPasskeyAttestationWritesIt(): void
+    {
+        // Given
+        $factory = self::factory('https://op.test', 'default', null, passkeyAttestation: self::DIRECT);
+
+        // When
+        new TenantSynchronizer($factory, self::managers())->synchronize();
+        self::reload();
+
+        // Then
+        $stored = new TenantProvider($factory, self::managers())->provide()->passkeyAttestation;
+        static::assertSame('direct', $stored->policy->name());
+        static::assertSame('2027-03-31', $stored->modelsUnderAlert[0]->day());
+    }
+
+    /**
      * Decision 0010
      */
     #[Test]
@@ -277,6 +314,13 @@ final class TenantProviderTest extends DatabaseTestCase
         static::assertFalse($tenant->look->isDeclared());
     }
 
+    private const array DIRECT = [
+        'policy' => 'direct',
+        'models_under_alert' => [
+            'cb69481e-8ff7-4039-93ec-0a2729a154a8' => '2027-03-31',
+        ],
+    ];
+
     private const array LOOK = [
         'logo_uri' => 'https://acme.example/logo.svg',
         'primary_color' => '#1b4b8f',
@@ -298,6 +342,7 @@ final class TenantProviderTest extends DatabaseTestCase
      * @param array<array-key, string> $authenticationClasses
      * @param array<array-key, mixed> $look
      * @param array<array-key, mixed> $selfServedClaims
+     * @param array<array-key, mixed> $passkeyAttestation
      */
     private static function factory(
         string $issuer,
@@ -306,7 +351,19 @@ final class TenantProviderTest extends DatabaseTestCase
         array $authenticationClasses = [],
         array $look = [],
         array $selfServedClaims = self::SELF_SERVED_CLAIMS,
+        array $passkeyAttestation = [],
     ): TenantFactory {
-        return new TenantFactory($issuer, $slug, $name, new MockClock(self::now()), Predicates::wired(), $authenticationClasses, $look, $selfServedClaims);
+        return new TenantFactory(
+            $issuer,
+            $slug,
+            $name,
+            new MockClock(self::now()),
+            Predicates::wired(),
+            $authenticationClasses,
+            $look,
+            $selfServedClaims,
+            passkeyAttestations: AttestationPolicies::wired(),
+            passkeyAttestation: $passkeyAttestation,
+        );
     }
 }

@@ -26,6 +26,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function str_replace;
 use function strlen;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 use Webauthn\PublicKeyCredentialDescriptor;
 
@@ -297,7 +298,7 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     {
         // Given
         $device = new SoftwareAuthenticator('https://id.acme.example');
-        $device->create($this->ceremonies->optionsToJson(new WebauthnPasskeyRegistrar($this->ceremonies)->creationOptions(
+        $device->create($this->ceremonies->optionsToJson(new WebauthnPasskeyRegistrar($this->ceremonies, new MockClock(Fixtures::now()))->creationOptions(
             $this->alice,
             Fixtures::userHandle(),
             [],
@@ -418,7 +419,7 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     {
         // Given
         $device = new SoftwareAuthenticator('https://id.acme.example');
-        $registrar = new WebauthnPasskeyRegistrar($this->ceremonies);
+        $registrar = new WebauthnPasskeyRegistrar($this->ceremonies, new MockClock(Fixtures::now()));
         $attestation = $device->create($this->ceremonies->optionsToJson($registrar->creationOptions($this->alice, Fixtures::userHandle(), [])));
         $options = $this->authenticator->requestOptions($this->tenant, []);
 
@@ -447,10 +448,10 @@ final class WebauthnPasskeyAuthenticatorTest extends TestCase
     private function enrol(SoftwareAuthenticator $device, ?WebauthnCeremonies $ceremonies = null): PasskeyCredential
     {
         $ceremonies ??= $this->ceremonies;
-        $registrar = new WebauthnPasskeyRegistrar($ceremonies);
+        $registrar = new WebauthnPasskeyRegistrar($ceremonies, new MockClock(Fixtures::now()));
         $options = $registrar->creationOptions($this->alice, Fixtures::userHandle(), []);
-        $record = $registrar->verifyAttestation($this->tenant, $options, $device->create($ceremonies->optionsToJson($options)));
-        $passkey = PasskeyCredential::fromRecord(Uuid::v7(), $this->alice, 'Test key', $record, Fixtures::now());
+        $registration = $registrar->verifyAttestation($this->tenant, $options, $device->create($ceremonies->optionsToJson($options)));
+        $passkey = PasskeyCredential::fromRecord(Uuid::v7(), $this->alice, 'Test key', $registration, Fixtures::now());
         $this->credentials->save($passkey);
 
         return $passkey;

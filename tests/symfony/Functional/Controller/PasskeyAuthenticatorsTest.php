@@ -186,7 +186,7 @@ final class PasskeyAuthenticatorsTest extends PasskeyTestCase
 
         // Then
         static::assertSame(
-            'An authenticator is named after what it declared when the passkey was added: nothing verifies it.',
+            'An authenticator whose model is declared is named after what it said when the passkey was added: nothing verified it.',
             $crawler->filter('p[data-authenticators-declared]')->text(),
         );
     }
@@ -224,8 +224,9 @@ final class PasskeyAuthenticatorsTest extends PasskeyTestCase
         static::assertSame('Certifié FIDO, niveau 1', $cell->filter('span[data-certification]')->text());
         static::assertSame('Passkey liée à son appareil', $cell->filter('span[data-backup]')->text());
         static::assertSame('Atteinte par une clé de sécurité en USB', $cell->filter('span[data-transports]')->text());
+        static::assertSame('Modèle déclaré par l’authentificateur', $cell->filter('span[data-model-proof]')->text());
         static::assertSame(
-            'Un authentificateur est nommé d’après ce qu’il a déclaré à l’ajout de la passkey : rien ne le vérifie.',
+            'Un authentificateur dont le modèle est déclaré est nommé d’après ce qu’il a dit à l’ajout de la passkey : rien ne l’a vérifié.',
             $crawler->filter('p[data-authenticators-declared]')->text(),
         );
     }

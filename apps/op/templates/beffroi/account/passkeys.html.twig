@@ -67,10 +67,13 @@
                     {# What holds it (issue #983): the make and model its authenticator declared, as the
                        first source that knows the AAGUID writes them, with the logo of that source for the
                        theme of the page and the FIDO certification of the model; or an unknown authenticator.
-                       Then what the flags of the passkey say, synced or bound to its device (WebAuthn Level 3
-                       §6.1.3), and how it is reached (§5.8.4). The logos are data: URLs read from what the
-                       console stored, so the page fetches nothing; both variants are written when they
-                       differ, and the stylesheet of the application shows the one of its theme. #}
+                       Then what the enrolment proved of that model under the policy of the tenant (decision
+                       0046): declared, verified by its attestation, or attested for the organisation with the
+                       serial number of the device, and whether the model was under a security alert the tenant
+                       still admitted. Then what the flags of the passkey say, synced or bound to its device
+                       (WebAuthn Level 3 §6.1.3), and how it is reached (§5.8.4). The logos are data: URLs read
+                       from what the console stored, so the page fetches nothing; both variants are written when
+                       they differ, and the stylesheet of the application shows the one of its theme. #}
                     {% set model = passkey|beffroi_authenticator %}
                     {% set backup = not passkey.backupEligible ? 'single_device' : (passkey.backedUp ? 'backed_up' : 'not_backed_up') %}
                     {% set transports = passkey.reachedThrough %}
@@ -88,6 +91,13 @@
                             {% if model.certification is not null %}
                                 <span data-certification="{{ model.certification.value }}">{{ ('passkeys.certification.' ~ model.certification.value)|trans }}</span>
                             {% endif %}
+                        {% endif %}
+                        <span data-model-proof="{{ passkey.modelProof.value }}">{{ ('passkeys.model_proof.' ~ passkey.modelProof.value)|trans }}</span>
+                        {% if passkey.serialNumber is not null %}
+                            <span data-serial-number="{{ passkey.serialNumber }}">{{ 'passkeys.serial_number'|trans({serial: passkey.serialNumber}) }}</span>
+                        {% endif %}
+                        {% if passkey.underSecurityAlert %}
+                            <span data-under-security-alert>{{ 'passkeys.under_security_alert'|trans }}</span>
                         {% endif %}
                         <span data-backup="{{ backup }}">{{ ('passkeys.backup.' ~ backup)|trans }}</span>
                         {% if transports is not empty %}
@@ -116,9 +126,9 @@
         </tbody>
     </table>
     {{ include('@Beffroi/account/pager.html.twig', {listing: passkeys}) }}
-    {# WebAuthn Level 3 §6: "the AAGUID is not provably authentic without attestation", and the provider asks
-       for none, so the page says what the authenticators it names are. #}
-    {% if passkeys|length > 0 %}
+    {# WebAuthn Level 3 §6: "the AAGUID is not provably authentic without attestation", so the page says what
+       an authenticator it names without one is. #}
+    {% if passkeys|filter(passkey => passkey.modelProof.value == 'declared')|length > 0 %}
         <p data-authenticators-declared>{{ 'passkeys.authenticator.declared'|trans }}</p>
     {% endif %}
     <p data-passkey-error hidden>{{ 'passkeys.error.browser'|trans }}</p>

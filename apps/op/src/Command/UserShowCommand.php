@@ -25,7 +25,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'beffroi:user:show',
-    description: 'Show a user: the identity with the source that created it, the standard claims that are set, the credentials with their kind, identifier, name, authenticator and dates, and the groups with the source of each membership.',
+    description: 'Show a user: the identity with the source that created it, the standard claims that are set, the credentials with their kind, identifier, name, authenticator, what their enrolment proved of it and dates, and the groups with the source of each membership.',
 )]
 final readonly class UserShowCommand
 {
@@ -94,10 +94,17 @@ final readonly class UserShowCommand
     private function authenticator(ModelDeclaringCredentialInterface $credential): string
     {
         $model = $this->models->of($credential);
+        $proven = [$credential->modelProof->value];
+        if ($credential->serialNumber !== null) {
+            $proven[] = sprintf('serial number %s', $credential->serialNumber);
+        }
+        if ($credential->underSecurityAlert) {
+            $proven[] = 'under a security alert';
+        }
 
         return $model === null
-            ? sprintf('unknown (AAGUID %s)', $credential->aaguid->toRfc4122())
-            : sprintf('%s (%s)', $model->name, $model->source);
+            ? sprintf('unknown (AAGUID %s, %s)', $credential->aaguid->toRfc4122(), implode(', ', $proven))
+            : sprintf('%s (%s, %s)', $model->name, $model->source, implode(', ', $proven));
     }
 
     /**

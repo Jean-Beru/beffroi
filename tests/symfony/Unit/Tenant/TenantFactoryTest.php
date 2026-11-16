@@ -12,6 +12,9 @@ use Beffroi\Core\Domain\Identity\Claim\ProfileUrl;
 use Beffroi\Core\Domain\Identity\Claim\WebsiteUrl;
 use Beffroi\Core\Domain\Session\TwoFactors;
 use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Domain\Tenant\PasskeyAttestation;
+use Beffroi\Core\Tests\Fixture\AttestationAuthority;
+use Beffroi\Core\Tests\Fixture\AttestationPolicies;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Predicates;
 use PHPUnit\Framework\Attributes\Test;
@@ -194,6 +197,159 @@ final class TenantFactoryTest extends TestCase
     /**
      * RFC 9562 §5.5
      */
+    /**
+     * Decision 0046
+     */
+    #[Test]
+    public function aTenantThatNamesNothingAsksForNoAttestation(): void
+    {
+        // Given
+        $factory = new TenantFactory(
+            'https://op.test',
+            'main',
+            null,
+            new MockClock(Fixtures::now()),
+            Predicates::wired(),
+            passkeyAttestations: AttestationPolicies::wired(),
+        );
+
+        // When / Then
+        static::assertTrue(PasskeyAttestation::none()->equals($factory->create()->passkeyAttestation));
+    }
+
+    /**
+     * Decision 0046
+     */
+    #[Test]
+    public function thePasskeyAttestationIsThePolicyTheConfigurationNamesWithWhatItReads(): void
+    {
+        // Given
+        $root = AttestationAuthority::create()->rootCertificate();
+        $factory = new TenantFactory(
+            'https://op.test',
+            'main',
+            null,
+            new MockClock(Fixtures::now()),
+            Predicates::wired(),
+            passkeyAttestations: AttestationPolicies::wired(),
+            passkeyAttestation: [
+                'policy' => 'enterprise',
+                'roots' => [$root],
+                'own_roots' => [],
+                'models_under_alert' => ['cb69481e-8ff7-4039-93ec-0a2729a154a8' => '2027-03-31'],
+            ],
+        );
+
+        // When
+        $attestation = $factory->create()->passkeyAttestation;
+
+        // Then
+        static::assertSame('enterprise', $attestation->policy->name());
+        static::assertSame($root, $attestation->roots[0]->pem);
+        static::assertSame('2027-03-31', $attestation->modelsUnderAlert[0]->day());
+    }
+
+    /**
+     * Decision 0046
+     */
+    #[Test]
+    public function aPolicyNoWiredOneCarriesRefusesTheStartNamingTheWiredOnes(): void
+    {
+        // Given
+        $factory = new TenantFactory(
+            'https://op.test',
+            'main',
+            null,
+            new MockClock(Fixtures::now()),
+            Predicates::wired(),
+            passkeyAttestations: AttestationPolicies::wired(),
+            passkeyAttestation: [
+                'policy' => 'indirect',
+            ],
+        );
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('This provider wires no passkey attestation policy "indirect"; it wires none, direct, enterprise.');
+
+        // When
+        $factory->create();
+    }
+
+    /**
+     * Decision 0046
+     */
+    #[Test]
+    public function enterpriseWithoutARootRefusesTheStart(): void
+    {
+        // Given
+        $factory = new TenantFactory(
+            'https://op.test',
+            'main',
+            null,
+            new MockClock(Fixtures::now()),
+            Predicates::wired(),
+            passkeyAttestations: AttestationPolicies::wired(),
+            passkeyAttestation: [
+                'policy' => 'enterprise',
+            ],
+        );
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The passkey attestation policy "enterprise" admits the attestations of the roots the tenant pins, and it pins none.');
+
+        // When
+        $factory->create();
+    }
+
+    /**
+     * RFC 5280 §4.2.1.9, Decision 0046
+     */
+    #[Test]
+    public function aRootThatIsNoCertificateAuthorityRefusesTheStart(): void
+    {
+        // Given
+        $factory = new TenantFactory(
+            'https://op.test',
+            'main',
+            null,
+            new MockClock(Fixtures::now()),
+            Predicates::wired(),
+            passkeyAttestations: AttestationPolicies::wired(),
+            passkeyAttestation: [
+                'policy' => 'enterprise',
+                'roots' => [AttestationAuthority::create()->attest()->pem],
+            ],
+        );
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('is the certificate of no certificate authority');
+
+        // When
+        $factory->create();
+    }
+
+    /**
+     * Decision 0046
+     */
+    #[Test]
+    public function withoutTheWiredPoliciesAPolicyIsRefusedRatherThanDropped(): void
+    {
+        // Given
+        $factory = new TenantFactory('https://op.test', 'main', null, new MockClock(Fixtures::now()), Predicates::wired(), passkeyAttestation: [
+            'policy' => 'direct',
+        ]);
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('No passkey attestation policy is wired: the tenant asks for none.');
+
+        // When
+        $factory->create();
+    }
+
     #[Test]
     public function theIdentifierIsStableAcrossProcessesAndIssuers(): void
     {
