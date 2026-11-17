@@ -67,6 +67,7 @@ apps/op/.editorconfig
 # The configuration of development, the debug bundle and the profiler production does not install among it, and
 # what a debug kernel writes for an editor to complete the configuration with.
 apps/op/.env.dev
+apps/op/public/development-tenant-logo.svg
 apps/op/config/packages/dev/
 apps/op/config/packages/debug.yaml
 apps/op/config/packages/web_profiler.yaml
