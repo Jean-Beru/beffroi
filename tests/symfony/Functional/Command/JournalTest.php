@@ -7,6 +7,7 @@ namespace App\Tests\Symfony\Functional\Command;
 use function array_column;
 use App\Command\UserJournalCommand;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Journal\JournalEntry;
 use Beffroi\Core\Port\JournalInterface;
@@ -185,6 +186,39 @@ final class JournalTest extends ConsoleTestCase
         static::assertSame(self::day('2026-10-03')->format('Y-m-d\TH:i:sP'), self::acts($document)[0]['occurred_at']);
     }
 
+    /**
+     * Decision 0038: the operator of the instance reads which administrator did an act to the person.
+     */
+    #[Test]
+    public function theJsonFormatNamesTheAdministratorWhoDidAnAct(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        self::act($alice, 'administration.person_read', self::day('2026-10-03'), 'tui-of-mallory', new Subject('mallory-subject'));
+
+        // When
+        $document = self::document(self::journal('alice', [
+            '--format' => UserJournalCommand::JSON,
+        ]));
+
+        // Then
+        static::assertSame(['mallory-subject'], array_column(self::acts($document), 'author'));
+    }
+
+    #[Test]
+    public function theTableNamesTheAdministratorWhoDidAnAct(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        self::act($alice, 'administration.person_read', self::day('2026-10-03'), 'tui-of-mallory', new Subject('mallory-subject'));
+
+        // When
+        $tester = self::journal('alice');
+
+        // Then
+        static::assertStringContainsString('mallory-subject', $tester->getDisplay());
+    }
+
     #[Test]
     public function aFormatThatIsNeitherIsRefused(): void
     {
@@ -256,10 +290,10 @@ final class JournalTest extends ConsoleTestCase
         ]);
     }
 
-    private static function act(User $user, string $name, DateTimeImmutable $occurredAt, ?string $client = null): void
+    private static function act(User $user, string $name, DateTimeImmutable $occurredAt, ?string $client = null, ?Subject $author = null): void
     {
         self::service('test.beffroi.journal', JournalInterface::class)
-            ->record(new JournalEntry(Uuid::v7(), $user->tenant, $name, $occurredAt, self::context(), $user->subject, $client));
+            ->record(new JournalEntry(Uuid::v7(), $user->tenant, $name, $occurredAt, self::context(), $user->subject, $client, $author));
         self::reload();
     }
 

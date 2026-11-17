@@ -8,10 +8,20 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Journal\ActsOfAnAccount;
 use Beffroi\Core\Domain\Journal\JournalQuestion;
 use Beffroi\Core\Port\CanPageActsOfAPersonInterface;
+use Beffroi\Oidc\Domain\Administration\ReadsByAnAdministrator;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * The page of the acts of the signed-in person: what they did and what was done to them, the reads an administrator of
+ * their tenant made of them included, those they made of themselves left out.
+ */
 final readonly class ActsPage
 {
+    /**
+     * @var list<string>
+     */
+    public const array ACTS = [...ActsOfAnAccount::NAMES, ...ReadsByAnAdministrator::NAMES];
+
     public function __construct(
         private CanPageActsOfAPersonInterface $acts,
         private AskedPage $asked,
@@ -28,7 +38,7 @@ final readonly class ActsPage
             'user' => $user,
             'acts' => $this->acts->pageOfActs(
                 $user,
-                new JournalQuestion(ActsOfAnAccount::NAMES, period: $period),
+                new JournalQuestion(self::ACTS, period: $period, unlessTheirOwn: ReadsByAnAdministrator::NAMES),
                 $this->asked->asked(),
             ),
             'period' => $period,

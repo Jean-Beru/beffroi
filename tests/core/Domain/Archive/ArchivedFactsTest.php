@@ -5,15 +5,72 @@ declare(strict_types=1);
 namespace Beffroi\Core\Tests\Domain\Archive;
 
 use Beffroi\Core\Domain\Archive\ArchivedFacts;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Journal\JournalEntry;
 use Beffroi\Core\Domain\Session\Device;
 use Beffroi\Core\Domain\Session\DeviceType;
 use Beffroi\Core\Domain\Session\GeoLocation;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
 
 final class ArchivedFactsTest extends TestCase
 {
+    /**
+     * Decision 0038, RGPD article 15(4)
+     */
+    #[Test]
+    public function anActAnAdministratorDidIsArchivedByTheirRoleAlone(): void
+    {
+        // Given
+        $act = self::act(new Subject('mallory-subject'));
+
+        // When
+        $facts = ArchivedFacts::act($act);
+
+        // Then
+        static::assertSame(
+            [
+                'act' => 'administration.person_read',
+                'occurred_at' => '2026-09-15T10:00:00+00:00',
+                'client' => null,
+                'from' => null,
+                'author' => 'administrator',
+            ],
+            $facts,
+        );
+    }
+
+    #[Test]
+    public function anActNoAdministratorDidIsArchivedWithWhereItCameFrom(): void
+    {
+        // Given
+        $act = self::act(null);
+
+        // When
+        $facts = ArchivedFacts::act($act);
+
+        // Then
+        static::assertSame(
+            ['tui-of-mallory', ArchivedFacts::context(Fixtures::context()), null],
+            [$facts['client'], $facts['from'], $facts['author']],
+        );
+    }
+
+    #[Test]
+    public function anActAsWrittenNamesTheAdministratorWhoDidIt(): void
+    {
+        // When
+        $facts = ArchivedFacts::actAsWritten(self::act(new Subject('mallory-subject')));
+
+        // Then
+        static::assertSame(
+            ['tui-of-mallory', ArchivedFacts::context(Fixtures::context()), 'mallory-subject'],
+            [$facts['client'], $facts['from'], $facts['author']],
+        );
+    }
+
     /**
      * RFC 3339, RGPD article 20
      */
@@ -88,5 +145,19 @@ final class ArchivedFactsTest extends TestCase
         // Then
         static::assertNull($facts['location']);
         static::assertNull($facts['device']);
+    }
+
+    private static function act(?Subject $administrator): JournalEntry
+    {
+        return new JournalEntry(
+            Uuid::v7(),
+            Fixtures::tenant(),
+            'administration.person_read',
+            Fixtures::now(),
+            Fixtures::context(),
+            new Subject('alice-subject'),
+            'tui-of-mallory',
+            $administrator,
+        );
     }
 }

@@ -127,6 +127,12 @@ final readonly class DoctrineJournal extends DoctrineRepository implements
         if ($question->client !== null) {
             $theirs->andWhere('a.client = :client')->setParameter('client', $question->client);
         }
+        if ($question->unlessTheirOwn !== []) {
+            $theirs->andWhere($theirs->expr()->orX('a.act NOT IN (:unlessTheirOwn)', 'a.author IS NULL', 'a.author <> :subject'))->setParameter(
+                'unlessTheirOwn',
+                $question->unlessTheirOwn,
+            );
+        }
 
         return $this->rows->of(
             JournalEntry::class,

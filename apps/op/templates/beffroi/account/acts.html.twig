@@ -3,8 +3,10 @@
    name, with the moment on their own clock and what the request carried of where it came from. The
    refusals are there on purpose: a line a person does not recognise is what this page is for, and the
    place beside the address is what makes one recognisable (issue #473); it is absent where the enrichment
-   found nothing. An act is named from the catalogue, so an act this provider comes to write down is named
-   here by being translated and this page is not edited. #}
+   found nothing. An act an administrator of the tenant did says so in place of where it came from, and
+   nothing else of them: who they are, where they were and the client they acted through are theirs. An
+   act is named from the catalogue, so an act this provider comes to write down is named here by being
+   translated and this page is not edited. #}
 {% extends '@Beffroi/layout.html.twig' %}
 {% trans_default_domain 'beffroi' %}
 
@@ -27,7 +29,13 @@
                 <tr data-act="{{ act.act }}">
                     <td>{{ ('act.' ~ act.act)|trans }}</td>
                     <td><time datetime="{{ act.occurredAt|date('c') }}">{{ act.occurredAt|beffroi_moment(user) }}</time></td>
-                    <td>{{ include('@Beffroi/account/provenance.html.twig', {provenance: act.context}) }}</td>
+                    <td>
+                        {%- if act.author is not null -%}
+                            <span data-author>{{ 'acts.by_an_administrator'|trans }}</span>
+                        {%- else -%}
+                            {{ include('@Beffroi/account/provenance.html.twig', {provenance: act.context}) }}
+                        {%- endif -%}
+                    </td>
                 </tr>
             {% else %}
                 {# A table that holds nothing keeps its head and says so in one row of its own, which is

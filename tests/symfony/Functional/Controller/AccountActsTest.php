@@ -4,22 +4,31 @@ declare(strict_types=1);
 
 namespace App\Tests\Symfony\Functional\Controller;
 
+use function array_keys;
 use function array_map;
 use function array_values;
+use App\Http\ActsPage;
 use App\Http\AskedPage;
+use App\Tests\Symfony\Functional\Doctrine\PersonalData\SealedRows;
 use Beffroi\Core\Domain\Event\AuthenticationFailed;
 use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
+use Beffroi\Core\Domain\Event\AuthenticationSessionEnded;
+use Beffroi\Core\Domain\Event\CredentialRevoked;
 use Beffroi\Core\Domain\Event\DomainEventInterface;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
-use Beffroi\Core\Domain\Journal\ActsOfAnAccount;
 use Beffroi\Core\Domain\Journal\JournalEntry;
 use Beffroi\Core\Port\JournalInterface;
+use Beffroi\Oidc\Domain\Event\JournalReadByAnAdministrator;
+use Beffroi\Oidc\Domain\Event\PersonReadByAnAdministrator;
+use Beffroi\Oidc\Domain\Event\SessionsReadByAnAdministrator;
 use Beffroi\Oidc\Domain\Event\TokensIssued;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sort;
+use function str_contains;
 use function str_starts_with;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
@@ -40,19 +49,19 @@ final class AccountActsTest extends BrowserTestCase
     {
         // Given
         $alice = self::user('alice');
-        foreach (ActsOfAnAccount::NAMES as $act) {
+        foreach (ActsPage::ACTS as $act) {
             self::record($alice, $act);
         }
         self::reload();
         $this->signIn($alice);
 
         // When
-        $page = $this->actsPage(language: $language);
+        $rows = $this->rowsOfEveryPage($language);
 
         // Then
-        static::assertSame(self::sorted(ActsOfAnAccount::NAMES), self::sorted($page->filter('tbody tr')->extract(['data-act'])));
-        foreach ($page->filter('tbody tr > td:first-of-type')->extract(['_text']) as $named) {
-            static::assertFalse(str_starts_with(self::string($named), 'act.'), 'An act is named and never shown by its key.');
+        static::assertSame(self::sorted(ActsPage::ACTS), self::sorted(array_keys($rows)));
+        foreach ($rows as $named) {
+            static::assertFalse(str_starts_with($named, 'act.'), 'An act is named and never shown by its key.');
         }
     }
 
@@ -63,6 +72,74 @@ final class AccountActsTest extends BrowserTestCase
     {
         yield 'a browser in English' => ['en-US,en;q=0.9'];
         yield 'a browser in French' => ['fr-FR,fr;q=0.9'];
+    }
+
+    /**
+     * Decision 0038: the person reads that an administrator of their organisation did it, and nothing else of them.
+     */
+    #[Test]
+    #[DataProvider('provideActsOfAnAdministrator')]
+    public function anActAnAdministratorDidIsOnThePageByTheirRoleAlone(string $act): void
+    {
+        // Given
+        $alice = self::user('alice');
+        self::record($alice, $act, 'tui-of-mallory', author: new Subject('mallory-subject'));
+        self::reload();
+        $this->signIn($alice);
+
+        // When
+        $page = $this->actsPage();
+
+        // Then
+        $row = $page->filter('tbody tr');
+        static::assertSame(
+            [[$act], 'An administrator of your organisation', false],
+            [$row->extract(['data-act']), $row->filter('[data-author]')->text(), str_contains($row->html(), SealedRows::IP_ADDRESS)],
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideActsOfAnAdministrator(): iterable
+    {
+        yield 'their account read' => [PersonReadByAnAdministrator::NAME];
+        yield 'their open sessions read' => [SessionsReadByAnAdministrator::NAME];
+        yield 'their journal read' => [JournalReadByAnAdministrator::NAME];
+        yield 'a session of theirs ended' => [AuthenticationSessionEnded::NAME];
+        yield 'a credential of theirs revoked' => [CredentialRevoked::NAME];
+    }
+
+    #[Test]
+    public function aReadAnAdministratorMadeOfThemselvesIsNotOnThePage(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        self::record($alice, PersonReadByAnAdministrator::NAME, 'tui-of-alice', author: $alice->subject);
+        self::reload();
+        $this->signIn($alice);
+
+        // When
+        $page = $this->actsPage();
+
+        // Then
+        static::assertCount(1, $page->filter('table[data-acts="0"] tr[data-empty]'));
+    }
+
+    #[Test]
+    public function aChangeAnAdministratorMadeToThemselvesIsOnThePage(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        self::record($alice, AuthenticationSessionEnded::NAME, author: $alice->subject);
+        self::reload();
+        $this->signIn($alice);
+
+        // When
+        $page = $this->actsPage();
+
+        // Then
+        static::assertSame([AuthenticationSessionEnded::NAME], $page->filter('tbody tr')->extract(['data-act']));
     }
 
     #[Test]
@@ -259,7 +336,28 @@ final class AccountActsTest extends BrowserTestCase
         return $page;
     }
 
-    private static function record(User $user, string $act, ?string $client = null, ?DateTimeImmutable $occurredAt = null): void
+    /**
+     * The name each row of every page shows, by the act of the row, the pages read until one says there is none after it.
+     *
+     * @return array<string, string>
+     */
+    private function rowsOfEveryPage(string $language): array
+    {
+        $rows = [];
+        $number = 1;
+        do {
+            $page = $this->actsPage($number, language: $language);
+            foreach ($page->filter('tbody tr[data-act]') as $row) {
+                $crawler = new Crawler($row);
+                $rows[self::string($crawler->attr('data-act'))] = $crawler->filter('td')->first()->text();
+            }
+            ++$number;
+        } while ($page->filter('a[data-pager="next"]')->count() > 0);
+
+        return $rows;
+    }
+
+    private static function record(User $user, string $act, ?string $client = null, ?DateTimeImmutable $occurredAt = null, ?Subject $author = null): void
     {
         self::service('test.beffroi.journal', JournalInterface::class)
             ->record(new JournalEntry(
@@ -270,6 +368,7 @@ final class AccountActsTest extends BrowserTestCase
                 self::context(),
                 $user->subject,
                 $client,
+                $author,
             ));
     }
 

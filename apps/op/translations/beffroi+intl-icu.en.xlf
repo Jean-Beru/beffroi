@@ -1087,7 +1087,7 @@
       </trans-unit>
       <trans-unit id="acts.explanation" resname="acts.explanation">
         <source>acts.explanation</source>
-        <target>Every act this provider wrote down in your name: the times somebody signed in as you and with what they proved it, the times somebody tried and did not, and what changed of your account. A line you do not recognise is worth a new password.</target>
+        <target>Every act this provider wrote down in your name: the times somebody signed in as you and with what they proved it, the times somebody tried and did not, what changed of your account, and what an administrator of your organisation consulted or changed of it. A line you do not recognise is worth a new password.</target>
       </trans-unit>
       <trans-unit id="acts.what" resname="acts.what">
         <source>acts.what</source>
@@ -1100,6 +1100,10 @@
       <trans-unit id="acts.from" resname="acts.from">
         <source>acts.from</source>
         <target>From</target>
+      </trans-unit>
+      <trans-unit id="acts.by_an_administrator" resname="acts.by_an_administrator">
+        <source>acts.by_an_administrator</source>
+        <target>An administrator of your organisation</target>
       </trans-unit>
       <trans-unit id="acts.none" resname="acts.none">
         <source>acts.none</source>
@@ -1180,6 +1184,18 @@
       <trans-unit id="act.archive.dropped" resname="act.archive.dropped">
         <source>act.archive.dropped</source>
         <target>File of your data dropped</target>
+      </trans-unit>
+      <trans-unit id="act.administration.person_read" resname="act.administration.person_read">
+        <source>act.administration.person_read</source>
+        <target>Your account was consulted</target>
+      </trans-unit>
+      <trans-unit id="act.administration.sessions_read" resname="act.administration.sessions_read">
+        <source>act.administration.sessions_read</source>
+        <target>Your open sessions were consulted</target>
+      </trans-unit>
+      <trans-unit id="act.administration.journal_read" resname="act.administration.journal_read">
+        <source>act.administration.journal_read</source>
+        <target>What happened to your account was consulted</target>
       </trans-unit>
       <trans-unit id="profile.what_you_may_change" resname="profile.what_you_may_change">
         <source>profile.what_you_may_change</source>
