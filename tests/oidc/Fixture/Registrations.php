@@ -8,12 +8,14 @@ use Beffroi\Core\Port\ContentEncryptionAlgorithmsInterface;
 use Beffroi\Core\Port\KeyEncryptionAlgorithmsInterface;
 use Beffroi\Core\Port\SignatureAlgorithmsInterface;
 use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\HeldSigning;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Application\Claims\StandardClaimsProvider;
 use Beffroi\Oidc\Application\Client\RegisteredClients;
 use Beffroi\Oidc\Application\Client\Registration\RegistrationHeldToItsSector;
 use Beffroi\Oidc\Application\Client\Registration\RegistrationHeldToTheTenant;
+use Beffroi\Oidc\Application\Client\Registration\RegistrationSignedWithHeldKeys;
 use Beffroi\Oidc\Application\Client\Registration\RegistrationUnderThePolicy;
 use Beffroi\Oidc\Application\Scope\OfferedScopes;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationDeclaredScopes;
@@ -78,6 +80,7 @@ final class Registrations
         return new RegistrationUnderThePolicy(
             $reader ?? self::reader(),
             new RegistrationHeldToTheTenant($scopes ?? self::offeredScopes()),
+            new RegistrationSignedWithHeldKeys(HeldSigning::everyAlgorithm()),
             new RegistrationHeldToItsSector($documents ?? new FakeSectorIdentifierDocumentFetcher(), Sectors::ofAProvider()),
             Secrets::drawer(),
             new FakePasswordHasher(),

@@ -9,6 +9,7 @@ use Beffroi\Core\Port\KeyEncryptionAlgorithmsInterface;
 use Beffroi\Core\Port\SignatureAlgorithmsInterface;
 use Beffroi\Oidc\Application\Claims\StandardClaimsProvider;
 use Beffroi\Oidc\Application\Client\RegisteredClients;
+use Beffroi\Core\Tests\Fixture\HeldSigning;
 use Beffroi\Oidc\Application\Discovery\AnnouncedAlgorithms;
 use Beffroi\Oidc\Application\Discovery\DiscoveryHandler;
 use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedAuthenticationContext;
@@ -90,6 +91,7 @@ final class ProviderDocument
         $grants ??= [new FakeRefreshTokenIssuingGrant(Grants::authorizationCode()), new FakeRefreshTokenSpendingGrant(Grants::refreshToken())];
 
         $algorithms = new AnnouncedAlgorithms($signing, $keyEncryption, $contentEncryption);
+        $held = HeldSigning::everyAlgorithm($signing);
         $grantTypes = new ServedGrants($grants);
 
         return new DiscoveryHandler([
@@ -98,20 +100,20 @@ final class ProviderDocument
             new AnnouncedResponses($responseModes),
             new AnnouncedGrants($grantTypes),
             new AnnouncedAuthenticationContext($provable, Subjects::ofAProvider()),
-            new AnnouncedIdToken($algorithms),
-            new AnnouncedUserInfo($algorithms),
+            new AnnouncedIdToken($algorithms, $held),
+            new AnnouncedUserInfo($algorithms, $held),
             new AnnouncedClientAuthentication($methods, $algorithms),
             new AnnouncedClaims($claims),
             new AnnouncedRequestObjects($unsignedRequestObjects, $algorithms),
             new AnnouncedPkce(ChallengeMethods::s256()),
             new AnnouncedRevocation($endpoints, $methods, $algorithms),
             new AnnouncedPushedAuthorization($endpoints, $pushedRequests),
-            new AnnouncedIntrospection($endpoints, $methods, $algorithms),
+            new AnnouncedIntrospection($endpoints, $methods, $algorithms, $held),
             new AnnouncedIssuerParameter(),
             new AnnouncedLogout($endpoints, $logoutChannels),
             new AnnouncedMutualTls($methods),
             new AnnouncedDpop($algorithms),
-            new AnnouncedSignedAuthorizationResponse($responseModes, $algorithms),
+            new AnnouncedSignedAuthorizationResponse($responseModes, $algorithms, $held),
             new AnnouncedMutualTlsEndpoints($mutualTlsEndpoints, $grantTypes),
             new AnnouncedClientRegistration($endpoints, $registrationPolicy ?? RegistrationPolicies::closed()),
         ], $maxAge);

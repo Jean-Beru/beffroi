@@ -66,6 +66,34 @@ final class ClientRegistrationTest extends BrowserTestCase
         static::assertSame(0, $registered['client_secret_expires_at']);
     }
 
+    /**
+     * RFC 7591 §3.2.2, OIDC Registration §2
+     */
+    #[Test]
+    public function aClientThatAsksForItsIdTokensSignedWithoutAKeyOfTheTenantIsRefused(): void
+    {
+        // Given
+        self::signingKey();
+        $this->issue();
+
+        // When
+        $this->register([
+            'redirect_uris' => [self::REDIRECT_URI],
+            'id_token_signed_response_alg' => 'ES256',
+        ]);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        $refusal = self::json($response);
+        static::assertSame('invalid_client_metadata', $refusal['error']);
+        static::assertIsString($refusal['error_description']);
+        static::assertStringEndsWith(
+            'would receive its ID tokens signed with ES256, which this tenant holds no active key for.',
+            $refusal['error_description'],
+        );
+    }
+
     #[Test]
     public function aPublicClientIsHandedNoSecret(): void
     {

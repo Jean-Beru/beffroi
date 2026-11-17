@@ -43,22 +43,6 @@ final class AnnouncedAlgorithmsTest extends TestCase
     }
 
     /**
-     * RFC 9701 §6
-     */
-    #[Test]
-    public function theDefaultSigningIsTheOneAlgorithmWiredFirst(): void
-    {
-        // Given
-        $announced = self::announced(new JoseSignatureAlgorithms([Algorithms::es256(), Algorithms::rs256()]));
-
-        // When
-        $signing = $announced->defaultSigning();
-
-        // Then
-        static::assertSame(['ES256'], $signing);
-    }
-
-    /**
      * OIDC Discovery §3
      */
     #[Test]

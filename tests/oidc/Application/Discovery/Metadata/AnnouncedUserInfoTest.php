@@ -6,6 +6,7 @@ namespace Beffroi\Oidc\Tests\Application\Discovery\Metadata;
 
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\HeldSigning;
 use Beffroi\Oidc\Application\Discovery\AnnouncedAlgorithms;
 use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedUserInfo;
 use PHPUnit\Framework\Attributes\Test;
@@ -20,7 +21,10 @@ final class AnnouncedUserInfoTest extends TestCase
     public function itAnnouncesWhatSignsAUserInfoAnswerAndWhatEncryptsOne(): void
     {
         // Given
-        $announced = new AnnouncedUserInfo(new AnnouncedAlgorithms(Algorithms::all(), Algorithms::keyEncryption(), Algorithms::contentEncryption()));
+        $announced = new AnnouncedUserInfo(
+            new AnnouncedAlgorithms(Algorithms::all(), Algorithms::keyEncryption(), Algorithms::contentEncryption()),
+            HeldSigning::everyAlgorithm(),
+        );
 
         // When
         $members = $announced->metadata(Fixtures::tenant());
@@ -34,5 +38,21 @@ final class AnnouncedUserInfoTest extends TestCase
             ],
             $members,
         );
+    }
+
+    #[Test]
+    public function anAlgorithmTheTenantHoldsNoActiveKeyForSignsNoUserInfoAnswer(): void
+    {
+        // Given
+        $announced = new AnnouncedUserInfo(
+            new AnnouncedAlgorithms(Algorithms::all(), Algorithms::noKeyEncryption(), Algorithms::noContentEncryption()),
+            HeldSigning::of([Algorithms::es256()]),
+        );
+
+        // When
+        $members = $announced->metadata(Fixtures::tenant());
+
+        // Then
+        static::assertSame(['userinfo_signing_alg_values_supported' => ['ES256']], $members);
     }
 }

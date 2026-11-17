@@ -190,6 +190,22 @@ final class DiscoveryControllerTest extends BrowserTestCase
     }
 
     /**
+     * OIDC Discovery §3
+     */
+    #[Test]
+    public function theMetadataAnnouncesTheSignaturesOfTheAlgorithmsTheTenantHoldsAKeyFor(): void
+    {
+        // Given
+        $key = self::signingKey();
+
+        // When
+        $this->browser->request('GET', '/.well-known/openid-configuration');
+
+        // Then
+        static::assertSame([$key->algorithm->name()], self::json($this->browser->getResponse())['id_token_signing_alg_values_supported']);
+    }
+
+    /**
      * JARM §3
      */
     #[Test]
