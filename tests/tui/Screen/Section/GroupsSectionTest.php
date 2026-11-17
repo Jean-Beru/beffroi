@@ -5,17 +5,12 @@ declare(strict_types=1);
 namespace Beffroi\Tui\Tests\Screen\Section;
 
 use Beffroi\Tui\Tests\Fixture\SignedInScreen;
-use Closure;
 use function count;
 use function explode;
-use function json_encode;
-use const JSON_THROW_ON_ERROR;
-use const JSON_UNESCAPED_SLASHES;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function preg_match;
 use function str_contains;
-use Symfony\Component\HttpClient\Response\MockResponse;
 
 /**
  * Decision 0038: the groups of the tenant, their members read only when the administrator asks, a group created and a
@@ -93,7 +88,7 @@ final class GroupsSectionTest extends TestCase
         // Given
         $this->screen = new SignedInScreen([
             '/groups' => self::tenantGroups(),
-            'POST /groups' => self::answered([
+            'POST /groups' => SignedInScreen::answered([
                 'id' => 'g-staff',
                 'name' => 'staff',
                 'source' => 'local',
@@ -124,7 +119,7 @@ final class GroupsSectionTest extends TestCase
         // Given
         $this->screen = new SignedInScreen([
             '/groups' => self::tenantGroups(),
-            'POST /groups/g-administrators/members' => self::answered([
+            'POST /groups/g-administrators/members' => SignedInScreen::answered([
                 'person' => ['id' => 'p-carol', 'username' => 'carol'],
                 'source' => 'local',
                 'added_at' => '2026-11-17T10:00:00Z',
@@ -200,7 +195,10 @@ final class GroupsSectionTest extends TestCase
         // Given
         $this->screen = new SignedInScreen([
             '/groups' => self::tenantGroups(),
-            'POST /groups' => self::answered(['error' => 'conflict', 'error_description' => 'A group named "auditors" already exists in this tenant.'], 409),
+            'POST /groups' => SignedInScreen::answered([
+                'error' => 'conflict',
+                'error_description' => 'A group named "auditors" already exists in this tenant.',
+            ], 409),
         ]);
         $this->screen->open('section.groups');
         $this->screen->press(["\r", 'n']);
@@ -268,15 +266,5 @@ final class GroupsSectionTest extends TestCase
                 ['person' => ['id' => 'p-alice', 'username' => 'alice'], 'source' => 'local', 'added_at' => '2026-10-01T08:00:00Z'],
             ],
         ];
-    }
-
-    /**
-     * @param array<string, mixed> $document
-     *
-     * @return Closure(): MockResponse
-     */
-    private static function answered(array $document, int $status): Closure
-    {
-        return static fn (): MockResponse => new MockResponse(json_encode($document, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES), ['http_code' => $status]);
     }
 }

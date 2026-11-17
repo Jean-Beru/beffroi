@@ -8,11 +8,13 @@ use function array_key_first;
 use function array_map;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationAdministrationResource;
 use Beffroi\Oidc\Tests\Fixture\Administrations;
-use DateInterval;
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Oidc\Application\Client\Registration\InitialAccessTokenIssuance;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryInitialAccessTokenRepository;
 use Beffroi\Oidc\Domain\Client\Metadata\GrantedMembers;
+use Beffroi\Oidc\Domain\Event\InitialAccessTokenIssued;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Beffroi\Oidc\Exception\InvalidClientMetadataException;
@@ -22,6 +24,7 @@ use function iterator_to_array;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use const PHP_INT_MAX;
 use function sort;
 use Symfony\Component\Clock\MockClock;
 
@@ -36,23 +39,64 @@ final class InitialAccessTokenIssuanceTest extends TestCase
 
     private InitialAccessTokenIssuance $issuance;
 
+    private RecordingEventDispatcher $events;
+
     protected function setUp(): void
     {
         $this->tokens = new InMemoryInitialAccessTokenRepository();
+        $this->events = new RecordingEventDispatcher();
         $this->issuance = new InitialAccessTokenIssuance(
             Secrets::drawer(),
             $this->tokens,
             new MockClock(self::NOW),
             Registrations::reader(),
             new ConfigurationAdministrationResource('acme', Administrations::RESOURCE),
+            $this->events,
         );
+    }
+
+    #[Test]
+    public function issuingIsAnActOfTheTenantThatNamesNobodyWhenTheOperatorDidIt(): void
+    {
+        // When
+        $issued = $this->issuance->issue(Fixtures::tenant(), 'The team that integrates', 1, 30, Fixtures::context());
+
+        // Then
+        static::assertSame(
+            [[$issued->token->id->toRfc4122(), null]],
+            array_map(
+                static fn (InitialAccessTokenIssued $act): array => [$act->tokenId->toRfc4122(), $act->author()],
+                $this->events->of(InitialAccessTokenIssued::class),
+            ),
+        );
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function issuingThroughTheAdministrationNamesTheAdministrator(): void
+    {
+        // When
+        $this->issuance->issueByAnAdministrator(
+            Fixtures::tenant(),
+            'The terminal of another administrator',
+            1,
+            1,
+            new Subject('administrator-subject'),
+            Fixtures::context(),
+            administration: true,
+        );
+
+        // Then
+        static::assertSame('administrator-subject', $this->events->of(InitialAccessTokenIssued::class)[0]->author()?->value);
     }
 
     #[Test]
     public function theValueIsOneThisProviderDrew(): void
     {
         // When
-        $issued = $this->issuance->issue(Fixtures::tenant(), 'The team that integrates', 1, new DateInterval('P30D'));
+        $issued = $this->issuance->issue(Fixtures::tenant(), 'The team that integrates', 1, 30, Fixtures::context());
 
         // Then
         static::assertTrue(DrawnSecret::isValue($issued->value));
@@ -62,7 +106,7 @@ final class InitialAccessTokenIssuanceTest extends TestCase
     public function theRowKeepsTheDigestAndNotTheValue(): void
     {
         // When
-        $issued = $this->issuance->issue(Fixtures::tenant(), 'The team that integrates', 1, new DateInterval('P30D'));
+        $issued = $this->issuance->issue(Fixtures::tenant(), 'The team that integrates', 1, 30, Fixtures::context());
 
         // Then
         static::assertSame(DrawnSecret::digestOf($issued->value), $issued->token->digest);
@@ -72,7 +116,7 @@ final class InitialAccessTokenIssuanceTest extends TestCase
     public function itIsWorthWhatWasAskedForForAsLongAsWasAskedFor(): void
     {
         // When
-        $issued = $this->issuance->issue(Fixtures::tenant(), 'The team that integrates', 5, new DateInterval('P7D'));
+        $issued = $this->issuance->issue(Fixtures::tenant(), 'The team that integrates', 5, 7, Fixtures::context());
 
         // Then
         static::assertSame(5, $issued->token->registrationsAllowed);
@@ -87,7 +131,7 @@ final class InitialAccessTokenIssuanceTest extends TestCase
         $tenant = Fixtures::tenant();
 
         // When
-        $issued = $this->issuance->issue($tenant, 'The team that integrates', 1, new DateInterval('P30D'));
+        $issued = $this->issuance->issue($tenant, 'The team that integrates', 1, 30, Fixtures::context());
 
         // Then
         static::assertSame($issued->token, $this->tokens->findByDigest($tenant, DrawnSecret::digestOf($issued->value)));
@@ -101,7 +145,42 @@ final class InitialAccessTokenIssuanceTest extends TestCase
         $this->expectExceptionMessageIs('An initial access token is worth at least one registration; a token worth none is a token not issued.');
 
         // When
-        $this->issuance->issue(Fixtures::tenant(), 'The team that integrates', 0, new DateInterval('P30D'));
+        $this->issuance->issue(Fixtures::tenant(), 'The team that integrates', 0, 30, Fixtures::context());
+    }
+
+    #[Test]
+    public function aTokenWorthNoDayIsNotIssued(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('An initial access token is worth something for a day at least.');
+
+        // When
+        $this->issuance->issue(Fixtures::tenant(), 'The team that integrates', 1, 0, Fixtures::context());
+    }
+
+    /**
+     * RFC 3339 §5.6
+     */
+    #[Test]
+    #[DataProvider('provideDaysNoDateHolds')]
+    public function aTokenThatWouldOutliveTheYear9999IsNotIssued(int $days): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('An initial access token expires within the year 9999 at the latest, the last a date of RFC 3339 writes (section 5.6).');
+
+        // When
+        $this->issuance->issue(Fixtures::tenant(), 'The team that integrates', 1, $days, Fixtures::context());
+    }
+
+    /**
+     * @return iterable<string, array{int}>
+     */
+    public static function provideDaysNoDateHolds(): iterable
+    {
+        yield 'more days than four digits of a year count' => [3_000_000];
+        yield 'more days than an interval holds' => [PHP_INT_MAX];
     }
 
     /**
@@ -117,7 +196,7 @@ final class InitialAccessTokenIssuanceTest extends TestCase
         ]);
 
         // When
-        $issued = $this->issuance->issue(Fixtures::tenant(), 'The team that integrates', 1, new DateInterval('P30D'), $granted);
+        $issued = $this->issuance->issue(Fixtures::tenant(), 'The team that integrates', 1, 30, Fixtures::context(), $granted);
 
         // Then
         static::assertSame($granted, $issued->token->granted);
@@ -127,7 +206,7 @@ final class InitialAccessTokenIssuanceTest extends TestCase
     public function aTokenIssuedToGiveNothingGivesNothing(): void
     {
         // When
-        $issued = $this->issuance->issue(Fixtures::tenant(), 'The team that integrates', 1, new DateInterval('P30D'));
+        $issued = $this->issuance->issue(Fixtures::tenant(), 'The team that integrates', 1, 30, Fixtures::context());
 
         // Then
         static::assertNull($issued->token->granted);
@@ -147,7 +226,7 @@ final class InitialAccessTokenIssuanceTest extends TestCase
         $this->expectExceptionMessageIs($message);
 
         // When
-        $this->issuance->issue(Fixtures::tenant(), 'invoices', 1, new DateInterval('P30D'), new GrantedMembers($granted));
+        $this->issuance->issue(Fixtures::tenant(), 'invoices', 1, 30, Fixtures::context(), new GrantedMembers($granted));
     }
 
     /**
@@ -212,7 +291,7 @@ final class InitialAccessTokenIssuanceTest extends TestCase
 
         // When
         try {
-            $this->issuance->issue(Fixtures::tenant(), 'invoices', 1, new DateInterval('P30D'), $granted);
+            $this->issuance->issue(Fixtures::tenant(), 'invoices', 1, 30, Fixtures::context(), $granted);
         } catch (InvalidClientMetadataException) {
         }
 
@@ -228,7 +307,7 @@ final class InitialAccessTokenIssuanceTest extends TestCase
         $this->expectExceptionMessageIs('An initial access token carries the name the tenant gave it (RFC 7591 section 1.2).');
 
         // When
-        $this->issuance->issue(Fixtures::tenant(), '', 1, new DateInterval('P30D'));
+        $this->issuance->issue(Fixtures::tenant(), '', 1, 30, Fixtures::context());
     }
 
     /**
@@ -238,7 +317,14 @@ final class InitialAccessTokenIssuanceTest extends TestCase
     public function aTokenIsIssuedForTheAdministrationOfATenantThatNamesItsApi(): void
     {
         // When
-        $issued = $this->issuance->issue(Fixtures::tenant(), 'The terminal of the administrators', 1, new DateInterval('P1D'), administration: true);
+        $issued = $this->issuance->issue(
+            Fixtures::tenant(),
+            'The terminal of the administrators',
+            1,
+            1,
+            Fixtures::context(),
+            administration: true,
+        );
 
         // Then
         static::assertTrue($issued->token->administration);
@@ -257,6 +343,7 @@ final class InitialAccessTokenIssuanceTest extends TestCase
             new MockClock(self::NOW),
             Registrations::reader(),
             new ConfigurationAdministrationResource('acme'),
+            $this->events,
         );
 
         // Then
@@ -264,7 +351,7 @@ final class InitialAccessTokenIssuanceTest extends TestCase
         $this->expectExceptionMessageIs('The tenant "acme" names no administration API (BEFFROI_TENANT_ADMINISTRATION_RESOURCE): a token for its administration would register clients of nothing.');
 
         // When
-        $issuance->issue(Fixtures::tenant(), 'The terminal of the administrators', 1, new DateInterval('P1D'), administration: true);
+        $issuance->issue(Fixtures::tenant(), 'The terminal of the administrators', 1, 1, Fixtures::context(), administration: true);
     }
 
     /**
@@ -283,7 +370,7 @@ final class InitialAccessTokenIssuanceTest extends TestCase
         $this->expectExceptionMessageIs('The token "The terminal of the administrators" is issued for the administration of the tenant, whose clients are given its administration API and no other resource (decision 0038).');
 
         // When
-        $this->issuance->issue(Fixtures::tenant(), 'The terminal of the administrators', 1, new DateInterval('P1D'), $granted, true);
+        $this->issuance->issue(Fixtures::tenant(), 'The terminal of the administrators', 1, 1, Fixtures::context(), $granted, true);
     }
 
     /**
@@ -298,7 +385,15 @@ final class InitialAccessTokenIssuanceTest extends TestCase
         ]);
 
         // When
-        $issued = $this->issuance->issue(Fixtures::tenant(), 'The terminal of the administrators', 1, new DateInterval('P1D'), $granted, true);
+        $issued = $this->issuance->issue(
+            Fixtures::tenant(),
+            'The terminal of the administrators',
+            1,
+            1,
+            Fixtures::context(),
+            $granted,
+            true,
+        );
 
         // Then
         static::assertSame($granted, $issued->token->granted);
@@ -318,7 +413,9 @@ final class InitialAccessTokenIssuanceTest extends TestCase
         $this->expectExceptionMessageIs('The token "invoices" names the administration API of the tenant among its resources, which only a token issued for the administration gives, to clients that authenticate with a key (decision 0038).');
 
         // When
-        $this->issuance->issue(Fixtures::tenant(), 'invoices', 1, new DateInterval('P30D'), new GrantedMembers(['resources' => $resources]));
+        $this->issuance->issue(Fixtures::tenant(), 'invoices', 1, 30, Fixtures::context(), new GrantedMembers([
+            'resources' => $resources,
+        ]));
     }
 
     /**

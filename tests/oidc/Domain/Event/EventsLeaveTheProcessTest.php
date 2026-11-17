@@ -33,6 +33,8 @@ use Beffroi\Oidc\Domain\Event\PushedRequestRefusalReason;
 use Beffroi\Oidc\Domain\Event\PushedRequestRefused;
 use Beffroi\Oidc\Domain\Event\RefreshTokenOutlivedItsSession;
 use Beffroi\Oidc\Domain\Event\RefreshTokenReuseDetected;
+use Beffroi\Oidc\Domain\Event\InitialAccessTokenIssued;
+use Beffroi\Oidc\Domain\Event\InitialAccessTokenRevoked;
 use Beffroi\Oidc\Domain\Event\RegisteredClientDeleted;
 use Beffroi\Oidc\Domain\Event\RefreshTokenRotated;
 use Beffroi\Oidc\Domain\Event\TokenRevoked;
@@ -194,6 +196,22 @@ final class EventsLeaveTheProcessTest extends TestCase
             $context,
         )];
         yield 'a registered client deleted' => [new RegisteredClientDeleted($now, $client->tenant, $clientId, $context)];
+        yield 'a registered client deleted by an administrator' => [new RegisteredClientDeleted(
+            $now,
+            $client->tenant,
+            $clientId,
+            $context,
+            new Subject('administrator-subject'),
+        )];
+        yield 'an initial access token issued' => [new InitialAccessTokenIssued($now, $client->tenant, Uuid::v7(), $context)];
+        yield 'an initial access token issued by an administrator' => [new InitialAccessTokenIssued(
+            $now,
+            $client->tenant,
+            Uuid::v7(),
+            $context,
+            new Subject('administrator-subject'),
+        )];
+        yield 'an initial access token revoked' => [new InitialAccessTokenRevoked($now, $client->tenant, Uuid::v7(), $context)];
         yield 'a logout token given up on' => [new LogoutTokenGivenUp(
             $now,
             $session->tenant,

@@ -9,9 +9,6 @@ use function array_filter;
 use Closure;
 use function count;
 use function explode;
-use function json_encode;
-use const JSON_THROW_ON_ERROR;
-use const JSON_UNESCAPED_SLASHES;
 use Beffroi\Tui\Tests\Fixture\FakeProvider;
 use Beffroi\Tui\Tests\Fixture\SignedInScreen;
 use PHPUnit\Framework\Attributes\Test;
@@ -1157,7 +1154,7 @@ final class UsersSectionTest extends TestCase
      */
     private static function created(array $document): Closure
     {
-        return static fn (): MockResponse => new MockResponse(json_encode($document, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES), ['http_code' => 201]);
+        return SignedInScreen::answered($document, 201);
     }
 
     /**

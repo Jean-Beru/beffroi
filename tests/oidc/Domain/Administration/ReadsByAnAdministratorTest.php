@@ -7,6 +7,7 @@ namespace Beffroi\Oidc\Tests\Domain\Administration;
 use function array_diff;
 use function array_values;
 use function basename;
+use Beffroi\Core\Domain\Event\ConcernsAPersonInterface;
 use Beffroi\Core\Domain\Event\NamesItsAuthorInterface;
 use Beffroi\Oidc\Domain\Administration\ReadsByAnAdministrator;
 use Beffroi\Oidc\Domain\Consent\ConsentActs;
@@ -24,16 +25,17 @@ use function sprintf;
 final class ReadsByAnAdministratorTest extends TestCase
 {
     /**
-     * Decision 0038: the person reads on the page of their acts that an administrator read or changed them.
+     * Decision 0038: the person reads on the page of their acts that an administrator read or changed them. An act of
+     * the tenant alone, an initial access token or a client, is on no page of a person.
      */
     #[Test]
-    public function everyActOfThePackageThatNamesAnAdministratorIsOnThePageOfThePerson(): void
+    public function everyActOfAPersonThatNamesAnAdministratorIsOnTheirPage(): void
     {
         // Given
         $onThePage = [...ReadsByAnAdministrator::NAMES, ...ConsentActs::NAMES];
 
         // When
-        $named = self::actsNamingTheirAuthor();
+        $named = self::actsOfAPersonNamingTheirAuthor();
 
         // Then
         static::assertSame([], array_values(array_diff($named, $onThePage)));
@@ -46,7 +48,7 @@ final class ReadsByAnAdministratorTest extends TestCase
     public function everyReadThePageListsNamesTheAdministratorWhoMadeIt(): void
     {
         // When
-        $named = self::actsNamingTheirAuthor();
+        $named = self::actsOfAPersonNamingTheirAuthor();
 
         // Then
         static::assertSame([], array_values(array_diff(ReadsByAnAdministrator::NAMES, $named)));
@@ -55,7 +57,7 @@ final class ReadsByAnAdministratorTest extends TestCase
     /**
      * @return list<string>
      */
-    private static function actsNamingTheirAuthor(): array
+    private static function actsOfAPersonNamingTheirAuthor(): array
     {
         $reflection = new ReflectionClass(TokensIssued::class);
         $file = $reflection->getFileName();
@@ -70,7 +72,7 @@ final class ReadsByAnAdministratorTest extends TestCase
         foreach ($files as $candidate) {
             /** @var class-string $class */
             $class = $reflection->getNamespaceName() . '\\' . basename($candidate, '.php');
-            if (! class_exists($class) || ! is_a($class, NamesItsAuthorInterface::class, true)) {
+            if (! class_exists($class) || ! is_a($class, NamesItsAuthorInterface::class, true) || ! is_a($class, ConcernsAPersonInterface::class, true)) {
                 continue;
             }
             $name = new ReflectionClass($class)->getConstant('NAME');

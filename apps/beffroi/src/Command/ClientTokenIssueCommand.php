@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use DateInterval;
+use App\Http\RequestContextFactory;
 use Beffroi\Oidc\Application\Client\Registration\InitialAccessTokenIssuance;
 use Beffroi\Oidc\Domain\Client\Metadata\GrantedMembers;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
-use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
@@ -31,6 +30,7 @@ final readonly class ClientTokenIssueCommand
     public function __construct(
         private ConfiguredTenant $tenant,
         private InitialAccessTokenIssuance $issuance,
+        private RequestContextFactory $contexts,
     ) {
     }
 
@@ -69,11 +69,6 @@ final readonly class ClientTokenIssueCommand
         if ($tenant === null) {
             return Command::FAILURE;
         }
-        if ($days < 1) {
-            $io->error('An initial access token is worth something for a day at least.');
-
-            return Command::INVALID;
-        }
         if ($exchangeForAUser && $exchangeSubjectTokenType === []) {
             $io->error('A token that lets its clients exchange a token somebody signed in for names what they may exchange: --exchange-subject-token-type.');
 
@@ -85,7 +80,8 @@ final readonly class ClientTokenIssueCommand
                 $tenant,
                 trim($name),
                 $registrations,
-                new DateInterval(sprintf('P%dD', $days)),
+                $days,
+                $this->contexts->fromConsole(self::NAME),
                 self::granted($resource, $accessTokenFormat, $requireSenderConstrainedTokens, $exchangeSubjectTokenType, $exchangeForAUser, $mayAct),
                 $administration,
             );

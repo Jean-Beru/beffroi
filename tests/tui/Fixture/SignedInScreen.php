@@ -89,6 +89,19 @@ final readonly class SignedInScreen
     }
 
     /**
+     * What the API answers with that status, a creation or a refusal in the words of the instance, as the document of a
+     * path given to the constructor.
+     *
+     * @param array<string, mixed> $document
+     *
+     * @return Closure(): MockResponse
+     */
+    public static function answered(array $document, int $status): Closure
+    {
+        return static fn (): MockResponse => new MockResponse(json_encode($document, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES), ['http_code' => $status]);
+    }
+
+    /**
      * The section of that label is chosen in the navigation, the focus staying there.
      */
     public function open(string $title): void

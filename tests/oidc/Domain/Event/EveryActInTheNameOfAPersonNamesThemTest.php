@@ -7,6 +7,8 @@ namespace Beffroi\Oidc\Tests\Domain\Event;
 use function array_keys;
 use Beffroi\Core\Domain\Event\ConcernsAPersonInterface;
 use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailed;
+use Beffroi\Oidc\Domain\Event\InitialAccessTokenIssued;
+use Beffroi\Oidc\Domain\Event\InitialAccessTokenRevoked;
 use Beffroi\Oidc\Domain\Event\PushedRequestRefused;
 use Beffroi\Oidc\Domain\Event\RegisteredClientDeleted;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -18,6 +20,8 @@ final class EveryActInTheNameOfAPersonNamesThemTest extends TestCase
 {
     private const array NAMES_NOBODY = [
         ClientAuthenticationFailed::class => 'a request refused before any client was authenticated names neither a client nor a person (RFC 6749 §5.2)',
+        InitialAccessTokenIssued::class => 'an initial access token is issued for an integration, and the clients it will register are nobody yet (RFC 7591 §1.2)',
+        InitialAccessTokenRevoked::class => 'an initial access token taken back authorises no registration, and names no person this provider serves (RFC 7591 §1.2)',
         PushedRequestRefused::class => 'a reference refused at the authorization endpoint says what was refused, and nobody had been asked anything yet (RFC 9126 §4)',
         RegisteredClientDeleted::class => 'a client taken out of the register is an act of whoever registered it, in the name of no person this provider serves (RFC 7592 §2.3)',
     ];
