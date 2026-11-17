@@ -6,8 +6,10 @@ namespace App\Tests\Symfony\Functional\Controller;
 
 use App\Http\AskedPage;
 use Beffroi\Core\Domain\Identity\ClaimChange;
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\ClaimHistoryInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
@@ -35,6 +37,52 @@ final class AccountClaimChangesTest extends BrowserTestCase
         $row = $page->filter('tbody tr[data-change]')->first()->filter('td');
         static::assertSame('Ada', $row->eq(1)->text());
         static::assertSame('Augusta', $row->eq(2)->text());
+    }
+
+    /**
+     * @return iterable<string, array{string|null, string}>
+     */
+    public static function authors(): iterable
+    {
+        yield 'a change the person made' => [null, 'person'];
+        yield 'a change an administrator made' => ['administrator-subject', 'administrator'];
+    }
+
+    /**
+     * Decision 0038: the person reads that an administrator of their organisation made a change, never which one.
+     */
+    #[Test]
+    #[DataProvider('authors')]
+    public function eachChangeSaysWhetherThePersonOrAnAdministratorMadeIt(?string $author, string $said): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        self::aChange($alice, 'Ada', 'Augusta', author: $author === null ? null : new Subject($author));
+        self::reload();
+
+        // When
+        $page = $this->changesPage();
+
+        // Then
+        static::assertSame([$said], $page->filter('tbody tr[data-change] td[data-author]')->extract(['data-author']));
+    }
+
+    #[Test]
+    public function aVerificationIsSaidInWords(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        self::aChange($alice, 'true', 'false', claim: 'email_verified');
+        self::reload();
+
+        // When
+        $page = $this->changesPage();
+
+        // Then
+        $row = $page->filter('tbody tr[data-change]')->first()->filter('td');
+        static::assertSame(['verified', 'not verified'], [$row->eq(1)->text(), $row->eq(2)->text()]);
     }
 
     #[Test]
@@ -129,10 +177,16 @@ final class AccountClaimChangesTest extends BrowserTestCase
         return $page;
     }
 
-    private static function aChange(User $user, ?string $was, ?string $became, string $ago = 'now'): void
-    {
+    private static function aChange(
+        User $user,
+        ?string $was,
+        ?string $became,
+        string $ago = 'now',
+        string $claim = 'nickname',
+        ?Subject $author = null,
+    ): void {
         $at = self::currentSecond()->modify($ago);
         self::service('test.beffroi.claim_history', ClaimHistoryInterface::class)
-            ->record(new ClaimChange(Uuid::v7(), $user, 'nickname', $was, $became, $at, self::context()));
+            ->record(new ClaimChange(Uuid::v7(), $user, $claim, $was, $became, $at, self::context(), $author));
     }
 }
