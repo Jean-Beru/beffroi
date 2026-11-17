@@ -471,6 +471,50 @@ final class UsersSectionTest extends TestCase
         ]);
     }
 
+    /**
+     * Decision 0026: a password link ends every session of the person once spent, so it is asked first.
+     */
+    #[Test]
+    public function aPasswordLinkIsAskedToBeConfirmedBeforeItIsIssued(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(['/users?username=alice' => self::alice()]);
+        self::lookUpAlice($this->screen);
+
+        // When
+        $this->screen->press('p');
+
+        // Then
+        static::assertSame([0, true], [
+            $this->screen->requestsTo('/users/0193-alice/password-ticket', 'POST'),
+            str_contains($this->screen->screen(), 'Issue a link that lets alice pose a new password?'),
+        ]);
+    }
+
+    #[Test]
+    public function thePasswordLinkIsShownAsACodeInPlaceOfThePersonOnceTheAdministratorConfirmsIt(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            'POST /users/0193-alice/password-ticket' => self::created(self::ticket()),
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press('p');
+
+        // When
+        $this->screen->press('y');
+
+        // Then
+        $screen = $this->screen->screen();
+        static::assertSame([1, true, true, true], [
+            $this->screen->requestsTo('/users/0193-alice/password-ticket', 'POST'),
+            str_contains($screen, 'Password link of alice'),
+            str_contains($screen, self::LINK . ' opens until'),
+            str_contains($screen, '▀'),
+        ]);
+    }
+
     #[Test]
     public function anyOtherKeyThanYIssuesNoLink(): void
     {
