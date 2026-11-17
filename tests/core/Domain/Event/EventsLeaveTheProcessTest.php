@@ -24,6 +24,7 @@ use Beffroi\Core\Domain\Event\CredentialRenamed;
 use Beffroi\Core\Domain\Enrolment\EnrolmentTicket;
 use Beffroi\Core\Domain\Event\CredentialForgotten;
 use Beffroi\Core\Domain\Event\EnrolmentTicketIssued;
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Event\CredentialRevoked;
 use Beffroi\Core\Domain\Event\DomainEventInterface;
 use Beffroi\Core\Domain\Event\KmsUnavailable;
@@ -85,6 +86,7 @@ final class EventsLeaveTheProcessTest extends TestCase
 
         yield 'a user authenticated' => [new UserAuthenticated($session)];
         yield 'a session ended' => [new AuthenticationSessionEnded($ended, $now, $context)];
+        yield 'a session an administrator ended' => [new AuthenticationSessionEnded($ended, $now, $context, new Subject('administrator-subject'))];
         yield 'an authentication that failed' => [new AuthenticationFailed(
             $now,
             $tenant,
@@ -102,6 +104,7 @@ final class EventsLeaveTheProcessTest extends TestCase
         yield 'a person who dropped their archive' => [new PersonDroppedTheirArchive($now, $tenant, Uuid::v7(), $user->subject, $context)];
         yield 'a credential enrolled' => [new CredentialEnrolled($passkey, $now, $context)];
         yield 'a credential revoked' => [new CredentialRevoked($passkey, $now, $context)];
+        yield 'a credential an administrator revoked' => [new CredentialRevoked($passkey, $now, $context, new Subject('administrator-subject'))];
         yield 'a credential forgotten' => [new CredentialForgotten($password, $now, $context)];
         yield 'an enrolment ticket issued' => [new EnrolmentTicketIssued(
             new EnrolmentTicket(Uuid::v7(), $user, $password->hash, $now, $now->modify('+72 hours')),

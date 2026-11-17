@@ -8,6 +8,7 @@ use Beffroi\Core\Application\Credential\CredentialRevocation;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Event\CredentialRevoked;
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\Test;
@@ -54,6 +55,38 @@ final class CredentialRevocationTest extends TestCase
         static::assertCount(1, $events);
         static::assertSame($passkey, $events[0]->credential);
         static::assertSame($context, $events[0]->context);
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function theRevocationAnAdministratorMadeNamesThemInItsAct(): void
+    {
+        // Given
+        $passkey = Fixtures::passkey();
+        $this->credentials->save($passkey);
+        $administrator = new Subject('administrator-subject');
+
+        // When
+        $this->revocation->revokeByAnAdministrator($passkey, $administrator, Fixtures::context());
+
+        // Then
+        static::assertSame([true, $administrator], [$passkey->isRevoked(), $this->events->of(CredentialRevoked::class)[0]->author()]);
+    }
+
+    #[Test]
+    public function theRevocationThePersonMadeNamesNoAuthor(): void
+    {
+        // Given
+        $passkey = Fixtures::passkey();
+        $this->credentials->save($passkey);
+
+        // When
+        $this->revocation->revoke($passkey, Fixtures::context());
+
+        // Then
+        static::assertNull($this->events->of(CredentialRevoked::class)[0]->author());
     }
 
     #[Test]

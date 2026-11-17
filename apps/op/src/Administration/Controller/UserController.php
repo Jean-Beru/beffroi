@@ -72,6 +72,7 @@ final readonly class UserController
                 'authenticator' => $credential instanceof ModelDeclaringCredentialInterface ? $this->models->of($credential)?->name : null,
                 'created_at' => AdministrationAnswer::moment($credential->createdAt),
                 'last_used_at' => AdministrationAnswer::moment($credential->lastUsedAt),
+                'revocable' => $credential instanceof RevocableCredentialInterface,
                 'revoked_at' => $credential instanceof RevocableCredentialInterface ? AdministrationAnswer::moment($credential->revokedAt) : null,
             ], $read->credentials),
         ]);

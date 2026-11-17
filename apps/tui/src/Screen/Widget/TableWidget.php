@@ -35,7 +35,9 @@ use function uasort;
 final class TableWidget extends AbstractWidget implements FocusableInterface, VerticallyExpandableInterface
 {
     use ExpandsVerticallyTrait;
-    use FocusableTrait;
+    use FocusableTrait {
+        setFocused as private focus;
+    }
     use KeybindingsTrait;
 
     private const int GAP = 2;
@@ -70,6 +72,16 @@ final class TableWidget extends AbstractWidget implements FocusableInterface, Ve
      * @var (Closure(int): void)|null
      */
     private ?Closure $moved = null;
+
+    /**
+     * @var list<array{string, string}>
+     */
+    private array $sectionKeys = [];
+
+    /**
+     * @var (Closure(): void)|null
+     */
+    private ?Closure $left = null;
 
     /**
      * @param list<TableColumn> $columns
@@ -136,6 +148,48 @@ final class TableWidget extends AbstractWidget implements FocusableInterface, Ve
     public function onMove(Closure $callback): static
     {
         $this->moved = $callback;
+
+        return $this;
+    }
+
+    /**
+     * The keys a section answers on this table beside its own, which the last line of the screen says while the table
+     * has the focus.
+     *
+     * @param list<array{string, string}> $keys each key as it is written, and what it does
+     */
+    public function setSectionKeys(array $keys): static
+    {
+        $this->sectionKeys = $keys;
+
+        return $this;
+    }
+
+    /**
+     * @return list<array{string, string}>
+     */
+    public function sectionKeys(): array
+    {
+        return $this->sectionKeys;
+    }
+
+    /**
+     * @param Closure(): void $callback told when the focus leaves the table, whatever key moved it
+     */
+    public function onLeave(Closure $callback): static
+    {
+        $this->left = $callback;
+
+        return $this;
+    }
+
+    public function setFocused(bool $focused): static
+    {
+        $leaving = $this->isFocused() && ! $focused;
+        $this->focus($focused);
+        if ($leaving && $this->left !== null) {
+            ($this->left)();
+        }
 
         return $this;
     }

@@ -56,7 +56,7 @@ final readonly class SignedInScreen
     private array $sections;
 
     /**
-     * @param array<string, array<string, mixed>|Closure(): MockResponse> $answers the document each path of the API answers, or the response
+     * @param array<string, array<string, mixed>|Closure(): MockResponse> $answers the document each path of the API answers to a GET, or the response, and to another method under the method, a space and the path
      * @param array<string, mixed> $tokens the answer of the token endpoint the session holds
      */
     public function __construct(
@@ -67,7 +67,8 @@ final readonly class SignedInScreen
         private int $rows = self::ROWS,
     ) {
         $this->http = RecordedRequests::routed(static function (string $method, string $url) use ($answers): MockResponse {
-            $answer = str_starts_with($url, FakeProvider::ADMINISTRATION) ? $answers[substr($url, strlen(FakeProvider::ADMINISTRATION))] ?? null : null;
+            $path = substr($url, strlen(FakeProvider::ADMINISTRATION));
+            $answer = str_starts_with($url, FakeProvider::ADMINISTRATION) ? $answers[$method === 'GET' ? $path : $method . ' ' . $path] ?? null : null;
             if ($answer instanceof Closure) {
                 return $answer();
             }
@@ -137,13 +138,13 @@ final readonly class SignedInScreen
     }
 
     /**
-     * The requests sent to that path of the API, query included.
+     * The requests sent to that path of the API, query included, with that method.
      */
-    public function requestsTo(string $path): int
+    public function requestsTo(string $path, string $method = 'GET'): int
     {
         return count(array_filter(
             $this->http->requests,
-            static fn (array $request): bool => $request['url'] === FakeProvider::ADMINISTRATION . $path,
+            static fn (array $request): bool => $request['method'] === $method && $request['url'] === FakeProvider::ADMINISTRATION . $path,
         ));
     }
 

@@ -29,6 +29,8 @@ final class AdministrationApiGuardTest extends AdministrationTestCase
     private const array PARAMETERS = [
         '{clientId}' => self::CLIENT,
         '{id}' => '0193b8d0-0000-7000-8000-000000000000',
+        '{session}' => '0193b8d0-0000-7000-8000-000000000001',
+        '{credential}' => '0193b8d0-0000-7000-8000-000000000002',
         '{path}' => 'nothing/here',
     ];
 
@@ -130,16 +132,16 @@ final class AdministrationApiGuardTest extends AdministrationTestCase
     }
 
     /**
-     * Every route of the API, by name, as a path a request can name.
+     * Every route of the API, by name, as the method and the path a request can name.
      *
-     * @return array<string, string>
+     * @return array<string, array{string, string}>
      */
     private function pathsOfTheApi(): array
     {
         $paths = [];
-        foreach ($this->routesOfTheApi() as $name => $path) {
-            $paths[$name] = strtr($path, self::PARAMETERS);
-            if (preg_match_all('/\{[^}]+\}/', $paths[$name]) !== 0) {
+        foreach ($this->routesOfTheApi() as $name => [$method, $path]) {
+            $paths[$name] = [$method, strtr($path, self::PARAMETERS)];
+            if (preg_match_all('/\{[^}]+\}/', $paths[$name][1]) !== 0) {
                 static::fail(sprintf('The route "%s" has a parameter this walk does not know how to fill: %s.', $name, $path));
             }
         }
@@ -148,15 +150,15 @@ final class AdministrationApiGuardTest extends AdministrationTestCase
     }
 
     /**
-     * @param array<string, string> $paths
+     * @param array<string, array{string, string}> $paths
      *
      * @return array<string, int>
      */
     private function statusesOf(array $paths, ?string $token, bool $proven): array
     {
         $statuses = [];
-        foreach ($paths as $name => $path) {
-            $statuses[$name] = $this->api($path, $token, $proven)->getStatusCode();
+        foreach ($paths as $name => [$method, $path]) {
+            $statuses[$name] = $this->api($path, $token, $proven, method: $method)->getStatusCode();
         }
 
         return $statuses;

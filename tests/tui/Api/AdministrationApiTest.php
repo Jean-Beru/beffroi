@@ -77,6 +77,49 @@ final class AdministrationApiTest extends TestCase
     }
 
     /**
+     * RFC 9449 §4.2: the proof of a request that removes a resource names its method.
+     */
+    #[Test]
+    public function aDeletionCarriesAProofMadeForItsMethod(): void
+    {
+        // Given
+        $http = RecordedRequests::answering([new MockResponse('{"id":"session-1"}')]);
+
+        // When
+        Sessions::of($http->client)->api()->delete('/users/0193-alice/sessions/session-1');
+
+        // Then
+        static::assertSame(
+            ['DELETE', 'DELETE', FakeProvider::ADMINISTRATION . '/users/0193-alice/sessions/session-1'],
+            [
+                $http->last()['method'],
+                Jwt::claims($http->last()['headers']['dpop'] ?? '')->nullableString('htm'),
+                Jwt::claims($http->last()['headers']['dpop'] ?? '')->nullableString('htu'),
+            ],
+        );
+    }
+
+    /**
+     * RFC 6750 §3.1: a deletion the API refused for its token changed nothing, so it is sent again with the token refreshed.
+     */
+    #[Test]
+    public function aDeletionRefusedForItsTokenIsSentAgainWithTheTokenRefreshed(): void
+    {
+        // Given
+        $http = RecordedRequests::answering([
+            self::challenged('DPoP error="invalid_token"'),
+            self::refreshed(),
+            new MockResponse('{"id":"session-1"}'),
+        ]);
+
+        // When
+        Sessions::of($http->client, ['refresh_token' => 'the-refresh-token'])->api()->delete('/users/0193-alice/sessions/session-1');
+
+        // Then
+        static::assertSame(['DELETE', 'DPoP the-new-access-token'], [$http->last()['method'], $http->last()['headers']['authorization'] ?? null]);
+    }
+
+    /**
      * @param array<string, string> $query
      */
     #[Test]
