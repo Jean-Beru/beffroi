@@ -6,7 +6,6 @@ namespace Beffroi\Oidc\Tests\Application\Client\Registration;
 
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationAdministrationResource;
 use Beffroi\Oidc\Tests\Fixture\Administrations;
-use DateInterval;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Tenant\Tenant;
@@ -188,7 +187,7 @@ final class InitialAccessTokenRevocationTest extends TestCase
             $this->tenant,
             'The team that integrates',
             $registrationsAllowed,
-            new DateInterval('P30D'),
+            30,
             $this->context,
         );
     }

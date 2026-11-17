@@ -120,6 +120,7 @@ final class AdministrationApiInitialAccessTokensTest extends AdministrationTestC
         yield 'without how long it is worth anything' => ['{"name":"invoices","registrations":1}'];
         yield 'worth no day' => ['{"name":"invoices","registrations":1,"days":0}'];
         yield 'worth no registration' => ['{"name":"invoices","registrations":0,"days":7}'];
+        yield 'worth more days than a date holds' => ['{"name":"invoices","registrations":1,"days":9223372036854775807}'];
         yield 'giving what no token gives' => ['{"name":"invoices","registrations":1,"days":7,"granted":{"scope":"openid"}}'];
         yield 'giving the administration API among its resources' => [sprintf(
             '{"name":"invoices","registrations":1,"days":7,"granted":{"resources":["%s"]}}',
