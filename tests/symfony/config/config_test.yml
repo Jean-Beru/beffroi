@@ -1256,6 +1256,12 @@ services:
     test.beffroi.groups_of_a_person:
         alias: Beffroi\Core\Port\GroupsOfAPersonInterface
         public: true
+    test.beffroi.groups_of_a_tenant:
+        alias: Beffroi\Core\Port\GroupsOfATenantInterface
+        public: true
+    test.beffroi.members_of_a_group:
+        alias: Beffroi\Core\Port\MembersOfAGroupInterface
+        public: true
     test.beffroi.groups:
         alias: Beffroi\Core\Port\GroupRepositoryInterface
         public: true

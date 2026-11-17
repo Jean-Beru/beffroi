@@ -13,7 +13,12 @@ use Beffroi\Core\Domain\Group\GroupSource;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\GroupMembershipException;
+use Beffroi\Core\Domain\Event\GroupMembershipAdded;
+use Beffroi\Core\Domain\Event\GroupMembershipRemoved;
+use Beffroi\Core\Domain\Identity\Subject;
+use function array_map;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -35,6 +40,8 @@ final class LocalMembershipsTest extends TestCase
 
     private MockClock $clock;
 
+    private RecordingEventDispatcher $events;
+
     private LocalMemberships $local;
 
     protected function setUp(): void
@@ -44,14 +51,92 @@ final class LocalMembershipsTest extends TestCase
         $this->group = new Group(Uuid::v7(), $this->tenant, 'administrators', GroupSource::Local, Fixtures::now());
         $this->memberships = new InMemoryGroupMembershipRepository();
         $this->clock = new MockClock('2026-11-04T12:00:00+00:00');
-        $this->local = new LocalMemberships($this->memberships, $this->memberships, new SymfonyUuidGenerator(), $this->clock);
+        $this->events = new RecordingEventDispatcher();
+        $this->local = new LocalMemberships($this->memberships, $this->memberships, new SymfonyUuidGenerator(), $this->clock, $this->events);
+    }
+
+    /**
+     * Decision 0038: a membership can make an administrator, so the person reads that it changed.
+     */
+    #[Test]
+    public function aMembershipAddedFromTheConsoleIsAnActOfThePersonThatNamesNobody(): void
+    {
+        // When
+        $this->local->add($this->group, $this->user, Fixtures::context());
+
+        // Then
+        static::assertSame(
+            [[$this->user->subject->value, 'administrators', null]],
+            array_map(
+                static fn (GroupMembershipAdded $act): array => [$act->subject()->value, $act->group, $act->author()?->value],
+                $this->events->of(GroupMembershipAdded::class),
+            ),
+        );
+    }
+
+    #[Test]
+    public function aMembershipAnAdministratorAddedNamesThem(): void
+    {
+        // When
+        $this->local->addByAnAdministrator($this->group, $this->user, new Subject('administrator-subject'), Fixtures::context());
+
+        // Then
+        static::assertSame('administrator-subject', $this->events->of(GroupMembershipAdded::class)[0]->author()?->value);
+    }
+
+    #[Test]
+    public function aMembershipTakenBackIsAnActOfThePerson(): void
+    {
+        // Given
+        $this->local->add($this->group, $this->user, Fixtures::context());
+
+        // When
+        $this->local->remove($this->group, $this->user, Fixtures::context());
+
+        // Then
+        static::assertSame(
+            [[$this->user->subject->value, 'administrators', null]],
+            array_map(
+                static fn (GroupMembershipRemoved $act): array => [$act->subject()->value, $act->group, $act->author()?->value],
+                $this->events->of(GroupMembershipRemoved::class),
+            ),
+        );
+    }
+
+    #[Test]
+    public function aMembershipAnAdministratorTookBackNamesThem(): void
+    {
+        // Given
+        $this->local->add($this->group, $this->user, Fixtures::context());
+
+        // When
+        $this->local->removeByAnAdministrator($this->group, $this->user, new Subject('administrator-subject'), Fixtures::context());
+
+        // Then
+        static::assertSame('administrator-subject', $this->events->of(GroupMembershipRemoved::class)[0]->author()?->value);
+    }
+
+    #[Test]
+    public function aMembershipRefusedAnnouncesNothing(): void
+    {
+        // Given
+        $this->local->add($this->group, $this->user, Fixtures::context());
+
+        // When
+        try {
+            $this->local->add($this->group, $this->user, Fixtures::context());
+        } catch (GroupMembershipException) {
+        }
+
+        // Then
+        static::assertCount(1, $this->events->of(GroupMembershipAdded::class));
     }
 
     #[Test]
     public function aPersonIsMadeAMemberTheTenantHoldsItself(): void
     {
         // When
-        $this->local->add($this->group, $this->user);
+        $this->local->add($this->group, $this->user, Fixtures::context());
 
         // Then
         $memberships = $this->memberships->of($this->user);
@@ -65,14 +150,14 @@ final class LocalMembershipsTest extends TestCase
     public function aMemberIsNotMadeOneTwice(): void
     {
         // Given
-        $this->local->add($this->group, $this->user);
+        $this->local->add($this->group, $this->user, Fixtures::context());
 
         // Then
         $this->expectException(GroupMembershipException::class);
         $this->expectExceptionMessageIs('This person is already a member of the group "administrators".');
 
         // When
-        $this->local->add($this->group, $this->user);
+        $this->local->add($this->group, $this->user, Fixtures::context());
     }
 
     #[Test]
@@ -86,17 +171,17 @@ final class LocalMembershipsTest extends TestCase
         $this->expectExceptionMessageIs('The members of the group "engineering" are written by the directory that fills it, never by the tenant.');
 
         // When
-        $this->local->add($directory, $this->user);
+        $this->local->add($directory, $this->user, Fixtures::context());
     }
 
     #[Test]
     public function aMembershipTheTenantHoldsIsTakenBack(): void
     {
         // Given
-        $this->local->add($this->group, $this->user);
+        $this->local->add($this->group, $this->user, Fixtures::context());
 
         // When
-        $this->local->remove($this->group, $this->user);
+        $this->local->remove($this->group, $this->user, Fixtures::context());
 
         // Then
         static::assertSame([], $this->memberships->of($this->user));
@@ -110,7 +195,7 @@ final class LocalMembershipsTest extends TestCase
         $this->expectExceptionMessageIs('This person is not a member of the group "administrators".');
 
         // When
-        $this->local->remove($this->group, $this->user);
+        $this->local->remove($this->group, $this->user, Fixtures::context());
     }
 
     /**
@@ -127,6 +212,6 @@ final class LocalMembershipsTest extends TestCase
         $this->expectExceptionMessageIs('This person is a member of the group "administrators" by a directory, which alone takes the membership back.');
 
         // When
-        $this->local->remove($this->group, $this->user);
+        $this->local->remove($this->group, $this->user, Fixtures::context());
     }
 }

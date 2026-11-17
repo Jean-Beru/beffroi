@@ -40,6 +40,7 @@ use Beffroi\Oidc\Domain\Event\TokensIssued;
 use Beffroi\Oidc\Domain\Event\PersonReadByAnAdministrator;
 use Beffroi\Oidc\Domain\Event\SessionsReadByAnAdministrator;
 use Beffroi\Oidc\Domain\Event\JournalReadByAnAdministrator;
+use Beffroi\Oidc\Domain\Event\MembershipReadByAnAdministrator;
 use Beffroi\Oidc\Domain\Event\UserInfoAnswered;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Scope\Scopes;
@@ -168,6 +169,14 @@ final class EventsLeaveTheProcessTest extends TestCase
             $context,
         )];
         yield 'their journal read by an administrator' => [new JournalReadByAnAdministrator(
+            $now,
+            $client->tenant,
+            $clientId,
+            $subject,
+            new Subject('administrator-subject'),
+            $context,
+        )];
+        yield 'their membership of a group read by an administrator' => [new MembershipReadByAnAdministrator(
             $now,
             $client->tenant,
             $clientId,

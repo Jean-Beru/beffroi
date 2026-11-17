@@ -10,7 +10,10 @@ use Beffroi\Core\Domain\Group\GroupMembership;
 use Beffroi\Core\Domain\Group\GroupSource;
 use Beffroi\Core\Port\GroupMembershipRepositoryInterface;
 use Beffroi\Core\Port\GroupsOfAPersonInterface;
+use Beffroi\Core\Domain\Event\GroupMembershipAdded;
+use Beffroi\Core\Domain\Event\GroupMembershipRemoved;
 use PHPUnit\Framework\Attributes\Test;
+use function count;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Uid\Uuid;
 
@@ -41,6 +44,33 @@ final class GroupMembersTest extends ConsoleTestCase
             static fn (GroupMembership $membership): array => [$membership->group->name, $membership->source],
             self::service('test.beffroi.groups_of_a_person', GroupsOfAPersonInterface::class)->of($user),
         ));
+    }
+
+    /**
+     * Decision 0038: a membership can make an administrator, so it is an act of the person, whose provenance names the
+     * operator of the console.
+     */
+    #[Test]
+    public function eachMembershipGivenOrTakenBackFromTheConsoleIsAnActOfThePerson(): void
+    {
+        // Given
+        self::user();
+        self::console('beffroi:group:create', [
+            'name' => 'administrators',
+        ]);
+
+        // When
+        self::console('beffroi:group:add-member', [
+            'group' => 'administrators',
+            'username' => 'alice',
+        ]);
+        self::console('beffroi:group:remove-member', [
+            'group' => 'administrators',
+            'username' => 'alice',
+        ]);
+
+        // Then
+        static::assertSame([1, 1], [count(self::events(GroupMembershipAdded::class)), count(self::events(GroupMembershipRemoved::class))]);
     }
 
     #[Test]

@@ -12,7 +12,9 @@ use Beffroi\Core\Domain\Group\GroupSource;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\GroupMembershipRepositoryInterface;
 use Beffroi\Core\Port\GroupsOfAPersonInterface;
+use Beffroi\Core\Port\MembersOfAGroupInterface;
 use PHPUnit\Framework\Attributes\Test;
+use function array_map;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -88,6 +90,44 @@ final class GroupMembershipsTest extends DatabaseTestCase
             ],
             $sources,
         );
+    }
+
+    #[Test]
+    public function theMembersOfAGroupAreListedInTheOrderTheyWereAdded(): void
+    {
+        // Given
+        $admins = self::group('admins');
+        $bob = self::user('bob', 'bob-subject');
+        $alice = self::user('alice', 'alice-subject');
+        self::memberships()->save(new GroupMembership(Uuid::v7(), $admins, $bob, GroupSource::Local, self::now()->modify('-1 hour')));
+        self::memberships()->save(new GroupMembership(Uuid::v7(), $admins, $alice, GroupSource::Local, self::now()));
+        self::reload();
+
+        // When
+        $members = self::members()->membersOf($admins);
+
+        // Then
+        static::assertSame(['bob', 'alice'], array_map(static fn (GroupMembership $membership): string => $membership->user->username, $members));
+    }
+
+    #[Test]
+    public function theMembersOfAGroupAreCounted(): void
+    {
+        // Given
+        $admins = self::group('admins');
+        self::memberships()->save(new GroupMembership(Uuid::v7(), $admins, self::user('bob', 'bob-subject'), GroupSource::Local, self::now()));
+        self::memberships()->save(new GroupMembership(Uuid::v7(), self::group('staff'), self::user('alice', 'alice-subject'), GroupSource::Local, self::now()));
+
+        // When
+        $count = self::members()->countMembersOf($admins);
+
+        // Then
+        static::assertSame(1, $count);
+    }
+
+    private static function members(): MembersOfAGroupInterface
+    {
+        return self::service('test.beffroi.members_of_a_group', MembersOfAGroupInterface::class);
     }
 
     private static function group(string $name): Group

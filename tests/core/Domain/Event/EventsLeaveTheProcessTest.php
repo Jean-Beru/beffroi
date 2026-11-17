@@ -33,6 +33,9 @@ use Beffroi\Core\Domain\Event\KmsUnavailable;
 use Beffroi\Core\Domain\Event\LoadBudgetSpent;
 use Beffroi\Core\Domain\Event\PasskeyUsed;
 use Beffroi\Core\Domain\Event\PersonAskedForTheirArchive;
+use Beffroi\Core\Domain\Event\GroupCreated;
+use Beffroi\Core\Domain\Event\GroupMembershipAdded;
+use Beffroi\Core\Domain\Event\GroupMembershipRemoved;
 use Beffroi\Core\Domain\Event\PersonDescribed;
 use Beffroi\Core\Domain\Event\PersonDescribedThemselves;
 use Beffroi\Core\Domain\Event\PersonDisabled;
@@ -106,6 +109,26 @@ final class EventsLeaveTheProcessTest extends TestCase
         )];
         yield 'a person the operator created' => [new PersonCreated($tenant, $user->subject, $now, $context)];
         yield 'a person an administrator created' => [new PersonCreated($tenant, $user->subject, $now, $context, new Subject('administrator-subject'))];
+        yield 'a group the operator created' => [new GroupCreated($tenant, 'auditors', $now, $context)];
+        yield 'a group an administrator created' => [new GroupCreated($tenant, 'auditors', $now, $context, new Subject('administrator-subject'))];
+        yield 'a member added to a group' => [new GroupMembershipAdded($tenant, $user->subject, 'auditors', $now, $context)];
+        yield 'a member an administrator added to a group' => [new GroupMembershipAdded(
+            $tenant,
+            $user->subject,
+            'auditors',
+            $now,
+            $context,
+            new Subject('administrator-subject'),
+        )];
+        yield 'a member taken out of a group' => [new GroupMembershipRemoved($tenant, $user->subject, 'auditors', $now, $context)];
+        yield 'a member an administrator took out of a group' => [new GroupMembershipRemoved(
+            $tenant,
+            $user->subject,
+            'auditors',
+            $now,
+            $context,
+            new Subject('administrator-subject'),
+        )];
         yield 'a person the operator disabled' => [new PersonDisabled($tenant, $user->subject, $now, $context)];
         yield 'a person an administrator disabled' => [new PersonDisabled($tenant, $user->subject, $now, $context, new Subject('administrator-subject'))];
         yield 'a person the operator enabled' => [new PersonEnabled($tenant, $user->subject, $now, $context)];

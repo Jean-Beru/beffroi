@@ -148,6 +148,23 @@ final readonly class SignedInScreen
         ));
     }
 
+    /**
+     * The bodies of the requests of that method to that path of the API, in the order they were sent.
+     *
+     * @return list<string>
+     */
+    public function bodiesTo(string $path, string $method): array
+    {
+        $bodies = [];
+        foreach ($this->http->requests as $request) {
+            if ($request['method'] === $method && $request['url'] === FakeProvider::ADMINISTRATION . $path) {
+                $bodies[] = $request['body'];
+            }
+        }
+
+        return $bodies;
+    }
+
     public function stop(): void
     {
         $this->settle();
