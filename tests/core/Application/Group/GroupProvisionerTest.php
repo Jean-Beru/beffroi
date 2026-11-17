@@ -13,7 +13,11 @@ use Beffroi\Core\Domain\Group\GroupSource;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Port\GroupRepositoryInterface;
+use Beffroi\Core\Domain\Event\GroupCreated;
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use function array_map;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -31,6 +35,8 @@ final class GroupProvisionerTest extends TestCase
 
     private MockClock $clock;
 
+    private RecordingEventDispatcher $events;
+
     private GroupProvisioner $provisioner;
 
     protected function setUp(): void
@@ -38,14 +44,15 @@ final class GroupProvisionerTest extends TestCase
         $this->tenant = Fixtures::tenant();
         $this->groups = new InMemoryGroupRepository();
         $this->clock = new MockClock('2026-10-22T12:00:00+00:00');
-        $this->provisioner = new GroupProvisioner($this->groups, new SymfonyUuidGenerator(), $this->clock);
+        $this->events = new RecordingEventDispatcher();
+        $this->provisioner = new GroupProvisioner($this->groups, new SymfonyUuidGenerator(), $this->clock, $this->events);
     }
 
     #[Test]
     public function aGroupIsCreatedLocalInTheTenant(): void
     {
         // When
-        $group = $this->provisioner->create($this->tenant, 'admins');
+        $group = $this->provisioner->create($this->tenant, 'admins', Fixtures::context());
 
         // Then
         static::assertSame($group, $this->groups->findByName($this->tenant, 'admins'));
@@ -59,14 +66,14 @@ final class GroupProvisionerTest extends TestCase
     public function aNameAlreadyTakenInTheTenantIsRefused(): void
     {
         // Given
-        $this->provisioner->create($this->tenant, 'admins');
+        $this->provisioner->create($this->tenant, 'admins', Fixtures::context());
 
         // Then
         $this->expectException(GroupAlreadyExistsException::class);
         $this->expectExceptionMessageIs('A group named "admins" already exists in this tenant.');
 
         // When
-        $this->provisioner->create($this->tenant, 'admins');
+        $this->provisioner->create($this->tenant, 'admins', Fixtures::context());
     }
 
     #[Test]
@@ -92,15 +99,42 @@ final class GroupProvisionerTest extends TestCase
             },
             new SymfonyUuidGenerator(),
             $this->clock,
+            new RecordingEventDispatcher(),
         );
-        $provisioner->create($this->tenant, 'admins');
+        $provisioner->create($this->tenant, 'admins', Fixtures::context());
 
         // Then
         $this->expectException(GroupAlreadyExistsException::class);
         $this->expectExceptionMessageIs('A group named "admins" already exists in this tenant.');
 
         // When
-        $provisioner->create($this->tenant, 'admins');
+        $provisioner->create($this->tenant, 'admins', Fixtures::context());
+    }
+
+    #[Test]
+    public function theCreationByTheOperatorIsAnActOfTheTenantThatNamesNobody(): void
+    {
+        // When
+        $this->provisioner->create($this->tenant, 'auditors', Fixtures::context());
+
+        // Then
+        static::assertSame(
+            [['auditors', null]],
+            array_map(static fn (GroupCreated $act): array => [$act->group, $act->author()?->value], $this->events->of(GroupCreated::class)),
+        );
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function theCreationByAnAdministratorIsAnActThatNamesThem(): void
+    {
+        // When
+        $this->provisioner->createByAnAdministrator($this->tenant, 'auditors', new Subject('administrator-subject'), Fixtures::context());
+
+        // Then
+        static::assertSame('administrator-subject', $this->events->of(GroupCreated::class)[0]->author()?->value);
     }
 
     #[Test]
@@ -108,10 +142,10 @@ final class GroupProvisionerTest extends TestCase
     {
         // Given
         $other = Fixtures::tenant('other', 'https://id.other.example');
-        $this->provisioner->create($other, 'admins');
+        $this->provisioner->create($other, 'admins', Fixtures::context());
 
         // When
-        $group = $this->provisioner->create($this->tenant, 'admins');
+        $group = $this->provisioner->create($this->tenant, 'admins', Fixtures::context());
 
         // Then
         static::assertSame($group, $this->groups->findByName($this->tenant, 'admins'));
@@ -121,10 +155,10 @@ final class GroupProvisionerTest extends TestCase
     public function aNameDifferingByItsCaseIsAnotherGroup(): void
     {
         // Given
-        $admins = $this->provisioner->create($this->tenant, 'admins');
+        $admins = $this->provisioner->create($this->tenant, 'admins', Fixtures::context());
 
         // When
-        $capitalised = $this->provisioner->create($this->tenant, 'Admins');
+        $capitalised = $this->provisioner->create($this->tenant, 'Admins', Fixtures::context());
 
         // Then
         static::assertFalse($capitalised->id->equals($admins->id));
@@ -138,7 +172,7 @@ final class GroupProvisionerTest extends TestCase
         $this->expectExceptionMessageIs('A group name must not be empty.');
 
         // When
-        $this->provisioner->create($this->tenant, '');
+        $this->provisioner->create($this->tenant, '', Fixtures::context());
     }
 
     #[Test]
@@ -150,7 +184,7 @@ final class GroupProvisionerTest extends TestCase
         $this->expectExceptionMessageIs('A group name must not begin or end with whitespace.');
 
         // When
-        $this->provisioner->create($this->tenant, $name);
+        $this->provisioner->create($this->tenant, $name, Fixtures::context());
     }
 
     /**
@@ -176,7 +210,7 @@ final class GroupProvisionerTest extends TestCase
         $this->expectExceptionMessageIs('A group name must be UTF-8 in Unicode Normalization Form C.');
 
         // When
-        $this->provisioner->create($this->tenant, $name);
+        $this->provisioner->create($this->tenant, $name, Fixtures::context());
     }
 
     /**
@@ -196,14 +230,14 @@ final class GroupProvisionerTest extends TestCase
         $this->expectExceptionMessageIs('A group name must not be longer than 255 characters.');
 
         // When
-        $this->provisioner->create($this->tenant, str_repeat('é', 256));
+        $this->provisioner->create($this->tenant, str_repeat('é', 256), Fixtures::context());
     }
 
     #[Test]
     public function aNameAsLongAsItsColumnIsTaken(): void
     {
         // When
-        $group = $this->provisioner->create($this->tenant, str_repeat('é', 255));
+        $group = $this->provisioner->create($this->tenant, str_repeat('é', 255), Fixtures::context());
 
         // Then
         static::assertSame(str_repeat('é', 255), $group->name);

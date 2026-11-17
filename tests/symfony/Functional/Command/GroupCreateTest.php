@@ -6,7 +6,9 @@ namespace App\Tests\Symfony\Functional\Command;
 
 use Beffroi\Core\Domain\Group\GroupSource;
 use Beffroi\Core\Port\GroupRepositoryInterface;
+use Beffroi\Core\Domain\Event\GroupCreated;
 use PHPUnit\Framework\Attributes\Test;
+use function array_map;
 use Symfony\Component\Console\Command\Command;
 
 /**
@@ -28,6 +30,18 @@ final class GroupCreateTest extends ConsoleTestCase
         static::assertSame(GroupSource::Local, $group->source);
         static::assertSame('admins', self::displayed($tester, 'Name'));
         static::assertSame($group->id->toRfc4122(), self::displayed($tester, 'Identifier'));
+    }
+
+    #[Test]
+    public function theCreationIsAnActOfTheTenant(): void
+    {
+        // When
+        self::console('beffroi:group:create', [
+            'name' => 'auditors',
+        ]);
+
+        // Then
+        static::assertSame(['auditors'], array_map(static fn (GroupCreated $act): string => $act->group, self::events(GroupCreated::class)));
     }
 
     #[Test]
