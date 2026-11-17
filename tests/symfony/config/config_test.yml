@@ -35,7 +35,7 @@ framework:
     # The strings of the pages, which the application keeps in its own catalogue.
     translator:
         paths:
-            - '%kernel.project_dir%/../../apps/op/translations'
+            - '%kernel.project_dir%/../../apps/beffroi/translations'
     # The two locales the provider ships (architecture §5.7); the pages choose between them, never the URL.
     default_locale: en
     enabled_locales: ['en', 'fr']
@@ -61,12 +61,12 @@ messenger:
 # The pages of the provider, and nothing else: a missing variable is a defect of a template.
 twig:
     strict_variables: true
-    # The pages of the provider are the application's (apps/op/templates/beffroi), but for four the
+    # The pages of the provider are the application's (apps/beffroi/templates/beffroi), but for four the
     # application dresses in its own skeletons, which read what this kernel does not boot (the theme, the
     # navigation of the account, the asset map): this suite renders those bare, from templates/ beside it.
     paths:
         '%kernel.project_dir%/templates': Beffroi
-        '%kernel.project_dir%/../../apps/op/templates/beffroi': Beffroi
+        '%kernel.project_dir%/../../apps/beffroi/templates/beffroi': Beffroi
 
 # The firewall of the interaction pages as an application declares it (architecture §5.4): the provider,
 # the checker and the handlers of the provider, the form login on the login route, the CSRF token the page

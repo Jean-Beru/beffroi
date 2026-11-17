@@ -1,6 +1,6 @@
 # Split configuration for jderusse/gitsplit. Each directory below is mirrored, read only, into
 # its own repository: the packages of the identity provider, its SAML module among them, the
-# SAML packages, and the standalone application, which is deployed from a build of apps/op and
+# SAML packages, and the standalone application, which is deployed from a build of apps/beffroi and
 # never installed as a dependency. A mirror carries the maintained branches and the release tags
 # listed under origins, and nothing else; the monorepo is where the work happens.
 #
@@ -26,8 +26,8 @@ splits:
     target: "https://${GH_TOKEN}@github.com/beffroi-auth/saml2-bindings.git"
   - prefix: "src/saml"
     target: "https://${GH_TOKEN}@github.com/beffroi-auth/saml.git"
-  - prefix: "apps/op"
-    target: "https://${GH_TOKEN}@github.com/beffroi-auth/op.git"
+  - prefix: "apps/beffroi"
+    target: "https://${GH_TOKEN}@github.com/beffroi-auth/application.git"
 
 origins:
   - ^\d+\.\d+\.x$

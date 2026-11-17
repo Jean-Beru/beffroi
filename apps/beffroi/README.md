@@ -1,12 +1,12 @@
-# beffroi/op
+# beffroi/beffroi
 
 The identity provider: a Symfony application served by FrankenPHP, with PostgreSQL behind it, whose tables are
 the queues of its lanes as well: it carries the transport of no broker. It is the one form the provider is
 deployed in; nothing installs it inside another application.
 
-It is the `apps/op` directory of the monorepo, [beffroi-auth/beffroi](https://github.com/beffroi-auth/beffroi),
+It is the `apps/beffroi` directory of the monorepo, [beffroi-auth/beffroi](https://github.com/beffroi-auth/beffroi),
 beside the packages it installs: the identity core, the OAuth 2.0 and OpenID Connect module and the SAML
-2.0 module. `beffroi-auth/op` is a mirror of that directory, read only, pushed by git split. The design and the
+2.0 module. `beffroi-auth/application` is a mirror of that directory, read only, pushed by git split. The design and the
 decisions are in [beffroi-auth/design](https://github.com/beffroi-auth/design), and the reference relying
 party in [beffroi-auth/oidc-demo](https://github.com/beffroi-auth/oidc-demo).
 
@@ -33,7 +33,7 @@ Everything that builds, provisions, judges or demonstrates runs from the root ab
 
 ```bash
 git clone git@github.com:beffroi-auth/beffroi.git && cd beffroi
-composer install && (cd apps/op && composer install)
+composer install && (cd apps/beffroi && composer install)
 castor start            # https://op.localhost, PostgreSQL
 castor provision        # the tenant, its keys, the first user, the client certificate
 castor app-phpunit      # the suite of this directory, against the PostgreSQL the stack publishes
@@ -41,7 +41,7 @@ castor app-phpunit      # the suite of this directory, against the PostgreSQL th
 
 `beffroi/*` is resolved by path repositories to `../../src/*`, so this directory installs nothing on its
 own: the application is worked on inside the monorepo, and deployed from a build rather than from a clone.
-A deployment runs the published image, `ghcr.io/beffroi-auth/op`, with `compose.prod.yaml` at the root of the
+A deployment runs the published image, `ghcr.io/beffroi-auth/beffroi`, with `compose.prod.yaml` at the root of the
 monorepo: the provider, its worker and PostgreSQL, the file saying in its header what it needs and the order of
 the first start.
 

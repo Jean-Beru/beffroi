@@ -18,18 +18,18 @@ services:
   op:
     build:
       context: .
-      dockerfile: apps/op/Dockerfile
+      dockerfile: apps/beffroi/Dockerfile
       target: frankenphp_dev
     restart: unless-stopped
     environment:
       SERVER_NAME: ${SERVER_NAME:-op.localhost}
       # The second host, the one that asks for a client certificate (issue #157, architecture §6):
-      # the same listener, another name, and the site block of apps/op/frankenphp/mtls.Caddyfile, imported
+      # the same listener, another name, and the site block of apps/beffroi/frankenphp/mtls.Caddyfile, imported
       # the way worker.Caddyfile is. The host of SERVER_NAME above is untouched and keeps asking for nothing.
       MTLS_SERVER_NAME: ${MTLS_SERVER_NAME:-mtls.op.localhost}
-      # The host of the administration API of the tenant (decision 0038, apps/op/frankenphp/administration.Caddyfile):
+      # The host of the administration API of the tenant (decision 0038, apps/beffroi/frankenphp/administration.Caddyfile):
       # a site of this listener with a worker of its own, whose kernel serves the routes of the API and no other. It is
-      # the identifier apps/op/.env.local gives the API, BEFFROI_TENANT_ADMINISTRATION_RESOURCE.
+      # the identifier apps/beffroi/.env.local gives the API, BEFFROI_TENANT_ADMINISTRATION_RESOURCE.
       ADMINISTRATION_SERVER_NAME: ${ADMINISTRATION_SERVER_NAME:-admin.op.localhost}
       # The service provider of the SAML judge, saml-sp.localhost, and its identity provider, saml-idp.localhost,
       # are sites of this listener as well: docker/saml-sp/saml-sp.Caddyfile and docker/saml-idp/saml-idp.Caddyfile,
@@ -40,12 +40,12 @@ services:
         import saml-sp.Caddyfile
         import saml-idp.Caddyfile
       DATABASE_URL: postgresql://${POSTGRES_USER:-beffroi}:${POSTGRES_PASSWORD:-beffroi}@database:5432/${POSTGRES_DB:-beffroi}?serverVersion=16&charset=utf8
-      # The four lanes are queues of the database, which apps/op/.env names (BEFFROI_MESSENGER_DSN, issue #919),
+      # The four lanes are queues of the database, which apps/beffroi/.env names (BEFFROI_MESSENGER_DSN, issue #919),
       # as in a deployment of the image (compose.prod.yaml): this stack runs no broker (issue #927).
       # https://xdebug.org/docs/all_settings#mode
       XDEBUG_MODE: ${XDEBUG_MODE:-off}
-      # Both documented where the configuration of development reads them (apps/op/config/packages/web_profiler.yaml,
-      # apps/op/config/packages/dev/beffroi.yaml); "castor start --conformance" sets them for a stack that serves the suite.
+      # Both documented where the configuration of development reads them (apps/beffroi/config/packages/web_profiler.yaml,
+      # apps/beffroi/config/packages/dev/beffroi.yaml); "castor start --conformance" sets them for a stack that serves the suite.
       APP_PROFILER: ${APP_PROFILER:-1}
       CONFORMANCE_ACCESS_TOKEN_FORMAT: ${CONFORMANCE_ACCESS_TOKEN_FORMAT:-jwt}
       # The name the suite's nginx answers on, set by "castor start --conformance" and by nothing else:
@@ -92,12 +92,12 @@ services:
       - ./docker/saml-sp/saml-sp.Caddyfile:/etc/frankenphp/saml-sp.Caddyfile:ro
       # the site of the administration API, mounted rather than read from the image, so that a change to it reaches a
       # stack without a build, as the two sites of the judges below do
-      - ./apps/op/frankenphp/administration.Caddyfile:/etc/frankenphp/administration.Caddyfile:ro
+      - ./apps/beffroi/frankenphp/administration.Caddyfile:/etc/frankenphp/administration.Caddyfile:ro
       - ./docker/saml-idp/saml-idp.Caddyfile:/etc/frankenphp/saml-idp.Caddyfile:ro
-      - ./apps/op:/app
+      - ./apps/beffroi:/app
       - ./src:/src
       - /app/var/
-      # The metadata of the service provider of the SAML judge, the file apps/op/config/packages/dev/beffroi.yaml
+      # The metadata of the service provider of the SAML judge, the file apps/beffroi/config/packages/dev/beffroi.yaml
       # declares ("castor saml-sp" writes it); the directory holds nothing else, the private key of the service
       # provider being beside it, not in it. The worker below reads the same file for its hourly refresh.
       - ./var/saml-sp/metadata:/saml-sp:ro
@@ -158,7 +158,7 @@ services:
   worker:
     build:
       context: .
-      dockerfile: apps/op/Dockerfile
+      dockerfile: apps/beffroi/Dockerfile
       target: frankenphp_dev
     restart: unless-stopped
     # What this container needs from the machine around it before it consumes anything: the address of the
@@ -192,7 +192,7 @@ services:
     volumes:
       - ./docker/worker/entrypoint.sh:/entrypoint/entrypoint.sh:ro
       - ./docker/conformance/trust-nginx.sh:/entrypoint/trust-nginx.sh:ro
-      - ./apps/op:/app
+      - ./apps/beffroi:/app
       - ./src:/src
       - /app/var/
       - ./var/saml-sp/metadata:/saml-sp:ro

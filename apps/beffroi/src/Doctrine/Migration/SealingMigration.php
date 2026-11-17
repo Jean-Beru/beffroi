@@ -11,7 +11,7 @@ use function is_numeric;
 use function sprintf;
 
 /**
- * Not beside the migrations: apps/op/migrations/ is in the autoload of no package, only in the autoload-dev of the
+ * Not beside the migrations: apps/beffroi/migrations/ is in the autoload of no package, only in the autoload-dev of the
  * monorepo, so a class placed there would not resolve in a deployment.
  */
 abstract class SealingMigration extends AbstractMigration

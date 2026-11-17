@@ -26,9 +26,9 @@ $builder->withComposerBased(phpunit: true, symfony: true);
 $builder->withPhpVersion(PhpVersion::PHP_84);
 $builder->withPaths([
     __DIR__ . '/../src',
-    __DIR__ . '/../apps/op/src',
-    __DIR__ . '/../apps/op/config/beffroi',
-    __DIR__ . '/../apps/op/migrations',
+    __DIR__ . '/../apps/beffroi/src',
+    __DIR__ . '/../apps/beffroi/config/beffroi',
+    __DIR__ . '/../apps/beffroi/migrations',
     __DIR__ . '/../apps/tui/src',
     __DIR__ . '/../tests',
     __DIR__ . '/../castor.php',
@@ -38,8 +38,8 @@ $builder->withPaths([
 $builder->withSkip([
     PreferPHPUnitThisCallRector::class,
     // The demonstration and the lab of the application are no part of the product.
-    __DIR__ . '/../apps/op/src/Demonstration/*',
-    __DIR__ . '/../apps/op/src/Lab/*',
+    __DIR__ . '/../apps/beffroi/src/Demonstration/*',
+    __DIR__ . '/../apps/beffroi/src/Lab/*',
     // Fixtures are data; the interop projects run in their own containers against libraries not installed here.
     __DIR__ . '/../tests/xml-security/*/Fixture/*',
     __DIR__ . '/../tests/saml2-model/Fixture/*',

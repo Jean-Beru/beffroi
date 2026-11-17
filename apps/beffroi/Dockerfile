@@ -19,12 +19,12 @@ RUN install-php-extensions \
 ENV COMPOSER_ALLOW_SUPERUSER=1
 ENV PHP_INI_SCAN_DIR=":$PHP_INI_DIR/app.conf.d"
 
-COPY --link apps/op/frankenphp/conf.d/10-app.ini $PHP_INI_DIR/app.conf.d/
-COPY --link --chmod=755 apps/op/frankenphp/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
-COPY --link apps/op/frankenphp/Caddyfile /etc/frankenphp/Caddyfile
-COPY --link apps/op/frankenphp/worker.Caddyfile /etc/frankenphp/worker.Caddyfile
-COPY --link apps/op/frankenphp/mtls.Caddyfile /etc/frankenphp/mtls.Caddyfile
-COPY --link apps/op/frankenphp/administration.Caddyfile /etc/frankenphp/administration.Caddyfile
+COPY --link apps/beffroi/frankenphp/conf.d/10-app.ini $PHP_INI_DIR/app.conf.d/
+COPY --link --chmod=755 apps/beffroi/frankenphp/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
+COPY --link apps/beffroi/frankenphp/Caddyfile /etc/frankenphp/Caddyfile
+COPY --link apps/beffroi/frankenphp/worker.Caddyfile /etc/frankenphp/worker.Caddyfile
+COPY --link apps/beffroi/frankenphp/mtls.Caddyfile /etc/frankenphp/mtls.Caddyfile
+COPY --link apps/beffroi/frankenphp/administration.Caddyfile /etc/frankenphp/administration.Caddyfile
 
 ENTRYPOINT ["docker-entrypoint"]
 
@@ -39,7 +39,7 @@ ENV XDEBUG_MODE=off
 
 RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 
-COPY --link apps/op/frankenphp/conf.d/20-app.dev.ini $PHP_INI_DIR/app.conf.d/
+COPY --link apps/beffroi/frankenphp/conf.d/20-app.dev.ini $PHP_INI_DIR/app.conf.d/
 
 CMD [ "frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile", "--watch" ]
 
@@ -52,7 +52,7 @@ ENV APP_ENV=prod
 
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
-COPY --link apps/op/frankenphp/conf.d/20-app.prod.ini $PHP_INI_DIR/app.conf.d/
+COPY --link apps/beffroi/frankenphp/conf.d/20-app.prod.ini $PHP_INI_DIR/app.conf.d/
 
 # Build context is the monorepo root (see compose.yaml), which Dockerfile.dockerignore narrows to the
 # packages and the application without what a working copy holds beside the repository: its .env.local,
@@ -62,7 +62,7 @@ COPY --link apps/op/frankenphp/conf.d/20-app.prod.ini $PHP_INI_DIR/app.conf.d/
 # where they are read by the stages above, the configuration of the development image among them, which is
 # why the context keeps them and the application leaves its frankenphp/ out of /app.
 COPY --link src/ /src/
-COPY --link --exclude=frankenphp apps/op/ /app/
+COPY --link --exclude=frankenphp apps/beffroi/ /app/
 
 # The standalone binary of Tailwind goes once the stylesheet it built is compiled into public/assets. The
 # directories the processes write are made here, the volumes of compose.prod.yaml among them, since a named

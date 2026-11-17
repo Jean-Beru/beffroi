@@ -193,7 +193,7 @@ final class MigrationTest extends DatabaseTestCase
     public function theDirectoryOfTheMigrationsHoldsVersionFilesAndNothingElse(): void
     {
         // Given
-        $directory = \dirname(__DIR__, 4) . '/apps/op/migrations';
+        $directory = \dirname(__DIR__, 4) . '/apps/beffroi/migrations';
 
         // When
         $files = glob($directory . '/*.php');

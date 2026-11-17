@@ -1,7 +1,7 @@
 {# The layout every page of the interaction plane extends (architecture §5.2): the document, its language
    (the locale of the interaction, architecture §5.7) and the blocks a page fills, with no stylesheet and no
    script. This is the bare
-   version the suite of the integration renders; the application serves its own (apps/op/templates/beffroi/layout.html.twig),
+   version the suite of the integration renders; the application serves its own (apps/beffroi/templates/beffroi/layout.html.twig),
    which reads what the kernel of this suite does not boot. #}
 <!DOCTYPE html>
 <html lang="{{ app.request.locale|replace({'_': '-'}) }}">

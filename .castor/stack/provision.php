@@ -10,7 +10,7 @@ use function Castor\load_dot_env;
 use function Castor\run;
 use Symfony\Component\Process\Process;
 
-const DEV_ENV_LOCAL = 'apps/op/.env.local';
+const DEV_ENV_LOCAL = 'apps/beffroi/.env.local';
 
 const DEV_USERNAME = 'alice';
 
@@ -189,11 +189,11 @@ const DEV_CLIENT_SECRETS = [
 const VAULT_OP_POLICY = 'beffroi-op';
 
 #[AsTask(
-    description: 'Provision the development OP after "castor start": the KMS that seals the signing keys and the secrets of the clients (apps/op/.env.local), then the tenant, a signing key (checked against the KMS when there is one already) and the user "alice" with a full profile and a password',
+    description: 'Provision the development OP after "castor start": the KMS that seals the signing keys and the secrets of the clients (apps/beffroi/.env.local), then the tenant, a signing key (checked against the KMS when there is one already) and the user "alice" with a full profile and a password',
 )]
 function provision(
     #[AsOption(
-        description: 'The KMS to seal the keys of the tenant with when apps/op/.env.local names none yet: sodium (default, a key generated in place), file (the same key in a file of the op container, mode 0600), vault (a token minted under the policy of the OP on the Vault of "castor start --kms vault") or aws (the LocalStack of "castor start --kms aws"); the backend already there is kept, switching is a change of KMS',
+        description: 'The KMS to seal the keys of the tenant with when apps/beffroi/.env.local names none yet: sodium (default, a key generated in place), file (the same key in a file of the op container, mode 0600), vault (a token minted under the policy of the OP on the Vault of "castor start --kms vault") or aws (the LocalStack of "castor start --kms aws"); the backend already there is kept, switching is a change of KMS',
     )]
     ?string $kms = null,
 ): void {
@@ -341,7 +341,7 @@ function provision_dev_subject(string $path): string
  */
 function provision_env_local(?string $kms): array
 {
-    $env = load_dot_env(getcwd() . '/apps/op/.env');
+    $env = load_dot_env(getcwd() . '/apps/beffroi/.env');
     $current = kms_backend_of($env['BEFFROI_KMS_DSN'] ?? '');
     if ($current !== null && $kms !== null && $kms !== $current) {
         io()->error([
@@ -384,9 +384,9 @@ function provision_env_local(?string $kms): array
         ],
     };
     $values['BEFFROI_DEV_USER_PASSWORD'] = static fn (): string => $generate(24);
-    // Empty in apps/op/.env, which an image is compiled from: a deployment announces the host it serves or none.
+    // Empty in apps/beffroi/.env, which an image is compiled from: a deployment announces the host it serves or none.
     $values['BEFFROI_MTLS_ORIGIN'] = static fn (): string => 'https://' . DEV_MTLS_SERVER_NAME;
-    // Empty in apps/op/.env too, since no image may announce open registration; the Dynamic OP plan needs it.
+    // Empty in apps/beffroi/.env too, since no image may announce open registration; the Dynamic OP plan needs it.
     $values['BEFFROI_REGISTRATION_MODE'] = static fn (): string => 'open';
     foreach (DEV_CLIENT_SECRETS as $name) {
         $values[$name] = static fn (): string => $generate(32);

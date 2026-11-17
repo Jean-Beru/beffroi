@@ -31,7 +31,7 @@ const DEMO_FORGE_SECRETS = [
 ];
 
 #[AsTask(
-    description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/op/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"; --passkey signs in with a password, is sent back for a passkey by /vault (acr_values=phr) and signs the assertion with a software authenticator; --form-post has the OP answer the authorization request with a self-submitting page and posts it back cross-site; --logout-others runs a second instance of the demo on another client and logs it out by back-channel from the first; --api plays the API Platform API of the demonstration, whose firewall asks the OP about the token at every request and keeps the answer a few seconds; --flows opens the pages where every flow this provider serves is drawn and plays two of them hop by hop; --ciba, --assertion, --rar and --native play the four things of spike 6 that have no browser of the demonstration in them; --push stands a push service up and has the notification of a backchannel request decrypted by the browser it was sent to; --by-hand, with --ciba or --push, answers nothing for you and stands in for nobody: your own browser gets the notification and you allow the request yourself',
+    description: 'Point oidc-demo (Symfony oidc_login) at the development OP and start it on https://localhost:8002: its .env.local takes the issuer, the client and the secret of apps/beffroi/.env.local, its php.ini trusts the CA of Caddy; --check then signs in as "alice", opens /profile and logs out from the command line; --rotate runs a whole key rotation against it, with short windows for the run, and measures what oidc_login does on an unknown "kid"; --passkey signs in with a password, is sent back for a passkey by /vault (acr_values=phr) and signs the assertion with a software authenticator; --form-post has the OP answer the authorization request with a self-submitting page and posts it back cross-site; --logout-others runs a second instance of the demo on another client and logs it out by back-channel from the first; --api plays the API Platform API of the demonstration, whose firewall asks the OP about the token at every request and keeps the answer a few seconds; --flows opens the pages where every flow this provider serves is drawn and plays two of them hop by hop; --ciba, --assertion, --rar and --native play the four things of spike 6 that have no browser of the demonstration in them; --push stands a push service up and has the notification of a backchannel request decrypted by the browser it was sent to; --by-hand, with --ciba or --push, answers nothing for you and stands in for nobody: your own browser gets the notification and you allow the request yourself',
 )]
 function demo(
     #[AsOption(description: 'Where oidc-demo is checked out; ../oidc-demo or ../../oidc-demo by default')]
@@ -39,7 +39,7 @@ function demo(
     #[AsOption(description: 'Sign in as the development user, open /profile and log out, from the command line, and print what was verified')]
     bool $check = false,
     #[AsOption(
-        description: 'The second success criterion of spike 2 (issue #59): sign in, rotate the signing key of the OP, let the scheduled step activate it, sign in again, refresh, log out, retire the old key, then measure the refetch cooldown of oidc_login; the JWK Set max-age and the token lifetimes are shortened in apps/op/.env.local for the time of the run (about six minutes)',
+        description: 'The second success criterion of spike 2 (issue #59): sign in, rotate the signing key of the OP, let the scheduled step activate it, sign in again, refresh, log out, retire the old key, then measure the refetch cooldown of oidc_login; the JWK Set max-age and the token lifetimes are shortened in apps/beffroi/.env.local for the time of the run (about six minutes)',
     )]
     bool $rotate = false,
     #[AsOption(
@@ -140,7 +140,7 @@ function demo(
     }
 
     io()->title('oidc-demo against the development OP');
-    $env = load_dot_env(getcwd() . '/apps/op/.env');
+    $env = load_dot_env(getcwd() . '/apps/beffroi/.env');
     foreach (['BEFFROI_ISSUER', 'OIDC_DEMO_SECRET', 'BEFFROI_DEV_USER_PASSWORD'] as $name) {
         if (($env[$name] ?? '') === '') {
             io()->error(sprintf('%s is empty: run "castor provision" first.', $name));
@@ -167,7 +167,7 @@ function demo(
         $ca,
         $ca,
     ));
-    io()->text(sprintf('Issuer %s, client "%s", secret from apps/op/.env.local, CA of Caddy in %s.', $env['BEFFROI_ISSUER'], DEMO_CLIENT_ID, $ca));
+    io()->text(sprintf('Issuer %s, client "%s", secret from apps/beffroi/.env.local, CA of Caddy in %s.', $env['BEFFROI_ISSUER'], DEMO_CLIENT_ID, $ca));
 
     io()->section('Server');
     $server = demo_context($dir);
@@ -2714,7 +2714,7 @@ function demo_rotation_check(Context $server, string $issuer, string $password, 
     io()->table(['JWK Set copy of the demo', 'At (UTC)', 'What oidc_login did'], $fetches);
     demo_rotation_lifetimes($issuer, $ca, false);
     io()->note(sprintf(
-        'The OP is left with "%s" active and "%s" retiring until %s, the retirement window of the run; the lifetimes of apps/op/.env are back.',
+        'The OP is left with "%s" active and "%s" retiring until %s, the retirement window of the run; the lifetimes of apps/beffroi/.env are back.',
         $kid3,
         $kid2,
         $at(demo_keys()[$kid2]['retirement_due_at'] ?? new DateTimeImmutable()),
@@ -3512,14 +3512,14 @@ const DEMO_CIBA_CLIENTS = [
 ];
 
 /**
- * Registered with the ping client (apps/op/config/packages/dev/beffroi.yaml), so it is fixed rather than drawn.
+ * Registered with the ping client (apps/beffroi/config/packages/dev/beffroi.yaml), so it is fixed rather than drawn.
  */
 const DEMO_CIBA_NOTIFICATION_PORT = 8004;
 
 const DEMO_CIBA_BINDING_MESSAGE = 'Invoice 4711';
 
 /**
- * @param array<string, string> $secrets apps/op/.env.local, by variable name
+ * @param array<string, string> $secrets apps/beffroi/.env.local, by variable name
  */
 function demo_ciba_check(string $issuer, string $password, string $ca, string $subject, array $secrets, bool $byHand = false): void
 {
@@ -3848,7 +3848,7 @@ function demo_rar_check(string $issuer, string $password, string $ca, string $se
     );
     demo_expect(
         str_contains($page, DEMO_RAR_INVOICE) && str_contains($page, '45.00') && str_contains($page, 'EUR'),
-        'and says what it asks for in words: the invoice, and the most that may be moved (the message of the type, apps/op/translations)',
+        'and says what it asks for in words: the invoice, and the most that may be moved (the message of the type, apps/beffroi/translations)',
     );
     $verified[] = ['Consent', sprintf('the detail rendered as "%s", invoice %s, at most 45.00 EUR', $rendered[1], DEMO_RAR_INVOICE)];
 
@@ -4127,7 +4127,7 @@ const DEMO_PUSH_USERNAME = 'push-walk';
 const DEMO_PUSH_LABEL = 'The browser of the push walk';
 
 /**
- * The "sub" of RFC 8292 §2.1, as beffroi.web_push.subject wires it (apps/op/config/packages/beffroi.yaml).
+ * The "sub" of RFC 8292 §2.1, as beffroi.web_push.subject wires it (apps/beffroi/config/packages/beffroi.yaml).
  */
 const DEMO_PUSH_SUBJECT = 'mailto:operator@op.localhost';
 
@@ -4135,7 +4135,7 @@ const DEMO_PUSH_SUBJECT = 'mailto:operator@op.localhost';
 const DEMO_PUSH_FIRST_RETRY = 2;
 
 /**
- * @param array<string, string> $secrets apps/op/.env.local, by variable name
+ * @param array<string, string> $secrets apps/beffroi/.env.local, by variable name
  */
 function demo_push_check(string $issuer, string $password, string $ca, array $secrets): void
 {

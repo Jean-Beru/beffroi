@@ -43,12 +43,12 @@ A change made on a maintained branch reaches the newer ones by a merge, each bra
 
 | The file | Its resolution |
 |---|---|
-| A `composer.json`, of the root, of a package or of `apps/op` | The TARGET's constraints on PHP, Symfony and the dependencies, which a newer branch may raise; the packages keep requiring one another at `self.version` |
+| A `composer.json`, of the root, of a package or of `apps/beffroi` | The TARGET's constraints on PHP, Symfony and the dependencies, which a newer branch may raise; the packages keep requiring one another at `self.version` |
 | `.gitsplit.yml` | The TARGET's targets, since a newer branch may split more packages |
 | `.ci-tools/phpstan-baseline.neon` | Neither side by hand: the TARGET's version, then `castor phpstan-baseline` once the merge compiles |
-| `apps/op/config/reference.php`, `apps/op/config/schema.json` | Generated again by `castor config-reference-fix` |
-| A migration of `apps/op/migrations/` | Both sides kept, each migration in its own class |
-| A catalogue of `apps/op/translations/` | The units of both sides |
+| `apps/beffroi/config/reference.php`, `apps/beffroi/config/schema.json` | Generated again by `castor config-reference-fix` |
+| A migration of `apps/beffroi/migrations/` | Both sides kept, each migration in its own class |
+| A catalogue of `apps/beffroi/translations/` | The units of both sides |
 | A specification of `src/*/spec/` | The rules of both sides, and the code following them: the specification is the law of its package |
 | Anything else | By meaning, both changes kept; when the two cannot both hold, ask the user |
 
@@ -56,7 +56,7 @@ A change made on a maintained branch reaches the newer ones by a merge, each bra
 
    ```bash
    composer install
-   (cd apps/op && composer install)
+   (cd apps/beffroi && composer install)
    castor mago-lint
    castor mago-format
    castor rector

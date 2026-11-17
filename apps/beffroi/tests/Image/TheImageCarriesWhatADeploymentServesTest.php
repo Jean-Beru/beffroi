@@ -176,7 +176,7 @@ final class TheImageCarriesWhatADeploymentServesTest extends TestCase
             }
         }
 
-        static::fail(sprintf('No COPY of apps/op/Dockerfile copies "%s" whole.', ApplicationFiles::FROM_THE_ROOT));
+        static::fail(sprintf('No COPY of apps/beffroi/Dockerfile copies "%s" whole.', ApplicationFiles::FROM_THE_ROOT));
     }
 
     /**

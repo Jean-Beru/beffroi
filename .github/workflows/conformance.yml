@@ -52,7 +52,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       # One checkout: the stack booted below is this repository, the packages and the application it holds
-      # at apps/op, which is the layout of a working copy and the layout "castor conformance" expects from
+      # at apps/beffroi, which is the layout of a working copy and the layout "castor conformance" expects from
       # one. No credential but the account of Docker Hub below, and nothing to install before the install below.
       - uses: shivammathur/setup-php@v2
         with:
@@ -64,7 +64,7 @@ jobs:
       # ones that follow the dev branches of Symfony.
       - uses: ramsey/composer-install@v4
         with:
-          working-directory: apps/op
+          working-directory: apps/beffroi
           dependency-versions: locked
           composer-options: --optimize-autoloader
       - name: "Install Castor"
