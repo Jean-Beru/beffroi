@@ -35,17 +35,22 @@
  * of the buttons drawn towards the colour of the text, darker on a light theme and lighter on a dark one, so
  * that it keeps the contrast of text on either; one step further under the pointer. A rule below that draws a
  * link as something else, a button, a card or a page of the pager, keeps its own colours over it, and takes the
- * line away itself, a button drawing none.
+ * line away itself, a button drawing none; a button drawn as a link takes the same two colours.
  */
 @layer base {
+    main {
+        --color-link: color-mix(in oklab, var(--color-primary) 70%, var(--color-base-content));
+        --color-link-hover: color-mix(in oklab, var(--color-primary) 50%, var(--color-base-content));
+    }
+
     main a {
         @apply cursor-pointer underline;
 
-        color: color-mix(in oklab, var(--color-primary) 70%, var(--color-base-content));
+        color: var(--color-link);
     }
 
     main a:hover {
-        color: color-mix(in oklab, var(--color-primary) 50%, var(--color-base-content));
+        color: var(--color-link-hover);
     }
 
     main a:focus-visible {
@@ -291,9 +296,37 @@
         @apply btn btn-primary;
     }
 
-    main form button[type="submit"][value="deny"],
-    main form button[type="submit"][value="no"] {
-        @apply btn-ghost;
+    /* The way in with a passkey is an answer like the others: the answer when it is the only one, the second
+       one beside the form of the password. */
+    main button[data-passkey-button] {
+        @apply btn btn-primary;
+    }
+
+    /* The second answer to a question is a bordered button the size of the first, never a line of text beside
+       it: the way out is as plain to see as the way in (brand guidelines, consent and components). At rest it
+       is written in the colour of the links, which keeps the contrast of text on either theme; under the
+       pointer it fills as the first does. */
+    main form button[type="submit"]:is([value="deny"], [value="no"]),
+    main form:not([hidden]) ~ form[data-passkey="login"] button[data-passkey-button] {
+        @apply btn-outline;
+    }
+
+    main form button[type="submit"]:is([value="deny"], [value="no"]):not(:hover, :active:focus, :focus-visible),
+    main form:not([hidden]) ~ form[data-passkey="login"] button[data-passkey-button]:not(:hover, :active:focus, :focus-visible) {
+        --btn-rest-fg: var(--color-link);
+        --btn-border: var(--color-link);
+    }
+
+    /* Another address goes back to the first question and answers nothing on this page: a link under the
+       answers, the third choice. */
+    main form[data-step="another-address"] button[type="submit"] {
+        @apply btn-link underline;
+
+        color: var(--color-link);
+    }
+
+    main form[data-step="another-address"] button[type="submit"]:hover {
+        color: var(--color-link-hover);
     }
 
     main ul {
