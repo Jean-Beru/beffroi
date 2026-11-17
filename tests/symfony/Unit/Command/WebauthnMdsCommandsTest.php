@@ -159,6 +159,24 @@ final class WebauthnMdsCommandsTest extends TestCase
     }
 
     #[Test]
+    public function theRootMayBeGivenInDer(): void
+    {
+        // Given
+        $blob = $this->service->sign(MetadataBlobs::payload([MetadataBlobs::entry(self::AAGUID)]));
+        $tester = $this->refresh(new MockHttpClient([new MockResponse($blob)]));
+        file_put_contents($this->directory . '/root.crt', $this->service->rootCertificateInDer());
+
+        // When
+        $tester->execute([
+            '--url' => ['https://mds.example/blob.jwt'],
+            '--root' => $this->directory . '/root.crt',
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+    }
+
+    #[Test]
     public function theRootMayBeFetchedFromAnHttpsUrl(): void
     {
         // Given
