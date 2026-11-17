@@ -174,6 +174,83 @@ final class ScreenFitsTheTerminalTest extends TestCase
     }
 
     /**
+     * The initial access tokens of the tenant, more than a small terminal has rows, in place of the clients.
+     */
+    #[Test]
+    #[DataProvider('provideTerminals')]
+    public function theInitialAccessTokensKeepTheHeaderOnTheFirstRowAndTheKeysOnTheLast(int $columns, int $rows): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(self::answers(), columns: $columns, rows: $rows);
+        $this->screen->open('section.clients');
+        $this->screen->press("\r");
+
+        // When
+        $this->screen->press('i');
+
+        // Then
+        $lines = explode("\n", $this->screen->screen());
+        static::assertSame([true, true], [str_contains($lines[0], 'Administration'), str_contains($lines[$rows - 1], 'new token')]);
+    }
+
+    /**
+     * The form of a new initial access token beside the tokens, in the height the screen leaves.
+     */
+    #[Test]
+    #[DataProvider('provideTerminals')]
+    public function theFormOfATokenKeepsTheHeaderOnTheFirstRowAndTheKeysOnTheLast(int $columns, int $rows): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(self::answers(), columns: $columns, rows: $rows);
+        $this->screen->open('section.clients');
+        $this->screen->press(["\r", 'i']);
+
+        // When
+        $this->screen->press('n');
+
+        // Then
+        $lines = explode("\n", $this->screen->screen());
+        static::assertSame([true, true], [str_contains($lines[0], 'Administration'), str_contains($lines[$rows - 1], 'issue')]);
+    }
+
+    /**
+     * The value of a token just issued, in place of its form, in the height the screen leaves.
+     */
+    #[Test]
+    #[DataProvider('provideTerminals')]
+    public function theValueOfATokenKeepsTheHeaderOnTheFirstRowAndTheKeysOnTheLast(int $columns, int $rows): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(
+            [
+                ...self::answers(),
+                'POST /initial-access-tokens' => SignedInScreen::answered([
+                    'id' => 'token-new',
+                    'name' => 'The terminal of an administrator who works from a second floor',
+                    'expires_at' => '2026-12-17T08:00:00Z',
+                    'registrations_allowed' => 1,
+                    'registrations_served' => 0,
+                    'administration' => true,
+                    'revoked_at' => null,
+                    'authorises_a_registration' => true,
+                    'value' => 'a-value-as-long-as-the-one-an-instance-draws-for-a-token',
+                ], 201),
+            ],
+            columns: $columns,
+            rows: $rows,
+        );
+        $this->screen->open('section.clients');
+        $this->screen->press(["\r", 'i', 'n']);
+
+        // When
+        $this->screen->press('s');
+
+        // Then
+        $lines = explode("\n", $this->screen->screen());
+        static::assertSame([true, true], [str_contains($lines[0], 'Administration'), str_contains($lines[$rows - 1], 'close')]);
+    }
+
+    /**
      * @return iterable<string, array{int, int}>
      */
     public static function provideTerminals(): iterable
@@ -184,8 +261,8 @@ final class ScreenFitsTheTerminalTest extends TestCase
     }
 
     /**
-     * What an instance with some history answers: more clients and groups than a screen holds, keys in every state, a point of
-     * its health that does not hold, and acts of many names.
+     * What an instance with some history answers: more clients, initial access tokens and groups than a screen holds, keys
+     * in every state, a point of its health that does not hold, and acts of many names.
      *
      * @return array<string, array<string, mixed>>
      */
@@ -210,6 +287,19 @@ final class ScreenFitsTheTerminalTest extends TestCase
                     'source' => 'registration',
                     'registered_at' => '2026-10-21T10:00:00Z',
                     'last_used_at' => null,
+                ],
+                range(1, 40),
+            )],
+            '/initial-access-tokens' => ['initial_access_tokens' => array_map(
+                static fn (int $number): array => [
+                    'id' => sprintf('token-%d', $number),
+                    'name' => sprintf('Token number %d, for the integration of a partner with a long name', $number),
+                    'expires_at' => '2026-12-17T08:00:00Z',
+                    'registrations_allowed' => 5,
+                    'registrations_served' => $number % 6,
+                    'administration' => $number === 1,
+                    'revoked_at' => ($number % 7) === 0 ? '2026-11-10T08:00:00Z' : null,
+                    'authorises_a_registration' => ($number % 6) !== 5 && ($number % 7) !== 0,
                 ],
                 range(1, 40),
             )],
