@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Oidc\Tests\Application\Consent;
 
 use function array_map;
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\RequestContext;
@@ -201,6 +202,38 @@ final class ConsentRevocationTest extends TestCase
 
         // Then
         static::assertNotNull($this->accessTokens->find('the-token-of-the-client'));
+    }
+
+    #[Test]
+    public function aConsentThePersonTookBackNamesNoAuthor(): void
+    {
+        // Given
+        $consent = $this->consent();
+
+        // When
+        $this->revocation->revoke($consent, $this->context);
+
+        // Then
+        static::assertNull($this->events->of(ConsentRevoked::class)[0]->author());
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function aConsentAnAdministratorTookBackNamesThem(): void
+    {
+        // Given
+        $consent = $this->consent();
+
+        // When
+        $this->revocation->revokeByAnAdministrator($consent, new Subject('administrator-subject'), $this->context);
+
+        // Then
+        static::assertSame(
+            [true, 'administrator-subject'],
+            [$consent->revokedAt !== null, $this->events->of(ConsentRevoked::class)[0]->author()?->value],
+        );
     }
 
     #[Test]

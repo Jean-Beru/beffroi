@@ -39,6 +39,7 @@ use Beffroi\Oidc\Domain\Event\TokenRevoked;
 use Beffroi\Oidc\Domain\Event\TokensIssued;
 use Beffroi\Oidc\Domain\Event\PersonReadByAnAdministrator;
 use Beffroi\Oidc\Domain\Event\SessionsReadByAnAdministrator;
+use Beffroi\Oidc\Domain\Event\ConsentsReadByAnAdministrator;
 use Beffroi\Oidc\Domain\Event\JournalReadByAnAdministrator;
 use Beffroi\Oidc\Domain\Event\MembershipReadByAnAdministrator;
 use Beffroi\Oidc\Domain\Event\UserInfoAnswered;
@@ -169,6 +170,14 @@ final class EventsLeaveTheProcessTest extends TestCase
             $context,
         )];
         yield 'their journal read by an administrator' => [new JournalReadByAnAdministrator(
+            $now,
+            $client->tenant,
+            $clientId,
+            $subject,
+            new Subject('administrator-subject'),
+            $context,
+        )];
+        yield 'their consents read by an administrator' => [new ConsentsReadByAnAdministrator(
             $now,
             $client->tenant,
             $clientId,

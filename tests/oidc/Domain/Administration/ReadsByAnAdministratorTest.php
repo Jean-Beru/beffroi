@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Domain\Administration;
 
+use function array_diff;
+use function array_values;
 use function basename;
 use Beffroi\Core\Domain\Event\NamesItsAuthorInterface;
 use Beffroi\Oidc\Domain\Administration\ReadsByAnAdministrator;
+use Beffroi\Oidc\Domain\Consent\ConsentActs;
 use Beffroi\Oidc\Domain\Event\TokensIssued;
 use function class_exists;
 use function dirname;
@@ -21,20 +24,32 @@ use function sprintf;
 final class ReadsByAnAdministratorTest extends TestCase
 {
     /**
-     * Decisions 0022 and 0038
+     * Decision 0038: the person reads on the page of their acts that an administrator read or changed them.
      */
     #[Test]
-    public function everyActOfThePackageThatNamesAnAdministratorIsAReadThePageOfThePersonLists(): void
+    public function everyActOfThePackageThatNamesAnAdministratorIsOnThePageOfThePerson(): void
     {
         // Given
-        $listed = ReadsByAnAdministrator::NAMES;
-        sort($listed);
+        $onThePage = [...ReadsByAnAdministrator::NAMES, ...ConsentActs::NAMES];
 
         // When
         $named = self::actsNamingTheirAuthor();
 
         // Then
-        static::assertSame($named, $listed);
+        static::assertSame([], array_values(array_diff($named, $onThePage)));
+    }
+
+    /**
+     * Decision 0022
+     */
+    #[Test]
+    public function everyReadThePageListsNamesTheAdministratorWhoMadeIt(): void
+    {
+        // When
+        $named = self::actsNamingTheirAuthor();
+
+        // Then
+        static::assertSame([], array_values(array_diff(ReadsByAnAdministrator::NAMES, $named)));
     }
 
     /**
