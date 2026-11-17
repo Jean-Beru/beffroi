@@ -9,7 +9,9 @@ use App\Message\ForgetTheRecordsThatAreDead;
 use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
 use Symfony\Component\Uid\Uuid;
 use Beffroi\Core\Port\EnrolmentTicketRepositoryInterface;
+use Beffroi\Core\Port\PasswordTicketRepositoryInterface;
 use Beffroi\Core\Domain\Enrolment\EnrolmentTicket;
+use Beffroi\Core\Domain\Ticket\PasswordTicket;
 use Beffroi\Core\Domain\Credential\PasswordHash;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Domain\Identity\Subject;
@@ -104,6 +106,11 @@ final class TheDeadRowsAreForgottenTest extends DatabaseTestCase
             'enrolmentTicket',
             self::AT_ITS_EXPIRY,
             'beffroi_enrolment_ticket',
+        ];
+        yield 'a password ticket, worth nothing once it is out of time' => [
+            'passwordTicket',
+            self::AT_ITS_EXPIRY,
+            'beffroi_password_ticket',
         ];
         yield 'an authorization code, which is the grant its tokens descend from' => [
             'code',
@@ -248,6 +255,14 @@ final class TheDeadRowsAreForgottenTest extends DatabaseTestCase
         match ($kind) {
             'enrolmentTicket' => self::service('test.beffroi.enrolment_ticket_store', EnrolmentTicketRepositoryInterface::class)
                 ->save(new EnrolmentTicket(
+                    Uuid::v7(),
+                    self::user(),
+                    new PasswordHash(new Argon2id(), '$argon2id$the-value-of-a-link'),
+                    $stoppedGranting->modify(self::TEN_MINUTES),
+                    $stoppedGranting,
+                )),
+            'passwordTicket' => self::service('test.beffroi.password_ticket_store', PasswordTicketRepositoryInterface::class)
+                ->save(new PasswordTicket(
                     Uuid::v7(),
                     self::user(),
                     new PasswordHash(new Argon2id(), '$argon2id$the-value-of-a-link'),

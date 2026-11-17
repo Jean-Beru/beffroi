@@ -6,11 +6,12 @@ namespace App\Tests\Symfony\Functional\Controller;
 
 use Beffroi\Core\Application\Enrolment\EnrolmentTicketIssue;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
-use Beffroi\Core\Domain\Enrolment\IssuedEnrolmentTicket;
+use Beffroi\Core\Domain\Enrolment\EnrolmentTicket;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\PhishingResistant;
+use Beffroi\Core\Domain\Ticket\IssuedTicket;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use Beffroi\Core\Tests\Fixture\SoftwareAuthenticator;
@@ -143,7 +144,10 @@ final class AFirstPasskeyFromATicketTest extends PasskeyTestCase
         static::assertSame([], self::events(CredentialEnrolled::class));
     }
 
-    private function issue(): IssuedEnrolmentTicket
+    /**
+     * @return IssuedTicket<EnrolmentTicket>
+     */
+    private function issue(): IssuedTicket
     {
         $alice = self::service('test.beffroi.users', UserRepositoryInterface::class)->find($this->alice->id) ?? static::fail('The person is gone.');
         $issued = self::service('test.beffroi.enrolment_tickets', EnrolmentTicketIssue::class)->issue($alice, self::context());
@@ -152,12 +156,18 @@ final class AFirstPasskeyFromATicketTest extends PasskeyTestCase
         return $issued;
     }
 
-    private function path(IssuedEnrolmentTicket $issued): string
+    /**
+     * @param IssuedTicket<EnrolmentTicket> $issued
+     */
+    private function path(IssuedTicket $issued): string
     {
         return '/enrol/' . $issued->ticket->id->toRfc4122() . '/' . $issued->value;
     }
 
-    private function ticketPage(IssuedEnrolmentTicket $issued): Crawler
+    /**
+     * @param IssuedTicket<EnrolmentTicket> $issued
+     */
+    private function ticketPage(IssuedTicket $issued): Crawler
     {
         $crawler = $this->browser->request('GET', $this->path($issued));
         $response = $this->browser->getResponse();
@@ -166,7 +176,10 @@ final class AFirstPasskeyFromATicketTest extends PasskeyTestCase
         return $crawler;
     }
 
-    private function poseAPasskey(IssuedEnrolmentTicket $issued, SoftwareAuthenticator $device): void
+    /**
+     * @param IssuedTicket<EnrolmentTicket> $issued
+     */
+    private function poseAPasskey(IssuedTicket $issued, SoftwareAuthenticator $device): void
     {
         $token = $this->ticketPage($issued)->filter('form[data-passkey="enrol"] input[name="_token"]')->attr('value');
         static::assertIsString($token);

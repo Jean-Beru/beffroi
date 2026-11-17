@@ -7,7 +7,7 @@ namespace App\Controller;
 use App\Http\FormToken;
 use App\Http\InteractionPages;
 use App\Http\PasskeyOptionsStore;
-use App\Http\PresentedEnrolmentTicket;
+use App\Http\PresentedTicket;
 use App\Http\RequestContextFactory;
 use App\Http\WhatWasRefused;
 use Beffroi\Core\Application\Enrolment\EnrolmentTicketRedemption;
@@ -38,7 +38,7 @@ final readonly class EnrolmentTicketEnrolmentController
     public const string REFUSED = 'refused';
 
     public function __construct(
-        private PresentedEnrolmentTicket $tickets,
+        private PresentedTicket $tickets,
         private EnrolmentTicketRedemption $redemption,
         private PasskeyEnrolment $enrolment,
         private PasskeyOptionsStore $options,
@@ -59,7 +59,7 @@ final readonly class EnrolmentTicketEnrolmentController
     )]
     public function __invoke(Request $request): Response
     {
-        $ticket = $this->tickets->of($request);
+        $ticket = $this->tickets->of($request, $this->redemption->redeem(...));
         if ($ticket === null) {
             return $this->pages->error(Response::HTTP_NOT_FOUND, EnrolmentTicketController::REFUSED);
         }

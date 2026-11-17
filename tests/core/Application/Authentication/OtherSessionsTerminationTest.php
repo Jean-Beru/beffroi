@@ -134,6 +134,19 @@ final class OtherSessionsTerminationTest extends TestCase
         static::assertFalse($hers->hasEnded());
     }
 
+    #[Test]
+    public function everySessionOfThePersonEndsWhenNoneIsKept(): void
+    {
+        // Given
+        $elsewhere = $this->alsoSignedIn();
+
+        // When
+        $ended = $this->termination->endEvery($this->alice, Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame([2, true, true], [$ended, $this->kept->hasEnded(), $elsewhere->hasEnded()]);
+    }
+
     private function alsoSignedIn(): AuthenticationSession
     {
         $session = Fixtures::session($this->alice, $this->clock->now());

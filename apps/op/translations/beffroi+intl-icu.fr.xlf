@@ -1725,6 +1725,34 @@
         <source>act.enrolment_ticket.issued</source>
         <target>Un lien pour poser un moyen de connexion a été émis pour ce compte</target>
       </trans-unit>
+      <trans-unit id="password_ticket.title" resname="password_ticket.title">
+        <source>password_ticket.title</source>
+        <target>Posez un nouveau mot de passe</target>
+      </trans-unit>
+      <trans-unit id="password_ticket.prompt" resname="password_ticket.prompt">
+        <source>password_ticket.prompt</source>
+        <target>Ce lien pose un nouveau mot de passe pour vous connecter en tant que {username}. Il fonctionne une fois.</target>
+      </trans-unit>
+      <trans-unit id="password_ticket.what_happens" resname="password_ticket.what_happens">
+        <source>password_ticket.what_happens</source>
+        <target>Une fois posé, chacune de vos sessions prend fin, sur chaque appareil : reconnectez-vous avec le nouveau mot de passe.</target>
+      </trans-unit>
+      <trans-unit id="password_ticket.submit" resname="password_ticket.submit">
+        <source>password_ticket.submit</source>
+        <target>Poser mon mot de passe</target>
+      </trans-unit>
+      <trans-unit id="password.error.not_admitted" resname="password.error.not_admitted">
+        <source>password.error.not_admitted</source>
+        <target>Votre organisation vous connecte sans mot de passe : ce lien n'en pose aucun.</target>
+      </trans-unit>
+      <trans-unit id="error.password_ticket_refused" resname="error.password_ticket_refused">
+        <source>error.password_ticket_refused</source>
+        <target>Ce lien n'ouvre rien : il a déjà servi, ou son délai est passé ; demandez-en un autre.</target>
+      </trans-unit>
+      <trans-unit id="act.password_ticket.issued" resname="act.password_ticket.issued">
+        <source>act.password_ticket.issued</source>
+        <target>Un lien pour poser un nouveau mot de passe a été émis pour ce compte</target>
+      </trans-unit>
       <trans-unit id="post_again.title" resname="post_again.title">
         <source>post_again.title</source>
         <target>Connexion en cours</target>

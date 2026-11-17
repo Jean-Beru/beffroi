@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Core\Tests\Application\Enrolment;
 
 use Beffroi\Core\Application\Enrolment\EnrolmentTicketIssue;
+use Beffroi\Core\Application\Ticket\TicketIssuing;
 use Beffroi\Core\Bridge\InMemory\InMemoryEnrolmentTicketRepository;
 use Beffroi\Core\Bridge\Random\PlatformRandomness;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
@@ -12,7 +13,7 @@ use Beffroi\Core\Domain\Enrolment\EnrolmentTicket;
 use Beffroi\Core\Domain\Event\EnrolmentTicketIssued;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
-use Beffroi\Core\Exception\EnrolmentTicketRefusedException;
+use Beffroi\Core\Exception\TicketRefusedException;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
@@ -44,10 +45,7 @@ final class EnrolmentTicketIssueTest extends TestCase
         $this->clock = new MockClock('2026-10-11T12:00:00+00:00');
         $this->issue = new EnrolmentTicketIssue(
             $this->tickets,
-            new SymfonyUuidGenerator(),
-            new PlatformRandomness(),
-            $this->hasher,
-            $this->clock,
+            new TicketIssuing(new SymfonyUuidGenerator(), new PlatformRandomness(), $this->hasher, $this->clock),
             $this->events,
         );
     }
@@ -190,7 +188,7 @@ final class EnrolmentTicketIssueTest extends TestCase
         $this->alice->disable($this->clock->now());
 
         // Then
-        $this->expectException(EnrolmentTicketRefusedException::class);
+        $this->expectException(TicketRefusedException::class);
         $this->expectExceptionMessageIs('The account of "alice" is disabled; a ticket would open nothing.');
 
         // When
@@ -206,7 +204,7 @@ final class EnrolmentTicketIssueTest extends TestCase
         // When
         try {
             $this->issue->issue($this->alice, Fixtures::context($this->clock->now()));
-        } catch (EnrolmentTicketRefusedException) {
+        } catch (TicketRefusedException) {
         }
 
         // Then
