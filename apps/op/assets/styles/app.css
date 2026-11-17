@@ -18,7 +18,7 @@
  * Every rule here is written into the utilities layer, where DaisyUI writes its own classes: a layer
  * declared before that one loses to it whatever the selector says, so a rule of this file sitting in an
  * earlier layer would be a rule that dresses "btn" or "menu" everywhere except where those classes decide
- * something themselves.
+ * something themselves. The look of a link is the one rule of the base layer, so that it loses to all of them.
  */
 
 @import "tailwindcss";
@@ -28,6 +28,29 @@
 
 @plugin "../vendor/daisyui/daisyui.index.js" {
     themes: light --default, dark --prefersdark;
+}
+
+/*
+ * A link reads as one wherever it sits on a page: a line under it, outlined under the keyboard, and the colour
+ * of the buttons drawn towards the colour of the text, darker on a light theme and lighter on a dark one, so
+ * that it keeps the contrast of text on either; one step further under the pointer. A rule below that draws a
+ * link as something else, a button, a card or a page of the pager, keeps its own colours over it, and takes the
+ * line away itself, a button drawing none.
+ */
+@layer base {
+    main a {
+        @apply cursor-pointer underline;
+
+        color: color-mix(in oklab, var(--color-primary) 70%, var(--color-base-content));
+    }
+
+    main a:hover {
+        color: color-mix(in oklab, var(--color-primary) 50%, var(--color-base-content));
+    }
+
+    main a:focus-visible {
+        @apply outline-2 outline-offset-2 outline-current;
+    }
 }
 
 @layer utilities {
@@ -241,7 +264,7 @@
     /* The way out of a refusal (the error page of the provider): the one thing there is to do on a page where
        the request stopped, so it is read as the action it is and not as a line of small print under it. */
     main a[data-sign-in] {
-        @apply btn btn-primary mt-6;
+        @apply btn btn-primary mt-6 no-underline;
     }
 
     /* A form the script of the provider keeps hidden until it has a browser for it stays hidden. */
@@ -290,7 +313,7 @@
     }
 
     main a[data-client] {
-        @apply link link-hover text-sm text-base-content/60;
+        @apply text-sm;
     }
 
     /*
@@ -321,10 +344,6 @@
         content: "/";
     }
 
-    main[data-page="account"] header[data-page-header] a {
-        @apply link link-hover;
-    }
-
     main[data-page="account"] header[data-page-header] [aria-current="page"] {
         @apply text-base-content;
     }
@@ -344,7 +363,7 @@
     }
 
     main[data-page="account"] div[data-heading-row] :is(a, button) {
-        @apply btn btn-primary btn-sm;
+        @apply btn btn-primary btn-sm no-underline;
     }
 
     main[data-page="account"] div[data-heading-row] form:not([hidden]) {
@@ -418,7 +437,7 @@
     }
 
     main[data-page="account"] li[data-section] a {
-        @apply link link-hover text-lg font-semibold;
+        @apply link-hover text-lg font-semibold text-base-content;
     }
 
     main[data-page="account"] li[data-section] a::after {
@@ -550,7 +569,7 @@
     }
 
     main[data-page="account"] form[data-filter="period"] a[data-filter="clear"] {
-        @apply btn btn-sm btn-ghost font-normal;
+        @apply btn btn-sm btn-ghost font-normal no-underline;
     }
 
     /*
@@ -577,7 +596,7 @@
     /* Every way through the pages is a button of the same size; the page being read is the pressed one,
        and a page there is nowhere to go to is the same button spent. */
     main[data-page="account"] nav[data-pager] :is(a, span)[data-pager] {
-        @apply btn btn-ghost btn-sm font-normal;
+        @apply btn btn-ghost btn-sm font-normal no-underline;
     }
 
     main[data-page="account"] nav[data-pager] span[data-pager="current"] {
@@ -933,7 +952,7 @@
     /* The file of everything this provider holds, once it is ready: what the page of the archive is for,
        and the only link of these pages that is read as the thing to do. */
     main[data-page="account"] a[data-archive-file] {
-        @apply btn btn-primary btn-sm w-fit;
+        @apply btn btn-primary btn-sm w-fit no-underline;
     }
 
     /* Dropping it is the end of what the page offers, so it reads under both ways of taking the file and
