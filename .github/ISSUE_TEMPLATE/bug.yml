@@ -18,7 +18,7 @@ body:
     id: repro
     attributes:
       label: How to reproduce
-      description: Minimal steps, ideally against `apps/op` started with `castor start`.
+      description: Minimal steps, ideally against `apps/beffroi` started with `castor start`.
     validations:
       required: true
   - type: input

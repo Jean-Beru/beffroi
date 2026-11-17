@@ -32,7 +32,7 @@ final class RegistrationModesAreClassesTest extends TestCase
         // Given
         $itself = str_replace('\\', '/', strtr($class, [
             'Beffroi\Oidc\\' => 'src/oidc/src/',
-            'App\\' => 'apps/op/src/',
+            'App\\' => 'apps/beffroi/src/',
         ])) . '.php';
 
         // When
@@ -64,7 +64,7 @@ final class RegistrationModesAreClassesTest extends TestCase
     {
         $root = dirname(__DIR__, 4);
         $paths = [];
-        foreach (['/../src/oidc/src', '/../apps/op/src'] as $directory) {
+        foreach (['/../src/oidc/src', '/../apps/beffroi/src'] as $directory) {
             /** @var iterable<SplFileInfo> $files */
             $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root . $directory));
             foreach ($files as $file) {

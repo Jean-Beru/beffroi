@@ -135,7 +135,7 @@ function start(
         run([...$command, ...$up, ...compose_services_but_the_worker($command, $context)], context: $context);
         run([...$command, 'create', ...($build ? ['--build'] : []), 'worker'], context: $context);
     }
-    // Every page refuses to serve a tenant whose row differs from apps/op/.env*, which a pull can change.
+    // Every page refuses to serve a tenant whose row differs from apps/beffroi/.env*, which a pull can change.
     $tenant = op_console(['beffroi:tenant:synchronize', '--no-ansi'], context()->withAllowFailure()->withQuiet());
     if (! $tenant->isSuccessful()) {
         io()->write($tenant->getOutput() . $tenant->getErrorOutput());

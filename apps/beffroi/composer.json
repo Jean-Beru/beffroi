@@ -121,7 +121,7 @@
             "require": "8.2.*"
         }
     },
-    "name": "beffroi/op",
+    "name": "beffroi/beffroi",
     "description": "Beffroi: the identity provider application.",
     "repositories": [{
         "name": "beffroi-oidc",

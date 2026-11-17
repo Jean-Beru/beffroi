@@ -8,7 +8,7 @@
    offer them and the control is not rendered, as it is not rendered under two languages.
 
    "data-locale" is what a stylesheet reads, never a class. This is the bare
-   version the suite of the integration renders; the application serves its own (apps/op/templates/beffroi/_locale_switcher.html.twig),
+   version the suite of the integration renders; the application serves its own (apps/beffroi/templates/beffroi/_locale_switcher.html.twig),
    which reads what the kernel of this suite does not boot. #}
 {% set locales = beffroi_locale_choice() %}
 {% if locales|length > 1 %}

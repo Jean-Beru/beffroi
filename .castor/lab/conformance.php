@@ -413,7 +413,7 @@ function conformance(
     $plans = $plan === [] ? CONFORMANCE_PLANS : array_intersect_key(CONFORMANCE_PLANS, array_flip($plan));
     io()->title(sprintf('Conformance: %s', implode(', ', array_column($plans, 'name'))));
 
-    $env = load_dot_env(getcwd() . '/apps/op/.env');
+    $env = load_dot_env(getcwd() . '/apps/beffroi/.env');
     $missing = array_filter(CONFORMANCE_REQUIRED_VALUES, static fn (string $name): bool => ($env[$name] ?? '') === '');
     if ($missing !== []) {
         io()->error(sprintf('%s: run "castor provision" first.', implode(', ', $missing) . ' missing from ' . DEV_ENV_LOCAL));
@@ -696,7 +696,7 @@ function conformance_reset(string $issuer): array
     compose_recreate_redirectors(['op', 'worker']);
     conformance_wait_for_op($issuer);
 
-    return load_dot_env(getcwd() . '/apps/op/.env');
+    return load_dot_env(getcwd() . '/apps/beffroi/.env');
 }
 
 /**

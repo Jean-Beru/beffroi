@@ -1,4 +1,4 @@
 # The routes of a process whose plane is the administration API (decision 0038), imported as the kernel of the
 # application imports them in that plane (App\Kernel), and none of the provider's.
 beffroi_administration:
-    resource: '../../../apps/op/config/administration/routes.php'
+    resource: '../../../apps/beffroi/config/administration/routes.php'

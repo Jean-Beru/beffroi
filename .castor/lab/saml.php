@@ -76,7 +76,7 @@ function saml_sp(
     }
 
     io()->title('SimpleSAMLphp 2.5.3.1 against the SAML identity provider of the stack');
-    $env = load_dot_env(getcwd() . '/apps/op/.env');
+    $env = load_dot_env(getcwd() . '/apps/beffroi/.env');
     foreach (['BEFFROI_ISSUER', 'BEFFROI_DEV_USER_PASSWORD'] as $name) {
         if (($env[$name] ?? '') === '') {
             io()->error(sprintf('%s is empty: run "castor provision" first.', $name));
@@ -1058,7 +1058,7 @@ function saml_entra(
         return;
     }
     io()->title('Entra federating the SAML identity provider of the stack');
-    $env = load_dot_env(getcwd() . '/apps/op/.env');
+    $env = load_dot_env(getcwd() . '/apps/beffroi/.env');
     if (($env['BEFFROI_ISSUER'] ?? '') === '') {
         io()->error('BEFFROI_ISSUER is empty: run "castor provision" first.');
         exit(1);
@@ -1408,7 +1408,7 @@ function saml_entra_response_facts(DOMXPath $xpath, DOMElement $root): array
 
 function saml_entra_upstream(): void
 {
-    $env = load_dot_env(getcwd() . '/apps/op/.env');
+    $env = load_dot_env(getcwd() . '/apps/beffroi/.env');
     if (($env['BEFFROI_ISSUER'] ?? '') === '') {
         io()->error('BEFFROI_ISSUER is empty: run "castor provision" first.');
         exit(1);
@@ -1440,7 +1440,7 @@ function saml_entra_upstream(): void
     demo_expect(
         $refresh->isSuccessful(),
         sprintf(
-            'beffroi:saml:identity-provider:refresh reads the Federation Metadata XML of the enterprise application (apps/op/config/saml/entra-enterprise-application-idp.xml)%s',
+            'beffroi:saml:identity-provider:refresh reads the Federation Metadata XML of the enterprise application (apps/beffroi/config/saml/entra-enterprise-application-idp.xml)%s',
             $refresh->isSuccessful() ? '' : ': ' . trim($refresh->getOutput() . $refresh->getErrorOutput()),
         ),
     );

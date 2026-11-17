@@ -17,7 +17,7 @@ use function trim;
 
 final class ApplicationFiles
 {
-    public const string FROM_THE_ROOT = 'apps/op/';
+    public const string FROM_THE_ROOT = 'apps/beffroi/';
 
     public static function path(string $file): string
     {

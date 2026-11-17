@@ -59,13 +59,13 @@
     <source ignoreIndirectDeprecations="true">
         <include>
             <directory>../src</directory>
-            <directory>../apps/op/src</directory>
-            <directory>../apps/op/migrations</directory>
+            <directory>../apps/beffroi/src</directory>
+            <directory>../apps/beffroi/migrations</directory>
             <directory>../apps/tui/src</directory>
         </include>
         <exclude>
-            <directory>../apps/op/src/Demonstration</directory>
-            <directory>../apps/op/src/Lab</directory>
+            <directory>../apps/beffroi/src/Demonstration</directory>
+            <directory>../apps/beffroi/src/Lab</directory>
         </exclude>
     </source>
     <extensions>

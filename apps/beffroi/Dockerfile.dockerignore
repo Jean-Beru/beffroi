@@ -1,4 +1,4 @@
-# The ignore file of apps/op/Dockerfile. The context of that build is the root of the monorepo (compose.yaml),
+# The ignore file of apps/beffroi/Dockerfile. The context of that build is the root of the monorepo (compose.yaml),
 # so the paths below are read from that root, and BuildKit reads this file, named after the Dockerfile and
 # beside it, in place of a .dockerignore at that root.
 
@@ -6,7 +6,7 @@
 # resolve, and the application.
 *
 !src/
-!apps/op/
+!apps/beffroi/
 
 # What a working copy holds beside the repository, the paths the .gitignore of the application names: the
 # environment "castor provision" writes, with the DSN of the KMS (the key itself under the sodium backend, a
@@ -14,26 +14,26 @@
 # form; the key that decrypts the secrets of production; what Composer, the asset mapper and the suite of the
 # application install, build or leave behind. The image compiles its environment from the files the
 # repository holds, and installs and builds the rest itself.
-apps/op/.env.local
-apps/op/.env.local.php
-apps/op/.env.*.local
-apps/op/config/secrets/prod/prod.decrypt.private.php
-apps/op/public/bundles/
-apps/op/var/
-apps/op/vendor/
-apps/op/public/assets/
-apps/op/assets/vendor/
-apps/op/phpunit.xml
-apps/op/.phpunit.cache/
+apps/beffroi/.env.local
+apps/beffroi/.env.local.php
+apps/beffroi/.env.*.local
+apps/beffroi/config/secrets/prod/prod.decrypt.private.php
+apps/beffroi/public/bundles/
+apps/beffroi/var/
+apps/beffroi/vendor/
+apps/beffroi/public/assets/
+apps/beffroi/assets/vendor/
+apps/beffroi/phpunit.xml
+apps/beffroi/.phpunit.cache/
 
 # What the image does not serve: the suite of the application and its environment, and what a repository,
 # an editor or a system leaves in a tree.
-apps/op/.env.test
-apps/op/tests/
-apps/op/phpunit.dist.xml
-apps/op/config/services_test.yaml
-apps/op/config/packages/test/
-apps/op/.editorconfig
+apps/beffroi/.env.test
+apps/beffroi/tests/
+apps/beffroi/phpunit.dist.xml
+apps/beffroi/config/services_test.yaml
+apps/beffroi/config/packages/test/
+apps/beffroi/.editorconfig
 **/*.log
 **/*.md
 **/*.php~
@@ -66,29 +66,29 @@ apps/op/.editorconfig
 #
 # The configuration of development, the debug bundle and the profiler production does not install among it, and
 # what a debug kernel writes for an editor to complete the configuration with.
-apps/op/.env.dev
-apps/op/public/development-tenant-logo.svg
-apps/op/config/packages/dev/
-apps/op/config/packages/debug.yaml
-apps/op/config/packages/web_profiler.yaml
-apps/op/config/routes/framework.yaml
-apps/op/config/routes/web_profiler.yaml
-apps/op/config/reference.php
-apps/op/config/schema.json
+apps/beffroi/.env.dev
+apps/beffroi/public/development-tenant-logo.svg
+apps/beffroi/config/packages/dev/
+apps/beffroi/config/packages/debug.yaml
+apps/beffroi/config/packages/web_profiler.yaml
+apps/beffroi/config/routes/framework.yaml
+apps/beffroi/config/routes/web_profiler.yaml
+apps/beffroi/config/reference.php
+apps/beffroi/config/schema.json
 # The demonstration of the flows, read in development and by the suite of the application: its pages, their
 # templates and their configuration.
-apps/op/src/Demonstration/
-apps/op/templates/demonstration/
-apps/op/config/packages/demonstration.yaml
-apps/op/config/routes/demonstration.yaml
+apps/beffroi/src/Demonstration/
+apps/beffroi/templates/demonstration/
+apps/beffroi/config/packages/demonstration.yaml
+apps/beffroi/config/routes/demonstration.yaml
 # The lab: what its tasks ask of the application in development (the endpoint "castor mtls" reads, the type of
 # authorization detail "castor demo --rar" asks for, and its sentence), the endpoints the conformance tools drive,
 # and the metadata of the Entra interoperability that "castor saml-entra" registers.
-apps/op/src/Lab/
-apps/op/config/packages/lab.yaml
-apps/op/config/routes/mtls.yaml
-apps/op/config/routes/fido_conformance.yaml
-apps/op/config/routes/ciba_conformance.yaml
-apps/op/config/beffroi/routes/fido-conformance.php
-apps/op/config/beffroi/routes/ciba-conformance.php
-apps/op/config/saml/
+apps/beffroi/src/Lab/
+apps/beffroi/config/packages/lab.yaml
+apps/beffroi/config/routes/mtls.yaml
+apps/beffroi/config/routes/fido_conformance.yaml
+apps/beffroi/config/routes/ciba_conformance.yaml
+apps/beffroi/config/beffroi/routes/fido-conformance.php
+apps/beffroi/config/beffroi/routes/ciba-conformance.php
+apps/beffroi/config/saml/

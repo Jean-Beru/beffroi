@@ -10,9 +10,9 @@ An identity provider for the Symfony ecosystem: OAuth 2.0 and OpenID Connect, an
 | `beffroi/saml2-model` | `src/saml2-model` | The SAML 2.0 model: the `samlp:`, `saml:` and `md:` objects of Web Browser SSO and Single Logout, read strictly and validated in code. No HTTP. |
 | `beffroi/saml2-bindings` | `src/saml2-bindings` | The HTTP-Redirect and HTTP-POST bindings of SAML 2.0, strings and arrays in and out. No HTTP object. |
 | `beffroi/xml-security` | `src/xml-security` | XML security in three namespaces: `Core`, a safe DOM; `Dsig`, XML Signature; `Enc`, XML Encryption. |
-| `beffroi/op` | `apps/op` | The application, FrankenPHP: the configuration of the provider, its controllers, its security, its persistence, the login and consent pages. |
+| `beffroi/beffroi` | `apps/beffroi` | The application, FrankenPHP: the configuration of the provider, its controllers, its security, its persistence, the login and consent pages. |
 
-Each directory is split into a read-only mirror, `beffroi-auth/<name>` (`op` for `apps/op`). Issues and pull requests go here.
+Each directory is split into a read-only mirror, `beffroi-auth/<name>` (`application` for `apps/beffroi`). Issues and pull requests go here.
 
 Requires PHP 8.4 and Symfony 8.2; PHP 8.5 is what runs, locally and in CI. Licensed under MIT.
 
@@ -20,7 +20,7 @@ Requires PHP 8.4 and Symfony 8.2; PHP 8.5 is what runs, locally and in CI. Licen
 
 ```bash
 composer install
-(cd apps/op && composer install)
+(cd apps/beffroi && composer install)
 castor phpunit
 castor prepare-pr
 ```

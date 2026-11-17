@@ -1,6 +1,6 @@
 name: Image
 
-# The production image of the application, the "frankenphp_prod" stage of apps/op/Dockerfile, published as
+# The production image of the application, the "frankenphp_prod" stage of apps/beffroi/Dockerfile, published as
 # ghcr.io/beffroi-auth/beffroi for linux/amd64 and linux/arm64.
 #
 # It is built on demand only, from the Actions tab or with "gh workflow run image.yml --ref <ref>": while the
@@ -10,7 +10,7 @@ name: Image
 # on is uncommenting them.
 #
 # It is built here and not in the mirror. Its build context is the root of this repository, where the path
-# repositories of apps/op/composer.json resolve beffroi/* to src/, which beffroi-auth/op does not carry; and a
+# repositories of apps/beffroi/composer.json resolve beffroi/* to src/, which beffroi-auth/application does not carry; and a
 # commit that touches only the packages changes the image while it pushes nothing to the mirror. So the
 # automatic triggers are the pushes the mirror receives anyway, a maintenance branch and a release tag that
 # the split forwards: a push to a branch as soon as it touches the packages or the application, and a
@@ -38,7 +38,7 @@ on:
   #     - '[0-9]+.[0-9]+.[0-9]+'
   #   paths:
   #     - '.github/workflows/image.yml'
-  #     - 'apps/op/**'
+  #     - 'apps/beffroi/**'
   #     - 'src/**'
 
 # A newer run on a branch carries a newer image, so it cancels the one before it, which would otherwise be
@@ -162,7 +162,7 @@ jobs:
           DOCKER_BUILD_RECORD_UPLOAD: false
         with:
           context: .
-          file: apps/op/Dockerfile
+          file: apps/beffroi/Dockerfile
           target: frankenphp_prod
           platforms: ${{ matrix.platform }}
           labels: |

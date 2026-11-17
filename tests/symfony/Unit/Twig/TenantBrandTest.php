@@ -96,7 +96,7 @@ final class TenantBrandTest extends TestCase
     private static function render(?TenantPresentation $presentation): Crawler
     {
         $loader = new FilesystemLoader();
-        $loader->addPath(__DIR__ . '/../../../../apps/op/templates/beffroi', 'Beffroi');
+        $loader->addPath(__DIR__ . '/../../../../apps/beffroi/templates/beffroi', 'Beffroi');
         $twig = new Environment($loader);
         $twig->addFunction(new TwigFunction('beffroi_tenant', static fn (): ?TenantPresentation => $presentation));
 

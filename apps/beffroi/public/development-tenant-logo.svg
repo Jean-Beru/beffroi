@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  The mark of Quillfield, the organisation the development stack plays (apps/op/.env.dev): an invented one,
+  The mark of Quillfield, the organisation the development stack plays (apps/beffroi/.env.dev): an invented one,
   so that a page and a capture of that stack say who the visitor came for, and never Beffroi, whose screens
   put the organisation in front. Served from the origin of the application, which the policy of every page
   allows under 'self'; the image leaves it out (Dockerfile.dockerignore). Two tones and an accent rather than

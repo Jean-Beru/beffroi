@@ -47,7 +47,7 @@ function saml_idp(
     }
 
     io()->title('SimpleSAMLphp 2.5.3.1, an identity provider upstream of the stack');
-    $env = load_dot_env(getcwd() . '/apps/op/.env');
+    $env = load_dot_env(getcwd() . '/apps/beffroi/.env');
     foreach (['BEFFROI_ISSUER', 'OIDC_DEMO_SECRET'] as $name) {
         if (($env[$name] ?? '') === '') {
             io()->error(sprintf('%s is empty: run "castor provision" first.', $name));

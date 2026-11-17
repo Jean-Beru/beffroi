@@ -16,13 +16,13 @@ php-version = "8.4"
 
 [source]
 # The paths ECS covered, the configurations of the other tools included.
-paths = ["src", "apps/op/src", "apps/op/config/beffroi", "apps/op/migrations", "apps/tui/src", "tests", "castor.php", ".castor", ".ci-tools/rector.php"]
+paths = ["src", "apps/beffroi/src", "apps/beffroi/config/beffroi", "apps/beffroi/migrations", "apps/tui/src", "tests", "castor.php", ".castor", ".ci-tools/rector.php"]
 # The fixtures of the SAML packages are data, byte-exact, and their interoperability projects are
 # throwaway Composer projects run in their own containers against libraries that are not dependencies
 # here (tests/xml-security/*/Fixture/real, tests/saml2-model/Interop, tests/saml2-bindings/Interop, tests/saml/Interop).
 excludes = [
-    "apps/op/src/Demonstration",
-    "apps/op/src/Lab",
+    "apps/beffroi/src/Demonstration",
+    "apps/beffroi/src/Lab",
     "tests/xml-security/Core/Fixture",
     "tests/xml-security/Dsig/Fixture",
     "tests/xml-security/Enc/Fixture",
@@ -84,7 +84,7 @@ inline-empty-anonymous-class-braces = false
 #   with neither, what is written below                                                  0 files unstable
 #
 # The price of dropping them was 16 more files reformatted (271 instead of 255) and method chains that
-# fit on one line being joined, the Doctrine repositories and apps/op/config/beffroi/services.php above
+# fit on one line being joined, the Doctrine repositories and apps/beffroi/config/beffroi/services.php above
 # all. The price of keeping them is a formatter whose output is not a fixed point, which no --check
 # can gate. Stability wins.
 preserve-breaking-argument-list = true

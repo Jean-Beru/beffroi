@@ -4,9 +4,9 @@
 deptrac:
   paths:
     - '../src'
-    - '../apps/op/src'
-    - '../apps/op/config/beffroi'
-    - '../apps/op/migrations'
+    - '../apps/beffroi/src'
+    - '../apps/beffroi/config/beffroi'
+    - '../apps/beffroi/migrations'
     - '../apps/tui/src'
   layers:
     - name: 'CoreDomain'
@@ -52,9 +52,9 @@ deptrac:
         - { type: directory, value: '../src/saml/src/Bridge/.*' }
     - name: 'App'
       collectors:
-        - { type: directory, value: '../apps/op/src/.*' }
-        - { type: directory, value: '../apps/op/config/beffroi/.*' }
-        - { type: directory, value: '../apps/op/migrations/.*' }
+        - { type: directory, value: '../apps/beffroi/src/.*' }
+        - { type: directory, value: '../apps/beffroi/config/beffroi/.*' }
+        - { type: directory, value: '../apps/beffroi/migrations/.*' }
     # The terminal client of the administration (decision 0038): a client of the instance over HTTP, which reads none
     # of the provider's code, neither the packages nor the application, and which none of them reads.
     - name: 'Tui'

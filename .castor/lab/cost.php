@@ -62,7 +62,7 @@ function login_cost(
         exit(1);
     }
 
-    $env = load_dot_env(getcwd() . '/apps/op/.env');
+    $env = load_dot_env(getcwd() . '/apps/beffroi/.env');
     foreach (['BEFFROI_ISSUER', 'BEFFROI_DEV_USER_PASSWORD', 'OIDC_DEMO_SECRET'] as $name) {
         if (($env[$name] ?? '') === '') {
             io()->error(sprintf('%s is empty: run "castor provision" first.', $name));

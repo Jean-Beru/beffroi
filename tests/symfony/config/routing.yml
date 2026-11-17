@@ -1,7 +1,7 @@
 # The routes of the provider, imported as an application imports them, next to a route of the host
 # application that the plane guard must leave alone.
 beffroi:
-    resource: '../../../apps/op/config/beffroi/routes.php'
+    resource: '../../../apps/beffroi/config/beffroi/routes.php'
 
 host_route:
     path: /host
@@ -16,12 +16,12 @@ host_application:
 # The endpoints of the FIDO2 server API, imported as an application imports them in development, under a
 # prefix of its own.
 beffroi_fido_conformance:
-    resource: '../../../apps/op/config/beffroi/routes/fido-conformance.php'
+    resource: '../../../apps/beffroi/config/beffroi/routes/fido-conformance.php'
     prefix: /fido/conformance
 
 # What the certification suite answers a backchannel request with, imported the same way.
 beffroi_ciba_conformance:
-    resource: '../../../apps/op/config/beffroi/routes/ciba-conformance.php'
+    resource: '../../../apps/beffroi/config/beffroi/routes/ciba-conformance.php'
     prefix: /ciba/conformance
 
 # The pages of the profiler, as an application imports them in development: the one test that boots a

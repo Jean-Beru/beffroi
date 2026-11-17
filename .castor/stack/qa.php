@@ -216,7 +216,7 @@ function phpunit(
 }
 
 #[AsTask(
-    description: 'Run the suite of the standalone application: its own kernel, on the PostgreSQL that DATABASE_URL names and the KMS of apps/op/.env.test, the schema written by the migrations of the provider before the first test. It needs a PostgreSQL reachable from the machine, which "castor start" publishes on the loopback address',
+    description: 'Run the suite of the standalone application: its own kernel, on the PostgreSQL that DATABASE_URL names and the KMS of apps/beffroi/.env.test, the schema written by the migrations of the provider before the first test. It needs a PostgreSQL reachable from the machine, which "castor start" publishes on the loopback address',
     ignoreValidationErrors: true,
 )]
 function app_phpunit(#[AsRawTokens] array $args = []): void
@@ -249,23 +249,23 @@ function application_phpqa(array $command, array $environment = []): void
 {
     assert_application_installed();
 
-    phpqa($command, $environment, workingDirectory: 'apps/op', hostNetwork: true);
+    phpqa($command, $environment, workingDirectory: 'apps/beffroi', hostNetwork: true);
 }
 
 function application_context(): Context
 {
     assert_application_installed();
 
-    return context()->withWorkingDirectory(getcwd() . '/apps/op');
+    return context()->withWorkingDirectory(getcwd() . '/apps/beffroi');
 }
 
 function assert_application_installed(): void
 {
-    if (is_file(getcwd() . '/apps/op/vendor/autoload.php')) {
+    if (is_file(getcwd() . '/apps/beffroi/vendor/autoload.php')) {
         return;
     }
 
-    io()->error('The application is not installed: run "(cd apps/op && composer install)" first.');
+    io()->error('The application is not installed: run "(cd apps/beffroi && composer install)" first.');
     exit(1);
 }
 
@@ -498,8 +498,8 @@ function deptrac(): void
 }
 
 const GENERATED_CONFIGURATION = [
-    'apps/op/config/reference.php',
-    'apps/op/config/schema.json',
+    'apps/beffroi/config/reference.php',
+    'apps/beffroi/config/schema.json',
 ];
 
 #[AsTask(
