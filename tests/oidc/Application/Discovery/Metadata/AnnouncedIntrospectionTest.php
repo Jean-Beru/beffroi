@@ -6,8 +6,10 @@ namespace Beffroi\Oidc\Tests\Application\Discovery\Metadata;
 
 use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
 use Beffroi\Core\Port\SignatureAlgorithmsInterface;
+use Beffroi\Core\Application\Key\HeldSigningAlgorithms;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\HeldSigning;
 use Beffroi\Oidc\Application\Client\ClientAuthenticationMethods;
 use Beffroi\Oidc\Application\Discovery\AnnouncedAlgorithms;
 use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedIntrospection;
@@ -61,6 +63,23 @@ final class AnnouncedIntrospectionTest extends TestCase
         static::assertSame(['ES256'], $members['introspection_signing_alg_values_supported']);
     }
 
+    /**
+     * RFC 9701 §6
+     */
+    #[Test]
+    public function aTenantThatHoldsNoKeyForItsDefaultAlgorithmAnnouncesNoSignedResponse(): void
+    {
+        // Given
+        $signature = new JoseSignatureAlgorithms([Algorithms::es256(), Algorithms::rs256()]);
+        $announced = self::announced(Methods::all(), $signature, HeldSigning::of([Algorithms::rs256()], $signature));
+
+        // When
+        $members = $announced->metadata(Fixtures::tenant());
+
+        // Then
+        static::assertSame([], $members['introspection_signing_alg_values_supported']);
+    }
+
     #[Test]
     public function theAssertionAlgorithmsAreThoseOfTheMethodsKept(): void
     {
@@ -81,11 +100,13 @@ final class AnnouncedIntrospectionTest extends TestCase
     private static function announced(
         ClientAuthenticationMethods $methods,
         ?SignatureAlgorithmsInterface $signature = null,
+        ?HeldSigningAlgorithms $held = null,
     ): AnnouncedIntrospection {
         return new AnnouncedIntrospection(
             new Endpoints(),
             $methods,
             new AnnouncedAlgorithms($signature ?? Algorithms::all(), Algorithms::keyEncryption(), Algorithms::contentEncryption()),
+            $held ?? HeldSigning::everyAlgorithm($signature),
         );
     }
 }

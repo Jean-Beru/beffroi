@@ -6,6 +6,7 @@ namespace Beffroi\Oidc\Tests\Application\Discovery\Metadata;
 
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\HeldSigning;
 use Beffroi\Oidc\Application\Discovery\AnnouncedAlgorithms;
 use Beffroi\Oidc\Application\Discovery\Metadata\AnnouncedIdToken;
 use PHPUnit\Framework\Attributes\Test;
@@ -20,7 +21,10 @@ final class AnnouncedIdTokenTest extends TestCase
     public function itAnnouncesWhatSignsAnIdTokenAndWhatEncryptsOne(): void
     {
         // Given
-        $announced = new AnnouncedIdToken(new AnnouncedAlgorithms(Algorithms::all(), Algorithms::keyEncryption(), Algorithms::contentEncryption()));
+        $announced = new AnnouncedIdToken(
+            new AnnouncedAlgorithms(Algorithms::all(), Algorithms::keyEncryption(), Algorithms::contentEncryption()),
+            HeldSigning::everyAlgorithm(),
+        );
 
         // When
         $members = $announced->metadata(Fixtures::tenant());
@@ -40,7 +44,10 @@ final class AnnouncedIdTokenTest extends TestCase
     public function aDeploymentThatEncryptsNothingStillAnnouncesWhatSigns(): void
     {
         // Given
-        $announced = new AnnouncedIdToken(new AnnouncedAlgorithms(Algorithms::all(), Algorithms::noKeyEncryption(), Algorithms::noContentEncryption()));
+        $announced = new AnnouncedIdToken(
+            new AnnouncedAlgorithms(Algorithms::all(), Algorithms::noKeyEncryption(), Algorithms::noContentEncryption()),
+            HeldSigning::everyAlgorithm(),
+        );
 
         // When
         $members = $announced->metadata(Fixtures::tenant());
@@ -52,5 +59,21 @@ final class AnnouncedIdTokenTest extends TestCase
             ],
             $members,
         );
+    }
+
+    #[Test]
+    public function anAlgorithmTheTenantHoldsNoActiveKeyForSignsNoIdToken(): void
+    {
+        // Given
+        $announced = new AnnouncedIdToken(
+            new AnnouncedAlgorithms(Algorithms::all(), Algorithms::noKeyEncryption(), Algorithms::noContentEncryption()),
+            HeldSigning::of([Algorithms::rs256()]),
+        );
+
+        // When
+        $members = $announced->metadata(Fixtures::tenant());
+
+        // Then
+        static::assertSame(['id_token_signing_alg_values_supported' => ['RS256']], $members);
     }
 }
