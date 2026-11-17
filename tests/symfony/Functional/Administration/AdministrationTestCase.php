@@ -19,6 +19,8 @@ use Beffroi\Core\Port\GroupRepositoryInterface;
 use Beffroi\Core\Port\GroupsOfAPersonInterface;
 use Beffroi\Core\Tests\Fixture\SoftwareAuthenticator;
 use Beffroi\Oidc\Tests\Fixture\Proofs;
+use function json_decode;
+use const JSON_THROW_ON_ERROR;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -200,6 +202,21 @@ abstract class AdministrationTestCase extends PasskeyTestCase
         }
 
         return $routes;
+    }
+
+    /**
+     * The members of that name of the document an answer carries, null for each it does not.
+     *
+     * @param list<string> $names
+     *
+     * @return list<mixed>
+     */
+    protected static function members(Response $response, array $names): array
+    {
+        $document = json_decode((string) $response->getContent(), true, 8, JSON_THROW_ON_ERROR);
+        static::assertIsArray($document);
+
+        return array_map(static fn (string $name): mixed => $document[$name] ?? null, $names);
     }
 
     /**

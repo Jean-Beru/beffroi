@@ -4,15 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Symfony\Functional\Administration;
 
-use function array_map;
 use App\Administration\AdministrationAnswer;
 use Beffroi\Core\Domain\Enrolment\EnrolmentTicket;
 use Beffroi\Core\Domain\Event\EnrolmentTicketIssued;
 use Beffroi\Core\Domain\Event\PersonCreated;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\UserRepositoryInterface;
-use function json_decode;
-use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
@@ -237,19 +234,6 @@ final class AdministrationApiEnrolmentTest extends AdministrationTestCase
         static::assertTrue(str_starts_with($link, self::ISSUER . '/enrol/'), sprintf('The link %s is not under %s/enrol/.', $link, self::ISSUER));
 
         return substr($link, strlen(self::ISSUER));
-    }
-
-    /**
-     * @param list<string> $names
-     *
-     * @return list<mixed>
-     */
-    private static function members(Response $response, array $names): array
-    {
-        $document = json_decode((string) $response->getContent(), true, 8, JSON_THROW_ON_ERROR);
-        static::assertIsArray($document);
-
-        return array_map(static fn (string $name): mixed => $document[$name] ?? null, $names);
     }
 
     private static function error(Response $response): mixed

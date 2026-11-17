@@ -21,6 +21,13 @@ use function str_contains;
  */
 final class ScreenFitsTheTerminalTest extends TestCase
 {
+    /**
+     * The columns and the rows of each terminal the screen is drawn in.
+     *
+     * @var list<array{int, int}>
+     */
+    private const array TERMINALS = [[60, 16], [84, 24], [120, 30], [200, 60]];
+
     private ?SignedInScreen $screen = null;
 
     protected function tearDown(): void
@@ -57,9 +64,53 @@ final class ScreenFitsTheTerminalTest extends TestCase
             'section.users',
             'section.monitoring',
         ] as $section) {
-            foreach ([[60, 16], [84, 24], [120, 30], [200, 60]] as [$columns, $rows]) {
+            foreach (self::TERMINALS as [$columns, $rows]) {
                 yield sprintf('%s on %d by %d', $section, $columns, $rows) => [$section, $columns, $rows];
             }
+        }
+    }
+
+    /**
+     * The form of an account holds more members than a small terminal has rows: the table shows those that fit.
+     */
+    #[Test]
+    #[DataProvider('provideTerminals')]
+    public function theFormOfAnAccountKeepsTheHeaderOnTheFirstRowAndTheKeysOnTheLast(int $columns, int $rows): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(
+            [
+                '/users?username=alice' => [
+                    'id' => '0193-alice',
+                    'username' => 'alice',
+                    'claims' => ['name' => 'Alice Pleasance Liddell, who went down the rabbit hole', 'address' => ['locality' => 'Oxford']],
+                    'groups' => [],
+                    'credentials' => [],
+                ],
+            ],
+            columns: $columns,
+            rows: $rows,
+        );
+        $this->screen->open('section.users');
+        $this->screen->press("\t");
+        $this->screen->type('alice');
+        $this->screen->press("\r");
+
+        // When
+        $this->screen->press('e');
+
+        // Then
+        $lines = explode("\n", $this->screen->screen());
+        static::assertSame([true, true], [str_contains($lines[0], 'Administration'), str_contains($lines[$rows - 1], 'save')]);
+    }
+
+    /**
+     * @return iterable<string, array{int, int}>
+     */
+    public static function provideTerminals(): iterable
+    {
+        foreach (self::TERMINALS as [$columns, $rows]) {
+            yield sprintf('%d by %d', $columns, $rows) => [$columns, $rows];
         }
     }
 
