@@ -329,6 +329,7 @@ services:
 
   database:
     image: postgres:${POSTGRES_VERSION:-16}-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-beffroi}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-beffroi}
