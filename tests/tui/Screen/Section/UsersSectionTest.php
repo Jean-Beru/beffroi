@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Tui\Tests\Screen\Section;
 
+use function array_fill;
 use function array_filter;
 use Closure;
 use function count;
@@ -622,6 +623,237 @@ final class UsersSectionTest extends TestCase
         ]);
     }
 
+    #[Test]
+    public function theKeyThatOpensTheFormOfTheAccountIsSaid(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(['/users?username=alice' => self::alice()]);
+
+        // When
+        self::lookUpAlice($this->screen);
+
+        // Then
+        $lines = explode("\n", $this->screen->screen());
+        static::assertStringContainsString('edit', $lines[count($lines) - 1]);
+    }
+
+    #[Test]
+    public function eOpensTheFormOfTheAccountWithWhatThePersonHolds(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(['/users?username=alice' => self::alice()]);
+        self::lookUpAlice($this->screen);
+
+        // When
+        $this->screen->press('e');
+
+        // Then
+        $screen = $this->screen->screen();
+        static::assertSame([true, 1, 1], [
+            str_contains($screen, 'Account of alice'),
+            preg_match('/username +alice/', $screen),
+            preg_match('/email +alice@example\.com/', $screen),
+        ]);
+    }
+
+    #[Test]
+    public function theKeysOfTheFormAreSaid(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(['/users?username=alice' => self::alice()]);
+        self::lookUpAlice($this->screen);
+
+        // When
+        $this->screen->press('e');
+
+        // Then
+        $lines = explode("\n", $this->screen->screen());
+        static::assertSame(1, preg_match('/change.*save/', $lines[count($lines) - 1]));
+    }
+
+    /**
+     * RFC 7396 §2: what the administrator did not change is not in the patch.
+     */
+    #[Test]
+    public function aMemberChangedIsSentAloneInAMergePatchOfTheAccount(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            'PATCH /users/0193-alice' => self::account(['name' => 'Alice Liddell', 'email' => 'alice@example.com', 'nickname' => 'Ali']),
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press(['e', ...self::down(9), "\r"]);
+        $this->screen->type('Ali');
+        $this->screen->press("\r");
+
+        // When
+        $this->screen->press('s');
+
+        // Then
+        static::assertSame(['{"claims":{"nickname":"Ali"}}'], self::bodiesOf($this->screen, 'PATCH', '/users/0193-alice'));
+    }
+
+    #[Test]
+    public function enterTurnsAVerificationOver(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(['/users?username=alice' => self::alice()]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press(['e', ...self::down(2)]);
+
+        // When
+        $this->screen->press("\r");
+
+        // Then
+        static::assertSame(1, preg_match('/email_verified +yes +to save/', $this->screen->screen()));
+    }
+
+    /**
+     * RFC 7396 §2: a member of the address is merged into the address the person holds.
+     */
+    #[Test]
+    public function aMemberOfTheAddressIsSentInsideTheAddress(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            'PATCH /users/0193-alice' => self::account(['name' => 'Alice Liddell', 'address' => ['locality' => 'Lyon']]),
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press(['e', ...self::down(20), "\r"]);
+        $this->screen->type('Lyon');
+        $this->screen->press("\r");
+
+        // When
+        $this->screen->press('s');
+
+        // Then
+        static::assertSame(['{"claims":{"address":{"locality":"Lyon"}}}'], self::bodiesOf($this->screen, 'PATCH', '/users/0193-alice'));
+    }
+
+    #[Test]
+    public function aSavedChangeShowsThePersonAsTheApiAnsweredThem(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            'PATCH /users/0193-alice' => self::account(['name' => 'Alice Liddell', 'email' => 'alice@example.com', 'nickname' => 'Ali']),
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press(['e', ...self::down(9), "\r"]);
+        $this->screen->type('Ali');
+        $this->screen->press("\r");
+
+        // When
+        $this->screen->press('s');
+
+        // Then
+        $screen = $this->screen->screen();
+        static::assertSame([true, 1, false, true], [
+            str_contains($screen, 'The account of alice is saved.'),
+            preg_match('/nickname +Ali/', $screen),
+            str_contains($screen, 'Account of alice'),
+            str_contains($screen, 'YubiKey 5 NFC'),
+        ]);
+    }
+
+    #[Test]
+    public function aRefusalIsSaidAndTheChangesStayInTheForm(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            'PATCH /users/0193-alice' => static fn (): MockResponse => new MockResponse(
+                '{"error":"invalid_request","error_description":"The birthdate is a day of the calendar."}',
+                ['http_code' => 400],
+            ),
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press(['e', ...self::down(15), "\r"]);
+        $this->screen->type('the first of May');
+        $this->screen->press("\r");
+
+        // When
+        $this->screen->press('s');
+
+        // Then
+        $screen = $this->screen->screen();
+        static::assertSame([true, 1], [
+            str_contains($screen, 'Nothing was saved: The birthdate is a day of the calendar.'),
+            preg_match('/birthdate +the first of May +to save/', $screen),
+        ]);
+    }
+
+    #[Test]
+    public function sWithNothingChangedSaysSoAndWritesNothing(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(['/users?username=alice' => self::alice()]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press('e');
+
+        // When
+        $this->screen->press('s');
+
+        // Then
+        static::assertSame([0, true], [
+            $this->screen->requestsTo('/users/0193-alice', 'PATCH'),
+            str_contains($this->screen->screen(), 'Nothing is changed yet'),
+        ]);
+    }
+
+    /**
+     * The form is the account of the person until the focus leaves it: the access of the person comes back in its place.
+     */
+    #[Test]
+    public function theFormLeavesTheScreenWithTheFocus(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(['/users?username=alice' => self::alice()]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press(['e', ...self::down(2), "\r"]);
+
+        // When
+        $this->screen->press("\t");
+
+        // Then
+        $screen = $this->screen->screen();
+        static::assertSame([false, true], [str_contains($screen, 'Account of alice'), str_contains($screen, 'YubiKey 5 NFC')]);
+    }
+
+    #[Test]
+    public function theFormLeavesTheScreenWhenTheFocusLeavesItsField(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(['/users?username=alice' => self::alice()]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press(['e', ...self::down(9), "\r"]);
+        $this->screen->type('Ali');
+
+        // When
+        $this->screen->press("\t");
+
+        // Then
+        static::assertStringNotContainsString('Account of alice', $this->screen->screen());
+    }
+
+    #[Test]
+    public function whatWasNotSavedLeavesWithTheForm(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(['/users?username=alice' => self::alice()]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press(['e', ...self::down(2), "\r", "\t", "\t", "\t", "\t"]);
+
+        // When
+        $this->screen->press('e');
+
+        // Then
+        $screen = $this->screen->screen();
+        static::assertSame([true, false], [str_contains($screen, 'Account of alice'), str_contains($screen, 'to save')]);
+    }
+
     private static function lookUpAlice(SignedInScreen $screen): void
     {
         $screen->open('section.users');
@@ -699,6 +931,36 @@ final class UsersSectionTest extends TestCase
     private static function created(array $document): Closure
     {
         return static fn (): MockResponse => new MockResponse(json_encode($document, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES), ['http_code' => 201]);
+    }
+
+    /**
+     * The account of alice as a change of it answers, without her groups and her credentials.
+     *
+     * @param array<string, mixed> $claims
+     *
+     * @return array<string, mixed>
+     */
+    private static function account(array $claims): array
+    {
+        return [
+            'id' => '0193-alice',
+            'subject' => 'subject-of-alice',
+            'username' => 'alice',
+            'enabled' => true,
+            'source' => 'local',
+            'created_at' => '2026-10-01T08:00:00Z',
+            'claims' => $claims,
+        ];
+    }
+
+    /**
+     * The arrow down, pressed that many times.
+     *
+     * @return list<string>
+     */
+    private static function down(int $times): array
+    {
+        return array_fill(0, $times, "\e[B");
     }
 
     /**

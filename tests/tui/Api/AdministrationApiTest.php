@@ -124,6 +124,50 @@ final class AdministrationApiTest extends TestCase
         );
     }
 
+    /**
+     * RFC 7396 §2, RFC 9449 §4.2: a change is a merge patch of the resource, under a proof made for its method.
+     */
+    #[Test]
+    public function aChangeCarriesAMergePatchUnderAProofMadeForItsMethod(): void
+    {
+        // Given
+        $http = RecordedRequests::answering([new MockResponse('{"id":"0193-alice","username":"alice"}')]);
+
+        // When
+        Sessions::of($http->client)->api()->patch('/users/0193-alice', ['claims' => ['nickname' => 'Ali', 'address' => ['locality' => null]]]);
+
+        // Then
+        static::assertSame(
+            ['PATCH', 'PATCH', 'application/merge-patch+json', '{"claims":{"nickname":"Ali","address":{"locality":null}}}'],
+            [
+                $http->last()['method'],
+                Jwt::claims($http->last()['headers']['dpop'] ?? '')->nullableString('htm'),
+                $http->last()['headers']['content-type'] ?? null,
+                $http->last()['body'],
+            ],
+        );
+    }
+
+    /**
+     * RFC 9110 §15.3.1: what the API changed it answers with 200; any other answer is no change.
+     */
+    #[Test]
+    public function aChangeAnsweredWithAnotherStatusIsARefusal(): void
+    {
+        // Given
+        $http = RecordedRequests::answering([new MockResponse(
+            '{"error":"conflict","error_description":"The tenant has a person of this username already."}',
+            ['http_code' => 409],
+        )]);
+
+        // Then
+        $this->expectException(ProviderRefusalException::class);
+        $this->expectExceptionMessageIs('The administration API refused the request (conflict): The tenant has a person of this username already.');
+
+        // When
+        Sessions::of($http->client)->api()->patch('/users/0193-alice', ['username' => 'bob']);
+    }
+
     #[Test]
     public function aCreationThatAsksForNothingCarriesNoBody(): void
     {
