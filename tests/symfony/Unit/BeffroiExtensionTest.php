@@ -306,7 +306,7 @@ final class BeffroiExtensionTest extends TestCase
         $container = self::load([]);
 
         // Then
-        static::assertSame('all', $container->getParameterBag()->all()['env(BEFFROI_PLANE)']);
+        static::assertSame('provider', $container->getParameterBag()->all()['env(BEFFROI_PLANE)']);
     }
 
     #[Test]

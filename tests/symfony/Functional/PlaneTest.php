@@ -40,8 +40,8 @@ final class PlaneTest extends DatabaseTestCase
         yield 'an interaction process serves the login' => ['interaction', '/login', self::LOGIN_SERVED];
         yield 'an interaction process refuses the JWK Set' => ['interaction', '/jwks', 404];
         yield 'an interaction process leaves the application alone' => ['interaction', '/host', 200];
-        yield 'a process serving all planes serves the login' => ['all', '/login', self::LOGIN_SERVED];
-        yield 'a process serving all planes serves the JWK Set' => ['all', '/jwks', self::JWKS_SERVED];
+        yield 'a process of the provider serves the login' => ['provider', '/login', self::LOGIN_SERVED];
+        yield 'a process of the provider serves the JWK Set' => ['provider', '/jwks', self::JWKS_SERVED];
         yield 'without BEFFROI_PLANE a process serves the login' => [null, '/login', self::LOGIN_SERVED];
         yield 'without BEFFROI_PLANE a process serves the JWK Set' => [null, '/jwks', self::JWKS_SERVED];
         yield 'an unknown path is a 404 on every plane' => ['protocol', '/unknown', 404];

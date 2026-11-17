@@ -72,6 +72,6 @@ final class ThemeChoiceTest extends BrowserTestCase
     {
         yield 'a process of the protocol plane refuses it' => ['protocol', Response::HTTP_NOT_FOUND];
         yield 'a process of the interaction plane serves it' => ['interaction', Response::HTTP_FOUND];
-        yield 'a process of every plane serves it' => ['all', Response::HTTP_FOUND];
+        yield 'a process of the provider serves it' => ['provider', Response::HTTP_FOUND];
     }
 }
