@@ -515,6 +515,50 @@ final class UsersSectionTest extends TestCase
         ]);
     }
 
+    /**
+     * Decision 0026: an OTP link revokes the app of the person and ends every session of theirs once spent, so it is asked first.
+     */
+    #[Test]
+    public function anOtpLinkIsAskedToBeConfirmedBeforeItIsIssued(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(['/users?username=alice' => self::alice()]);
+        self::lookUpAlice($this->screen);
+
+        // When
+        $this->screen->press('o');
+
+        // Then
+        static::assertSame([0, true], [
+            $this->screen->requestsTo('/users/0193-alice/totp-ticket', 'POST'),
+            str_contains($this->screen->screen(), 'Issue a link that lets alice set up an authenticator app'),
+        ]);
+    }
+
+    #[Test]
+    public function theOtpLinkIsShownAsACodeInPlaceOfThePersonOnceTheAdministratorConfirmsIt(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            'POST /users/0193-alice/totp-ticket' => self::created(self::ticket()),
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press('o');
+
+        // When
+        $this->screen->press('y');
+
+        // Then
+        $screen = $this->screen->screen();
+        static::assertSame([1, true, true, true], [
+            $this->screen->requestsTo('/users/0193-alice/totp-ticket', 'POST'),
+            str_contains($screen, 'OTP link of alice'),
+            str_contains($screen, self::LINK . ' opens until'),
+            str_contains($screen, '▀'),
+        ]);
+    }
+
     #[Test]
     public function anyOtherKeyThanYIssuesNoLink(): void
     {

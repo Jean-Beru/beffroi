@@ -1187,6 +1187,12 @@ services:
     test.beffroi.password_ticket_store:
         alias: Beffroi\Core\Port\PasswordTicketRepositoryInterface
         public: true
+    test.beffroi.totp_tickets:
+        alias: Beffroi\Core\Application\Ticket\TotpTicketIssue
+        public: true
+    test.beffroi.totp_ticket_store:
+        alias: Beffroi\Core\Port\TotpTicketRepositoryInterface
+        public: true
     test.beffroi.linked_identities:
         alias: Beffroi\Core\Port\LinkedIdentityRepositoryInterface
         public: true
