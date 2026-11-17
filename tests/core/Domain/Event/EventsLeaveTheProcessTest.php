@@ -33,6 +33,7 @@ use Beffroi\Core\Domain\Event\PasskeyUsed;
 use Beffroi\Core\Domain\Event\PersonAskedForTheirArchive;
 use Beffroi\Core\Domain\Event\PersonDescribedThemselves;
 use Beffroi\Core\Domain\Event\PersonDroppedTheirArchive;
+use Beffroi\Core\Domain\Event\PersonCreated;
 use Beffroi\Core\Domain\Event\PersonProvisioned;
 use Beffroi\Core\Domain\Event\PersonTookTheirArchive;
 use Beffroi\Core\Domain\Event\PasswordRehashed;
@@ -96,6 +97,8 @@ final class EventsLeaveTheProcessTest extends TestCase
             'alice',
             $user,
         )];
+        yield 'a person the operator created' => [new PersonCreated($tenant, $user->subject, $now, $context)];
+        yield 'a person an administrator created' => [new PersonCreated($tenant, $user->subject, $now, $context, new Subject('administrator-subject'))];
         yield 'a person an upstream provider created' => [new PersonProvisioned($now, $tenant, $user->subject, 'https://idp.acme.example/saml', $context)];
         yield 'a person who said something of themselves' => [new PersonDescribedThemselves($user, 'nickname', false, $now, $context)];
         yield 'a person who took something back' => [new PersonDescribedThemselves($user, 'nickname', true, $now, $context)];
@@ -110,6 +113,12 @@ final class EventsLeaveTheProcessTest extends TestCase
             new EnrolmentTicket(Uuid::v7(), $user, $password->hash, $now, $now->modify('+72 hours')),
             $now,
             $context,
+        )];
+        yield 'an enrolment ticket an administrator issued' => [new EnrolmentTicketIssued(
+            new EnrolmentTicket(Uuid::v7(), $user, $password->hash, $now, $now->modify('+72 hours')),
+            $now,
+            $context,
+            new Subject('administrator-subject'),
         )];
         yield 'a credential renamed' => [new CredentialRenamed($passkey, 'The key it was', $now, $context)];
         yield 'a passkey used' => [new PasskeyUsed($passkey, $now, $context)];

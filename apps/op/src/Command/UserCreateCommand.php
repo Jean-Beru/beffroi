@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Http\RequestContextFactory;
+use Beffroi\Core\Application\Identity\PersonCreation;
 use Beffroi\Core\Application\Identity\UserAlreadyExistsException;
-use Beffroi\Core\Application\Identity\UserProvisioner;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Exception\InvalidArgumentException;
@@ -17,14 +18,17 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
-    name: 'beffroi:user:create',
+    name: self::NAME,
     description: 'Create a user of the tenant; give them a password with beffroi:user:set-password.',
 )]
 final readonly class UserCreateCommand
 {
+    public const string NAME = 'beffroi:user:create';
+
     public function __construct(
         private ConfiguredTenant $tenant,
-        private UserProvisioner $provisioner,
+        private PersonCreation $persons,
+        private RequestContextFactory $contexts,
     ) {
     }
 
@@ -45,9 +49,10 @@ final readonly class UserCreateCommand
         }
 
         try {
-            $user = $this->provisioner->create(
+            $user = $this->persons->create(
                 $tenant,
                 $username,
+                $this->contexts->fromConsole(self::NAME),
                 $email === null ? null : new EmailAddress($email),
                 $emailVerified,
                 $subject === null ? null : new Subject($subject),

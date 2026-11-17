@@ -235,11 +235,13 @@ final class ShellTest extends TestCase
         $screen->press("\t");
         $inTheSection = $screen->shell->typing($screen->tui);
         $screen->press("\t");
+        $inItsOtherField = $screen->shell->typing($screen->tui);
+        $screen->press("\t");
 
         // Then
         $typing = $screen->shell->typing($screen->tui);
         $screen->stop();
-        static::assertSame([true, false], [$inTheSection, $typing]);
+        static::assertSame([true, true, false], [$inTheSection, $inItsOtherField, $typing]);
     }
 
     /**

@@ -4,16 +4,19 @@ declare(strict_types=1);
 
 namespace App\Tests\Symfony\Functional\Command;
 
+use function array_map;
 use function explode;
 use App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Event\PersonCreated;
 use Beffroi\Core\Domain\Event\TenantKeyRotated;
 use Beffroi\Core\Domain\Event\TenantKeyStaged;
 use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Identity\UserSource;
+use Beffroi\Core\Domain\Journal\JournalEntry;
 use Beffroi\Core\Domain\Key\KeyStatus;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
 use Beffroi\Core\Port\PasswordHasherInterface;
@@ -398,6 +401,26 @@ final class ProvisioningTest extends ConsoleTestCase
         $user = self::service('test.beffroi.users', UserRepositoryInterface::class)
             ->findByUsername(self::tenant(), 'bob') ?? static::fail('The user is not stored.');
         static::assertSame([], self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($user));
+    }
+
+    /**
+     * Decision 0022
+     */
+    #[Test]
+    public function theCreationOfAUserIsAnActOfTheirsThatNamesNoAdministrator(): void
+    {
+        // When
+        self::console('beffroi:user:create', [
+            'username' => 'bob',
+        ]);
+
+        // Then
+        $user = self::service('test.beffroi.users', UserRepositoryInterface::class)
+            ->findByUsername(self::tenant(), 'bob') ?? static::fail('The user is not stored.');
+        static::assertSame([[$user->subject->value, null]], array_map(
+            static fn (JournalEntry $act): array => [$act->subject?->value, $act->author?->value],
+            self::entityManager()->getRepository(JournalEntry::class)->findBy(['act' => PersonCreated::NAME]),
+        ));
     }
 
     /**

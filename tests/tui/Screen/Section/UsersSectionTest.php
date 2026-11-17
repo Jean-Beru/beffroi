@@ -5,6 +5,12 @@ declare(strict_types=1);
 namespace Beffroi\Tui\Tests\Screen\Section;
 
 use function array_filter;
+use Closure;
+use function count;
+use function explode;
+use function json_encode;
+use const JSON_THROW_ON_ERROR;
+use const JSON_UNESCAPED_SLASHES;
 use Beffroi\Tui\Tests\Fixture\FakeProvider;
 use Beffroi\Tui\Tests\Fixture\SignedInScreen;
 use PHPUnit\Framework\Attributes\Test;
@@ -12,6 +18,7 @@ use PHPUnit\Framework\TestCase;
 use function preg_match;
 use function str_contains;
 use function str_starts_with;
+use Symfony\Component\HttpClient\Response\MockResponse;
 
 /**
  * A user is read when the administrator asks for one, and their sessions and their journal when the administrator asks
@@ -19,6 +26,8 @@ use function str_starts_with;
  */
 final class UsersSectionTest extends TestCase
 {
+    private const string LINK = 'https://op.example/enrol/t-1/v-1';
+
     private ?SignedInScreen $screen = null;
 
     protected function tearDown(): void
@@ -342,6 +351,189 @@ final class UsersSectionTest extends TestCase
         static::assertSame([true, true], [$this->screen->shell->typing($this->screen->tui), str_contains($this->screen->screen(), 'Username: qr')]);
     }
 
+    #[Test]
+    public function aUsernameTypedInTheFieldOfANewPersonCreatesThem(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(['POST /users' => self::created(self::dave())]);
+        $this->screen->open('section.users');
+        $this->screen->press(["\t", "\t"]);
+        $this->screen->type('dave');
+
+        // When
+        $this->screen->press("\r");
+
+        // Then
+        static::assertSame([['{"username":"dave"}'], true], [
+            self::bodiesOf($this->screen, 'POST', '/users'),
+            str_contains($this->screen->screen(), 'dave is created, with no credential'),
+        ]);
+    }
+
+    /**
+     * Decision 0022: the person the API created is shown from its answer, which no read of them follows.
+     */
+    #[Test]
+    public function aPersonCreatedIsShownWithoutReadingThem(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(['POST /users' => self::created(self::dave())]);
+        $this->screen->open('section.users');
+        $this->screen->press(["\t", "\t"]);
+        $this->screen->type('dave');
+
+        // When
+        $this->screen->press("\r");
+
+        // Then
+        static::assertSame([0, true], [
+            $this->screen->requestsTo('/users?username=dave'),
+            str_contains($this->screen->screen(), 'Person dave'),
+        ]);
+    }
+
+    #[Test]
+    public function aUsernameTheTenantHoldsAlreadyIsSaidSo(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            'POST /users' => static fn (): MockResponse => new MockResponse(
+                '{"error":"conflict","error_description":"The tenant has a person of this username already."}',
+                ['http_code' => 409],
+            ),
+        ]);
+        $this->screen->open('section.users');
+        $this->screen->press(["\t", "\t"]);
+        $this->screen->type('alice');
+
+        // When
+        $this->screen->press("\r");
+
+        // Then
+        static::assertStringContainsString('The tenant has a person of the username alice already.', $this->screen->screen());
+    }
+
+    #[Test]
+    public function theKeyThatIssuesAnEnrolmentLinkIsSaid(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(['/users?username=alice' => self::alice()]);
+
+        // When
+        self::lookUpAlice($this->screen);
+
+        // Then
+        $lines = explode("\n", $this->screen->screen());
+        static::assertStringContainsString('enrolment link', $lines[count($lines) - 1]);
+    }
+
+    /**
+     * Decision 0026: a link issued takes away the one the person had not spent, so it is asked first.
+     */
+    #[Test]
+    public function anEnrolmentLinkIsAskedToBeConfirmedBeforeItIsIssued(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(['/users?username=alice' => self::alice()]);
+        self::lookUpAlice($this->screen);
+
+        // When
+        $this->screen->press('t');
+
+        // Then
+        static::assertSame([0, true], [
+            $this->screen->requestsTo('/users/0193-alice/enrolment-ticket', 'POST'),
+            str_contains($this->screen->screen(), 'Issue a link that lets alice pose a passkey?'),
+        ]);
+    }
+
+    #[Test]
+    public function theLinkIsShownAsACodeInPlaceOfThePersonOnceTheAdministratorConfirmsIt(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            'POST /users/0193-alice/enrolment-ticket' => self::created(self::ticket()),
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press('t');
+
+        // When
+        $this->screen->press('y');
+
+        // Then
+        $screen = $this->screen->screen();
+        static::assertSame([1, true, true, false], [
+            $this->screen->requestsTo('/users/0193-alice/enrolment-ticket', 'POST'),
+            str_contains($screen, self::LINK . ' opens until'),
+            str_contains($screen, '▀'),
+            str_contains($screen, 'YubiKey 5 NFC'),
+        ]);
+    }
+
+    #[Test]
+    public function anyOtherKeyThanYIssuesNoLink(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            'POST /users/0193-alice/enrolment-ticket' => self::created(self::ticket()),
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press('t');
+
+        // When
+        $this->screen->press(['n', 'y']);
+
+        // Then
+        static::assertSame(0, $this->screen->requestsTo('/users/0193-alice/enrolment-ticket', 'POST'));
+    }
+
+    /**
+     * The link opens an enrolment on the account of the person: it leaves the screen as soon as the focus leaves it.
+     */
+    #[Test]
+    public function theLinkLeavesTheScreenWithTheFocus(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            'POST /users/0193-alice/enrolment-ticket' => self::created(self::ticket()),
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press(['t', 'y']);
+
+        // When
+        $this->screen->press("\t");
+
+        // Then
+        $screen = $this->screen->screen();
+        static::assertSame([false, false, true], [str_contains($screen, self::LINK), str_contains($screen, '▀'), str_contains($screen, 'YubiKey 5 NFC')]);
+    }
+
+    #[Test]
+    public function enterGivesThePersonBackInPlaceOfTheLink(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            'POST /users/0193-alice/enrolment-ticket' => self::created(self::ticket()),
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press(['t', 'y']);
+
+        // When
+        $this->screen->press("\r");
+
+        // Then
+        $screen = $this->screen->screen();
+        static::assertSame([false, true, true], [
+            str_contains($screen, self::LINK),
+            str_contains($screen, 'YubiKey 5 NFC'),
+            str_contains(explode("\n", $screen)[count(explode("\n", $screen)) - 1], 'revoke'),
+        ]);
+    }
+
     private static function lookUpAlice(SignedInScreen $screen): void
     {
         $screen->open('section.users');
@@ -391,6 +583,59 @@ final class UsersSectionTest extends TestCase
                 'last_used_at' => '2026-11-04T09:00:00Z',
                 'revocable' => true,
             ]],
+        ];
+    }
+
+    /**
+     * The bodies of the requests of that method to that path of the API, in the order they were sent.
+     *
+     * @return list<string>
+     */
+    private static function bodiesOf(SignedInScreen $screen, string $method, string $path): array
+    {
+        $bodies = [];
+        foreach ($screen->http->requests as $request) {
+            if ($request['method'] === $method && $request['url'] === FakeProvider::ADMINISTRATION . $path) {
+                $bodies[] = $request['body'];
+            }
+        }
+
+        return $bodies;
+    }
+
+    /**
+     * @param array<string, mixed> $document
+     *
+     * @return Closure(): MockResponse
+     */
+    private static function created(array $document): Closure
+    {
+        return static fn (): MockResponse => new MockResponse(json_encode($document, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES), ['http_code' => 201]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function ticket(): array
+    {
+        return ['link' => self::LINK, 'expires_at' => '2026-11-07T10:00:00Z'];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function dave(): array
+    {
+        return [
+            'id' => '0193-dave',
+            'subject' => 'subject-of-dave',
+            'username' => 'dave',
+            'enabled' => true,
+            'source' => 'local',
+            'created_at' => '2026-11-04T10:00:00Z',
+            'claims' => [],
+            'groups' => [],
+            'credentials' => [],
         ];
     }
 }

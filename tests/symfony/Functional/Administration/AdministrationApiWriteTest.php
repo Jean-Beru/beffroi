@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Symfony\Functional\Administration;
 
-use function array_filter;
 use function array_map;
-use function array_values;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
 use Beffroi\Core\Domain\Credential\PasswordHash;
@@ -222,20 +220,5 @@ final class AdministrationApiWriteTest extends AdministrationTestCase
         return (
             self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)->find($session->id) ?? static::fail('The session is gone.')
         );
-    }
-
-    /**
-     * The acts of that name an administrator did, each as the person it concerns and the administrator, by their subjects.
-     *
-     * @return list<array{?string, ?string}>
-     */
-    private static function authored(string $name): array
-    {
-        $acts = self::entityManager()->getRepository(JournalEntry::class)->findBy(['act' => $name]);
-
-        return array_values(array_map(
-            static fn (JournalEntry $act): array => [$act->subject?->value, $act->author?->value],
-            array_filter($acts, static fn (JournalEntry $act): bool => $act->author !== null),
-        ));
     }
 }

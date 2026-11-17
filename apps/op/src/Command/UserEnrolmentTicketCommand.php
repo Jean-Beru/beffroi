@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Controller\EnrolmentTicketController;
-use App\Http\PresentedEnrolmentTicket;
+use App\Http\EnrolmentLink;
 use App\Http\RequestContextFactory;
 use Beffroi\Core\Application\Enrolment\EnrolmentTicketIssue;
 use Beffroi\Core\Exception\EnrolmentTicketRefusedException;
@@ -14,14 +13,10 @@ use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
-/**
- * The link is the origin of the issuer and the generated path, which already carries the path of the issuer.
- */
 #[AsCommand(
     name: self::NAME,
-    description: 'Issue the link that lets a person pose their first passkey, and print it.',
+    description: 'Issue the link that lets a person pose a passkey, and print it.',
 )]
 final readonly class UserEnrolmentTicketCommand
 {
@@ -32,7 +27,7 @@ final readonly class UserEnrolmentTicketCommand
         private NamedUser $namedUsers,
         private EnrolmentTicketIssue $tickets,
         private RequestContextFactory $contexts,
-        private UrlGeneratorInterface $router,
+        private EnrolmentLink $links,
     ) {
     }
 
@@ -66,15 +61,7 @@ final readonly class UserEnrolmentTicketCommand
                 'Opens until' => $issued->ticket->expiresAt->format('c'),
             ],
             [
-                'Link' => $tenant->issuer->origin()
-                    . $this->router->generate(
-                        EnrolmentTicketController::ROUTE,
-                        [
-                            PresentedEnrolmentTicket::TICKET_PARAMETER => $issued->ticket->id->toRfc4122(),
-                            PresentedEnrolmentTicket::VALUE_PARAMETER => $issued->value,
-                        ],
-                        UrlGeneratorInterface::ABSOLUTE_PATH,
-                    ),
+                'Link' => $this->links->of($issued),
             ],
         );
         $io->success(sprintf(

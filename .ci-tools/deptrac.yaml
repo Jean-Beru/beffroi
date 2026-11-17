@@ -117,7 +117,7 @@ deptrac:
         - { type: classLike, value: '^MaxMind\\' }
     - name: 'QrCode'
       collectors:
-        # bacon/bacon-qr-code, what draws the QR code of a TOTP enrolment as an SVG in the provider (architecture §5.2): the pages embed it, nothing else reads it
+        # bacon/bacon-qr-code: the QR code of a TOTP enrolment as an SVG the pages of the provider embed (architecture §5.2), and the link of an enrolment ticket the TUI draws in half blocks
         - { type: classLike, value: '^BaconQrCode\\' }
     - name: 'Serializer'
       collectors:
@@ -374,13 +374,15 @@ deptrac:
       - 'SortDirection'
       - 'Twig'
     # A client of the instance and nothing more: it signs its assertions and its proofs and verifies the ID token
-    # with the JOSE brick, speaks HTTP and draws its screen with Symfony, and waits on the event loop with amphp.
+    # with the JOSE brick, speaks HTTP and draws its screen with Symfony, waits on the event loop with amphp, and
+    # draws the link of an enrolment ticket as a QR code with bacon/bacon-qr-code.
     Tui:
       - 'Psr'
       - 'PsrClock'
       - 'Symfony'
       - 'Jose'
       - 'Amp'
+      - 'QrCode'
     XmlCore: ['XmlCoreInternal']
     XmlCoreInternal: ['XmlCore']
     XmlDsig: ['XmlCore', 'XmlCoreInternal', 'XmlDsigInternal']
