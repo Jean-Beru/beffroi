@@ -41,7 +41,7 @@ castor app-phpunit      # the suite of this directory, against the PostgreSQL th
 
 `beffroi/*` is resolved by path repositories to `../../src/*`, so this directory installs nothing on its
 own: the application is worked on inside the monorepo, and deployed from a build rather than from a clone.
-A deployment runs the published image, `ghcr.io/beffroi-auth/op`, with `compose.prod.yaml` at the root of the
+A deployment runs the published image, `ghcr.io/beffroi-auth/beffroi`, with `compose.prod.yaml` at the root of the
 monorepo: the provider, its worker and PostgreSQL, the file saying in its header what it needs and the order of
 the first start.
 

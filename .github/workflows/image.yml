@@ -1,7 +1,7 @@
 name: Image
 
 # The production image of the application, the "frankenphp_prod" stage of apps/op/Dockerfile, published as
-# ghcr.io/beffroi-auth/op for linux/amd64 and linux/arm64.
+# ghcr.io/beffroi-auth/beffroi for linux/amd64 and linux/arm64.
 #
 # It is built on demand only, from the Actions tab or with "gh workflow run image.yml --ref <ref>": while the
 # application is in active development, nothing builds it on its own. Run from a maintenance branch or a
@@ -51,7 +51,7 @@ permissions:
   contents: read
 
 env:
-  IMAGE: ghcr.io/beffroi-auth/op
+  IMAGE: ghcr.io/beffroi-auth/beffroi
   DESCRIPTION: "Beffroi: the standalone identity provider application (Symfony skeleton plus the provider)."
 
 jobs:
@@ -166,7 +166,7 @@ jobs:
           target: frankenphp_prod
           platforms: ${{ matrix.platform }}
           labels: |
-            org.opencontainers.image.title=beffroi/op
+            org.opencontainers.image.title=beffroi/beffroi
             org.opencontainers.image.description=${{ env.DESCRIPTION }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.url=https://doc.beffroi.tech/
@@ -176,8 +176,8 @@ jobs:
             org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
             org.opencontainers.image.created=${{ needs.prepare.outputs.created }}
           outputs: ${{ needs.prepare.outputs.push == 'true' && format('type=image,name={0},push-by-digest=true,name-canonical=true,push=true', env.IMAGE) || 'type=cacheonly' }}
-          cache-from: type=gha,scope=op-${{ matrix.arch }}
-          cache-to: ${{ needs.prepare.outputs.push == 'true' && format('type=gha,mode=max,scope=op-{0},ignore-error=true', matrix.arch) || '' }}
+          cache-from: type=gha,scope=beffroi-${{ matrix.arch }}
+          cache-to: ${{ needs.prepare.outputs.push == 'true' && format('type=gha,mode=max,scope=beffroi-{0},ignore-error=true', matrix.arch) || '' }}
       - name: "Its digest, for the index"
         id: digest
         if: needs.prepare.outputs.push == 'true'
@@ -222,7 +222,7 @@ jobs:
           fi
           images=("${IMAGE}@${AMD64}" "${IMAGE}@${ARM64}")
           docker buildx imagetools create "${options[@]}" \
-            --annotation "index:org.opencontainers.image.title=beffroi/op" \
+            --annotation "index:org.opencontainers.image.title=beffroi/beffroi" \
             --annotation "index:org.opencontainers.image.description=${DESCRIPTION}" \
             --annotation "index:org.opencontainers.image.source=${SOURCE}" \
             --annotation "index:org.opencontainers.image.licenses=MIT" \
