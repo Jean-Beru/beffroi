@@ -20,6 +20,7 @@ use Beffroi\Core\Domain\Event\BackupCodeUsed;
 use Beffroi\Core\Domain\Event\BackupCodesRenewed;
 use Beffroi\Core\Domain\Event\PasswordChanged;
 use Beffroi\Core\Domain\Event\PasswordTicketIssued;
+use Beffroi\Core\Domain\Event\TotpTicketIssued;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
 use Beffroi\Core\Domain\Event\CredentialRenamed;
 use Beffroi\Core\Domain\Enrolment\EnrolmentTicket;
@@ -51,6 +52,7 @@ use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Domain\Session\SessionEnd;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Domain\Ticket\PasswordTicket;
+use Beffroi\Core\Domain\Ticket\TotpTicket;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
@@ -129,6 +131,17 @@ final class EventsLeaveTheProcessTest extends TestCase
         )];
         yield 'a password ticket an administrator issued' => [new PasswordTicketIssued(
             new PasswordTicket(Uuid::v7(), $user, $password->hash, $now, $now->modify('+72 hours')),
+            $now,
+            $context,
+            new Subject('administrator-subject'),
+        )];
+        yield 'a one-time password ticket issued' => [new TotpTicketIssued(
+            new TotpTicket(Uuid::v7(), $user, $password->hash, $now, $now->modify('+72 hours')),
+            $now,
+            $context,
+        )];
+        yield 'a one-time password ticket an administrator issued' => [new TotpTicketIssued(
+            new TotpTicket(Uuid::v7(), $user, $password->hash, $now, $now->modify('+72 hours')),
             $now,
             $context,
             new Subject('administrator-subject'),

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Beffroi\Core\Tests\Application\Ticket;
 
+use Beffroi\Core\Application\Credential\EnrolmentRefusal;
 use Beffroi\Core\Application\Identity\FederatedDomains;
+use Beffroi\Core\Application\Ticket\CredentialTicketRefusal;
 use Beffroi\Core\Application\Ticket\PasswordTicketIssue;
 use Beffroi\Core\Application\Ticket\TicketIssuing;
 use Beffroi\Core\Bridge\InMemory\InMemoryPasswordTicketRepository;
@@ -55,7 +57,7 @@ final class PasswordTicketIssueTest extends TestCase
         $this->issue = new PasswordTicketIssue(
             $this->tickets,
             new TicketIssuing(new SymfonyUuidGenerator(), new PlatformRandomness(), $this->hasher, $this->clock),
-            new FederatedDomains($this->upstreamProviders),
+            new CredentialTicketRefusal(new EnrolmentRefusal(new FederatedDomains($this->upstreamProviders))),
             $this->events,
         );
     }
@@ -149,7 +151,7 @@ final class PasswordTicketIssueTest extends TestCase
 
         // Then
         $this->expectException(TicketRefusedException::class);
-        $this->expectExceptionMessageIs('The tenant signs its users in without a password; a password ticket would open nothing.');
+        $this->expectExceptionMessageIsOrContains('A ticket that poses a password would open nothing. A password proves no login of the tenant');
 
         // When
         $this->issue->issue($carol, Fixtures::context($this->clock->now()));
@@ -167,7 +169,7 @@ final class PasswordTicketIssueTest extends TestCase
 
         // Then
         $this->expectException(TicketRefusedException::class);
-        $this->expectExceptionMessageIs('"alice" is of an e-mail domain the tenant federates, which holds no password of theirs.');
+        $this->expectExceptionMessageIsOrContains('A ticket that poses a password would open nothing. A password is posed for nobody of an e-mail domain');
 
         // When
         $this->issue->issue($this->alice, Fixtures::context($this->clock->now()));
