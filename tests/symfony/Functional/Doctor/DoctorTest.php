@@ -5,6 +5,11 @@ declare(strict_types=1);
 namespace App\Tests\Symfony\Functional\Doctor;
 
 use App\Command\DoctorCommand;
+use App\Doctrine\TenantProvider;
+use Beffroi\Core\Application\Key\KeyTakeOver;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use DateTimeImmutable;
 use App\Doctor\Finding;
 use App\Doctor\NotificationsLanePatience;
 use PHPUnit\Framework\Attributes\Test;
@@ -12,6 +17,7 @@ use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpKernel\KernelInterface;
 
 final class DoctorTest extends KernelTestCase
@@ -20,12 +26,18 @@ final class DoctorTest extends KernelTestCase
 
     protected function tearDown(): void
     {
+        if (self::$booted) {
+            new Filesystem()->remove(self::string(self::getContainer()->getParameter('kernel.cache_dir')) . '/keys');
+        }
         self::ensureKernelShutdown();
     }
 
     #[Test]
     public function theDoctorPassesOnTheLaneTheProviderWires(): void
     {
+        // Given
+        self::keysForEveryAlgorithm();
+
         // When
         $doctor = self::doctor('test');
 
@@ -108,6 +120,28 @@ final class DoctorTest extends KernelTestCase
         static::assertInstanceOf(NotificationsLanePatience::class, $check);
 
         return $check->finding();
+    }
+
+    /**
+     * The clients the test kernel declares are signed for with each of them.
+     */
+    private static function keysForEveryAlgorithm(): void
+    {
+        self::reboot('test');
+        $tenant = self::getContainer()->get('test.beffroi.tenant_provider');
+        static::assertInstanceOf(TenantProvider::class, $tenant);
+        $takeOver = self::getContainer()->get('test.beffroi.key_take_over');
+        static::assertInstanceOf(KeyTakeOver::class, $takeOver);
+        foreach (Algorithms::all()->all() as $algorithm) {
+            $takeOver->rotate($tenant->provide(), $algorithm, new RequestContext(new DateTimeImmutable(), '203.0.113.7', 'beffroi:doctor'));
+        }
+    }
+
+    private static function string(mixed $value): string
+    {
+        static::assertIsString($value);
+
+        return $value;
     }
 
     private static function reboot(string $environment): KernelInterface
