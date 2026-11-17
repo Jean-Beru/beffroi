@@ -228,8 +228,10 @@
         @apply alert alert-error alert-soft mt-4;
     }
 
+    /* A block and not the grid of an alert, which would set the code and the description that follows it in
+       two columns: the code, its colon and the description are one line of text. */
     main p[data-description] {
-        @apply alert-info font-mono text-sm;
+        @apply alert-info block font-mono text-sm;
     }
 
     main p[data-requirement] {
