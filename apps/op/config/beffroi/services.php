@@ -812,12 +812,12 @@ return static function (ContainerConfigurator $container): void {
     $services->defaults()->autowire()->autoconfigure()->private()->bind(EventDispatcherInterface::class, service(EventBusDispatcher::class));
 
     $services->set(EventBusDispatcher::class)->args([service('event.bus')]);
-    $services->set(PlaneRequestListener::class)->args(['%env(enum:' . Plane::class . ':BEFFROI_PLANE)%']);
+    $services->set(PlaneRequestListener::class)->args(['%' . Plane::PARAMETER . '%']);
     $services->set(TenantFactory::class);
 
     $services->load('App\\Controller\\', '../../src/Controller/');
     $services->load('App\\Administration\\', '../../src/Administration/');
-    $services->set(AdministrationGuard::class)->arg('$plane', '%env(enum:' . Plane::class . ':BEFFROI_PLANE)%');
+    $services->set(AdministrationGuard::class)->arg('$plane', '%' . Plane::PARAMETER . '%');
     $services->get(HealthController::class)->args([
         '$checks' => tagged_iterator('beffroi.doctor_check'),
     ]);

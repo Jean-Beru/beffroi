@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Symfony\Unit;
 
 use DateInterval;
+use App\Administration\AdministrationGuard;
 use App\DependencyInjection\BeffroiExtension;
 use App\Configuration\SamlSection;
 use App\Configuration\SelfClientSection;
@@ -12,6 +13,8 @@ use App\Configuration\WebPushSection;
 use App\Key\DormantKeyAlgorithms;
 use App\Key\FileTenantKeyRepository;
 use App\Key\StagingDelay;
+use App\Plane\Plane;
+use App\Plane\PlaneRequestListener;
 use App\Saml\JoseSamlEncryptionAlgorithms;
 use App\Saml\RouterServiceProviderEndpoints;
 use App\Saml\SamlSigning;
@@ -321,6 +324,50 @@ final class BeffroiExtensionTest extends TestCase
 
         // Then
         static::assertSame('protocol', $container->getParameterBag()->all()['env(BEFFROI_PLANE)']);
+    }
+
+    /**
+     * Architecture §5.2
+     */
+    #[Test]
+    public function anyOtherProcessReadsItsPlaneFromBeffroiPlaneWhenItRuns(): void
+    {
+        // When
+        $container = self::load([]);
+
+        // Then
+        static::assertSame('%env(enum:' . Plane::class . ':BEFFROI_PLANE)%', $container->getParameter(Plane::PARAMETER));
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function theKernelOfTheAdministrationKeepsThePlaneItWasBuiltFor(): void
+    {
+        // Given
+        $container = new ContainerBuilder();
+        $container->setParameter(Plane::PARAMETER, Plane::Administration);
+
+        // When
+        self::load([], $container);
+
+        // Then
+        static::assertSame(Plane::Administration, $container->getParameter(Plane::PARAMETER));
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function theListenerOfThePlanesAndTheGuardOfTheApiReadOnePlane(): void
+    {
+        // When
+        $container = self::load([]);
+
+        // Then
+        static::assertSame('%' . Plane::PARAMETER . '%', $container->getDefinition(PlaneRequestListener::class)->getArgument(0));
+        static::assertSame('%' . Plane::PARAMETER . '%', $container->getDefinition(AdministrationGuard::class)->getArgument('$plane'));
     }
 
     #[Test]

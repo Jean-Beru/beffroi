@@ -25,6 +25,12 @@ enum Plane: string
 
     public const string VARIABLE = 'BEFFROI_PLANE';
 
+    /**
+     * The plane the listener of the planes and the guard of the administration API read: the one the kernel of the
+     * administration was built for, or BEFFROI_PLANE, read when the process runs, for any other kernel.
+     */
+    public const string PARAMETER = 'beffroi.plane';
+
     public static function ofRoute(string $routeName): ?self
     {
         return match (true) {
