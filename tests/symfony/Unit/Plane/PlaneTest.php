@@ -27,9 +27,10 @@ final class PlaneTest extends TestCase
      */
     public static function provideRoutes(): iterable
     {
-        yield 'all serves the login' => [Plane::All, 'beffroi_interaction_login', true];
-        yield 'all serves the token endpoint' => [Plane::All, 'beffroi_protocol_token', true];
-        yield 'all serves the host' => [Plane::All, 'app_home', true];
+        yield 'provider serves the login' => [Plane::Provider, 'beffroi_interaction_login', true];
+        yield 'provider serves the token endpoint' => [Plane::Provider, 'beffroi_protocol_token', true];
+        yield 'provider refuses the administration API' => [Plane::Provider, 'beffroi_administration_tenant', false];
+        yield 'provider serves the host' => [Plane::Provider, 'app_home', true];
         yield 'interaction serves the login' => [Plane::Interaction, 'beffroi_interaction_login', true];
         yield 'interaction refuses the token endpoint' => [Plane::Interaction, 'beffroi_protocol_token', false];
         yield 'interaction serves the host' => [Plane::Interaction, 'app_home', true];

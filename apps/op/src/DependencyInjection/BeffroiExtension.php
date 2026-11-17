@@ -283,7 +283,7 @@ final class BeffroiExtension extends AbstractExtension
         }
 
         if (! $builder->hasParameter('env(BEFFROI_PLANE)')) {
-            $builder->setParameter('env(BEFFROI_PLANE)', Plane::All->value);
+            $builder->setParameter('env(BEFFROI_PLANE)', Plane::Provider->value);
         }
 
         $services = $container->services();

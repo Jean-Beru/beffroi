@@ -12,7 +12,7 @@ use function str_starts_with;
  */
 enum Plane: string
 {
-    case All = 'all';
+    case Provider = 'provider';
     case Interaction = 'interaction';
     case Protocol = 'protocol';
     case Administration = 'administration';
@@ -49,6 +49,6 @@ enum Plane: string
     {
         $plane = self::ofRoute($routeName);
 
-        return $plane === null || $plane === $this || $this === self::All && $plane !== self::Administration;
+        return $plane === null || $plane === $this || $this === self::Provider && $plane !== self::Administration;
     }
 }
