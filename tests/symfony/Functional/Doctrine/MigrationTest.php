@@ -74,6 +74,7 @@ use DoctrineMigrations\Version20261104100000;
 use DoctrineMigrations\Version20261104140000;
 use DoctrineMigrations\Version20261106200000;
 use DoctrineMigrations\Version20261116120000;
+use DoctrineMigrations\Version20261117120000;
 use function implode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -154,6 +155,7 @@ final class MigrationTest extends DatabaseTestCase
         Version20261104140000::class,
         Version20261106200000::class,
         Version20261116120000::class,
+        Version20261117120000::class,
     ];
 
     #[Test]
@@ -207,7 +209,7 @@ final class MigrationTest extends DatabaseTestCase
     }
 
     #[Test]
-    public function theMigrationsCreateTheThirtyFiveTablesOfTheProvider(): void
+    public function theMigrationsCreateTheThirtySixTablesOfTheProvider(): void
     {
         // Given
         $connection = DriverManager::getConnection([
@@ -219,7 +221,7 @@ final class MigrationTest extends DatabaseTestCase
         $statements = self::statements($connection);
 
         // Then
-        static::assertCount(35, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
+        static::assertCount(36, array_filter($statements, static fn (string $statement): bool => str_starts_with($statement, 'CREATE TABLE ')));
     }
 
     /**

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Http\EnrolmentLink;
+use App\Controller\EnrolmentTicketController;
 use App\Http\RequestContextFactory;
 use Beffroi\Core\Application\Enrolment\EnrolmentTicketIssue;
-use Beffroi\Core\Exception\EnrolmentTicketRefusedException;
+use Beffroi\Core\Exception\TicketRefusedException;
 use function sprintf;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -27,7 +27,7 @@ final readonly class UserEnrolmentTicketCommand
         private NamedUser $namedUsers,
         private EnrolmentTicketIssue $tickets,
         private RequestContextFactory $contexts,
-        private EnrolmentLink $links,
+        private IssuedTicketOutput $output,
     ) {
     }
 
@@ -47,25 +47,15 @@ final readonly class UserEnrolmentTicketCommand
 
         try {
             $issued = $this->tickets->issue($user, $this->contexts->fromConsole(self::NAME));
-        } catch (EnrolmentTicketRefusedException $exception) {
+        } catch (TicketRefusedException $exception) {
             $io->error($exception->getMessage());
 
             return Command::INVALID;
         }
 
-        $io->definitionList(
-            [
-                'Person' => $user->username,
-            ],
-            [
-                'Opens until' => $issued->ticket->expiresAt->format('c'),
-            ],
-            [
-                'Link' => $this->links->of($issued),
-            ],
-        );
+        $this->output->print($io, EnrolmentTicketController::ROUTE, $issued);
         $io->success(sprintf(
-            'The link is printed once and opens one enrolment; whoever issued it hands it over. Any link issued for "%s" before this one opens nothing any more.',
+            'The link is printed once and opens one enrolment; whoever issued it hands it over. Any enrolment link issued for "%s" before this one opens nothing any more.',
             $user->username,
         ));
 

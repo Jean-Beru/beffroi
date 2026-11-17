@@ -6,7 +6,8 @@ namespace App\Controller;
 
 use App\Http\InteractionPages;
 use App\Http\PasskeyOptionsStore;
-use App\Http\PresentedEnrolmentTicket;
+use App\Http\PresentedTicket;
+use Beffroi\Core\Application\Enrolment\EnrolmentTicketRedemption;
 use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
 use Beffroi\Core\Bridge\Webauthn\WebauthnCeremonies;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -26,7 +27,8 @@ final readonly class EnrolmentTicketOptionsController
     public const string ROUTE = 'beffroi_interaction_enrolment_ticket_options';
 
     public function __construct(
-        private PresentedEnrolmentTicket $tickets,
+        private PresentedTicket $tickets,
+        private EnrolmentTicketRedemption $redemption,
         private PasskeyEnrolment $enrolment,
         private WebauthnCeremonies $ceremonies,
         private PasskeyOptionsStore $options,
@@ -43,7 +45,7 @@ final readonly class EnrolmentTicketOptionsController
     )]
     public function __invoke(Request $request): Response
     {
-        $ticket = $this->tickets->of($request);
+        $ticket = $this->tickets->of($request, $this->redemption->redeem(...));
         if ($ticket === null) {
             return new JsonResponse(
                 [

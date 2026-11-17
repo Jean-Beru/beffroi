@@ -1181,6 +1181,12 @@ services:
     test.beffroi.enrolment_ticket_store:
         alias: Beffroi\Core\Port\EnrolmentTicketRepositoryInterface
         public: true
+    test.beffroi.password_tickets:
+        alias: Beffroi\Core\Application\Ticket\PasswordTicketIssue
+        public: true
+    test.beffroi.password_ticket_store:
+        alias: Beffroi\Core\Port\PasswordTicketRepositoryInterface
+        public: true
     test.beffroi.linked_identities:
         alias: Beffroi\Core\Port\LinkedIdentityRepositoryInterface
         public: true

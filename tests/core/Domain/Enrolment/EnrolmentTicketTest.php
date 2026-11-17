@@ -44,7 +44,7 @@ final class EnrolmentTicketTest extends TestCase
     public function aFreshTicketOpensItsEnrolment(): void
     {
         // When / Then
-        static::assertTrue($this->ticket()->opensAnEnrolment($this->now));
+        static::assertTrue($this->ticket()->opens($this->now));
     }
 
     #[Test]
@@ -59,7 +59,7 @@ final class EnrolmentTicketTest extends TestCase
         // Then
         static::assertSame($this->now, $ticket->spentAt);
         static::assertTrue($ticket->isSpent());
-        static::assertFalse($ticket->opensAnEnrolment($this->now));
+        static::assertFalse($ticket->opens($this->now));
     }
 
     #[Test]
@@ -71,7 +71,7 @@ final class EnrolmentTicketTest extends TestCase
 
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIs('This enrolment ticket is spent already.');
+        $this->expectExceptionMessageIs('This ticket is spent already.');
 
         // When
         $ticket->spend($this->now->modify('+1 minute'));
@@ -85,8 +85,8 @@ final class EnrolmentTicketTest extends TestCase
 
         // When / Then
         static::assertTrue($ticket->isExpired($this->now->modify('+72 hours')));
-        static::assertFalse($ticket->opensAnEnrolment($this->now->modify('+72 hours')));
-        static::assertTrue($ticket->opensAnEnrolment($this->now->modify('+71 hours 59 minutes')));
+        static::assertFalse($ticket->opens($this->now->modify('+72 hours')));
+        static::assertTrue($ticket->opens($this->now->modify('+71 hours 59 minutes')));
     }
 
     #[Test]
@@ -97,7 +97,7 @@ final class EnrolmentTicketTest extends TestCase
         $this->alice->disable($this->now);
 
         // When / Then
-        static::assertFalse($ticket->opensAnEnrolment($this->now));
+        static::assertFalse($ticket->opens($this->now));
     }
 
     #[Test]
@@ -105,7 +105,7 @@ final class EnrolmentTicketTest extends TestCase
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIs('An enrolment ticket expires after it was issued.');
+        $this->expectExceptionMessageIs('A ticket expires after it was issued.');
 
         // When
         new EnrolmentTicket(Uuid::v7(), $this->alice, new FakePasswordHasher()->hash('value'), $this->now, $this->now);

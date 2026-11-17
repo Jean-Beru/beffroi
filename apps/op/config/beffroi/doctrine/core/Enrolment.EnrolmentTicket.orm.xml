@@ -3,23 +3,12 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
-    <!-- What lets one person reach one enrolment once, without a session (issue #613): the identifier the URL carries, a hash of the value it carries beside it, and the three dates that say whether it still opens anything. The row holds no value anybody could present, as a backup code does not. -->
+    <!-- What lets one person pose one passkey once, without a session (issue #613); its columns are those of every ticket (Ticket.Ticket.orm.xml). -->
     <entity name="Beffroi\Core\Domain\Enrolment\EnrolmentTicket" table="beffroi_enrolment_ticket">
         <indexes>
             <!-- What the sweep of the dead rows reads, oldest first (issue #177), and what the issuing of a new ticket reads of a person. -->
             <index name="beffroi_enrolment_ticket_expiry" columns="tenant_id,expires_at"/>
             <index name="beffroi_enrolment_ticket_user" columns="user_id"/>
         </indexes>
-        <id name="id" type="uuid" column="id"/>
-        <many-to-one field="tenant" target-entity="Beffroi\Core\Domain\Tenant\Tenant">
-            <join-column name="tenant_id" referenced-column-name="id" nullable="false"/>
-        </many-to-one>
-        <many-to-one field="user" target-entity="Beffroi\Core\Domain\Identity\User">
-            <join-column name="user_id" referenced-column-name="id" nullable="false" on-delete="CASCADE"/>
-        </many-to-one>
-        <field name="secret" type="beffroi_password_hash" column="secret"/>
-        <field name="createdAt" type="datetime_immutable" column="created_at"/>
-        <field name="expiresAt" type="datetime_immutable" column="expires_at"/>
-        <field name="spentAt" type="datetime_immutable" column="spent_at" nullable="true"/>
     </entity>
 </doctrine-mapping>

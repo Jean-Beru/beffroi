@@ -1725,6 +1725,34 @@
         <source>act.enrolment_ticket.issued</source>
         <target>A link to set up a way of signing in was issued for this account</target>
       </trans-unit>
+      <trans-unit id="password_ticket.title" resname="password_ticket.title">
+        <source>password_ticket.title</source>
+        <target>Set a new password</target>
+      </trans-unit>
+      <trans-unit id="password_ticket.prompt" resname="password_ticket.prompt">
+        <source>password_ticket.prompt</source>
+        <target>This link sets a new password to sign in as {username}. It works once.</target>
+      </trans-unit>
+      <trans-unit id="password_ticket.what_happens" resname="password_ticket.what_happens">
+        <source>password_ticket.what_happens</source>
+        <target>Once it is set, every session of yours ends, on every device: sign in again with the new password.</target>
+      </trans-unit>
+      <trans-unit id="password_ticket.submit" resname="password_ticket.submit">
+        <source>password_ticket.submit</source>
+        <target>Set my password</target>
+      </trans-unit>
+      <trans-unit id="password.error.not_admitted" resname="password.error.not_admitted">
+        <source>password.error.not_admitted</source>
+        <target>Your organisation signs you in without a password: this link sets none.</target>
+      </trans-unit>
+      <trans-unit id="error.password_ticket_refused" resname="error.password_ticket_refused">
+        <source>error.password_ticket_refused</source>
+        <target>This link opens nothing. It was used already, or it ran out of time; ask for another one.</target>
+      </trans-unit>
+      <trans-unit id="act.password_ticket.issued" resname="act.password_ticket.issued">
+        <source>act.password_ticket.issued</source>
+        <target>A link to set a new password was issued for this account</target>
+      </trans-unit>
       <trans-unit id="post_again.title" resname="post_again.title">
         <source>post_again.title</source>
         <target>Signing you in</target>
