@@ -260,6 +260,7 @@ use Beffroi\Core\Port\AmbientTenantInterface;
 use Beffroi\Core\Port\ChangesOfAPersonInterface;
 use Beffroi\Core\Port\ClaimHistoryInterface;
 use Beffroi\Core\Port\JournalInterface;
+use App\Twig\ClientNameExtension;
 use App\Twig\LocaleExtension;
 use App\Twig\MomentExtension;
 use App\Twig\AuthenticatorModelExtension;
@@ -943,6 +944,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(LanguageRecording::class);
     $services->set(UserTimeZone::class);
     $services->set(MomentExtension::class);
+    $services->set(ClientNameExtension::class);
     $services->set(PlaceExtension::class);
     $services->set(DeviceExtension::class);
     $services->set(AuthenticatorModelExtension::class);

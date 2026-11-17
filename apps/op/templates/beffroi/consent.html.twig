@@ -18,19 +18,19 @@
         <img data-client="logo" src="{{ page.presentation.logoUri }}" alt="{{ 'consent.logo'|trans({client: page.presentation.name}) }}" referrerpolicy="no-referrer">
     {% endif %}
     <p>{{ 'consent.signed_in_as'|trans({username: user.username}) }}</p>
-    <p>{{ 'consent.request'|trans({client: page.presentation.name}) }}</p>
+    <p>{{ 'consent.request'|trans_with_client(page.presentation.name) }}</p>
     {{ include('@Beffroi/scopes.html.twig', {scopes: scopes}) }}
     {% if claims is not empty %}
         {{ include('@Beffroi/claims.html.twig', {claims: claims}) }}
     {% endif %}
     {% if authorization_details is not null %}
-        <p>{{ 'consent.authorization_details'|trans({client: page.presentation.name}) }}</p>
+        <p>{{ 'consent.authorization_details'|trans_with_client(page.presentation.name) }}</p>
         {{ include('@Beffroi/authorization_details.html.twig', {details: authorization_details}) }}
     {% endif %}
     {% if page.links is not empty %}
         <ul>
             {% for member, uri in page.links %}
-                <li><a data-client="{{ member }}" href="{{ uri }}" target="_blank" rel="noreferrer noopener">{{ ('consent.' ~ member)|trans({client: page.presentation.name}) }}</a></li>
+                <li><a data-client="{{ member }}" href="{{ uri }}" target="_blank" rel="noreferrer noopener">{{ ('consent.' ~ member)|trans_with_client(page.presentation.name) }}</a></li>
             {% endfor %}
         </ul>
     {% endif %}

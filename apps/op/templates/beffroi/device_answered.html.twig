@@ -7,5 +7,5 @@
 {% block title %}{{ (approved ? 'device.answered.approved.title' : 'device.answered.denied.title')|trans }}{% endblock %}
 
 {% block content %}
-    <p data-answer="{{ approved ? 'approved' : 'denied' }}">{{ (approved ? 'device.answered.approved' : 'device.answered.denied')|trans({client: client.registration.presentation.name}) }}</p>
+    <p data-answer="{{ approved ? 'approved' : 'denied' }}">{{ (approved ? 'device.answered.approved' : 'device.answered.denied')|trans_with_client(client.registration.presentation.name) }}</p>
 {% endblock %}

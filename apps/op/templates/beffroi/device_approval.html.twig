@@ -15,7 +15,7 @@
 {% block content %}
     <p data-provider="{{ tenant.name }}">{{ 'device.approval.provider'|trans({provider: tenant.name}) }}</p>
     <p>{{ 'device.approval.signed_in_as'|trans({username: user.username}) }}</p>
-    <p>{{ 'device.approval.request'|trans({client: client.registration.presentation.name, code: typed}) }}</p>
+    <p>{{ 'device.approval.request'|trans_with_client(client.registration.presentation.name, {code: typed}) }}</p>
     <p data-origin="{{ requested_from.ipAddress ?? '' }}">{{ 'device.approval.origin'|trans({
         address: requested_from.ipAddress ?? ('device.approval.unknown_address'|trans),
         agent: requested_from|beffroi_device|default('device.approval.unknown_agent'|trans),
