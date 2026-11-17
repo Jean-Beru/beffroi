@@ -854,6 +854,103 @@ final class UsersSectionTest extends TestCase
         static::assertSame([true, false], [str_contains($screen, 'Account of alice'), str_contains($screen, 'to save')]);
     }
 
+    #[Test]
+    public function theKeyThatDisablesThePersonIsSaid(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(['/users?username=alice' => self::alice()]);
+
+        // When
+        self::lookUpAlice($this->screen);
+
+        // Then
+        $lines = explode("\n", $this->screen->screen());
+        static::assertMatchesRegularExpression('/ d +disable /', $lines[count($lines) - 1]);
+    }
+
+    /**
+     * Decision 0038: disabling a person ends every session of theirs, so it is asked first.
+     */
+    #[Test]
+    public function aDisablingIsAskedToBeConfirmedBeforeItIsMade(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(['/users?username=alice' => self::alice()]);
+        self::lookUpAlice($this->screen);
+
+        // When
+        $this->screen->press('d');
+
+        // Then
+        static::assertSame([0, true], [
+            $this->screen->requestsTo('/users/0193-alice/disabled', 'PUT'),
+            str_contains($this->screen->screen(), 'Disable alice?'),
+        ]);
+    }
+
+    #[Test]
+    public function thePersonIsDisabledOnceTheAdministratorConfirmsIt(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            'PUT /users/0193-alice/disabled' => [...self::account(['name' => 'Alice Liddell']), 'enabled' => false],
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press('d');
+
+        // When
+        $this->screen->press('y');
+
+        // Then
+        $screen = $this->screen->screen();
+        $lines = explode("\n", $screen);
+        static::assertSame([1, true, 1], [
+            $this->screen->requestsTo('/users/0193-alice/disabled', 'PUT'),
+            str_contains($screen, 'The account of alice is disabled'),
+            preg_match('/ d +enable /', $lines[count($lines) - 1]),
+        ]);
+    }
+
+    #[Test]
+    public function aDisabledPersonIsAskedToBeEnabledAgain(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(['/users?username=alice' => [...self::alice(), 'enabled' => false]]);
+        self::lookUpAlice($this->screen);
+
+        // When
+        $this->screen->press('d');
+
+        // Then
+        static::assertSame([0, true], [
+            $this->screen->requestsTo('/users/0193-alice/disabled', 'DELETE'),
+            str_contains($this->screen->screen(), 'Enable alice again?'),
+        ]);
+    }
+
+    #[Test]
+    public function aDisabledPersonIsEnabledOnceTheAdministratorConfirmsIt(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => [...self::alice(), 'enabled' => false],
+            'DELETE /users/0193-alice/disabled' => self::account(['name' => 'Alice Liddell']),
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press('d');
+
+        // When
+        $this->screen->press('y');
+
+        // Then
+        static::assertSame([1, 0, true], [
+            $this->screen->requestsTo('/users/0193-alice/disabled', 'DELETE'),
+            $this->screen->requestsTo('/users/0193-alice/disabled', 'PUT'),
+            str_contains($this->screen->screen(), 'The account of alice is enabled again.'),
+        ]);
+    }
+
     private static function lookUpAlice(SignedInScreen $screen): void
     {
         $screen->open('section.users');

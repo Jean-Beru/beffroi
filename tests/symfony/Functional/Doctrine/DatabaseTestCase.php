@@ -206,6 +206,28 @@ abstract class DatabaseTestCase extends WebTestCase
     }
 
     /**
+     * The person as the store holds them now, read past what the test's own manager remembers.
+     */
+    protected static function personAgain(User $person): User
+    {
+        self::reload();
+
+        return self::service('test.beffroi.users', UserRepositoryInterface::class)->find($person->id) ?? static::fail('The person is gone.');
+    }
+
+    /**
+     * The session as the store holds it now, read past what the test's own manager remembers.
+     */
+    protected static function sessionAgain(AuthenticationSession $session): AuthenticationSession
+    {
+        self::reload();
+
+        return (
+            self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)->find($session->id) ?? static::fail('The session is gone.')
+        );
+    }
+
+    /**
      * @template T of object
      *
      * @param class-string<T> $class

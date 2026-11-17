@@ -14,7 +14,6 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Journal\JournalEntry;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\SessionEnd;
-use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
 use Beffroi\Oidc\Domain\Event\LogoutTokenIssued;
 use PHPUnit\Framework\Attributes\Test;
@@ -211,14 +210,5 @@ final class AdministrationApiWriteTest extends AdministrationTestCase
     private static function credentialPath(User $person, Uuid $credential): string
     {
         return sprintf('/users/%s/credentials/%s', $person->id->toRfc4122(), $credential->toRfc4122());
-    }
-
-    private static function sessionAgain(AuthenticationSession $session): AuthenticationSession
-    {
-        self::reload();
-
-        return (
-            self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)->find($session->id) ?? static::fail('The session is gone.')
-        );
     }
 }

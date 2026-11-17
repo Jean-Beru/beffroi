@@ -833,6 +833,41 @@ final class RefreshTokenGrantTest extends TestCase
         );
     }
 
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function itRefusesATokenOfAPersonDisabledSince(): void
+    {
+        // Given
+        $this->token('the-token');
+        $this->alice->disable($this->clock->now());
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
+
+        // When
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request('the-token'), $this->context);
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function aTokenOfADisabledPersonRotatesNothing(): void
+    {
+        // Given
+        $token = $this->token('the-token');
+        $this->alice->disable($this->clock->now());
+
+        // When
+        $this->failToGrant($this->request('the-token'));
+
+        // Then
+        static::assertSame([false, []], [$token->isRotated(), $this->events->events]);
+    }
+
     #[Test]
     public function itHonoursATokenWhoseSessionExpired(): void
     {

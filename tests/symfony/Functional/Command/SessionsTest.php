@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Symfony\Functional\Command;
 
-use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\SessionEnd;
-use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -55,8 +53,8 @@ final class SessionsTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        static::assertTrue(self::reread($session)->hasEnded());
-        static::assertSame(SessionEnd::User, self::reread($session)->endedBy);
+        static::assertTrue(self::sessionAgain($session)->hasEnded());
+        static::assertSame(SessionEnd::User, self::sessionAgain($session)->endedBy);
     }
 
     #[Test]
@@ -86,7 +84,7 @@ final class SessionsTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::FAILURE, $tester->getStatusCode(), $tester->getDisplay());
-        static::assertFalse(self::reread($theirs)->hasEnded());
+        static::assertFalse(self::sessionAgain($theirs)->hasEnded());
     }
 
     #[Test]
@@ -113,13 +111,5 @@ final class SessionsTest extends ConsoleTestCase
             'username' => $username,
             'id' => $id,
         ]);
-    }
-
-    private static function reread(AuthenticationSession $session): AuthenticationSession
-    {
-        $reread = self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)->find($session->id);
-        static::assertInstanceOf(AuthenticationSession::class, $reread);
-
-        return $reread;
     }
 }

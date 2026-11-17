@@ -125,6 +125,30 @@ final class AdministrationApiTest extends TestCase
     }
 
     /**
+     * RFC 9110 §9.3.4, RFC 9449 §4.2: a resource the path names is set without a body, under a proof made for its method.
+     */
+    #[Test]
+    public function aStateIsSetWithoutABodyUnderAProofMadeForItsMethod(): void
+    {
+        // Given
+        $http = RecordedRequests::answering([new MockResponse('{"id":"0193-alice","enabled":false}')]);
+
+        // When
+        $answer = Sessions::of($http->client)->api()->put('/users/0193-alice/disabled');
+
+        // Then
+        static::assertSame(
+            ['PUT', 'PUT', '', false],
+            [
+                $http->last()['method'],
+                Jwt::claims($http->last()['headers']['dpop'] ?? '')->nullableString('htm'),
+                $http->last()['body'],
+                $answer->nullableBool('enabled'),
+            ],
+        );
+    }
+
+    /**
      * RFC 7396 §2, RFC 9449 §4.2: a change is a merge patch of the resource, under a proof made for its method.
      */
     #[Test]
