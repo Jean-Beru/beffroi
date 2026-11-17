@@ -100,6 +100,61 @@ final class AdministrationApiTest extends TestCase
     }
 
     /**
+     * RFC 9449 §4.2: the proof of a request that creates a resource names its method, and what it asks for is a JSON
+     * object.
+     */
+    #[Test]
+    public function aCreationCarriesWhatItAsksForAsJsonUnderAProofMadeForItsMethod(): void
+    {
+        // Given
+        $http = RecordedRequests::answering([new MockResponse('{"id":"0193-dave"}', ['http_code' => 201])]);
+
+        // When
+        Sessions::of($http->client)->api()->post('/users', ['username' => 'dave']);
+
+        // Then
+        static::assertSame(
+            ['POST', 'POST', 'application/json', '{"username":"dave"}'],
+            [
+                $http->last()['method'],
+                Jwt::claims($http->last()['headers']['dpop'] ?? '')->nullableString('htm'),
+                $http->last()['headers']['content-type'] ?? null,
+                $http->last()['body'],
+            ],
+        );
+    }
+
+    #[Test]
+    public function aCreationThatAsksForNothingCarriesNoBody(): void
+    {
+        // Given
+        $http = RecordedRequests::answering([new MockResponse('{"link":"https://op.example/enrol/t-1/v-1"}', ['http_code' => 201])]);
+
+        // When
+        Sessions::of($http->client)->api()->post('/users/0193-alice/enrolment-ticket');
+
+        // Then
+        static::assertSame(['', null], [$http->last()['body'], $http->last()['headers']['content-type'] ?? null]);
+    }
+
+    /**
+     * RFC 9110 §15.3.2: what the API created it answers with 201; any other answer is no creation.
+     */
+    #[Test]
+    public function aCreationAnsweredWithAnotherStatusIsARefusal(): void
+    {
+        // Given
+        $http = RecordedRequests::answering([new MockResponse('{"id":"0193-dave"}')]);
+
+        // Then
+        $this->expectException(ProviderRefusalException::class);
+        $this->expectExceptionMessageIs('The administration API refused the request (HTTP 200).');
+
+        // When
+        Sessions::of($http->client)->api()->post('/users', ['username' => 'dave']);
+    }
+
+    /**
      * RFC 6750 §3.1: a deletion the API refused for its token changed nothing, so it is sent again with the token refreshed.
      */
     #[Test]
