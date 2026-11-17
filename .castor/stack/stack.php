@@ -115,8 +115,8 @@ function start(
         // Caddy reads the certificate when it starts: a new fingerprint makes compose recreate the op container.
         $environment['BEFFROI_STACK_CERTIFICATE_FINGERPRINT'] = stack_certificate_fingerprint($certificate);
     }
-    // Created here, or Docker creates these mounted directories as root and the SAML tasks cannot write into them.
-    foreach (['var/saml-sp/metadata', 'var/saml-idp/metadata'] as $directory) {
+    // Created here, or Docker creates these mounted directories as root and the tasks cannot write into them.
+    foreach (['var/saml-sp/metadata', 'var/saml-idp/metadata', CONFORMANCE_CAPTURES] as $directory) {
         if (! is_dir($directory) && ! mkdir($directory, 0o777, true) && ! is_dir($directory)) {
             io()->error(sprintf('Cannot create %s.', $directory));
             exit(1);
