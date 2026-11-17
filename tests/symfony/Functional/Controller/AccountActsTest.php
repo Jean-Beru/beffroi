@@ -20,6 +20,8 @@ use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Journal\JournalEntry;
 use Beffroi\Core\Port\JournalInterface;
+use Beffroi\Oidc\Domain\Event\ConsentRevoked;
+use Beffroi\Oidc\Domain\Event\ConsentsReadByAnAdministrator;
 use Beffroi\Oidc\Domain\Event\JournalReadByAnAdministrator;
 use Beffroi\Oidc\Domain\Event\PersonReadByAnAdministrator;
 use Beffroi\Oidc\Domain\Event\SessionsReadByAnAdministrator;
@@ -108,6 +110,8 @@ final class AccountActsTest extends BrowserTestCase
         yield 'their journal read' => [JournalReadByAnAdministrator::NAME];
         yield 'a session of theirs ended' => [AuthenticationSessionEnded::NAME];
         yield 'a credential of theirs revoked' => [CredentialRevoked::NAME];
+        yield 'their consents read' => [ConsentsReadByAnAdministrator::NAME];
+        yield 'a consent of theirs taken back' => [ConsentRevoked::NAME];
     }
 
     #[Test]

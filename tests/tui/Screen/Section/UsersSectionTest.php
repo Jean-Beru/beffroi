@@ -951,12 +951,159 @@ final class UsersSectionTest extends TestCase
         ]);
     }
 
+    /**
+     * Decision 0022: the applications a person agreed to are read only when the administrator asks for them.
+     */
+    #[Test]
+    public function theApplicationsAreNotReadBeforeTheAdministratorAsksForThem(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            '/users/0193-alice/consents' => self::consentsOfAlice(),
+        ]);
+
+        // When
+        self::lookUpAlice($this->screen);
+
+        // Then
+        static::assertSame(0, $this->screen->requestsTo('/users/0193-alice/consents'));
+    }
+
+    #[Test]
+    public function theApplicationsAreReadWhenTheAdministratorAsksForThem(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            '/users/0193-alice/consents' => self::consentsOfAlice(),
+        ]);
+        self::lookUpAlice($this->screen);
+
+        // When
+        $this->screen->press('a');
+
+        // Then
+        static::assertSame([1, 0, 1], [
+            $this->screen->requestsTo('/users/0193-alice/consents'),
+            $this->screen->requestsTo('/users/0193-alice/sessions'),
+            preg_match('/Invoices +oidc-demo +openid profile/', $this->screen->screen()),
+        ]);
+    }
+
+    #[Test]
+    public function theKeyThatTakesAConsentBackIsSaid(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            '/users/0193-alice/consents' => self::consentsOfAlice(),
+        ]);
+        self::lookUpAlice($this->screen);
+
+        // When
+        $this->screen->press('a');
+
+        // Then
+        $lines = explode("\n", $this->screen->screen());
+        static::assertMatchesRegularExpression('/ x +take back /', $lines[count($lines) - 1]);
+    }
+
+    /**
+     * A consent taken back revokes what the application holds under it, so it is asked first.
+     */
+    #[Test]
+    public function takingAConsentBackIsAskedToBeConfirmedFirst(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            '/users/0193-alice/consents' => self::consentsOfAlice(),
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press('a');
+
+        // When
+        $this->screen->press('x');
+
+        // Then
+        static::assertSame([0, true], [
+            $this->screen->requestsTo('/users/0193-alice/consents/consent-1', 'DELETE'),
+            str_contains($this->screen->screen(), 'Take back what alice granted Invoices?'),
+        ]);
+    }
+
+    #[Test]
+    public function aConsentIsTakenBackOnceTheAdministratorConfirmsIt(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            '/users/0193-alice/consents' => self::consentsOfAlice(),
+            'DELETE /users/0193-alice/consents/consent-1' => ['id' => 'consent-1', 'client_id' => 'oidc-demo', 'revoked_at' => '2026-11-04T10:00:00Z'],
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press(['a', 'x']);
+
+        // When
+        $this->screen->press('y');
+
+        // Then
+        $screen = $this->screen->screen();
+        static::assertSame([1, 0, true], [
+            $this->screen->requestsTo('/users/0193-alice/consents/consent-1', 'DELETE'),
+            preg_match('/Invoices +oidc-demo/', $screen),
+            str_contains($screen, 'What alice granted Invoices is taken back'),
+        ]);
+    }
+
+    #[Test]
+    public function anyOtherKeyThanYTakesNoConsentBack(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            '/users/0193-alice/consents' => self::consentsOfAlice(),
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press(['a', 'x']);
+
+        // When
+        $this->screen->press(['n', 'y']);
+
+        // Then
+        static::assertSame([0, false], [
+            $this->screen->requestsTo('/users/0193-alice/consents/consent-1', 'DELETE'),
+            str_contains($this->screen->screen(), 'Take back what alice granted'),
+        ]);
+    }
+
     private static function lookUpAlice(SignedInScreen $screen): void
     {
         $screen->open('section.users');
         $screen->press("\t");
         $screen->type('alice');
         $screen->press("\r");
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function consentsOfAlice(): array
+    {
+        return [
+            'consents' => [[
+                'id' => 'consent-1',
+                'client_id' => 'oidc-demo',
+                'client_name' => 'Invoices',
+                'scope' => 'openid profile',
+                'claims' => [],
+                'granted_at' => '2026-11-01T08:00:00Z',
+                'renewable' => 1,
+                'last_renewed_at' => '2026-11-04T09:00:00Z',
+                'awaiting' => 0,
+            ]],
+        ];
     }
 
     /**

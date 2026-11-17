@@ -106,6 +106,54 @@ final class ScreenFitsTheTerminalTest extends TestCase
     }
 
     /**
+     * The applications a person agreed to, more than a small terminal has rows, in the height the person leaves.
+     */
+    #[Test]
+    #[DataProvider('provideTerminals')]
+    public function theApplicationsOfAPersonKeepTheHeaderOnTheFirstRowAndTheKeysOnTheLast(int $columns, int $rows): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(
+            [
+                '/users?username=alice' => [
+                    'id' => '0193-alice',
+                    'username' => 'alice',
+                    'claims' => ['name' => 'Alice Pleasance Liddell'],
+                    'groups' => [],
+                    'credentials' => [],
+                ],
+                '/users/0193-alice/consents' => ['consents' => array_map(
+                    static fn (int $number): array => [
+                        'id' => sprintf('consent-%d', $number),
+                        'client_id' => sprintf('a-client-with-a-long-identifier-%d', $number),
+                        'client_name' => sprintf('The application number %d of the tenant', $number),
+                        'scope' => 'openid profile email offline_access',
+                        'claims' => [],
+                        'granted_at' => '2026-10-21T10:00:00Z',
+                        'renewable' => 2,
+                        'last_renewed_at' => null,
+                        'awaiting' => 0,
+                    ],
+                    range(1, 40),
+                )],
+            ],
+            columns: $columns,
+            rows: $rows,
+        );
+        $this->screen->open('section.users');
+        $this->screen->press("\t");
+        $this->screen->type('alice');
+        $this->screen->press("\r");
+
+        // When
+        $this->screen->press('a');
+
+        // Then
+        $lines = explode("\n", $this->screen->screen());
+        static::assertSame([true, true], [str_contains($lines[0], 'Administration'), str_contains($lines[$rows - 1], 'take back')]);
+    }
+
+    /**
      * The members of a group beside the groups, and the field that asks for one more, in the height the screen leaves.
      */
     #[Test]

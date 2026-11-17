@@ -32,6 +32,7 @@ final class AdministrationApiGuardTest extends AdministrationTestCase
         '{session}' => '0193b8d0-0000-7000-8000-000000000001',
         '{credential}' => '0193b8d0-0000-7000-8000-000000000002',
         '{person}' => '0193b8d0-0000-7000-8000-000000000003',
+        '{consent}' => '0193b8d0-0000-7000-8000-000000000004',
         '{path}' => 'nothing/here',
     ];
 
