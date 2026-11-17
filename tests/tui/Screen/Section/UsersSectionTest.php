@@ -366,7 +366,7 @@ final class UsersSectionTest extends TestCase
 
         // Then
         static::assertSame([['{"username":"dave"}'], true], [
-            self::bodiesOf($this->screen, 'POST', '/users'),
+            $this->screen->bodiesTo('/users', 'POST'),
             str_contains($this->screen->screen(), 'dave is created, with no credential'),
         ]);
     }
@@ -691,7 +691,7 @@ final class UsersSectionTest extends TestCase
         $this->screen->press('s');
 
         // Then
-        static::assertSame(['{"claims":{"nickname":"Ali"}}'], self::bodiesOf($this->screen, 'PATCH', '/users/0193-alice'));
+        static::assertSame(['{"claims":{"nickname":"Ali"}}'], $this->screen->bodiesTo('/users/0193-alice', 'PATCH'));
     }
 
     #[Test]
@@ -729,7 +729,7 @@ final class UsersSectionTest extends TestCase
         $this->screen->press('s');
 
         // Then
-        static::assertSame(['{"claims":{"address":{"locality":"Lyon"}}}'], self::bodiesOf($this->screen, 'PATCH', '/users/0193-alice'));
+        static::assertSame(['{"claims":{"address":{"locality":"Lyon"}}}'], $this->screen->bodiesTo('/users/0193-alice', 'PATCH'));
     }
 
     #[Test]
@@ -1001,23 +1001,6 @@ final class UsersSectionTest extends TestCase
                 'revocable' => true,
             ]],
         ];
-    }
-
-    /**
-     * The bodies of the requests of that method to that path of the API, in the order they were sent.
-     *
-     * @return list<string>
-     */
-    private static function bodiesOf(SignedInScreen $screen, string $method, string $path): array
-    {
-        $bodies = [];
-        foreach ($screen->http->requests as $request) {
-            if ($request['method'] === $method && $request['url'] === FakeProvider::ADMINISTRATION . $path) {
-                $bodies[] = $request['body'];
-            }
-        }
-
-        return $bodies;
     }
 
     /**

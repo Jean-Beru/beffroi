@@ -62,6 +62,7 @@ final class ScreenFitsTheTerminalTest extends TestCase
             'section.clients',
             'section.keys',
             'section.users',
+            'section.groups',
             'section.monitoring',
         ] as $section) {
             foreach (self::TERMINALS as [$columns, $rows]) {
@@ -105,6 +106,26 @@ final class ScreenFitsTheTerminalTest extends TestCase
     }
 
     /**
+     * The members of a group beside the groups, and the field that asks for one more, in the height the screen leaves.
+     */
+    #[Test]
+    #[DataProvider('provideTerminals')]
+    public function theMembersOfAGroupAndItsFieldKeepTheHeaderOnTheFirstRowAndTheKeysOnTheLast(int $columns, int $rows): void
+    {
+        // Given
+        $this->screen = new SignedInScreen(self::answers(), columns: $columns, rows: $rows);
+        $this->screen->open('section.groups');
+        $this->screen->press(["\r", "\r"]);
+
+        // When
+        $this->screen->press('a');
+
+        // Then
+        $lines = explode("\n", $this->screen->screen());
+        static::assertSame([true, true], [str_contains($lines[0], 'Administration'), str_contains($lines[$rows - 1], 'add')]);
+    }
+
+    /**
      * @return iterable<string, array{int, int}>
      */
     public static function provideTerminals(): iterable
@@ -115,7 +136,7 @@ final class ScreenFitsTheTerminalTest extends TestCase
     }
 
     /**
-     * What an instance with some history answers: more clients than a screen holds, keys in every state, a point of
+     * What an instance with some history answers: more clients and groups than a screen holds, keys in every state, a point of
      * its health that does not hold, and acts of many names.
      *
      * @return array<string, array<string, mixed>>
@@ -157,6 +178,25 @@ final class ScreenFitsTheTerminalTest extends TestCase
                 'retired_at' => null,
                 'past_its_age' => false,
             ], ['active', 'staged', 'retiring', 'retired'])],
+            '/groups' => ['groups' => array_map(
+                static fn (int $number): array => [
+                    'id' => sprintf('group-%d', $number),
+                    'name' => sprintf('Group number %d, whose name a directory wrote at length', $number),
+                    'source' => 'scim',
+                    'members' => $number * 3,
+                    'administers' => $number === 1,
+                    'created_at' => '2026-10-21T10:00:00Z',
+                ],
+                range(1, 30),
+            )],
+            '/groups/group-1/members' => ['members' => array_map(
+                static fn (int $number): array => [
+                    'person' => ['id' => sprintf('person-%d', $number), 'username' => sprintf('member.number.%d@a-long-domain.example', $number)],
+                    'source' => 'local',
+                    'added_at' => '2026-10-21T10:00:00Z',
+                ],
+                range(1, 40),
+            )],
             '/health' => [
                 'checks' => [
                     [
