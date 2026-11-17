@@ -7,7 +7,7 @@ framework:
         resource: '%kernel.project_dir%/config/routing_administration.yml'
 
 parameters:
-    env(BEFFROI_PLANE): administration
+    beffroi.plane: !php/enum App\Plane\Plane::Administration
     beffroi_test.database: '%kernel.cache_dir%/../test/beffroi.sqlite'
     # The routes of the provider, which this process reads to write the URLs of the provider and never to serve them
     # (App\Routing\ProviderRoutes), as the kernel of the application says where they are in that plane.

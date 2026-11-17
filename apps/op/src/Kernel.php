@@ -22,6 +22,9 @@ use Symfony\Component\Routing\RouteCollection;
  * that API and no other, and a process of any other plane never loads them: which one a kernel is, it reads from its
  * environment when it is built (Plane::VARIABLE), and the two keep their compiled routes, and with them their
  * container, in cache directories of their own.
+ *
+ * When it is built, and never after: a FrankenPHP worker builds it under the environment its site gives it, and puts
+ * the environment of the container back in every request it serves, where a deployment may name another plane.
  */
 class Kernel extends BaseKernel
 {
@@ -32,11 +35,19 @@ class Kernel extends BaseKernel
     }
     use BeffroiKernelTrait;
 
+    private readonly bool $administration;
+
+    public function __construct(string $environment, bool $debug)
+    {
+        parent::__construct($environment, $debug);
+        $this->administration = Plane::isTheAdministrationIn($_SERVER);
+    }
+
     public function getCacheDir(): string
     {
         $directory = $this->cacheDirectoryOfTheProvider();
 
-        return $this->servesTheAdministration() ? $directory . '-' . Plane::Administration->value : $directory;
+        return $this->administration ? $directory . '-' . Plane::Administration->value : $directory;
     }
 
     /**
@@ -58,16 +69,18 @@ class Kernel extends BaseKernel
     }
 
     /**
-     * Where the process of the administration API reads the routes of the provider from (ProviderRoutes).
+     * Where the process of the administration API reads the routes of the provider from (ProviderRoutes), and its
+     * plane.
      *
      * @return array<string, mixed>
      */
     protected function getKernelParameters(): array
     {
         $parameters = $this->kernelParametersOfTheProvider();
-        if ($this->servesTheAdministration()) {
+        if ($this->administration) {
             $parameters[ProviderRoutes::RESOURCE] = 'kernel::loadTheRoutesOfTheProvider';
             $parameters[ProviderRoutes::TYPE] = 'service';
+            $parameters[Plane::PARAMETER] = Plane::Administration;
         }
 
         return $parameters;
@@ -83,16 +96,11 @@ class Kernel extends BaseKernel
 
     private function configureRoutes(RoutingConfigurator $routes): void
     {
-        if ($this->servesTheAdministration()) {
+        if ($this->administration) {
             $routes->import($this->getConfigDir() . '/administration/routes.php');
 
             return;
         }
         $this->configureTheRoutesOfTheProvider($routes);
-    }
-
-    private function servesTheAdministration(): bool
-    {
-        return Plane::isTheAdministrationIn($_SERVER);
     }
 }

@@ -285,6 +285,9 @@ final class BeffroiExtension extends AbstractExtension
         if (! $builder->hasParameter('env(BEFFROI_PLANE)')) {
             $builder->setParameter('env(BEFFROI_PLANE)', Plane::Provider->value);
         }
+        if (! $builder->hasParameter(Plane::PARAMETER)) {
+            $builder->setParameter(Plane::PARAMETER, '%env(enum:' . Plane::class . ':' . Plane::VARIABLE . ')%');
+        }
 
         $services = $container->services();
         ProviderRoutes::register($services, $builder);
