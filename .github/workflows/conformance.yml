@@ -118,6 +118,15 @@ jobs:
           if [ "${STRICT:-true}" != "false" ]; then options+=("--strict"); fi
           echo "castor conformance ${options[*]}"
           castor conformance "${options[@]}"
+      # The page of the OP each REVIEW module of the OpenID Connect plans asked for, with what the module asked
+      # and what the browser did (tests/conformance/README.md): what a submission is checked against.
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: conformance-captures
+          path: var/conformance/captures
+          retention-days: 30
+          if-no-files-found: ignore
       - name: "Logs of the stack"
         if: failure()
         run: docker compose --profile conformance logs --no-color --tail 400

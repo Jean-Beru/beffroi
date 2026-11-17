@@ -346,6 +346,18 @@ const CONFORMANCE_UNCONDITIONALLY_ACCEPTED = ['PASSED', 'REVIEW', 'SKIPPED'];
 
 const CONFORMANCE_CONFIGURATION = 'tests/conformance/configuration.json';
 
+/**
+ * The page of the OP each module that asks for a capture wants; the browser of compose.yaml reads it too.
+ */
+const CONFORMANCE_CAPTURE_PAGES = 'tests/conformance/browser/captures.json';
+
+/**
+ * Relative to the root of the repository; compose.yaml mounts it in the browser at /captures.
+ */
+const CONFORMANCE_CAPTURES = 'var/conformance/captures';
+
+const CONFORMANCE_BROWSER = 'conformance-browser';
+
 const CONFORMANCE_REQUIRED_VALUES = [
     'BEFFROI_ISSUER',
     'BEFFROI_MTLS_ORIGIN',
@@ -374,7 +386,7 @@ const CONFORMANCE_OP_TIMEOUT = 180;
  * @param array<string> $module
  */
 #[AsTask(
-    description: 'Run the certification plans the OP answers (Basic OP, Config OP, Form Post OP, the three logout profiles, the four runs of FAPI 2, the two runs of FAPI-CIBA, the Dynamic OP and 3rd Party-Init OP plans whose clients register themselves, and the key rotation module run on its own) against it through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user and the task rotating the signing key when the suite asks for it, and print the result of every module',
+    description: 'Run the certification plans the OP answers (Basic OP, Config OP, Form Post OP, the three logout profiles, the four runs of FAPI 2, the two runs of FAPI-CIBA, the Dynamic OP and 3rd Party-Init OP plans whose clients register themselves, and the key rotation module run on its own) against it through the API of the suite started by "castor start --conformance", the scripted browser of the suite signing in as the development user, the browser of compose.yaml capturing the page of the OP a module asks a screenshot of into var/conformance/captures/, and the task rotating the signing key when the suite asks for it, and print the result of every module',
 )]
 function conformance(
     #[AsOption(
@@ -414,6 +426,8 @@ function conformance(
         conformance_open_registration($env['BEFFROI_ISSUER']);
     }
 
+    $captured = conformance_captured_modules();
+
     $server = conformance_server($suite);
     io()->text(sprintf('Suite %s (%s) on %s, OP %s', $server['version'] ?? '?', $server['tag'] ?? '?', $suite, $env['BEFFROI_ISSUER']));
     $rows = [];
@@ -436,7 +450,7 @@ function conformance(
                 ],
             ];
         } else {
-            $configuration = conformance_configuration($env, $definition);
+            $configuration = conformance_configuration($env, $definition, $captured);
             $created = conformance_request(
                 $suite,
                 'POST',
@@ -483,7 +497,14 @@ function conformance(
             io()->text(sprintf('[%d/%d] %s', $index + 1, count($modules), $name));
             conformance_forget_consents($name, conformance_clients_of($definition));
             $started = microtime(true);
-            $run = conformance_run_module($suite, $planId, $moduleDefinition, $configuration, ($definition['before_start'] ?? [])[$name] ?? null);
+            $run = conformance_run_module(
+                $suite,
+                $planId,
+                $moduleDefinition,
+                $configuration,
+                ($definition['before_start'] ?? [])[$name] ?? null,
+                in_array($name, $captured, true) ? static fn (string $id): array => conformance_capture($suite, $short, $name, $id, $env) : null,
+            );
             if ($planUrl === null) {
                 $planUrls[] = sprintf('%s: %s', $name, $run['url']);
             }
@@ -708,33 +729,37 @@ function conformance_wait_for_op(string $issuer): void
 /**
  * @param array<string, string> $env
  * @param array<string, mixed> $definition an entry of CONFORMANCE_PLANS
+ * @param list<string> $captured the modules the browser of compose.yaml captures a page for
  */
-function conformance_configuration(array $env, array $definition): string
+function conformance_configuration(array $env, array $definition, array $captured): string
 {
     $template = file_get_contents(getcwd() . '/' . CONFORMANCE_CONFIGURATION);
     if ($template === false) {
         throw new RuntimeException(sprintf('Cannot read %s.', CONFORMANCE_CONFIGURATION));
     }
+    $decoded = json_decode($template, true, 32, \JSON_THROW_ON_ERROR);
     $client = $definition['client'] ?? [];
     $fapi = $definition['fapi'] ?? [];
     $ciba = $definition['ciba'] ?? [];
-    $dynamic = $definition['registers_its_own_clients'] ?? false;
-    if ($client !== [] || $fapi !== [] || $ciba !== [] || $dynamic) {
-        $decoded = json_decode($template, true, 32, \JSON_THROW_ON_ERROR);
-        if ($client !== []) {
-            $decoded['client'] = $client;
-        }
-        if ($fapi !== []) {
-            $decoded = conformance_fapi_sections($decoded, $fapi['clients'], (string) $definition['variant']['sender_constrain']);
-        }
-        if ($ciba !== []) {
-            $decoded = conformance_ciba_sections($decoded, $ciba['clients'], $env);
-        }
-        if ($dynamic) {
-            $decoded = conformance_dynamic_sections($decoded);
-        }
-        $template = json_encode($decoded, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_PRETTY_PRINT);
+    if ($client !== []) {
+        $decoded['client'] = $client;
     }
+    if ($fapi !== []) {
+        $decoded = conformance_fapi_sections($decoded, $fapi['clients'], (string) $definition['variant']['sender_constrain']);
+    }
+    if ($ciba !== []) {
+        $decoded = conformance_ciba_sections($decoded, $ciba['clients'], $env);
+    }
+    if ($definition['registers_its_own_clients'] ?? false) {
+        $decoded = conformance_dynamic_sections($decoded);
+    }
+    // No step of the scripted browser of the suite: it publishes the URLs of the module, which conformance_capture() visits.
+    foreach ($captured as $module) {
+        $decoded['override'][$module] = [
+            'browser' => [],
+        ];
+    }
+    $template = json_encode($decoded, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_PRETTY_PRINT);
     $values = [
         '{BEFFROI_DEV_USERNAME}' => DEV_USERNAME,
     ];
@@ -903,10 +928,17 @@ function conformance_forget_consents(string $module, array $clients): void
 
 /**
  * @param array{testModule: string, variant?: array<string, string>} $definition
+ * @param null|Closure(string): list<string> $browser drives the module once it waits for a browser, and says why it failed
  * @return array{result: string, url: string, findings: array<string>}
  */
-function conformance_run_module(string $suite, ?string $planId, array $definition, string $configuration = '', ?string $beforeStart = null): array
-{
+function conformance_run_module(
+    string $suite,
+    ?string $planId,
+    array $definition,
+    string $configuration = '',
+    ?string $beforeStart = null,
+    ?Closure $browser = null,
+): array {
     $query = [
         'test' => $definition['testModule'],
     ];
@@ -946,6 +978,15 @@ function conformance_run_module(string $suite, ?string $planId, array $definitio
         }
         $state = conformance_start_module($suite, $id, $deadline);
     }
+    $failure = [];
+    if ($browser !== null && $state === 'WAITING') {
+        $failure = $browser($id);
+        if ($failure !== []) {
+            // At once, rather than the five minutes the module would wait for the page it asked for.
+            conformance_request($suite, 'DELETE', sprintf('/api/runner/%s', $id), [], null);
+        }
+        $state = conformance_wait_state($suite, $id, ['FINISHED'], $deadline);
+    }
     $announced = [];
     while ($state === 'WAITING') {
         $runner = conformance_request($suite, 'GET', sprintf('/api/runner/%s', $id));
@@ -958,8 +999,8 @@ function conformance_run_module(string $suite, ?string $planId, array $definitio
     }
 
     $info = conformance_request($suite, 'GET', sprintf('/api/info/%s', $id));
-    $result = (string) ($info['result'] ?? ($state === 'FINISHED' ? 'UNKNOWN' : $state));
-    $findings = [];
+    $result = $failure === [] ? (string) ($info['result'] ?? ($state === 'FINISHED' ? 'UNKNOWN' : $state)) : 'FAILED';
+    $findings = array_map(static fn (string $line): string => 'CAPTURE ' . $line, $failure);
     if ($result !== 'PASSED') {
         $log = conformance_request($suite, 'GET', sprintf('/api/log/%s', $id));
         foreach ($log as $entry) {
@@ -981,6 +1022,85 @@ function conformance_run_module(string $suite, ?string $planId, array $definitio
         'url' => $url,
         'findings' => $findings,
     ];
+}
+
+/**
+ * @return list<string>
+ */
+function conformance_captured_modules(): array
+{
+    $pages = json_decode((string) file_get_contents(getcwd() . '/' . CONFORMANCE_CAPTURE_PAGES), true, 2, \JSON_THROW_ON_ERROR);
+    if (! is_array($pages)) {
+        throw new RuntimeException(sprintf('%s is not an object of modules.', CONFORMANCE_CAPTURE_PAGES));
+    }
+
+    return array_map(strval(...), array_keys($pages));
+}
+
+/**
+ * The browser of compose.yaml runs the module to the page it asks for, captures it under CONFORMANCE_CAPTURES
+ * and sends it to the module (tests/conformance/browser/capture.mjs).
+ *
+ * @param array<string, string> $env the environment of the application
+ * @return list<string> what the browser did, when it failed; nothing when the page was captured
+ */
+function conformance_capture(string $suite, string $plan, string $module, string $id, array $env): array
+{
+    static $running = false;
+    if (! $running && ! in_array(CONFORMANCE_BROWSER, compose_running_services(), true)) {
+        io()->error(sprintf('The service %s of compose.yaml is not running: "castor start --conformance" starts it with the suite.', CONFORMANCE_BROWSER));
+        exit(1);
+    }
+    $running = true;
+    $environment = [
+        'BEFFROI_ISSUER' => $env['BEFFROI_ISSUER'],
+        'BEFFROI_DEV_USERNAME' => DEV_USERNAME,
+        'BEFFROI_DEV_USER_PASSWORD' => $env['BEFFROI_DEV_USER_PASSWORD'],
+        'CONFORMANCE_SUITE' => $suite,
+    ];
+    if (! conformance_suite_is_local($suite)) {
+        $environment['CONFORMANCE_SUITE_API'] = $suite;
+    }
+    $token = getenv('CONFORMANCE_TOKEN');
+    if (is_string($token) && $token !== '') {
+        $environment['CONFORMANCE_TOKEN'] = $token;
+    }
+    $passed = [];
+    foreach (array_keys($environment) as $name) {
+        // By name: the value stays in the environment of the process, out of its command line.
+        $passed[] = '-e';
+        $passed[] = $name;
+    }
+    $driver = run(
+        [
+            'docker',
+            'compose',
+            ...compose_profiles(),
+            'exec',
+            '-T',
+            '--user',
+            sprintf('%s:%s', getmyuid(), getmygid()),
+            ...$passed,
+            CONFORMANCE_BROWSER,
+            'node',
+            '/browser/driver/capture.mjs',
+            $plan,
+            $module,
+            $id,
+        ],
+        context: context()->withEnvironment($environment)->withAllowFailure()->withQuiet()->withTimeout(CONFORMANCE_MODULE_TIMEOUT),
+    );
+    $lines = preg_split('/\R/', trim($driver->getOutput() . "\n" . $driver->getErrorOutput())) ?: [];
+    if (! $driver->isSuccessful()) {
+        return array_values(array_filter($lines, static fn (string $line): bool => $line !== ''));
+    }
+    foreach ($lines as $line) {
+        if (str_starts_with($line, 'captured ')) {
+            io()->text(sprintf('  captured %s/%s', CONFORMANCE_CAPTURES, substr($line, strlen('captured '))));
+        }
+    }
+
+    return [];
 }
 
 /**
@@ -1062,7 +1182,7 @@ function conformance_wait_state(string $suite, string $id, array $states, float 
  */
 function conformance_request(string $suite, string $method, string $path, array $options = [], ?int $expected = 200): array
 {
-    $local = in_array(parse_url($suite, \PHP_URL_HOST), ['localhost', '127.0.0.1', '::1'], true);
+    $local = conformance_suite_is_local($suite);
     $token = getenv('CONFORMANCE_TOKEN') ?: null;
     $options['max_redirects'] = 0;
     $options['verify_peer'] = ! $local;
@@ -1089,4 +1209,9 @@ function conformance_request(string $suite, string $method, string $path, array 
                 'value' => $decoded,
             ]
     );
+}
+
+function conformance_suite_is_local(string $suite): bool
+{
+    return in_array(parse_url($suite, \PHP_URL_HOST), ['localhost', '127.0.0.1', '::1'], true);
 }

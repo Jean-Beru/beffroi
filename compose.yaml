@@ -452,6 +452,28 @@ services:
       - op
       - conformance-nginx
 
+  # The browser that captures the pages of the OP the modules of the suite ask for, driven by "castor
+  # conformance" (tests/conformance/browser/capture.mjs). Chromium sends every *.localhost name to the
+  # loopback address whatever the DNS says, and in this container that is the container: its resolver
+  # rules send op.localhost to the OP and localhost to the suite's nginx, the URLs keeping their names.
+  conformance-browser:
+    build:
+      context: ./tests/conformance/browser
+    profiles: [conformance]
+    init: true
+    command: ["sleep", "infinity"]
+    environment:
+      CONFORMANCE_BROWSER_RESOLVER_RULES: "MAP op.localhost op, MAP localhost conformance-nginx"
+      CONFORMANCE_SUITE_API: https://conformance-nginx:8443
+      HOME: /tmp
+    volumes:
+      - ./tests/conformance/browser:/browser/driver:ro
+      # Created by "castor start", or Docker creates it as root and the captures cannot be written.
+      - ./var/conformance/captures:/captures
+    depends_on:
+      - op
+      - conformance-nginx
+
 volumes:
   keys_data:
   kms_data:
