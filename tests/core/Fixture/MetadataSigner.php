@@ -71,6 +71,11 @@ final readonly class MetadataSigner
         return $this->root->toPEM()->string();
     }
 
+    public function rootCertificateInDer(): string
+    {
+        return $this->root->toDER();
+    }
+
     /**
      * @param list<mixed>|null $chain
      */
