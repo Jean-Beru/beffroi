@@ -77,7 +77,7 @@ const REDIRECTOR_SERVICES = [
 ];
 
 #[AsTask(
-    description: 'Start the development stack: the OP on https://op.localhost and PostgreSQL. Add --conformance for the OpenID conformance suite on https://localhost:8443, without the profiler; --access-token-format opaque hands the clients of the suite opaque access tokens; --kms vault adds HashiCorp Vault, --kms aws adds LocalStack (AWS KMS), each sealing the signing keys once "castor provision --kms <backend>" ran',
+    description: 'Start the development stack: the OP on https://op.localhost and PostgreSQL. Add --conformance for the OpenID conformance suite on https://localhost:8443, without the profiler; --access-token-format opaque hands the clients of the suite opaque access tokens; --kms vault adds HashiCorp Vault, --kms aws adds LocalStack (AWS KMS), each sealing the signing keys once "castor provision --kms <backend>" ran; the row of the tenant is written from the configuration at every start',
 )]
 function start(
     bool $conformance = false,
@@ -134,6 +134,12 @@ function start(
         // The worker cannot boot before "castor provision" names its KMS: "up --wait" would wait on it forever.
         run([...$command, ...$up, ...compose_services_but_the_worker($command, $context)], context: $context);
         run([...$command, 'create', ...($build ? ['--build'] : []), 'worker'], context: $context);
+    }
+    // Every page refuses to serve a tenant whose row differs from apps/op/.env*, which a pull can change.
+    $tenant = op_console(['beffroi:tenant:synchronize', '--no-ansi'], context()->withAllowFailure()->withQuiet());
+    if (! $tenant->isSuccessful()) {
+        io()->write($tenant->getOutput() . $tenant->getErrorOutput());
+        exit($tenant->getExitCode() ?? 1);
     }
     $started = match ($kms) {
         'vault' => ', Vault: http://localhost:8200 (dev mode, root token in compose.yaml); "castor provision --kms vault" seals the signing keys with it',
