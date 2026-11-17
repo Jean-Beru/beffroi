@@ -9,6 +9,7 @@ use function basename;
 use function glob;
 use function array_map;
 use function array_values;
+use Doctrine\DBAL\Configuration;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
@@ -169,7 +170,7 @@ final class MigrationTest extends DatabaseTestCase
         $connection = DriverManager::getConnection([
             'driver' => 'pdo_pgsql',
             'serverVersion' => '16',
-        ]);
+        ], new Configuration()->setTypeProvider(self::typesOfTheConnection()));
         $platform = $connection->getDatabasePlatform();
         static::assertInstanceOf(PostgreSQLPlatform::class, $platform);
         $entityManager = self::entityManager();

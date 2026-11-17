@@ -29,7 +29,7 @@
         "amphp/socket": "^2.3",
         "bacon/bacon-qr-code": "^3.0",
         "doctrine/dbal": "^4.6",
-        "doctrine/doctrine-bundle": "^3.3",
+        "doctrine/doctrine-bundle": "^3.4",
         "doctrine/migrations": "^3.9",
         "doctrine/orm": "^3.8",
         "maxmind-db/reader": "^1.14",
