@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Beffroi\Core\Tests\Application\Authentication;
 
+use function array_map;
 use Beffroi\Core\Application\Authentication\OtherSessionsTermination;
 use Beffroi\Core\Application\Authentication\SessionTerminator;
 use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Beffroi\Core\Domain\Event\AuthenticationSessionEnded;
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\SessionEnd;
@@ -145,6 +147,31 @@ final class OtherSessionsTerminationTest extends TestCase
 
         // Then
         static::assertSame([2, true, true], [$ended, $this->kept->hasEnded(), $elsewhere->hasEnded()]);
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function everySessionAnAdministratorEndsNamesThem(): void
+    {
+        // Given
+        $this->alsoSignedIn();
+
+        // When
+        $this->termination->endEveryByAnAdministrator($this->alice, new Subject('administrator-subject'), Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame(
+            [
+                [SessionEnd::Administrator, 'administrator-subject'],
+                [SessionEnd::Administrator, 'administrator-subject'],
+            ],
+            array_map(
+                static fn (AuthenticationSessionEnded $ended): array => [$ended->session->endedBy, $ended->author()?->value],
+                $this->events->of(AuthenticationSessionEnded::class),
+            ),
+        );
     }
 
     private function alsoSignedIn(): AuthenticationSession

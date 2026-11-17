@@ -10,7 +10,6 @@ use Beffroi\Core\Domain\Event\PersonDescribed;
 use Beffroi\Core\Domain\Identity\ClaimChange;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\ChangesOfAPersonInterface;
-use Beffroi\Core\Port\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
 use Symfony\Component\HttpFoundation\Response;
@@ -55,7 +54,7 @@ final class AdministrationApiDescriptionTest extends AdministrationTestCase
             [['nickname', null, 'Bobby', 'alice-subject']],
             array_map(
                 static fn (ClaimChange $change): array => [$change->claim, $change->was, $change->became, $change->author?->value],
-                self::service('test.beffroi.changes', ChangesOfAPersonInterface::class)->lastOf(self::reread($bob), 10),
+                self::service('test.beffroi.changes', ChangesOfAPersonInterface::class)->lastOf(self::personAgain($bob), 10),
             ),
         );
     }
@@ -87,7 +86,7 @@ final class AdministrationApiDescriptionTest extends AdministrationTestCase
         // Then
         static::assertSame(
             [Response::HTTP_BAD_REQUEST, 'invalid_request', null],
-            [$response->getStatusCode(), self::members($response, ['error'])[0], self::reread($bob)->profile->nickname],
+            [$response->getStatusCode(), self::members($response, ['error'])[0], self::personAgain($bob)->profile->nickname],
         );
     }
 
@@ -121,7 +120,7 @@ final class AdministrationApiDescriptionTest extends AdministrationTestCase
         // Then
         static::assertSame(
             [Response::HTTP_BAD_REQUEST, null, []],
-            [$response->getStatusCode(), self::reread($bob)->profile->nickname, self::authored(PersonDescribed::NAME)],
+            [$response->getStatusCode(), self::personAgain($bob)->profile->nickname, self::authored(PersonDescribed::NAME)],
         );
     }
 
@@ -139,7 +138,7 @@ final class AdministrationApiDescriptionTest extends AdministrationTestCase
         // Then
         static::assertSame(
             [Response::HTTP_CONFLICT, 'conflict', 'bob'],
-            [$response->getStatusCode(), self::members($response, ['error'])[0], self::reread($bob)->username],
+            [$response->getStatusCode(), self::members($response, ['error'])[0], self::personAgain($bob)->username],
         );
     }
 
@@ -174,12 +173,5 @@ final class AdministrationApiDescriptionTest extends AdministrationTestCase
             content: $patch,
             contentType: $contentType,
         );
-    }
-
-    private static function reread(User $person): User
-    {
-        self::reload();
-
-        return self::service('test.beffroi.users', UserRepositoryInterface::class)->find($person->id) ?? static::fail('The person is gone.');
     }
 }
