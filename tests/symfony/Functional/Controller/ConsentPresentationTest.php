@@ -132,6 +132,22 @@ final class ConsentPresentationTest extends BrowserTestCase
     }
 
     #[Test]
+    public function theNameOfTheClientIsSetApartInEverySentenceThatCarriesIt(): void
+    {
+        // Given
+        $clientId = $this->registerClient([
+            'client_name' => 'An application of the ecosystem',
+            'policy_uri' => self::POLICY_URI,
+        ]);
+
+        // When
+        $names = $this->consentPageOf($clientId)->filter('main b[data-client-name]');
+
+        // Then
+        static::assertSame(['An application of the ecosystem', 'An application of the ecosystem'], $names->extract(['_text']));
+    }
+
+    #[Test]
     public function thePagesOfTheClientAreLinksThatCarryNothingBack(): void
     {
         // Given

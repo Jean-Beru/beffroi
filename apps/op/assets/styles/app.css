@@ -223,6 +223,12 @@
         @apply text-base-content;
     }
 
+    /* The name a client gave itself, in a sentence of the provider (ClientNameExtension): written apart from
+       the words around it, which are the provider's. */
+    main b[data-client-name] {
+        @apply font-semibold;
+    }
+
     main p[data-error],
     main p[data-description] {
         @apply alert alert-error alert-soft mt-4;

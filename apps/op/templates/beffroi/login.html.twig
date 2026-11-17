@@ -25,9 +25,9 @@
 {% endblock %}
 
 {% block content %}
-    <p>{{ client is null ? 'login.prompt_alone'|trans : 'login.prompt'|trans({client: client.registration.presentation.name}) }}</p>
+    <p>{{ client is null ? 'login.prompt_alone'|trans : 'login.prompt'|trans_with_client(client.registration.presentation.name) }}</p>
     {% if step_up is not null %}
-        <p data-requirement="{{ requirement.value }}" data-acr="{{ step_up.classes|join(' ') }}">{{ client is null ? 'login.step_up_alone'|trans : 'login.step_up'|trans({client: client.registration.presentation.name}) }}</p>
+        <p data-requirement="{{ requirement.value }}" data-acr="{{ step_up.classes|join(' ') }}">{{ client is null ? 'login.step_up_alone'|trans : 'login.step_up'|trans_with_client(client.registration.presentation.name) }}</p>
         {% for kind in step_up.kinds %}
             <p data-step-up="{{ kind }}">{{ ('login.step_up.' ~ kind)|trans }}</p>
         {% endfor %}
