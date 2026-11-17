@@ -93,7 +93,7 @@ final class PasswordTicketTest extends ConsoleTestCase
 
         // Then
         static::assertSame(Command::INVALID, $tester->getStatusCode());
-        static::assertStringContainsString('The tenant signs its users in without a password; a password ticket would open nothing.', self::flattened($tester));
+        static::assertStringContainsString('A ticket that poses a password would open nothing.', self::flattened($tester));
     }
 
     private static function linkOf(CommandTester $tester): string
