@@ -445,6 +445,27 @@ final class UsersSectionTest extends TestCase
         ]);
     }
 
+    /**
+     * Kitty keyboard protocol, event types: a terminal that reports the release of a key sends it as a key of its own.
+     */
+    #[Test]
+    public function theKeyThatAskedForALinkLetGoKeepsTheQuestion(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            'POST /users/0193-alice/enrolment-ticket' => self::created(self::ticket()),
+        ]);
+        self::lookUpAlice($this->screen);
+        $this->screen->press('t');
+
+        // When
+        $this->screen->press(["\e[116;1:3u", 'y']);
+
+        // Then
+        static::assertSame(1, $this->screen->requestsTo('/users/0193-alice/enrolment-ticket', 'POST'));
+    }
+
     #[Test]
     public function theLinkIsShownAsACodeInPlaceOfThePersonOnceTheAdministratorConfirmsIt(): void
     {
