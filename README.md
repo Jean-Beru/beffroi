@@ -11,6 +11,7 @@ An identity provider for the Symfony ecosystem: OAuth 2.0 and OpenID Connect, an
 | `beffroi/saml2-bindings` | `src/saml2-bindings` | The HTTP-Redirect and HTTP-POST bindings of SAML 2.0, strings and arrays in and out. No HTTP object. |
 | `beffroi/xml-security` | `src/xml-security` | XML security in three namespaces: `Core`, a safe DOM; `Dsig`, XML Signature; `Enc`, XML Encryption. |
 | `beffroi/beffroi` | `apps/beffroi` | The application, FrankenPHP: the configuration of the provider, its controllers, its security, its persistence, the login and consent pages. |
+| `beffroi/tui` | `apps/tui` | The terminal client of the administration of an instance: it talks to the administration API over HTTP and installs none of the packages above. |
 
 Each directory is split into a read-only mirror, `beffroi-auth/<name>` (`application` for `apps/beffroi`). Issues and pull requests go here.
 
@@ -27,4 +28,4 @@ castor prepare-pr
 
 Every QA task runs inside the `ghcr.io/spomky-labs/phpqa` image when Docker is available. `castor start` and `castor provision` bring up the development stack on https://op.localhost; `castor conformance` plays the OpenID certification plans against it, `castor saml-sp` and `castor saml-idp` play the two SAML roles against SimpleSAMLphp.
 
-The design, the decisions and the spikes live in [beffroi-auth/design](https://github.com/beffroi-auth/design).
+The documentation is at [doc.beffroi.tech](https://doc.beffroi.tech).

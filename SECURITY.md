@@ -10,7 +10,7 @@ You will get an acknowledgement within 72 hours, and a fix or a mitigation plan 
 
 ## Scope
 
-Anything in this repository: the identity core, the OAuth 2.0 / OpenID Connect module, the SAML packages, the Symfony bundle, the application, the Docker images and the CI. The security defaults are part of the product and not configuration; a way to bypass one of them without a configuration change is a vulnerability.
+Anything in this repository: the identity core, the OAuth 2.0 / OpenID Connect module, the SAML packages, the application, the terminal client of the administration, the Docker images and the CI. The security defaults are part of the product and not configuration; a way to bypass one of them without a configuration change is a vulnerability.
 
 ## The SAML packages
 
@@ -24,4 +24,4 @@ Every security fix of any of the three packages ships with a GitHub Security Adv
 
 ## Supported versions
 
-Until the first tagged release, the default branch only.
+Beffroi is 0.x until its 1.0, which ships with Symfony 8.4. Until then only the latest release is supported: a fix ships in the next release, and an earlier 0.x release is not patched.
