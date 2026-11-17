@@ -1165,6 +1165,10 @@
         <source>act.backup_codes.renewed</source>
         <target>Codes de secours renouvelés</target>
       </trans-unit>
+      <trans-unit id="act.person.created" resname="act.person.created">
+        <source>act.person.created</source>
+        <target>Compte créé</target>
+      </trans-unit>
       <trans-unit id="act.person.provisioned" resname="act.person.provisioned">
         <source>act.person.provisioned</source>
         <target>Compte créé à votre première connexion par votre organisation</target>
@@ -1683,11 +1687,11 @@
       </trans-unit>
       <trans-unit id="enrolment_ticket.title" resname="enrolment_ticket.title">
         <source>enrolment_ticket.title</source>
-        <target>Posez votre passkey</target>
+        <target>Posez une passkey</target>
       </trans-unit>
       <trans-unit id="enrolment_ticket.prompt" resname="enrolment_ticket.prompt">
         <source>enrolment_ticket.prompt</source>
-        <target>Ce lien met en place votre façon de vous connecter en tant que {username}. Il fonctionne une fois.</target>
+        <target>Ce lien pose une passkey pour vous connecter en tant que {username}. Il fonctionne une fois.</target>
       </trans-unit>
       <trans-unit id="enrolment_ticket.enrol" resname="enrolment_ticket.enrol">
         <source>enrolment_ticket.enrol</source>

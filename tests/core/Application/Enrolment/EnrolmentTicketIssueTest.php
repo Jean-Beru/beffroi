@@ -10,6 +10,7 @@ use Beffroi\Core\Bridge\Random\PlatformRandomness;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Domain\Enrolment\EnrolmentTicket;
 use Beffroi\Core\Domain\Event\EnrolmentTicketIssued;
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Exception\EnrolmentTicketRefusedException;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
@@ -83,6 +84,37 @@ final class EnrolmentTicketIssueTest extends TestCase
         static::assertCount(1, $acts);
         static::assertSame($issued->ticket, $acts[0]->ticket);
         static::assertSame($this->alice->subject, $acts[0]->subject());
+    }
+
+    #[Test]
+    public function theActOfATicketTheOperatorIssuedNamesNoAuthor(): void
+    {
+        // When
+        $this->issue->issue($this->alice, Fixtures::context($this->clock->now()));
+
+        // Then
+        $acts = $this->events->of(EnrolmentTicketIssued::class);
+        static::assertCount(1, $acts);
+        static::assertNull($acts[0]->author());
+    }
+
+    /**
+     * Decision 0038.
+     */
+    #[Test]
+    public function theActOfATicketAnAdministratorIssuedNamesThem(): void
+    {
+        // Given
+        $administrator = new Subject('administrator-subject');
+
+        // When
+        $issued = $this->issue->issueByAnAdministrator($this->alice, $administrator, Fixtures::context($this->clock->now()));
+
+        // Then
+        $acts = $this->events->of(EnrolmentTicketIssued::class);
+        static::assertCount(1, $acts);
+        static::assertSame($issued->ticket, $acts[0]->ticket);
+        static::assertSame($administrator, $acts[0]->author());
     }
 
     #[Test]

@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Tests\Symfony\Functional\Administration;
 
+use function array_filter;
+use function array_map;
+use function array_values;
 use App\Tests\Symfony\Functional\AppKernel;
 use App\Tests\Symfony\Functional\Controller\PasskeyTestCase;
 use Beffroi\Core\Domain\Group\Group;
 use Beffroi\Core\Domain\Group\GroupMembership;
 use Beffroi\Core\Domain\Group\GroupSource;
 use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Journal\JournalEntry;
 use Beffroi\Core\Port\GroupMembershipRepositoryInterface;
 use Beffroi\Core\Port\GroupRepositoryInterface;
 use Beffroi\Core\Port\GroupsOfAPersonInterface;
@@ -144,17 +148,27 @@ abstract class AdministrationTestCase extends PasskeyTestCase
     /**
      * A request of the method given to the API, answered by the kernel of a process of its plane: under "DPoP" with
      * the proof of the key of Proofs when a token is presented and proven, under "DPoP" without a proof when it is
-     * presented and not proven.
+     * presented and not proven, and carrying the body given as a document of the type given.
      *
      * @param array<string, string> $query
      */
-    protected function api(string $path, ?string $token, bool $proven = true, array $query = [], string $method = 'GET'): Response
-    {
+    protected function api(
+        string $path,
+        ?string $token,
+        bool $proven = true,
+        array $query = [],
+        string $method = 'GET',
+        ?string $content = null,
+        string $contentType = 'application/json',
+    ): Response {
         $server = [
             'HTTPS' => 'on',
             'HTTP_HOST' => 'admin.op.test',
             'HTTP_ACCEPT' => 'application/json',
         ];
+        if ($content !== null) {
+            $server['CONTENT_TYPE'] = $contentType;
+        }
         if ($token !== null) {
             $server['HTTP_AUTHORIZATION'] = 'DPoP ' . $token;
             if ($proven) {
@@ -162,7 +176,7 @@ abstract class AdministrationTestCase extends PasskeyTestCase
             }
         }
         $kernel = $this->administration ??= self::administrationKernel();
-        $request = Request::create(self::API . $path, $method, $query, server: $server);
+        $request = Request::create(self::API . $path, $method, $query, server: $server, content: $content);
         $response = $kernel->handle($request);
         $kernel->terminate($request, $response);
 
@@ -186,6 +200,21 @@ abstract class AdministrationTestCase extends PasskeyTestCase
         }
 
         return $routes;
+    }
+
+    /**
+     * The acts of that name an administrator did, each as the person it concerns and the administrator, by their subjects.
+     *
+     * @return list<array{?string, ?string}>
+     */
+    protected static function authored(string $name): array
+    {
+        $acts = self::entityManager()->getRepository(JournalEntry::class)->findBy(['act' => $name]);
+
+        return array_values(array_map(
+            static fn (JournalEntry $act): array => [$act->subject?->value, $act->author?->value],
+            array_filter($acts, static fn (JournalEntry $act): bool => $act->author !== null),
+        ));
     }
 
     private static function administrationKernel(): AppKernel
