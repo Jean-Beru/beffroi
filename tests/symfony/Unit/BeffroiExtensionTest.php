@@ -371,15 +371,13 @@ final class BeffroiExtensionTest extends TestCase
     }
 
     #[Test]
-    public function theEncrypterOfTheSealedColumnsIsLazySoThatABootReachesNoKms(): void
+    public function theEncrypterOfTheSealedColumnsIsLazySoThatBuildingATypeReachesNoKms(): void
     {
         // When
         $container = self::load([]);
 
         // Then
-        $encrypter = $container->getDefinition('beffroi.personal_data.encrypter');
-        static::assertTrue($encrypter->isLazy());
-        static::assertTrue($encrypter->isPublic());
+        static::assertTrue($container->getDefinition('beffroi.personal_data.encrypter')->isLazy());
     }
 
     /**

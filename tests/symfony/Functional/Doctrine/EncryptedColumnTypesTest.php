@@ -8,7 +8,9 @@ use function array_diff;
 use function array_keys;
 use function array_values;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Types\TextType;
 use App\Doctrine\PersonalData\EncryptedColumnTypes;
+use App\Doctrine\PersonalData\TenantScopedEncrypter;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -143,6 +145,29 @@ final class EncryptedColumnTypesTest extends DatabaseTestCase
             'alice',
             EncryptedColumnTypes::name('user', 'beffroi_email_address'),
         ];
+    }
+
+    /**
+     * Decision 0018
+     */
+    #[Test]
+    public function aSealedValueIsBoundToTheNameOfTheTypeItDecoratesAndNotToItsClass(): void
+    {
+        // Given
+        $platform = self::connection()->getDatabasePlatform();
+        $sealed = self::typesOfTheConnection()->get(EncryptedColumnTypes::name('user', 'string'))->convertToDatabaseValue('alice', $platform);
+        $sameNameOtherClass = new EncryptedType(
+            new TextType(),
+            self::service('beffroi.personal_data.encrypter', TenantScopedEncrypter::class),
+            'user',
+            'string',
+        );
+
+        // When
+        $read = $sameNameOtherClass->convertToPHPValue($sealed, $platform);
+
+        // Then
+        static::assertSame('alice', $read);
     }
 
     #[Test]
