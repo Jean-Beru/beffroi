@@ -108,11 +108,6 @@ final readonly class MetadataSigner
         return $other->issue($this->root->tbsCertificate()->subject(), $this->rootKey->publicKey()->publicKeyInfo());
     }
 
-    public function rootNameOnAnotherKeyIssuedBy(self $other): string
-    {
-        return $other->issue($this->root->tbsCertificate()->subject(), self::key()->publicKey()->publicKeyInfo());
-    }
-
     private function issue(Name $subject, PublicKeyInfo $key): string
     {
         $certificate = TBSCertificate::create($subject, $key, $this->root->tbsCertificate()->subject(), self::validity())
