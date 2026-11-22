@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Client;
 
+use Beffroi\Oidc\Application\Client\ClientAuthenticationMethods;
 use Beffroi\Oidc\Domain\Client\Metadata\ClientMetadata;
 use Beffroi\Oidc\Domain\Client\Metadata\RegisteredMembers;
 use Beffroi\Oidc\Domain\Client\Metadata\SpecifiedDefaults;
@@ -12,6 +13,7 @@ use Beffroi\Oidc\Exception\InvalidClientMetadataException;
 use Beffroi\Oidc\Exception\InvalidRedirectUriException;
 use Beffroi\Oidc\Exception\UnreadableClientMetadataException;
 use Beffroi\Oidc\Tests\Fixture\Grants;
+use Beffroi\Oidc\Tests\Fixture\Methods;
 use Beffroi\Oidc\Tests\Fixture\Registrations;
 use Beffroi\Oidc\Tests\Fixture\Subjects;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -240,6 +242,48 @@ final class ClientMetadataReaderTest extends TestCase
 
         // Then
         static::assertTrue($registration->requiresDpopBoundTokens);
+    }
+
+    /**
+     * RFC 8705 §3.4
+     */
+    #[Test]
+    public function aClientWhoseTokensAreBoundToItsCertificateRegistersIt(): void
+    {
+        // Given
+        $metadata = self::registered([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'tls_client_certificate_bound_access_tokens' => true,
+        ]);
+
+        // When
+        $registration = Registrations::reader()->read('drawn', $metadata, true);
+
+        // Then
+        static::assertTrue($registration->requiresCertificateBoundTokens);
+    }
+
+    /**
+     * RFC 8705 §3.4, RFC 7591 §3.2.2
+     */
+    #[Test]
+    public function aTokenBoundToACertificateIsRefusedWhereNoMethodReadsOne(): void
+    {
+        // Given
+        $reader = Registrations::reader(methods: new ClientAuthenticationMethods([Methods::clientSecretBasic(), Methods::none()]));
+        $metadata = self::registered([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'tls_client_certificate_bound_access_tokens' => true,
+        ]);
+
+        // When
+        try {
+            $reader->read('drawn', $metadata, true);
+            static::fail('The registration was read.');
+        } catch (InvalidClientMetadataException $exception) {
+            // Then
+            static::assertSame('tls_client_certificate_bound_access_tokens', $exception->member);
+        }
     }
 
     /**
