@@ -238,27 +238,24 @@ services:
     volumes:
       - ./docker/vault:/init:ro
 
-  # AWS KMS on the desk (architecture §3.3, issue #58): Floci (https://floci.io), an AWS emulator of which the
-  # stack uses the KMS alone, the same bridge and the same envelope as against AWS, only the endpoint differs
-  # (host "floci", scheme http). It replaces LocalStack, whose community edition ended on 2026-03-23: every
-  # image since (2026.x) refuses to start without an account and an auth token, and its free tier is for
-  # non-commercial use; Floci is MIT, needs no account, and answers on the same port 4566. The "-compat" tag
-  # is the one that carries the AWS CLI, which the init hook and the healthcheck below call; the standard
-  # image is the bare binary. Storage is left at its default (memory, FLOCI_STORAGE_MODE): a restart loses the
-  # key, and the envelopes sealed before it cannot be opened again, which "castor provision" notices. Floci
-  # runs docker/floci/init.sh once its API answers, at every start, idempotent: the key of the tenant
-  # (SYMMETRIC_DEFAULT, ENCRYPT_DECRYPT) under the alias beffroi-<slug>, which the DSN names; healthy once the
-  # alias resolves. A hook that fails stops Floci, where LocalStack only logged, so the container is never up
-  # without its key. Any credentials are accepted, the "test" pair here: Floci stores key policies and grants
-  # but evaluates neither on a cryptographic call, so what the key policy of a real account refuses is
-  # written in the CISO page, not proved here.
+  # AWS KMS on the desk (architecture §3.3, issue #58): Floci (https://floci.io, MIT, no account), an AWS
+  # emulator of which the stack uses the KMS alone, the same bridge and the same envelope as against AWS, only
+  # the endpoint differs (host "floci", scheme http). The "-compat" tag carries the AWS CLI that the init hook
+  # and the healthcheck below call, which the standard image does not. Storage is left at the default of the
+  # image (memory, FLOCI_STORAGE_MODE): a restart loses the key, and the envelopes sealed before it
+  # cannot be opened again, which "castor provision" notices. Floci runs docker/floci/init.sh once its API
+  # answers, at every start, idempotent: the key of the tenant (SYMMETRIC_DEFAULT, ENCRYPT_DECRYPT) under the
+  # alias beffroi-<slug>, which the DSN names; healthy once the alias resolves. A hook that fails stops Floci,
+  # so the container is never up without its key. Any credentials are accepted, the "test" pair here, and no
+  # key policy is evaluated with IAM enforcement off, its default: what the key policy of a real account
+  # refuses is written in the CISO page, not proved here.
   floci:
     image: floci/floci:${FLOCI_VERSION:-2.5.0}-compat
     profiles: [aws]
     environment:
       BEFFROI_TENANT_SLUG: ${BEFFROI_TENANT_SLUG:-default}
-      # The region of the DSN "castor provision --kms aws" writes: the one the init hook and the healthcheck
-      # name, and the one Floci puts in the ARNs it hands back (its own default is us-east-1).
+      # The region of the DSN "castor provision --kms aws" writes, which the init hook and the healthcheck
+      # name, and the one Floci answers in when a request names none (us-east-1 unless set).
       KMS_REGION: ${KMS_REGION:-eu-west-3}
       FLOCI_DEFAULT_REGION: ${KMS_REGION:-eu-west-3}
     healthcheck:
