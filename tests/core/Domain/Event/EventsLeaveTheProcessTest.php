@@ -39,6 +39,8 @@ use Beffroi\Core\Domain\Event\GroupMembershipRemoved;
 use Beffroi\Core\Domain\Event\NotificationChannelsChosen;
 use Beffroi\Core\Domain\Event\PersonDescribed;
 use Beffroi\Core\Domain\Event\PersonDescribedThemselves;
+use Beffroi\Core\Domain\Event\AddressConfirmationSent;
+use Beffroi\Core\Domain\Event\AddressEstablished;
 use Beffroi\Core\Domain\Event\PersonDisabled;
 use Beffroi\Core\Domain\Event\PersonEnabled;
 use Beffroi\Core\Domain\Event\PersonDroppedTheirArchive;
@@ -141,6 +143,8 @@ final class EventsLeaveTheProcessTest extends TestCase
         yield 'a person an upstream provider created' => [new PersonProvisioned($now, $tenant, $user->subject, 'https://idp.acme.example/saml', $context)];
         yield 'a person who said something of themselves' => [new PersonDescribedThemselves($user, 'nickname', false, $now, $context)];
         yield 'a person who took something back' => [new PersonDescribedThemselves($user, 'nickname', true, $now, $context)];
+        yield 'a confirmation sent to an address' => [new AddressConfirmationSent($user, 'phone_number', $now, $context)];
+        yield 'an address established' => [new AddressEstablished($user, 'phone_number', $now, $context)];
         yield 'a person an administrator described' => [new PersonDescribed(
             $tenant,
             $user->subject,
