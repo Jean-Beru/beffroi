@@ -22,6 +22,10 @@ name: TUI
 # the development ones and with an authoritative class map. The requirement checker Box puts in front of it refuses a
 # PHP that lacks an extension the client or one of its dependencies requires, before a line of the client runs.
 #
+# From a release tag, the tag is written to apps/tui/resources/release before the PHAR is compiled: it is the version
+# "beffroi-tui --version" prints and the one "beffroi-tui self-update" stays in the line of. A build from any other
+# ref carries no version, and refuses to replace itself.
+#
 # An executable is that same PHAR behind the "micro" SAPI of static-php-cli: a PHP linked statically with the
 # extensions of MICRO_EXTENSIONS and nothing else, read from the code of the client and of its dependencies, whose
 # composer.json declare only part of them. mbstring, openssl and sodium are the client's own. intl is the
@@ -125,12 +129,27 @@ jobs:
         run: |
           curl -fsSL --retry 3 -o "${RUNNER_TEMP}/box.phar" "https://github.com/box-project/box/releases/download/${BOX_VERSION}/box.phar"
           echo "${BOX_SHA256}  ${RUNNER_TEMP}/box.phar" | sha256sum --check --strict
+      - name: "The version of the release"
+        if: needs.prepare.outputs.tag != ''
+        working-directory: apps/tui
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: printf '%s\n' "${TAG}" > resources/release
       - name: "Compile"
         working-directory: apps/tui
         run: php -d phar.readonly=0 "${RUNNER_TEMP}/box.phar" compile --no-interaction
       - name: "Run it once"
         working-directory: apps/tui
-        run: php beffroi-tui.phar --help
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          php beffroi-tui.phar --help
+          version=$(php beffroi-tui.phar --version)
+          echo "${version}" >> "${GITHUB_STEP_SUMMARY}"
+          if [ -n "${TAG}" ] && [ "${version}" != "beffroi-tui ${TAG}" ]; then
+            echo "::error title=Not the version of the release::The PHAR says \"${version}\", and the release is ${TAG}."
+            exit 1
+          fi
       - uses: actions/upload-artifact@v7
         with:
           name: beffroi-tui.phar
@@ -237,7 +256,7 @@ jobs:
       - name: "Run it once"
         run: |
           "./${ASSET}" --help
-          echo "${ASSET}: $(wc -c < "${ASSET}") bytes, PHP ${PHP_PATCH}." >> "${GITHUB_STEP_SUMMARY}"
+          echo "${ASSET}: $(wc -c < "${ASSET}") bytes, PHP ${PHP_PATCH}, $("./${ASSET}" --version)." >> "${GITHUB_STEP_SUMMARY}"
           if [ "${RUNNER_OS}" = macOS ]; then
             echo "${ASSET} starts on macOS $(otool -l "${ASSET}" | awk '/LC_BUILD_VERSION/ { found = 1 } found && $1 == "minos" { print $2; exit }') and later." >> "${GITHUB_STEP_SUMMARY}"
           fi

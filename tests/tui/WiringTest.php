@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Tui\Tests;
 
+use Beffroi\Tui\Console\SelfUpdateCommand;
 use Beffroi\Tui\Text\Catalogue;
 use Beffroi\Tui\Text\TerminalLocale;
 use Beffroi\Tui\Wiring;
@@ -54,5 +55,25 @@ final class WiringTest extends TestCase
 
         // Then
         static::assertSame([1, true], [$status, str_contains($output->fetch(), 'There is no profile "default"')]);
+    }
+
+    #[Test]
+    public function theProgramReplacesItselfByACommandOfItsOwn(): void
+    {
+        // Given
+        $application = Wiring::application(['HOME' => sprintf('%s/beffroi-tui-%s', sys_get_temp_dir(), uniqid())]);
+
+        // When / Then
+        static::assertTrue($application->has(SelfUpdateCommand::NAME));
+    }
+
+    #[Test]
+    public function theProgramRunFromItsSourcesNamesNoVersion(): void
+    {
+        // Given
+        $application = Wiring::application(['HOME' => sprintf('%s/beffroi-tui-%s', sys_get_temp_dir(), uniqid())]);
+
+        // When / Then
+        static::assertSame('beffroi-tui', $application->getLongVersion());
     }
 }
