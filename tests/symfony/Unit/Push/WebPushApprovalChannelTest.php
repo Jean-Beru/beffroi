@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Symfony\Unit\Push;
 
+use App\Ciba\PendingApprovalWording;
 use App\Ciba\WebPushApprovalChannel;
 use App\Locale\ServedLocales;
 use App\Locale\UserLocale;
@@ -86,7 +87,7 @@ final class WebPushApprovalChannelTest extends TestCase
     {
         return new WebPushApprovalChannel(
             $this->browsers->broadcast(),
-            $this->translator(),
+            new PendingApprovalWording($this->translator()),
             new UserLocale(new ServedLocales(['en', 'fr'], 'en')),
         );
     }

@@ -10,6 +10,8 @@ use App\DependencyInjection\BeffroiExtension;
 use App\Configuration\SamlSection;
 use App\Configuration\SelfClientSection;
 use App\Configuration\WebPushSection;
+use App\Configuration\MailSection;
+use App\Configuration\SmsSection;
 use App\Key\DormantKeyAlgorithms;
 use App\Key\FileTenantKeyRepository;
 use App\Key\StagingDelay;
@@ -494,6 +496,69 @@ final class BeffroiExtensionTest extends TestCase
                 'subject' => 'mailto:operator@op.test',
             ],
             'mailto:operator@op.test',
+        ];
+    }
+
+    /**
+     * Decision 0048
+     *
+     * @param list<?string> $arguments
+     */
+    #[Test]
+    #[DataProvider('provideMailSettings')]
+    public function theDsnAndTheSenderOfMailReachItsRole(mixed $mail, array $arguments): void
+    {
+        // When
+        $container = self::load([
+            'mail' => $mail,
+        ]);
+
+        // Then
+        static::assertSame($arguments, $container->getDefinition(MailSection::ROLE)->getArguments());
+    }
+
+    /**
+     * @return iterable<string, array{mixed, list<?string>}>
+     */
+    public static function provideMailSettings(): iterable
+    {
+        yield 'none' => [[], [null, null]];
+        yield 'a DSN and its sender' => [
+            [
+                'dsn' => 'smtp://mail.op.test:587',
+                'sender' => 'no-reply@op.test',
+            ],
+            ['smtp://mail.op.test:587', 'no-reply@op.test'],
+        ];
+    }
+
+    /**
+     * Decision 0048
+     */
+    #[Test]
+    #[DataProvider('provideSmsSettings')]
+    public function theDsnOfSmsReachesItsRole(mixed $sms, ?string $dsn): void
+    {
+        // When
+        $container = self::load([
+            'sms' => $sms,
+        ]);
+
+        // Then
+        static::assertSame($dsn, $container->getDefinition(SmsSection::ROLE)->getArgument(0));
+    }
+
+    /**
+     * @return iterable<string, array{mixed, ?string}>
+     */
+    public static function provideSmsSettings(): iterable
+    {
+        yield 'none' => [[], null];
+        yield 'a DSN' => [
+            [
+                'dsn' => 'null://null',
+            ],
+            'null://null',
         ];
     }
 

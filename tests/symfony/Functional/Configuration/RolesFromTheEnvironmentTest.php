@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Symfony\Functional\Configuration;
 
+use App\Ciba\MailApprovalChannel;
+use App\Ciba\SmsApprovalChannel;
+use App\Configuration\SwitchedServices;
 use App\Saml\SamlSigning;
 use App\Tests\Symfony\Functional\Command\ConsoleTestCase;
 use Beffroi\Core\Port\ApplicationServerAlgorithmsInterface;
@@ -13,13 +16,15 @@ use Beffroi\Saml2\Model\Metadata\EntityDescriptor;
 use Beffroi\Saml2\Model\Metadata\MetadataReader;
 use Beffroi\Saml2\Model\SamlLoader;
 use function array_map;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Decision 0030, spec/saml.md S-40, S-41, architecture §5.6
+ * Decision 0030, Decision 0048, spec/saml.md S-40, S-41, architecture §5.6
  */
 final class RolesFromTheEnvironmentTest extends ConsoleTestCase
 {
@@ -30,6 +35,9 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
         'BEFFROI_TEST_SAML_SERVICE_PROVIDER',
         'BEFFROI_TEST_SAML_SERVICE_PROVIDER_ENTITY_ID',
         'BEFFROI_TEST_WEB_PUSH_SUBJECT',
+        'BEFFROI_TEST_MAIL_DSN',
+        'BEFFROI_TEST_MAIL_SENDER',
+        'BEFFROI_TEST_SMS_DSN',
     ];
 
     protected function tearDown(): void
@@ -210,6 +218,80 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
     }
 
     /**
+     * Decision 0048
+     *
+     * @param class-string $channel
+     */
+    #[Test]
+    #[DataProvider('provideChannelsOfADsnTheEnvironmentNames')]
+    public function aChannelTellsOfAPendingApprovalWhileTheEnvironmentNamesItsDsn(string $channel): void
+    {
+        // When
+        $channels = self::pendingApprovalChannels();
+
+        // Then
+        static::assertContains($channel, $channels);
+    }
+
+    /**
+     * @return iterable<string, array{class-string}>
+     */
+    public static function provideChannelsOfADsnTheEnvironmentNames(): iterable
+    {
+        yield 'mail' => [MailApprovalChannel::class];
+        yield 'SMS' => [SmsApprovalChannel::class];
+    }
+
+    /**
+     * Decision 0048
+     *
+     * @param class-string $channel
+     */
+    #[Test]
+    #[DataProvider('provideChannelsOfADsn')]
+    public function aChannelIsAbsentWhileTheEnvironmentNamesNoDsn(string $variable, string $channel): void
+    {
+        // Given
+        $this->deploy([
+            $variable => '',
+        ]);
+
+        // When
+        $channels = self::pendingApprovalChannels();
+
+        // Then
+        static::assertNotContains($channel, $channels);
+    }
+
+    /**
+     * @return iterable<string, array{string, class-string}>
+     */
+    public static function provideChannelsOfADsn(): iterable
+    {
+        yield 'mail' => ['BEFFROI_TEST_MAIL_DSN', MailApprovalChannel::class];
+        yield 'SMS' => ['BEFFROI_TEST_SMS_DSN', SmsApprovalChannel::class];
+    }
+
+    /**
+     * Decision 0048
+     */
+    #[Test]
+    public function aMailDsnTheEnvironmentNamesWithoutASenderIsRefused(): void
+    {
+        // Given
+        $this->deploy([
+            'BEFFROI_TEST_MAIL_SENDER' => '',
+        ]);
+
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIs('The "beffroi" configuration key "mail.sender" names the address the mail of this deployment is written from, and none is named.');
+
+        // When
+        self::pendingApprovalChannels();
+    }
+
+    /**
      * @param array<string, string> $variables
      */
     private function deploy(array $variables): void
@@ -238,6 +320,19 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
             static fn (KeyAlgorithmInterface $algorithm): string => $algorithm->name(),
             self::service('test.beffroi.environment_roles.application_server_algorithms', ApplicationServerAlgorithmsInterface::class)->all(),
         );
+    }
+
+    /**
+     * @return list<class-string>
+     */
+    private static function pendingApprovalChannels(): array
+    {
+        $channels = [];
+        foreach (self::service('test.beffroi.environment_roles.pending_approval_channels', SwitchedServices::class) as $channel) {
+            $channels[] = $channel::class;
+        }
+
+        return $channels;
     }
 
     private function servedDescriptor(): EntityDescriptor

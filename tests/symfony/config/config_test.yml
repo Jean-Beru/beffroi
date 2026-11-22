@@ -187,6 +187,11 @@ parameters:
     env(BEFFROI_TEST_ORIGIN_INTERVAL): 60
     env(BEFFROI_TEST_CLIENT_INTERVAL): 60
     env(BEFFROI_TEST_WEB_PUSH_SUBJECT): 'mailto:operator@op.test'
+    # Mail and SMS reach a person through the null transports of symfony/mailer and symfony/notifier, which take every
+    # message and send none, from the sender a deployment names beside its DSN (decision 0048).
+    env(BEFFROI_TEST_MAIL_DSN): 'null://null'
+    env(BEFFROI_TEST_MAIL_SENDER): 'Beffroi <no-reply@op.test>'
+    env(BEFFROI_TEST_SMS_DSN): 'null://null'
     # The figures of issue #915, read the same way and left at the defaults of the provider: the slug of the tenant, the
     # family of the SAML keys, the window of a DPoP proof and of its nonce, the longest a backchannel request may ask
     # for, the delivery of a logout token and its retries, what one call to a client, to a push service and to the list
@@ -380,6 +385,13 @@ beffroi:
     web_push:
         subject: '%env(BEFFROI_TEST_WEB_PUSH_SUBJECT)%'
         timeout: '%env(float:BEFFROI_TEST_WEB_PUSH_TIMEOUT)%'
+    # Reaching a person at an address they verified, by mail and by SMS (decision 0048): naming a DSN is what wires each,
+    # here as in any deployment (architecture §5.6).
+    mail:
+        dsn: '%env(default::BEFFROI_TEST_MAIL_DSN)%'
+        sender: '%env(default::BEFFROI_TEST_MAIL_SENDER)%'
+    sms:
+        dsn: '%env(default::BEFFROI_TEST_SMS_DSN)%'
     # The tenant of the tests is a SAML identity provider (beffroi/saml, spec/saml.md section 6.1): its key is
     # drawn by the key commands under SAML-SIGNING, as every key of the tenant, and its metadata is served at
     # /saml/metadata, WantAuthnRequestsSigned left at its default; the figures of the family of its key and the
@@ -1295,6 +1307,18 @@ services:
     # the delivery of a logout token: the queue it waits in, and the handler called as the worker calls it
     test.beffroi.notification_queue:
         alias: messenger.transport.async_notifications
+        public: true
+    # What a pending approval is handed to as the worker hands it, and what the null transports of mail and SMS were
+    # given: the mailer keeps no log out of debug, so the suite listens itself, while the notifier always does.
+    test.beffroi.pending_approval_delivery:
+        alias: App\MessageHandler\TellUserOfPendingApprovalHandler
+        public: true
+    test.beffroi.mails:
+        class: Symfony\Component\Mailer\EventListener\MessageLoggerListener
+        public: true
+        tags: ['kernel.event_subscriber']
+    test.beffroi.texts:
+        alias: notifier.notification_logger_listener
         public: true
     test.beffroi.logout_token_delivery:
         alias: App\MessageHandler\SendLogoutTokenHandler

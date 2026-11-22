@@ -232,6 +232,54 @@ final class UserTest extends TestCase
         Fixtures::user()->changePhoneNumber(null, true, Fixtures::now());
     }
 
+    /**
+     * Decision 0048
+     */
+    #[Test]
+    #[DataProvider('provideEmailVerifications')]
+    public function aMessageIsWrittenToAnEmailOnceItIsVerified(bool $verified, ?string $writtenTo): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $user->changeEmail(new EmailAddress('alice@acme.example'), $verified, Fixtures::now());
+
+        // When / Then
+        static::assertSame($writtenTo, $user->verifiedEmail()?->value);
+    }
+
+    /**
+     * @return iterable<string, array{bool, ?string}>
+     */
+    public static function provideEmailVerifications(): iterable
+    {
+        yield 'verified' => [true, 'alice@acme.example'];
+        yield 'not verified' => [false, null];
+    }
+
+    /**
+     * Decision 0048
+     */
+    #[Test]
+    #[DataProvider('providePhoneNumberVerifications')]
+    public function aMessageIsTextedToAPhoneNumberOnceItIsVerified(bool $verified, ?string $textedTo): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $user->changePhoneNumber('+33600000000', $verified, Fixtures::now());
+
+        // When / Then
+        static::assertSame($textedTo, $user->verifiedPhoneNumber());
+    }
+
+    /**
+     * @return iterable<string, array{bool, ?string}>
+     */
+    public static function providePhoneNumberVerifications(): iterable
+    {
+        yield 'verified' => [true, '+33600000000'];
+        yield 'not verified' => [false, null];
+    }
+
     #[Test]
     public function anEmptyAddressIsStoredAsNoAddress(): void
     {
