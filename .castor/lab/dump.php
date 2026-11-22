@@ -26,7 +26,7 @@ const DUMP_SKIPPED_TABLES = [
 const DUMP_BACKENDS = [
     'sodium' => 'played: "castor provision --kms sodium", the default of a development stack',
     'file' => 'played: "castor provision --kms file", the self-hosted default without a KMS',
-    'aws' => 'played: "castor start --kms aws" and "castor provision --kms aws", LocalStack',
+    'aws' => 'played: "castor start --kms aws" and "castor provision --kms aws", Floci',
     'vault' => 'played: "castor start --kms vault" and "castor provision --kms vault", HashiCorp Vault in dev mode',
 ];
 
