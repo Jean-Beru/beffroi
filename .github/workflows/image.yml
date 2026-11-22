@@ -3,18 +3,19 @@ name: Image
 # The production image of the application, the "frankenphp_prod" stage of apps/beffroi/Dockerfile, published as
 # ghcr.io/beffroi-auth/beffroi for linux/amd64 and linux/arm64.
 #
-# It is built on demand only, from the Actions tab or with "gh workflow run image.yml --ref <ref>": while the
-# application is in active development, nothing builds it on its own. Run from a maintenance branch or a
-# release tag, it publishes the image under the tags below; run from any other ref, it builds both platforms
-# and publishes nothing. The automatic triggers are written under "on" and commented out, and switching them
-# on is uncommenting them.
+# It is built on its own at every push to a maintenance branch that touches the packages, the application or
+# this workflow, and at every release published. It is also built on demand, from the Actions tab or with
+# "gh workflow run image.yml --ref <ref>": from a maintenance branch or a release tag it publishes the image
+# under the tags below, and from any other ref it builds both platforms and publishes nothing. No pull request
+# builds it.
+#
+# A release starts it when it is published, as it starts gitsplit.yml, and not when its tag is pushed:
+# release-on-milestone-closed.yml pushes the tag under the credentials of its checkout, GITHUB_TOKEN, whose
+# pushes start no workflow, and publishes the release under ORGANIZATION_ADMIN_TOKEN, which does.
 #
 # It is built here and not in the mirror. Its build context is the root of this repository, where the path
 # repositories of apps/beffroi/composer.json resolve beffroi/* to src/, which beffroi-auth/application does not carry; and a
-# commit that touches only the packages changes the image while it pushes nothing to the mirror. So the
-# automatic triggers are the pushes the mirror receives anyway, a maintenance branch and a release tag that
-# the split forwards: a push to a branch as soon as it touches the packages or the application, and a
-# release tag always, GitHub evaluating no path filter on a tag.
+# commit that touches only the packages changes the image while it pushes nothing to the mirror.
 #
 # Each platform is built natively, on a runner of its architecture, with no emulation: X64 on kloude, ARM64
 # on the Swarm runners. Each build pushes its image by digest and under no tag, and the last job writes the
@@ -31,15 +32,15 @@ name: Image
 
 on:
   workflow_dispatch: ~
-  # push:
-  #   branches:
-  #     - '*.*.x'
-  #   tags:
-  #     - '[0-9]+.[0-9]+.[0-9]+'
-  #   paths:
-  #     - '.github/workflows/image.yml'
-  #     - 'apps/beffroi/**'
-  #     - 'src/**'
+  push:
+    branches:
+      - '*.*.x'
+    paths:
+      - '.github/workflows/image.yml'
+      - 'apps/beffroi/**'
+      - 'src/**'
+  release:
+    types: [published]
 
 # A newer run on a branch carries a newer image, so it cancels the one before it, which would otherwise be
 # able to write "A.B.x" last. A release is built to the end.

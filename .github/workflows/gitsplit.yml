@@ -17,17 +17,20 @@ name: gitsplit
 # cache volume below is mounted and left unused, as in jwt-framework.
 #
 # A closed milestone is where a release starts this: "release-on-milestone-
-# closed.yml" tags the version, creates the next maintenance branch and
-# switches the default branch of this repository to it, and the tag and the
-# branch are each a push this workflow listens to. The split sends them to the
-# mirrors, and the step after it is what makes a mirror look like this
-# repository: its default branch becomes the newest branch it carries, and a
-# branch the split does not push is deleted. So a mirror holds the maintained
-# branches and the release tags and nothing else, which is what the "origins"
-# of .gitsplit.yml declare; neither that list nor the list of targets is
-# restated here, both are read from that file.
+# closed.yml" tags the version, creates the next maintenance branch, switches
+# the default branch of this repository to it and publishes the release. Its
+# pushes go under the credentials of its checkout, GITHUB_TOKEN, and start no
+# workflow; the publication goes under ORGANIZATION_ADMIN_TOKEN and starts
+# this one, on the tag. The split sends the tag and the new branch to the
+# mirrors with every other reference the "origins" name, and the step after
+# it is what makes a mirror look like this repository: its default branch
+# becomes the newest branch it carries, and a branch the split does not push
+# is deleted. So a mirror holds the maintained branches and the release tags
+# and nothing else, which is what the "origins" of .gitsplit.yml declare;
+# neither that list nor the list of targets is restated here, both are read
+# from that file.
 #
-# One release queues two runs, the tag and the branch, so the workflow takes
+# Runs can queue back to back, a release behind a push, so the workflow takes
 # one at a time and cancels none: two force-pushes of the same mirror at once
 # is not a thing to find out about afterwards.
 #
