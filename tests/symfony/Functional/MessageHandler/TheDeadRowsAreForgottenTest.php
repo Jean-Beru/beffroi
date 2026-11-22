@@ -14,6 +14,9 @@ use Beffroi\Core\Port\TotpTicketRepositoryInterface;
 use Beffroi\Core\Domain\Enrolment\EnrolmentTicket;
 use Beffroi\Core\Domain\Ticket\PasswordTicket;
 use Beffroi\Core\Domain\Ticket\TotpTicket;
+use Beffroi\Core\Domain\Confirmation\EmailConfirmation;
+use Beffroi\Core\Domain\Confirmation\PhoneNumberConfirmation;
+use Beffroi\Core\Port\AddressConfirmationRepositoryInterface;
 use Beffroi\Core\Domain\Credential\PasswordHash;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Domain\Identity\Subject;
@@ -118,6 +121,16 @@ final class TheDeadRowsAreForgottenTest extends DatabaseTestCase
             'totpTicket',
             self::AT_ITS_EXPIRY,
             'beffroi_totp_ticket',
+        ];
+        yield 'a confirmation of an email address, worth nothing once it is out of time' => [
+            'emailConfirmation',
+            self::AT_ITS_EXPIRY,
+            'beffroi_email_confirmation',
+        ];
+        yield 'a confirmation of a phone number, worth nothing once it is out of time' => [
+            'phoneNumberConfirmation',
+            self::AT_ITS_EXPIRY,
+            'beffroi_phone_number_confirmation',
         ];
         yield 'an authorization code, which is the grant its tokens descend from' => [
             'code',
@@ -280,6 +293,24 @@ final class TheDeadRowsAreForgottenTest extends DatabaseTestCase
                 ->save(new TotpTicket(
                     Uuid::v7(),
                     self::user(),
+                    new PasswordHash(new Argon2id(), '$argon2id$the-value-of-a-link'),
+                    $stoppedGranting->modify(self::TEN_MINUTES),
+                    $stoppedGranting,
+                )),
+            'emailConfirmation' => self::service('test.beffroi.email_confirmation_store', AddressConfirmationRepositoryInterface::class)
+                ->save(new EmailConfirmation(
+                    Uuid::v7(),
+                    self::user(),
+                    new PasswordHash(new Argon2id(), '$argon2id$the-code'),
+                    new PasswordHash(new Argon2id(), '$argon2id$the-value-of-a-link'),
+                    $stoppedGranting->modify(self::TEN_MINUTES),
+                    $stoppedGranting,
+                )),
+            'phoneNumberConfirmation' => self::service('test.beffroi.phone_number_confirmation_store', AddressConfirmationRepositoryInterface::class)
+                ->save(new PhoneNumberConfirmation(
+                    Uuid::v7(),
+                    self::user(),
+                    new PasswordHash(new Argon2id(), '$argon2id$the-code'),
                     new PasswordHash(new Argon2id(), '$argon2id$the-value-of-a-link'),
                     $stoppedGranting->modify(self::TEN_MINUTES),
                     $stoppedGranting,

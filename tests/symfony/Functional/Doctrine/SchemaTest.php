@@ -35,6 +35,8 @@ final class SchemaTest extends DatabaseTestCase
         'beffroi_enrolment_ticket',
         'beffroi_password_ticket',
         'beffroi_totp_ticket',
+        'beffroi_email_confirmation',
+        'beffroi_phone_number_confirmation',
         'beffroi_group',
         'beffroi_group_membership',
         'beffroi_authentication_session',

@@ -170,6 +170,45 @@ final class MailProtectionTest extends TestCase
         static::assertStringContainsString('multipart/signed', self::decrypted($protected));
     }
 
+    /**
+     * NIST SP 800-63B-4 §4.2.1.2
+     */
+    #[Test]
+    public function theConfirmationOfAnAddressIsSignedAndEncryptedToNoOne(): void
+    {
+        // Given
+        $this->keys->save(MailSigningKeys::smime($this->tenant));
+        $person = $this->person();
+        $person->encryptMailTo(new Smime()->read(MailFixtures::read('person-certificate.pem')), new DateTimeImmutable(self::NOW));
+
+        // When
+        $protected = (string) MailProtections::over($this->keys, new MockClock(self::NOW), $this->logger)
+            ->ofAConfirmation($person, new EmailAddress(MailSigningKeys::SENDER), self::mail())
+            ?->toString();
+
+        // Then
+        static::assertStringContainsString('protocol="application/pkcs7-signature"', $protected);
+        static::assertStringNotContainsString('application/pkcs7-mime', $protected);
+        static::assertSame('sender', self::signerOf(MailProtections::over($this->keys, new MockClock(self::NOW), $this->logger)->ofAConfirmation($person, new EmailAddress(MailSigningKeys::SENDER), self::mail())));
+    }
+
+    /**
+     * NIST SP 800-63B-4 §4.2.1.2
+     */
+    #[Test]
+    public function theConfirmationOfATenantThatSignsAndCannotSignItIsWrittenToNobody(): void
+    {
+        // Given
+        $this->keys->save(MailSigningKeys::smime($this->tenant));
+
+        // When
+        $protected = MailProtections::over($this->keys, new MockClock(self::NOW), $this->logger)
+            ->ofAConfirmation($this->person(), new EmailAddress('someone-else@acme.example'), self::mail());
+
+        // Then
+        static::assertNull($protected);
+    }
+
     #[Test]
     public function aPersonWhoseCertificateIsNoLongerValidIsWrittenNothing(): void
     {
