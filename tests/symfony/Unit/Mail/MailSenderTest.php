@@ -15,6 +15,9 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
+use Symfony\Component\Mailer\Exception\UnsupportedSchemeException;
+use Symfony\Component\Mailer\Transport\Dsn;
+use Symfony\Component\Mailer\Transport\TransportInterface;
 use Symfony\Component\Mime\Address;
 
 /**
@@ -32,7 +35,7 @@ final class MailSenderTest extends TestCase
     }
 
     #[Test]
-    public function aPersonIsWrittenToAtTheAddressTheyVerified(): void
+    public function aPersonIsWrittenToAtTheAddressMarkedVerified(): void
     {
         // When
         $sent = $this->sender()->send(self::verified(), 'A sign-in is waiting', 'Open your account to answer.');
@@ -60,7 +63,7 @@ final class MailSenderTest extends TestCase
     }
 
     /**
-     * RFC 3834 §5
+     * RFC 3834 §5.2
      */
     #[Test]
     public function theMailSaysAProcessWroteIt(): void
@@ -151,9 +154,58 @@ final class MailSenderTest extends TestCase
         }
     }
 
+    /**
+     * Architecture §5.6
+     */
+    #[Test]
+    #[DataProvider('provideSendersThatAreNoAddress')]
+    public function aSenderThatIsNoAddressWritesNothing(?string $address): void
+    {
+        // Given
+        $sender = new MailSender(fn (): TransportInterface => $this->transport, $address, new NullLogger());
+
+        // When
+        $sent = $sender->send(self::verified(), 'A sign-in is waiting', 'Open your account to answer.');
+
+        // Then
+        static::assertFalse($sent);
+        static::assertSame([], $this->transport->sent);
+    }
+
+    /**
+     * @return iterable<string, array{?string}>
+     */
+    public static function provideSendersThatAreNoAddress(): iterable
+    {
+        yield 'none' => [null];
+        yield 'a name alone' => ['the operator'];
+    }
+
+    /**
+     * Architecture §5.6
+     */
+    #[Test]
+    public function aDsnNoInstalledFactoryReadsWritesNothing(): void
+    {
+        // Given
+        $sender = new MailSender(
+            static fn (): TransportInterface => throw new UnsupportedSchemeException(new Dsn('example+api', 'default')),
+            'no-reply@acme.example',
+            new NullLogger(),
+        );
+
+        // When
+        $sent = $sender->send(self::verified(), 'A sign-in is waiting', 'Open your account to answer.');
+
+        // Then
+        static::assertFalse($sent);
+    }
+
     private function sender(?RecordingMailTransport $transport = null): MailSender
     {
-        return new MailSender($transport ?? $this->transport, new Address('no-reply@acme.example', 'Acme'), new NullLogger());
+        $transport ??= $this->transport;
+
+        return new MailSender(static fn (): TransportInterface => $transport, 'Acme <no-reply@acme.example>', new NullLogger());
     }
 
     private static function verified(): User

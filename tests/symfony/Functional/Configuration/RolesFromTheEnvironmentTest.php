@@ -18,7 +18,6 @@ use Beffroi\Saml2\Model\SamlLoader;
 use function array_map;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\HttpFoundation\Response;
@@ -36,7 +35,6 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
         'BEFFROI_TEST_SAML_SERVICE_PROVIDER_ENTITY_ID',
         'BEFFROI_TEST_WEB_PUSH_SUBJECT',
         'BEFFROI_TEST_MAIL_DSN',
-        'BEFFROI_TEST_MAIL_SENDER',
         'BEFFROI_TEST_SMS_DSN',
     ];
 
@@ -270,25 +268,6 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
     {
         yield 'mail' => ['BEFFROI_TEST_MAIL_DSN', MailApprovalChannel::class];
         yield 'SMS' => ['BEFFROI_TEST_SMS_DSN', SmsApprovalChannel::class];
-    }
-
-    /**
-     * Decision 0048
-     */
-    #[Test]
-    public function aMailDsnTheEnvironmentNamesWithoutASenderIsRefused(): void
-    {
-        // Given
-        $this->deploy([
-            'BEFFROI_TEST_MAIL_SENDER' => '',
-        ]);
-
-        // Then
-        $this->expectException(InvalidConfigurationException::class);
-        $this->expectExceptionMessageIs('The "beffroi" configuration key "mail.sender" names the address the mail of this deployment is written from, and none is named.');
-
-        // When
-        self::pendingApprovalChannels();
     }
 
     /**

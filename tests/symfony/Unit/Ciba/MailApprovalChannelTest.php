@@ -22,7 +22,7 @@ use function is_string;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
-use Symfony\Component\Mime\Address;
+use Symfony\Component\Mailer\Transport\TransportInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -125,7 +125,7 @@ final class MailApprovalChannelTest extends TestCase
             );
 
         return new MailApprovalChannel(
-            new MailSender($this->transport, new Address('no-reply@acme.example'), new NullLogger()),
+            new MailSender(fn (): TransportInterface => $this->transport, 'no-reply@acme.example', new NullLogger()),
             new PendingApprovalWording($translator),
             new UserLocale(new ServedLocales(['en', 'fr'], 'en')),
         );

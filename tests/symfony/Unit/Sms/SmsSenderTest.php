@@ -12,6 +12,11 @@ use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
+use Symfony\Component\Notifier\Exception\InvalidArgumentException;
+use Symfony\Component\Notifier\Exception\UnsupportedSchemeException;
+use Symfony\Component\Notifier\Transport\Dsn;
+use Symfony\Component\Notifier\Transport\TransportInterface;
 
 /**
  * Decision 0048
@@ -28,10 +33,10 @@ final class SmsSenderTest extends TestCase
     }
 
     #[Test]
-    public function aPersonIsTextedAtTheNumberTheyVerified(): void
+    public function aPersonIsTextedAtTheNumberMarkedVerified(): void
     {
         // When
-        $sent = new SmsSender($this->transport)->send(self::verified(), 'Open your account to answer.');
+        $sent = $this->sender()->send(self::verified(), 'Open your account to answer.');
 
         // Then
         static::assertTrue($sent);
@@ -49,7 +54,7 @@ final class SmsSenderTest extends TestCase
         $user->changePhoneNumber($number, false, Fixtures::now());
 
         // When
-        $sent = new SmsSender($this->transport)->send($user, 'Open your account to answer.');
+        $sent = $this->sender()->send($user, 'Open your account to answer.');
 
         // Then
         static::assertFalse($sent);
@@ -72,7 +77,7 @@ final class SmsSenderTest extends TestCase
     public function aTransportThatDidNotTakeTheTextBringsTheLaneBack(): void
     {
         // Given
-        $sender = new SmsSender(new RecordingSmsTransport(refusing: true));
+        $sender = $this->sender(new RecordingSmsTransport(refusing: true));
 
         // Then
         $this->expectException(NotificationNotDeliveredException::class);
@@ -89,7 +94,7 @@ final class SmsSenderTest extends TestCase
     public function theFailureLeavesOutWhatTheProviderSaidOfTheNumber(): void
     {
         // Given
-        $sender = new SmsSender(new RecordingSmsTransport(refusing: true));
+        $sender = $this->sender(new RecordingSmsTransport(refusing: true));
 
         // When
         try {
@@ -99,6 +104,44 @@ final class SmsSenderTest extends TestCase
             // Then
             static::assertStringNotContainsString(self::NUMBER, $failure->getMessage());
         }
+    }
+
+    /**
+     * Architecture §5.6
+     */
+    #[Test]
+    public function aDsnNoInstalledBridgeReadsTextsNothing(): void
+    {
+        // Given
+        $sender = new SmsSender(static fn (): TransportInterface => throw new UnsupportedSchemeException(new Dsn('example://default')), new NullLogger());
+
+        // When
+        $sent = $sender->send(self::verified(), 'Open your account to answer.');
+
+        // Then
+        static::assertFalse($sent);
+    }
+
+    #[Test]
+    public function aTextTheProviderWillNeverCarryIsTextedNothing(): void
+    {
+        // Given
+        $transport = self::createStub(TransportInterface::class);
+        $transport->method('send')->willThrowException(new InvalidArgumentException('This provider texts no number of that country.'));
+        $sender = new SmsSender(static fn (): TransportInterface => $transport, new NullLogger());
+
+        // When
+        $sent = $sender->send(self::verified(), 'Open your account to answer.');
+
+        // Then
+        static::assertFalse($sent);
+    }
+
+    private function sender(?RecordingSmsTransport $transport = null): SmsSender
+    {
+        $transport ??= $this->transport;
+
+        return new SmsSender(static fn (): TransportInterface => $transport, new NullLogger());
     }
 
     private static function verified(): User

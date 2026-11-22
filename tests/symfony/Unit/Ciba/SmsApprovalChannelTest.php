@@ -20,6 +20,8 @@ use function implode;
 use function is_string;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
+use Symfony\Component\Notifier\Transport\TransportInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -112,7 +114,7 @@ final class SmsApprovalChannelTest extends TestCase
             );
 
         return new SmsApprovalChannel(
-            new SmsSender($this->transport),
+            new SmsSender(fn (): TransportInterface => $this->transport, new NullLogger()),
             new PendingApprovalWording($translator),
             new UserLocale(new ServedLocales(['en', 'fr'], 'en')),
         );

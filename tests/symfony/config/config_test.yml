@@ -385,7 +385,7 @@ beffroi:
     web_push:
         subject: '%env(BEFFROI_TEST_WEB_PUSH_SUBJECT)%'
         timeout: '%env(float:BEFFROI_TEST_WEB_PUSH_TIMEOUT)%'
-    # Reaching a person at an address they verified, by mail and by SMS (decision 0048): naming a DSN is what wires each,
+    # Reaching a person at an address marked verified, by mail and by SMS (decision 0048): naming a DSN is what wires each,
     # here as in any deployment (architecture §5.6).
     mail:
         dsn: '%env(default::BEFFROI_TEST_MAIL_DSN)%'

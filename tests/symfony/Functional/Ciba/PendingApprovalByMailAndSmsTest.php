@@ -7,6 +7,7 @@ namespace App\Tests\Symfony\Functional\Ciba;
 use function array_map;
 use function array_values;
 use function base64_encode;
+use function count;
 use App\Message\TellUserOfPendingApproval;
 use App\MessageHandler\TellUserOfPendingApprovalHandler;
 use App\Tests\Symfony\Functional\Controller\BrowserTestCase;
@@ -30,6 +31,16 @@ final class PendingApprovalByMailAndSmsTest extends BrowserTestCase
     private const string ADDRESS = 'alice@op.test';
 
     private const string NUMBER = '+33600000000';
+
+    private const array VARIABLES = ['BEFFROI_TEST_MAIL_SENDER', 'BEFFROI_TEST_SMS_DSN'];
+
+    protected function tearDown(): void
+    {
+        parent::tearDown();
+        foreach (self::VARIABLES as $name) {
+            unset($_SERVER[$name], $_ENV[$name]);
+        }
+    }
 
     #[Test]
     public function aPendingApprovalIsWrittenToTheAddressThePersonVerified(): void
@@ -74,6 +85,42 @@ final class PendingApprovalByMailAndSmsTest extends BrowserTestCase
 
         // Then
         static::assertSame([[], []], [self::mails(), self::texts()]);
+    }
+
+    /**
+     * Architecture §5.6
+     */
+    #[Test]
+    public function aMailDsnWithoutASenderLeavesTheTextToTellThePerson(): void
+    {
+        // Given
+        $_SERVER['BEFFROI_TEST_MAIL_SENDER'] = '';
+        $this->alice(verified: true);
+        $this->ask();
+
+        // When
+        self::deliverQueued();
+
+        // Then
+        static::assertSame([0, 1], [count(self::mails()), count(self::texts())]);
+    }
+
+    /**
+     * Architecture §5.6
+     */
+    #[Test]
+    public function anSmsDsnNoInstalledBridgeReadsLeavesTheMailToTellThePerson(): void
+    {
+        // Given
+        $_SERVER['BEFFROI_TEST_SMS_DSN'] = 'example://default';
+        $this->alice(verified: true);
+        $this->ask();
+
+        // When
+        self::deliverQueued();
+
+        // Then
+        static::assertSame([1, 0], [count(self::mails()), count(self::texts())]);
     }
 
     /**
