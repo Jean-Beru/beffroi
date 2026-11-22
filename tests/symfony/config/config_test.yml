@@ -1228,6 +1228,12 @@ services:
     test.beffroi.totp_ticket_store:
         alias: Beffroi\Core\Port\TotpTicketRepositoryInterface
         public: true
+    test.beffroi.email_confirmation_store:
+        alias: App\Doctrine\Repository\DoctrineEmailConfirmationRepository
+        public: true
+    test.beffroi.phone_number_confirmation_store:
+        alias: App\Doctrine\Repository\DoctrinePhoneNumberConfirmationRepository
+        public: true
     test.beffroi.linked_identities:
         alias: Beffroi\Core\Port\LinkedIdentityRepositoryInterface
         public: true
@@ -1339,6 +1345,9 @@ services:
     # What a change to the credentials of a person is told through, as a use case of the core tells it.
     test.beffroi.credential_change_notifier:
         alias: Beffroi\Core\Port\CredentialChangeNotifierInterface
+        public: true
+    test.beffroi.address_confirmation_delivery:
+        alias: App\MessageHandler\SendAddressConfirmationHandler
         public: true
     test.beffroi.mails:
         class: Symfony\Component\Mailer\EventListener\MessageLoggerListener
