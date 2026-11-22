@@ -59,7 +59,7 @@ function demo(
     )]
     bool $resourceServer = false,
     #[AsOption(
-        description: 'Issues #556 and #559: the API Platform API of oidc-demo under /api/v1, behind a firewall of its own; the access token the client holds is described by the OP at every request (RFC 7662), the document naming the scheme its page offers and the scope each operation needs, a write refused for the scope it was never granted, a token of another client of the demonstration served because the API asks the OP as each client whose secret it holds, the page where a session calls the API with its own token, and the few seconds the answer of the OP is kept played on both sides',
+        description: 'Issues #556 and #559: the API Platform API of oidc-demo under /api/v1, behind a firewall of its own; the access token the client holds is described by the OP at every request (RFC 7662), the document naming the schemes its page offers, OAuth 2.0 for a token addressed to the API and the bearer token, and the scope each operation requires, a write refused for the scope it was never granted, a token of another client of the demonstration served because the API asks the OP as each client whose secret it holds, the page where a session calls the API with its own token, and the few seconds the answer of the OP is kept played on both sides',
     )]
     bool $api = false,
     #[AsOption(
@@ -1595,7 +1595,7 @@ function demo_api_template(string $path): string
 }
 
 const DEMO_API_PAGE_CALLS = [
-    'account' => ['status' => 200, 'scope' => 'profile'],
+    'account' => ['status' => 200, 'scope' => 'invoices.read'],
     'invoices' => ['status' => 200, 'scope' => 'invoices.read'],
     'invoice' => ['status' => 200, 'scope' => 'invoices.read'],
     'pay' => ['status' => 201, 'scope' => 'invoices.pay'],
@@ -1603,7 +1603,7 @@ const DEMO_API_PAGE_CALLS = [
 ];
 
 const DEMO_API_DOCUMENTED_SCOPES = [
-    'get /api/v1/account' => 'profile',
+    'get /api/v1/account' => 'invoices.read',
     'get /api/v1/invoices' => 'invoices.read',
     'get /api/v1/invoices/{reference}' => 'invoices.read',
     'post /api/v1/invoices' => 'invoices.write',
@@ -1641,21 +1641,37 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
     [$status, $document] = demo_api_request('GET', DEMO_API_BASE . '/docs', accept: 'application/vnd.openapi+json');
     demo_expect($status === 200, sprintf('the document is served in the media type OpenAPI defines for it (got %d)', $status));
     $schemes = $document['components']['securitySchemes'] ?? [];
+    $flow = $schemes['oauth']['flows']['authorizationCode'] ?? [];
+    demo_expect(
+        ($schemes['oauth']['type'] ?? null) === 'oauth2'
+        && ($flow['authorizationUrl'] ?? null) === sprintf(
+            '%s?%s',
+            $metadata['authorization_endpoint'] ?? '',
+            http_build_query(['resource' => DEMO_API_BASE], '', '&', \PHP_QUERY_RFC3986),
+        )
+        && ($flow['tokenUrl'] ?? null) === ($metadata['token_endpoint'] ?? null),
+        sprintf(
+            'and declares the authorization code flow its page runs, at the endpoints of the OP, for a token addressed to the API (RFC 8707 §2, got %s)',
+            json_encode($schemes['oauth'] ?? null),
+        ),
+    );
     demo_expect(
         ($schemes['bearer']['type'] ?? null) === 'http' && ($schemes['bearer']['scheme'] ?? null) === 'bearer',
-        sprintf('and declares the one scheme this API accepts, so the page has a button to be authorized with (got %s)', json_encode($schemes)),
+        sprintf('and the bearer token of RFC 6750 §2.1, pasted by hand (got %s)', json_encode($schemes['bearer'] ?? null)),
     );
     demo_expect(
-        ($document['security'] ?? null) === [['bearer' => []]],
-        sprintf('required of the whole API, since no operation of it is open (got %s)', json_encode($document['security'] ?? null)),
+        ($document['security'] ?? null) === [['oauth' => []], ['bearer' => []]],
+        sprintf('either of them required of the whole API, since no operation of it is open (got %s)', json_encode($document['security'] ?? null)),
     );
     $documented = [];
+    $secured = [];
     foreach ((array) ($document['paths'] ?? []) as $path => $methods) {
         foreach ((array) $methods as $method => $operation) {
             if (! is_array($operation) || ! isset($operation['summary'])) {
                 continue;
             }
             $documented[$method . ' ' . $path] = $operation['description'] ?? '';
+            $secured[$method . ' ' . $path] = $operation['security'] ?? null;
         }
     }
     $listed = array_keys($documented);
@@ -1671,10 +1687,14 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
             str_contains($documented[$operation], sprintf('scope "%s"', $scope)),
             sprintf('%s says it needs "%s" (got "%s")', $operation, $scope, $documented[$operation]),
         );
+        demo_expect(
+            $secured[$operation] === [['oauth' => [$scope]], ['bearer' => []]],
+            sprintf('%s requires "%s" of the OAuth 2.0 scheme (OpenAPI 3.1 §4.8.30, got %s)', $operation, $scope, json_encode($secured[$operation])),
+        );
     }
     $verified[] = [
         'The OpenAPI document',
-        sprintf('one "http" scheme, "bearer", and %d operations each naming the scope it needs', count(DEMO_API_DOCUMENTED_SCOPES)),
+        sprintf('the schemes "oauth" and "bearer", and %d operations each requiring the scope it needs', count(DEMO_API_DOCUMENTED_SCOPES)),
     ];
 
     $cookies = [];
@@ -1706,7 +1726,7 @@ function demo_api_check(string $dir, string $issuer, string $password, string $d
         sprintf('and says how long it goes on believing that answer (got "%s")', $account['checkedBy'] ?? ''),
     );
     $ttl = (int) $window[1];
-    $verified[] = ['/api/v1/account', sprintf('200 on "profile", the answer of the OP kept at most %d seconds', $ttl)];
+    $verified[] = ['/api/v1/account', sprintf('200 on "invoices.read", the answer of the OP kept at most %d seconds', $ttl)];
 
     [$status, $collection] = demo_api_request('GET', DEMO_API_BASE . '/invoices', $accessToken);
     $references = array_column($collection, 'reference');
