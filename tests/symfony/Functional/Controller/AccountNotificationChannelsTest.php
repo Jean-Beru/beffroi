@@ -74,7 +74,7 @@ final class AccountNotificationChannelsTest extends BrowserTestCase
      * NIST SP 800-63B-4 §4.6
      */
     #[Test]
-    public function aChangeOfTheCredentialsIsSaidToReachEveryChannelAndOffersNoChoice(): void
+    public function aChangeOfTheCredentialsIsSaidToBeNarrowedByNoChoiceAndOffersNoBox(): void
     {
         // Given
         $this->signIn(self::user('alice'));
