@@ -12,6 +12,7 @@ use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Identity\Address;
 use Beffroi\Core\Domain\Identity\ClaimChange;
 use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Identity\MailEncryptionKey;
 use Beffroi\Core\Domain\Identity\LinkedIdentity;
 use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\PushSubscription;
@@ -93,6 +94,7 @@ final readonly class SealedRows
             'address' => '12 Grand Rue, Saint-Germain',
             'profile' => 'Augusta Ada King-Noel',
             'source' => 'login.acme-federation.example',
+            'mail_encryption' => 'the certificate of ada-lovelace',
         ],
         'beffroi_linked_identity' => [
             'provider' => 'login.acme-federation.example',
@@ -347,6 +349,8 @@ final readonly class SealedRows
         );
         $user->changePhoneNumber($values['phone_number'], false, $this->now);
         $user->changeAddress(new Address($values['address']), $this->now);
+        $user->changeEmail(new EmailAddress($values['email']), true, $this->now);
+        $user->encryptMailTo(new MailEncryptionKey('smime', $values['mail_encryption'], 'ADA0', [new EmailAddress($values['email'])]), $this->now);
         $user->updateProfile(
             new Profile(
                 $values['profile'],

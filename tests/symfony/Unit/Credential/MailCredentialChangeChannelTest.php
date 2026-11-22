@@ -10,6 +10,7 @@ use App\Locale\UserTimeZone;
 use App\Mail\MailSender;
 use App\Messenger\NotificationNotDeliveredException;
 use App\Tests\Symfony\Fixture\CatalogueNotices;
+use App\Tests\Symfony\Fixture\MailProtections;
 use App\Tests\Symfony\Fixture\RecordingMailTransport;
 use Beffroi\Core\Domain\Credential\CredentialChange;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
@@ -116,7 +117,7 @@ final class MailCredentialChangeChannelTest extends TestCase
     {
         return new MailCredentialChangeChannel(
             CatalogueNotices::create(),
-            new MailSender(fn (): TransportInterface => $this->transport, 'no-reply@acme.example', new NullLogger()),
+            new MailSender(fn (): TransportInterface => $this->transport, 'no-reply@acme.example', MailProtections::plain(), new NullLogger()),
         );
     }
 
