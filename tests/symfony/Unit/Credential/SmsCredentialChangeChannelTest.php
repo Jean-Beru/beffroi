@@ -13,6 +13,7 @@ use App\Tests\Symfony\Fixture\CatalogueNotices;
 use App\Tests\Symfony\Fixture\RecordingSmsTransport;
 use Beffroi\Core\Domain\Credential\CredentialChange;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
+use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use DateTimeImmutable;
@@ -50,6 +51,25 @@ final class SmsCredentialChangeChannelTest extends TestCase
                 "Acme\nA passkey was added to your account on %s. If it was not you, open your account.\nhttps://id.acme.example/account",
                 $this->written(),
             ),
+            $this->transport->sent[0]->getSubject(),
+        );
+    }
+
+    /**
+     * Architecture §5.7, OIDC Core §5.1
+     */
+    #[Test]
+    public function theTextIsWrittenOnTheClockOfThePerson(): void
+    {
+        // Given
+        $this->alice->updateProfile(new Profile(zoneinfo: 'Europe/Paris', locale: 'fr'), Fixtures::now());
+
+        // When
+        $this->channel()->tell($this->alice, $this->change());
+
+        // Then
+        static::assertSame(
+            "Acme\nUne passkey a été ajoutée à votre compte le 22 nov. 2026, 15:05 UTC+1. Si ce n'était pas vous, ouvrez votre compte.\nhttps://id.acme.example/account",
             $this->transport->sent[0]->getSubject(),
         );
     }

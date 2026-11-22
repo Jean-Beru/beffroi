@@ -121,6 +121,25 @@ final class CredentialChangeNoticesTest extends TestCase
         );
     }
 
+    /**
+     * Architecture §5.7, OIDC Core §5.1
+     */
+    #[Test]
+    public function theNoticeIsWrittenOnTheClockOfThePerson(): void
+    {
+        // Given
+        $this->alice->updateProfile(new Profile(zoneinfo: 'Europe/Paris', locale: 'fr'), Fixtures::now());
+
+        // When
+        $notice = $this->notices()->of($this->alice, $this->enrolled());
+
+        // Then
+        static::assertSame(
+            'Une passkey a été ajoutée à votre compte le 22 nov. 2026, 15:05 UTC+1. Si ce n\'était pas vous, ouvrez votre compte.',
+            $notice->body,
+        );
+    }
+
     #[Test]
     public function theNoticeOpensTheAccountUnderTheOriginOfTheIssuer(): void
     {

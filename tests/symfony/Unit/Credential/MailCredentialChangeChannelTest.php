@@ -14,6 +14,7 @@ use App\Tests\Symfony\Fixture\RecordingMailTransport;
 use Beffroi\Core\Domain\Credential\CredentialChange;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
 use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use DateTimeImmutable;
@@ -58,6 +59,25 @@ final class MailCredentialChangeChannelTest extends TestCase
         // Then
         static::assertSame(
             sprintf("A passkey was added to your account on %s. If it was not you, open your account.\n\nhttps://id.acme.example/account\n", $this->written()),
+            $this->transport->sent[0]->getTextBody(),
+        );
+    }
+
+    /**
+     * Architecture §5.7, OIDC Core §5.1
+     */
+    #[Test]
+    public function theMailIsWrittenOnTheClockOfThePerson(): void
+    {
+        // Given
+        $this->alice->updateProfile(new Profile(zoneinfo: 'Europe/Paris', locale: 'fr'), Fixtures::now());
+
+        // When
+        $this->channel()->tell($this->alice, $this->change());
+
+        // Then
+        static::assertSame(
+            "Une passkey a été ajoutée à votre compte le 22 nov. 2026, 15:05 UTC+1. Si ce n'était pas vous, ouvrez votre compte.\n\nhttps://id.acme.example/account\n",
             $this->transport->sent[0]->getTextBody(),
         );
     }
