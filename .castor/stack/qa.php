@@ -503,28 +503,27 @@ const GENERATED_CONFIGURATION = [
 ];
 
 #[AsTask(
-    description: 'Check that the generated configuration reference and schema of the application still say what the configuration trees of its bundles declare',
+    description: 'Check that the generated configuration reference and schema of the application, as git holds them, still say what the configuration trees of its bundles declare',
 )]
 function config_reference(): void
 {
     io()->title('Checking the generated configuration reference and schema');
 
+    $committed = committed_configuration();
     $onDisk = generated_configuration();
     regenerate_generated_configuration();
     $regenerated = generated_configuration();
 
     $behind = [];
     foreach (GENERATED_CONFIGURATION as $file) {
-        if ($regenerated[$file] === $onDisk[$file]) {
-            continue;
+        if ($regenerated[$file] !== $committed[$file]) {
+            $behind[] = $file;
+            run(['git', '--no-pager', 'diff', '--', $file], context: context()->withAllowFailure());
         }
 
-        $behind[] = $file;
-        $written = sprintf('%s/%s', sys_get_temp_dir(), basename($file));
-        file_put_contents($written, $regenerated[$file]);
-        file_put_contents(getcwd() . '/' . $file, $onDisk[$file]);
-        run(['git', '--no-pager', 'diff', '--no-index', '--', $file, $written], context: context()->withAllowFailure());
-        unlink($written);
+        if ($regenerated[$file] !== $onDisk[$file]) {
+            file_put_contents(getcwd() . '/' . $file, $onDisk[$file]);
+        }
     }
 
     if ($behind === []) {
@@ -547,6 +546,22 @@ function config_reference_fix(): void
 {
     regenerate_generated_configuration();
     io()->success('The reference and the schema are written again; commit them with the change that moved the trees.');
+}
+
+/**
+ * The index of git rather than the disk, which any debug boot of the kernel rewrites: the boot step of the Application
+ * workflow, a stack or a console on a desk.
+ *
+ * @return array<string, string> content by path
+ */
+function committed_configuration(): array
+{
+    $contents = [];
+    foreach (GENERATED_CONFIGURATION as $file) {
+        $contents[$file] = run(['git', '--no-pager', 'show', ':' . $file], context: context()->withQuiet())->getOutput();
+    }
+
+    return $contents;
 }
 
 /**

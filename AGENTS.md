@@ -129,7 +129,7 @@ castor mago-lint / castor mago-lint-fix       # Mago, the linter, in place of th
 castor mago-analyze       # Mago, the analyzer: informative only, it is not PHPStan's equal and the CI does not run it (see [analyzer] in mago.toml)
 castor rector / castor rector-fix
 castor deptrac / castor check-licenses
-castor config-reference / castor config-reference-fix   # apps/beffroi/config/reference.php and apps/beffroi/config/schema.json against the configuration trees its kernel registers; boots the application (its own Composer install, host PHP, no QA image) and, like the formatter, the check fails rather than fixes
+castor config-reference / castor config-reference-fix   # apps/beffroi/config/reference.php and apps/beffroi/config/schema.json, as the index of git holds them, against the configuration trees its kernel registers; boots the application (its own Composer install, host PHP, no QA image) and, like the formatter, the check fails rather than fixes, and leaves the files on disk as it found them
 castor prepare-pr         # mago-lint-fix, rector-fix, mago-format-fix, phpstan-baseline, deptrac
 castor infect --diff      # mutation testing of the lines changed since origin/HEAD (--base to change), what CI runs on every PR and push; --reuse-coverage skips the PHPUnit run when .ci-tools/coverage is fresh
 castor infect --strict    # the files the specifications of the SAML packages hold to no escaped mutant (INFECTION_STRICT_FILES), whole, uncovered lines included, under a hundred percent a failure; what CI runs on every PR and push too
