@@ -7,6 +7,7 @@ namespace Beffroi\Core\Tests\Domain\Tenant;
 use Beffroi\Core\Domain\Tenant\Issuer;
 use Beffroi\Core\Domain\Tenant\LogoUri;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Domain\Tenant\TenantContact;
 use Beffroi\Core\Domain\Tenant\TenantLook;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
@@ -62,6 +63,43 @@ final class TenantTest extends TestCase
 
         // Then
         static::assertTrue($tenant->look->equals($look));
+    }
+
+    #[Test]
+    public function aTenantGivesNoContactUntilItAdoptsOne(): void
+    {
+        // When / Then
+        static::assertNull(Fixtures::tenant()->contact);
+    }
+
+    /**
+     * NIST SP 800-63B-4 §4.6
+     */
+    #[Test]
+    public function itAdoptsTheContactItGivesItsPeople(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+
+        // When
+        $tenant->adoptContact(new TenantContact('security@acme.example'));
+
+        // Then
+        static::assertSame('security@acme.example', $tenant->contact?->value);
+    }
+
+    #[Test]
+    public function itTakesItsContactBack(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $tenant->adoptContact(new TenantContact('security@acme.example'));
+
+        // When
+        $tenant->adoptContact(null);
+
+        // Then
+        static::assertNull($tenant->contact);
     }
 
     #[Test]

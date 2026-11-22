@@ -41,6 +41,7 @@ use App\Doctrine\Type\SelfServedClaimsType;
 use App\Doctrine\Type\ClaimNamesType;
 use App\Doctrine\Type\GrantedMembersType;
 use App\Doctrine\Type\UserSourceType;
+use App\Doctrine\Type\TenantContactType;
 use App\Doctrine\Type\TenantLookType;
 use App\Doctrine\Type\LogoutProgressType;
 use Beffroi\Saml\Domain\SingleLogout\LogoutHop;
@@ -50,6 +51,7 @@ use Symfony\Component\Uid\Uuid;
 use Beffroi\Core\Domain\Tenant\LogoUri;
 use Beffroi\Core\Domain\Tenant\SelfServedClaims;
 use Beffroi\Oidc\Domain\Claims\ClaimNames;
+use Beffroi\Core\Domain\Tenant\TenantContact;
 use Beffroi\Core\Domain\Tenant\TenantLook;
 use App\DependencyInjection\BeffroiExtension;
 use Beffroi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
@@ -215,6 +217,7 @@ final class TypesTest extends TestCase
             new TenantLook(new LogoUri('https://acme.example/logo.svg'), '#1b4b8f', '#ffffff'),
             '{"logo_uri":"https://acme.example/logo.svg","primary_color":"#1b4b8f","primary_content_color":"#ffffff"}',
         ];
+        yield 'the contact of a tenant' => [TenantContactType::class, new TenantContact('security@acme.example'), 'security@acme.example'];
         // PHP writes the empty document as "[]"; the column default "{}" reads back as the same look.
         yield 'the look of a tenant that declared none' => [TenantLookType::class, TenantLook::none(), '[]'];
         yield 'backup codes' => [
@@ -326,6 +329,7 @@ final class TypesTest extends TestCase
     {
         yield 'a string for an issuer' => [IssuerType::class, 'https://op.example'];
         yield 'a subject for an issuer' => [IssuerType::class, new Subject('alice')];
+        yield 'a string for the contact of a tenant' => [TenantContactType::class, 'security@acme.example'];
         yield 'a list of strings for scopes' => [ScopesType::class, ['openid']];
         yield 'a list of strings for resources' => [ResourceIndicatorsType::class, ['https://cal.example.com/']];
         yield 'a string for scopes' => [ScopesType::class, 'openid'];
@@ -379,6 +383,7 @@ final class TypesTest extends TestCase
     {
         yield 'an issuer with a fragment' => [IssuerType::class, 'https://op.example/#x'];
         yield 'an issuer that is not a string' => [IssuerType::class, 12];
+        yield 'a contact of a tenant on two lines' => [TenantContactType::class, "security@acme.example\nhttps://evil.example"];
         yield 'a subject with a space' => [SubjectType::class, 'alice example'];
         yield 'a password algorithm nothing accounts for' => [PasswordAlgorithmType::class, 'scrypt'];
         yield 'a malformed email address' => [EmailAddressType::class, 'alice'];
@@ -510,10 +515,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function theProviderDeclaresThirtySixTypes(): void
+    public function theProviderDeclaresThirtySevenTypes(): void
     {
         // When / Then
-        static::assertCount(36, BeffroiExtension::DBAL_TYPES);
+        static::assertCount(37, BeffroiExtension::DBAL_TYPES);
     }
 
     /**
