@@ -14,6 +14,7 @@ use function base64_encode;
 use App\Message\AdvanceKeyLifecycle;
 use App\Message\IssueLogoutToken;
 use App\Message\SendLogoutToken;
+use App\Message\SendAddressConfirmation;
 use App\Message\TellUserOfCredentialChange;
 use Beffroi\Core\Domain\Credential\CredentialChange;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
@@ -109,6 +110,16 @@ final class SealedBodySerializerTest extends TestCase
         yield 'a change told to a person' => [new TellUserOfCredentialChange(
             new CredentialChange(Fixtures::user(), CredentialEnrolled::NAME, Fixtures::now(), 'passkey'),
             'mail',
+        )];
+        yield 'a confirmation sent to an address' => [new SendAddressConfirmation(
+            Fixtures::tenant(),
+            Uuid::v7(),
+            'phone_number',
+            '+33612345678',
+            Uuid::v7(),
+            '042917',
+            'the-value-of-the-link-of-the-confirmation',
+            Fixtures::now()->modify('+10 minutes'),
         )];
         yield 'a query' => [new AskWhatIsKnown('the sessions of alice')];
         yield 'a write the protocol waits for' => [new WriteBeforeAnswering('the consent')];
