@@ -531,6 +531,8 @@ beffroi:
             requires_consent: false
             id_token_encrypted_response_alg: 'ECDH-ES+A256KW'
             id_token_encrypted_response_enc: A256GCM
+            # so that its logout token is encrypted as its ID tokens are (Back-Channel Logout 1.0 §2.4)
+            backchannel_logout_uri: 'https://encrypted.test/backchannel-logout'
             userinfo_signed_response_alg: RS256
             userinfo_encrypted_response_alg: 'ECDH-ES+A256KW'
             userinfo_encrypted_response_enc: A256GCM
@@ -542,6 +544,18 @@ beffroi:
                       use: enc
                       x: f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU
                       y: x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0
+        # Back-Channel Logout 1.0 §2.4: a client that encrypts its ID tokens to keys behind a jwks_uri
+        # nothing of the tests publishes, so that the key of its logout token cannot be obtained.
+        unreachable-keys-app:
+            client_name: 'Application whose keys cannot be read'
+            secret: 'unreachable-keys-secret-of-at-least-32-c'
+            redirect_uris: ['https://unreachable-keys.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            id_token_encrypted_response_alg: 'ECDH-ES+A256KW'
+            id_token_encrypted_response_enc: A256GCM
+            jwks_uri: 'https://unreachable-keys.test/jwks.json'
+            backchannel_logout_uri: 'https://unreachable-keys.test/backchannel-logout'
         # RFC 8707 §2 (issue #217): what a client may ask a token for is a closed list on its
         # registration. The same two resources on both, so that the audience of a self-contained token
         # and the audience its introspection renders are compared on one flow.
@@ -1322,6 +1336,9 @@ services:
         public: true
     test.beffroi.logout_token_delivery:
         alias: App\MessageHandler\SendLogoutTokenHandler
+        public: true
+    test.beffroi.logout_token_issue:
+        alias: App\MessageHandler\IssueLogoutTokenHandler
         public: true
     test.beffroi.refresh_tokens:
         alias: Beffroi\Oidc\Port\RefreshTokenRepositoryInterface

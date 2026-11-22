@@ -6,9 +6,11 @@ namespace Beffroi\Oidc\Tests\Application\EndSession;
 
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use DateInterval;
+use function array_column;
 use function array_map;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Exception\KeyNotFoundException;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
@@ -16,10 +18,16 @@ use Beffroi\Oidc\Application\EndSession\BackChannelLogout;
 use Beffroi\Oidc\Application\EndSession\LogoutTokenIssuer;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Domain\Client\ResponseFormat;
 use Beffroi\Oidc\Domain\Event\LogoutTokenIssued;
+use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
+use Beffroi\Oidc\Tests\Fixture\ClientEncryption;
 use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\FakeClientJwksFetcher;
 use Beffroi\Oidc\Tests\Fixture\FakeLogoutTokenDelivery;
 use Beffroi\Oidc\Tests\Fixture\Jwts;
+use Beffroi\Oidc\Tests\Fixture\RecordingLogoutTokenRetries;
 use Beffroi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -37,6 +45,8 @@ final class BackChannelLogoutTest extends TestCase
 
     private RecordingEventDispatcher $events;
 
+    private RecordingLogoutTokenRetries $retries;
+
     private BackChannelLogout $logout;
 
     protected function setUp(): void
@@ -44,15 +54,18 @@ final class BackChannelLogoutTest extends TestCase
         $this->session = Fixtures::session();
         $this->grants = new InMemoryAuthorizationCodeRepository();
         $this->events = new RecordingEventDispatcher();
+        $this->retries = new RecordingLogoutTokenRetries();
+        $unreachable = new FakeClientJwksFetcher([ClientEncryption::publishedKeys()]);
+        $unreachable->failure = new ClientKeysUnavailableException('https://unreachable.example/jwks cannot be reached.');
         $this->logout = new BackChannelLogout(
             $this->grants,
             new LogoutTokenIssuer(
-                new Jwts($this->session->tenant)->signer,
+                new Jwts($this->session->tenant)->documentsFor($unreachable),
                 Subjects::publicKind(),
-                Algorithms::all(),
                 new SymfonyUuidGenerator(),
                 new FakeLogoutTokenDelivery(new DateInterval('PT200S')),
             ),
+            $this->retries,
             $this->events,
             new MockClock(Fixtures::now()),
         );
@@ -175,6 +188,98 @@ final class BackChannelLogoutTest extends TestCase
         static::assertStringStartsWith('eyJ', $event->token);
     }
 
+    /**
+     * Back-Channel Logout 1.0 §2.6
+     */
+    #[Test]
+    public function aClientWhoseEncryptionKeyCannotBeObtainedIsLeftForLater(): void
+    {
+        // Given
+        $this->signedIn(self::unreachable($this->session));
+
+        // When
+        $this->logout->sessionEnded($this->ended(), Fixtures::context());
+
+        // Then
+        static::assertSame([], $this->events->of(LogoutTokenIssued::class));
+        static::assertSame(['unreachable'], array_column($this->retries->later, 'clientId'));
+        static::assertSame([$this->session], array_column($this->retries->later, 'session'));
+    }
+
+    /**
+     * Architecture §4.9
+     */
+    #[Test]
+    public function theOtherClientsAreToldWhileOneIsLeftForLater(): void
+    {
+        // Given
+        $this->signedIn(self::unreachable($this->session));
+        $this->signedIn(Clients::withBackChannelLogout($this->session->tenant, 'listening', 'https://listening.example/logout'));
+
+        // When
+        $this->logout->sessionEnded($this->ended(), Fixtures::context());
+
+        // Then
+        static::assertSame(['listening'], array_map(
+            static fn (LogoutTokenIssued $event): string => $event->clientId,
+            $this->events->of(LogoutTokenIssued::class),
+        ));
+    }
+
+    /**
+     * Architecture §5.6
+     */
+    #[Test]
+    public function aSessionEndThatFailsLeavesNoClientForLater(): void
+    {
+        // Given
+        $this->signedIn(self::unreachable($this->session));
+        $this->signedIn(Clients::encryptedFor(
+            $this->session->tenant,
+            ResponseFormat::signed(Algorithms::es256()),
+            clientId: 'signed-with-a-missing-key',
+            backChannelLogoutUri: new ClientUri('https://missing.example/logout'),
+        ));
+
+        // When
+        try {
+            $this->logout->sessionEnded($this->ended(), Fixtures::context());
+        } catch (KeyNotFoundException) {
+        }
+
+        // Then
+        static::assertSame([], $this->retries->later);
+    }
+
+    /**
+     * Back-Channel Logout 1.0 §2.4
+     */
+    #[Test]
+    public function aClientToldLaterGetsItsLogoutToken(): void
+    {
+        // Given
+        $client = Clients::withBackChannelLogout($this->session->tenant, 'first', 'https://first.example/logout');
+
+        // When
+        $this->logout->tell($client, $this->ended(), Fixtures::context());
+
+        // Then
+        [$event] = $this->events->of(LogoutTokenIssued::class);
+        static::assertSame('first', $event->clientId);
+        static::assertSame('https://first.example/logout', $event->logoutUri->value);
+        static::assertStringStartsWith('eyJ', $event->token);
+    }
+
+    #[Test]
+    public function aClientThatNoLongerRegistersAUriIsNotToldLater(): void
+    {
+        // When
+        $this->logout->tell(Clients::public($this->session->tenant, 'silent'), $this->ended(), Fixtures::context());
+
+        // Then
+        static::assertSame([], $this->events->of(LogoutTokenIssued::class));
+    }
+
     private function signedIn(Client $client, string $code = 'code-of-the-client'): void
     {
         $grant = Tokens::code($code . '-' . $client->registration->clientId, $client, $this->session, Fixtures::now());
@@ -187,5 +292,16 @@ final class BackChannelLogoutTest extends TestCase
         $this->session->end(SessionEnd::RelyingParty, Fixtures::now());
 
         return $this->session;
+    }
+
+    private static function unreachable(AuthenticationSession $session): Client
+    {
+        return Clients::encryptedFor(
+            $session->tenant,
+            ResponseFormat::signed(null, ClientEncryption::registration()),
+            clientId: 'unreachable',
+            jwksUri: new ClientUri('https://unreachable.example/jwks'),
+            backChannelLogoutUri: new ClientUri('https://unreachable.example/logout'),
+        );
     }
 }

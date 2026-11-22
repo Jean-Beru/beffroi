@@ -6,9 +6,13 @@ namespace App\Tests\Symfony\Functional\Controller;
 
 use function array_column;
 use function array_keys;
+use function explode;
 use Closure;
 use App\Http\LogoutTokenSender;
+use App\Message\IssueLogoutToken;
+use App\Message\LogoutTokenNotification;
 use App\Message\SendLogoutToken;
+use App\MessageHandler\IssueLogoutTokenHandler;
 use App\MessageHandler\SendLogoutTokenHandler;
 use App\Messenger\NotificationNotDeliveredException;
 use App\Messenger\NotificationRetryPolicy;
@@ -18,6 +22,9 @@ use App\Tests\Symfony\Functional\Messenger\LogoutEndpoints;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Oidc\Domain\Event\LogoutTokenGivenUp;
+use Beffroi\Oidc\Domain\Event\LogoutTokenIssued;
+use Beffroi\Oidc\Port\AuthorizationCodeRepositoryInterface;
+use Beffroi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
@@ -32,6 +39,8 @@ final class LogoutTokenDeliveryTest extends ConsoleTestCase
     private const string URI = 'https://demo.test/backchannel-logout';
 
     private const string SESSION = '0199a0f2-7c3e-7000-8000-0000000000a1';
+
+    private const string UNREACHABLE = 'unreachable-keys-app';
 
     private const string TOKEN = 'eyJ0eXAiOiJsb2dvdXQrand0In0.eyJpc3MiOiJodHRwczovL29wLnRlc3QifQ.signature';
 
@@ -239,12 +248,103 @@ final class LogoutTokenDeliveryTest extends ConsoleTestCase
         yield 'the client does not implement the logout' => [501];
     }
 
+    /**
+     * Back-Channel Logout 1.0 §2.4, Architecture §5.6
+     */
+    #[Test]
+    public function aClientWhoseKeyCannotBeObtainedWhenTheSessionEndsIsLeftToTheLane(): void
+    {
+        // Given
+        $session = $this->signIn(self::user('alice'));
+        self::signingKey();
+        self::signedInWithoutItsKeys($session);
+
+        // When
+        $this->logOut();
+
+        // Then
+        $queued = self::queued();
+        static::assertCount(1, $queued);
+        $issue = $queued[0]->getMessage();
+        static::assertInstanceOf(IssueLogoutToken::class, $issue);
+        static::assertSame(self::UNREACHABLE, $issue->clientId);
+        static::assertSame($session->id->toRfc4122(), $issue->sessionId->toRfc4122());
+        static::assertSame([], self::events(LogoutTokenIssued::class));
+    }
+
+    /**
+     * Back-Channel Logout 1.0 §2.4, Architecture §5.6
+     */
+    #[Test]
+    public function aLogoutTokenWhoseKeyNeverComesIsGivenUpOnceTheLaneRunsOut(): void
+    {
+        // Given
+        $session = $this->signIn(self::user('alice'));
+        self::signingKey();
+        self::queue(self::issue(self::UNREACHABLE, $session->id));
+
+        // When
+        self::work();
+
+        // Then
+        static::assertSame([], $this->endpoints->requests);
+        $events = self::givenUp();
+        static::assertCount(1, $events);
+        [$givenUp] = $events;
+        static::assertSame(self::UNREACHABLE, $givenUp->clientId);
+        static::assertStringContainsString('https://unreachable-keys.test/jwks.json', $givenUp->reason);
+    }
+
+    /**
+     * Back-Channel Logout 1.0 §2.4, §2.5
+     */
+    #[Test]
+    public function aLogoutTokenIssuedLaterReachesItsClientEncrypted(): void
+    {
+        // Given
+        $session = $this->signIn(self::user('alice'));
+        self::signingKey();
+        self::queue(self::issue('encrypted-app', $session->id));
+
+        // When
+        self::work();
+
+        // Then
+        static::assertSame(['https://encrypted.test/backchannel-logout'], array_column($this->endpoints->requests, 'url'));
+        static::assertCount(5, explode('.', self::string($this->endpoints->requests[0]['parameters'][LogoutTokenSender::PARAMETER])));
+        static::assertSame([], self::givenUp());
+    }
+
+    #[Test]
+    #[DataProvider('provideWhatIsNoLongerKnown')]
+    public function aLogoutTokenIsNotIssuedLaterForWhatTheProviderNoLongerKnows(string $clientId, ?string $session): void
+    {
+        // Given
+        $signedIn = $this->signIn(self::user('alice'));
+        self::signingKey();
+
+        // When
+        self::issueHandler()(self::issue($clientId, $session === null ? $signedIn->id : Uuid::fromString($session)));
+
+        // Then
+        static::assertSame([], self::events(LogoutTokenIssued::class));
+    }
+
+    /**
+     * @return iterable<string, array{string, ?string}>
+     */
+    public static function provideWhatIsNoLongerKnown(): iterable
+    {
+        yield 'a client the provider no longer serves' => ['retired-app', null];
+        yield 'a session the provider no longer holds' => ['encrypted-app', self::SESSION];
+    }
+
     private function deliver(): void
     {
         self::handler()(self::message());
     }
 
-    private static function queue(SendLogoutToken $message): void
+    private static function queue(LogoutTokenNotification $message): void
     {
         self::service('command.bus', MessageBusInterface::class)->dispatch($message);
     }
@@ -305,6 +405,27 @@ final class LogoutTokenDeliveryTest extends ConsoleTestCase
     private static function handler(): SendLogoutTokenHandler
     {
         return self::service('test.beffroi.logout_token_delivery', SendLogoutTokenHandler::class);
+    }
+
+    private static function issueHandler(): IssueLogoutTokenHandler
+    {
+        return self::service('test.beffroi.logout_token_issue', IssueLogoutTokenHandler::class);
+    }
+
+    private static function issue(string $clientId, Uuid $session): IssueLogoutToken
+    {
+        return new IssueLogoutToken(self::tenant(), $clientId, $session, new Subject('alice-subject'), self::context());
+    }
+
+    /**
+     * Its keys cannot be read, so it signs in through a code written in the store and not through the token endpoint.
+     */
+    private static function signedInWithoutItsKeys(AuthenticationSession $session): void
+    {
+        $session = self::sessionAgain($session);
+        $code = Tokens::code('the-code-of-the-unreachable-client', self::client(self::UNREACHABLE), $session, self::now());
+        $code->consume(self::now());
+        self::service('test.beffroi.authorization_codes', AuthorizationCodeRepositoryInterface::class)->save($code);
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Symfony\Unit\Messenger;
 
 use App\Message\AdvanceKeyLifecycle;
+use App\Message\IssueLogoutToken;
 use App\Message\SendLogoutToken;
 use App\Messenger\LogoutTokenGivenUpListener;
 use Beffroi\Core\Tests\Fixture\Fixtures;
@@ -47,6 +48,25 @@ final class LogoutTokenGivenUpListenerTest extends TestCase
         static::assertSame(self::SESSION, $givenUp->sessionId->toRfc4122());
         static::assertSame('the client answered 503', $givenUp->reason);
         static::assertSame(Fixtures::now()->getTimestamp(), $givenUp->occurredAt->getTimestamp());
+    }
+
+    #[Test]
+    public function aLogoutTokenWhoseIssueTheTransportGivesUpOnIsAnnounced(): void
+    {
+        // When
+        ($this->listener)(self::failure(new IssueLogoutToken(
+            Fixtures::tenant(),
+            'encrypted-app',
+            Uuid::fromString(self::SESSION),
+            Fixtures::user()->subject,
+            Fixtures::context(),
+        ), willRetry: false));
+
+        // Then
+        [$givenUp] = $this->events->of(LogoutTokenGivenUp::class);
+        static::assertSame('encrypted-app', $givenUp->clientId);
+        static::assertSame(self::SESSION, $givenUp->sessionId->toRfc4122());
+        static::assertSame('the client answered 503', $givenUp->reason);
     }
 
     #[Test]

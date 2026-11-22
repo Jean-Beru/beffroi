@@ -155,4 +155,84 @@ final class ClientDocumentIssuerTest extends TestCase
         // Then
         static::assertSame($this->jwts->key->kid, $this->jwts->verify($document, 'nobody', Fixtures::now(), [])['header']['kid']);
     }
+
+    /**
+     * RFC 7515 §4.1
+     */
+    #[Test]
+    public function aSignedDocumentCarriesWhatItAddsToTheHeaderOfItsSignature(): void
+    {
+        // Given
+        $client = Clients::public($this->tenant);
+        $addressed = $this->jwts->documents->address($client, ResponseFormat::signed());
+
+        // When
+        $document = $this->jwts->documents->issue(
+            $client,
+            $addressed,
+            [
+                'sub' => 'alice',
+            ],
+            [
+                'typ' => 'logout+jwt',
+            ],
+        );
+
+        // Then
+        static::assertSame('logout+jwt', $this->jwts->verify($document, 'nobody', Fixtures::now(), [])['header']['typ']);
+    }
+
+    /**
+     * RFC 7516 §4.1, RFC 7519 §5.3
+     */
+    #[Test]
+    public function anEncryptedDocumentCarriesWhatItAddsToTheHeaderOfItsEncryption(): void
+    {
+        // Given
+        $client = Clients::encryptedFor($this->tenant);
+        $addressed = $this->jwts->documents->address($client, ResponseFormat::signed(null, ClientEncryption::registration()));
+
+        // When
+        $document = $this->jwts->documents->issue(
+            $client,
+            $addressed,
+            [
+                'iss' => 'https://id.acme.example',
+            ],
+            [],
+            [
+                'iss' => 'https://id.acme.example',
+            ],
+        );
+
+        // Then
+        static::assertSame('https://id.acme.example', ClientEncryption::open($document)['header']['iss']);
+    }
+
+    /**
+     * RFC 7519 §5.2
+     */
+    #[Test]
+    public function aSignedThenEncryptedDocumentSaysItCarriesAJwtWhateverItAdds(): void
+    {
+        // Given
+        $client = Clients::encryptedFor($this->tenant);
+        $addressed = $this->jwts->documents->address($client, ResponseFormat::signed(null, ClientEncryption::registration()));
+
+        // When
+        $document = $this->jwts->documents->issue(
+            $client,
+            $addressed,
+            [
+                'sub' => 'alice',
+            ],
+            [],
+            [
+                'cty' => 'json',
+            ],
+        );
+
+        // Then
+        static::assertSame('JWT', ClientEncryption::open($document)['header']['cty']);
+    }
 }
