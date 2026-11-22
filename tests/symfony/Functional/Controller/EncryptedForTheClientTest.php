@@ -9,6 +9,7 @@ use function base64_encode;
 use function count;
 use function explode;
 use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Oidc\Domain\Event\LogoutTokenIssued;
 use Jose\Component\Core\JWK;
 use Jose\Component\Core\JWKSet;
 use Jose\Component\Encryption\JWEDecrypter;
@@ -21,7 +22,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * OIDC Core §3.1.3.7, §5.3.2
+ * OIDC Core §3.1.3.7, §5.3.2, Back-Channel Logout 1.0 §2.4
  */
 final class EncryptedForTheClientTest extends BrowserTestCase
 {
@@ -132,6 +133,51 @@ final class EncryptedForTheClientTest extends BrowserTestCase
     }
 
     /**
+     * Back-Channel Logout 1.0 §2.4, §2.6
+     */
+    #[Test]
+    public function theLogoutTokenOfThatClientIsEncryptedToItsKey(): void
+    {
+        // Given
+        $this->tokensOfTheEncryptedClient();
+
+        // When
+        $this->logOut();
+
+        // Then
+        ['header' => $header] = $this->open($this->logoutToken());
+        static::assertSame('encrypted-app-key', $header['kid']);
+        static::assertSame('JWT', $header['cty']);
+        static::assertSame(self::tenant()->issuer->value, $header['iss']);
+    }
+
+    /**
+     * Back-Channel Logout 1.0 §2.6
+     */
+    #[Test]
+    public function theClientOpensTheLogoutTokenAndVerifiesTheSignatureInside(): void
+    {
+        // Given
+        $this->tokensOfTheEncryptedClient();
+        $this->logOut();
+
+        // When
+        ['payload' => $signed] = $this->open($this->logoutToken());
+
+        // Then
+        static::assertSame(
+            'logout+jwt',
+            new JwsSerializer()
+                ->unserialize($signed)
+                ->getSignature(0)
+                ->getProtectedHeader()['typ'],
+        );
+        $claims = $this->verified($signed);
+        static::assertSame('encrypted-app', $claims['aud']);
+        static::assertArrayHasKey('sid', $claims);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function tokensOfTheEncryptedClient(): array
@@ -197,5 +243,20 @@ final class EncryptedForTheClientTest extends BrowserTestCase
         static::assertGreaterThan(0, count($claims));
 
         return $claims;
+    }
+
+    private function logOut(): void
+    {
+        $this->browser->submit($this->browser->request('GET', '/logout', [
+            'client_id' => 'encrypted-app',
+        ])->selectButton('Sign out')->form());
+    }
+
+    private function logoutToken(): string
+    {
+        [$issued] = self::events(LogoutTokenIssued::class);
+        static::assertSame('encrypted-app', $issued->clientId);
+
+        return $issued->token;
     }
 }

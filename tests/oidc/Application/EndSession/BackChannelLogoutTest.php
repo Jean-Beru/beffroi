@@ -9,7 +9,6 @@ use DateInterval;
 use function array_map;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\SessionEnd;
-use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Oidc\Application\EndSession\BackChannelLogout;
@@ -47,9 +46,8 @@ final class BackChannelLogoutTest extends TestCase
         $this->logout = new BackChannelLogout(
             $this->grants,
             new LogoutTokenIssuer(
-                new Jwts($this->session->tenant)->signer,
+                new Jwts($this->session->tenant)->documents,
                 Subjects::publicKind(),
-                Algorithms::all(),
                 new SymfonyUuidGenerator(),
                 new FakeLogoutTokenDelivery(new DateInterval('PT200S')),
             ),

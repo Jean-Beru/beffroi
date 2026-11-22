@@ -531,6 +531,8 @@ beffroi:
             requires_consent: false
             id_token_encrypted_response_alg: 'ECDH-ES+A256KW'
             id_token_encrypted_response_enc: A256GCM
+            # so that its logout token is encrypted as its ID tokens are (Back-Channel Logout 1.0 §2.4)
+            backchannel_logout_uri: 'https://encrypted.test/backchannel-logout'
             userinfo_signed_response_alg: RS256
             userinfo_encrypted_response_alg: 'ECDH-ES+A256KW'
             userinfo_encrypted_response_enc: A256GCM
