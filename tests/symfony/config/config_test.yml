@@ -1198,6 +1198,15 @@ services:
     test.beffroi.credentials:
         alias: Beffroi\Core\Port\CredentialRepositoryInterface
         public: true
+    test.beffroi.mail_signing_keys:
+        alias: Beffroi\Core\Port\MailSigningKeyRepositoryInterface
+        public: true
+    test.beffroi.smime_signing_keys:
+        alias: App\Mail\SmimeSigningKeys
+        public: true
+    test.beffroi.pgp_signing_keys:
+        alias: App\Mail\PgpSigningKeys
+        public: true
     test.beffroi.tenant_hardening:
         alias: Beffroi\Core\Application\Tenant\TenantHardening
         public: true

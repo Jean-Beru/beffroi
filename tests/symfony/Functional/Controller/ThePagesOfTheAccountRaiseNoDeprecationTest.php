@@ -40,6 +40,7 @@ final class ThePagesOfTheAccountRaiseNoDeprecationTest extends BrowserTestCase
         yield 'the requests waiting' => ['/account/approvals'];
         yield 'the archive' => ['/account/archive'];
         yield 'the consents' => ['/account/consents'];
+        yield 'the encrypted mail' => ['/account/mail-encryption'];
         yield 'the notifications' => ['/account/notifications'];
         yield 'the passkeys' => ['/account/passkeys'];
         yield 'the password' => ['/account/password'];

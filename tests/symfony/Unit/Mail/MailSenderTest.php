@@ -7,14 +7,20 @@ namespace App\Tests\Symfony\Unit\Mail;
 use function array_map;
 use App\Mail\MailSender;
 use App\Messenger\NotificationNotDeliveredException;
+use App\Tests\Symfony\Fixture\MailProtections;
+use App\Tests\Symfony\Fixture\MailSigningKeys;
 use App\Tests\Symfony\Fixture\RecordingMailTransport;
+use Beffroi\Core\Bridge\InMemory\InMemoryMailSigningKeyRepository;
 use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Identity\MailEncryptionKey;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Mailer\Exception\UnsupportedSchemeException;
 use Symfony\Component\Mailer\Transport\Dsn;
 use Symfony\Component\Mailer\Transport\TransportInterface;
@@ -162,7 +168,7 @@ final class MailSenderTest extends TestCase
     public function aSenderThatIsNoAddressWritesNothing(?string $address): void
     {
         // Given
-        $sender = new MailSender(fn (): TransportInterface => $this->transport, $address, new NullLogger());
+        $sender = new MailSender(fn (): TransportInterface => $this->transport, $address, MailProtections::plain(), new NullLogger());
 
         // When
         $sent = $sender->send(self::verified(), 'A sign-in is waiting', 'Open your account to answer.');
@@ -191,6 +197,7 @@ final class MailSenderTest extends TestCase
         $sender = new MailSender(
             static fn (): TransportInterface => throw new UnsupportedSchemeException(new Dsn('example+api', 'default')),
             'no-reply@acme.example',
+            MailProtections::plain(),
             new NullLogger(),
         );
 
@@ -201,11 +208,64 @@ final class MailSenderTest extends TestCase
         static::assertFalse($sent);
     }
 
+    /**
+     * Decision 0051
+     */
+    #[Test]
+    public function theMailLeavesSignedWhenTheTenantHoldsAKey(): void
+    {
+        // Given
+        $user = self::verified();
+        $keys = new InMemoryMailSigningKeyRepository();
+        $keys->save(MailSigningKeys::smime($user->tenant));
+        $sender = new MailSender(
+            fn (): TransportInterface => $this->transport,
+            'Acme <no-reply@acme.example>',
+            MailProtections::over($keys, new MockClock('2026-11-22T10:00:00+00:00')),
+            new NullLogger(),
+        );
+
+        // When
+        $sent = $sender->send($user, 'A sign-in is waiting', 'Open your account to answer.');
+
+        // Then
+        static::assertTrue($sent);
+        static::assertSame([], $this->transport->sent);
+        static::assertStringContainsString('protocol="application/pkcs7-signature"', $this->transport->protected[0]->toString());
+    }
+
+    /**
+     * Decision 0051
+     */
+    #[Test]
+    public function aMailThatCannotBeEncryptedAsThePersonAskedIsWrittenToNobody(): void
+    {
+        // Given
+        $user = self::verified();
+        $user->encryptMailTo(
+            new MailEncryptionKey('smime', 'material', 'ABCD', [new EmailAddress(self::ADDRESS)], null, new DateTimeImmutable('2026-10-01T00:00:00+00:00')),
+            Fixtures::now(),
+        );
+        $sender = new MailSender(
+            fn (): TransportInterface => $this->transport,
+            'Acme <no-reply@acme.example>',
+            MailProtections::over(new InMemoryMailSigningKeyRepository(), new MockClock('2026-11-22T10:00:00+00:00')),
+            new NullLogger(),
+        );
+
+        // When
+        $sent = $sender->send($user, 'A sign-in is waiting', 'Open your account to answer.');
+
+        // Then
+        static::assertFalse($sent);
+        static::assertSame([[], []], [$this->transport->sent, $this->transport->protected]);
+    }
+
     private function sender(?RecordingMailTransport $transport = null): MailSender
     {
         $transport ??= $this->transport;
 
-        return new MailSender(static fn (): TransportInterface => $transport, 'Acme <no-reply@acme.example>', new NullLogger());
+        return new MailSender(static fn (): TransportInterface => $transport, 'Acme <no-reply@acme.example>', MailProtections::plain(), new NullLogger());
     }
 
     private static function verified(): User

@@ -9,6 +9,7 @@ use App\Ciba\PendingApprovalWording;
 use App\Locale\ServedLocales;
 use App\Locale\UserLocale;
 use App\Mail\MailSender;
+use App\Tests\Symfony\Fixture\MailProtections;
 use App\Tests\Symfony\Fixture\RecordingMailTransport;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\Profile;
@@ -125,7 +126,7 @@ final class MailApprovalChannelTest extends TestCase
             );
 
         return new MailApprovalChannel(
-            new MailSender(fn (): TransportInterface => $this->transport, 'no-reply@acme.example', new NullLogger()),
+            new MailSender(fn (): TransportInterface => $this->transport, 'no-reply@acme.example', MailProtections::plain(), new NullLogger()),
             new PendingApprovalWording($translator),
             new UserLocale(new ServedLocales(['en', 'fr'], 'en')),
         );

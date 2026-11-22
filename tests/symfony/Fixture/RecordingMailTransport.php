@@ -10,6 +10,7 @@ use Symfony\Component\Mailer\Exception\TransportException;
 use Symfony\Component\Mailer\SentMessage;
 use Symfony\Component\Mailer\Transport\TransportInterface;
 use Symfony\Component\Mime\Email;
+use Symfony\Component\Mime\Message;
 use Symfony\Component\Mime\RawMessage;
 
 /**
@@ -25,6 +26,11 @@ final class RecordingMailTransport implements TransportInterface
      */
     public array $sent = [];
 
+    /**
+     * @var list<Message> what left signed or encrypted, which is a message and no longer an Email
+     */
+    public array $protected = [];
+
     public function __construct(
         private readonly bool $refusing = false,
     ) {
@@ -32,13 +38,17 @@ final class RecordingMailTransport implements TransportInterface
 
     public function send(RawMessage $message, ?Envelope $envelope = null): ?SentMessage
     {
-        if (! $message instanceof Email) {
-            throw new LogicException('The provider writes an Email and nothing else.');
+        if (! $message instanceof Message) {
+            throw new LogicException('The provider writes a MIME message and nothing else.');
         }
         if ($this->refusing) {
             throw new TransportException(self::REFUSAL, 450);
         }
-        $this->sent[] = $message;
+        if ($message instanceof Email) {
+            $this->sent[] = $message;
+        } else {
+            $this->protected[] = $message;
+        }
 
         return null;
     }
